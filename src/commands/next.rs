@@ -344,8 +344,8 @@ fn run_with_repo(
              populate = backfill derived graph structure (builder) · \
              validate = run/repair proofs (validator) · \
              align = re-affirm intent meaning against the USER (validator; serves intents whose code churned since the user last confirmed their meaning — the user↔intent drift check) · \
-             quality = earn GOVERNS green (quality) · review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \
-             re-recording with confidence ≥ 0.7 or overturning) · \
+             quality = earn GOVERNS green (quality) · review = re-inspect uncertain or high-risk verdicts \
+             (the tiered double-check; resolves by re-recording with confidence ≥ 0.7 or overturning) · \
              prove = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional).",
             mode
         );

@@ -1181,7 +1181,7 @@ impl SqliteGraphStore {
         let mut stmt = self.conn.prepare(
             "SELECT e.rule_id, e.intent_id, r.name, i.name, e.inspection_status, e.criterion,
                     e.confidence, e.evidence, e.last_inspected, e.inspected_by, e.notes,
-                    e.covers_descendants
+                    e.covers_descendants, e.created_at
              FROM governs e
              JOIN quality_rule r ON r.id = e.rule_id
              JOIN intent i ON i.id = e.intent_id
@@ -1205,6 +1205,7 @@ impl SqliteGraphStore {
                 inspected_by: row.get(9)?,
                 notes: row.get(10)?,
                 covers_descendants: row.get(11)?,
+                created_at: row.get(12)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()

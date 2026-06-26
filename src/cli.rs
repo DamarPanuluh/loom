@@ -121,8 +121,8 @@ pub enum Command {
         /// (builder: backfill derived graph structure) | validate
         /// (validator: run/repair proofs) | align (validator: re-affirm intent
         /// meaning against the user) | quality (quality: earn GOVERNS green)
-        /// | review (re-inspect low-confidence verdicts) | prove (analyzer:
-        /// prove proposed hypotheses — the pre-decision plane, optional).
+        /// | review (re-inspect uncertain or high-risk verdicts) | prove
+        /// (analyzer: prove proposed hypotheses — the pre-decision plane, optional).
         /// OMIT --mode to follow the compass phase (`loom status` shows it):
         /// bare `loom next` serves the phase's lane — fix when there are
         /// failures/staleness, build when intents need realizing, validate
@@ -653,10 +653,13 @@ pub enum Command {
         loom wiki                       # write loom.wiki.md\n  \
         loom wiki docs/ARCH.md          # choose the path\n  \
         loom wiki -                     # to stdout\n  \
-        loom wiki --check               # CI/pre-commit: fail if stale")]
+        loom wiki --check               # CI/pre-commit: fail if stale\n  \
+        loom wiki --okf --check         # verify the bundle is fresh\n  \
+        loom wiki --okf --prose-check   # certify the LLM-authored prose layer")]
     Wiki {
-        /// Output file ("-" for stdout). Positional, mirroring `loom export`
-        /// and `loom import <file>`. Defaults to loom.wiki.md.
+        /// Output file ("-" for stdout) or, with `--okf`, the bundle directory
+        /// (defaults `loom.wiki/`). Positional, mirroring `loom export` and
+        /// `loom import <file>`. Without `--okf`, defaults to `loom.wiki.md`.
         path: Option<String>,
 
         /// Output file (legacy flag form; same as the positional path).
@@ -664,9 +667,33 @@ pub enum Command {
         out: Option<String>,
 
         /// Don't write — verify the existing wiki matches the live graph
-        /// byte-for-byte (exits non-zero on drift / missing).
+        /// byte-for-byte (exits non-zero on drift / missing). With `--okf`,
+        /// verifies every file in the bundle directory.
         #[arg(long)]
         check: bool,
+
+        /// Emit an OKF v0.1 bundle (a directory of markdown concept files with
+        /// YAML frontmatter) instead of a single flat file. The deterministic
+        /// skeleton: `index.md` + concept files for each axis (architecture,
+        /// components, quality, glossary, decisions, flows), each with `type`/
+        /// `title`/`tags` frontmatter. The graph-derived body is identical bytes
+        /// to the flat wiki's sections where applicable; `--check` byte-compares
+        /// every file in the bundle. Companion to `docs/repo-wiki-ladder-proposal.md`
+        /// — the skeleton layer an LLM later hangs prose on.
+        #[arg(long)]
+        okf: bool,
+
+        /// Certify the LLM-authored prose layer (the narrative hung on the OKF
+        /// skeleton) by three mechanical gates from
+        /// `docs/repo-wiki-ladder-proposal.md`: coverage (every salient intent
+        /// cited by >=1 page), freshness (every cited codefile's content-hash
+        /// matches the registered hash), and consistency (every cross-link
+        /// resolves to a real graph node). Prose QUALITY is human-gated and
+        /// intentionally NOT certified here. Requires `--okf`. Exits non-zero
+        /// on any finding. The comprehension axis is green when this passes AND
+        /// the human-gated prose-quality queue is drained.
+        #[arg(long, requires = "okf")]
+        prose_check: bool,
     },
 
     /// Rebuild a graph from a `loom export` file (into a fresh `loom init`).

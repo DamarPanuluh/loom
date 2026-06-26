@@ -685,7 +685,7 @@ fn render_status(
                     "prove": optional.prove,
                     "gate": "autonomous",
                     "required_for_green": false,
-                    "note": "Drainable now by an agent (reviewer re-checks low-confidence verdicts; prove tests hypotheses) — not human-gated, not required for green.",
+                    "note": "Drainable now by an agent (reviewer re-checks uncertain or high-risk verdicts; prove tests hypotheses) — not human-gated, not required for green.",
                 }),
             );
             obj.insert(
@@ -966,7 +966,7 @@ fn render_plain_status(
         let mut bits = Vec::new();
         if optional.review > 0 {
             bits.push(format!(
-                "{} review (re-check low-confidence verdicts)",
+                "{} review (re-check uncertain/high-risk verdicts)",
                 optional.review
             ));
         }

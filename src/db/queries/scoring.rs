@@ -338,21 +338,18 @@ pub struct NormativeCoverage {
     pub queue: Vec<(QualityRule, Intent)>,
 }
 
-/// Passing/failing verdicts recorded with confidence below this surface in the
-/// review queue — the strategic double-check loop for tiered agents: a
-/// low-capability scout records HONEST confidence, and the graph itself routes
-/// the uncertain claims to a stronger reviewer. Re-recording with confidence
-/// at/above the threshold resolves the item; overturning to `independent`
-/// resolves it immediately because independent claims carry their rationale in
-/// notes/evidence, not in confidence.
+/// Passing/failing verdicts below this confidence always enter the review queue.
+/// High-risk GOVERNS passing/partial verdicts have an additional finite
+/// double-check path below; this constant remains the threshold a re-recorded
+/// verdict must meet to leave uncertainty-driven review.
 pub const REVIEW_CONFIDENCE: f64 = 0.7;
 
-/// One uncertain passing/failing claim for the reviewer: a recorded verdict
-/// (RELATES_TO or GOVERNS) whose confidence is below `REVIEW_CONFIDENCE`,
-/// scored by (1 − confidence) × combined centrality — an uncertain claim about
-/// a hub outranks an uncertain claim about a leaf pair. Cheap certainty on
-/// leaves is deliberately left alone: double-check strategically, not
-/// exhaustively.
+/// One claim for the reviewer: low-confidence or empty-evidence passing/failing
+/// verdicts always queue, and high-risk GOVERNS pass/partial verdicts queue until
+/// the edge has been re-recorded after creation. That makes review a finite
+/// double-check: the first high-risk green claim asks for review, the
+/// re-inspection updates `last_inspected`, and the item deterministically leaves
+/// the optional queue.
 #[derive(Debug, Clone)]
 pub enum ReviewCandidate {
     RelatesTo(RelatesTo),
@@ -376,6 +373,11 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
         // the review queue makes the smell individually actionable. An honest
         // inspection always records what it saw.
         evidence.trim().is_empty()
+    };
+    let review_confirmed_after_creation = |edge: &Governs| {
+        !edge.created_at.is_empty()
+            && !edge.last_inspected.is_empty()
+            && edge.last_inspected > edge.created_at
     };
     let mut scored: Vec<(ReviewCandidate, f64)> = Vec::new();
     for edge in &snapshot.relates {
@@ -408,8 +410,11 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
         }
         // The base needs_review check (low confidence or empty evidence).
         let base_review = needs_review(&edge.inspection_status, edge.confidence, &edge.evidence);
-        // Additional GOVERNS-specific triggers that route to review EVEN at
-        // high confidence — the verdict looks green but carries a risk pattern:
+        // Additional GOVERNS-specific triggers route risky green claims to review
+        // once. A high-confidence re-record updates last_inspected while preserving
+        // created_at, so the same edge does not re-queue forever. `partial`
+        // remains open-ended: it is explicitly not fully discharged, so it leaves
+        // review only when changed to passing/failing/independent.
         let severity = rule_severity
             .get(edge.rule_id.as_str())
             .copied()
@@ -420,12 +425,11 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
             .unwrap_or("");
         let is_high_severity = severity == "error";
         let is_high_altitude = altitude == "system" || altitude == "cross_cutting";
-        // A `partial` verdict is inherently not-fully-discharged — always review.
         let is_partial = edge.inspection_status == "partial";
-        let extra_review = (edge.inspection_status == "passing"
-            || edge.inspection_status == "partial")
-            && (is_high_severity || is_high_altitude || is_partial)
-            && edge.confidence > 0.0;
+        let high_risk_passing =
+            edge.inspection_status == "passing" && (is_high_severity || is_high_altitude);
+        let extra_review = edge.confidence > 0.0
+            && (is_partial || (high_risk_passing && !review_confirmed_after_creation(edge)));
         if !base_review && !extra_review {
             continue;
         }
@@ -602,6 +606,7 @@ pub fn quality_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Govern
                 last_inspected: String::new(),
                 inspected_by: String::new(),
                 notes: format!("detection: {}", rule.detection_logic),
+                created_at: String::new(),
                 covers_descendants: String::new(),
             },
             deg as f64 + 1.0,
@@ -1501,12 +1506,19 @@ mod tests {
             last_inspected: String::new(),
             inspected_by: "llm:quality".to_string(),
             notes: String::new(),
+            created_at: String::new(),
         }
     }
 
     impl Governs {
         fn with_evidence(mut self, evidence: &str) -> Self {
             self.evidence = evidence.to_string();
+            self
+        }
+
+        fn with_timestamps(mut self, created_at: &str, last_inspected: &str) -> Self {
+            self.created_at = created_at.to_string();
+            self.last_inspected = last_inspected.to_string();
             self
         }
     }
@@ -1587,6 +1599,77 @@ mod tests {
             ["rel-passing-high-no-evidence"],
             "high-confidence verdict WITH evidence stays out of review; \
              empty-evidence verdict enters regardless of confidence"
+        );
+    }
+
+    #[test]
+    fn high_risk_governs_review_closes_after_rerecord() {
+        let mut error_rule = rule("rule");
+        error_rule.severity = "error".to_string();
+        let snapshot = QuerySnapshot::from_parts(
+            vec![intent("a")],
+            Vec::new(),
+            Vec::new(),
+            vec![
+                governs("gov-error-first-pass", "passing", 0.9)
+                    .with_evidence("inspected the error path at src/a.rs:10")
+                    .with_timestamps("2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"),
+                governs("gov-error-rerecorded", "passing", 0.9)
+                    .with_evidence("re-inspected the error path at src/a.rs:10")
+                    .with_timestamps("2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z"),
+            ],
+            vec![error_rule],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Some(Vec::new()),
+        );
+
+        let mut ids = Vec::new();
+        for (candidate, _) in review_candidates_from_snapshot(&snapshot) {
+            if let ReviewCandidate::Governs(edge) = candidate {
+                ids.push(edge.id);
+            }
+        }
+        ids.sort();
+
+        assert_eq!(
+            ids,
+            ["gov-error-first-pass"],
+            "high-risk passing GOVERNS verdicts queue once, then a re-recorded \
+             verdict leaves optional review deterministically"
+        );
+    }
+
+    #[test]
+    fn partial_governs_review_does_not_close_by_rerecording_partial() {
+        let snapshot = QuerySnapshot::from_parts(
+            vec![intent("a")],
+            Vec::new(),
+            Vec::new(),
+            vec![governs("gov-partial-rerecorded", "partial", 0.9)
+                .with_evidence("only part of the subtree has located evidence")
+                .with_timestamps("2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z")],
+            vec![rule("rule")],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Some(Vec::new()),
+        );
+
+        let mut ids = Vec::new();
+        for (candidate, _) in review_candidates_from_snapshot(&snapshot) {
+            if let ReviewCandidate::Governs(edge) = candidate {
+                ids.push(edge.id);
+            }
+        }
+
+        assert_eq!(
+            ids,
+            ["gov-partial-rerecorded"],
+            "partial remains reviewable until the verdict is fully discharged"
         );
     }
 

@@ -9,7 +9,7 @@
 - **Intents:** 105 (system: 1, component: 21, feature: 83)
 - **Domains:** analysis, audit, cli, concurrency, core, db, developer-experience, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
 - **Layers:** application, cli, graph, persistence, presentation, queries, runtime, test
-- **Code files mapped:** 122
+- **Code files mapped:** 123
 - **Quality rules:** 56
 
 ## Architecture
@@ -29,6 +29,7 @@ The intent hierarchy — what the system is, decomposed top-down.
       - **validate --all drains pending proofs** — loom validate --all runs every validation whose last_result is not_run (never run or sync-invalidated) in one verb with the same three-phase lock discipline as per-intent validate (resolve, run with DB closed, persist in one transaction); settled passed/failed verdicts are not re-run and blocked proofs keep their recorded reason
     - **intents addressable by name, not only uuid** — every command that takes an intent id should also accept its unique name (or unambiguous prefix); dogfood finding: the driver had to maintain an external name-to-id map across the whole session
     - **proof and bootstrap handlers** — loom validate (runs proofs with the session released) and loom init (idempotent bootstrap)
+    - **whoami identity report** — loom whoami reports the acting $LOOM_AGENT identity, the resolved role, and whether lane enforcement is on (a role is set) or off (solo)
   - **SQLite graph persistence** — embedded SQLite graph store behind typed command/repository APIs; schema vocabulary in Rust, physical tables and constraints in SQLite, derived endpoint edge keys, deterministic JSON import/export, and pure snapshot analysis for graph computations
     - **endpoint-constrained edge storage** — RELATES_TO, HIERARCHY, IMPLEMENTS, GOVERNS, VALIDATES, TARGETS, SERVES, and JOURNEYS are keyed by endpoint ids with derived stable edge ids and SQLite uniqueness/foreign-key constraints, not stored edge uuids
     - **graph travel format** — deterministic JSON export and restore-into-fresh-init import so the graph travels with the repo and diffs in PRs
@@ -120,7 +121,6 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **seed guide teaches the user interview** — loom guide --mode seed is explicit-only (never auto-detected) and teaches both loops: elicit (altitude calibrated to user fluency, one question per landing, recommended answers, terminate on enumerable gaps not exhaustion) and align (drive loom next --mode align outcomes); an empty graph's compass routes phase=seed pointing at this guide
     - **session opener teaches the turn-zero ask** — loom session serves turn zero (the user invoked loom with no stated goal): a directive to ask ONE question in the user's language plus a state-aware offer menu where each offer is backed by a live queue and its count and exactly one is recommended; user-gated queues (align drift, hypothesis rulings, blocked proofs) outrank everything an agent can drain alone; works before loom init (import > map > interview) and on an empty graph (interview vs map by source on disk); synonym verbs (start/begin/hello/mode/talk/chat/interview) teach the command
   - **sync flag engine** — mtime-delta detection propagating one hop: RELATES_TO neighbours and passing GOVERNS go needs_reverification, linked validations go not_run; files missing on disk are reported
-- **whoami identity report** — loom whoami reports the acting $LOOM_AGENT identity, the resolved role, and whether lane enforcement is on (a role is set) or off (solo)
 
 ## Components & code
 
@@ -272,7 +272,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **external interface surface plane** — Represent externally callable surfaces as first-class graph nodes so ownership, journey coverage, quality rules, and implementation grounding can address an interface independently of the saga YAML that calls it.
 - **saga consumer plane** — External-consumer proofs: a saga is an ordered chain of endpoint invocations (captures thread one response into the next request) whose run stamps RUNTIME evidence into the graph — the execution complement to read-evidence grounding.  `src/commands/persona.rs`, `src/saga/mod.rs`
 - **saga failure diagnosis** — Diagnose failed saga runs into structured, repo-agnostic root-cause categories and actionable next steps without stamping graph verdicts.  `src/cli.rs`, `src/commands/saga.rs`, `src/saga/diagnose.rs`, `tests/sqlite_regression.rs`
-- **saga run stamps the graph** — loom saga add declares the proof (Validation type=saga + VALIDATES edges + uninspected RELATES_TO path + spec as CodeFile); loom saga run translates outcomes into verdicts: passed consecutive pairs stamp passing RELATES_TO with runtime evidence, the failing boundary stamps failing with the broken expectation, unreached pairs stay untouched, and existing edge criteria are preserved. Exits non-zero on failure so loom validate/CI read it.  `src/commands/saga.rs`
+- **saga run stamps the graph** — loom saga add declares the proof (Validation type=saga + VALIDATES edges + uninspected RELATES_TO path + spec as CodeFile); loom saga run translates outcomes into verdicts: passed consecutive pairs stamp passing RELATES_TO with runtime evidence, the failing boundary stamps failing with the broken expectation, unreached pairs stay untouched, and existing edge criteria are preserved. Exits non-zero on failure so loom validate/CI read it.  `src/commands/saga.rs`, `tests/cold_saga_endpoint_warning.rs`
 - **saga runner halt-on-failure semantics** — The executor runs steps eagerly and in order, halts at the first failure, and reports honest per-step outcomes: steps before the failure passed, the failing step carries every broken expectation, steps after it produce NO outcome (never reached is not failing). All target-observed failures (refusal, timeout, bad JSON, empty capture) are outcomes, not process errors.  `src/saga/runner.rs`
 - **saga spec with first-class intent binding** — The YAML saga format: every step names the intent it proves; specs are validated at load (method/JSONPath/json-xor-body) and {{ var }}/{{ env.X }} interpolation resolves vars from initial vars and earlier captures, failing hard on unknown names.  `src/saga/spec.rs`
 - **saga steps resolve interface calls** — During saga add, normalize each step request into an interface surface, resolve or create that surface, and record the ordered call relationship while keeping the step intent binding as the semantic behavior under proof.  `src/commands/saga.rs`

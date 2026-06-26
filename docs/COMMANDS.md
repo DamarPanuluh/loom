@@ -62,11 +62,11 @@ loom next [--mode discovery|fix|build|validate|quality|review|prove|align] [--ta
   failing GOVERNS edges PLUS never-measured rule×intent pairs (synthetic
   `unmeasured` items, surfaced at the highest unmeasured altitude only — one
   `loom rule verdict` resolves each, creating the edge with the verdict) ·
-  review = verdicts recorded with confidence < 0.7, ranked by
-  (1−confidence)×centrality — THE TIERED DOUBLE-CHECK: a low-capability scout
-  records honest uncertainty and the graph itself routes exactly those claims
-  to a stronger reviewer (independent re-inspection: form your own hypothesis
-  BEFORE reading the recorded evidence; re-record to confirm ≥0.7 or overturn).
+  review = verdicts recorded with confidence < 0.7, empty-evidence verdicts,
+  and high-risk GOVERNS pass/partial verdicts (error severity or system/
+  cross_cutting altitude). Low-confidence items rank by (1−confidence)×centrality;
+  high-risk GOVERNS items queue once until re-recorded after creation. THE TIERED
+  DOUBLE-CHECK: re-inspect independently, then re-record to confirm ≥0.7 or overturn.
   Optional like discovery — review hardens closure, it never blocks complete.
   align = the validator's user↔intent drift queue: intents ranked by
   churn-since-confirm × centrality × staleness — code moved under a meaning the

@@ -111,9 +111,19 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Skill       { command }    => skill::run(command, &printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Explain     { target, impact } => explain::run(&target, impact, &printer),
-        Command::Wiki        { path, out, check } => {
-            let out = path.or(out).unwrap_or_else(|| "loom.wiki.md".to_string());
-            wiki::run(&out, check, &printer)
+        Command::Wiki        { path, out, check, okf, prose_check } => {
+            let out = if okf {
+                path.or(out).unwrap_or_else(|| "loom.wiki/".to_string())
+            } else {
+                path.or(out).unwrap_or_else(|| "loom.wiki.md".to_string())
+            };
+            if prose_check {
+                wiki::run_okf_prose_check(&out, &printer)
+            } else if okf {
+                wiki::run_okf(&out, check, &printer)
+            } else {
+                wiki::run(&out, check, &printer)
+            }
         }
         Command::Door        { utterance, why, limit } => door::run(&utterance, &why, limit, &printer),
         Command::Session                    => session::run(&printer),

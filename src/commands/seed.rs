@@ -672,6 +672,8 @@ mod tests {
 fn is_loom_artifact(path: &str) -> bool {
     path == "loom.graph.json"
         || path == "loom.wiki.md"
+        || path.starts_with("loom.wiki/")
+        || path.starts_with("loom.wiki\\")
         || path.starts_with(".loom/")
         || path.starts_with(".loom\\")
 }
@@ -683,6 +685,8 @@ mod loom_artifact_tests {
     fn recognizes_loom_artifacts() {
         assert!(is_loom_artifact("loom.graph.json"));
         assert!(is_loom_artifact("loom.wiki.md"));
+        assert!(is_loom_artifact("loom.wiki/index.md"));
+        assert!(is_loom_artifact("loom.wiki/architecture.md"));
         assert!(is_loom_artifact(".loom/graph.sqlite"));
         assert!(!is_loom_artifact("src/main.rs"));
         assert!(!is_loom_artifact("docs/reference.md"));

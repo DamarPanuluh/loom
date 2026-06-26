@@ -1266,6 +1266,8 @@ pub struct Governs {
     pub inspected_by: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub created_at: String,
     /// TEXT "true" when this verdict covers all descendant intents (a roll-up
     /// at component/system altitude). Empty = direct verdict only.
     #[serde(default, skip_serializing_if = "String::is_empty")]

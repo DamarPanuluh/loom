@@ -547,6 +547,7 @@ mod transitive_layering_tests {
             last_inspected: "t".into(),
             inspected_by: "llm:quality".into(),
             notes: String::new(),
+            created_at: "t".into(),
             covers_descendants: String::new(),
         }];
         let order: Vec<String> = ["presentation", "application", "storage"]

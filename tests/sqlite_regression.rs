@@ -4545,6 +4545,250 @@ fn sqlite_wiki_generates_and_checks_freshness() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// `loom wiki --okf --prose-check` — the comprehension-axis gates.
+//
+// The prose layer is LLM-authored narrative hung on the deterministic OKF
+// skeleton (between `<!-- loom:prose-start -->` and `<!-- loom:prose-end -->`
+// sentinels). Three mechanical gates certify it: coverage (every salient
+// intent cited by >=1 page), freshness (every cited codefile's content-hash
+// matches the registered hash), and consistency (every cross-link resolves to
+// a real graph node). Prose quality is human-gated and intentionally NOT
+// certified by the command. These tests exercise the mechanical contract.
+// ---------------------------------------------------------------------------
+
+/// `--prose-check` on a freshly-emitted bundle with NO prose: every page is
+/// `prose-empty` and every salient intent is a `coverage` finding. The
+/// command exits non-zero so CI can catch an unprose'd bundle.
+#[test]
+fn sqlite_prose_check_flags_empty_prose_and_coverage_gaps() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("prose-empty");
+    // Emit the OKF skeleton (no prose yet — sentinels present but empty).
+    let gen = run_json(&graph.root, &["wiki", "--okf", "--json"]);
+    assert_eq!(gen["status"], serde_json::json!("ok"), "okf emits: {gen}");
+    // The skeleton byte-check passes (sentinels present, skeleton fresh).
+    let fresh = run_json(&graph.root, &["wiki", "--okf", "--check", "--json"]);
+    assert_eq!(
+        fresh["status"],
+        serde_json::json!("ok"),
+        "skeleton fresh: {fresh}"
+    );
+    // --prose-check fails (non-zero) with prose-empty + coverage findings.
+    let findings = run_json_failure_as(
+        &graph.root,
+        &["wiki", "--okf", "--prose-check", "--json"],
+        "llm:validator",
+    );
+    assert_eq!(
+        findings["status"],
+        serde_json::json!("findings"),
+        "empty prose yields findings: {findings}"
+    );
+    let list = findings["findings"]
+        .as_array()
+        .expect("findings is an array");
+    assert!(
+        list.iter().any(|f| f["gate"] == "prose-empty"),
+        "an empty bundle flags prose-empty: {findings}"
+    );
+    assert!(
+        list.iter().any(|f| f["gate"] == "coverage"),
+        "an empty bundle flags coverage gaps: {findings}"
+    );
+    assert!(
+        list.iter()
+            .any(|f| f["gate"] == "prose-empty" && f["page"] == "index.md"),
+        "prose-empty names the page: {findings}"
+    );
+}
+
+/// Authoring prose that cites every salient intent via `[name](intent:id)`
+/// turns the coverage gate green. This proves the citation extractor
+/// recognises the `intent:` scheme and the coverage gate rewards it.
+#[test]
+fn sqlite_prose_check_coverage_gate_passes_when_prose_cites_intents() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("prose-coverage");
+    run_json(&graph.root, &["wiki", "--okf", "--json"]);
+    // List the salient intents (system/component/user_visible, non-deprecated)
+    // and author a single page that cites them all via the intent: scheme.
+    // Use --limit 0 to defeat the default 50-row truncation (the fixture has
+    // more salient intents than 50 total rows return).
+    let snap = run_json(&graph.root, &["intent", "list", "--limit", "0", "--json"]);
+    let intents = snap["intents"].as_array().expect("intents is an array");
+    let salient: Vec<(String, String)> = intents
+        .iter()
+        .filter(|i| {
+            let lvl = i["abstraction_level"].as_str().unwrap_or("");
+            let vis = i["visibility"].as_str().unwrap_or("");
+            let status = i["status"].as_str().unwrap_or("");
+            (lvl == "system" || lvl == "component" || vis == "user_visible")
+                && status != "deprecated"
+        })
+        .map(|i| {
+            (
+                i["id"].as_str().unwrap_or("").to_string(),
+                i["name"].as_str().unwrap_or("").to_string(),
+            )
+        })
+        .collect();
+    assert!(!salient.is_empty(), "fixture has salient intents");
+    // Build a prose body that cites every salient intent once.
+    let mut prose = String::from("## Coverage probe\n\nAll salient intents:\n\n");
+    for (id, name) in &salient {
+        prose.push_str(&format!("- [{}](intent:{})\n", name, id));
+    }
+    // Inject the prose into index.md between the sentinels.
+    let index_path = graph.root.join("loom.wiki").join("index.md");
+    let content = std::fs::read_to_string(&index_path).expect("index.md exists");
+    let start_sentinel = "<!-- loom:prose-start -->";
+    let end_sentinel = "<!-- loom:prose-end -->";
+    let start_idx = content.find(start_sentinel).expect("start sentinel");
+    let end_idx = content.find(end_sentinel).expect("end sentinel");
+    let after_start = start_idx + start_sentinel.len();
+    let after_start = if content.as_bytes().get(after_start) == Some(&b'\n') {
+        after_start + 1
+    } else {
+        after_start
+    };
+    let new_content = format!(
+        "{}{}\n{}",
+        &content[..after_start],
+        prose,
+        &content[end_idx..]
+    );
+    std::fs::write(&index_path, new_content).expect("write prose");
+    // Re-run prose-check: coverage findings should be gone (the other pages
+    // are still prose-empty, so the command still exits non-zero, but no
+    // finding should carry gate="coverage").
+    let findings = run_json_failure_as(
+        &graph.root,
+        &["wiki", "--okf", "--prose-check", "--json"],
+        "llm:validator",
+    );
+    let list = findings["findings"]
+        .as_array()
+        .expect("findings is an array");
+    let coverage_findings: Vec<_> = list.iter().filter(|f| f["gate"] == "coverage").collect();
+    assert!(
+        coverage_findings.is_empty(),
+        "citing every salient intent clears the coverage gate, but got: {coverage_findings:?}"
+    );
+}
+
+/// A cross-link to a file that is NOT a registered CodeFile is a consistency
+/// finding. This proves the consistency gate catches fabricated file links.
+#[test]
+fn sqlite_prose_check_consistency_gate_flags_unregistered_file_link() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("prose-consistency");
+    run_json(&graph.root, &["wiki", "--okf", "--json"]);
+    // Author prose on index.md that cites a real salient intent AND a
+    // fabricated file path that no CodeFile backs.
+    let snap = run_json(&graph.root, &["intent", "list", "--json"]);
+    let intents = snap["intents"].as_array().expect("intents is an array");
+    let any_salient = intents.iter().find(|i| {
+        let lvl = i["abstraction_level"].as_str().unwrap_or("");
+        let status = i["status"].as_str().unwrap_or("");
+        (lvl == "system" || lvl == "component") && status != "deprecated"
+    });
+    let (id, name) = match any_salient {
+        Some(i) => (
+            i["id"].as_str().unwrap_or("").to_string(),
+            i["name"].as_str().unwrap_or("").to_string(),
+        ),
+        None => panic!("fixture has a salient intent to cite"),
+    };
+    let prose = format!(
+        "## Consistency probe\n\nCites a real intent [{}](intent:{}) and a fabricated file [`nonexistent.rs`](../nonexistent.rs).\n",
+        name, id
+    );
+    let index_path = graph.root.join("loom.wiki").join("index.md");
+    let content = std::fs::read_to_string(&index_path).expect("index.md exists");
+    let start_sentinel = "<!-- loom:prose-start -->";
+    let end_sentinel = "<!-- loom:prose-end -->";
+    let start_idx = content.find(start_sentinel).expect("start sentinel");
+    let end_idx = content.find(end_sentinel).expect("end sentinel");
+    let after_start = start_idx + start_sentinel.len();
+    let after_start = if content.as_bytes().get(after_start) == Some(&b'\n') {
+        after_start + 1
+    } else {
+        after_start
+    };
+    let new_content = format!(
+        "{}{}\n{}",
+        &content[..after_start],
+        prose,
+        &content[end_idx..]
+    );
+    std::fs::write(&index_path, new_content).expect("write prose");
+    let findings = run_json_failure_as(
+        &graph.root,
+        &["wiki", "--okf", "--prose-check", "--json"],
+        "llm:validator",
+    );
+    let list = findings["findings"]
+        .as_array()
+        .expect("findings is an array");
+    assert!(
+        list.iter().any(|f| {
+            f["gate"] == "consistency"
+                && f["page"] == "index.md"
+                && f["finding"]
+                    .as_str()
+                    .unwrap_or("")
+                    .contains("nonexistent.rs")
+        }),
+        "a fabricated file link is a consistency finding: {findings}"
+    );
+}
+
+/// Re-emitting the OKF skeleton preserves any LLM-authored prose between the
+/// sentinels. This is the key invariant: a graph change that triggers a
+/// skeleton re-emit must NOT destroy the prose layer.
+#[test]
+fn sqlite_wiki_okf_reemit_preserves_prose() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("prose-preserve");
+    run_json(&graph.root, &["wiki", "--okf", "--json"]);
+    // Author a distinctive prose body on index.md.
+    let prose_marker = "PROSE_PRESERVE_MARKER_42";
+    let prose = format!("## Preserve probe\n\n{}\n", prose_marker);
+    let index_path = graph.root.join("loom.wiki").join("index.md");
+    let content = std::fs::read_to_string(&index_path).expect("index.md exists");
+    let start_sentinel = "<!-- loom:prose-start -->";
+    let end_sentinel = "<!-- loom:prose-end -->";
+    let start_idx = content.find(start_sentinel).expect("start sentinel");
+    let end_idx = content.find(end_sentinel).expect("end sentinel");
+    let after_start = start_idx + start_sentinel.len();
+    let after_start = if content.as_bytes().get(after_start) == Some(&b'\n') {
+        after_start + 1
+    } else {
+        after_start
+    };
+    let new_content = format!(
+        "{}{}\n{}",
+        &content[..after_start],
+        prose,
+        &content[end_idx..]
+    );
+    std::fs::write(&index_path, new_content).expect("write prose");
+    // Re-emit the OKF bundle (simulating a graph change → skeleton re-emit).
+    run_json(&graph.root, &["wiki", "--okf", "--json"]);
+    let after = std::fs::read_to_string(&index_path).expect("index.md still exists");
+    assert!(
+        after.contains(prose_marker),
+        "re-emitting the skeleton preserves the prose between sentinels"
+    );
+    // The skeleton byte-check still passes (the skeleton is fresh by construction).
+    let fresh = run_json(&graph.root, &["wiki", "--okf", "--check", "--json"]);
+    assert_eq!(
+        fresh["status"],
+        serde_json::json!("ok"),
+        "skeleton fresh after re-emit: {fresh}"
+    );
+}
 #[test]
 fn sqlite_explain_synthesizes_by_intent_and_file() {
     let _guard = sqlite_test_lock();
@@ -8130,9 +8374,15 @@ fn sqlite_hypothesis_prove_requires_prover_differs_from_proposer() {
     let target = run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "prover gate target", "--description",
+            "intent",
+            "add",
+            "--name",
+            "prover gate target",
+            "--description",
             "central intent for the hypothesis prover-differs lifecycle gate",
-            "--level", "feature", "--json",
+            "--level",
+            "feature",
+            "--json",
         ],
         "llm:builder",
     );
@@ -8141,20 +8391,39 @@ fn sqlite_hypothesis_prove_requires_prover_differs_from_proposer() {
     let hyp = run_json_as(
         &graph.root,
         &[
-            "hypothesis", "add", "--name", "prover gate hypothesis", "--claim",
+            "hypothesis",
+            "add",
+            "--name",
+            "prover gate hypothesis",
+            "--claim",
             "the target has a measurable improvement opportunity worth proving",
-            "--proposal", "refactor the hot path for clarity", "--predicted-outcome",
-            "fewer lines in the hot path", "--target", tid, "--json",
+            "--proposal",
+            "refactor the hot path for clarity",
+            "--predicted-outcome",
+            "fewer lines in the hot path",
+            "--target",
+            tid,
+            "--json",
         ],
         "llm:builder",
     );
     let hid = hyp["id"].as_str().expect("hypothesis id");
-    assert_eq!(hyp["status"], "proposed", "a new hypothesis starts proposed: {hyp}");
+    assert_eq!(
+        hyp["status"], "proposed",
+        "a new hypothesis starts proposed: {hyp}"
+    );
     // SAME role as the proposer must be refused by the lifecycle gate
     let same = std::process::Command::new(loom_bin())
         .args([
-            "hypothesis", "prove", hid, "--verdict", "supported", "--evidence",
-            "self-proving: the claim looks real to me, the proposer", "--confidence", "0.8",
+            "hypothesis",
+            "prove",
+            hid,
+            "--verdict",
+            "supported",
+            "--evidence",
+            "self-proving: the claim looks real to me, the proposer",
+            "--confidence",
+            "0.8",
         ])
         .current_dir(&graph.root)
         .env("LOOM_AGENT", "llm:builder")
@@ -8170,13 +8439,24 @@ fn sqlite_hypothesis_prove_requires_prover_differs_from_proposer() {
     assert_status_ok(&run_json_as(
         &graph.root,
         &[
-            "hypothesis", "prove", hid, "--verdict", "supported", "--evidence",
+            "hypothesis",
+            "prove",
+            hid,
+            "--verdict",
+            "supported",
+            "--evidence",
             "an independent analyzer read the code and the claimed opportunity holds",
-            "--confidence", "0.85", "--json",
+            "--confidence",
+            "0.85",
+            "--json",
         ],
         "llm:analyzer",
     ));
-    let shown = run_json_as(&graph.root, &["hypothesis", "show", hid, "--json"], "llm:builder");
+    let shown = run_json_as(
+        &graph.root,
+        &["hypothesis", "show", hid, "--json"],
+        "llm:builder",
+    );
     assert_eq!(
         shown["hypothesis"]["status"], "supported",
         "a different-role prove moves the hypothesis to supported: {shown}"
@@ -8195,7 +8475,10 @@ fn sqlite_review_take_json_carries_batch_template_hints() {
     // verdict to guarantee a non-empty queue. If the queue IS empty, the
     // empty JSON correctly omits batch_template_hints — so we only assert
     // when the queue has items.
-    let review = run_json(&graph.root, &["next", "--mode", "review", "--take", "3", "--json"]);
+    let review = run_json(
+        &graph.root,
+        &["next", "--mode", "review", "--take", "3", "--json"],
+    );
     if review["status"] == "ok" {
         assert!(
             review.get("batch_template_hints").is_some(),
@@ -8219,7 +8502,9 @@ fn sqlite_quality_kind_filters_by_rule_kind() {
     // security rules; --kind performance should return only performance rules.
     let security = run_json(
         &graph.root,
-        &["next", "--mode", "quality", "--kind", "security", "--take", "5", "--json"],
+        &[
+            "next", "--mode", "quality", "--kind", "security", "--take", "5", "--json",
+        ],
     );
     assert!(
         security["status"] == "ok" || security["status"] == "empty",
@@ -8239,8 +8524,9 @@ fn sqlite_quality_kind_filters_by_rule_kind() {
         );
         assert!(
             security["queue_total"].as_i64() <= unfiltered["queue_total"].as_i64(),
-        "filtered queue_total ({}) must be <= unfiltered ({})",
-        security["queue_total"], unfiltered["queue_total"]
+            "filtered queue_total ({}) must be <= unfiltered ({})",
+            security["queue_total"],
+            unfiltered["queue_total"]
         );
     }
 }
@@ -8252,7 +8538,14 @@ fn sqlite_quality_kind_rejects_non_quality_mode() {
     // --kind on a non-quality mode must fail with a helpful error.
     let result = run_json_failure_as(
         &graph.root,
-        &["next", "--mode", "discovery", "--kind", "security", "--json"],
+        &[
+            "next",
+            "--mode",
+            "discovery",
+            "--kind",
+            "security",
+            "--json",
+        ],
         "llm:analyzer",
     );
     // The failure message should name --kind and quality.
@@ -8280,10 +8573,17 @@ fn sqlite_security_deep_pack_seeds_four_rules_with_kind() {
         "llm:quality",
     );
     let created = result["created"].as_array().expect("created array");
-    assert_eq!(created.len(), 4, "security-deep pack seeds exactly 4 rules: {result}");
+    assert_eq!(
+        created.len(),
+        4,
+        "security-deep pack seeds exactly 4 rules: {result}"
+    );
     for rule in created {
         let kind = rule["kind"].as_str().expect("kind field");
-        assert_eq!(kind, "security", "every security-deep rule has kind=security");
+        assert_eq!(
+            kind, "security",
+            "every security-deep rule has kind=security"
+        );
         let name = rule["name"].as_str().expect("name field");
         assert!(
             name.starts_with("sec-"),
@@ -8353,7 +8653,8 @@ fn sqlite_hardened_rung_unmet_when_normative_plane_empty() {
     }
     let status = run_json(&graph.root, &["status", "--json"]);
     let rungs = status["maturity"]["rungs"].as_array().expect("rungs array");
-    let hardened = rungs.iter()
+    let hardened = rungs
+        .iter()
         .find(|r| r["name"] == "Hardened")
         .expect("Hardened rung exists");
     assert_ne!(
@@ -8384,23 +8685,54 @@ fn sqlite_partial_verdict_status_accepted() {
     std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
     let intent = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "alpha", "--level", "feature",
-          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--level",
+            "feature",
+            "--description",
+            "do alpha",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     );
     let iid = intent["id"].as_str().unwrap().to_string();
     run_json_as(
         &graph.root,
-        &["rule", "add", "--name", "r1", "--description", "rule r1",
-          "--severity", "warning", "--json"],
+        &[
+            "rule",
+            "add",
+            "--name",
+            "r1",
+            "--description",
+            "rule r1",
+            "--severity",
+            "warning",
+            "--json",
+        ],
         "llm:quality",
     );
     let result = run_json_as(
         &graph.root,
-        &["rule", "verdict", "r1", &iid, "--status", "partial",
-          "--criterion", "partially complies — some gaps remain",
-          "--evidence", "versioned /v1 routes exist but no schema-diff enforcement",
-          "--evidence-locator", "src/lib.rs", "--json"],
+        &[
+            "rule",
+            "verdict",
+            "r1",
+            &iid,
+            "--status",
+            "partial",
+            "--criterion",
+            "partially complies — some gaps remain",
+            "--evidence",
+            "versioned /v1 routes exist but no schema-diff enforcement",
+            "--evidence-locator",
+            "src/lib.rs",
+            "--json",
+        ],
         "llm:quality",
     );
     assert_eq!(result["status"], "ok", "partial verdict accepted: {result}");
@@ -8414,28 +8746,64 @@ fn sqlite_passing_verdict_requires_evidence_locator() {
     run_json(&graph.root, &["init", ".", "--json"]);
     let intent = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "alpha", "--level", "feature",
-          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--level",
+            "feature",
+            "--description",
+            "do alpha",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     );
     let iid = intent["id"].as_str().unwrap().to_string();
     run_json_as(
         &graph.root,
-        &["rule", "add", "--name", "r1", "--description", "rule r1",
-          "--severity", "warning", "--json"],
+        &[
+            "rule",
+            "add",
+            "--name",
+            "r1",
+            "--description",
+            "rule r1",
+            "--severity",
+            "warning",
+            "--json",
+        ],
         "llm:quality",
     );
     // Passing without --evidence-locator should fail.
     let result = run_json_failure_as(
         &graph.root,
-        &["rule", "verdict", "r1", &iid, "--status", "passing",
-          "--criterion", "complies with the rule",
-          "--evidence", "all handlers check auth", "--json"],
+        &[
+            "rule",
+            "verdict",
+            "r1",
+            &iid,
+            "--status",
+            "passing",
+            "--criterion",
+            "complies with the rule",
+            "--evidence",
+            "all handlers check auth",
+            "--json",
+        ],
         "llm:quality",
     );
-    assert_eq!(result["status"], "error", "passing without locator rejected: {result}");
+    assert_eq!(
+        result["status"], "error",
+        "passing without locator rejected: {result}"
+    );
     assert!(
-        result["error"].as_str().unwrap_or("").contains("evidence-locator"),
+        result["error"]
+            .as_str()
+            .unwrap_or("")
+            .contains("evidence-locator"),
         "error must name the missing locator: {result}"
     );
 }
@@ -8449,30 +8817,71 @@ fn sqlite_covers_descendants_requires_evidence() {
     std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
     let intent = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "alpha", "--level", "system",
-          "--description", "system intent", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--level",
+            "system",
+            "--description",
+            "system intent",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     );
     let iid = intent["id"].as_str().unwrap().to_string();
     run_json_as(
         &graph.root,
-        &["rule", "add", "--name", "r1", "--description", "rule r1",
-          "--severity", "warning", "--json"],
+        &[
+            "rule",
+            "add",
+            "--name",
+            "r1",
+            "--description",
+            "rule r1",
+            "--severity",
+            "warning",
+            "--json",
+        ],
         "llm:quality",
     );
     // covers_descendants with empty evidence should fail.
     let result = run_json_failure_as(
         &graph.root,
-        &["rule", "verdict", "r1", &iid, "--status", "passing",
-          "--criterion", "applies to all children",
-          "--evidence", "", "--evidence-locator", "src/lib.rs",
-          "--covers-descendants", "--json"],
+        &[
+            "rule",
+            "verdict",
+            "r1",
+            &iid,
+            "--status",
+            "passing",
+            "--criterion",
+            "applies to all children",
+            "--evidence",
+            "",
+            "--evidence-locator",
+            "src/lib.rs",
+            "--covers-descendants",
+            "--json",
+        ],
         "llm:quality",
     );
-    assert_eq!(result["status"], "error", "covers_descendants without evidence rejected: {result}");
+    assert_eq!(
+        result["status"], "error",
+        "covers_descendants without evidence rejected: {result}"
+    );
     assert!(
-        result["error"].as_str().unwrap_or("").contains("covers-descendants")
-            || result["error"].as_str().unwrap_or("").contains("substantive"),
+        result["error"]
+            .as_str()
+            .unwrap_or("")
+            .contains("covers-descendants")
+            || result["error"]
+                .as_str()
+                .unwrap_or("")
+                .contains("substantive"),
         "error must name covers-descendants or evidence gate: {result}"
     );
 }
@@ -8494,23 +8903,35 @@ fn sqlite_rule_show_displays_evidence_examples() {
     );
     assert_eq!(result["name"], "service-observable-failures");
     assert!(
-        !result["evidence_examples"].as_str().unwrap_or("").is_empty(),
+        !result["evidence_examples"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty(),
         "evidence_examples should be populated: {result}"
     );
     assert!(
-        !result["signal_expectations"].as_str().unwrap_or("").is_empty(),
+        !result["signal_expectations"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty(),
         "signal_expectations should be populated: {result}"
     );
     // Verify the JSON structure is valid.
-    let examples: serde_json::Value = serde_json::from_str(
-        result["evidence_examples"].as_str().unwrap_or("")
-    ).expect("evidence_examples is valid JSON");
+    let examples: serde_json::Value =
+        serde_json::from_str(result["evidence_examples"].as_str().unwrap_or(""))
+            .expect("evidence_examples is valid JSON");
     assert!(examples.get("pass").is_some(), "has pass example");
-    assert!(examples.get("independent").is_some(), "has independent example");
-    assert!(examples.get("common_false_positive").is_some(), "has common_false_positive example");
-    let signals: Vec<Vec<String>> = serde_json::from_str(
-        result["signal_expectations"].as_str().unwrap_or("[]")
-    ).expect("signal_expectations is valid JSON array");
+    assert!(
+        examples.get("independent").is_some(),
+        "has independent example"
+    );
+    assert!(
+        examples.get("common_false_positive").is_some(),
+        "has common_false_positive example"
+    );
+    let signals: Vec<Vec<String>> =
+        serde_json::from_str(result["signal_expectations"].as_str().unwrap_or("[]"))
+            .expect("signal_expectations is valid JSON array");
     assert!(!signals.is_empty(), "has at least one signal group");
 }
 
@@ -8523,7 +8944,8 @@ fn sqlite_service_pack_detects_axum_framework() {
     std::fs::write(
         graph.root.join("Cargo.toml"),
         "[package]\nname = \"test-svc\"\nversion = \"0.1.0\"\n\n[dependencies]\naxum = \"0.7\"\n",
-    ).unwrap();
+    )
+    .unwrap();
     std::fs::create_dir_all(graph.root.join("src")).unwrap();
     std::fs::write(graph.root.join("src/main.rs"), "fn main() {}\n").unwrap();
     let result = run_json(&graph.root, &["detect", "--json"]);
@@ -8548,32 +8970,70 @@ fn sqlite_high_severity_passing_routes_to_review() {
     std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
     let intent = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "alpha", "--level", "feature",
-          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--level",
+            "feature",
+            "--description",
+            "do alpha",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     );
     let iid = intent["id"].as_str().unwrap().to_string();
     // Create a rule with severity = error.
     let rule = run_json_as(
         &graph.root,
-        &["rule", "add", "--name", "strict-rule", "--description", "strict",
-          "--severity", "error", "--kind", "security", "--json"],
+        &[
+            "rule",
+            "add",
+            "--name",
+            "strict-rule",
+            "--description",
+            "strict",
+            "--severity",
+            "error",
+            "--kind",
+            "security",
+            "--json",
+        ],
         "llm:quality",
     );
     let rule_id = rule["id"].as_str().unwrap().to_string();
     // Passing verdict with high confidence + locator.
     let result = run_json_as(
         &graph.root,
-        &["rule", "verdict", "strict-rule", &iid, "--status", "passing",
-          "--criterion", "no injection sinks",
-          "--evidence", "all queries parameterized at src/lib.rs",
-          "--evidence-locator", "src/lib.rs", "--confidence", "0.95", "--json"],
+        &[
+            "rule",
+            "verdict",
+            "strict-rule",
+            &iid,
+            "--status",
+            "passing",
+            "--criterion",
+            "no injection sinks",
+            "--evidence",
+            "all queries parameterized at src/lib.rs",
+            "--evidence-locator",
+            "src/lib.rs",
+            "--confidence",
+            "0.95",
+            "--json",
+        ],
         "llm:quality",
     );
     assert_eq!(result["status"], "ok", "verdict recorded: {result}");
     // The review queue should include this high-severity passing verdict
     // even at high confidence.
-    let review = run_json(&graph.root, &["next", "--mode", "review", "--take", "50", "--json"]);
+    let review = run_json(
+        &graph.root,
+        &["next", "--mode", "review", "--take", "50", "--json"],
+    );
     let items = review["items"].as_array().expect("items array");
     let found = items.iter().any(|item| {
         item.get("rule")
@@ -8581,7 +9041,10 @@ fn sqlite_high_severity_passing_routes_to_review() {
             .and_then(|r| r.as_str())
             == Some(&rule_id)
     });
-    assert!(found, "high-severity passing verdict should be in review queue: {review}");
+    assert!(
+        found,
+        "high-severity passing verdict should be in review queue: {review}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -8594,54 +9057,131 @@ fn sqlite_covers_descendants_false_does_not_cover_children() {
     let graph = ScratchGraph::new("covers-false");
     run_json(&graph.root, &["init", ".", "--json"]);
     std::fs::create_dir_all(graph.root.join("src")).unwrap();
-    std::fs::write(graph.root.join("src/lib.rs"), "pub fn parent() {}\npub fn child() {}\n").unwrap();
-    run_json_as(&graph.root, &["codefile", "add", "src/lib.rs", "--json"], "llm:builder");
+    std::fs::write(
+        graph.root.join("src/lib.rs"),
+        "pub fn parent() {}\npub fn child() {}\n",
+    )
+    .unwrap();
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/lib.rs", "--json"],
+        "llm:builder",
+    );
 
     // Create a parent intent with a child.
     let parent = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "parent", "--level", "component",
-          "--description", "parent component", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "parent",
+            "--level",
+            "component",
+            "--description",
+            "parent component",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     );
     let pid = parent["id"].as_str().unwrap().to_string();
 
     let child = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "child", "--level", "feature",
-          "--description", "child feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "child",
+            "--level",
+            "feature",
+            "--description",
+            "child feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     );
     let cid = child["id"].as_str().unwrap().to_string();
 
     // Ground both intents.
-    run_json_as(&graph.root, &["edge", "implement", &pid, "src/lib.rs",
-        "--locator", "pub fn parent", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["edge", "implement", &cid, "src/lib.rs",
-        "--locator", "pub fn child", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &pid,
+            "src/lib.rs",
+            "--locator",
+            "pub fn parent",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &cid,
+            "src/lib.rs",
+            "--locator",
+            "pub fn child",
+            "--json",
+        ],
+        "llm:builder",
+    );
 
     // Link parent → child in hierarchy.
-    run_json_as(&graph.root, &["edge", "hierarchy", &pid, &cid, "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["edge", "hierarchy", &pid, &cid, "--json"],
+        "llm:builder",
+    );
 
     // Seed a rule and verdict on the PARENT (without --covers-descendants).
-    run_json_as(&graph.root, &["rule", "seed", "iso5055", "--json"], "llm:quality");
+    run_json_as(
+        &graph.root,
+        &["rule", "seed", "iso5055", "--json"],
+        "llm:quality",
+    );
     // Find the first rule.
     let rules = run_json(&graph.root, &["rule", "list", "--json"]);
-    let first_rule = rules["rules"].as_array().unwrap()[0]["id"].as_str().unwrap().to_string();
+    let first_rule = rules["rules"].as_array().unwrap()[0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Verdict on parent with passing + locator, WITHOUT --covers-descendants.
     run_json_as(
         &graph.root,
-        &["rule", "verdict", &first_rule, &pid, "--status", "passing",
-          "--criterion", "parent complies with this rule",
-          "--evidence", "checked parent code — complies",
-          "--evidence-locator", "src/lib.rs:1", "--json"],
+        &[
+            "rule",
+            "verdict",
+            &first_rule,
+            &pid,
+            "--status",
+            "passing",
+            "--criterion",
+            "parent complies with this rule",
+            "--evidence",
+            "checked parent code — complies",
+            "--evidence-locator",
+            "src/lib.rs:1",
+            "--json",
+        ],
         "llm:quality",
     );
 
     // The child should appear in the quality queue — the parent verdict
     // without --covers-descendants does NOT cover the child.
-    let quality = run_json(&graph.root, &["next", "--mode", "quality", "--take", "50", "--json"]);
+    let quality = run_json(
+        &graph.root,
+        &["next", "--mode", "quality", "--take", "50", "--json"],
+    );
     let items = quality.get("items").and_then(|v| v.as_array());
     if let Some(items) = items {
         let child_covered = items.iter().any(|item| {
@@ -8653,7 +9193,12 @@ fn sqlite_covers_descendants_false_does_not_cover_children() {
         // The child should NOT be covered — it should be in the quality queue.
         // (If the queue is empty, the child is wrongly covered — false green.)
         assert!(
-            child_covered || quality.get("queue_total").and_then(|v| v.as_i64()).unwrap_or(0) > 0,
+            child_covered
+                || quality
+                    .get("queue_total")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(0)
+                    > 0,
             "child should NOT be covered by parent verdict without --covers-descendants: {quality}"
         );
     }
@@ -8668,32 +9213,65 @@ fn sqlite_rule_verdict_persist_locator_in_evidence() {
     std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
     let intent = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "alpha", "--level", "feature",
-          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--level",
+            "feature",
+            "--description",
+            "do alpha",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     );
     let iid = intent["id"].as_str().unwrap().to_string();
-    run_json_as(&graph.root, &["rule", "seed", "iso5055", "--json"], "llm:quality");
+    run_json_as(
+        &graph.root,
+        &["rule", "seed", "iso5055", "--json"],
+        "llm:quality",
+    );
     let rules = run_json(&graph.root, &["rule", "list", "--json"]);
-    let first_rule = rules["rules"].as_array().unwrap()[0]["id"].as_str().unwrap().to_string();
+    let first_rule = rules["rules"].as_array().unwrap()[0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Verdict with a locator — the stored evidence should contain @<locator>.
     let result = run_json_as(
         &graph.root,
-        &["rule", "verdict", &first_rule, &iid, "--status", "passing",
-          "--criterion", "complies with rule",
-          "--evidence", "all handlers check auth",
-          "--evidence-locator", "src/lib.rs:1", "--json"],
+        &[
+            "rule",
+            "verdict",
+            &first_rule,
+            &iid,
+            "--status",
+            "passing",
+            "--criterion",
+            "complies with rule",
+            "--evidence",
+            "all handlers check auth",
+            "--evidence-locator",
+            "src/lib.rs:1",
+            "--json",
+        ],
         "llm:quality",
     );
     assert_eq!(result["status"], "ok", "verdict should succeed: {result}");
 
     // Check the stored evidence contains the locator.
     let check = run_json(&graph.root, &["rule", "check", &iid, "--json"]);
-    let governs = check.get("governs").and_then(|v| v.as_array()).expect("governs array");
-    let edge = governs.iter().find(|g| {
-        g.get("rule_id").and_then(|r| r.as_str()) == Some(&first_rule)
-    }).expect("found the GOVERNS edge");
+    let governs = check
+        .get("governs")
+        .and_then(|v| v.as_array())
+        .expect("governs array");
+    let edge = governs
+        .iter()
+        .find(|g| g.get("rule_id").and_then(|r| r.as_str()) == Some(&first_rule))
+        .expect("found the GOVERNS edge");
     let evidence = edge.get("evidence").and_then(|e| e.as_str()).unwrap_or("");
     assert!(
         evidence.contains("@src/lib.rs"),
@@ -8714,8 +9292,12 @@ fn sqlite_seed_inbox_excludes_loom_artifacts() {
 
     run_json(&graph.root, &["seed", "--inbox", "--json"]);
     let inbox = run_json(&graph.root, &["inbox", "list", "--json"]);
-    let items = inbox.get("items").and_then(|v| v.as_array()).expect("items array");
-    let raw_texts: Vec<&str> = items.iter()
+    let items = inbox
+        .get("items")
+        .and_then(|v| v.as_array())
+        .expect("items array");
+    let raw_texts: Vec<&str> = items
+        .iter()
         .filter_map(|i| i.get("raw_text").and_then(|t| t.as_str()))
         .collect();
     assert!(
@@ -8740,7 +9322,14 @@ fn sqlite_inbox_file_link_to_non_codefile_resolves() {
     // Add an inbox item with a file: link to the doc.
     let result = run_json_as(
         &graph.root,
-        &["inbox", "add", "Test item with doc link", "--link", "file:docs/reference.md", "--json"],
+        &[
+            "inbox",
+            "add",
+            "Test item with doc link",
+            "--link",
+            "file:docs/reference.md",
+            "--json",
+        ],
         "llm:builder",
     );
     assert_eq!(
@@ -8849,7 +9438,12 @@ fn sqlite_intent_update_sets_domain_and_aspect() {
     run_text_as(
         &graph.root,
         &[
-            "intent", "update", &id, "--domain", "billing", "--reason",
+            "intent",
+            "update",
+            &id,
+            "--domain",
+            "billing",
+            "--reason",
             "reclassify under the billing facet",
         ],
         "llm:builder",
@@ -8857,7 +9451,12 @@ fn sqlite_intent_update_sets_domain_and_aspect() {
     run_text_as(
         &graph.root,
         &[
-            "intent", "update", &id, "--aspect", "sad", "--reason",
+            "intent",
+            "update",
+            &id,
+            "--aspect",
+            "sad",
+            "--reason",
             "mark the failure-path facet",
         ],
         "llm:builder",
@@ -8877,8 +9476,14 @@ fn sqlite_intent_update_sets_domain_and_aspect() {
     let bad = run_json_failure_as(
         &graph.root,
         &[
-            "intent", "update", &id, "--aspect", "bogus", "--reason",
-            "attempting an out-of-vocabulary aspect to check validation", "--json",
+            "intent",
+            "update",
+            &id,
+            "--aspect",
+            "bogus",
+            "--reason",
+            "attempting an out-of-vocabulary aspect to check validation",
+            "--json",
         ],
         "llm:builder",
     );
@@ -9011,7 +9616,11 @@ fn sqlite_bare_next_serves_symbol_gap_not_deadend() {
         "app.py",
         "def handle():\n    return helper()\n\ndef helper():\n    return 1\n",
     );
-    run_json_as(&graph.root, &["codefile", "add", "app.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "app.py", "--json"],
+        "llm:builder",
+    );
     let intent = run_json_as(
         &graph.root,
         &[
@@ -9032,7 +9641,15 @@ fn sqlite_bare_next_serves_symbol_gap_not_deadend() {
     let id = intent["id"].as_str().expect("intent id");
     run_json_as(
         &graph.root,
-        &["edge", "implement", id, "app.py", "--locator", "def handle", "--json"],
+        &[
+            "edge",
+            "implement",
+            id,
+            "app.py",
+            "--locator",
+            "def handle",
+            "--json",
+        ],
         "llm:builder",
     );
     run_json(&graph.root, &["sync", "--json"]);
@@ -9081,26 +9698,54 @@ fn sqlite_ignore_add_deregisters_ungrounded_match() {
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "src/app.py", "def f():\n    return 1\n");
     write_scratch_file(&graph.root, "src/__init__.py", "");
-    run_json_as(&graph.root, &["codefile", "add", "src/*.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/*.py", "--json"],
+        "llm:builder",
+    );
     let intent = run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "app", "--description", "the app", "--level", "system",
-            "--lifecycle", "implemented", "--json",
+            "intent",
+            "add",
+            "--name",
+            "app",
+            "--description",
+            "the app",
+            "--level",
+            "system",
+            "--lifecycle",
+            "implemented",
+            "--json",
         ],
         "llm:builder",
     );
     let id = intent["id"].as_str().expect("id");
     run_json_as(
         &graph.root,
-        &["edge", "implement", id, "src/app.py", "--locator", "def f", "--json"],
+        &[
+            "edge",
+            "implement",
+            id,
+            "src/app.py",
+            "--locator",
+            "def f",
+            "--json",
+        ],
         "llm:builder",
     );
     run_json(&graph.root, &["sync", "--json"]);
 
     let ig = run_json_as(
         &graph.root,
-        &["ignore", "add", "src/__init__.py", "--reason", "package marker", "--json"],
+        &[
+            "ignore",
+            "add",
+            "src/__init__.py",
+            "--reason",
+            "package marker",
+            "--json",
+        ],
         "llm:builder",
     );
     let dereg = ig["deregistered_codefiles"]
@@ -9127,31 +9772,64 @@ fn sqlite_validate_warns_on_non_discriminating_pass() {
     let graph = ScratchGraph::new("validate-inert");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "a.py", "def f():\n    return 1\n");
-    run_json_as(&graph.root, &["codefile", "add", "a.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "a.py", "--json"],
+        "llm:builder",
+    );
     let intent = run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "leaf", "--description", "a leaf", "--level", "feature",
-            "--lifecycle", "implemented", "--json",
+            "intent",
+            "add",
+            "--name",
+            "leaf",
+            "--description",
+            "a leaf",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
         ],
         "llm:builder",
     );
     let id = intent["id"].as_str().expect("id");
     run_json_as(
         &graph.root,
-        &["edge", "implement", id, "a.py", "--locator", "def f", "--json"],
+        &[
+            "edge",
+            "implement",
+            id,
+            "a.py",
+            "--locator",
+            "def f",
+            "--json",
+        ],
         "llm:builder",
     );
     run_json_as(
         &graph.root,
         &[
-            "validation", "add", "--name", "inert", "--type", "test", "--command",
-            "python3 -c \"pass\"", "--intent", id, "--json",
+            "validation",
+            "add",
+            "--name",
+            "inert",
+            "--type",
+            "test",
+            "--command",
+            "python3 -c \"pass\"",
+            "--intent",
+            id,
+            "--json",
         ],
         "llm:builder",
     );
     let out = run_text_as(&graph.root, &["validate", id], "llm:validator");
-    assert!(out.contains("passed"), "the inert command should still pass: {out}");
+    assert!(
+        out.contains("passed"),
+        "the inert command should still pass: {out}"
+    );
     assert!(
         out.contains("NON-DISCRIMINATING"),
         "validate must warn a non-discriminating pass won't advance Realized: {out}"
@@ -9175,8 +9853,17 @@ fn sqlite_build_recipe_hands_off_proving_to_validator() {
     run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "planned thing", "--description", "to build", "--level",
-            "feature", "--lifecycle", "planned", "--json",
+            "intent",
+            "add",
+            "--name",
+            "planned thing",
+            "--description",
+            "to build",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
         ],
         "llm:builder",
     );
@@ -9203,27 +9890,57 @@ fn sqlite_sync_invalidates_method_grounded_proof_on_body_change() {
         "store.py",
         "class JobStore:\n    def set_state(self, k, v):\n        return True\n",
     );
-    run_json_as(&graph.root, &["codefile", "add", "store.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "store.py", "--json"],
+        "llm:builder",
+    );
     let intent = run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "set state", "--description", "stores a job state value",
-            "--level", "feature", "--lifecycle", "implemented", "--json",
+            "intent",
+            "add",
+            "--name",
+            "set state",
+            "--description",
+            "stores a job state value",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
         ],
         "llm:builder",
     );
     let id = intent["id"].as_str().expect("id");
     run_json_as(
         &graph.root,
-        &["edge", "implement", id, "store.py", "--locator", "def set_state", "--json"],
+        &[
+            "edge",
+            "implement",
+            id,
+            "store.py",
+            "--locator",
+            "def set_state",
+            "--json",
+        ],
         "llm:builder",
     );
     run_json(&graph.root, &["sync", "--json"]);
     run_json_as(
         &graph.root,
         &[
-            "validation", "add", "--name", "ss proof", "--type", "test", "--command",
-            "python3 -c \"print(1)\"", "--intent", id, "--json",
+            "validation",
+            "add",
+            "--name",
+            "ss proof",
+            "--type",
+            "test",
+            "--command",
+            "python3 -c \"print(1)\"",
+            "--intent",
+            id,
+            "--json",
         ],
         "llm:builder",
     );
@@ -9237,7 +9954,11 @@ fn sqlite_sync_invalidates_method_grounded_proof_on_body_change() {
         "class JobStore:\n    def set_state(self, k, v):\n        raise RuntimeError(\"gutted\")\n",
     );
     let sync = run_json(&graph.root, &["sync", "--json"]);
-    assert_eq!(sync["files_changed"], serde_json::json!(1), "file must register changed: {sync}");
+    assert_eq!(
+        sync["files_changed"],
+        serde_json::json!(1),
+        "file must register changed: {sync}"
+    );
     assert!(
         sync["validations_invalidated"].as_i64().unwrap_or(0) >= 1,
         "a class-method body change must invalidate its method-grounded proof: {sync}"
@@ -9256,49 +9977,125 @@ fn sqlite_sync_precise_for_unchanged_top_level_sibling() {
     let _g = sqlite_test_lock();
     let graph = ScratchGraph::new("sync-precise");
     run_json(&graph.root, &["init", ".", "--json"]);
-    write_scratch_file(&graph.root, "m.py", "def alpha():\n    return 1\n\ndef beta():\n    return 2\n");
-    run_json_as(&graph.root, &["codefile", "add", "m.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "m.py",
+        "def alpha():\n    return 1\n\ndef beta():\n    return 2\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "m.py", "--json"],
+        "llm:builder",
+    );
     let a = run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "alpha", "--description", "alpha behavior", "--level",
-            "feature", "--lifecycle", "implemented", "--json",
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--description",
+            "alpha behavior",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
         ],
         "llm:builder",
     );
     let b = run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "beta", "--description", "beta behavior", "--level",
-            "feature", "--lifecycle", "implemented", "--json",
+            "intent",
+            "add",
+            "--name",
+            "beta",
+            "--description",
+            "beta behavior",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
         ],
         "llm:builder",
     );
     let aid = a["id"].as_str().expect("a");
     let bid = b["id"].as_str().expect("b");
-    run_json_as(&graph.root, &["edge", "implement", aid, "m.py", "--locator", "def alpha", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["edge", "implement", bid, "m.py", "--locator", "def beta", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            aid,
+            "m.py",
+            "--locator",
+            "def alpha",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            bid,
+            "m.py",
+            "--locator",
+            "def beta",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     run_json_as(
         &graph.root,
         &[
-            "validation", "add", "--name", "ap", "--type", "test", "--command",
-            "python3 -c \"print(1)\"", "--intent", aid, "--json",
+            "validation",
+            "add",
+            "--name",
+            "ap",
+            "--type",
+            "test",
+            "--command",
+            "python3 -c \"print(1)\"",
+            "--intent",
+            aid,
+            "--json",
         ],
         "llm:builder",
     );
     run_json_as(
         &graph.root,
         &[
-            "validation", "add", "--name", "bp", "--type", "test", "--command",
-            "python3 -c \"print(1)\"", "--intent", bid, "--json",
+            "validation",
+            "add",
+            "--name",
+            "bp",
+            "--type",
+            "test",
+            "--command",
+            "python3 -c \"print(1)\"",
+            "--intent",
+            bid,
+            "--json",
         ],
         "llm:builder",
     );
-    run_json_as(&graph.root, &["validate", "--all", "--json"], "llm:validator");
+    run_json_as(
+        &graph.root,
+        &["validate", "--all", "--json"],
+        "llm:validator",
+    );
 
     // Change ONLY alpha's body; beta is a top-level symbol left untouched.
-    write_scratch_file(&graph.root, "m.py", "def alpha():\n    return 99\n\ndef beta():\n    return 2\n");
+    write_scratch_file(
+        &graph.root,
+        "m.py",
+        "def alpha():\n    return 99\n\ndef beta():\n    return 2\n",
+    );
     let sync = run_json(&graph.root, &["sync", "--json"]);
     assert_eq!(
         sync["validations_invalidated"],
@@ -9428,13 +10225,26 @@ fn sqlite_validation_list_filters_by_intent() {
     let graph = ScratchGraph::new("vlist-intent");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "a.py", "def f():\n    return 1\n");
-    run_json_as(&graph.root, &["codefile", "add", "a.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "a.py", "--json"],
+        "llm:builder",
+    );
     let mk = |name: &str| {
         run_json_as(
             &graph.root,
             &[
-                "intent", "add", "--name", name, "--description", "x", "--level", "feature",
-                "--lifecycle", "implemented", "--json",
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                "x",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
             ],
             "llm:builder",
         )["id"]
@@ -9447,32 +10257,65 @@ fn sqlite_validation_list_filters_by_intent() {
     run_json_as(
         &graph.root,
         &[
-            "validation", "add", "--name", "alpha-proof", "--type", "test", "--command",
-            "pytest -k alpha", "--intent", &aid, "--json",
+            "validation",
+            "add",
+            "--name",
+            "alpha-proof",
+            "--type",
+            "test",
+            "--command",
+            "pytest -k alpha",
+            "--intent",
+            &aid,
+            "--json",
         ],
         "llm:builder",
     );
     run_json_as(
         &graph.root,
         &[
-            "validation", "add", "--name", "beta-proof", "--type", "test", "--command",
-            "pytest -k beta", "--intent", &bid, "--json",
+            "validation",
+            "add",
+            "--name",
+            "beta-proof",
+            "--type",
+            "test",
+            "--command",
+            "pytest -k beta",
+            "--intent",
+            &bid,
+            "--json",
         ],
         "llm:builder",
     );
 
-    let only_a = run_json(&graph.root, &["validation", "list", "--intent", &aid, "--json"]);
+    let only_a = run_json(
+        &graph.root,
+        &["validation", "list", "--intent", &aid, "--json"],
+    );
     let names: Vec<&str> = only_a["validations"]
         .as_array()
         .expect("validations")
         .iter()
         .map(|v| v["name"].as_str().unwrap_or(""))
         .collect();
-    assert_eq!(names, vec!["alpha-proof"], "--intent must show only that intent's proof: {only_a}");
-    assert_eq!(only_a["intent_filter"].as_str(), Some(aid.as_str()), "intent_filter echoes the resolved id: {only_a}");
+    assert_eq!(
+        names,
+        vec!["alpha-proof"],
+        "--intent must show only that intent's proof: {only_a}"
+    );
+    assert_eq!(
+        only_a["intent_filter"].as_str(),
+        Some(aid.as_str()),
+        "intent_filter echoes the resolved id: {only_a}"
+    );
 
     let all = run_json(&graph.root, &["validation", "list", "--json"]);
-    assert_eq!(all["validations"].as_array().map(|a| a.len()), Some(2), "bare list shows both: {all}");
+    assert_eq!(
+        all["validations"].as_array().map(|a| a.len()),
+        Some(2),
+        "bare list shows both: {all}"
+    );
 }
 
 /// `loom whoami` reports the acting identity, resolved role, and lane-enforcement
@@ -9483,8 +10326,16 @@ fn sqlite_whoami_reports_role_and_lane_enforcement() {
     let graph = ScratchGraph::new("whoami");
     run_json(&graph.root, &["init", ".", "--json"]);
     let me = run_json_as(&graph.root, &["whoami", "--json"], "llm:fixer");
-    assert_eq!(me["role"].as_str(), Some("fixer"), "whoami resolves the role from $LOOM_AGENT: {me}");
-    assert_eq!(me["lane_enforcement"], serde_json::json!(true), "a role means lane enforcement is ON: {me}");
+    assert_eq!(
+        me["role"].as_str(),
+        Some("fixer"),
+        "whoami resolves the role from $LOOM_AGENT: {me}"
+    );
+    assert_eq!(
+        me["lane_enforcement"],
+        serde_json::json!(true),
+        "a role means lane enforcement is ON: {me}"
+    );
     assert_eq!(me["acting"].as_str(), Some("llm:fixer"), "{me}");
 }
 
@@ -9499,15 +10350,36 @@ fn sqlite_sync_keeps_intact_import_coupling_stales_when_import_removed() {
     let graph = ScratchGraph::new("import-stable");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "b.py", "def helper():\n    return 1\n");
-    write_scratch_file(&graph.root, "a.py", "import b\n\ndef use():\n    return b.helper()\n");
-    run_json_as(&graph.root, &["codefile", "add", "a.py", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["codefile", "add", "b.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "a.py",
+        "import b\n\ndef use():\n    return b.helper()\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "a.py", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "b.py", "--json"],
+        "llm:builder",
+    );
     let mk = |name: &str| {
         run_json_as(
             &graph.root,
             &[
-                "intent", "add", "--name", name, "--description", "x", "--level", "feature",
-                "--lifecycle", "implemented", "--json",
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                "x",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
             ],
             "llm:builder",
         )["id"]
@@ -9517,8 +10389,32 @@ fn sqlite_sync_keeps_intact_import_coupling_stales_when_import_removed() {
     };
     let a = mk("consumer A");
     let b = mk("helper B");
-    run_json_as(&graph.root, &["edge", "implement", &a, "a.py", "--locator", "def use", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["edge", "implement", &b, "b.py", "--locator", "def helper", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &a,
+            "a.py",
+            "--locator",
+            "def use",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &b,
+            "b.py",
+            "--locator",
+            "def helper",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     // Ground the import-coupling RELATES_TO passing, then backfill the mechanical
     // `imports` kind (the populate tier, exactly as discovery does on a real repo).
@@ -9534,13 +10430,21 @@ fn sqlite_sync_keeps_intact_import_coupling_stales_when_import_removed() {
 
     // Behavior-preserving edit to a.py: import unchanged. The coupling is intact →
     // the edge must NOT be flagged.
-    write_scratch_file(&graph.root, "a.py", "import b\n\n# a harmless comment\ndef use():\n    return b.helper()\n");
+    write_scratch_file(
+        &graph.root,
+        "a.py",
+        "import b\n\n# a harmless comment\ndef use():\n    return b.helper()\n",
+    );
     let cosmetic = run_json(&graph.root, &["sync", "--json"]);
     assert_eq!(
-        cosmetic["relates_to_edges_flagged"], serde_json::json!(0),
+        cosmetic["relates_to_edges_flagged"],
+        serde_json::json!(0),
         "an intact import coupling must NOT be staled by a behavior-preserving edit: {cosmetic}"
     );
-    let stale_after_cosmetic = run_json(&graph.root, &["edge", "list", "--status", "needs_reverification", "--json"]);
+    let stale_after_cosmetic = run_json(
+        &graph.root,
+        &["edge", "list", "--status", "needs_reverification", "--json"],
+    );
     assert_eq!(
         stale_after_cosmetic["edges"].as_array().map(|a| a.len()),
         Some(0),
@@ -9573,7 +10477,11 @@ fn sqlite_go_visibility_follows_first_rune_case() {
         "store.go",
         "package store\nfunc Exported() int { return helper() }\nfunc helper() int { return 1 }\n",
     );
-    run_json_as(&graph.root, &["codefile", "add", "store.go", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "store.go", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let show = run_json(&graph.root, &["codefile", "show", "store.go", "--json"]);
     let vis = |name: &str| -> String {
@@ -9586,7 +10494,11 @@ fn sqlite_go_visibility_follows_first_rune_case() {
             .unwrap_or("MISSING")
             .to_string()
     };
-    assert_eq!(vis("Exported"), "public", "uppercase Go identifier is exported: {show}");
+    assert_eq!(
+        vis("Exported"),
+        "public",
+        "uppercase Go identifier is exported: {show}"
+    );
     assert_eq!(
         vis("helper"),
         "private",
@@ -9603,11 +10515,21 @@ fn sqlite_coverage_discloses_unowned_public_surface() {
     let graph = ScratchGraph::new("unowned-public");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
-    write_scratch_file(&graph.root, "api.go", "package api\nfunc PublicOne() {}\nfunc PublicTwo() {}\n");
-    run_json_as(&graph.root, &["codefile", "add", "api.go", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "api.go",
+        "package api\nfunc PublicOne() {}\nfunc PublicTwo() {}\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "api.go", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let cov = run_json(&graph.root, &["coverage", "--json"]);
-    let unowned = cov["symbol_accountability"]["unowned_public"].as_u64().unwrap_or(0);
+    let unowned = cov["symbol_accountability"]["unowned_public"]
+        .as_u64()
+        .unwrap_or(0);
     assert!(
         unowned >= 2,
         "ungrounded public symbols must be reported as unowned_public, not hidden behind a vacuous 100%: {cov}"
@@ -9627,7 +10549,11 @@ fn sqlite_python_decorated_definition_is_extracted() {
         "m.py",
         "from dataclasses import dataclass\n\n@dataclass\nclass Product:\n    sku: str\n\nclass Plain:\n    pass\n",
     );
-    run_json_as(&graph.root, &["codefile", "add", "m.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "m.py", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let show = run_json(&graph.root, &["codefile", "show", "m.py", "--json"]);
     let names: Vec<String> = show["codefile"]["symbol_facts"]
@@ -9663,7 +10589,11 @@ fn sqlite_js_commonjs_public_and_ts_import_extension_swap() {
         "import { A } from \"./a.js\";\nexport class B implements A {}\n",
     );
     for f in ["cjs.js", "a.ts", "b.ts"] {
-        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+        run_json_as(
+            &graph.root,
+            &["codefile", "add", f, "--json"],
+            "llm:builder",
+        );
     }
     run_json(&graph.root, &["sync", "--json"]);
     let cjs = run_json(&graph.root, &["codefile", "show", "cjs.js", "--json"]);
@@ -9674,7 +10604,10 @@ fn sqlite_js_commonjs_public_and_ts_import_extension_swap() {
         .find(|s| s["name"] == "pubFn")
         .and_then(|s| s["visibility"].as_str())
         .unwrap_or("MISSING");
-    assert_eq!(pub_vis, "public", "a CommonJS module.exports name must be public: {cjs}");
+    assert_eq!(
+        pub_vis, "public",
+        "a CommonJS module.exports name must be public: {cjs}"
+    );
     let b = run_json(&graph.root, &["codefile", "show", "b.ts", "--json"]);
     let imports: Vec<String> = b["codefile"]["imports"]
         .as_array()
@@ -9701,7 +10634,11 @@ fn sqlite_rust_macro_export_is_public() {
         "macros.rs",
         "#[macro_export]\nmacro_rules! pub_macro { () => {}; }\nmacro_rules! priv_macro { () => {}; }\n",
     );
-    run_json_as(&graph.root, &["codefile", "add", "macros.rs", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "macros.rs", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let show = run_json(&graph.root, &["codefile", "show", "macros.rs", "--json"]);
     let vis = |name: &str| -> String {
@@ -9714,8 +10651,16 @@ fn sqlite_rust_macro_export_is_public() {
             .unwrap_or("MISSING")
             .to_string()
     };
-    assert_eq!(vis("pub_macro"), "public", "#[macro_export] makes a macro public: {show}");
-    assert_eq!(vis("priv_macro"), "private", "a macro without #[macro_export] is private: {show}");
+    assert_eq!(
+        vis("pub_macro"),
+        "public",
+        "#[macro_export] makes a macro public: {show}"
+    );
+    assert_eq!(
+        vis("priv_macro"),
+        "private",
+        "a macro without #[macro_export] is private: {show}"
+    );
 }
 
 // ── QA wave 3: staleness + import-resolution correctness ──────────────────────
@@ -9734,10 +10679,26 @@ fn sqlite_sync_stales_renamed_symbol_despite_comment_survival() {
         "s.go",
         "package s\ntype Store struct{ m map[string]int }\nfunc (s *Store) Get(k string) int { return s.m[k] }\n",
     );
-    run_json_as(&graph.root, &["codefile", "add", "s.go", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "s.go", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "g", "--description", "d", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "g",
+            "--description",
+            "d",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
@@ -9745,7 +10706,19 @@ fn sqlite_sync_stales_renamed_symbol_despite_comment_survival() {
         .to_string();
     run_json(&graph.root, &["sync", "--json"]);
     // loom suggests --locator "func Get"; Fix 2 normalizes it to the bare name "Get".
-    run_json_as(&graph.root, &["edge", "implement", &id, "s.go", "--locator", "func Get", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "s.go",
+            "--locator",
+            "func Get",
+            "--json",
+        ],
+        "llm:builder",
+    );
     // Rename Get -> Fetch but leave "Get" in a comment: the bare name survives as a
     // substring, yet the SYMBOL is gone → must be flagged stale.
     write_scratch_file(
@@ -9777,18 +10750,46 @@ fn sqlite_sync_lossy_decoded_symbol_grounding_stays_fresh() {
         b"def pa\xefr_match(a, b):\n    return a == b\n".as_slice(),
     )
     .unwrap();
-    run_json_as(&graph.root, &["codefile", "add", "src/m.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/m.py", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "p", "--description", "d", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "p",
+            "--description",
+            "d",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
     // The extractor surfaces `r_match`; ground that exact extracted symbol.
-    run_json_as(&graph.root, &["edge", "implement", &id, "src/m.py", "--locator", "def r_match", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "src/m.py",
+            "--locator",
+            "def r_match",
+            "--json",
+        ],
+        "llm:builder",
+    );
     let sync = run_json(&graph.root, &["sync", "--json"]);
     assert_eq!(
         sync["locators_stale_total"].as_u64(),
@@ -9806,13 +10807,28 @@ fn sqlite_python_absolute_import_resolves_under_src_layout() {
     let _g = sqlite_test_lock();
     let graph = ScratchGraph::new("py-src-layout");
     run_json(&graph.root, &["init", ".", "--json"]);
-    write_scratch_file(&graph.root, "src/config.py", "DEFAULT = 30\ndef get_timeout():\n    return DEFAULT\n");
-    write_scratch_file(&graph.root, "src/http_client.py", "from config import get_timeout\ndef fetch():\n    return get_timeout()\n");
+    write_scratch_file(
+        &graph.root,
+        "src/config.py",
+        "DEFAULT = 30\ndef get_timeout():\n    return DEFAULT\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "src/http_client.py",
+        "from config import get_timeout\ndef fetch():\n    return get_timeout()\n",
+    );
     for f in ["src/config.py", "src/http_client.py"] {
-        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+        run_json_as(
+            &graph.root,
+            &["codefile", "add", f, "--json"],
+            "llm:builder",
+        );
     }
     run_json(&graph.root, &["sync", "--json"]);
-    let show = run_json(&graph.root, &["codefile", "show", "src/http_client.py", "--json"]);
+    let show = run_json(
+        &graph.root,
+        &["codefile", "show", "src/http_client.py", "--json"],
+    );
     let imports: Vec<String> = show["codefile"]["imports"]
         .as_array()
         .cloned()
@@ -9834,15 +10850,85 @@ fn sqlite_undeclared_coupling_summary_states_import_direction() {
     let _g = sqlite_test_lock();
     let graph = ScratchGraph::new("coupling-dir");
     run_json(&graph.root, &["init", ".", "--json"]);
-    write_scratch_file(&graph.root, "src/low.ts", "export function lowLevel() { return 42; }\n");
+    write_scratch_file(
+        &graph.root,
+        "src/low.ts",
+        "export function lowLevel() { return 42; }\n",
+    );
     write_scratch_file(&graph.root, "src/high.ts", "import { lowLevel } from \"./low.js\";\nexport function highLevel() { return lowLevel() + 1; }\n");
     for f in ["src/low.ts", "src/high.ts"] {
-        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+        run_json_as(
+            &graph.root,
+            &["codefile", "add", f, "--json"],
+            "llm:builder",
+        );
     }
-    let low = run_json_as(&graph.root, &["intent", "add", "--name", "Low module", "--level", "component", "--description", "low", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    let high = run_json_as(&graph.root, &["intent", "add", "--name", "High module", "--level", "component", "--description", "high", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    run_json_as(&graph.root, &["edge", "implement", &low, "src/low.ts", "--locator", "lowLevel", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["edge", "implement", &high, "src/high.ts", "--locator", "highLevel", "--json"], "llm:builder");
+    let low = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Low module",
+            "--level",
+            "component",
+            "--description",
+            "low",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let high = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "High module",
+            "--level",
+            "component",
+            "--description",
+            "high",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &low,
+            "src/low.ts",
+            "--locator",
+            "lowLevel",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &high,
+            "src/high.ts",
+            "--locator",
+            "highLevel",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let smells = run_json(&graph.root, &["smells", "--json"]);
     let uc = smells["smells"]
@@ -9865,8 +10951,16 @@ fn sqlite_cjs_recognized_as_javascript() {
     let _g = sqlite_test_lock();
     let graph = ScratchGraph::new("cjs-lang");
     run_json(&graph.root, &["init", ".", "--json"]);
-    write_scratch_file(&graph.root, "util.cjs", "function alpha() { return 1; }\nmodule.exports = { alpha };\n");
-    run_json_as(&graph.root, &["codefile", "add", "util.cjs", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "util.cjs",
+        "function alpha() { return 1; }\nmodule.exports = { alpha };\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "util.cjs", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let show = run_json(&graph.root, &["codefile", "show", "util.cjs", "--json"]);
     assert_eq!(
@@ -9888,22 +10982,100 @@ fn sqlite_import_exemption_reachable_for_unkinded_edge() {
     let _g = sqlite_test_lock();
     let graph = ScratchGraph::new("unkinded-exempt");
     run_json(&graph.root, &["init", ".", "--json"]);
-    write_scratch_file(&graph.root, "config.py", "DEFAULT = 30\ndef get_timeout():\n    return DEFAULT\n");
-    write_scratch_file(&graph.root, "client.py", "from config import get_timeout\ndef fetch():\n    return get_timeout()\n");
+    write_scratch_file(
+        &graph.root,
+        "config.py",
+        "DEFAULT = 30\ndef get_timeout():\n    return DEFAULT\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "client.py",
+        "from config import get_timeout\ndef fetch():\n    return get_timeout()\n",
+    );
     for f in ["config.py", "client.py"] {
-        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+        run_json_as(
+            &graph.root,
+            &["codefile", "add", f, "--json"],
+            "llm:builder",
+        );
     }
-    let a = run_json_as(&graph.root, &["intent", "add", "--name", "Config", "--level", "component", "--description", "config", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    let b = run_json_as(&graph.root, &["intent", "add", "--name", "Client", "--level", "component", "--description", "client", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    run_json_as(&graph.root, &["edge", "implement", &a, "config.py", "--locator", "get_timeout", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["edge", "implement", &b, "client.py", "--locator", "fetch", "--json"], "llm:builder");
+    let a = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Config",
+            "--level",
+            "component",
+            "--description",
+            "config",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Client",
+            "--level",
+            "component",
+            "--description",
+            "client",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &a,
+            "config.py",
+            "--locator",
+            "get_timeout",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &b,
+            "client.py",
+            "--locator",
+            "fetch",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     // Ground an UN-KINDED RELATES_TO (the normal analyzer flow — no `populate kinds`).
     write_scratch_file(&graph.root, "v.jsonl", &format!("{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\"criterion\":\"client depends on config timeout\",\"evidence\":\"client.py imports config; calls get_timeout()\",\"confidence\":0.9}}\n"));
     run_text_as(&graph.root, &["batch", "v.jsonl"], "llm:analyzer");
     run_json(&graph.root, &["sync", "--json"]);
     // Comment-only edit to the imported file: the coupling is intact → 0 flagged.
-    write_scratch_file(&graph.root, "config.py", "DEFAULT = 30\n# harmless comment\ndef get_timeout():\n    return DEFAULT\n");
+    write_scratch_file(
+        &graph.root,
+        "config.py",
+        "DEFAULT = 30\n# harmless comment\ndef get_timeout():\n    return DEFAULT\n",
+    );
     let cosmetic = run_json(&graph.root, &["sync", "--json"]);
     assert_eq!(
         cosmetic["relates_to_edges_flagged"], serde_json::json!(0),
@@ -9928,14 +11100,32 @@ fn sqlite_codefile_add_glob_skips_symlink_no_crash() {
     write_scratch_file(&graph.root, "src/real.py", "def real():\n    return 1\n");
     #[cfg(unix)]
     std::os::unix::fs::symlink("real.py", graph.root.join("src/alias.py")).unwrap();
-    let out = run_json_as(&graph.root, &["codefile", "add", "src/*.py", "--json"], "llm:builder");
+    let out = run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/*.py", "--json"],
+        "llm:builder",
+    );
     // Must succeed (status ok), not a raw SQLite error.
-    assert_ne!(out["status"], "error", "glob add over a symlink+target must not crash: {out}");
+    assert_ne!(
+        out["status"], "error",
+        "glob add over a symlink+target must not crash: {out}"
+    );
     let list = run_json(&graph.root, &["codefile", "list", "--json"]);
-    let paths: Vec<String> = list["codefiles"].as_array().unwrap().iter().filter_map(|c| c["path"].as_str().map(str::to_string)).collect();
-    assert!(paths.contains(&"src/real.py".to_string()), "the real file is registered: {paths:?}");
+    let paths: Vec<String> = list["codefiles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|c| c["path"].as_str().map(str::to_string))
+        .collect();
+    assert!(
+        paths.contains(&"src/real.py".to_string()),
+        "the real file is registered: {paths:?}"
+    );
     #[cfg(unix)]
-    assert!(!paths.contains(&"src/alias.py".to_string()), "the symlink is skipped, not double-registered: {paths:?}");
+    assert!(
+        !paths.contains(&"src/alias.py".to_string()),
+        "the symlink is skipped, not double-registered: {paths:?}"
+    );
 }
 
 /// A multi-owner file's unclaimed-symbol suggestion must WARN against clobbering
@@ -9946,13 +11136,83 @@ fn sqlite_multiowner_symbol_gap_warns_against_clobber() {
     let graph = ScratchGraph::new("multiowner");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
-    write_scratch_file(&graph.root, "m.go", "package m\nfunc Alpha() {}\nfunc Beta() {}\nfunc Gamma() {}\n");
-    run_json_as(&graph.root, &["codefile", "add", "m.go", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "m.go",
+        "package m\nfunc Alpha() {}\nfunc Beta() {}\nfunc Gamma() {}\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "m.go", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
-    let a = run_json_as(&graph.root, &["intent", "add", "--name", "IA", "--level", "feature", "--description", "a", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    let b = run_json_as(&graph.root, &["intent", "add", "--name", "IB", "--level", "feature", "--description", "b", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    run_json_as(&graph.root, &["edge", "implement", &a, "m.go", "--locator", "func Alpha", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["edge", "implement", &b, "m.go", "--locator", "func Beta", "--json"], "llm:builder");
+    let a = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "IA",
+            "--level",
+            "feature",
+            "--description",
+            "a",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "IB",
+            "--level",
+            "feature",
+            "--description",
+            "b",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &a,
+            "m.go",
+            "--locator",
+            "func Alpha",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &b,
+            "m.go",
+            "--locator",
+            "func Beta",
+            "--json",
+        ],
+        "llm:builder",
+    );
     let cov = run_json(&graph.root, &["coverage", "--json"]);
     let gap = cov["actionable_symbol_gaps"]
         .as_array()
@@ -9978,15 +11238,62 @@ fn sqlite_sync_rename_directive_names_reground_not_fix_lane() {
     let graph = ScratchGraph::new("reground-route");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
-    write_scratch_file(&graph.root, "s.go", "package s\nfunc Alpha() int { return 1 }\n");
-    run_json_as(&graph.root, &["codefile", "add", "s.go", "--json"], "llm:builder");
-    let id = run_json_as(&graph.root, &["intent", "add", "--name", "a", "--description", "d", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    write_scratch_file(
+        &graph.root,
+        "s.go",
+        "package s\nfunc Alpha() int { return 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "s.go", "--json"],
+        "llm:builder",
+    );
+    let id = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "a",
+            "--description",
+            "d",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     run_json(&graph.root, &["sync", "--json"]);
-    run_json_as(&graph.root, &["edge", "implement", &id, "s.go", "--locator", "func Alpha", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "s.go",
+            "--locator",
+            "func Alpha",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
-    write_scratch_file(&graph.root, "s.go", "package s\nfunc Beta() int { return 1 }\n"); // rename
+    write_scratch_file(
+        &graph.root,
+        "s.go",
+        "package s\nfunc Beta() int { return 1 }\n",
+    ); // rename
     let sync = run_json(&graph.root, &["sync", "--json"]);
-    assert_eq!(sync["locators_stale_total"].as_u64(), Some(1), "the rename must flag the locator stale: {sync}");
+    assert_eq!(
+        sync["locators_stale_total"].as_u64(),
+        Some(1),
+        "the rename must flag the locator stale: {sync}"
+    );
     let next = sync["next_step"].as_str().unwrap();
     assert!(
         next.contains("edge implement") && !next.contains("--mode fix"),
@@ -10004,22 +11311,76 @@ fn sqlite_glob_implement_preserves_existing_precise_locator() {
     write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
     write_scratch_file(&graph.root, "f.go", "package f\nfunc A() {}\nfunc B() {}\n");
     write_scratch_file(&graph.root, "g.go", "package g\nfunc C() {}\n");
-    run_json_as(&graph.root, &["codefile", "add", "f.go", "--json"], "llm:builder");
-    run_json_as(&graph.root, &["codefile", "add", "g.go", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "f.go", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "g.go", "--json"],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
-    let id = run_json_as(&graph.root, &["intent", "add", "--name", "Feat", "--description", "owns A", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "f.go", "--locator", "func A", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Feat",
+            "--description",
+            "owns A",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "f.go",
+            "--locator",
+            "func A",
+            "--json",
+        ],
+        "llm:builder",
+    );
     // Bulk-glob file-level grounding over both files.
-    let out = run_json_as(&graph.root, &["edge", "implement", &id, "*.go", "--json"], "llm:builder");
-    let preserved: Vec<String> = out["preserved_precise_locators"].as_array().cloned().unwrap_or_default().iter().filter_map(|p| p.as_str().map(str::to_string)).collect();
+    let out = run_json_as(
+        &graph.root,
+        &["edge", "implement", &id, "*.go", "--json"],
+        "llm:builder",
+    );
+    let preserved: Vec<String> = out["preserved_precise_locators"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|p| p.as_str().map(str::to_string))
+        .collect();
     assert!(
-        preserved.iter().any(|p| p.contains("f.go") && p.contains("func A")),
+        preserved
+            .iter()
+            .any(|p| p.contains("f.go") && p.contains("func A")),
         "the existing precise locator on f.go must be preserved, not clobbered: {out}"
     );
     // Confirm the stored locator is still precise.
     let show = run_json(&graph.root, &["codefile", "show", "f.go", "--json"]);
     let owners = serde_json::to_string(&show).unwrap();
-    assert!(owners.contains("func A"), "f.go must still be grounded at `func A`: {show}");
+    assert!(
+        owners.contains("func A"),
+        "f.go must still be grounded at `func A`: {show}"
+    );
 }
 
 // ── QA wave 6: honesty + data-loss guards (adversarial sweep) ─────────────────
@@ -10033,17 +11394,71 @@ fn sqlite_forged_pass_string_is_not_executed_proven() {
     let graph = ScratchGraph::new("forged-proof");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "m.py", "def f():\n    return 1\n");
-    run_json_as(&graph.root, &["codefile", "add", "m.py", "--json"], "llm:builder");
-    let id = run_json_as(&graph.root, &["intent", "add", "--name", "F", "--description", "f", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "m.py", "--locator", "def f", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "m.py", "--json"],
+        "llm:builder",
+    );
+    let id = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "F",
+            "--description",
+            "f",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "m.py",
+            "--locator",
+            "def f",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
-    run_json_as(&graph.root, &["validation", "add", "--name", "forged", "--type", "test", "--command", "echo 'test result: ok. 1 passed'", "--intent", &id, "--json"], "llm:validator");
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "forged",
+            "--type",
+            "test",
+            "--command",
+            "echo 'test result: ok. 1 passed'",
+            "--intent",
+            &id,
+            "--json",
+        ],
+        "llm:validator",
+    );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
     assert_eq!(
         v["results"][0]["discrimination"], "ran_inert",
         "an echoed pass-string must be asserted-only, never executed-proven: {v}"
     );
-    assert_eq!(v["results"][0]["result"], "passed", "the command does exit 0 (asserted): {v}");
+    assert_eq!(
+        v["results"][0]["result"], "passed",
+        "the command does exit 0 (asserted): {v}"
+    );
 }
 
 /// `loom import` must REFUSE to silently destroy a non-empty graph.
@@ -10053,13 +11468,41 @@ fn sqlite_import_refuses_to_overwrite_nonempty_graph() {
     // Source graph to import FROM.
     let src = ScratchGraph::new("import-src");
     run_json(&src.root, &["init", ".", "--json"]);
-    run_json_as(&src.root, &["intent", "add", "--name", "Imported", "--description", "x", "--level", "feature", "--json"], "llm:builder");
+    run_json_as(
+        &src.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Imported",
+            "--description",
+            "x",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_text_as(&src.root, &["export"], "llm:builder");
     let export = src.root.join("loom.graph.json");
     // Destination graph with PRECIOUS existing content.
     let dst = ScratchGraph::new("import-dst");
     run_json(&dst.root, &["init", ".", "--json"]);
-    run_json_as(&dst.root, &["intent", "add", "--name", "PRECIOUS", "--description", "must survive", "--level", "feature", "--json"], "llm:builder");
+    run_json_as(
+        &dst.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "PRECIOUS",
+            "--description",
+            "must survive",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
     // Import must FAIL (non-zero), not silently wipe.
     let out = std::process::Command::new(loom_bin())
         .args(["import", export.to_str().unwrap()])
@@ -10068,10 +11511,21 @@ fn sqlite_import_refuses_to_overwrite_nonempty_graph() {
         .env_remove("LOOM_GRAPH")
         .output()
         .expect("run loom import");
-    assert!(!out.status.success(), "import into a non-empty graph must fail, not wipe it");
+    assert!(
+        !out.status.success(),
+        "import into a non-empty graph must fail, not wipe it"
+    );
     let after = run_json(&dst.root, &["intent", "list", "--json"]);
-    let names: Vec<String> = after["intents"].as_array().unwrap().iter().filter_map(|i| i["name"].as_str().map(str::to_string)).collect();
-    assert!(names.iter().any(|n| n == "PRECIOUS"), "the existing graph must survive a refused import: {names:?}");
+    let names: Vec<String> = after["intents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|i| i["name"].as_str().map(str::to_string))
+        .collect();
+    assert!(
+        names.iter().any(|n| n == "PRECIOUS"),
+        "the existing graph must survive a refused import: {names:?}"
+    );
 }
 
 // ── QA wave 8: proof-relevance gate (executed-proven) ─────────────────────────
@@ -10089,23 +11543,95 @@ fn sqlite_irrelevant_test_does_not_earn_executed_proven() {
     let graph = ScratchGraph::new("irrelevant-proof");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
-    write_scratch_file(&graph.root, "test_irrelevant.py", "def test_irrelevant():\n    assert 1 + 1 == 2\n");
-    write_scratch_file(&graph.root, "test_real.py", "from mod import compute\ndef test_real():\n    assert compute(2) == 4\n");
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
-    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "test_irrelevant.py",
+        "def test_irrelevant():\n    assert 1 + 1 == 2\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "test_real.py",
+        "from mod import compute\ndef test_real():\n    assert compute(2) == 4\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     // Both proofs print the SAME pass-string; only the import graph differs.
-    run_json_as(&graph.root, &["validation", "add", "--name", "irrelevant", "--type", "test", "--command", "sh runner.sh test_irrelevant.py", "--intent", &id, "--json"], "llm:validator");
-    run_json_as(&graph.root, &["validation", "add", "--name", "relevant", "--type", "test", "--command", "sh runner.sh test_real.py", "--intent", &id, "--json"], "llm:validator");
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "irrelevant",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_irrelevant.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "relevant",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_real.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
+        "llm:validator",
+    );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
     let disc = |name: &str| -> String {
         v["results"]
@@ -10117,8 +11643,16 @@ fn sqlite_irrelevant_test_does_not_earn_executed_proven() {
             .unwrap_or("MISSING")
             .to_string()
     };
-    assert_eq!(disc("irrelevant"), "ran_inert", "an irrelevant test must be asserted-only, not executed-proven: {v}");
-    assert_eq!(disc("relevant"), "discriminating", "a test that imports the grounded module is executed-proven: {v}");
+    assert_eq!(
+        disc("irrelevant"),
+        "ran_inert",
+        "an irrelevant test must be asserted-only, not executed-proven: {v}"
+    );
+    assert_eq!(
+        disc("relevant"),
+        "discriminating",
+        "a test that imports the grounded module is executed-proven: {v}"
+    );
 }
 
 /// A test that merely NAMES the grounded symbol in a comment/string (no import,
@@ -10133,19 +11667,67 @@ fn sqlite_symbol_mention_in_comment_does_not_confirm_proof() {
     write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
     // Names `compute` in a comment, but never imports mod.
     write_scratch_file(&graph.root, "t_comment.py", "# this test names compute in a comment but never imports mod\ndef test_x():\n    assert True\n");
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
-    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
-    run_json_as(&graph.root, &["validation", "add", "--name", "namedrop", "--type", "test", "--command", "sh runner.sh t_comment.py", "--intent", &id, "--json"], "llm:validator");
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "namedrop",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh t_comment.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
+        "llm:validator",
+    );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
     assert_eq!(
         v["results"][0]["discrimination"], "ran_inert",
@@ -10165,21 +11747,77 @@ fn sqlite_src_layout_test_is_not_false_demoted() {
     let graph = ScratchGraph::new("src-layout");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "src/mypkg/__init__.py", "");
-    write_scratch_file(&graph.root, "src/mypkg/hash.py", "def checksum(s):\n    return sum(s.encode()) % 256\n");
-    write_scratch_file(&graph.root, "tests/test_hash.py", "from mypkg.hash import checksum\ndef test_c():\n    assert checksum('a') == 97\n");
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
-    run_json_as(&graph.root, &["codefile", "add", "src/mypkg/hash.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "src/mypkg/hash.py",
+        "def checksum(s):\n    return sum(s.encode()) % 256\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "tests/test_hash.py",
+        "from mypkg.hash import checksum\ndef test_c():\n    assert checksum('a') == 97\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/mypkg/hash.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Checksum", "--description", "checksum of a string", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Checksum",
+            "--description",
+            "checksum of a string",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "src/mypkg/hash.py", "--locator", "def checksum", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "src/mypkg/hash.py",
+            "--locator",
+            "def checksum",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
-    run_json_as(&graph.root, &["validation", "add", "--name", "h", "--type", "test", "--command", "sh runner.sh tests/test_hash.py", "--intent", &id, "--json"], "llm:validator");
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "h",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh tests/test_hash.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
+        "llm:validator",
+    );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
     assert_ne!(
         v["results"][0]["discrimination"], "ran_inert",
@@ -10197,8 +11835,46 @@ fn sqlite_edge_fix_refuses_to_launder_saga_runtime_evidence() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("edge-fix-saga-eviction");
     run_json(&graph.root, &["init", ".", "--json"]);
-    let a = run_json_as(&graph.root, &["intent", "add", "--name", "A", "--description", "alpha behavior", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
-    let b = run_json_as(&graph.root, &["intent", "add", "--name", "B", "--description", "beta behavior", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    let a = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "A",
+            "--description",
+            "alpha behavior",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "B",
+            "--description",
+            "beta behavior",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     {
         let db = graph.root.join(".loom").join("graph.sqlite");
         let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
@@ -10209,13 +11885,23 @@ fn sqlite_edge_fix_refuses_to_launder_saga_runtime_evidence() {
         ).expect("craft a saga-failed RELATES_TO edge");
     }
     let out = Command::new(loom_bin())
-        .args(["edge", "fix", &format!("rt:{a}:{b}"), "--description", "moved auth middleware ahead of dispatch"])
+        .args([
+            "edge",
+            "fix",
+            &format!("rt:{a}:{b}"),
+            "--description",
+            "moved auth middleware ahead of dispatch",
+        ])
         .current_dir(&graph.root)
         .env("LOOM_AGENT", "llm:fixer")
         .env_remove("LOOM_GRAPH")
         .output()
         .expect("run loom edge fix on a saga-evidence edge");
-    assert!(!out.status.success(), "edge fix must REFUSE to launder runtime saga evidence: {:?}", out.status);
+    assert!(
+        !out.status.success(),
+        "edge fix must REFUSE to launder runtime saga evidence: {:?}",
+        out.status
+    );
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("SAGA RUN") && stderr.to_ascii_lowercase().contains("re-run the saga"),
@@ -10235,40 +11921,105 @@ fn sqlite_saga_add_warns_on_trivial_endpoint_not_real_journeys() {
     let graph = ScratchGraph::new("saga-forge-warn");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "app.py", "def do_GET(self):\n    pass\n");
-    run_json_as(&graph.root, &["codefile", "add", "app.py", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "app.py", "--json"],
+        "llm:builder",
+    );
     let mk = |name: &str, desc: &str| -> String {
         run_json_as(
             &graph.root,
-            &["intent", "add", "--name", name, "--description", desc, "--level", "feature", "--lifecycle", "implemented", "--boundary", "inbound", "--json"],
+            &[
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                desc,
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--boundary",
+                "inbound",
+                "--json",
+            ],
             "llm:builder",
         )["id"]
             .as_str()
             .unwrap()
             .to_string()
     };
-    let profile = mk("view profile", "An authenticated user GETs their profile and sees their username and email");
-    let signin = mk("user sign in", "User establishes an authenticated session by providing credentials");
-    run_json_as(&graph.root, &["edge", "implement", &profile, "app.py", "--locator", "def do_GET", "--json"], "llm:builder");
+    let profile = mk(
+        "view profile",
+        "An authenticated user GETs their profile and sees their username and email",
+    );
+    let signin = mk(
+        "user sign in",
+        "User establishes an authenticated session by providing credentials",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &profile,
+            "app.py",
+            "--locator",
+            "def do_GET",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     let add_step = |saga: &str, intent: &str, url: &str| -> Value {
         let f = format!("{saga}.yaml");
         write_scratch_file(&graph.root, &f, &format!("saga: {saga}\nsteps:\n  - name: step\n    intent: {intent}\n    request: {{ method: POST, url: {url} }}\n    expect: {{ status: 200 }}\n"));
         run_json_as(&graph.root, &["saga", "add", &f, "--json"], "llm:validator")
     };
-    let flagged = |v: &Value| v["unmatched_steps"].as_array().map(|a| a.len()).unwrap_or(0);
+    let flagged = |v: &Value| {
+        v["unmatched_steps"]
+            .as_array()
+            .map(|a| a.len())
+            .unwrap_or(0)
+    };
 
     // FORGE: a trivial/health endpoint bound to a real journey → must be flagged.
     let forged = add_step("forge", &profile, "/ping");
-    assert_eq!(flagged(&forged), 1, "a /ping step bound to a real journey must be flagged: {forged}");
+    assert_eq!(
+        flagged(&forged),
+        1,
+        "a /ping step bound to a real journey must be flagged: {forged}"
+    );
     assert_eq!(forged["unmatched_steps"][0]["url"], "/ping");
-    assert_eq!(flagged(&add_step("forgeh", &profile, "/health")), 1, "/health must be flagged too");
+    assert_eq!(
+        flagged(&add_step("forgeh", &profile, "/health")),
+        1,
+        "/health must be flagged too"
+    );
 
     // NOT a forge: real business endpoints that simply share no word with the
     // intent text — must NEVER be flagged (the false-warn the cold-drive caught).
-    assert_eq!(flagged(&add_step("ok1", &signin, "/login")), 0, "/login for 'sign in' must NOT false-warn");
-    assert_eq!(flagged(&add_step("ok2", &signin, "/auth/session")), 0, "/auth/session for 'sign in' must NOT false-warn");
-    assert_eq!(flagged(&add_step("ok3", &profile, "/profile")), 0, "/profile for 'view profile' must NOT warn");
-    assert_eq!(flagged(&add_step("ok4", &signin, "/api/v2/checkout")), 0, "/api/v2/checkout must NOT false-warn");
+    assert_eq!(
+        flagged(&add_step("ok1", &signin, "/login")),
+        0,
+        "/login for 'sign in' must NOT false-warn"
+    );
+    assert_eq!(
+        flagged(&add_step("ok2", &signin, "/auth/session")),
+        0,
+        "/auth/session for 'sign in' must NOT false-warn"
+    );
+    assert_eq!(
+        flagged(&add_step("ok3", &profile, "/profile")),
+        0,
+        "/profile for 'view profile' must NOT warn"
+    );
+    assert_eq!(
+        flagged(&add_step("ok4", &signin, "/api/v2/checkout")),
+        0,
+        "/api/v2/checkout must NOT false-warn"
+    );
 }
 
 /// A test that IMPORTS the grounded module but never USES the grounded symbol
@@ -10283,22 +12034,70 @@ fn sqlite_import_without_symbol_usage_is_not_executed_proven() {
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
     // Imports `compute` but never calls it; `compute` only appears in the import.
-    write_scratch_file(&graph.root, "test_imports_no_use.py", "from mod import compute\ndef test_imports_but_does_not_use():\n    assert 1 + 1 == 2\n");
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
-    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "test_imports_no_use.py",
+        "from mod import compute\ndef test_imports_but_does_not_use():\n    assert 1 + 1 == 2\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     run_json_as(
         &graph.root,
-        &["validation", "add", "--name", "import-no-use", "--type", "test", "--command", "sh runner.sh test_imports_no_use.py", "--intent", &id, "--json"],
+        &[
+            "validation",
+            "add",
+            "--name",
+            "import-no-use",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_imports_no_use.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
         "llm:validator",
     );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
@@ -10322,21 +12121,65 @@ fn sqlite_multiline_import_without_use_is_not_executed_proven() {
         "test_multi.py",
         "from mod import (\n    compute,\n)\ndef test_multi():\n    assert 1 + 1 == 2\n",
     );
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
-    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     run_json_as(
         &graph.root,
-        &["validation", "add", "--name", "multi-import", "--type", "test", "--command", "sh runner.sh test_multi.py", "--intent", &id, "--json"],
+        &[
+            "validation",
+            "add",
+            "--name",
+            "multi-import",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_multi.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
         "llm:validator",
     );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
@@ -10360,24 +12203,76 @@ fn sqlite_coverage_proves_symbol_executed() {
     write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
     // This test imports mod but never uses compute in its body — the static
     // gate would demote it. But the coverage report shows line 2 was hit.
-    write_scratch_file(&graph.root, "test_cov.py", "from mod import compute\ndef test_cov():\n    assert 1 + 1 == 2\n");
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    write_scratch_file(
+        &graph.root,
+        "test_cov.py",
+        "from mod import compute\ndef test_cov():\n    assert 1 + 1 == 2\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
     // LCOV: mod.py line 2 (the return) was executed.
-    write_scratch_file(&graph.root, "coverage.lcov", "SF:mod.py\nDA:2,1\nend_of_record\n");
-    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "coverage.lcov",
+        "SF:mod.py\nDA:2,1\nend_of_record\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     run_json_as(
         &graph.root,
-        &["validation", "add", "--name", "cov", "--type", "test", "--command", "sh runner.sh test_cov.py", "--intent", &id, "--json"],
+        &[
+            "validation",
+            "add",
+            "--name",
+            "cov",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_cov.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
         "llm:validator",
     );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
@@ -10396,24 +12291,76 @@ fn sqlite_coverage_proves_symbol_not_executed() {
     write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
     // This test imports compute AND uses it — the static gate would confirm
     // it. But the coverage report shows line 2 was NOT hit.
-    write_scratch_file(&graph.root, "test_cov.py", "from mod import compute\ndef test_cov():\n    assert compute(2) == 4\n");
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    write_scratch_file(
+        &graph.root,
+        "test_cov.py",
+        "from mod import compute\ndef test_cov():\n    assert compute(2) == 4\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
     // LCOV: mod.py line 2 has 0 hits — the function was never called.
-    write_scratch_file(&graph.root, "coverage.lcov", "SF:mod.py\nDA:2,0\nend_of_record\n");
-    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "coverage.lcov",
+        "SF:mod.py\nDA:2,0\nend_of_record\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     run_json_as(
         &graph.root,
-        &["validation", "add", "--name", "cov", "--type", "test", "--command", "sh runner.sh test_cov.py", "--intent", &id, "--json"],
+        &[
+            "validation",
+            "add",
+            "--name",
+            "cov",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_cov.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
         "llm:validator",
     );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
@@ -10432,22 +12379,70 @@ fn sqlite_no_coverage_falls_back_to_static_heuristic() {
     let graph = ScratchGraph::new("no-cov-fallback");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
-    write_scratch_file(&graph.root, "test_real.py", "from mod import compute\ndef test_real():\n    assert compute(2) == 4\n");
-    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
-    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    write_scratch_file(
+        &graph.root,
+        "test_real.py",
+        "from mod import compute\ndef test_real():\n    assert compute(2) == 4\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
     let id = run_json_as(
         &graph.root,
-        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
         "llm:builder",
     )["id"]
         .as_str()
         .unwrap()
         .to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
     run_json(&graph.root, &["sync", "--json"]);
     run_json_as(
         &graph.root,
-        &["validation", "add", "--name", "real", "--type", "test", "--command", "sh runner.sh test_real.py", "--intent", &id, "--json"],
+        &[
+            "validation",
+            "add",
+            "--name",
+            "real",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_real.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
         "llm:validator",
     );
     let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");

@@ -249,7 +249,7 @@ fn push_review_and_human_queues(
         queues.push(serde_json::json!({
             "queue": "review", "role": "reviewer", "gate": "autonomous", "optional": true, "effort": "high",
             "count": review.len(), "command": "loom next --mode review",
-            "top": "low-confidence verdicts × centrality — the tiered double-check",
+            "top": "uncertain/high-risk verdicts × centrality — the tiered double-check",
         }));
     }
     if !prove.is_empty() {

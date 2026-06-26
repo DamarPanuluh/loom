@@ -13,8 +13,7 @@ use super::*;
 /// The empty-review-queue line, shared by the interactive `run_review` and the
 /// bulk `run_take_review` so both entry points read identically.
 fn no_review_needed_message() -> String {
-    use crate::db::queries::REVIEW_CONFIDENCE;
-    format!("No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look.")
+    "No uncertain or high-risk verdicts need a second look.".to_string()
 }
 
 pub(super) fn run_review(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
