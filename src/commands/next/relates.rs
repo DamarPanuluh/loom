@@ -3,6 +3,9 @@ use super::scoring::{
     effort_rank, relates_dispatch,
 };
 use super::*;
+use crate::db::queries::{
+    bucket_disclosure_line, capped_discovery_buckets, inject_capped_buckets, CappedBucket,
+};
 
 pub(super) fn run_relates_with_repo(
     store: &dyn GraphReadRepository,
@@ -18,6 +21,18 @@ pub(super) fn run_relates_with_repo(
     if candidates.is_empty() && mode == "discovery" {
         candidates = unexplored_pairs_scored_from_snapshot(&snapshot, discovery_class)?;
     }
+
+    // Dense discovery facets (same-domain / shared-description-token) above
+    // BUCKET_CAP are excluded from `suspected_coupling` candidate generation. We
+    // disclose that elision in this lane instead of pruning silently — but ONLY
+    // here: other modes don't apply the cap, and `--class all`/`impact-map` do
+    // the exhaustive walk. Empty otherwise, so the disclosure stays quiet.
+    let capped: Vec<CappedBucket> =
+        if mode == "discovery" && discovery_class == DiscoveryClassFilter::SuspectedCoupling {
+            capped_discovery_buckets(&snapshot)?
+        } else {
+            Vec::new()
+        };
 
     if candidates.is_empty() {
         let gs = store.graph_state(&snapshot)?;
@@ -48,7 +63,7 @@ pub(super) fn run_relates_with_repo(
             0
         };
         if printer.json {
-            printer.print_json(&serde_json::json!({
+            let mut v = serde_json::json!({
                 "status":  "empty",
                 "mode":    mode,
                 "discovery_class": discovery_class.as_cli_value(),
@@ -56,9 +71,18 @@ pub(super) fn run_relates_with_repo(
                 "excluded_on_inactive_intents": fix_excluded,
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
-            }));
+            });
+            if let Some(obj) = v.as_object_mut() {
+                inject_capped_buckets(obj, &capped);
+            }
+            printer.print_json(&v);
         } else {
             match mode {
+                // The fast lane is drained, but dense buckets were never
+                // enumerated — don't claim "nothing left to discover".
+                "discovery" if !capped.is_empty() => {
+                    println!("✓ No suspected-coupling candidates left in the fast lane.")
+                }
                 "discovery" => println!("✓ No uninspected edges — nothing left to discover."),
                 "fix" if fix_excluded > 0 => {
                     println!("✓ No ACTIONABLE failing or needs_reverification edges.")
@@ -71,6 +95,9 @@ pub(super) fn run_relates_with_repo(
                     "  ⓘ {fix_excluded} failing/stale edge(s) exist but touch deprecated intents (status=deprecated, retired with `loom intent retire`) — excluded from the fix lane (the intent is gone, nothing to re-verify). `loom edge list --status needs_reverification` lists them."
                 );
             }
+            if let Some(line) = bucket_disclosure_line(&capped) {
+                println!("  {line}");
+            }
             println!();
             println!("  {}", fmt_pulse(&gs));
             println!("  → Next: {}", gs.next_action);
@@ -80,13 +107,22 @@ pub(super) fn run_relates_with_repo(
 
     if take > 0 {
         let gs = store.graph_state(&snapshot)?;
-        return run_take(store, mode, &snapshot, &candidates, take, &gs, printer);
+        return run_take(
+            store,
+            mode,
+            &snapshot,
+            &candidates,
+            take,
+            &gs,
+            &capped,
+            printer,
+        );
     }
 
     let (top_edge, score) = &candidates[0];
 
     if compact {
-        return run_compact(store, mode, top_edge, *score, printer);
+        return run_compact(store, mode, top_edge, *score, &capped, printer);
     }
 
     let intent_a = store.get_intent(&top_edge.from_id)?.ok_or_else(|| {
@@ -154,6 +190,7 @@ pub(super) fn run_relates_with_repo(
             obj.insert("implements_total".to_string(), implements_total.into());
             obj.insert("validations_total".to_string(), validations_total.into());
             add_dispatch(obj, role, effort);
+            inject_capped_buckets(obj, &capped);
         }
         printer.print_json(&v);
         return Ok(());
@@ -170,6 +207,7 @@ pub(super) fn run_relates_with_repo(
         role,
         effort,
         &gs,
+        &capped,
     );
 
     Ok(())
@@ -187,6 +225,7 @@ fn render_relates_human(
     role: &str,
     effort: &str,
     gs: &GraphState,
+    capped: &[CappedBucket],
 ) {
     println!(
         "── Next Work Item  [mode={}  priority={:.2}] ─────────────────────────────",
@@ -287,6 +326,9 @@ fn render_relates_human(
     println!();
     println!("  Dispatch — {}  [effort: {effort}]", dispatch_line(role));
     println!("  {}", fmt_pulse(gs));
+    if let Some(line) = bucket_disclosure_line(capped) {
+        println!("  {line}");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -301,6 +343,7 @@ fn render_relates_human(
 // and a single anchor — read each hot file once, verdict its whole group.
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 fn run_take(
     db: &dyn GraphReadRepository,
     mode: &str,
@@ -308,6 +351,7 @@ fn run_take(
     candidates: &[(crate::types::RelatesTo, f64)],
     take: usize,
     gs: &crate::db::queries::GraphState,
+    capped: &[CappedBucket],
     printer: &Printer,
 ) -> Result<()> {
     // BOUNDED: the take is itself a section — clamp hard so this call can't
@@ -484,7 +528,7 @@ fn run_take(
     };
 
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        let mut v = serde_json::json!({
             "status": "ok",
             "mode": mode,
             "taken": n,
@@ -498,7 +542,11 @@ fn run_take(
             "guidance": guidance,
             "dispatch": { "role": batch_role, "effort": max_effort },
             "graph_state": pulse_json(gs),
-        }));
+        });
+        if let Some(obj) = v.as_object_mut() {
+            inject_capped_buckets(obj, capped);
+        }
+        printer.print_json(&v);
         return Ok(());
     }
 
@@ -512,6 +560,7 @@ fn run_take(
         batch_role,
         max_effort,
         gs,
+        capped,
     );
     Ok(())
 }
@@ -527,6 +576,7 @@ fn render_take_human(
     batch_role: &str,
     max_effort: &str,
     gs: &GraphState,
+    capped: &[CappedBucket],
 ) {
     println!(
         "── Next: {n} of {queue_total}  [mode={mode}] — bulk read, grouped by staling file ────",
@@ -575,6 +625,9 @@ fn render_take_human(
     println!();
     println!("  Dispatch — {batch_role}  [effort: {max_effort}]   (per-item owner_role above is authoritative)");
     println!("  {}", fmt_pulse(gs));
+    if let Some(line) = bucket_disclosure_line(capped) {
+        println!("  {line}");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -594,6 +647,7 @@ fn run_compact(
     mode: &str,
     edge: &crate::types::RelatesTo,
     score: f64,
+    capped: &[CappedBucket],
     printer: &Printer,
 ) -> Result<()> {
     // Top grounded paths only — half the full item's section cap.
@@ -627,7 +681,7 @@ fn run_compact(
     };
 
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        let mut v = serde_json::json!({
             "mode": mode,
             "edge_id": edge.id,
             "inspection_status": edge.inspection_status,
@@ -643,7 +697,11 @@ fn run_compact(
             "owner_role": role,
             "effort": effort,
             "dig": dig,
-        }));
+        });
+        if let Some(obj) = v.as_object_mut() {
+            inject_capped_buckets(obj, capped);
+        }
+        printer.print_json(&v);
         return Ok(());
     }
 

@@ -109,6 +109,9 @@ Intents grouped by domain, with where each is grounded in code.
 
 ### docs
 
+- **code-primary repo wiki machinery** — the v2 repo wiki machinery: a code-primary wiki whose prose links to source files (not intent UUIDs), with the intent graph as an invisible manifest that certifies the prose via coverage, freshness, and graph-aware consistency gates; hard-cut replacement of v1's graph-primary OKF emitter and the flat loom.wiki.md  `docs/repo-wiki-ladder-proposal.md`
+- **code-primary wiki emitter** — the v2 emitter: replaces v1's graph-primary OKF skeleton with a code-primary manifest layer (frontmatter sourceFiles+symbols+provenance) and a prose layer (file-path links, no intent:UUID in reader-facing prose); hybrid structure of bounded topical pages + per-component module pages  `src/commands/wiki.rs`
+- **graph-aware manifest resolver** — the invisible manifest backbone: resolves file-paths to intents at check time so the consistency gate (the one Qoder cannot do) still falsifies relational claims against typed graph edges even though the reader never sees an intent UUID  `src/commands/wiki.rs`
 - **storage documentation and guide refresh** — README, guide, command docs, retired serve notice, and build/install guidance describe SQLite storage accurately and omit obsolete legacy lock/query caveats.  `README.md`, `docs/COMMANDS.md`, `docs/CONTRIBUTING.md`, `docs/daemon-design.md`, `src/commands/guide.rs`
 
 ### graph-integrity
@@ -196,132 +199,11 @@ Intents grouped by domain, with where each is grounded in code.
 - **stale hypothesis evidence ripples on sync** — TARGETS edges on supported hypotheses flip to needs_reverification when a target intent's grounded code changes, with a transition note naming the file. Support earned against old code must be re-earned, exactly like RELATES_TO and GOVERNS claims.  `src/commands/sync.rs`
 - **sync flag engine** — mtime-delta detection propagating one hop: RELATES_TO neighbours and passing GOVERNS go needs_reverification, linked validations go not_run; files missing on disk are reported  `src/commands/sync.rs`
 - **triage queue for hypotheses** — loom next --mode triage serves proposed hypotheses ranked by target-intent centrality as optional work items - like discovery and review, triage never blocks phase=complete. loom next --all shows the triage count flagged optional.  `src/commands/next/modes.rs`
+- **wiki lane and self-teaching authoring loop** — the work lane and self-teaching loop: loom next --mode wiki surfaces uncited salient nodes, stale provenance stamps, and fabricated links; for foreign repos loom inits the target graph then orders the LLM to author, with the graph as the invisible manifest  `src/commands/wiki.rs`
 
 
 <!-- loom:prose-start -->
-## The responsibility map
 
-Each component intent owns a family of feature intents and is grounded in a
-concrete set of source files. This page is the index from a component name to
-the files that implement it; the skeleton above lists the deterministic
-projection, and the prose below explains the *why* behind each component.
 
-### CLI and dispatch
-
-[CLI surface and dispatch](intent:a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae) — clap-derive definitions in
-[`src/cli.rs`](../src/cli.rs) plus the dispatch table in
-[`src/commands/mod.rs`](../src/commands/mod.rs). Owns argument parsing, the orientation
-printout for bare `loom`, and the synonym/typo teacher for unrecognized verbs.
-
-[graph-write command handlers](intent:988027a3-d33a-40c8-8f32-c5140b0d1937) — the mutating command modules
-under [`src/commands/`](../src/commands/). Each noun has one file (`intent.rs`,
-`edge.rs`, `codefile.rs`, `validation.rs`, `note.rs`, `rule.rs`, `ignore.rs`);
-every transition is lane-gated by the
-[role lanes and evidence gates](intent:20bf582e-df31-4f96-8b37-6171c38e3478).
-
-[dual-mode output](intent:bb8ee237-2d84-46ee-b254-c8bc39c16fc1) — every handler renders both
-human text and `--json`, with a shared graph_state pulse, through
-[`src/output.rs`](../src/output.rs). The dual-mode contract is what makes loom
-scriptable without a separate API.
-
-[self-teaching surface](intent:f2995090-ba95-48d3-bb6d-21b4044c32dc) — `loom guide`, `loom door`,
-`loom complete`, and the orient printout. The teaching axis is a first-class
-component, not documentation: it reads the graph and emits the next concrete
-invocation.
-
-### Persistence and edges
-
-[SQLite graph persistence](intent:01783338-7f02-4f4b-8d15-5f396ef7d47d) — embedded SQLite store in
-[`src/db/sqlite.rs`](../src/db/sqlite.rs) behind the typed query layer in
-[`src/db/queries/`](../src/db/queries/). Schema vocabulary in Rust; tables and
-constraints in SQLite.
-
-[SQLite-backed graph persistence migration](intent:c2f6bca0-2ccd-48b7-af47-1a74fba61441) — the intent that tracks the
-migration from the legacy live-graph backend. Proven by the parity harness in
-[`tests/sqlite_regression.rs`](../tests/sqlite_regression.rs) and the round-trip checks in
-[`src/db/schema.rs`](../src/db/schema.rs).
-
-[endpoint-constrained edge storage](intent:29288a6c-3f0b-4762-a34d-ad4a714b5390) — every edge kind (RELATES_TO,
-HIERARCHY, IMPLEMENTS, GOVERNS, VALIDATES, TARGETS, SERVES, JOURNEYS) is keyed
-by endpoint ids with a derived stable edge id, so an edge survives re-import
-and is identity-stable. Implemented in [`src/db/schema.rs`](../src/db/schema.rs) and
-[`src/db/queries/`](../src/db/queries/).
-
-### Work selection and audit
-
-[priority-scored work queues](intent:47c9182c-f7a8-4a50-9281-6d05507e646c) — `loom next --mode <lane>`
-ranks the next item for every lane (build, fix, quality, discovery, align,
-validate, populate). Scoring in [`src/db/queries/scoring.rs`](../src/db/queries/scoring.rs).
-
-[completeness and integrity checking](intent:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2) — `loom doctor`, `loom smells`,
-`loom coverage`. The deterministic integrity axis that catches graph/code
-drift. Implementations in [`src/commands/doctor.rs`](../src/commands/doctor.rs),
-[`src/commands/smells.rs`](../src/commands/smells.rs), [`src/commands/coverage.rs`](../src/commands/coverage.rs).
-
-[multi-hop audit layer](intent:c61f66f5-a396-4494-9b48-c00d5203bcb3) — multi-hop graph reads via the
-shared snapshot in [`src/db/queries/snapshot.rs`](../src/db/queries/snapshot.rs). Backs
-`loom explain`, `loom impact`, and `loom cluster`.
-
-[snapshot analysis and annotation helpers](intent:e2d64ed4-b10f-48fd-995b-f533a6250a18) — `loom find`, `loom smells`,
-`loom coverage` share a single read-only snapshot per invocation.
-Implementations in [`src/db/queries/stats.rs`](../src/db/queries/stats.rs) and
-[`src/db/queries/scoring.rs`](../src/db/queries/scoring.rs).
-
-### Sync and analysis
-
-[sync flag engine](intent:29799603-3704-4dfa-9ba4-387a7c1942f8) — `loom sync` re-hashes touched
-files and flips only one-hop RELATES_TO neighbours to `needs_reverification`,
-with a decaying ripple beyond. Implemented in
-[`src/commands/sync.rs`](../src/commands/sync.rs) and [`src/repo.rs`](../src/repo.rs).
-
-[repo introspection](intent:382c288a-4846-46f6-93be-eb9e1f40faf3) — `loom detect` and the
-stack/file evidence behind quality-pack recommendations. Implementation in
-[`src/repo.rs`](../src/repo.rs).
-
-[multi-language static analysis coverage](intent:ea9c7e3e-9f95-4d58-ade9-d771fcf50cc3) — multi-language static analysis
-(Rust, Go, Dart, Kotlin, Swift, Svelte/Bun) extracting imports, declarations,
-and layout signals. Implementations in [`src/ts_imports.rs`](../src/ts_imports.rs) and
-language modules under analysis.
-
-[source corpus coverage](intent:dda91659-329a-479e-9d33-42a41b5fa9b1) — the source corpus that
-`loom sync` walks; coverage of which files are registered and which are
-untracked. Backed by [`src/repo.rs`](../src/repo.rs).
-
-### Governance and speculation
-
-[role lanes and evidence gates](intent:20bf582e-df31-4f96-8b37-6171c38e3478) — the lane gates (builder,
-validator, analyst, registrar, reviewer, scout, architect, fixer, quality) and
-the evidence requirements behind every transition. Implementations in
-[`src/gate.rs`](../src/gate.rs) and [`src/agent.rs`](../src/agent.rs).
-
-[hypothesis plane](intent:32b42fd0-6b6c-46a6-a9a8-97be595bddf3) — the pre-decision plane:
-improvement hypotheses any lane can propose, an analyzer proves against
-current code, and a builder adopts into planned intents. Speculation stays
-invisible to coverage until adoption. Implementations in
-[`src/commands/hypothesis.rs`](../src/commands/hypothesis.rs) and [`src/db/queries/`](../src/db/queries/).
-
-[external interface surface plane](intent:fcf2f089-6dbe-46f0-8296-d50512420ff8) — externally callable surfaces
-modelled as first-class graph nodes so ownership, journey coverage, quality
-rules, and implementation grounding can address an interface independently of
-the saga YAML that calls it. Implementations in
-[`src/commands/interface.rs`](../src/commands/interface.rs) and [`src/db/queries/`](../src/db/queries/).
-
-[saga consumer plane](intent:4c752ad2-e332-4148-87e2-88340991e2a5) — the saga consumer plane:
-`loom saga` validates YAML-defined call sequences against the interface
-surface so a journey is provable, not asserted. Implementation in
-[`src/commands/saga.rs`](../src/commands/saga.rs).
-
-### Seed flows
-
-[UI/UX visual-register seed flow](intent:c6b2b5d9-387a-4fa3-936d-e4e780021067) — the visual-register seed
-ladder: reaction-driven, with an HTML mockup as the reaction surface and
-contract, mockup-as-CodeFile that never satisfies production IMPLEMENTS, and
-machine-first verification with a human visual-confirm queue. Implementation
-in [`src/commands/seed.rs`](../src/commands/seed.rs).
-
-[intent-spectrum seed-flow guidance](intent:e21d2c64-f9fa-46c0-aaec-1985efbf8152) — the intent-spectrum seed
-guidance that points a driver at the right seed flow for a given intent class.
-Implementation in [`src/commands/seed.rs`](../src/commands/seed.rs) and
-[`src/commands/guide.rs`](../src/commands/guide.rs).
 
 <!-- loom:prose-end -->

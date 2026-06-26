@@ -7,6 +7,7 @@ tags:
   - core
   - db
   - developer-experience
+  - docs
   - health
   - repo
   - teaching
@@ -69,6 +70,10 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **mockup is contract not realization** — a production screen intent source_refs its HTML mockup and stays lifecycle=planned; the mockup never creates an IMPLEMENTS edge for it, and only an explicit prototype or Storybook intent may IMPLEMENTS a mockup
     - **reaction-driven mockup loop** — for a user_visible screen, loom guidance generates an HTML mockup as the reaction surface and converts each human reaction into graph deltas, looping until reactions stop changing structure
     - **visual-confirm user-gated queue** — subjective aesthetic residue surfaces as manual_check validations with inspected_by set to human, batched into a user-gated lane in loom session prioritised by user presence like align, rulings and blocked
+  - **code-primary repo wiki machinery** — the v2 repo wiki machinery: a code-primary wiki whose prose links to source files (not intent UUIDs), with the intent graph as an invisible manifest that certifies the prose via coverage, freshness, and graph-aware consistency gates; hard-cut replacement of v1's graph-primary OKF emitter and the flat loom.wiki.md
+    - **code-primary wiki emitter** — the v2 emitter: replaces v1's graph-primary OKF skeleton with a code-primary manifest layer (frontmatter sourceFiles+symbols+provenance) and a prose layer (file-path links, no intent:UUID in reader-facing prose); hybrid structure of bounded topical pages + per-component module pages
+    - **graph-aware manifest resolver** — the invisible manifest backbone: resolves file-paths to intents at check time so the consistency gate (the one Qoder cannot do) still falsifies relational claims against typed graph edges even though the reader never sees an intent UUID
+    - **wiki lane and self-teaching authoring loop** — the work lane and self-teaching loop: loom next --mode wiki surfaces uncited salient nodes, stale provenance stamps, and fabricated links; for foreign repos loom inits the target graph then orders the LLM to author, with the graph as the invisible manifest
   - **completeness and integrity checking** — vertical spine (tree shape + leaf realization + file reach), coverage reconciliation against disk, doctor audit of schema conformance and provenance lanes
     - **derived problem signals** — loom smells: twins, overlapping ownership, scatter, tangles, undeclared coupling, recurrence, normative gaps — computed from graph structure, each with a remedy
       - **advisory buckets honor decision adjudication** — Advisory smell buckets move current decision-note rulings out of open advisory counts and into adjudicated output, with reopen anchors on the relevant intent or file.
@@ -127,83 +132,36 @@ The intent hierarchy — what the system is, decomposed top-down.
 
 
 <!-- loom:prose-start -->
+
+
+
 ## The layered shape
 
-loom is a single binary built from four concentric layers, each modelled as a
-family of component intents in the graph. Reading the layers outside-in is the
-fastest way to orient: every request enters at the CLI rim, is dispatched to a
-command handler, reads or writes through the persistence core, and is certified
-by the audit + integrity layer that wraps the core.
+loom is a single binary built from four concentric layers. Every request enters
+at the CLI rim, is dispatched to a command handler, reads or writes through the
+persistence core, and is certified by the audit and integrity layer.
 
 ### Rim — the CLI surface
 
-The outermost layer is the [CLI surface and dispatch](intent:a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae):
-clap-derive command definitions in [`src/cli.rs`](../src/cli.rs) and the dispatch
-table in [`src/commands/mod.rs`](../src/commands/mod.rs). A bare `loom` invocation does not
-error — it prints an orientation that points at the
-[self-teaching surface](intent:f2995090-ba95-48d3-bb6d-21b4044c32dc), so an agent that knows nothing
-can find its footing. Every command renders both human-readable text and
-structured JSON via the [dual-mode output](intent:bb8ee237-2d84-46ee-b254-c8bc39c16fc1), so the
-same surface serves a person at a terminal and a script piping `--json` into
-the next step.
-
-### Spokes — the command handlers
-
-Behind the dispatch table are the
-[graph-write command handlers](intent:988027a3-d33a-40c8-8f32-c5140b0d1937): one module per noun (`intent`,
-`edge`, `codefile`, `validation`, `note`, `rule`, `ignore`, `export`/`import`),
-each lane-gated so a builder cannot record a verdict and a validator cannot
-seed an intent. The handlers are thin — they parse CLI args, call into the
-persistence + analysis core, and render — so the policy lives in the graph,
-not in the handlers.
+The outermost layer is the CLI surface: clap-derive command definitions in
+`src/cli.rs` and the dispatch table in `src/commands/mod.rs`.
 
 ### Core — SQLite graph persistence
 
-The persistence core is the [SQLite graph persistence](intent:01783338-7f02-4f4b-8d15-5f396ef7d47d):
-an embedded SQLite store behind typed command/repository APIs in
-[`src/db/sqlite.rs`](../src/db/sqlite.rs). The schema vocabulary is declared in Rust
-([`src/db/schema.rs`](../src/db/schema.rs)); the physical tables and constraints live in
-SQLite. Edges are [endpoint-constrained edge storage](intent:29288a6c-3f0b-4762-a34d-ad4a714b5390) — keyed by
-endpoint ids with derived stable edge ids and SQLite uniqueness/foreign-key
-constraints, not stored edge uuids — so an edge is identity-stable across
-re-import. The migration from the legacy live-graph backend is itself an
-intent, [SQLite-backed graph persistence migration](intent:c2f6bca0-2ccd-48b7-af47-1a74fba61441), proven by the parity
-harness in [`tests/sqlite_regression.rs`](../tests/sqlite_regression.rs).
+The persistence core is an embedded SQLite store behind typed APIs in
+`src/db/sqlite.rs`. The schema vocabulary is declared in `src/db/schema.rs`.
+The whole project builds from [`Cargo.toml`](../Cargo.toml) — the root
+manifest — and `src/main.rs` is the entry point.
 
 ### Wrap — audit, integrity, and work selection
 
-Wrapping the core are three cross-cutting components. The
-[completeness and integrity checking](intent:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2) runs `loom doctor`,
-`loom smells`, and `loom coverage` — the deterministic checks that catch a
-graph drifting from the code. The
-[multi-hop audit layer](intent:c61f66f5-a396-4494-9b48-c00d5203bcb3)
-([`src/db/queries/snapshot.rs`](../src/db/queries/snapshot.rs)) is the read-side that serves
-multi-hop graph computations without re-scanning. The
-[priority-scored work queues](intent:47c9182c-f7a8-4a50-9281-6d05507e646c) is the write-side that ranks
-the next item for every lane — `loom next --mode <lane>` is the single entry
-point for "what do I work on now?".
-
-### Cross-cutting — sync, analysis, teaching
-
-Three more components cut across all layers. The
-[sync flag engine](intent:29799603-3704-4dfa-9ba4-387a7c1942f8) is the change detector:
-`loom sync` re-hashes touched files and flips only the one-hop RELATES_TO
-neighbours of affected intents to `needs_reverification`, with a decaying
-ripple beyond. The [repo introspection](intent:382c288a-4846-46f6-93be-eb9e1f40faf3) and
-[multi-language static analysis coverage](intent:ea9c7e3e-9f95-4d58-ade9-d771fcf50cc3) are the multi-language
-static-analysis plane that extracts imports, declarations, and layout signals
-so coverage and coupling signals are language-aware. The
-[snapshot analysis and annotation helpers](intent:e2d64ed4-b10f-48fd-995b-f533a6250a18) backs `loom find`,
-`loom smells`, and `loom coverage` against the shared snapshot.
+The completeness and integrity checking runs `loom doctor`, `loom smells`, and
+`loom coverage`. The multi-hop audit layer in `src/db/queries/snapshot.rs`
+serves graph computations. The priority-scored work queues rank the next item.
 
 ## How a request travels
 
-A `loom <noun> <verb>` invocation resolves its target graph via `--graph` flag
-> `LOOM_GRAPH` env > cwd, then dispatches to the noun's handler module, which
-calls a typed query in [`src/db/queries/`](../src/db/queries/) and renders through
-[`src/output.rs`](../src/output.rs). The [role lanes and evidence gates](intent:20bf582e-df31-4f96-8b37-6171c38e3478)
-gates every transition — a builder records a verdict, a validator seeds a rule
-— so the graph is append-only-auditable, not free-form. See
-[flows.md](flows.md) for the end-to-end trace of a representative request.
-
+A `loom <noun> <verb>` invocation resolves its target graph, dispatches to the
+noun handler, calls a typed query in `src/db/queries/`, and renders through
+`src/output.rs`.
 <!-- loom:prose-end -->

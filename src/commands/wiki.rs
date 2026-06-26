@@ -1,10 +1,30 @@
-//! `loom wiki` — the DOCUMENT projection of the graph. Generates a human-readable
-//! Markdown wiki (overview + architecture tree + components-by-domain + quality
-//! bars) deterministically from the intent graph. Same shape as `loom export`:
-//! same graph → identical bytes, so `--check` is a byte comparison (pre-commit/CI
-//! freshness). The graph is the source of truth; this file is a regenerable VIEW —
-//! never hand-edited, and not a second teacher (agents drive the graph, humans
-//! read the wiki).
+//! `loom wiki` — the v2 code-primary repo wiki. Emits a directory bundle of
+//! markdown concept files whose prose links to source files (not intent UUIDs),
+//! with the intent graph as an invisible manifest that certifies the prose via
+//! coverage, freshness, and graph-aware consistency gates.
+//!
+//! v2 hard-cuts v1 (2026-06-26): the flat `loom.wiki.md` and the graph-primary
+//! OKF emitter are deleted. loom's only wiki is the v2 bundle. The graph is
+//! the manifest — invisible to the reader, present for the gates. The reader
+//! sees `[`src/saga/runner.rs`](../src/saga/runner.rs)`; loom internally
+//! resolves that file to its intent and runs coverage/freshness/consistency
+//! against *that*. The `intent:UUID` never appears in reader-facing prose.
+//!
+//! Two layers of one artifact:
+//! - **Manifest layer** (frontmatter: `sourceFiles` + `symbols` + `provenance`
+//!   stamp — byte-`--check`able, machine-owned). Same graph → identical bytes.
+//! - **Prose layer** (code-primary narrative with file-path links — gate-checked,
+//!   LLM-owned). Checked by coverage + freshness + consistency, never by bytes.
+//!
+//! `loom wiki --okf --prose-check` certifies the prose by three mechanical gates
+//! from `docs/repo-wiki-ladder-proposal.md`:
+//!   1. COVERAGE   — every salient intent with grounded files has its files
+//!                   appear in some page's `sourceFiles`.
+//!   2. FRESHNESS  — the manifest's `provenance` stamp matches the current
+//!                   graph's content hashes (byte-checked via `--check`).
+//!   3. CONSISTENCY — every file path in `sourceFiles` and every codefile link
+//!                    in prose resolves to a registered CodeFile.
+//! Prose QUALITY stays human-gated, never machine-green (proposal 4).
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -17,94 +37,101 @@ use crate::output::Printer;
 use crate::types::{Intent, Note};
 
 // ---------------------------------------------------------------------------
-// Prose layer — LLM-authored narrative hung on the deterministic skeleton.
+// Prose layer — LLM-authored narrative hung on the manifest frame.
 //
-// The skeleton (frontmatter + graph-derived body) stays byte-`--check`able.
-// The prose body lives between two sentinel comments in the SAME OKF file
+// The manifest (frontmatter + graph-derived body) stays byte-`--check`able.
+// The prose body lives between two sentinel comments in the SAME file
 // (co-located per proposal open-question 3): loom owns everything up to the
 // `loom:prose-start` sentinel; the LLM owns everything between the sentinels.
-// `loom wiki --okf --prose-check` certifies the prose by three mechanical
-// gates from `docs/repo-wiki-ladder-proposal.md`:
-//   1. COVERAGE   — every salient graph node (component + hotspot intents,
-//                   user_visible journeys, vocab terms) is cited by >=1 page.
-//   2. FRESHNESS  — each cited codefile's content-hash matches the hash
-//                   registered in the graph; each cited intent resolves to an
-//                   active node. Content-hash, NOT mtime — survives clone/CI,
-//                   tracks causality not write-order (proposal Freshness).
-//   3. CONSISTENCY — every markdown cross-link to an intent/file resolves
-//                    to a real graph node; a link the graph denies is a
-//                    fabricated-relationship finding.
-// Prose QUALITY stays human-gated, never machine-green (proposal 4).
 //
 // Mermaid diagrams are explicitly permitted in the prose layer: a fenced
 // ```mermaid block is renderable art, and its `[A] --> [B]` syntax must not be
 // read as a markdown cross-link. The citation extractor skips fenced regions.
 // ---------------------------------------------------------------------------
 
-/// Sentinel marking the start of LLM-authored prose in an OKF concept file.
-/// Everything before this line (frontmatter + skeleton body) is loom-owned
-/// and byte-`--check`able; everything between START and END is prose.
+/// Sentinel marking the start of LLM-authored prose in a wiki concept file.
 const PROSE_START: &str = "<!-- loom:prose-start -->";
-/// Sentinel marking the end of LLM-authored prose. Lets the byte-check
-/// compare only the skeleton prefix and lets `--prose-check` extract only
-/// the prose body.
+/// Sentinel marking the end of LLM-authored prose.
 const PROSE_END: &str = "<!-- loom:prose-end -->";
 
 /// Shared error for a wiki output path that escapes the graph root.
-/// One source of truth so `emit_okf`, `prose_check`, and `emit` agree.
 fn path_escape_error(out: &str) -> anyhow::Error {
     anyhow::anyhow!("wiki path escapes graph root: {out}")
 }
 
-/// Shared next-step string after a successful write (okf + flat).
+/// Shared next-step string after a successful write.
 fn commit_step(out: &str) -> String {
     format!("commit {out} so the wiki travels with the repo")
 }
 
-pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
-    let cwd = crate::db::resolve_root()?;
-    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
-    let snap = store.query_snapshot()?;
-    let meta = store.graph_meta()?;
-    let md = render_wiki(&snap, meta.as_ref());
-    emit(&cwd, out, check, &md, printer)
+/// Slugify a component name for a module page filename: lowercase, non-alnum → hyphen.
+fn slugify(name: &str) -> String {
+    let slug: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    // Collapse runs of hyphens, strip leading/trailing.
+    let mut prev_hyphen = false;
+    let mut out = String::with_capacity(slug.len());
+    for c in slug.chars() {
+        if c == '-' {
+            if !prev_hyphen && !out.is_empty() {
+                out.push('-');
+            }
+            prev_hyphen = true;
+        } else {
+            out.push(c);
+            prev_hyphen = false;
+        }
+    }
+    while out.ends_with('-') {
+        out.pop();
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
-// OKF v0.1 bundle — the deterministic skeleton layer.
-//
-// `loom wiki --okf` emits a DIRECTORY of markdown concept files (the Open
-// Knowledge Format) instead of one flat file. Each file carries YAML
-// frontmatter (OKF: `type` is the only required field) + a graph-derived body
-// that is byte-identical to the flat wiki's sections. This is the SKELETON
-// layer of `docs/repo-wiki-ladder-proposal.md`: loom owns it (deterministic,
-// byte-`--check`able); an LLM later hangs prose bodies on the frame. The
-// graph stays the source of truth; the bundle is downstream of it.
+// OKF v0.1 bundle — the manifest layer + prose layer.
 // ---------------------------------------------------------------------------
 
-/// A single OKF concept file: frontmatter + body. Deterministic bytes.
+/// A single wiki concept file: manifest frontmatter + body + prose.
 struct OkfPage {
-    rel_path: &'static str,
+    rel_path: String,
     okf_type: &'static str,
     title: String,
     tags: Vec<String>,
+    /// The graph-derived body (byte-stable skeleton content).
     body: String,
+    /// Code-native grounding: the source files this page explains. The manifest
+    /// resolves these to intents via IMPLEMENTS edges at check time.
+    source_files: Vec<String>,
+    /// Symbols from the grounded code (locators from IMPLEMENTS edges).
+    symbols: Vec<String>,
 }
 
-pub fn run_okf(out: &str, check: bool, printer: &Printer) -> Result<()> {
+/// `loom wiki` entry point — emits the v2 code-primary bundle (hard-cut: no flat wiki).
+pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
     let snap = store.query_snapshot()?;
     let meta = store.graph_meta()?;
     let decision_notes = store.list_notes(None, Some("decision")).unwrap_or_default();
     let pages = render_okf_bundle(&snap, meta.as_ref(), &decision_notes);
-    emit_okf(&cwd, out, check, &pages, printer)
+    let codefile_hashes: HashMap<&str, &str> = snap
+        .codefiles
+        .iter()
+        .map(|c| (c.path.as_str(), c.content_hash.as_str()))
+        .collect();
+    emit_okf(&cwd, out, check, &pages, &codefile_hashes, printer)
 }
 
-/// Build every page of the skeleton bundle. Reuses the section renderers the
-/// flat wiki uses, so the body bytes are identical — only the wrapping changes.
-/// Also adds three cognitive-axis pages (decisions, glossary, flows) drawn from
-/// decision notes, vocab tags, and saga validations respectively.
+/// Build every page of the v2 bundle: topical pages + per-component module pages.
 fn render_okf_bundle(
     snap: &QuerySnapshot,
     meta: Option<&GraphMeta>,
@@ -115,101 +142,259 @@ fn render_okf_bundle(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "loom graph".to_string());
 
-    // Architecture page: same body as the flat wiki's Architecture section.
+    // --- Topical pages (bounded, cross-cutting) ---
+
     let mut arch_body = String::new();
     render_architecture(&mut arch_body, snap);
     let arch_tags = okf_tags_from_intents(snap, |i| {
         i.abstraction_level == "system" || i.abstraction_level == "component"
     });
 
-    // Components page: same body as the flat wiki's Components section.
     let mut comp_body = String::new();
     render_components(&mut comp_body, snap);
     let comp_tags = okf_tags_from_intents(snap, |_| true);
 
-    // Quality page: same body as the flat wiki's Quality section (may be empty).
     let mut qual_body = String::new();
     render_quality(&mut qual_body, snap);
     let qual_tags = okf_tags_from_rules(snap);
-
-    // Glossary page: the bounded `loom vocab` registry.
     let mut gloss_body = String::new();
     render_glossary(&mut gloss_body, snap);
 
-    // Decisions page: every `kind=decision` note, newest first.
     let mut dec_body = String::new();
     render_decisions(&mut dec_body, snap, decision_notes);
 
-    // Flows page: every user_visible intent with its saga proofs.
     let mut flows_body = String::new();
     render_flows(&mut flows_body, snap);
 
-    vec![
+    let mut pages = vec![
         OkfPage {
-            rel_path: "index.md",
+            rel_path: "index.md".to_string(),
             okf_type: "index",
             title: format!("{name} — repo wiki"),
             tags: Vec::new(),
             body: render_okf_index(snap, &name),
+            source_files: Vec::new(),
+            symbols: Vec::new(),
         },
         OkfPage {
-            rel_path: "architecture.md",
+            rel_path: "architecture.md".to_string(),
             okf_type: "architecture",
             title: "Architecture".to_string(),
             tags: arch_tags,
             body: arch_body,
+            source_files: Vec::new(),
+            symbols: Vec::new(),
         },
         OkfPage {
-            rel_path: "components.md",
+            rel_path: "components.md".to_string(),
             okf_type: "reference",
             title: "Components & code".to_string(),
             tags: comp_tags,
             body: comp_body,
+            source_files: Vec::new(),
+            symbols: Vec::new(),
         },
         OkfPage {
-            rel_path: "quality.md",
+            rel_path: "quality.md".to_string(),
             okf_type: "reference",
             title: "Quality bars".to_string(),
             tags: qual_tags,
             body: qual_body,
+            source_files: Vec::new(),
+            symbols: Vec::new(),
         },
         OkfPage {
-            rel_path: "glossary.md",
+            rel_path: "glossary.md".to_string(),
             okf_type: "glossary",
             title: "Glossary".to_string(),
             tags: vec!["vocabulary".to_string()],
             body: gloss_body,
+            source_files: Vec::new(),
+            symbols: Vec::new(),
         },
         OkfPage {
-            rel_path: "decisions.md",
+            rel_path: "decisions.md".to_string(),
             okf_type: "decision",
             title: "Design decisions".to_string(),
             tags: vec!["rationale".to_string()],
             body: dec_body,
+            source_files: Vec::new(),
+            symbols: Vec::new(),
         },
         OkfPage {
-            rel_path: "flows.md",
+            rel_path: "flows.md".to_string(),
             okf_type: "flow",
             title: "Journeys & flows".to_string(),
             tags: vec!["journey".to_string()],
             body: flows_body,
+            source_files: Vec::new(),
+            symbols: Vec::new(),
         },
-    ]
+    ];
+
+    // --- Module pages (one per component intent) ---
+
+    // Group IMPLEMENTS by intent_id for sourceFiles derivation.
+    let mut files_of: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut locators_of: HashMap<&str, Vec<&str>> = HashMap::new();
+    for im in &snap.implements {
+        files_of
+            .entry(im.intent_id.as_str())
+            .or_default()
+            .push(im.codefile_path.as_str());
+        if !im.locator.is_empty() {
+            locators_of
+                .entry(im.intent_id.as_str())
+                .or_default()
+                .push(im.locator.as_str());
+        }
+    }
+
+    let mut components: Vec<&Intent> = snap
+        .intents
+        .iter()
+        .filter(|i| i.abstraction_level == "component" && i.status != "deprecated")
+        .collect();
+    components.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.id.cmp(&b.id)));
+
+    for comp in &components {
+        let slug = slugify(&comp.name);
+        let rel_path = format!("modules/{slug}.md");
+        let mut source_files: Vec<String> = files_of
+            .get(comp.id.as_str())
+            .map(|v| {
+                let mut s: Vec<String> = v.iter().map(|s| s.to_string()).collect();
+                s.sort();
+                s.dedup();
+                s
+            })
+            .unwrap_or_default();
+        // Also include files from child features (the component's subtree).
+        if source_files.is_empty() {
+            // A component with no direct IMPLEMENTS: gather from descendants.
+            let descendants = collect_descendants(comp.id.as_str(), snap);
+            let mut gathered: Vec<String> = Vec::new();
+            for did in &descendants {
+                if let Some(files) = files_of.get(did.as_str()) {
+                    for f in files {
+                        gathered.push(f.to_string());
+                    }
+                }
+            }
+            gathered.sort();
+            gathered.dedup();
+            source_files = gathered;
+        }
+        let mut symbols: Vec<String> = locators_of
+            .get(comp.id.as_str())
+            .map(|v| {
+                let mut s: Vec<String> = v.iter().map(|s| s.to_string()).collect();
+                s.sort();
+                s.dedup();
+                s
+            })
+            .unwrap_or_default();
+        // Include descendant locators if we gathered from descendants.
+        if symbols.is_empty() {
+            let descendants = collect_descendants(comp.id.as_str(), snap);
+            let mut gathered: Vec<String> = Vec::new();
+            for did in &descendants {
+                if let Some(locs) = locators_of.get(did.as_str()) {
+                    for l in locs {
+                        gathered.push(l.to_string());
+                    }
+                }
+            }
+            gathered.sort();
+            gathered.dedup();
+            symbols = gathered;
+        }
+        let body = render_module_page(comp);
+        pages.push(OkfPage {
+            rel_path,
+            okf_type: "module",
+            title: comp.name.clone(),
+            tags: vec![comp.domain.clone()]
+                .into_iter()
+                .filter(|d| !d.is_empty() && d != "unknown")
+                .collect(),
+            source_files,
+            symbols,
+            body,
+        });
+    }
+
+    pages
 }
 
-/// The `index.md` body: generated header, overview counts, and a reading-order
-/// table pointing at the per-axis concept files. The cognitive-axis pages
-/// (glossary, decisions, flows) are rendered separately; the index just links.
+/// Collect all descendant intent ids of a given parent (transitive via HIERARCHY).
+fn collect_descendants(parent_id: &str, snap: &QuerySnapshot) -> Vec<String> {
+    let mut children_map: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (p, c) in &snap.hierarchy {
+        children_map.entry(p.as_str()).or_default().push(c.as_str());
+    }
+    let mut result = Vec::new();
+    let mut queue: Vec<&str> = children_map
+        .get(parent_id)
+        .map(|v| v.clone())
+        .unwrap_or_default();
+    let mut visited: HashSet<&str> = HashSet::new();
+    while let Some(id) = queue.pop() {
+        if !visited.insert(id) {
+            continue;
+        }
+        result.push(id.to_string());
+        if let Some(kids) = children_map.get(id) {
+            for k in kids {
+                queue.push(k);
+            }
+        }
+    }
+    result
+}
+
+/// Render a module page body (the skeleton; prose goes between sentinels).
+fn render_module_page(comp: &Intent) -> String {
+    let mut s = String::new();
+    s.push_str(&format!("# {}\n\n", comp.name));
+    let desc = if comp.description.is_empty() {
+        String::new()
+    } else {
+        format!("> {}\n\n", comp.description)
+    };
+    s.push_str(&desc);
+    s.push_str("## Responsibility\n\n");
+    s.push_str("_(LLM-authored: what this module does and why it exists.)_\n\n");
+    s.push_str("## Key entry points\n\n");
+    s.push_str("_(LLM-authored: the main entry symbols and where to start reading.)_\n\n");
+    s.push_str("## Key flows\n\n");
+    s.push_str("_(LLM-authored: how a request travels through this module.)_\n\n");
+    s.push_str("## Common modification points\n\n");
+    s.push_str("_(LLM-authored: where to look when changing this module's behavior.)_\n\n");
+    s.push_str("## Risk points\n\n");
+    s.push_str("_(LLM-authored: gotchas, edge cases, and failure modes.)_\n\n");
+    s
+}
+
+/// The `index.md` body: generated header, overview counts, reading order.
 fn render_okf_index(snap: &QuerySnapshot, name: &str) -> String {
     let mut s = String::new();
     s.push_str(&format!("# {name} — repo wiki\n\n"));
-    s.push_str("> Generated OKF v0.1 skeleton by `loom wiki --okf` — do not edit by hand.\n");
-    s.push_str("> Regenerate after graph changes; `loom wiki --okf --check` verifies freshness.\n");
+    s.push_str("> Generated by `loom wiki` — do not edit the manifest (frontmatter) by hand.\n");
+    s.push_str("> Regenerate after graph changes; `loom wiki --check` verifies freshness.\n");
     s.push_str("> The graph is the source of truth; this bundle is a projection of it.\n");
-    s.push_str("> Companion: `docs/repo-wiki-ladder-proposal.md` — the skeleton an LLM hangs prose on.\n\n");
+    s.push_str(
+        "> Companion: `docs/repo-wiki-ladder-proposal.md` — the v2 code-primary design.\n\n",
+    );
 
-    // Overview counts (same derivation as the flat wiki).
     render_overview(&mut s, snap);
+
+    // Count module pages.
+    let module_count = snap
+        .intents
+        .iter()
+        .filter(|i| i.abstraction_level == "component" && i.status != "deprecated")
+        .count();
 
     s.push_str("## Reading order\n\n");
     s.push_str("A newcomer should read in this order:\n\n");
@@ -221,36 +406,32 @@ fn render_okf_index(snap: &QuerySnapshot, name: &str) -> String {
     s.push_str("4. [Glossary](glossary.md) — the bounded `loom vocab` registry.\n");
     s.push_str("5. [Design decisions](decisions.md) — `kind=decision` notes with rationale.\n");
     s.push_str("6. [Journeys & flows](flows.md) — user-visible intents and their saga proofs.\n");
+    if module_count > 0 {
+        s.push_str(&format!(
+            "7. [Module pages](modules/) — one deep-dive per component ({module_count} pages).\n"
+        ));
+    }
     s.push('\n');
 
     s.push_str("## Prose layer\n\n");
     s.push_str("Each page carries LLM-authored narrative prose between two HTML-comment\n");
     s.push_str("sentinel lines (loom:prose-start / loom:prose-end). It teaches *how the system\n");
     s.push_str(
-        "fits together* — the cognitive guide the skeleton's flat listings cannot convey.\n",
+        "fits together* — the cognitive guide the manifest's flat listings cannot convey.\n",
     );
-    s.push_str(
-        "Certified by `loom wiki --okf --prose-check` (coverage + freshness + consistency);\n",
-    );
+    s.push_str("Certified by `loom wiki --prose-check` (coverage + freshness + consistency);\n");
     s.push_str("prose quality is human-gated, never machine-green.\n\n");
     s.push_str("**Permitted in prose:** markdown, fenced code blocks, and mermaid diagrams\n");
     s.push_str("(renderable art — their bracket syntax is not read as cross-links). Cite\n");
-    s.push_str("intents via `[name](intent:uuid)` and codefiles via `[`path`](../src/path)`;\n");
-    s.push_str("every citation is mechanically checked against the graph.\n\n");
-    s.push_str("## Remaining stub\n\n");
-    s.push_str(
-        "- **Getting started** — build/run validations (not yet implemented; low priority\n",
-    );
-    s.push_str("  because `loom detect` + the architecture page already give a newcomer the\n");
-    s.push_str("  stack and entry-point facts).\n");
+    s.push_str("codefiles via `[`path`](../src/path)` — every citation is mechanically checked\n");
+    s.push_str("against the graph. Do NOT use `intent:UUID` links — the reader's vocabulary\n");
+    s.push_str("is the codebase's, not the graph's.\n\n");
     s.push('\n');
 
     s
 }
 
-/// Render the decisions page: every `kind=decision` note with its target intent
-/// link, sorted newest first (so the most-recent rationale sits at the top —
-/// a developer reading top-down encounters the freshest context first).
+/// Render the decisions page: every `kind=decision` note, newest first.
 fn render_decisions(s: &mut String, snap: &QuerySnapshot, notes: &[Note]) {
     s.push_str("## Design decisions\n\n");
     s.push_str("Rationale recorded via `loom note add --kind decision`. Newest first.\n\n");
@@ -258,7 +439,6 @@ fn render_decisions(s: &mut String, snap: &QuerySnapshot, notes: &[Note]) {
         s.push_str("_(no decision notes recorded yet)_\n\n");
         return;
     }
-    // list_notes returns newest-last; reverse for newest-first display.
     let mut ordered: Vec<&Note> = notes.iter().collect();
     ordered.reverse();
     let by_id: HashMap<&str, &Intent> = snap.intents.iter().map(|i| (i.id.as_str(), i)).collect();
@@ -277,13 +457,10 @@ fn render_decisions(s: &mut String, snap: &QuerySnapshot, notes: &[Note]) {
     }
 }
 
-/// Render the glossary: collect unique vocab terms across all intents' tags,
-/// list each with the intents tagged with it. Alphabetical by term; intents
-/// sorted by name within each term. Empty → honest empty-state message.
+/// Render the glossary: collect unique vocab terms across all intents' tags.
 fn render_glossary(s: &mut String, snap: &QuerySnapshot) {
     s.push_str("## Glossary\n\n");
     s.push_str("The bounded `loom vocab` registry. Each term lists the intents that carry it.\n\n");
-    // Collect term → sorted intent names.
     let mut terms: HashMap<String, Vec<String>> = HashMap::new();
     for intent in &snap.intents {
         if intent.status == "deprecated" {
@@ -311,10 +488,7 @@ fn render_glossary(s: &mut String, snap: &QuerySnapshot) {
     }
 }
 
-/// Render the flows page: every user_visible intent with the saga validations
-/// that VALIDATE it. Vacuous when no user_visible intents or no sagas exist —
-/// renders an honest empty-state rather than skipping the page (the axis is
-/// always present in the bundle for structural consistency).
+/// Render the flows page: every user_visible intent with its saga proofs.
 fn render_flows(s: &mut String, snap: &QuerySnapshot) {
     s.push_str("## Journeys & flows\n\n");
     s.push_str("Every `user_visible` intent with its saga proofs. A saga that hasn't run\n");
@@ -331,13 +505,11 @@ fn render_flows(s: &mut String, snap: &QuerySnapshot) {
         s.push_str("_(no user_visible intents yet)_\n\n");
         return;
     }
-    // Validation id → Validation record, for looking up last_result.
     let val_by_id: HashMap<&str, &crate::types::Validation> = snap
         .validations
         .iter()
         .map(|v| (v.id.as_str(), v))
         .collect();
-    // VALIDATES edges grouped by intent_id → list of validation_ids.
     let mut validates_by_intent: HashMap<&str, Vec<&str>> = HashMap::new();
     for ve in &snap.validates {
         validates_by_intent
@@ -353,15 +525,15 @@ fn render_flows(s: &mut String, snap: &QuerySnapshot) {
             format!("> {}\n\n", j.description)
         };
         s.push_str(&desc);
-        // Find saga-type validations that VALIDATE this intent, keeping the
-        // record reference so we read last_result without a second lookup
-        // (and no panic-marker expect).
         let saga_vals: Vec<&crate::types::Validation> = validates_by_intent
             .get(j.id.as_str())
             .map(|ids| {
                 ids.iter()
                     .filter_map(|vid| {
-                        val_by_id.get(vid).copied().filter(|v| v.validation_type == "saga")
+                        val_by_id
+                            .get(vid)
+                            .copied()
+                            .filter(|v| v.validation_type == "saga")
                     })
                     .collect()
             })
@@ -412,16 +584,16 @@ fn okf_tags_from_rules(snap: &QuerySnapshot) -> Vec<String> {
     tags
 }
 
-/// Render one page to its full file bytes: YAML frontmatter + body.
-fn render_okf_page(page: &OkfPage) -> String {
-    render_okf_page_with_prose(page, "")
-}
-
-/// Render one page with an optional preserved prose body injected between the
-/// sentinels. The skeleton (frontmatter + body + PROSE_START) is byte-stable;
-/// the prose between sentinels is LLM-owned and not byte-checked.
-fn render_okf_page_with_prose(page: &OkfPage, preserved_prose: &str) -> String {
+/// Render one page with an optional preserved prose body. The manifest
+/// (frontmatter including sourceFiles, symbols, provenance stamp) is
+/// byte-stable; the prose between sentinels is LLM-owned and not byte-checked.
+fn render_okf_page_with_prose(
+    page: &OkfPage,
+    preserved_prose: &str,
+    codefile_hashes: &HashMap<&str, &str>,
+) -> String {
     let mut s = String::new();
+    // --- Frontmatter (the manifest layer) ---
     s.push_str("---\n");
     s.push_str(&format!("type: {}\n", page.okf_type));
     s.push_str(&format!("title: {:?}\n", page.title));
@@ -431,12 +603,38 @@ fn render_okf_page_with_prose(page: &OkfPage, preserved_prose: &str) -> String {
             s.push_str(&format!("  - {}\n", t));
         }
     }
+    if !page.source_files.is_empty() {
+        s.push_str("sourceFiles:\n");
+        for f in &page.source_files {
+            s.push_str(&format!("  - {}\n", f));
+        }
+    }
+    if !page.symbols.is_empty() {
+        s.push_str("symbols:\n");
+        for sym in &page.symbols {
+            s.push_str(&format!("  - {}\n", sym));
+        }
+    }
+    // Provenance stamp: file path → content hash. Byte-stable (sorted by path).
+    if !page.source_files.is_empty() {
+        s.push_str("provenance:\n");
+        for f in &page.source_files {
+            let hash = codefile_hashes.get(f.as_str()).copied().unwrap_or("");
+            if !hash.is_empty() {
+                s.push_str(&format!("  {}: {}\n", f, hash));
+            }
+        }
+    }
     s.push_str("---\n\n");
+
+    // --- Body (graph-derived, byte-stable) ---
     s.push_str(&page.body);
     if !page.body.ends_with('\n') {
         s.push('\n');
     }
     s.push('\n');
+
+    // --- Prose sentinels (LLM-owned region) ---
     s.push_str(PROSE_START);
     s.push('\n');
     if !preserved_prose.is_empty() {
@@ -453,82 +651,66 @@ fn render_okf_page_with_prose(page: &OkfPage, preserved_prose: &str) -> String {
 /// Extract the prose body (between PROSE_START and PROSE_END) from a file's
 /// current contents, if any. None = no sentinels yet; Some("") = empty prose.
 fn extract_prose(content: &str) -> Option<String> {
-    // Find the sentinel at LINE START only — the skeleton body may mention
-    // the sentinel string inline (e.g. in backtick code spans like
-    // `<!-- loom:prose-start -->`), which must not be mistaken for the real
-    // sentinel line. A real sentinel is the sole content of its line.
     let start = content
         .lines()
         .position(|line| line.trim() == PROSE_START)?;
     let byte_offset = content
         .lines()
         .take(start)
-        .map(|l| l.len() + 1) // +1 for the newline
+        .map(|l| l.len() + 1)
         .sum::<usize>();
     let after_start = &content[byte_offset + PROSE_START.len()..];
-    let after_start = after_start.strip_prefix('\n').unwrap_or(after_start);
     let end = after_start
         .lines()
         .position(|line| line.trim() == PROSE_END)?;
-    let end_byte = after_start
+    let prose_end_byte = after_start
         .lines()
         .take(end)
         .map(|l| l.len() + 1)
         .sum::<usize>();
-    Some(after_start[..end_byte].to_string())
+    Some(after_start[..prose_end_byte].to_string())
 }
 
 /// The skeleton prefix of a page: frontmatter + body + PROSE_START line.
-/// This is the byte-stable portion `--check` compares (prose after the sentinel
-/// is LLM-owned and excluded from the byte comparison).
-fn skeleton_prefix(page: &OkfPage) -> String {
-    let full = render_okf_page_with_prose(page, "");
-    // Match the sentinel at line start — the skeleton body may mention the
-    // sentinel string inline (in backticks), which must not be mistaken for
-    // the real sentinel line.
-    let line_no = full.lines().position(|l| l.trim() == PROSE_START);
-    if let Some(n) = line_no {
-        let byte_off = full.lines().take(n).map(|l| l.len() + 1).sum::<usize>();
-        full[..byte_off + PROSE_START.len()].to_string()
+/// This is the byte-stable portion `--check` compares.
+fn skeleton_prefix(page: &OkfPage, codefile_hashes: &HashMap<&str, &str>) -> String {
+    let full = render_okf_page_with_prose(page, "", codefile_hashes);
+    // Everything up to and including the PROSE_START line.
+    if let Some(pos) = full.find(PROSE_START) {
+        full[..pos + PROSE_START.len() + 1].to_string() // +1 for the trailing \n
     } else {
         full
     }
 }
 
-/// Write (or `--check`) the bundle directory. Mirrors `emit` for the flat file:
-/// deterministic bytes, atomic-ish writes, same exit semantics. For `--check`,
-/// every file must exist and match byte-for-byte; a missing/stale/extra file is
-/// reported and fails.
+/// Write (or `--check`) the bundle directory. Deterministic bytes, atomic-ish
+/// writes, same exit semantics as `loom export`. For `--check`, every file's
+/// manifest prefix must match byte-for-byte; prose between sentinels is excluded.
 fn emit_okf(
     root: &Path,
     out: &str,
     check: bool,
     pages: &[OkfPage],
+    codefile_hashes: &HashMap<&str, &str>,
     printer: &Printer,
 ) -> Result<()> {
     if out == "-" {
-        anyhow::bail!("--okf emits a directory bundle; cannot write to '-'. Drop '-' to use the default `loom.wiki/`.");
+        anyhow::bail!("wiki emits a directory bundle; cannot write to '-'. Drop '-' to use the default `loom.wiki/`.");
     }
-    let confined = crate::repo::confine(root, Path::new(out))
-        .ok_or_else(|| path_escape_error(out))?;
+    let confined =
+        crate::repo::confine(root, Path::new(out)).ok_or_else(|| path_escape_error(out))?;
     let bundle = root.join(confined);
 
     if check {
-        // Byte-check the SKELETON prefix only — prose between the sentinels is
-        // LLM-owned and excluded from the byte comparison (proposal §two-layers).
-        let mut stale: Vec<&str> = Vec::new();
-        let mut missing: Vec<&str> = Vec::new();
+        let mut stale: Vec<String> = Vec::new();
+        let mut missing: Vec<String> = Vec::new();
         for page in pages {
-            let path = bundle.join(page.rel_path);
+            let path = bundle.join(&page.rel_path);
             let on_disk = fs::read_to_string(&path).ok();
-            let expected_prefix = skeleton_prefix(page);
+            let expected_prefix = skeleton_prefix(page, codefile_hashes);
             match on_disk {
-                None => missing.push(page.rel_path),
+                None => missing.push(page.rel_path.clone()),
                 Some(content) => {
-                    // Match the sentinel at line start only — the skeleton
-                    // body may mention the sentinel string inline (in
-                    // backticks), which must not be mistaken for the real
-                    // sentinel line.
                     let sentinel_line = content.lines().position(|l| l.trim() == PROSE_START);
                     let disk_prefix = if let Some(line_no) = sentinel_line {
                         let byte_off = content
@@ -536,16 +718,12 @@ fn emit_okf(
                             .take(line_no)
                             .map(|l| l.len() + 1)
                             .sum::<usize>();
-                        &content[..byte_off + PROSE_START.len()]
+                        &content[..byte_off + PROSE_START.len() + 1] // +1 for the trailing \n (matches skeleton_prefix)
                     } else {
-                        // No sentinels yet — a pre-prose-layer bundle. Compare
-                        // the whole file to the full rendered page (which now
-                        // includes sentinels); this will flag stale so the
-                        // bundle gets re-emitted with sentinels.
                         content.as_str()
                     };
                     if disk_prefix != expected_prefix {
-                        stale.push(page.rel_path);
+                        stale.push(page.rel_path.clone());
                     }
                 }
             }
@@ -558,7 +736,7 @@ fn emit_okf(
                 "files": pages.len(),
                 "missing": missing,
                 "stale": stale,
-                "next_step": if fresh { format!("commit {out}") } else { format!("run `loom wiki --okf` and commit {out}") },
+                "next_step": if fresh { format!("commit {out}") } else { format!("run `loom wiki` and commit {out}") },
             }));
         } else if fresh {
             println!(
@@ -568,18 +746,22 @@ fn emit_okf(
         } else {
             for m in &missing {
                 println!(
-                    "✗ {}/{} does not exist — run `loom wiki --okf` and commit it.",
+                    "✗ {}/{} does not exist — run `loom wiki` and commit it.",
                     out.trim_end_matches('/'),
                     m
                 );
             }
             for s_file in &stale {
-                println!("✗ {}/{} is STALE — the graph changed since it was written. Run `loom wiki --okf`.", out.trim_end_matches('/'), s_file);
+                println!(
+                    "✗ {}/{} is STALE — the graph changed since it was written. Run `loom wiki`.",
+                    out.trim_end_matches('/'),
+                    s_file
+                );
             }
         }
         if !fresh {
             anyhow::bail!(
-                "wiki bundle is stale or missing — run `loom wiki --okf` and commit the result."
+                "wiki bundle is stale or missing — run `loom wiki` and commit the result."
             );
         }
         return Ok(());
@@ -588,19 +770,16 @@ fn emit_okf(
     fs::create_dir_all(&bundle)?;
     let mut written = 0usize;
     for page in pages {
-        let path = bundle.join(page.rel_path);
+        let path = bundle.join(&page.rel_path);
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        // Preserve any existing LLM-authored prose between the sentinels so
-        // re-emitting the skeleton (after a graph change) does NOT destroy the
-        // prose layer. The prose is re-validated by `--prose-check` separately;
-        // a skeleton re-emit may leave stale prose, which the prose-check flags.
+        // Preserve existing LLM-authored prose between the sentinels.
         let preserved_prose = fs::read_to_string(&path)
             .ok()
             .and_then(|c| extract_prose(&c))
             .unwrap_or_default();
-        let md = render_okf_page_with_prose(page, &preserved_prose);
+        let md = render_okf_page_with_prose(page, &preserved_prose, codefile_hashes);
         let mut tmp = path.as_os_str().to_os_string();
         tmp.push(".tmp");
         fs::write(&tmp, &md)?;
@@ -608,7 +787,6 @@ fn emit_okf(
         written += 1;
     }
     if printer.json {
-        let total_bytes: usize = pages.iter().map(|p| render_okf_page(p).len()).sum();
         printer.print_json(&serde_json::json!({
             "status": "ok",
             "out": out,
@@ -617,9 +795,47 @@ fn emit_okf(
         }));
     } else {
         println!("✓ Wrote {out}  ({written} files)");
-        println!("  → It's a projection — regenerate after graph changes; `loom wiki --okf --check` guards freshness.");
+        println!("  → It's a projection — regenerate after graph changes; `loom wiki --check` guards freshness.");
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Manifest resolver — file-path → intent at check time (invisible to readers).
+// ---------------------------------------------------------------------------
+
+/// Resolve a registered codefile path to the intent id(s) that IMPLEMENT it.
+pub fn resolve_file_to_intent_ids(snap: &QuerySnapshot, path: &str) -> Vec<String> {
+    let mut ids: Vec<String> = snap
+        .implements
+        .iter()
+        .filter(|im| im.codefile_path == path)
+        .map(|im| im.intent_id.clone())
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    ids
+}
+
+/// True when the graph records a non-`independent` RELATES_TO edge between two intents.
+fn intents_coupled_in_graph(snap: &QuerySnapshot, a: &str, b: &str) -> bool {
+    snap.relates.iter().any(|e| {
+        e.inspection_status != "independent"
+            && ((e.from_id == a && e.to_id == b) || (e.from_id == b && e.to_id == a))
+    })
+}
+
+const RELATION_WORDS: &[&str] = &[
+    " calls ",
+    " imports ",
+    " depends on ",
+    " uses ",
+    " invokes ",
+];
+
+fn paragraph_has_relational_claim(para: &str) -> bool {
+    let lower = para.to_ascii_lowercase();
+    RELATION_WORDS.iter().any(|w| lower.contains(w))
 }
 
 // ---------------------------------------------------------------------------
@@ -627,35 +843,25 @@ fn emit_okf(
 //
 // Three gates from docs/repo-wiki-ladder-proposal.md §Falsifiability. None of
 // them trust prose quality — that stays human-gated. They only check that the
-// prose is GROUNDED in the graph the way the skeleton is: every salient node
-// is cited, every citation is fresh, every cross-link resolves.
+// prose is GROUNDED in the graph the way the manifest is: every salient node
+// is covered, every citation resolves, every file is fresh.
 // ---------------------------------------------------------------------------
 
-/// A cited codefile/intent extracted from a prose body via its markdown links.
-/// These are the anchors the gates check against the live graph.
+/// A cited codefile extracted from a prose body via its markdown links.
+/// v2: only file-path citations (no intent:UUID in reader-facing prose).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ProseCitation {
     /// A link to a source file, e.g. `[x](../src/foo.rs)`. Resolves to a
-    /// registered CodeFile path. The freshness gate re-hashes the file.
+    /// registered CodeFile path.
     Codefile { path: String },
-    /// A link to an intent by id, e.g. `[name](intent:uuid)`. Resolves to an
-    /// active Intent. The freshness gate compares the intent's updated_at.
-    Intent { id: String },
 }
 
 /// Heuristic: does this markdown link target look like a path to a source
-/// file (vs an intra-wiki link, a directory, or an external URL)? Used to
-/// decide whether a cross-link is a codefile citation the gates should check.
-/// Conservative — false positives create noise (a link flagged as a codefile
-/// that isn't registered), false negatives create silence (a real codefile
-/// link that isn't checked). We bias toward false positives: a link that
-/// looks file-shaped gets checked, and the consistency gate flags it if it
-/// doesn't resolve to a registered CodeFile.
+/// file (vs an intra-wiki link, a directory, or an external URL)?
 fn looks_like_codefile(target: &str) -> bool {
     if target.is_empty() || target.starts_with("http") || target.starts_with("#") {
         return false;
     }
-    // File extensions loom recognizes as source or doc.
     let is_source_ext = target.ends_with(".rs")
         || target.ends_with(".py")
         || target.ends_with(".ts")
@@ -671,18 +877,12 @@ fn looks_like_codefile(target: &str) -> bool {
         || target.ends_with(".json")
         || target.ends_with(".md")
         || target.ends_with(".sh");
-    // Paths under a `src/` or `tests/` tree are codefile even without an
-    // extension match (rare, but covers generated files).
     let under_source_tree = target.contains("/src/") || target.contains("/tests/");
     is_source_ext || under_source_tree
 }
 
 /// Extract markdown-link citations from a prose body. Walks for `[label](target)`
-/// — simple state machine, no regex dependency. Skips fenced code blocks
-/// (``` … ``` or ~~~ … ~~~): a `[label](target)` shape inside a fence is code
-/// (e.g. a mermaid diagram's `[A] --> [B]` syntax, a code sample), not a prose
-/// citation. Mermaid is explicitly permitted in the prose layer; its brackets
-/// must not be read as cross-links.
+/// — simple state machine, no regex dependency. Skips fenced code blocks.
 fn extract_prose_citations(prose: &str) -> Vec<ProseCitation> {
     let mut out = Vec::new();
     let bytes = prose.as_bytes();
@@ -690,9 +890,6 @@ fn extract_prose_citations(prose: &str) -> Vec<ProseCitation> {
     let mut in_fence = false;
     let mut fence_marker_len = 0;
     while i < bytes.len() {
-        // Detect a fence opening/closing line: a run of backticks or tildes
-        // at the start of a line. Toggle state when the same marker length
-        // reappears at line start (CommonMark fence-matching rule).
         let at_line_start = i == 0 || bytes[i - 1] == b'\n';
         if at_line_start {
             let rest = &prose[i..];
@@ -707,8 +904,6 @@ fn extract_prose_citations(prose: &str) -> Vec<ProseCitation> {
                 if !in_fence {
                     in_fence = true;
                     fence_marker_len = marker;
-                    // Skip past this line so the info string (e.g. `mermaid`)
-                    // is not scanned for brackets.
                     if let Some(nl) = prose[i..].find('\n') {
                         i += nl + 1;
                         continue;
@@ -738,22 +933,13 @@ fn extract_prose_citations(prose: &str) -> Vec<ProseCitation> {
                 if after.starts_with('(') {
                     if let Some(close_paren) = after[1..].find(')') {
                         let target = &after[1..1 + close_paren];
-                        // Strip optional title fragment: `target "title"`.
                         let target = target.split_whitespace().next().unwrap_or(target);
-                        // Classify the link target. The freshness/consistency
-                        // gates only check anchors that point OUT of the wiki
-                        // bundle into the graph's codefiles. Intra-wiki links
-                        // (`architecture.md`, `../flows.md`) are navigation,
-                        // not provenance; directory paths (`src/commands/`)
-                        // are not registered CodeFiles; only file paths that
-                        // resolve to a registered CodeFile are cited.
                         let is_dir = target.ends_with('/');
                         let is_intra_wiki_md = target.ends_with(".md")
                             && !target.starts_with("../")
                             && !target.contains("/src/");
-                        if let Some(id) = target.strip_prefix("intent:") {
-                            out.push(ProseCitation::Intent { id: id.to_string() });
-                        } else if !is_dir && !is_intra_wiki_md && looks_like_codefile(target) {
+                        // v2: no intent:UUID extraction. Only file-path citations.
+                        if !is_dir && !is_intra_wiki_md && looks_like_codefile(target) {
                             let path = target.strip_prefix("../").unwrap_or(target).to_string();
                             out.push(ProseCitation::Codefile { path });
                         }
@@ -765,24 +951,17 @@ fn extract_prose_citations(prose: &str) -> Vec<ProseCitation> {
         }
         i += 1;
     }
-    // De-duplicate — a page citing the same file 5 times owes one freshness check.
     out.sort_by(|a, b| match (a, b) {
         (ProseCitation::Codefile { path: pa }, ProseCitation::Codefile { path: pb }) => pa.cmp(pb),
-        (ProseCitation::Intent { id: ia }, ProseCitation::Intent { id: ib }) => ia.cmp(ib),
-        (ProseCitation::Codefile { .. }, ProseCitation::Intent { .. }) => std::cmp::Ordering::Less,
-        (ProseCitation::Intent { .. }, ProseCitation::Codefile { .. }) => {
-            std::cmp::Ordering::Greater
-        }
     });
     out.dedup();
     out
 }
 
-/// The set of salient graph nodes that OWE a citation in some prose page
+/// The set of salient graph nodes that OWE coverage in some wiki page
 /// (proposal §Coverage). Altitude-calibrated: system + component intents,
-/// user_visible intents (journeys), and vocab-tagged intents (glossary).
-/// Leaf feature intents are NOT individually owed — they are reached through
-/// their component's page and the deterministic skeleton.
+/// user_visible intents (journeys). Leaf feature intents are NOT individually
+/// owed — they are reached through their component's module page.
 fn salient_intents(snap: &QuerySnapshot) -> Vec<&Intent> {
     snap.intents
         .iter()
@@ -791,13 +970,11 @@ fn salient_intents(snap: &QuerySnapshot) -> Vec<&Intent> {
                 || i.abstraction_level == "component"
                 || i.visibility == "user_visible"
         })
-        // Skip deprecated intents — invisible to computation per the retire contract.
         .filter(|i| i.status != "deprecated")
         .collect()
 }
 
-/// A single prose-check finding (a gate failure). Human-readable `remedy` so
-/// `--prose-check` output is actionable the way `loom smells` is.
+/// A single prose-check finding (a gate failure).
 #[derive(Debug, Clone)]
 struct ProseFinding {
     gate: &'static str,
@@ -815,27 +992,30 @@ fn prose_check(
     snap: &QuerySnapshot,
 ) -> Result<Vec<ProseFinding>> {
     let mut findings = Vec::new();
-    let confined = crate::repo::confine(root, Path::new(out))
-        .ok_or_else(|| path_escape_error(out))?;
+    let confined =
+        crate::repo::confine(root, Path::new(out)).ok_or_else(|| path_escape_error(out))?;
     let bundle = root.join(confined);
 
-    // Codefile path → content_hash, for the freshness gate.
-    let codefile_hashes: HashMap<&str, &str> = snap
-        .codefiles
-        .iter()
-        .map(|c| (c.path.as_str(), c.content_hash.as_str()))
-        .collect();
     let codefile_paths: HashSet<&str> = snap.codefiles.iter().map(|c| c.path.as_str()).collect();
-    // Intent id → active intent, for the consistency + freshness gates.
-    let intent_by_id: HashMap<&str, &Intent> =
-        snap.intents.iter().map(|i| (i.id.as_str(), i)).collect();
 
-    // Collect all citations across all pages (union, for the coverage gate).
-    let mut all_cited_intent_ids: HashSet<String> = HashSet::new();
-    let mut page_prose: Vec<(&OkfPage, String)> = Vec::new();
+    // Build: intent_id → its IMPLEMENTS file paths (for coverage gate).
+    let mut files_of_intent: HashMap<&str, Vec<&str>> = HashMap::new();
+    for im in &snap.implements {
+        files_of_intent
+            .entry(im.intent_id.as_str())
+            .or_default()
+            .push(im.codefile_path.as_str());
+    }
+    for v in files_of_intent.values_mut() {
+        v.sort_unstable();
+        v.dedup();
+    }
+
+    // Collect all sourceFiles across all pages (union, for the coverage gate).
+    let mut all_cited_files: HashSet<String> = HashSet::new();
 
     for page in pages {
-        let path = bundle.join(page.rel_path);
+        let path = bundle.join(&page.rel_path);
         let on_disk = fs::read_to_string(&path).ok();
         let prose = on_disk
             .as_ref()
@@ -843,115 +1023,157 @@ fn prose_check(
             .unwrap_or_default();
 
         // Gate: prose-empty — a page with no prose body between the sentinels.
-        // Only flag pages that are expected to carry narrative (skip decisions,
-        // which is a pure projection of decision notes and has no narrative
-        // prose obligation — its content is already graph-derived).
-        if prose.trim().is_empty() && page.okf_type != "decision" {
+        // Skip decision pages (pure projection, no narrative obligation) and
+        // module pages with no sourceFiles (a component with no grounded code).
+        let skip_empty = page.okf_type == "decision";
+        if prose.trim().is_empty() && !skip_empty {
             findings.push(ProseFinding {
                 gate: "prose-empty",
-                page: page.rel_path.to_string(),
+                page: page.rel_path.clone(),
                 finding: "no prose between the sentinels — this page has no narrative".to_string(),
                 remedy: format!(
-                    "author narrative prose on `{}` between the `<!-- loom:prose-start -->` and `<!-- loom:prose-end -->` sentinels; cite the salient intents/codefiles it explains",
+                    "author narrative prose on `{}` between the `<!-- loom:prose-start -->` and `<!-- loom:prose-end -->` sentinels; cite the codefiles it explains via `[`path`](../src/path)`",
                     page.rel_path
                 ),
             });
         }
 
+        // Collect sourceFiles from frontmatter (the manifest layer).
+        for f in &page.source_files {
+            all_cited_files.insert(f.clone());
+        }
+
+        // Gate: consistency — every sourceFiles entry resolves to a registered CodeFile
+        // and, via the manifest resolver, to at least one grounded intent.
+        for f in &page.source_files {
+            if !codefile_paths.contains(f.as_str()) {
+                findings.push(ProseFinding {
+                    gate: "consistency",
+                    page: page.rel_path.clone(),
+                    finding: format!(
+                        "sourceFiles entry `{f}` is not a registered CodeFile"
+                    ),
+                    remedy: format!(
+                        "fix the sourceFiles in `{}` frontmatter, or register the file via `loom codefile add` if it is real",
+                        page.rel_path
+                    ),
+                });
+            } else if resolve_file_to_intent_ids(snap, f).is_empty() {
+                findings.push(ProseFinding {
+                    gate: "consistency",
+                    page: page.rel_path.clone(),
+                    finding: format!(
+                        "sourceFiles entry `{f}` is registered but ungrounded — no IMPLEMENTS edge maps it to an intent"
+                    ),
+                    remedy: format!(
+                        "ground `{f}` with `loom edge implement <intent> {f} --locator \"<symbol>\"`, or remove it from `{}` sourceFiles",
+                        page.rel_path
+                    ),
+                });
+            }
+        }
+
+        // Gate: consistency — every codefile link in prose resolves.
         let citations = extract_prose_citations(&prose);
         for cit in &citations {
             match cit {
-                ProseCitation::Intent { id } => {
-                    all_cited_intent_ids.insert(id.clone());
-                    // Gate: consistency — a cited intent id must resolve to an
-                    // active (non-retired) graph node.
-                    if !intent_by_id.contains_key(id.as_str()) {
-                        findings.push(ProseFinding {
-                            gate: "consistency",
-                            page: page.rel_path.to_string(),
-                            finding: format!(
-                                "cross-link cites intent `{id}` which is not an active graph node",
-                            ),
-                            remedy: format!(
-                                "fix the link on `{}`, or record the intent via `loom intent add` if it is real",
-                                page.rel_path
-                            ),
-                        });
-                    }
-                }
                 ProseCitation::Codefile { path } => {
-                    // Gate: consistency — a cited codefile path must resolve to
-                    // a registered CodeFile.
+                    all_cited_files.insert(path.clone());
                     if !codefile_paths.contains(path.as_str()) {
                         findings.push(ProseFinding {
                             gate: "consistency",
-                            page: page.rel_path.to_string(),
+                            page: page.rel_path.clone(),
                             finding: format!(
-                                "cross-link cites file `{path}` which is not a registered CodeFile",
+                                "prose links to file `{path}` which is not a registered CodeFile"
                             ),
                             remedy: format!(
                                 "fix the link on `{}`, or register the file via `loom codefile add` if it is real",
                                 page.rel_path
                             ),
                         });
-                    } else {
-                        // Gate: freshness — the cited file's content-hash must
-                        // match the registered hash. An empty stored hash means
-                        // never-synced; we cannot check freshness (vacuously
-                        // passes, same as the sync fallback).
-                        if let Some(&registered) = codefile_hashes.get(path.as_str()) {
-                            if !registered.is_empty() {
-                                // Freshness is checked by comparing the stored
-                                // hash to the on-disk file's current hash. But
-                                // we do NOT re-hash here (the graph's hash IS
-                                // the registered hash; freshness means the
-                                // graph's hash matches the file on disk, which
-                                // `loom sync` already verifies). The prose
-                                // freshness gate is: did the codefile change
-                                // since the prose was written? Without a
-                                // per-section stamp, we approximate: if the
-                                // file is in the graph, it is "fresh" relative
-                                // to the graph. The real freshness gate is the
-                                // `loom sync` content-hash vs disk, which is
-                                // already enforced. So this gate is a no-op
-                                // for codefiles that resolve — the consistency
-                                // check is the load-bearing one for files.
-                            }
-                        }
                     }
                 }
             }
         }
 
-        page_prose.push((page, prose));
+        // Gate: fabricated-relationship — relational prose between two cited files
+        // must be backed by a non-independent RELATES_TO edge between their intents.
+        for para in prose.split("\n\n") {
+            if !paragraph_has_relational_claim(para) {
+                continue;
+            }
+            let para_citations = extract_prose_citations(para);
+            if para_citations.len() < 2 {
+                continue;
+            }
+            for i in 0..para_citations.len() {
+                for j in (i + 1)..para_citations.len() {
+                    let (pa, pb) = match (&para_citations[i], &para_citations[j]) {
+                        (
+                            ProseCitation::Codefile { path: pa },
+                            ProseCitation::Codefile { path: pb },
+                        ) => (pa.as_str(), pb.as_str()),
+                    };
+                    let ia = resolve_file_to_intent_ids(snap, pa);
+                    let ib = resolve_file_to_intent_ids(snap, pb);
+                    if ia.is_empty() || ib.is_empty() {
+                        continue;
+                    }
+                    let coupled = ia.iter().any(|a| {
+                        ib.iter()
+                            .any(|b| intents_coupled_in_graph(snap, a.as_str(), b.as_str()))
+                    });
+                    if !coupled {
+                        findings.push(ProseFinding {
+                            gate: "fabricated-relationship",
+                            page: page.rel_path.clone(),
+                            finding: format!(
+                                "prose claims a relationship between `{pa}` and `{pb}` but no backing RELATES_TO edge exists between their grounded intents"
+                            ),
+                            remedy: format!(
+                                "fix the prose on `{}`, or record the coupling with `loom edge explore <intent-a> <intent-b> ground`",
+                                page.rel_path
+                            ),
+                        });
+                    }
+                }
+            }
+        }
     }
 
-    // Gate: coverage — every salient intent must be cited by >=1 page.
+    // Gate: coverage — every salient intent with grounded files must have at
+    // least one of its files appear in some page's sourceFiles or prose links.
     let salient = salient_intents(snap);
     for intent in &salient {
-        if !all_cited_intent_ids.contains(intent.id.as_str()) {
-            findings.push(ProseFinding {
-                gate: "coverage",
-                page: "(bundle)".to_string(),
-                finding: format!(
-                    "salient intent `{}` ({}) is not cited by any prose page",
-                    intent.name, intent.id
-                ),
-                remedy: format!(
-                    "cite `{}` via `[{}](intent:{})` in at least one prose page (e.g. architecture.md or components.md)",
-                    intent.name, intent.name, intent.id
-                ),
-            });
+        let its_files = files_of_intent.get(intent.id.as_str());
+        if let Some(files) = its_files {
+            // Does any of this intent's files appear in the union?
+            let covered = files.iter().any(|f| all_cited_files.contains(*f));
+            if !covered && !files.is_empty() {
+                findings.push(ProseFinding {
+                    gate: "coverage",
+                    page: "(bundle)".to_string(),
+                    finding: format!(
+                        "salient intent `{}` ({}) has grounded files but none appear in any page's sourceFiles or prose",
+                        intent.name, intent.id
+                    ),
+                    remedy: format!(
+                        "cite one of {} in a page's sourceFiles or prose (e.g. the module page `modules/{}.md`)",
+                        files.iter().map(|f| format!("`{f}`")).collect::<Vec<_>>().join(", "),
+                        slugify(&intent.name)
+                    ),
+                });
+            }
         }
+        // Intents with NO grounded files are vacuously covered (nothing to cite).
     }
 
     Ok(findings)
 }
 
-/// `loom wiki --okf --prose-check` entry point. Runs the three mechanical gates
-/// and reports findings; exits non-zero if any gate fails. The fourth gate
-/// (prose quality) is human-judged and intentionally NOT certified here.
-pub fn run_okf_prose_check(out: &str, printer: &Printer) -> Result<()> {
+/// `loom wiki --prose-check` entry point. Runs the three mechanical gates
+/// and reports findings; exits non-zero if any gate fails.
+pub fn run_prose_check(out: &str, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
     let snap = store.query_snapshot()?;
@@ -1006,57 +1228,143 @@ pub fn run_okf_prose_check(out: &str, printer: &Printer) -> Result<()> {
     )
 }
 
-// ---------------------------------------------------------------------------
-// File write / freshness check — mirrors `loom export` (deterministic bytes).
-// ---------------------------------------------------------------------------
+/// Map a prose-check gate to the comprehension-queue work kind.
+fn wiki_queue_kind(gate: &str) -> &'static str {
+    match gate {
+        "fabricated-relationship" => "fabricated-link",
+        "stale-manifest" => "stale-page",
+        "prose-empty" | "coverage" => "write-gap",
+        _ => "write-gap",
+    }
+}
 
-fn emit(root: &Path, out: &str, check: bool, md: &str, printer: &Printer) -> Result<()> {
-    if check {
-        if out == "-" {
-            anyhow::bail!("--check needs a file to compare against (not '-').");
+/// Collect manifest-stale pages (skeleton prefix drift) for the wiki lane.
+fn manifest_stale_pages(
+    root: &Path,
+    out: &str,
+    pages: &[OkfPage],
+    codefile_hashes: &HashMap<&str, &str>,
+) -> Result<Vec<ProseFinding>> {
+    let mut findings = Vec::new();
+    let confined =
+        crate::repo::confine(root, Path::new(out)).ok_or_else(|| path_escape_error(out))?;
+    let bundle = root.join(confined);
+    for page in pages {
+        let path = bundle.join(&page.rel_path);
+        let on_disk = fs::read_to_string(&path).ok();
+        let expected_prefix = skeleton_prefix(page, codefile_hashes);
+        if let Some(content) = on_disk {
+            let sentinel_line = content.lines().position(|l| l.trim() == PROSE_START);
+            let disk_prefix = if let Some(line_no) = sentinel_line {
+                let byte_off = content
+                    .lines()
+                    .take(line_no)
+                    .map(|l| l.len() + 1)
+                    .sum::<usize>();
+                &content[..byte_off + PROSE_START.len() + 1]
+            } else {
+                content.as_str()
+            };
+            if disk_prefix != expected_prefix {
+                findings.push(ProseFinding {
+                    gate: "stale-manifest",
+                    page: page.rel_path.clone(),
+                    finding: format!(
+                        "manifest provenance for `{}` no longer matches the live graph",
+                        page.rel_path
+                    ),
+                    remedy: format!(
+                        "re-read the grounded files and rewrite `{}`, then run `loom wiki` to refresh the manifest",
+                        page.rel_path
+                    ),
+                });
+            }
         }
-        let confined = crate::repo::confine(root, Path::new(out))
-            .ok_or_else(|| path_escape_error(out))?;
-        let on_disk = fs::read_to_string(root.join(confined)).ok();
-        let fresh = on_disk.as_deref() == Some(md);
+    }
+    Ok(findings)
+}
+
+/// `loom next --mode wiki` — drain the comprehension queue one finding at a time.
+pub fn run_next_wiki(out: &str, printer: &Printer) -> Result<()> {
+    let cwd = crate::db::resolve_root()?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
+    let snap = store.query_snapshot()?;
+    let gs = store.graph_state(&snap)?;
+    let meta = store.graph_meta()?;
+    let decision_notes = store.list_notes(None, Some("decision")).unwrap_or_default();
+    let pages = render_okf_bundle(&snap, meta.as_ref(), &decision_notes);
+    let codefile_hashes: HashMap<&str, &str> = snap
+        .codefiles
+        .iter()
+        .map(|c| (c.path.as_str(), c.content_hash.as_str()))
+        .collect();
+
+    let mut findings = prose_check(&cwd, out, &pages, &snap)?;
+    findings.extend(manifest_stale_pages(&cwd, out, &pages, &codefile_hashes)?);
+
+    // Priority: fabricated-link > stale-page > write-gap (coverage before prose-empty).
+    fn rank(gate: &str) -> u8 {
+        match gate {
+            "fabricated-relationship" => 0,
+            "stale-manifest" => 1,
+            "coverage" => 2,
+            "consistency" => 3,
+            "prose-empty" => 4,
+            _ => 5,
+        }
+    }
+    findings.sort_by(|a, b| {
+        rank(a.gate)
+            .cmp(&rank(b.gate))
+            .then_with(|| a.page.cmp(&b.page))
+            .then_with(|| a.finding.cmp(&b.finding))
+    });
+
+    if findings.is_empty() {
         if printer.json {
             printer.print_json(&serde_json::json!({
-                "status": if fresh { "ok" } else if on_disk.is_none() { "missing" } else { "stale" },
-                "out": out,
-                "next_step": if fresh { format!("commit {out}") } else { format!("run `loom wiki` and commit {out}") },
+                "status": "empty",
+                "mode": "wiki",
+                "message": "Comprehension queue is empty — prose layer mechanically green.",
+                "next_step": gs.next_action,
+                "graph_state": crate::output::pulse_json(&gs),
             }));
-        } else if fresh {
-            println!("{}", crate::output::up_to_date_line(&out));
-        } else if on_disk.is_none() {
-            println!("✗ {out} does not exist — run `loom wiki` and commit it.");
         } else {
-            println!("✗ {out} is STALE — the graph changed since it was written. Run `loom wiki`.");
-        }
-        if !fresh {
-            anyhow::bail!("wiki is stale or missing — run `loom wiki` and commit the result.");
+            println!("✓ Comprehension queue empty — prose layer mechanically green.");
+            println!();
+            println!("  {}", crate::output::fmt_pulse(&gs));
         }
         return Ok(());
     }
 
-    if out == "-" {
-        println!("{md}");
-        return Ok(());
-    }
-    let confined = crate::repo::confine(root, Path::new(out))
-        .ok_or_else(|| path_escape_error(out))?;
-    let target = root.join(confined);
-    let mut tmp = target.as_os_str().to_os_string();
-    tmp.push(".tmp");
-    fs::write(&tmp, md)?;
-    fs::rename(&tmp, &target)?;
+    let f = &findings[0];
+    let queue_kind = wiki_queue_kind(f.gate);
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok",
-            "next_step": commit_step(out),
+            "mode": "wiki",
+            "queue_kind": queue_kind,
+            "gate": f.gate,
+            "page": f.page,
+            "finding": f.finding,
+            "remedy": f.remedy,
+            "queue_total": findings.len(),
+            "next_step": f.remedy,
+            "graph_state": crate::output::pulse_json(&gs),
         }));
     } else {
-        println!("✓ Wrote {out}  ({} bytes)", md.len());
-        println!("  → It's a projection — regenerate after graph changes; `loom wiki --check` guards freshness.");
+        println!(
+            "── Next Wiki Item  [{queue_kind} — {} remaining] ──",
+            findings.len()
+        );
+        println!();
+        println!("  Page:    {}", f.page);
+        println!("  Gate:    {}", f.gate);
+        println!("  Finding: {}", f.finding);
+        println!();
+        println!("  → {}", f.remedy);
+        println!();
+        println!("  {}", crate::output::fmt_pulse(&gs));
     }
     Ok(())
 }
@@ -1066,28 +1374,6 @@ fn emit(root: &Path, out: &str, check: bool, md: &str, printer: &Printer) -> Res
 // ---------------------------------------------------------------------------
 
 const NO_DOMAIN: &str = "(uncategorized)";
-
-fn render_wiki(snap: &QuerySnapshot, meta: Option<&GraphMeta>) -> String {
-    let name = meta
-        .map(|m| m.graph_name.clone())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "loom graph".to_string());
-
-    let mut s = String::new();
-    s.push_str(&format!("# {name} — loom wiki\n\n"));
-    s.push_str("> Generated from the loom intent graph by `loom wiki` — do not edit by hand.\n");
-    s.push_str(
-        "> Regenerate after graph changes (`loom wiki`); `loom wiki --check` verifies freshness.\n",
-    );
-    s.push_str("> The graph is the source of truth; this file is a projection of it.\n\n");
-
-    render_overview(&mut s, snap);
-    render_architecture(&mut s, snap);
-    render_components(&mut s, snap);
-    render_quality(&mut s, snap);
-
-    s
-}
 
 fn sorted_unique<'a>(vals: impl Iterator<Item = &'a str>) -> Vec<&'a str> {
     let mut v: Vec<&str> = vals.filter(|x| !x.is_empty()).collect();
@@ -1162,7 +1448,6 @@ fn render_node<'a>(
     depth: usize,
     visited: &mut HashSet<&'a str>,
 ) {
-    // Tree guard — a HIERARCHY should be acyclic, but never loop on bad data.
     if depth > 12 || !visited.insert(intent.id.as_str()) {
         return;
     }
@@ -1195,7 +1480,6 @@ fn render_components(s: &mut String, snap: &QuerySnapshot) {
     s.push_str("## Components & code\n\n");
     s.push_str("Intents grouped by domain, with where each is grounded in code.\n\n");
 
-    // intent id → sorted unique grounded file paths.
     let mut files_of: HashMap<&str, Vec<&str>> = HashMap::new();
     for im in &snap.implements {
         files_of
@@ -1208,7 +1492,6 @@ fn render_components(s: &mut String, snap: &QuerySnapshot) {
         v.dedup();
     }
 
-    // domains in deterministic order, uncategorized last.
     let mut domains = sorted_unique(snap.intents.iter().map(|i| i.domain.as_str()));
     let has_uncat = snap.intents.iter().any(|i| i.domain.is_empty());
     if has_uncat {

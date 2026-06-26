@@ -54,7 +54,7 @@ loom next --all
   (`human_gated` total in json; ⚑ lines in human mode; `loom status` carries
   the same summary plus blocked proofs).
 
-loom next [--mode discovery|fix|build|validate|quality|review|prove|align] [--take N] [--compact]
+loom next [--mode discovery|fix|build|validate|quality|review|prove|align|refactor] [--take N] [--compact]
   One queue per agent role:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
@@ -95,8 +95,19 @@ loom next [--mode discovery|fix|build|validate|quality|review|prove|align] [--ta
   refute; re-proving re-stamps the edges). The work item carries the claim,
   targets, their groundings, and the prove command. Optional like
   discovery/review — speculation never blocks complete.
-  --take N (discovery/fix/quality, capped 50) = the bulk READ half of the batch
-  loop: N COMPACT items in ONE call instead of one rich item + anchor per call.
+  refactor = the post-green TDD refactor step (builder, effort high): the static,
+  NON-GATING real-code ADVISORY findings — size (oversized_file,
+  large_behavioral_symbol) plus OPEN code clones (deliberate/hypothesis-tracked
+  clones are already disposed), ranked by blast radius. Git-derived advisories
+  (cochange_coupling, shotgun_surgery) stay in `loom smells` so this lane keeps
+  `loom next` git-free. Each item carries the three-way remedy: fix now, DEFER as
+  tracked work (`loom hypothesis add` → `adopt --spawned`), or rule it deliberate
+  (`loom note add --smell`). NEVER gates green — bare `loom next` routes here only
+  once every gating rung is cleared (the maturity ladder's focus is None); the
+  Hardened rung detail surfaces the advisory count so green isn't read as "done".
+  --take N (discovery/fix/quality/align/review/refactor, capped 50) = the bulk
+  READ half of the batch loop: N COMPACT items in ONE call instead of one rich
+  item + anchor per call (refactor serves a ranked advisory list, no batch op).
   discovery/fix group by the file that staled them (parsed from sync transition
   notes, indexed in one scan — never per-item) with prefilled `ground` template
   lines; quality groups by INTENT (one neighborhood read pays for every rule

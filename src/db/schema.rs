@@ -93,8 +93,15 @@
 /// (measured but not fully discharged — bounded, not complete). All additive —
 /// older graphs gain columns on open via ensure_taxonomy_columns; the governs
 /// CHECK rebuild mirrors the v10 intent.lifecycle pattern.
-pub const SCHEMA_VERSION: &str = "12";
-
+/// v13 (wiki v2 hard-cut): code-primary repo wiki machinery — `loom wiki` now
+/// always emits the v2 bundle (directory of markdown concept files with
+/// `sourceFiles`+`symbols`+`provenance` frontmatter, one module page per
+/// component intent, code-primary prose with file-path links, no `intent:UUID`
+/// in reader-facing prose). The flat `loom.wiki.md`, the `--okf` flag, and the
+/// graph-primary OKF emitter are deleted. No schema changes — same graph shape,
+/// different wiki projection. Migration: re-export with v13 binary, delete old
+/// `loom.wiki.md`, run `loom wiki` to generate the v2 bundle.
+pub const SCHEMA_VERSION: &str = "13";
 pub const INBOX_KINDS: &[&str] = &[
     "observation",
     "user_request",

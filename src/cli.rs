@@ -122,12 +122,15 @@ pub enum Command {
         /// (validator: run/repair proofs) | align (validator: re-affirm intent
         /// meaning against the user) | quality (quality: earn GOVERNS green)
         /// | review (re-inspect uncertain or high-risk verdicts) | prove
-        /// (analyzer: prove proposed hypotheses — the pre-decision plane, optional).
+        /// (analyzer: prove proposed hypotheses — the pre-decision plane, optional)
+        /// | refactor (builder: real-code ADVISORY findings — size + open code
+        /// clones — never gates green, the post-green TDD refactor step).
         /// OMIT --mode to follow the compass phase (`loom status` shows it):
         /// bare `loom next` serves the phase's lane — fix when there are
         /// failures/staleness, build when intents need realizing, validate
-        /// when proofs are pending, quality when gates are unchecked, and
-        /// discovery once the vertical spine is green.
+        /// when proofs are pending, quality when gates are unchecked, discovery
+        /// once the vertical spine is green, and refactor once every gating rung
+        /// is cleared (advisory work, never blocking).
         #[arg(long)]
         mode: Option<String>,
 
@@ -644,55 +647,49 @@ pub enum Command {
         check: bool,
     },
 
-    /// Generate a human-readable Markdown wiki from the graph (overview +
-    /// architecture tree + components-by-domain + quality bars). A deterministic
-    /// PROJECTION like `loom export` — same graph, identical bytes; regenerate
-    /// after changes and `loom wiki --check` guards freshness. For humans to
-    /// read; the graph stays the source of truth.
+    /// Generate a code-primary repo wiki — a directory bundle of markdown
+    /// concept files whose prose links to source files (not intent UUIDs),
+    /// with the intent graph as an invisible manifest. v2 hard-cut: the flat
+    /// `loom.wiki.md` and the `--okf` flag are retired; `loom wiki` always
+    /// emits the bundle. One file per component module + topical pages for
+    /// architecture, components, quality, glossary, decisions, and flows.
+    /// The manifest layer (frontmatter + provenance stamp) is byte-`--check`able;
+    /// the prose layer (code-primary narrative) is gate-checked via `--prose-check`.
     #[command(after_help = "EXAMPLE:\n  \
-        loom wiki                       # write loom.wiki.md\n  \
-        loom wiki docs/ARCH.md          # choose the path\n  \
-        loom wiki -                     # to stdout\n  \
-        loom wiki --check               # CI/pre-commit: fail if stale\n  \
-        loom wiki --okf --check         # verify the bundle is fresh\n  \
-        loom wiki --okf --prose-check   # certify the LLM-authored prose layer")]
+        loom wiki                       # emit loom.wiki/ bundle\n  \
+        loom wiki docs/wiki/            # choose the output directory\n  \
+        loom wiki --check               # CI/pre-commit: fail if manifest stale\n  \
+        loom wiki --prose-check         # certify the prose layer (coverage + freshness + consistency)")]
     Wiki {
-        /// Output file ("-" for stdout) or, with `--okf`, the bundle directory
-        /// (defaults `loom.wiki/`). Positional, mirroring `loom export` and
-        /// `loom import <file>`. Without `--okf`, defaults to `loom.wiki.md`.
+        /// Output directory (defaults `loom.wiki/`). Positional, mirroring
+        /// `loom export` and `loom import <file>`.
         path: Option<String>,
 
-        /// Output file (legacy flag form; same as the positional path).
+        /// Output directory (legacy flag form; same as the positional path).
         #[arg(long, conflicts_with = "path")]
         out: Option<String>,
 
-        /// Don't write — verify the existing wiki matches the live graph
-        /// byte-for-byte (exits non-zero on drift / missing). With `--okf`,
-        /// verifies every file in the bundle directory.
+        /// Don't write — verify the existing wiki manifest matches the live
+        /// graph byte-for-byte (exits non-zero on drift / missing).
         #[arg(long)]
         check: bool,
 
-        /// Emit an OKF v0.1 bundle (a directory of markdown concept files with
-        /// YAML frontmatter) instead of a single flat file. The deterministic
-        /// skeleton: `index.md` + concept files for each axis (architecture,
-        /// components, quality, glossary, decisions, flows), each with `type`/
-        /// `title`/`tags` frontmatter. The graph-derived body is identical bytes
-        /// to the flat wiki's sections where applicable; `--check` byte-compares
-        /// every file in the bundle. Companion to `docs/repo-wiki-ladder-proposal.md`
-        /// — the skeleton layer an LLM later hangs prose on.
+        /// Legacy flag — kept for backward compatibility with v1 scripts.
+        /// v2 always emits the bundle; `--okf` is a no-op alias. No longer
+        /// required by `--prose-check`.
         #[arg(long)]
         okf: bool,
 
-        /// Certify the LLM-authored prose layer (the narrative hung on the OKF
-        /// skeleton) by three mechanical gates from
-        /// `docs/repo-wiki-ladder-proposal.md`: coverage (every salient intent
-        /// cited by >=1 page), freshness (every cited codefile's content-hash
-        /// matches the registered hash), and consistency (every cross-link
-        /// resolves to a real graph node). Prose QUALITY is human-gated and
-        /// intentionally NOT certified here. Requires `--okf`. Exits non-zero
-        /// on any finding. The comprehension axis is green when this passes AND
-        /// the human-gated prose-quality queue is drained.
-        #[arg(long, requires = "okf")]
+        /// Certify the LLM-authored prose layer by three mechanical gates
+        /// from `docs/repo-wiki-ladder-proposal.md`: coverage (every salient
+        /// intent's grounded files appear in some page's sourceFiles), freshness
+        /// (the provenance stamp matches the graph's content hashes), and
+        /// consistency (every file-path link resolves to a registered CodeFile).
+        /// Prose QUALITY is human-gated and intentionally NOT certified here.
+        /// v2: no longer requires --okf (the bundle is always the output).
+        /// Exits non-zero on any finding. The comprehension axis is green when
+        /// this passes AND the human-gated prose-quality queue is drained.
+        #[arg(long)]
         prose_check: bool,
     },
 

@@ -32,10 +32,12 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
     let decision_notes = store.notes_by_kind("decision")?;
 
     // Open smells are meaningful only at the audit gate (same rule as status).
-    let open_smells = if matches!(gs.phase.as_str(), "audit" | "complete") {
-        store.smell_report(&snapshot)?.open
+    let (open_smells, advisory_count) = if matches!(gs.phase.as_str(), "audit" | "complete") {
+        let report = store.smell_report(&snapshot)?;
+        let advisory_count = report.advisory.len();
+        (report.open, advisory_count)
     } else {
-        Vec::new()
+        (Vec::new(), 0)
     };
     let inbox = store.list_inbox_items(None, None)?;
     let inbox_untriaged = inbox.iter().filter(|i| i.status == "new").count();
@@ -48,6 +50,7 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
         &decision_notes,
         &inbox,
         &open_smells,
+        advisory_count,
         inbox_untriaged,
         export_stale,
     );

@@ -828,13 +828,22 @@ fn run_unexplored_with_sqlite(
     printer: &Printer,
 ) -> Result<()> {
     use crate::db::queries::scoring::{
-        unexplored_pairs_scored_from_snapshot, DiscoveryClassFilter,
+        bucket_disclosure_line, capped_discovery_buckets, inject_capped_buckets,
+        unexplored_pairs_scored_from_snapshot, CappedBucket, DiscoveryClassFilter,
     };
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let snapshot = store.query_snapshot()?;
     // Default to `all`: every unexplored pair is owed for phase=complete. The
     // narrower classes (`suspected-coupling`, `impact-map`) only prioritise.
     let class_filter = DiscoveryClassFilter::parse(class.as_deref().or(Some("all")))?;
+    // The dense-bucket cap only fires in the `suspected-coupling` lane; disclose
+    // what it excluded here too (parity with `loom next`). Empty for `all`/
+    // `impact-map`, which do the exhaustive walk.
+    let capped: Vec<CappedBucket> = if class_filter == DiscoveryClassFilter::SuspectedCoupling {
+        capped_discovery_buckets(&snapshot)?
+    } else {
+        Vec::new()
+    };
     let mut pairs = unexplored_pairs_scored_from_snapshot(&snapshot, class_filter)?;
     pairs.sort_by(|a, b| {
         b.1.partial_cmp(&a.1)
@@ -875,19 +884,26 @@ fn run_unexplored_with_sqlite(
                 })
             })
             .collect();
-        printer.print_json(&serde_json::json!({
+        let mut v = serde_json::json!({
             "unexplored_pairs": items,
             "total": total,
             "shown": pairs.len(),
             "class": class_filter.as_cli_value(),
             "more": more_marker(total, pairs.len(), "loom edge unexplored --limit 0"),
             "next_step": next,
-        }));
+        });
+        if let Some(obj) = v.as_object_mut() {
+            inject_capped_buckets(obj, &capped);
+        }
+        printer.print_json(&v);
     } else if pairs.is_empty() {
         println!(
             "(no unexplored pairs for class '{}')",
             class_filter.as_cli_value()
         );
+        if let Some(line) = bucket_disclosure_line(&capped) {
+            println!("  {line}");
+        }
     } else {
         println!(
             "── unexplored pairs ({} class) ───────────────────────────────",
@@ -907,6 +923,9 @@ fn run_unexplored_with_sqlite(
             println!("  {marker}");
         }
         println!("  → {next}");
+        if let Some(line) = bucket_disclosure_line(&capped) {
+            println!("  {line}");
+        }
     }
     Ok(())
 }

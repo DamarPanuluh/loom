@@ -51,6 +51,7 @@ fn reproduces_loom_frozen_rung_vector() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
+        advisory_count: 0,
         doc_only_realizations: &doc_only,
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,
@@ -113,6 +114,7 @@ fn library_collapses_proven_to_not_applicable() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
+        advisory_count: 0,
         doc_only_realizations: &[],
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,
@@ -165,6 +167,7 @@ fn all_green_is_production_ready() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
+        advisory_count: 0,
         doc_only_realizations: &[],
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,
@@ -181,6 +184,57 @@ fn all_green_is_production_ready() {
     assert_eq!(
         ladder.focus_summary(),
         "✓ PRODUCTION-READY — proven, comprehensive, durable."
+    );
+}
+
+/// Advisory findings are surfaced on the Hardened rung's `detail` but NEVER
+/// gate it: a fully-green repo with open advisories stays Hardened ✓ /
+/// Production-ready, and the vector discloses the count so green never reads as
+/// "nothing left to look at" (the routed-not-gated refactor step).
+#[test]
+fn advisories_show_on_hardened_detail_without_gating() {
+    let gs = GraphState {
+        vertically_complete: true,
+        horizontally_explored: true,
+        coverage: Coverage360 {
+            realized_leaves: axis(5, 5),
+            proven_executed_leaves: axis(5, 5),
+            measured_pairs: axis(9, 9),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let entrypoint = axis(12, 12);
+    let boundary = axis(3, 3);
+    let journey = ledger(2, 2);
+    let behavioral = ledger(2, 2);
+    let input = LadderInputs {
+        gs: &gs,
+        entrypoint: &entrypoint,
+        boundary: &boundary,
+        journey: &journey,
+        behavioral: &behavioral,
+        open_smells: &[],
+        advisory_count: 7,
+        doc_only_realizations: &[],
+        inbox_untriaged: 0,
+        source_corpus_unresolved: 0,
+        planned_leaf_debt: 0,
+        fully_proven_ok: true,
+        fully_proven_reasons: &[],
+    };
+    let ladder = maturity_ladder(&input);
+    // Non-gating: Hardened is still Met and the repo is still Production-ready.
+    assert_eq!(ladder.rungs[3].name, "Hardened");
+    assert_eq!(ladder.rungs[3].status, RungStatus::Met);
+    assert_eq!(ladder.rungs[4].status, RungStatus::Met);
+    assert_eq!(ladder.focus, None);
+    // ...but the advisory count is VISIBLE on the rung detail / vector line.
+    assert_eq!(ladder.rungs[3].detail, "7 advisory");
+    assert!(
+        ladder.vector_line().contains("Hardened ✓ 7 advisory"),
+        "{}",
+        ladder.vector_line()
     );
 }
 
@@ -210,6 +264,7 @@ fn focus_is_lowest_unmet_despite_higher_rung_met() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
+        advisory_count: 0,
         doc_only_realizations: &[],
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,

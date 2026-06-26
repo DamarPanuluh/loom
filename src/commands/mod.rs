@@ -111,16 +111,13 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Skill       { command }    => skill::run(command, &printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Explain     { target, impact } => explain::run(&target, impact, &printer),
-        Command::Wiki        { path, out, check, okf, prose_check } => {
-            let out = if okf {
-                path.or(out).unwrap_or_else(|| "loom.wiki/".to_string())
-            } else {
-                path.or(out).unwrap_or_else(|| "loom.wiki.md".to_string())
-            };
+        Command::Wiki        { path, out, check, okf: _, prose_check } => {
+            // v2 hard-cut: loom wiki always emits the code-primary bundle.
+            // --okf is kept as a no-op alias (backward CLI surface); the
+            // default output is always loom.wiki/ (the directory bundle).
+            let out = path.or(out).unwrap_or_else(|| "loom.wiki/".to_string());
             if prose_check {
-                wiki::run_okf_prose_check(&out, &printer)
-            } else if okf {
-                wiki::run_okf(&out, check, &printer)
+                wiki::run_prose_check(&out, &printer)
             } else {
                 wiki::run(&out, check, &printer)
             }

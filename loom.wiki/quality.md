@@ -86,71 +86,7 @@ The norms loom holds the code to, by category.
 
 
 <!-- loom:prose-start -->
-## The quality axis
 
-The quality axis is how loom certifies *itself*. Every anti-pattern that
-matters to this codebase is a named `QualityRule` with a criterion, an
-inspection effort, and a recorded verdict per intent it governs. The skeleton
-above lists the rules and the verdict bars; the prose below explains the *why*
-behind each rule family and how a driver should respond to a finding.
 
-### How quality is certified
-
-A `QualityRule` is seeded from a quality pack (`loom rule seed <pack>`). Each
-pack is a vantage point — daemon, sqlite, cli, etc. — chosen because the repo's
-disk evidence says it applies. Seeding is never automatic: the agent decides
-which packs fit, then `loom detect` recommends and `loom rule seed` installs.
-Once a rule is seeded, `loom next --mode quality` surfaces uninspected or stale
-GOVERNS pairs; the quality lane records a verdict with confidence and an
-evidence locator. A verdict with confidence < 0.7 escalates to the reviewer
-lane — the strategic double-check — so the hard calls are never closed by a
-single low-confidence read.
-
-The integrity of the quality axis itself is guarded by the
-[completeness and integrity checking](intent:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2): `loom doctor` audits required
-graph properties, `loom smells` surfaces advisory anti-pattern buckets, and
-`loom coverage` reports which intents are governed and which are unaccounted.
-These three commands are the deterministic checks that catch the quality axis
-drifting from the code.
-
-### The lane gates
-
-Every transition in the graph is gated by the
-[role lanes and evidence gates](intent:20bf582e-df31-4f96-8b37-6171c38e3478): a builder cannot record a
-verdict, a validator cannot seed a rule, an analyst cannot ground an intent.
-The gates are not advisory — they refuse the write. This is what makes the
-graph append-only-auditable: every transition carries the lane and the
-evidence, so a later audit can reconstruct *why* the graph looks the way it
-does. See [decisions.md](decisions.md) for the recorded rulings that
-adjudicate smell findings and lock in non-obvious design choices.
-
-### Work selection under quality
-
-The [priority-scored work queues](intent:47c9182c-f7a8-4a50-9281-6d05507e646c) is shared across every
-lane, including quality. `loom next --mode quality` ranks uninspected or stale
-GOVERNS pairs by centrality and freshness; the quality lane records a verdict
-and the queue drains. The cross-cutting read-side — the
-[multi-hop audit layer](intent:c61f66f5-a396-4494-9b48-c00d5203bcb3), the
-[snapshot analysis and annotation helpers](intent:e2d64ed4-b10f-48fd-995b-f533a6250a18) — feeds the ranking from a
-single loaded snapshot per invocation, so quality work does not pay for
-re-scanning the graph.
-
-### Multi-hop audit and the snapshot layer
-
-The [multi-hop audit layer](intent:c61f66f5-a396-4494-9b48-c00d5203bcb3) is the read-side that
-serves multi-hop graph computations — `loom explain`, `loom impact`,
-`loom cluster` — without re-scanning. It is backed by the shared snapshot in
-[`src/db/queries/snapshot.rs`](../src/db/queries/snapshot.rs), and the
-[snapshot analysis and annotation helpers](intent:e2d64ed4-b10f-48fd-995b-f533a6250a18) reuses that snapshot across
-`loom find`, `loom smells`, and `loom coverage` so overlapping bulk reads are
-loaded once per command.
-
-### Provenance and the comprehension axis
-
-This wiki page is itself an instance of the quality philosophy: the prose is
-falsifiable, not trusted. `loom wiki --okf --prose-check` certifies the
-coverage, freshness, and consistency gates; prose quality stays human-gated.
-The same principle — mechanical roll-up, human-gated judgment — that governs
-the quality axis governs the comprehension axis.
 
 <!-- loom:prose-end -->

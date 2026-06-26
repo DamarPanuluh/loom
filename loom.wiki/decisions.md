@@ -11,6 +11,60 @@ Rationale recorded via `loom note add --kind decision`. Newest first.
 
 ### (floating)
 
+**Date:** 2026-06-26T11:47:56.566633+00:00
+
+Deliberate: wiki.rs is the v2 code-primary bundle coordinator — render_okf_bundle (emitter), resolve_file_to_intent_ids (manifest resolver), and run_next_wiki (wiki lane) share QuerySnapshot/page rendering; run() also wires Printer (dual-mode output). Splitting would fragment the manifest+prose pipeline that must stay byte-stable across one command surface.
+
+### code-primary repo wiki machinery
+
+**Date:** 2026-06-26T11:47:01.535313+00:00
+
+lifecycle → implemented: v2 bundle emission + manifest resolver + wiki lane all proven via sqlite_wiki_ regression
+
+### wiki lane and self-teaching authoring loop
+
+**Date:** 2026-06-26T11:46:56.521198+00:00
+
+lifecycle → implemented: run_next_wiki drains comprehension queue; prose-check regression passes
+
+### graph-aware manifest resolver
+
+**Date:** 2026-06-26T11:46:56.505446+00:00
+
+lifecycle → implemented: resolve_file_to_intent_ids grounded; consistency gate test passes
+
+### code-primary wiki emitter
+
+**Date:** 2026-06-26T11:46:56.481190+00:00
+
+lifecycle → implemented: render_okf_bundle grounded; sqlite_wiki_ tests pass
+
+### code-primary wiki emitter
+
+**Date:** 2026-06-26T11:35:50.043795+00:00
+
+lifecycle → planned: Reverted: realized rung requires executed proof before marking implemented
+
+### code-primary wiki emitter
+
+**Date:** 2026-06-26T11:18:01.144753+00:00
+
+lifecycle → implemented: render_okf_bundle in src/commands/wiki.rs emits the v2 code-primary bundle; grounded at render_okf_bundle
+
+### whoami identity report
+
+**Date:** 2026-06-26T08:55:18.873107+00:00
+
+visibility ruled internal during alignment
+
+### code-primary repo wiki machinery
+
+**Date:** 2026-06-26T06:06:45.436694+00:00
+
+v2 hard-cuts v1: the code-primary wiki fully replaces the graph-primary OKF emitter and the flat loom.wiki.md — single source of truth, no backward compatibility. Ruling: research on Qoder's Repo Wiki grounded that a human wiki's vocabulary is the codebase's (file paths, symbols), not the tool's (intent UUIDs). v1 fused reader-citation and machine-verification into one intent:UUID link, making the wiki unreadable without loom. v2 separates them: prose links to source files (reader-facing); the graph resolves file→intent→edge at check time (machine-facing, invisible). The four gates (coverage, freshness, consistency, prose-quality) are preserved — including the graph-aware consistency gate Qoder structurally cannot do. No consumer exists yet (dogfood); the binary is reinstalled once v2 is proven.
+
+### (floating)
+
 **Date:** 2026-06-25T18:33:56.537072+00:00
 
 The 'commit {out} so the wiki travels with the repo' string appears twice: once for the OKF bundle path (line 448) and once for the flat wiki path (line 505). Both are the same UX guidance contract: after writing a wiki artifact, tell the user to commit it. The two paths serve different output formats (directory bundle vs single markdown) but share identical post-write guidance. They must evolve together — if the guidance message changes, it should change in both paths. The duplication is in the same file and is a 2-instance format!() string, not a deep logic copy. Extracting to a shared constant would add indirection for minimal benefit; the string is co-located in one file and grep-findable. Accepted as intentional co-duplication in the same module.
@@ -4514,59 +4568,7 @@ lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-liv
 
 
 <!-- loom:prose-start -->
-## The decision record
 
-The skeleton above lists every `decision` note recorded in the graph. The
-prose below explains the *classes* of decision that shape the codebase and
-points at the rulings that lock them in. Decisions are how loom adjudicates
-smell findings and locks in non-obvious design choices; they are the
-human-gated counterpart to the mechanical gates.
 
-### Why decisions exist
-
-A smell finding is advisory, not a defect. When a smell is acceptable — a
-panic marker that is actually an invariant, a string duplicate that is a DDL
-idiom — the right response is not to refactor, it is to record a `decision`
-note that adjudicates the finding and carries the reasoning. The
-[completeness and integrity checking](intent:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2) then moves the finding out of
-the open advisory count into the adjudicated output, with a reopen anchor on
-the relevant intent or file. This is why `loom smells` distinguishes open from
-adjudicated: a green smell axis is not "no smells", it is "every smell is
-either fixed or adjudicated".
-
-### Decision classes in this repo
-
-The recurring decision classes, each backed by recorded rulings in the
-skeleton above:
-
-- **Panic-marker-as-invariant** — `unwrap` / `expect` calls that encode a
-  genuine invariant (e.g. serializing a JSON error object that cannot fail).
-  The decision records the invariant and reopens if the invariant ever breaks.
-- **DDL-idiom-string-duplicate** — repeated `TEXT NOT NULL DEFAULT ''` across
-  SQLite schema DDL. The duplicate is the idiom, not a debt; the decision
-  records that the schema file is co-located and the duplication is intentional.
-- **Co-located-UX-duplicate** — strings that recur across CLI subcommands
-  because the UX contract is co-located. The decision records the UX contract.
-- **Backend-retirement** — the retired `loom serve` stub. The decision records
-  that the [SQLite graph persistence](intent:01783338-7f02-4f4b-8d15-5f396ef7d47d) made it obsolete and
-  the command refuses with a teaching message rather than silently disappearing.
-
-### How a decision is recorded
-
-`loom note add --intent <id> --kind decision --body "<ruling and reasoning>"`
-records a decision. The note's `kind` is `decision`; the body carries the
-ruling and the reasoning; the note is linked to the intent (or file) it
-adjudicates. The [role lanes and evidence gates](intent:20bf582e-df31-4f96-8b37-6171c38e3478) gates who can
-record a decision — only the reviewer lane closes a smell with a decision, so
-the strategic double-check is the one that adjudicates.
-
-### Decisions and the comprehension axis
-
-This page is itself decision-shaped: the prose is the human-gated layer, the
-skeleton is the mechanical layer, and the decisions recorded above are the
-bridge. A reader who wants to know *why* the code looks the way it does reads
-this page; a reader who wants to know *what* the code does reads
-[components.md](components.md); a reader who wants to know *how a request
-travels* reads [flows.md](flows.md).
 
 <!-- loom:prose-end -->

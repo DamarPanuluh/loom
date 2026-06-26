@@ -266,9 +266,10 @@ fn blocked_validation_summary_leads_with_validation_objects_not_edges() {
 }
 
 use crate::db::queries::scoring::{
-    build_candidates_from_snapshot, quality_candidates_from_snapshot, ripple_bump_by_intent,
-    scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
-    validate_candidates_from_snapshot, DiscoveryClassFilter, RIPPLE_BUMP_HOP2, RIPPLE_BUMP_HOP3,
+    build_candidates_from_snapshot, capped_discovery_buckets, quality_candidates_from_snapshot,
+    ripple_bump_by_intent, scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
+    validate_candidates_from_snapshot, DiscoveryClassFilter, BUCKET_CAP, RIPPLE_BUMP_HOP2,
+    RIPPLE_BUMP_HOP3,
 };
 
 fn intent(id: &str, lifecycle: &str) -> Intent {
@@ -589,6 +590,46 @@ fn centrality_only_pairs_route_to_impact_map_not_default_discovery() {
 
     let all = unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::All).unwrap();
     assert_eq!(all.len(), 1);
+}
+
+#[test]
+fn oversized_same_domain_bucket_is_capped_but_disclosed() {
+    // A single domain shared by more than BUCKET_CAP intents, with no other
+    // signal (empty descriptions, no shared files/imports/tags). same_domain is
+    // the only facet, and it is DENSE → capped.
+    let n = BUCKET_CAP + 1;
+    let intents: Vec<Intent> = (0..n)
+        .map(|i| {
+            let mut it = intent(&format!("i{i}"), "implemented");
+            it.domain = "db".to_string();
+            it
+        })
+        .collect();
+    let snapshot = snap(intents, vec![]);
+
+    // Fast lane: the oversized same-domain bucket is excluded ENTIRELY, so the
+    // suspected-coupling queue is empty despite N intents sharing a domain.
+    let scored =
+        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::SuspectedCoupling)
+            .unwrap();
+    assert!(
+        scored.is_empty(),
+        "oversized same-domain bucket must be excluded from the suspected-coupling lane, got {}",
+        scored.len()
+    );
+
+    // ...but DISCLOSED: capped_discovery_buckets reports the excluded bucket with
+    // its real size, so the lane can surface the elision instead of hiding it.
+    let capped = capped_discovery_buckets(&snapshot).unwrap();
+    assert_eq!(capped.len(), 1, "exactly one capped bucket expected");
+    assert_eq!(capped[0].facet, "domain");
+    assert_eq!(capped[0].key, "db");
+    assert_eq!(capped[0].members, n);
+
+    // The escape hatch is real: `--class all` ignores the cap and still
+    // enumerates every pair in the domain.
+    let all = unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::All).unwrap();
+    assert_eq!(all.len(), n * (n - 1) / 2);
 }
 
 fn phase_of(snapshot: &QuerySnapshot) -> String {

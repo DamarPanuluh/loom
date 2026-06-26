@@ -151,6 +151,12 @@ pub struct LadderInputs<'a> {
     pub journey: &'a Ledger,
     pub behavioral: &'a Ledger,
     pub open_smells: &'a [Smell],
+    /// Static, NON-GATING advisory findings (size: oversized_file /
+    /// large_behavioral_symbol). Surfaced on the Hardened rung's `detail` so the
+    /// vector honestly shows routed-but-unblocking refactor work; it never enters
+    /// `reasons`, so it can never move Hardened off `Met` (a hard gate here would
+    /// only pressure laundering coarse judgment calls — see SIZE_ADVISORY_KINDS).
+    pub advisory_count: usize,
     pub doc_only_realizations: &'a [String],
     pub inbox_untriaged: usize,
     pub source_corpus_unresolved: usize,
@@ -356,10 +362,17 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     } else {
         "build"
     };
+    // Advisory findings are surfaced in `detail` (NEVER `reasons`): they make the
+    // routed-but-unblocking refactor work visible on the rung without gating it.
+    let hardened_detail = if input.advisory_count > 0 {
+        format!("{} advisory", input.advisory_count)
+    } else {
+        String::new()
+    };
     let hardened = graded(
         "Hardened",
         hardened_reasons,
-        String::new(),
+        hardened_detail,
         (measured.total > 0 && axis_cleared(measured)) || gs.horizontally_explored,
         hardened_lane,
     );
@@ -434,9 +447,13 @@ pub struct LadderBundle {
 }
 
 /// Assemble the ladder from a snapshot + the store-derived inputs the caller
-/// already has in scope (decision notes, audit-gated open smells, the untriaged
-/// inbox count, export staleness). The former `fully_proven` gate set is folded
-/// in as the Production-ready rung's input — its math survives, its badge does not.
+/// already has in scope (decision notes, audit-gated open smells, the non-gating
+/// advisory count, the untriaged inbox count, export staleness). The former
+/// `fully_proven` gate set is folded in as the Production-ready rung's input —
+/// its math survives, its badge does not. The arg list is wide because it
+/// re-sequences several already-computed planes the caller holds; bundling them
+/// would only trade arg-count for field-count.
+#[allow(clippy::too_many_arguments)]
 pub fn build_ladder(
     root: &Path,
     snapshot: &QuerySnapshot,
@@ -444,6 +461,7 @@ pub fn build_ladder(
     decision_notes: &[Note],
     inbox_items: &[InboxItem],
     open_smells: &[Smell],
+    advisory_count: usize,
     inbox_untriaged: usize,
     export_stale: bool,
 ) -> LadderBundle {
@@ -483,6 +501,7 @@ pub fn build_ladder(
         journey: &journey,
         behavioral: &behavioral,
         open_smells,
+        advisory_count,
         doc_only_realizations: &doc_only,
         inbox_untriaged,
         source_corpus_unresolved: source_corpus.unresolved,

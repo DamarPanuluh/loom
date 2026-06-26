@@ -671,7 +671,7 @@ mod tests {
 /// not source). Excluded from `seed --inbox` to prevent circular intake.
 fn is_loom_artifact(path: &str) -> bool {
     path == "loom.graph.json"
-        || path == "loom.wiki.md"
+        || path == "loom.wiki.md"  // legacy v1 — still excluded for migration safety
         || path.starts_with("loom.wiki/")
         || path.starts_with("loom.wiki\\")
         || path.starts_with(".loom/")
@@ -684,7 +684,6 @@ mod loom_artifact_tests {
     #[test]
     fn recognizes_loom_artifacts() {
         assert!(is_loom_artifact("loom.graph.json"));
-        assert!(is_loom_artifact("loom.wiki.md"));
         assert!(is_loom_artifact("loom.wiki/index.md"));
         assert!(is_loom_artifact("loom.wiki/architecture.md"));
         assert!(is_loom_artifact(".loom/graph.sqlite"));

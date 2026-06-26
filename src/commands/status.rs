@@ -196,10 +196,12 @@ pub fn run_with_db(
     let advisories = advisory_counts(root, &snapshot, &ignores, &decision_notes);
     // Open smells are computed once at the audit gate (phase audit|complete) and
     // reused for BOTH the audit pulse and the fully_proven badge's proof-locality.
-    let open_smells = if should_compute_audit_pulse(&gs) {
-        db.smell_report(&snapshot)?.open
+    let (open_smells, advisory_count) = if should_compute_audit_pulse(&gs) {
+        let report = db.smell_report(&snapshot)?;
+        let advisory_count = report.advisory.len();
+        (report.open, advisory_count)
     } else {
-        Vec::new()
+        (Vec::new(), 0)
     };
     let audit = if should_compute_audit_pulse(&gs) {
         audit_pulse(open_smells.clone())
@@ -242,6 +244,7 @@ pub fn run_with_db(
         &decision_notes,
         &inbox_items,
         &open_smells,
+        advisory_count,
         intake.untriaged.max(0) as usize,
         export_freshness == "stale",
     );

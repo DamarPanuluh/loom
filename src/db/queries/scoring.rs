@@ -44,6 +44,17 @@ pub const BRIDGE_WEIGHT: f64 = 3.0;
 pub const RIPPLE_BUMP_HOP2: f64 = 2.0;
 pub const RIPPLE_BUMP_HOP3: f64 = 1.0;
 
+/// Per-bucket cap for the DENSE discovery facets (same-domain and
+/// shared-description-token). A facet shared by more than this many intents is
+/// not discriminating — its O(k²) expansion would only ever yield
+/// weakest-signal pairs that never reach the served top of a large queue — so
+/// `suspected_coupling_candidates` skips it. The cap never fires below its size,
+/// so small graphs keep exact behavior. `capped_discovery_buckets` reports which
+/// buckets this excluded so the suspected-coupling lane can DISCLOSE the
+/// elision instead of pruning silently (the exhaustive `--class all` walk
+/// ignores the cap and remains the honest escape hatch).
+pub const BUCKET_CAP: usize = 64;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiscoveryClassFilter {
     SuspectedCoupling,
@@ -77,6 +88,59 @@ impl DiscoveryClassFilter {
             Self::ImpactMap => "impact-map",
             Self::All => "all",
         }
+    }
+}
+
+/// A dense discovery facet bucket that exceeded [`BUCKET_CAP`] and was therefore
+/// excluded from `suspected_coupling` candidate generation. Surfaced by
+/// [`capped_discovery_buckets`] so the default discovery lane can DISCLOSE the
+/// elision (the pairs are still owed and enumerable under `--class all`).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CappedBucket {
+    /// Which facet the bucket belongs to: `"domain"` or `"description_token"`.
+    pub facet: &'static str,
+    /// The shared value (the domain name, or the description token).
+    pub key: String,
+    /// How many intents share this facet value (> [`BUCKET_CAP`]).
+    pub members: usize,
+}
+
+/// The exhaustive escape hatch that ignores the dense-bucket cap — the honest
+/// recovery path for any pair the suspected-coupling lane deprioritized.
+pub const DISCOVERY_ESCAPE_HATCH: &str = "loom next --mode discovery --class all";
+
+/// One-line human disclosure that the suspected-coupling lane excluded `N` dense
+/// facet buckets from prioritization. `None` when nothing was capped (small
+/// graphs, or any lane other than suspected-coupling), so callers can print it
+/// unconditionally without leaking noise into the common case.
+pub fn bucket_disclosure_line(capped: &[CappedBucket]) -> Option<String> {
+    let top = capped.first()?;
+    Some(format!(
+        "ⓘ {} dense bucket(s) (domain / description-token facets with >{} members) excluded from suspected-coupling prioritization — largest: {} '{}' ({} intents). Still owed; run `{}` to enumerate them.",
+        capped.len(),
+        BUCKET_CAP,
+        top.facet,
+        top.key,
+        top.members,
+        DISCOVERY_ESCAPE_HATCH,
+    ))
+}
+
+/// Attach `capped_buckets` + `discovery_escape_hatch` to a JSON object when any
+/// bucket was excluded (omitted entirely otherwise, so quiet graphs stay quiet).
+pub fn inject_capped_buckets(
+    obj: &mut serde_json::Map<String, serde_json::Value>,
+    capped: &[CappedBucket],
+) {
+    if capped.is_empty() {
+        return;
+    }
+    if let Ok(v) = serde_json::to_value(capped) {
+        obj.insert("capped_buckets".to_string(), v);
+        obj.insert(
+            "discovery_escape_hatch".to_string(),
+            DISCOVERY_ESCAPE_HATCH.into(),
+        );
     }
 }
 
@@ -1283,8 +1347,6 @@ fn suspected_coupling_candidates(
     snapshot: &QuerySnapshot,
     discovery: &DiscoverySnapshot,
 ) -> Vec<(usize, usize)> {
-    const BUCKET_CAP: usize = 64;
-
     let index: HashMap<&str, usize> = snapshot
         .intents
         .iter()
@@ -1364,6 +1426,63 @@ fn suspected_coupling_candidates(
     );
 
     pairs.into_iter().collect()
+}
+
+/// The dense discovery facet buckets that exceeded [`BUCKET_CAP`] and were
+/// therefore excluded from `suspected_coupling` candidate generation — the basis
+/// for the suspected-coupling lane's elision disclosure. Mirrors EXACTLY the two
+/// capped facets in [`suspected_coupling_candidates`] (same-domain and
+/// shared-description-token) so the disclosed count matches what was skipped.
+/// Cheap: one pass each over intents and the discovery tokens. Returns empty on
+/// small graphs (the cap never fires), so it adds no noise in the common case.
+/// Sorted by `members` desc (biggest, most-suspect bucket first), then by key.
+pub fn capped_discovery_buckets(snapshot: &QuerySnapshot) -> Result<Vec<CappedBucket>> {
+    let discovery = DiscoverySnapshot::from_query(snapshot)?;
+
+    let mut out: Vec<CappedBucket> = Vec::new();
+
+    // Same-domain facet: group active intents by domain (skip empty/unknown,
+    // exactly as the candidate generator does).
+    let mut domain_counts: HashMap<&str, usize> = HashMap::new();
+    for it in &snapshot.intents {
+        if !it.domain.is_empty() && it.domain != "unknown" {
+            *domain_counts.entry(it.domain.as_str()).or_default() += 1;
+        }
+    }
+    for (domain, members) in domain_counts {
+        if members > BUCKET_CAP {
+            out.push(CappedBucket {
+                facet: "domain",
+                key: domain.to_string(),
+                members,
+            });
+        }
+    }
+
+    // Shared-description-token facet: invert tokens_by_intent into token → count.
+    let mut token_counts: HashMap<&str, usize> = HashMap::new();
+    for tokens in discovery.tokens_by_intent.values() {
+        for t in tokens {
+            *token_counts.entry(t.as_str()).or_default() += 1;
+        }
+    }
+    for (token, members) in token_counts {
+        if members > BUCKET_CAP {
+            out.push(CappedBucket {
+                facet: "description_token",
+                key: token.to_string(),
+                members,
+            });
+        }
+    }
+
+    out.sort_by(|a, b| {
+        b.members
+            .cmp(&a.members)
+            .then_with(|| a.facet.cmp(b.facet))
+            .then_with(|| a.key.cmp(&b.key))
+    });
+    Ok(out)
 }
 
 /// All unordered pairs of `members` (assumed small), inserted canonically.

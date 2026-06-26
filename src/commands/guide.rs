@@ -651,10 +651,12 @@ fn focus_lane_role() -> Option<&'static str> {
     let snap = store.query_snapshot().ok()?;
     let gs = store.graph_state(&snap).ok()?;
     let decision_notes = store.notes_by_kind("decision").ok()?;
-    let open_smells = if matches!(gs.phase.as_str(), "audit" | "complete") {
-        store.smell_report(&snap).ok()?.open
+    let (open_smells, advisory_count) = if matches!(gs.phase.as_str(), "audit" | "complete") {
+        let report = store.smell_report(&snap).ok()?;
+        let advisory_count = report.advisory.len();
+        (report.open, advisory_count)
     } else {
-        Vec::new()
+        (Vec::new(), 0)
     };
     let inbox_items = store.list_inbox_items(None, None).ok()?;
     let inbox_untriaged = inbox_items.iter().filter(|i| i.status == "new").count();
@@ -666,6 +668,7 @@ fn focus_lane_role() -> Option<&'static str> {
         &decision_notes,
         &inbox_items,
         &open_smells,
+        advisory_count,
         inbox_untriaged,
         export_stale,
     )
@@ -798,7 +801,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
                 "vertical": "BINDING spine, mechanically verifiable: HIERARCHY is a well-formed tree (one parent per non-root intent, no cycles); every implemented leaf intent has ≥1 IMPLEMENTS (realized); every CodeFile is reached by ≥1 IMPLEMENTS. Surfaced as `vertically_complete` in `loom status`; details in `loom report` + `loom doctor` + `loom coverage`.",
                 "horizontal": "Feeds the HARDENED rung (not the vertical spine): every intent pair has an inspected RELATES_TO edge (passing/failing/independent). Surfaced as `horizontally_explored`. `loom edge unexplored` lists what's owed; batch `independent` verdicts for the unrelated pairs (and `ground` the real couplings) via `loom batch` — the count is per-pair, no altitude shortcut yet.",
             },
-            "done_condition": "The MATURITY LADDER is the single ordinal \"done\" — a rung-vector (`loom status` / `loom complete` → `maturity.rungs`) with a FOCUS = the lowest unmet rung, where `loom next` routes. Ordered by RECORD ≠ DISCHARGE: SEEDED (every responsibility captured; entrypoint owned, inbox triaged) → REALIZED (every leaf grounded + proven by an EXECUTED discriminating test, `proven_executed == realized`, no doc-only spec-as-built) → PROVEN (every user_visible journey has a passing boundary proof — saga or human manual_check; N/A and collapses when there are no journeys) → HARDENED (measured under rules, the RELATES_TO grid explored, failure-path siblings realized, ZERO open `loom smells` findings) → PRODUCTION-READY (all lower rungs cleared + export/wiki fresh, inbox drained, boundary owned — the former `fully_proven` ceiling, now the top rung). It is a VECTOR, never a scalar: a graph can be Hardened while Realized is still ◐, so read every rung, then drive the focus.",
+            "done_condition": "The MATURITY LADDER is the single ordinal \"done\" — a rung-vector (`loom status` / `loom complete` → `maturity.rungs`) with a FOCUS = the lowest unmet rung, where `loom next` routes. Ordered by RECORD ≠ DISCHARGE: SEEDED (every responsibility captured; entrypoint owned, inbox triaged) → REALIZED (every leaf grounded + proven by an EXECUTED discriminating test, `proven_executed == realized`, no doc-only spec-as-built) → PROVEN (every user_visible journey has a passing boundary proof — saga or human manual_check; N/A and collapses when there are no journeys) → HARDENED (measured under rules, the RELATES_TO grid explored, failure-path siblings realized, ZERO open `loom smells` findings) → PRODUCTION-READY (all lower rungs cleared + wiki fresh, inbox drained, boundary owned — the former `fully_proven` ceiling, now the top rung). COMPREHENSION AXIS (parallel, routing-gated behind Production-ready): `loom next --mode wiki` drains the code-primary wiki prose queue — author narrative prose citing source files (not intent UUIDs); `loom wiki --prose-check` certifies coverage + freshness + consistency gates green. It is a VECTOR, never a scalar: a graph can be Hardened while Realized is still ◐, so read every rung, then drive the focus.",
             "output_hygiene": {
                 "rule": "High-volume audit commands have summary mode. Start with `loom smells --summary --json` and `loom coverage --summary --json`; only request full JSON when a specific finding/gap needs evidence.",
                 "why": "`loom smells --json` includes per-finding evidence, teaching, adjudicated rulings, and advisory bodies; `loom coverage --json` includes full file/symbol/raw-gap/adjudication archives. Summary mode preserves routing facts without blowing the driver context."

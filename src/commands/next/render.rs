@@ -311,6 +311,24 @@ fn push_review_and_human_queues(
             "top": "blocked validation object(s) with recorded prerequisites; one may affect many proof edges",
         }));
     }
+    // Wiki comprehension queue: code-primary prose owes for every component
+    // module page + topical pages. Routing-gated behind Production-ready
+    // (optional — docs wait until the code is stable). `loom next --mode wiki`
+    // drains the findings; `loom wiki --prose-check` certifies green.
+    let component_count = snapshot
+        .intents
+        .iter()
+        .filter(|i| i.abstraction_level == "component" && i.status != "deprecated")
+        .count();
+    let topical_page_count = 7; // index, architecture, components, quality, glossary, decisions, flows
+    if component_count + topical_page_count > 0 {
+        queues.push(serde_json::json!({
+            "queue": "wiki", "role": "builder", "gate": "autonomous", "optional": true,
+            "gate_reason": "routing-gated behind Production-ready",
+            "count": component_count + topical_page_count, "command": "loom next --mode wiki",
+            "top": "code-primary wiki prose owing: one narrative per module page + topical pages; cite source files, not intent UUIDs",
+        }));
+    }
     let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;
     if discovery_backlog > 0 {
         queues.push(serde_json::json!({
