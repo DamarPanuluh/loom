@@ -166,14 +166,7 @@ fn prepare_additions(
                 abs_path.display()
             )
         })?;
-        // Validate the file is readable now (clear error) but do NOT stamp the
-        // content hash. Leaving it empty makes the first `loom sync` EXTRACT this
-        // file's symbols + grade via the legacy hash-adoption path; because
-        // last_modified IS stamped, that path does not ripple needs_reverification.
-        // Pre-stamping the hash made content-addressed sync (#9) read the new file
-        // as unchanged and SKIP extraction, leaving a freshly registered file
-        // symbol-less until it was edited.
-        std::fs::read(&abs_path).map_err(|e| {
+        let bytes = std::fs::read(&abs_path).map_err(|e| {
             anyhow::anyhow!(
                 "Cannot read bytes for {}: {} — restore the file or remove the registration \
                  (`loom codefile remove <path>`), then `loom sync`.",
@@ -181,18 +174,23 @@ fn prepare_additions(
                 e
             )
         })?;
+        let content_hash = crate::repo::content_hash(&bytes);
+        let content = String::from_utf8_lossy(&bytes);
+        let facts = crate::repo::extract_physical_facts(root, &p, &content);
         let codefile = CodeFile {
             id: Uuid::new_v4().to_string(),
             path: p.clone(),
             language: language.clone().unwrap_or_else(|| detect_language(&p)),
-            // mtime stamped so the first sync extracts WITHOUT rippling; content
-            // hash, symbols, facts, and grade are all filled by that sync.
+            // Stamp hash and physical facts immediately. Otherwise a freshly
+            // registered file can be `touch`ed before its first sync and fall
+            // back to mtime-only drift, while a hash-only registration would
+            // leave the file symbol-less until a real edit.
             last_modified,
-            imports: Vec::new(),
-            symbols: Vec::new(),
-            symbol_facts: Vec::new(),
-            content_hash: String::new(),
-            extractor_grade: String::new(),
+            imports: facts.imports,
+            symbols: facts.symbols,
+            symbol_facts: facts.symbol_facts,
+            content_hash,
+            extractor_grade: facts.extractor_grade,
         };
         added.push(codefile);
     }
@@ -216,7 +214,7 @@ fn print_add_result(added: &[CodeFile], skipped: usize, printer: &Printer) {
             ));
         } else if !added.is_empty() {
             payload["next_step"] = serde_json::Value::String(
-                "`loom sync` to stamp mtimes, then ground intents with `loom edge implement`."
+                "physical facts are stamped; ground intents with `loom edge implement`."
                     .to_string(),
             );
         }
@@ -237,7 +235,9 @@ fn print_add_result(added: &[CodeFile], skipped: usize, printer: &Printer) {
             println!("  + {} [{}]", cf.path, cf.language);
         }
         if !added.is_empty() {
-            println!("  → Next: `loom sync` to stamp mtimes, then ground intents with `loom edge implement`.");
+            println!(
+                "  → Next: physical facts are stamped; ground intents with `loom edge implement`."
+            );
         }
     }
 }

@@ -89,4 +89,5 @@ The bounded `loom vocab` registry. Each term lists the intents that carry it.
 
 
 
+
 <!-- loom:prose-end -->

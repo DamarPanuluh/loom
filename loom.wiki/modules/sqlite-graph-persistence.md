@@ -45,10 +45,10 @@ symbols:
   - run_add_with_sqlite
 provenance:
   .claude/skills/run-loom/fuzz_import.sh: 7d98d51ec7549ad8
-  src/commands/codefile.rs: d887ca066e4fa091
+  src/commands/codefile.rs: 0ee513864c1cef40
   src/commands/explain.rs: f4b96fd76b56627e
   src/commands/export.rs: 35756c578400e3a2
-  src/commands/guide.rs: 0e285dcdf59a944c
+  src/commands/guide.rs: b4bb1ba91603fd63
   src/commands/import.rs: 93f197ec9bd9b116
   src/commands/migrate.rs: 904a0c11dc0e329d
   src/commands/next.rs: 0aa0c223261f7268
@@ -59,11 +59,11 @@ provenance:
   src/db/queries/relates_to.rs: 59109a37ebe69b38
   src/db/queries/snapshot.rs: 4bdafb877455648c
   src/db/queries/symbol_match.rs: f2cf13a911c33537
-  src/db/schema.rs: e561ff6cbb65f572
-  src/db/sqlite.rs: 1bb73bc78f225241
-  src/db/sqlite/writes.rs: b7cd81dd5f30f359
-  src/repo.rs: fca7873e11343725
-  src/types.rs: 5e23066c85babdab
+  src/db/schema.rs: 429002a41cd81880
+  src/db/sqlite.rs: bbee90eb9b991b53
+  src/db/sqlite/writes.rs: 52af6570fe6659e9
+  src/repo.rs: ad374b61242ccdb5
+  src/types.rs: d61e6e7631304228
   src/vec_utils.rs: 94f14a1584e50bba
 ---
 
@@ -93,6 +93,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

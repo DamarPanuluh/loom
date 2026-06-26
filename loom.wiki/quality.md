@@ -43,6 +43,7 @@ The norms loom holds the code to, by category.
 - **data-migration-reversible** (error) — Data: schema migrations are ordered and repeatable, with a tested rollback — or an explicitly documented point of no return.
 - **data-no-silent-loss** (error) — Data: pipelines account for every record — rejects go to a dead-letter/quarantine with a cause, never dropped silently; counts in vs out reconcile.
 - **data-validated-at-ingest** (error) — Data (CWE-20): data entering storage is validated at the boundary, and invariants live in the schema (constraints, types, NOT NULL) — not only in application code.
+- **docker-build-proven** (error) — Docker: each containerization intent carries a passing Validation that builds the image and exercises its entrypoint (`docker build` plus `docker run … --help` or an equivalent smoke command). A Dockerfile without a graph proof is only packaging text, not proven packaging behavior.
 - **endpoint-matched-edges** (error) — ISO 5055 reliability: no GQL may match or filter a relationship by its own property (grafeo 0.5.x returns nondeterministic results); edges are keyed by endpoint nodes or scanned and filtered in Rust
 - **migration-parity-before-cutover** (error) — A storage backend migration cannot replace the global/control backend until structured read parity, mutation parity, deterministic export parity, and rollback/cutover smoke checks pass on scratch graphs built from the same loom.graph.json.
 - **service-compensation-defined** (warning) — Service (sagas): multi-step workflows define compensation or abort for partial failure — no half-completed state without a recovery path an operator or the code can take.
@@ -53,6 +54,9 @@ The norms loom holds the code to, by category.
 
 ### performance
 
+- **docker-cache-friendly-layers** (warning) — Docker: dependency manifests are copied and installed before frequently-changing source code, and package caches use BuildKit cache mounts where useful, so ordinary source edits reuse dependency layers.
+- **docker-context-pruned** (warning) — Docker: the build context is pruned with `.dockerignore` so VCS data, local build outputs, dependencies, secrets, tests/docs not needed at runtime, and large artifacts do not enter the build context.
+- **docker-multistage-minimal-runtime** (warning) — Docker: production images use a multi-stage build or an equivalently minimal runtime image (scratch/distroless/slim/alpine as appropriate), so build tools, caches, and source-only artifacts do not ship in the runtime layer.
 - **iso5055-perf-bounded-work** (warning) — ISO 5055 Performance Efficiency (CWE-834/1050): no unbounded loops/recursion over external-sized data; iteration and queries are bounded, paginated, or capped.
 - **iso5055-perf-no-redundant-work** (warning) — ISO 5055 Performance Efficiency (CWE-1042/1046): no repeated identical I/O, queries, or allocation in hot paths — cache or hoist invariant work out of loops.
 - **mobile-main-thread-clear** (error) — Mobile: no blocking I/O, parsing, or heavy compute on the UI thread — frame budget is ~16ms.
@@ -62,6 +66,7 @@ The norms loom holds the code to, by category.
 
 - **conc-bounded-concurrency** (warning) — Concurrency (CWE-400/770): spawns, queues, and in-flight work have explicit limits and backpressure — load sheds or blocks, it never grows unbounded.
 - **conc-cancellation-safe** (warning) — Concurrency: tasks/threads are cancellation-safe — interruption (timeout, shutdown, dropped future) leaves no half-written state and releases resources.
+- **docker-runtime-contract-declared** (warning) — Docker: the runtime contract is explicit — entrypoint/cmd, exposed port when relevant, healthcheck for long-running services, and resource expectations/limits in compose or deployment config.
 - **iso5055-rel-boundary-validation** (error) — ISO 5055 Reliability (CWE-20): external input (CLI args, file content, env vars, network data) is validated before use; invalid input yields a typed error, never corruption or a crash.
 - **iso5055-rel-no-unchecked-failure** (error) — ISO 5055 Reliability (CWE-252/248/391): every fallible operation's failure path is handled or explicitly propagated — no silently ignored return value, no exception/panic escaping a boundary uncaught.
 - **iso5055-rel-resource-release** (error) — ISO 5055 Reliability (CWE-772/404): every acquired resource (file, lock, connection, handle) is released on ALL paths, including error paths.
@@ -72,6 +77,8 @@ The norms loom holds the code to, by category.
 ### security
 
 - **data-pii-handled** (error) — Data (CWE-359): personal/sensitive fields are identified, and access, retention, and deletion paths exist — a deletion request can actually be fulfilled.
+- **docker-no-secrets-in-image** (error) — Docker (CWE-798): secrets are never baked into image layers or build args that persist in history; credentials arrive at runtime through env/secret mounts or BuildKit secret mounts.
+- **docker-non-root-runtime** (error) — Docker (CWE-250): production containers run as a non-root user and avoid privilege escalation by default; root is limited to build/install steps or explicitly justified development images.
 - **iso5055-sec-least-surface** (error) — ISO 5055 Security (CWE-284/732): expose the minimum — no debug/admin paths reachable in production flows, no overly-permissive file modes or defaults.
 - **iso5055-sec-no-hardcoded-secrets** (error) — ISO 5055 Security (CWE-798): no credentials, tokens, or keys in source or config committed to the repo; secrets come from the environment or a secret store.
 - **iso5055-sec-no-injection** (error) — ISO 5055 Security (CWE-89/78/79): untrusted data is never concatenated into SQL/shell/HTML/query strings — parameterize, escape at the boundary, or reject.
@@ -86,6 +93,7 @@ The norms loom holds the code to, by category.
 
 
 <!-- loom:prose-start -->
+
 
 
 

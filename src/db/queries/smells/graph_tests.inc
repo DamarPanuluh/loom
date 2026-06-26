@@ -533,6 +533,7 @@ mod transitive_layering_tests {
             inspection_effort: "mid".into(),
             evidence_examples: String::new(),
             signal_expectations: String::new(),
+            applies_when: String::new(),
         };
         let governs = vec![crate::types::Governs {
             id: "gov:r1:a".into(),

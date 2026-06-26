@@ -220,6 +220,7 @@ const QUALITY_RULE_PROPS: &[&str] = &[
     prop::INSPECTION_EFFORT,
     prop::EVIDENCE_EXAMPLES,
     prop::SIGNAL_EXPECTATIONS,
+    prop::APPLIES_WHEN,
 ];
 
 const VALIDATION_PROPS: &[&str] = &[

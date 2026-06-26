@@ -456,9 +456,9 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
     assert_eq!(migrated["status"], "ok");
     assert_eq!(migrated["backend"], "sqlite");
     assert_eq!(migrated["migrated"], false);
-    assert_eq!(migrated["version"], "14");
+    assert_eq!(migrated["version"], "15");
     assert_eq!(migrated["current"], true);
-    assert_eq!(migrated["expected"], "14");
+    assert_eq!(migrated["expected"], "15");
     assert!(
         migrated["next_step"].is_null(),
         "current graph needs no rebuild: {migrated}"
@@ -5414,9 +5414,20 @@ fn sqlite_sync_ignores_mtime_only_change() {
         &["codefile", "add", "scratch/widget.rs", "--json"],
         "llm:builder",
     );
-    // First sync stamps content_hash + last_modified for the new file.
-    run_json(&graph.root, &["sync", "--json"]);
-    // Rewrite byte-identical content — bumps filesystem mtime, content unchanged.
+    let shown = run_json(
+        &graph.root,
+        &["codefile", "show", "scratch/widget.rs", "--json"],
+    );
+    assert!(
+        !shown["codefile"]["content_hash"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty(),
+        "codefile add must stamp content_hash immediately so sync never falls back to mtime: {shown}"
+    );
+    // Rewrite byte-identical content before any first sync — bumps filesystem
+    // mtime, content unchanged. This used to false-flag because fresh CodeFiles
+    // carried an empty content_hash until sync adopted it.
     write_scratch_file(
         &graph.root,
         "scratch/widget.rs",
@@ -9154,6 +9165,278 @@ fn sqlite_service_pack_detects_axum_framework() {
     assert!(
         packs.contains(&"service"),
         "service pack should be recommended when axum is detected: {packs:?}"
+    );
+}
+
+#[test]
+fn sqlite_docker_pack_seeds_and_detects_dockerfile() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("detect-docker");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::write(
+        graph.root.join("Dockerfile"),
+        "FROM scratch\nCOPY target/release/app /app\nUSER 65532:65532\nENTRYPOINT [\"/app\"]\n",
+    )
+    .unwrap();
+    std::fs::write(graph.root.join(".dockerignore"), ".git\ntarget\n.env\n").unwrap();
+
+    let detect = run_json(&graph.root, &["detect", "--json"]);
+    let packs: Vec<&str> = detect["recommended_packs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["pack"].as_str().unwrap_or(""))
+        .collect();
+    assert!(
+        packs.contains(&"docker"),
+        "docker pack should be recommended when Dockerfile/.dockerignore exists: {packs:?}"
+    );
+
+    let seeded = run_json_as(
+        &graph.root,
+        &["rule", "seed", "docker", "--json"],
+        "llm:quality",
+    );
+    assert_eq!(seeded["status"], "ok");
+    let created = seeded["created"].as_array().unwrap();
+    assert!(
+        created.iter().any(|r| r["name"] == "docker-build-proven"),
+        "docker seed should create the build/run proof rule: {seeded}"
+    );
+
+    let rule = run_json(
+        &graph.root,
+        &["rule", "show", "docker-build-proven", "--json"],
+    );
+    assert_eq!(rule["name"], "docker-build-proven");
+    assert_eq!(rule["kind"], "correctness");
+    assert!(
+        rule["description"]
+            .as_str()
+            .unwrap_or("")
+            .contains("Validation"),
+        "docker-build-proven should steer inspectors toward graph-native proof: {rule}"
+    );
+}
+
+#[test]
+fn sqlite_rule_recommend_scores_intent_file_and_proof_gap_signals() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("rule-recommend-docker");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::write(
+        graph.root.join("Dockerfile"),
+        "FROM scratch\nCOPY target/release/app /app\nUSER 65532:65532\nENTRYPOINT [\"/app\"]\n",
+    )
+    .unwrap();
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "Dockerfile", "--json"],
+        "llm:builder",
+    );
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "ship app as a Docker image",
+            "--description",
+            "builds a minimal container image that can run the app entrypoint",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let intent_id = intent["id"].as_str().expect("intent id");
+    run_json_as(
+        &graph.root,
+        &["edge", "implement", intent_id, "Dockerfile", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["rule", "seed", "docker", "--json"],
+        "llm:quality",
+    );
+
+    let recs = run_json(
+        &graph.root,
+        &["rule", "recommend", intent_id, "--limit", "5", "--json"],
+    );
+    let recommendations = recs["recommendations"].as_array().unwrap();
+    let build = recommendations
+        .iter()
+        .find(|r| r["rule"]["name"] == "docker-build-proven")
+        .unwrap_or_else(|| panic!("docker-build-proven should be recommended: {recs}"));
+    assert_eq!(build["confidence"], "high");
+    assert!(
+        build["score"].as_f64().unwrap_or(0.0) >= 0.9,
+        "intent text + Dockerfile + proof gap should be high score: {build}"
+    );
+    let reasons: Vec<&str> = build["reasons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap_or(""))
+        .collect();
+    assert!(
+        reasons.iter().any(|r| r.contains("intent text")),
+        "recommendation should explain the intent-text signal: {build}"
+    );
+    assert!(
+        reasons.iter().any(|r| r.contains("grounded files")),
+        "recommendation should explain the grounded-file signal: {build}"
+    );
+    assert!(
+        reasons.iter().any(|r| r.contains("no linked validation")),
+        "recommendation should explain the proof-gap signal: {build}"
+    );
+    assert!(
+        build["suggested_command"]
+            .as_str()
+            .unwrap_or("")
+            .contains("loom rule verdict"),
+        "recommendation should route to human/LLM verdict, not auto-stamp truth: {build}"
+    );
+
+    run_json_as(
+        &graph.root,
+        &[
+            "rule",
+            "verdict",
+            "docker-build-proven",
+            intent_id,
+            "--status",
+            "independent",
+            "--criterion",
+            "container build proof does not apply after inspection",
+            "--evidence",
+            "searched the Dockerfile-grounded packaging intent and deliberately recorded this rule as measured independent for the regression",
+            "--json",
+        ],
+        "llm:quality",
+    );
+    let after = run_json(
+        &graph.root,
+        &["rule", "recommend", intent_id, "--limit", "10", "--json"],
+    );
+    assert!(
+        !after["recommendations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["rule"]["name"] == "docker-build-proven"),
+        "measured verdicts should leave recommendation triage: {after}"
+    );
+}
+
+#[test]
+fn sqlite_rule_recommend_uses_custom_rule_applies_when_metadata() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("rule-recommend-custom-applies");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "src/startup.rs",
+        "pub fn warm_cache_for_startup() {}\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/startup.rs", "--json"],
+        "llm:builder",
+    );
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "optimize startup latency",
+            "--description",
+            "startup path keeps latency low by warming caches",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let intent_id = intent["id"].as_str().expect("intent id");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            intent_id,
+            "src/startup.rs",
+            "--locator",
+            "warm_cache_for_startup",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let applies_when = "{\"signals\":[{\"source\":\"INTENT_TEXT\",\"terms\":[\"Startup\",\"Latency\"],\"weight\":0.72,\"reason\":\"custom rule applies to startup latency intents\"},{\"source\":\"path\",\"terms\":[\"Startup\"],\"weight\":0.2,\"reason\":\"grounded file path names startup\"}]}";
+    run_json_as(
+        &graph.root,
+        &[
+            "rule",
+            "add",
+            "--name",
+            "startup-budget-declared",
+            "--description",
+            "startup-sensitive intents declare and prove a latency budget",
+            "--severity",
+            "warning",
+            "--kind",
+            "performance",
+            "--applies-when",
+            applies_when,
+            "--json",
+        ],
+        "llm:quality",
+    );
+
+    let shown = run_json(
+        &graph.root,
+        &["rule", "show", "startup-budget-declared", "--json"],
+    );
+    assert!(
+        shown["applies_when"]
+            .as_str()
+            .unwrap_or("")
+            .contains("custom rule applies"),
+        "custom applies_when metadata must be stored and read back: {shown}"
+    );
+
+    let recs = run_json(&graph.root, &["rule", "recommend", intent_id, "--json"]);
+    let custom = recs["recommendations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["rule"]["name"] == "startup-budget-declared")
+        .unwrap_or_else(|| panic!("custom rule should be recommended from applies_when: {recs}"));
+    assert!(
+        custom["score"].as_f64().unwrap_or(0.0) >= 0.9,
+        "custom rule score should come from both declarative signals: {custom}"
+    );
+    let reasons: Vec<&str> = custom["reasons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap_or(""))
+        .collect();
+    assert!(
+        reasons.contains(&"custom rule applies to startup latency intents"),
+        "custom intent_text reason should survive into recommendations: {custom}"
+    );
+    assert!(
+        reasons.contains(&"grounded file path names startup"),
+        "custom path reason should survive into recommendations: {custom}"
     );
 }
 

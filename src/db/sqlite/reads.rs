@@ -1132,7 +1132,7 @@ impl SqliteGraphStore {
     pub fn list_rules(&self) -> Result<Vec<QualityRule>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, detection_logic, severity, inspection_effort, kind,
-                    evidence_examples, signal_expectations
+                    evidence_examples, signal_expectations, applies_when
              FROM quality_rule
              ORDER BY name",
         )?;
@@ -1147,6 +1147,7 @@ impl SqliteGraphStore {
                 kind: row.get(6)?,
                 evidence_examples: row.get(7)?,
                 signal_expectations: row.get(8)?,
+                applies_when: row.get(9)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()

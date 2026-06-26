@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS quality_rule(
   severity TEXT NOT NULL CHECK(severity IN ('warning','error')),
   inspection_effort TEXT NOT NULL DEFAULT '' CHECK(inspection_effort IN ('low','mid','high','')),
   evidence_examples TEXT NOT NULL DEFAULT '' CHECK(evidence_examples = '' OR json_valid(evidence_examples)),
-  signal_expectations TEXT NOT NULL DEFAULT '[]' CHECK(signal_expectations = '' OR signal_expectations = '[]' OR json_valid(signal_expectations))
+  signal_expectations TEXT NOT NULL DEFAULT '[]' CHECK(signal_expectations = '' OR signal_expectations = '[]' OR json_valid(signal_expectations)),
+  applies_when TEXT NOT NULL DEFAULT '{}' CHECK(applies_when = '' OR applies_when = '{}' OR json_valid(applies_when))
 );
 
 CREATE TABLE IF NOT EXISTS validation(
@@ -365,6 +366,7 @@ impl SqliteGraphStore {
                 "signal_expectations",
                 "TEXT NOT NULL DEFAULT '[]'",
             ),
+            ("quality_rule", "applies_when", "TEXT NOT NULL DEFAULT '{}'"),
             ("governs", "covers_descendants", "TEXT NOT NULL DEFAULT ''"),
             ("codefile", "extractor_grade", "TEXT NOT NULL DEFAULT ''"),
             ("note", "resolution", "TEXT NOT NULL DEFAULT ''"),

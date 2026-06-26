@@ -1628,6 +1628,13 @@ pub enum RuleCmd {
         /// Overrides the kind's default effort when both are given.
         #[arg(long)]
         effort: Option<String>,
+
+        /// JSON object declaring deterministic recommendation signals for
+        /// `loom rule recommend`, e.g. {"signals":[{"source":"intent_text",
+        /// "terms":["docker"],"weight":0.35,"reason":"intent mentions docker"}]}.
+        /// This ranks likely inspections only; it never records verdict truth.
+        #[arg(long)]
+        applies_when: Option<String>,
     },
 
     /// List all quality rules.
@@ -1649,6 +1656,25 @@ pub enum RuleCmd {
     /// Show all GOVERNS edges for an intent (violations and passing checks).
     Check { intent_id: String },
 
+    /// Recommend likely QualityRule×Intent inspections from deterministic
+    /// graph signals (intent words, grounded files, imports, validation gaps).
+    /// This is triage only: an LLM still inspects and records the verdict.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom rule recommend \"ship app as docker image\" --limit 10\n  \
+        loom rule recommend --all --limit 50")]
+    Recommend {
+        /// Intent id/name/fragment to score. Omit only with --all.
+        intent_id: Option<String>,
+
+        /// Score all implemented, code-grounded intents.
+        #[arg(long, conflicts_with = "intent_id")]
+        all: bool,
+
+        /// Max recommendations to print.
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+
     /// Seed a built-in measuring-stick pack — the repo-kind vantage points for
     /// 360° normative coverage. `loom detect` recommends which packs fit this
     /// repo; after seeding, `loom next --mode quality` serves every coded
@@ -1660,7 +1686,8 @@ pub enum RuleCmd {
         /// a11y/contrast/touch targets/XSS), service
         /// (contracts/idempotency/timeouts/sagas), data
         /// (migrations/ingest/PII/lineage), concurrency (sync discipline/
-        /// lock hygiene/atomicity/proven perf budgets).
+        /// lock hygiene/atomicity/proven perf budgets), docker (container
+        /// image size/cache/runtime hardening/build-run proof).
         pack: String,
 
         /// Update existing rules with new evidence_examples and

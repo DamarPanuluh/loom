@@ -492,7 +492,9 @@ fn add_sqlite(
     };
 
     let rel = relative_to_root(file, &cwd)?;
-    let spec = load_spec_file(&cwd.join(&rel))?;
+    let spec_abs = cwd.join(&rel);
+    let spec_hash = saga_spec_hash(&spec_abs)?;
+    let spec = load_spec_file(&spec_abs)?;
     let now = chrono::Utc::now().to_rfc3339();
     let required_env = crate::saga::spec::required_env(&spec);
     let (step_intents, spawned) =
@@ -506,7 +508,7 @@ fn add_sqlite(
     };
     let description =
         format!(
-        "{}{}Consumer saga proof — {} step(s), run by the built-in engine.\nspec:{rel}{env_line}",
+        "{}{}Consumer saga proof — {} step(s), run by the built-in engine.\nspec:{rel}\nspec_hash:{spec_hash}{env_line}",
         spec.description.trim(),
         if spec.description.trim().is_empty() { "" } else { "\n" },
         spec.steps.len(),
@@ -627,22 +629,21 @@ fn add_sqlite(
         }
     }
 
-    let mut registered_spec = false;
-    if !store
+    let abs = cwd.join(&rel);
+    let last_modified = crate::repo::mtime_rfc3339(&abs).ok_or_else(|| {
+        anyhow::anyhow!(
+            "Cannot read mtime for {} — ensure the spec file exists under the graph root, or re-register: `loom saga add <file>`.",
+            abs.display()
+        )
+    })?;
+    let existing_codefile = store
         .list_codefiles()?
-        .iter()
-        .any(|codefile| codefile.path == rel || codefile.id == rel)
-    {
-        let abs = cwd.join(&rel);
-        let last_modified = crate::repo::mtime_rfc3339(&abs).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Cannot read mtime for {} — ensure the spec file exists under the graph root, or re-register: `loom saga add <file>`.",
-                abs.display()
-            )
-        })?;
-        let content_hash = std::fs::read(&abs)
-            .map(|bytes| crate::repo::content_hash(&bytes))
-            .with_context(|| format!("Cannot read bytes for {}", abs.display()))?;
+        .into_iter()
+        .find(|codefile| codefile.path == rel || codefile.id == rel);
+    let mut registered_spec = false;
+    if let Some(codefile) = existing_codefile {
+        store.update_codefile_hash_and_mtime(&codefile.id, &spec_hash, &last_modified)?;
+    } else {
         store.insert_codefile(&CodeFile {
             id: Uuid::new_v4().to_string(),
             path: rel.clone(),
@@ -651,7 +652,7 @@ fn add_sqlite(
             imports: Vec::new(),
             symbols: Vec::new(),
             symbol_facts: Vec::new(),
-            content_hash,
+            content_hash: spec_hash.clone(),
             extractor_grade: String::new(),
         })?;
         registered_spec = true;
@@ -681,6 +682,7 @@ fn add_sqlite(
             "validation_id": validation_id,
             "created": created,
             "spec": rel,
+            "spec_hash": spec_hash,
             "steps": spec.steps.len(),
             "intents": step_intents.iter().map(|(id, name)| serde_json::json!({
                 "id": id, "name": name,
@@ -762,17 +764,9 @@ fn execute_sqlite(arg: &str, printer: &Printer) -> Result<()> {
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
 
     let rel = resolve_saga_spec_arg(&store, arg, &cwd)?;
+    let validation = resolve_registered_saga_for_spec(&store, &rel)?;
+    ensure_registered_spec_fresh(&validation, &cwd.join(&rel), &rel)?;
     let spec = load_spec_file(&cwd.join(&rel))?;
-    let validation = store
-        .list_validations()?
-        .into_iter()
-        .find(|validation| validation.name == spec.saga && validation.validation_type == "saga")
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "Saga '{}' is not registered in the graph yet. Run `loom saga add {rel}` first.",
-                spec.saga
-            )
-        })?;
     let mut resolver = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
     let (step_intents, _) = resolve_step_intents_sqlite(&mut resolver, &spec, false, None, "")?;
 
@@ -1094,6 +1088,7 @@ fn run_list_with_db(db: &dyn GraphReadRepository, printer: &Printer) -> Result<(
                     "id": v.id,
                     "name": v.name,
                     "spec": spec_path_of(v),
+                    "spec_hash": spec_hash_of(v),
                     "requires_env": required_env_of(v),
                     "run_with": run_invocation(&v.name, &required_env_of(v)),
                     "last_result": v.last_result,
@@ -1203,6 +1198,29 @@ fn resolve_saga_spec_arg(
             validation.name, recorded
         )
     })
+}
+
+fn resolve_registered_saga_for_spec(
+    store: &crate::db::sqlite::SqliteGraphStore,
+    rel: &str,
+) -> Result<Validation> {
+    let matches: Vec<Validation> = store
+        .list_validations()?
+        .into_iter()
+        .filter(|validation| {
+            validation.validation_type == "saga" && spec_path_of(validation).as_deref() == Some(rel)
+        })
+        .collect();
+    match matches.len() {
+        1 => Ok(matches.into_iter().next().expect("one saga match")),
+        0 => anyhow::bail!(
+            "Saga spec '{rel}' is not registered in the graph yet. Run `loom saga add {rel}` first."
+        ),
+        _ => anyhow::bail!(
+            "Saga spec '{rel}' is registered by {} validations. Re-register or retire duplicate sagas before running it.",
+            matches.len()
+        ),
+    }
 }
 
 fn resolve_step_intents_sqlite(
@@ -1327,6 +1345,40 @@ pub fn spec_path_of(v: &Validation) -> Option<String> {
         .map(|s| s.trim().to_string())
 }
 
+/// The registered content hash of the saga spec at `loom saga add` time.
+/// Older graphs may not have this line; they remain runnable but re-running
+/// `loom saga add <spec.yaml>` locks the saga to a deterministic projection.
+pub fn spec_hash_of(v: &Validation) -> Option<String> {
+    v.description
+        .lines()
+        .find_map(|l| l.strip_prefix("spec_hash:"))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+fn saga_spec_hash(path: &std::path::Path) -> Result<String> {
+    std::fs::read(path)
+        .map(|bytes| crate::repo::content_hash(&bytes))
+        .with_context(|| format!("Cannot read bytes for saga spec {}", path.display()))
+}
+
+fn ensure_registered_spec_fresh(
+    validation: &Validation,
+    spec_path: &std::path::Path,
+    rel: &str,
+) -> Result<()> {
+    let Some(registered_hash) = spec_hash_of(validation) else {
+        return Ok(());
+    };
+    let current_hash = saga_spec_hash(spec_path)?;
+    if current_hash != registered_hash {
+        anyhow::bail!(
+            "Saga spec '{rel}' changed since it was registered. Reconcile the graph projection first:\n\n  loom saga add {rel}\n\nNothing was run or recorded. Registered hash: {registered_hash}; current hash: {current_hash}."
+        );
+    }
+    Ok(())
+}
+
 /// The env vars recorded in a saga validation's description
 /// (`requires env: A, B`) — readable without re-parsing the spec file.
 pub fn required_env_of(v: &Validation) -> Vec<String> {
@@ -1362,4 +1414,57 @@ fn relative_to_root(file: &str, root: &std::path::Path) -> Result<String> {
         )
     })?;
     Ok(rel.display().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn validation(description: &str) -> Validation {
+        Validation {
+            id: "v1".into(),
+            name: "checkout".into(),
+            description: description.into(),
+            validation_type: "saga".into(),
+            command: "loom saga run checkout".into(),
+            last_run: String::new(),
+            last_result: "not_run".into(),
+            last_executed_run: String::new(),
+            discrimination_status: String::new(),
+        }
+    }
+
+    #[test]
+    fn saga_metadata_parsers_read_path_hash_and_env() {
+        let v = validation(
+            "Consumer saga proof\nspec:journeys/checkout.yaml\nspec_hash:abc123\nrequires env: BASE_URL, TOKEN",
+        );
+
+        assert_eq!(spec_path_of(&v).as_deref(), Some("journeys/checkout.yaml"));
+        assert_eq!(spec_hash_of(&v).as_deref(), Some("abc123"));
+        assert_eq!(required_env_of(&v), vec!["BASE_URL", "TOKEN"]);
+    }
+
+    #[test]
+    fn fresh_registered_spec_passes_and_drift_refuses() {
+        let path = std::env::temp_dir().join(format!(
+            "loom-saga-drift-{}-{}.yaml",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::write(&path, b"saga: checkout\nsteps: []\n").unwrap();
+        let hash = saga_spec_hash(&path).unwrap();
+        let v = validation(&format!("spec:journeys/checkout.yaml\nspec_hash:{hash}"));
+
+        ensure_registered_spec_fresh(&v, &path, "journeys/checkout.yaml").unwrap();
+
+        std::fs::write(&path, b"saga: checkout\ndescription: changed\nsteps: []\n").unwrap();
+        let err = ensure_registered_spec_fresh(&v, &path, "journeys/checkout.yaml")
+            .unwrap_err()
+            .to_string();
+        let _ = std::fs::remove_file(&path);
+
+        assert!(err.contains("changed since it was registered"));
+        assert!(err.contains("loom saga add journeys/checkout.yaml"));
+    }
 }

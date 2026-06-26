@@ -108,7 +108,11 @@
 /// version IS bumped: the `open_readonly` fast path skips migration when the
 /// on-disk version already matches, so an additive meta column needs the bump to
 /// reach graphs already stamped at the prior version (the v7/v8/v12 pattern).
-pub const SCHEMA_VERSION: &str = "14";
+/// v15 (programmatic recommendation metadata): QualityRule gains
+/// `applies_when`, a JSON object of deterministic signals used by
+/// `loom rule recommend` to rank likely rule×intent inspections. Additive, but
+/// version bumped for the same read-fast-path reason as v14.
+pub const SCHEMA_VERSION: &str = "15";
 pub const INBOX_KINDS: &[&str] = &[
     "observation",
     "user_request",
@@ -401,6 +405,11 @@ pub mod prop {
     /// expectations (the rule is purely semantic). NOT in the required-property
     /// table (additive; absent on rules from older packs reads as "[]").
     pub const SIGNAL_EXPECTATIONS: &str = "signal_expectations";
+    /// QualityRule: JSON object describing deterministic recommendation signals
+    /// (`loom rule recommend`). Empty object = no programmatic recommendation
+    /// metadata. NOT in the required-property table (additive; absent on older
+    /// rules reads as "{}").
+    pub const APPLIES_WHEN: &str = "applies_when";
     /// GOVERNS: TEXT "true" when the verdict covers all descendant intents
     /// (a roll-up at component/system altitude). The evidence must justify why
     /// the same criterion applies to every child. NOT in the required-property

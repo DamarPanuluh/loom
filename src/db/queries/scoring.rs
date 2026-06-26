@@ -1570,6 +1570,7 @@ mod tests {
         QualityRule {
             evidence_examples: String::new(),
             signal_expectations: String::new(),
+            applies_when: String::new(),
             id: id.to_string(),
             name: id.to_string(),
             description: String::new(),

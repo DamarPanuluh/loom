@@ -1,4 +1,5 @@
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::cli::RuleCmd;
@@ -265,6 +266,47 @@ const CONCURRENCY_PACK: &[PackRule] = &[
      "performance"),
 ];
 
+/// Container packaging vantage point: image size, build-cache shape, runtime
+/// hardening, secret hygiene, and graph-native proof that the image builds and
+/// starts. The Dockerfile/.dockerignore stay CodeFiles; these rules are the
+/// normative plane that makes container creation measurable.
+const DOCKER_APPLIES: &str = "{\"signals\":[{\"source\":\"intent_text\",\"terms\":[\"docker\",\"container\",\"image\",\"dockerfile\"],\"weight\":0.35,\"reason\":\"intent text mentions Docker/container/image packaging\"},{\"source\":\"path\",\"terms\":[\"dockerfile\",\".dockerignore\",\"docker-compose.yml\",\"docker-compose.yaml\",\"compose.yml\",\"compose.yaml\"],\"weight\":0.45,\"reason\":\"grounded files include Dockerfile/.dockerignore/compose artifacts\"}]}";
+const DOCKER_BUILD_APPLIES: &str = "{\"signals\":[{\"source\":\"intent_text\",\"terms\":[\"docker\",\"container\",\"image\",\"dockerfile\"],\"weight\":0.35,\"reason\":\"intent text mentions Docker/container/image packaging\"},{\"source\":\"path\",\"terms\":[\"dockerfile\",\".dockerignore\",\"docker-compose.yml\",\"docker-compose.yaml\",\"compose.yml\",\"compose.yaml\"],\"weight\":0.45,\"reason\":\"grounded files include Dockerfile/.dockerignore/compose artifacts\"},{\"source\":\"missing_validation_all\",\"groups\":[[\"docker build\",\"podman build\"],[\"docker run\",\"podman run\"]],\"weight\":0.30,\"reason\":\"no linked validation command proves both image build and image run\"}]}";
+
+const DOCKER_PACK: &[PackRule] = &[
+    PackRule::with_evidence("docker-build-proven", "error",
+     "Docker: each containerization intent carries a passing Validation that builds the image and exercises its entrypoint (`docker build` plus `docker run … --help` or an equivalent smoke command). A Dockerfile without a graph proof is only packaging text, not proven packaging behavior.",
+     "For a containerization/deployment intent, inspect its linked validations: is there a passed command that builds the image and a passed command (or combined smoke) proving the produced image starts? Mark independent for intents unrelated to container packaging.",
+     "correctness",
+     "{\"pass\":\"Validation 'docker image smoke' runs `docker build -t app:local . && docker run --rm app:local --help` and last_result=passed\",\"independent\":\"this intent is pure CLI parsing and has no container packaging responsibility\",\"common_false_positive\":\"a Dockerfile exists but no passing build/run validation is linked to the packaging intent\"}",
+     "[[\"docker build\",\"docker run\",\"podman build\",\"podman run\"],[\"passed\",\"last_result\"]]"
+    ).with_applies_when(DOCKER_BUILD_APPLIES),
+    PackRule::new("docker-multistage-minimal-runtime", "warning",
+     "Docker: production images use a multi-stage build or an equivalently minimal runtime image (scratch/distroless/slim/alpine as appropriate), so build tools, caches, and source-only artifacts do not ship in the runtime layer.",
+     "Inspect Dockerfile stages and final FROM: build dependencies should live in builder stages, with only the compiled app/runtime assets copied into the final image. Flag single-stage full distro/toolchain images unless this is explicitly a development container.",
+     "performance").with_applies_when(DOCKER_APPLIES),
+    PackRule::new("docker-cache-friendly-layers", "warning",
+     "Docker: dependency manifests are copied and installed before frequently-changing source code, and package caches use BuildKit cache mounts where useful, so ordinary source edits reuse dependency layers.",
+     "Read the Dockerfile layer order: dependency lockfiles/manifests should precede broad `COPY . .`; expensive package install/build steps should not be invalidated by unrelated source or docs churn.",
+     "performance").with_applies_when(DOCKER_APPLIES),
+    PackRule::new("docker-context-pruned", "warning",
+     "Docker: the build context is pruned with `.dockerignore` so VCS data, local build outputs, dependencies, secrets, tests/docs not needed at runtime, and large artifacts do not enter the build context.",
+     "Inspect `.dockerignore` (or equivalent build context controls) alongside the Dockerfile. Flag missing ignores for `.git`, target/dist/build outputs, dependency directories, local env files, and bulky non-runtime assets.",
+     "performance").with_applies_when(DOCKER_APPLIES),
+    PackRule::new("docker-non-root-runtime", "error",
+     "Docker (CWE-250): production containers run as a non-root user and avoid privilege escalation by default; root is limited to build/install steps or explicitly justified development images.",
+     "Inspect the final runtime stage for `USER` and ownership of copied files. Flag final images that default to root without a recorded reason.",
+     "security").with_applies_when(DOCKER_APPLIES),
+    PackRule::new("docker-no-secrets-in-image", "error",
+     "Docker (CWE-798): secrets are never baked into image layers or build args that persist in history; credentials arrive at runtime through env/secret mounts or BuildKit secret mounts.",
+     "Scan Dockerfile, compose files, and copied config for key-like literals, ARG/ENV secrets, private registry tokens, and credential files copied into the image. Check that secret inputs use runtime injection or BuildKit `--mount=type=secret`.",
+     "security").with_applies_when(DOCKER_APPLIES),
+    PackRule::new("docker-runtime-contract-declared", "warning",
+     "Docker: the runtime contract is explicit — entrypoint/cmd, exposed port when relevant, healthcheck for long-running services, and resource expectations/limits in compose or deployment config.",
+     "For service containers, inspect Dockerfile plus compose/deployment files: is startup explicit, is health observable, and are CPU/memory expectations documented or limited? Mark independent for one-shot CLI images where health/ports do not apply.",
+     "resource_safety").with_applies_when(DOCKER_APPLIES),
+];
+
 /// AI-generated code security gaps: patterns AI models reproduce that the
 /// baseline ISO 5055 security rules don't cover. Distilled from the
 /// sec-context anti-pattern taxonomy (Arcanum, CC-BY 4.0) — the 4 novel
@@ -302,6 +344,7 @@ pub struct PackRule {
     pub kind: &'static str,
     pub evidence_examples: &'static str,
     pub signal_expectations: &'static str,
+    pub applies_when: &'static str,
 }
 
 impl PackRule {
@@ -321,6 +364,7 @@ impl PackRule {
             kind,
             evidence_examples: "",
             signal_expectations: "",
+            applies_when: "",
         }
     }
     /// Rules with evidence steering metadata.
@@ -341,7 +385,13 @@ impl PackRule {
             kind,
             evidence_examples,
             signal_expectations,
+            applies_when: "",
         }
+    }
+
+    const fn with_applies_when(mut self, applies_when: &'static str) -> Self {
+        self.applies_when = applies_when;
+        self
     }
 }
 
@@ -354,6 +404,7 @@ const PACKS: &[Pack] = &[
     ("service", SERVICE_PACK),
     ("data", DATA_PACK),
     ("concurrency", CONCURRENCY_PACK),
+    ("docker", DOCKER_PACK),
 ];
 
 /// Names of all seedable packs (for help/errors/`loom detect`).
@@ -372,7 +423,10 @@ fn pack_rule_effort(name: &str) -> &'static str {
         // Near-mechanical scans.
         ISO5055_SEC_NO_HARDCODED_SECRETS
         | ISO5055_MAIN_NO_DEAD_OR_DUPLICATE
-        | "sec-dependency-squatting" => "low",
+        | "sec-dependency-squatting"
+        | "docker-context-pruned"
+        | "docker-non-root-runtime"
+        | "docker-no-secrets-in-image" => "low",
         // Deep semantic reading.
         "conc-atomic-multi-step"
         | "conc-deadlock-ordering"
@@ -403,6 +457,14 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             let db = GraphReadHandle::open(&cwd)?;
             run_check_with_db(&db, intent_id, printer)
         }
+        RuleCmd::Recommend {
+            intent_id,
+            all,
+            limit,
+        } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_recommend_with_db(&db, intent_id, all, limit, printer)
+        }
         cmd => {
             ensure_initialized(&cwd)?;
             run_with_sqlite(&cwd, cmd, printer)
@@ -419,6 +481,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             severity,
             kind,
             effort,
+            applies_when,
         } => {
             gate::acting_in_lane(&gate::lane::ADD_RULE, None)?;
             severity
@@ -441,6 +504,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             let inspection_effort = effort
                 .or_else(|| governs_kind.map(|gk| gk.default_effort().to_string()))
                 .unwrap_or_default();
+            let applies_when = normalize_applies_when(applies_when.as_deref())?;
             let id = Uuid::new_v4().to_string();
             let rule = QualityRule {
                 id: id.clone(),
@@ -452,6 +516,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 severity,
                 evidence_examples: String::new(),
                 signal_expectations: String::new(),
+                applies_when,
             };
             store.insert_rule(&rule)?;
 
@@ -481,14 +546,17 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             let mut updated_count = 0usize;
             for rule_def in *rules {
                 if let Some(existing_rule) = existing.get(rule_def.name) {
-                    // Backfill evidence_examples and signal_expectations when
-                    // --update is passed and the pack carries richer metadata.
+                    // Backfill recommendation/evidence metadata when --update
+                    // is passed and the pack carries richer metadata.
                     if update
                         && (existing_rule.evidence_examples.is_empty()
                             != rule_def.evidence_examples.is_empty()
                             || (existing_rule.signal_expectations.is_empty()
                                 || existing_rule.signal_expectations == "[]")
-                                != rule_def.signal_expectations.is_empty())
+                                != rule_def.signal_expectations.is_empty()
+                            || (existing_rule.applies_when.is_empty()
+                                || existing_rule.applies_when == "{}")
+                                != rule_def.applies_when.is_empty())
                     {
                         let mut u = existing_rule.clone();
                         if !rule_def.evidence_examples.is_empty() {
@@ -496,6 +564,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                         }
                         if !rule_def.signal_expectations.is_empty() {
                             u.signal_expectations = rule_def.signal_expectations.to_string();
+                        }
+                        if !rule_def.applies_when.is_empty() {
+                            u.applies_when = rule_def.applies_when.to_string();
                         }
                         store.insert_rule(&u)?;
                         updated_count += 1;
@@ -517,6 +588,11 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                         "[]".to_string()
                     } else {
                         rule_def.signal_expectations.to_string()
+                    },
+                    applies_when: if rule_def.applies_when.is_empty() {
+                        "{}".to_string()
+                    } else {
+                        rule_def.applies_when.to_string()
                     },
                 };
                 store.insert_rule(&rule)?;
@@ -715,6 +791,11 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
         RuleCmd::List { limit } => run_list_with_db(&store, limit, printer)?,
         RuleCmd::Show { identifier } => run_show_with_db(&store, &identifier, printer)?,
         RuleCmd::Check { intent_id } => run_check_with_db(&store, intent_id, printer)?,
+        RuleCmd::Recommend {
+            intent_id,
+            all,
+            limit,
+        } => run_recommend_with_db(&store, intent_id, all, limit, printer)?,
     }
     Ok(())
 }
@@ -819,6 +900,9 @@ fn run_show_with_db(
                 }
             }
         }
+        if !rule.applies_when.is_empty() && rule.applies_when != "{}" {
+            println!("  applies_when:       {}", rule.applies_when);
+        }
     }
     Ok(())
 }
@@ -897,6 +981,670 @@ fn run_check_with_db(
     Ok(())
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct RuleRecommendation {
+    rule: RuleRecommendationRule,
+    intent: RuleRecommendationIntent,
+    score: f64,
+    confidence: &'static str,
+    reasons: Vec<String>,
+    existing_governs_status: Option<String>,
+    suggested_command: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RuleRecommendationRule {
+    id: String,
+    name: String,
+    kind: String,
+    severity: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RuleRecommendationIntent {
+    id: String,
+    name: String,
+}
+
+fn run_recommend_with_db(
+    db: &dyn GraphReadRepository,
+    intent_id: Option<String>,
+    all: bool,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    let snapshot = db.query_snapshot()?;
+    let target_ids = if all {
+        snapshot
+            .intents
+            .iter()
+            .filter(|intent| {
+                intent.status != "deprecated" && snapshot.with_code.contains(intent.id.as_str())
+            })
+            .map(|intent| intent.id.clone())
+            .collect::<Vec<_>>()
+    } else {
+        let key = intent_id.ok_or_else(|| {
+            anyhow::anyhow!(
+                "provide an intent id/name, or pass --all to recommend across coded intents"
+            )
+        })?;
+        vec![crate::db::queries::resolve_intent_from_snapshot(
+            &snapshot, &key,
+        )?]
+    };
+
+    let mut recommendations = recommend_rules_from_snapshot(&snapshot, &target_ids);
+    let total = recommendations.len();
+    let n = if limit == 0 { total } else { limit.min(total) };
+    recommendations.truncate(n);
+
+    let next_step = "Inspect the suggested rule×intent pairs, then record truth with `loom rule verdict … --status passing|failing|independent`; recommendations are deterministic triage, not verdicts.";
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "total": total,
+            "returned": recommendations.len(),
+            "truncated": recommendations.len() < total,
+            "recommendations": recommendations,
+            "next_step": next_step,
+        }));
+        return Ok(());
+    }
+
+    if recommendations.is_empty() {
+        println!("No high-signal rule recommendations found.");
+        println!("  → {next_step}");
+        return Ok(());
+    }
+
+    println!(
+        "── Rule recommendations ({}/{total}) ─────────────────────────────",
+        recommendations.len()
+    );
+    for rec in &recommendations {
+        println!();
+        println!(
+            "  [{:.2} {}] {} → {}",
+            rec.score, rec.confidence, rec.rule.name, rec.intent.name
+        );
+        for reason in &rec.reasons {
+            println!("    - {reason}");
+        }
+        if let Some(status) = &rec.existing_governs_status {
+            println!("    existing GOVERNS status: {status}");
+        }
+        println!("    next: {}", rec.suggested_command);
+    }
+    if recommendations.len() < total {
+        println!();
+        println!(
+            "  (+{} more; use --limit 0 for all)",
+            total - recommendations.len()
+        );
+    }
+    println!();
+    println!("  → {next_step}");
+    Ok(())
+}
+
+fn recommend_rules_from_snapshot(
+    snapshot: &crate::db::queries::QuerySnapshot,
+    target_ids: &[String],
+) -> Vec<RuleRecommendation> {
+    let intent_by_id: std::collections::HashMap<&str, &crate::types::Intent> = snapshot
+        .intents
+        .iter()
+        .map(|intent| (intent.id.as_str(), intent))
+        .collect();
+    let codefile_by_id: std::collections::HashMap<&str, &crate::types::CodeFile> = snapshot
+        .codefiles
+        .iter()
+        .map(|codefile| (codefile.id.as_str(), codefile))
+        .collect();
+    let validates_by_intent = group_validations_by_intent(snapshot);
+    let governs_by_pair: std::collections::HashMap<(&str, &str), &crate::types::Governs> = snapshot
+        .governs
+        .iter()
+        .map(|g| ((g.rule_id.as_str(), g.intent_id.as_str()), g))
+        .collect();
+
+    let mut out = Vec::new();
+    for intent_id in target_ids {
+        let Some(intent) = intent_by_id.get(intent_id.as_str()).copied() else {
+            continue;
+        };
+        if intent.status == "deprecated" {
+            continue;
+        }
+        let groundings: Vec<&crate::types::Implements> = snapshot
+            .implements
+            .iter()
+            .filter(|im| im.intent_id == intent.id)
+            .collect();
+        let codefiles: Vec<&crate::types::CodeFile> = groundings
+            .iter()
+            .filter_map(|im| codefile_by_id.get(im.codefile_id.as_str()).copied())
+            .collect();
+        let validations = validates_by_intent
+            .get(intent.id.as_str())
+            .cloned()
+            .unwrap_or_default();
+        let signals = IntentRuleSignals::new(intent, &groundings, &codefiles, &validations);
+
+        for rule in &snapshot.rules {
+            let existing = governs_by_pair
+                .get(&(rule.id.as_str(), intent.id.as_str()))
+                .copied();
+            if existing.is_some_and(|g| {
+                matches!(
+                    g.inspection_status.as_str(),
+                    "passing" | "failing" | "independent" | "partial"
+                )
+            }) {
+                continue;
+            }
+            let Some((score, reasons)) = score_rule_for_intent(rule, &signals) else {
+                continue;
+            };
+            if score < 0.5 {
+                continue;
+            }
+            out.push(RuleRecommendation {
+                rule: RuleRecommendationRule {
+                    id: rule.id.clone(),
+                    name: rule.name.clone(),
+                    kind: rule.kind.clone(),
+                    severity: rule.severity.clone(),
+                },
+                intent: RuleRecommendationIntent {
+                    id: intent.id.clone(),
+                    name: intent.name.clone(),
+                },
+                score,
+                confidence: confidence_label(score),
+                reasons,
+                existing_governs_status: existing.map(|g| g.inspection_status.clone()),
+                suggested_command: format!(
+                    "loom rule verdict {} {} --status passing|failing|independent --criterion \"<criterion>\" --evidence \"<evidence>\"",
+                    rule.name, intent.id
+                ),
+            });
+        }
+    }
+
+    out.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.intent.name.cmp(&b.intent.name))
+            .then_with(|| a.rule.name.cmp(&b.rule.name))
+    });
+    out
+}
+
+#[derive(Debug)]
+struct IntentRuleSignals {
+    text: String,
+    paths: Vec<String>,
+    imports: Vec<String>,
+    validations: Vec<String>,
+}
+
+impl IntentRuleSignals {
+    fn new(
+        intent: &crate::types::Intent,
+        groundings: &[&crate::types::Implements],
+        codefiles: &[&crate::types::CodeFile],
+        validations: &[&crate::types::Validation],
+    ) -> Self {
+        let mut text = format!(
+            "{} {} {} {} {} {} {} {} {}",
+            intent.name,
+            intent.description,
+            intent.criterion,
+            intent.domain,
+            intent.layer,
+            intent.aspect,
+            intent.lifecycle,
+            intent.visibility,
+            intent.boundary
+        )
+        .to_ascii_lowercase();
+        for g in groundings {
+            text.push(' ');
+            text.push_str(&g.locator.to_ascii_lowercase());
+            text.push(' ');
+            text.push_str(&g.notes.to_ascii_lowercase());
+        }
+        let paths = codefiles
+            .iter()
+            .map(|cf| cf.path.to_ascii_lowercase())
+            .collect::<Vec<_>>();
+        let imports = codefiles
+            .iter()
+            .flat_map(|cf| cf.imports.iter().map(|i| i.to_ascii_lowercase()))
+            .collect::<Vec<_>>();
+        let validations = validations
+            .iter()
+            .map(|v| {
+                format!(
+                    "{} {} {} {} {}",
+                    v.name, v.description, v.validation_type, v.command, v.last_result
+                )
+                .to_ascii_lowercase()
+            })
+            .collect::<Vec<_>>();
+        Self {
+            text,
+            paths,
+            imports,
+            validations,
+        }
+    }
+
+    fn text_has_any(&self, needles: &[&str]) -> bool {
+        needles.iter().any(|needle| self.text.contains(needle))
+    }
+
+    fn path_has_any(&self, needles: &[&str]) -> bool {
+        self.paths
+            .iter()
+            .any(|path| needles.iter().any(|needle| path.contains(needle)))
+    }
+
+    fn import_has_any(&self, needles: &[&str]) -> bool {
+        self.imports
+            .iter()
+            .any(|import| needles.iter().any(|needle| import.contains(needle)))
+    }
+
+    fn validation_has_all(&self, groups: &[&[&str]]) -> bool {
+        self.validations.iter().any(|validation| {
+            groups
+                .iter()
+                .all(|group| group.iter().any(|needle| validation.contains(needle)))
+        })
+    }
+
+    fn text_has_any_owned(&self, needles: &[String]) -> bool {
+        needles.iter().any(|needle| self.text.contains(needle))
+    }
+
+    fn path_has_any_owned(&self, needles: &[String]) -> bool {
+        self.paths
+            .iter()
+            .any(|path| needles.iter().any(|needle| path.contains(needle)))
+    }
+
+    fn import_has_any_owned(&self, needles: &[String]) -> bool {
+        self.imports
+            .iter()
+            .any(|import| needles.iter().any(|needle| import.contains(needle)))
+    }
+
+    fn validation_has_all_owned(&self, groups: &[Vec<String>]) -> bool {
+        self.validations.iter().any(|validation| {
+            groups
+                .iter()
+                .all(|group| group.iter().any(|needle| validation.contains(needle)))
+        })
+    }
+}
+
+fn score_rule_for_intent(
+    rule: &crate::types::QualityRule,
+    signals: &IntentRuleSignals,
+) -> Option<(f64, Vec<String>)> {
+    if !rule.applies_when.is_empty() && rule.applies_when != "{}" {
+        return score_applies_when(&rule.applies_when, signals)
+            .or_else(|| legacy_score_rule_for_intent(rule, signals));
+    }
+    legacy_score_rule_for_intent(rule, signals)
+}
+
+fn legacy_score_rule_for_intent(
+    rule: &crate::types::QualityRule,
+    signals: &IntentRuleSignals,
+) -> Option<(f64, Vec<String>)> {
+    let mut score: f64 = 0.0;
+    let mut reasons: Vec<String> = Vec::new();
+    let rule_name = rule.name.as_str();
+
+    if rule_name.starts_with("docker-") {
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.text_has_any(&["docker", "container", "image", "dockerfile"]),
+            "intent text mentions Docker/container/image packaging",
+        );
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.45,
+            signals.path_has_any(&[
+                "dockerfile",
+                ".dockerignore",
+                "docker-compose.yml",
+                "docker-compose.yaml",
+                "compose.yml",
+                "compose.yaml",
+            ]),
+            "grounded files include Dockerfile/.dockerignore/compose artifacts",
+        );
+        if rule_name == "docker-build-proven" {
+            let has_build_run = signals.validation_has_all(&[
+                &["docker build", "podman build"],
+                &["docker run", "podman run"],
+            ]);
+            add_if(
+                &mut score,
+                &mut reasons,
+                0.30,
+                !has_build_run,
+                "no linked validation command proves both image build and image run",
+            );
+        }
+    }
+
+    if rule_name.starts_with("service-") {
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.text_has_any(&[
+                "service", "endpoint", "http", "api", "webhook", "queue", "consumer", "boundary",
+            ]),
+            "intent text names a service/API/boundary surface",
+        );
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.import_has_any(&[
+                "axum", "actix", "rocket", "warp", "express", "fastapi", "reqwest", "hyper",
+                "tonic",
+            ]),
+            "grounded files import service/client framework symbols",
+        );
+    }
+
+    if rule_name.starts_with("data-") {
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.text_has_any(&[
+                "data",
+                "database",
+                "migration",
+                "schema",
+                "sql",
+                "pii",
+                "record",
+                "ingest",
+            ]),
+            "intent text names data/database/migration concerns",
+        );
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.path_has_any(&[".sql", "migrations/", "/migrations"]),
+            "grounded files include SQL or migrations",
+        );
+    }
+
+    if rule_name.starts_with("webui-") {
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.text_has_any(&["ui", "screen", "view", "component", "button", "form"]),
+            "intent text names UI/view/component behavior",
+        );
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.path_has_any(&[".tsx", ".jsx", ".svelte", ".vue", ".css", ".html"]),
+            "grounded files include frontend UI assets",
+        );
+    }
+
+    if rule_name.starts_with("mobile-") {
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.text_has_any(&["mobile", "ios", "android", "screen", "permission"]),
+            "intent text names mobile/platform concerns",
+        );
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.path_has_any(&[".swift", ".kt", ".kts", ".dart", "ios/", "android/"]),
+            "grounded files include mobile platform assets",
+        );
+    }
+
+    if rule_name.starts_with("conc-") || rule_name == "perf-budget-proven" {
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.35,
+            signals.text_has_any(&[
+                "concurrent",
+                "thread",
+                "async",
+                "lock",
+                "mutex",
+                "channel",
+                "latency",
+                "throughput",
+                "hot path",
+                "performance",
+                "optimize",
+                "cache",
+            ]),
+            "intent text names concurrency/performance/optimization concerns",
+        );
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.25,
+            signals.import_has_any(&["tokio", "rayon", "thread", "sync", "mutex", "channel"]),
+            "grounded files import concurrency primitives/frameworks",
+        );
+        if rule_name == "perf-budget-proven" {
+            let has_benchmark = signals.validation_has_all(&[&["benchmark", "bench"]]);
+            add_if(
+                &mut score,
+                &mut reasons,
+                0.25,
+                !has_benchmark,
+                "no linked benchmark validation is visible for the performance claim",
+            );
+        }
+    }
+
+    if rule.kind == "performance" {
+        add_if(
+            &mut score,
+            &mut reasons,
+            0.20,
+            signals.text_has_any(&[
+                "optimize",
+                "optimization",
+                "performance",
+                "latency",
+                "throughput",
+                "cache",
+                "startup",
+                "size",
+            ]),
+            "performance-kind rule matches optimization/performance wording",
+        );
+    }
+
+    if reasons.is_empty() {
+        None
+    } else {
+        Some((score.min(1.0), reasons))
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AppliesWhen {
+    #[serde(default)]
+    signals: Vec<ApplySignal>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ApplySignal {
+    source: String,
+    #[serde(default)]
+    terms: Vec<String>,
+    #[serde(default)]
+    groups: Vec<Vec<String>>,
+    weight: f64,
+    reason: String,
+}
+
+fn normalize_applies_when(value: Option<&str>) -> Result<String> {
+    let Some(value) = value.map(str::trim).filter(|v| !v.is_empty()) else {
+        return Ok("{}".to_string());
+    };
+    let parsed: serde_json::Value = serde_json::from_str(value)
+        .map_err(|e| anyhow::anyhow!("--applies-when must be valid JSON: {e}"))?;
+    if !parsed.is_object() {
+        anyhow::bail!("--applies-when must be a JSON object with a `signals` array");
+    }
+    let mut applies: AppliesWhen = serde_json::from_value(parsed)
+        .map_err(|e| anyhow::anyhow!("--applies-when has invalid shape: {e}"))?;
+    for signal in &mut applies.signals {
+        normalize_apply_signal(signal);
+        validate_apply_signal(signal)?;
+    }
+    if applies.signals.is_empty() {
+        return Ok("{}".to_string());
+    }
+    serde_json::to_string(&applies).map_err(Into::into)
+}
+
+fn normalize_apply_signal(signal: &mut ApplySignal) {
+    signal.source = signal.source.trim().to_ascii_lowercase();
+    signal.terms = signal
+        .terms
+        .iter()
+        .map(|term| term.trim().to_ascii_lowercase())
+        .filter(|term| !term.is_empty())
+        .collect();
+    signal.groups = signal
+        .groups
+        .iter()
+        .map(|group| {
+            group
+                .iter()
+                .map(|term| term.trim().to_ascii_lowercase())
+                .filter(|term| !term.is_empty())
+                .collect::<Vec<_>>()
+        })
+        .filter(|group| !group.is_empty())
+        .collect();
+    signal.reason = signal.reason.trim().to_string();
+}
+
+fn validate_apply_signal(signal: &ApplySignal) -> Result<()> {
+    match signal.source.as_str() {
+        "intent_text" | "path" | "import" => {
+            if signal.terms.is_empty() {
+                anyhow::bail!("applies_when signal source '{}' requires non-empty terms", signal.source);
+            }
+        }
+        "validation_all" | "missing_validation_all" => {
+            if signal.groups.is_empty() || signal.groups.iter().any(Vec::is_empty) {
+                anyhow::bail!("applies_when signal source '{}' requires non-empty groups", signal.source);
+            }
+        }
+        other => anyhow::bail!(
+            "unknown applies_when signal source '{}'; expected intent_text, path, import, validation_all, or missing_validation_all",
+            other
+        ),
+    }
+    if !signal.weight.is_finite() || signal.weight <= 0.0 {
+        anyhow::bail!("applies_when signal weight must be a finite positive number");
+    }
+    if signal.reason.trim().is_empty() {
+        anyhow::bail!("applies_when signal reason must be non-empty");
+    }
+    Ok(())
+}
+
+fn score_applies_when(value: &str, signals: &IntentRuleSignals) -> Option<(f64, Vec<String>)> {
+    let applies: AppliesWhen = serde_json::from_str(value).ok()?;
+    let mut score: f64 = 0.0;
+    let mut reasons = Vec::new();
+    for signal in &applies.signals {
+        let matched = match signal.source.as_str() {
+            "intent_text" => signals.text_has_any_owned(&signal.terms),
+            "path" => signals.path_has_any_owned(&signal.terms),
+            "import" => signals.import_has_any_owned(&signal.terms),
+            "validation_all" => signals.validation_has_all_owned(&signal.groups),
+            "missing_validation_all" => !signals.validation_has_all_owned(&signal.groups),
+            _ => false,
+        };
+        if matched {
+            score += signal.weight;
+            reasons.push(signal.reason.clone());
+        }
+    }
+    if reasons.is_empty() {
+        None
+    } else {
+        Some((score.min(1.0), reasons))
+    }
+}
+
+fn add_if(score: &mut f64, reasons: &mut Vec<String>, weight: f64, condition: bool, reason: &str) {
+    if condition {
+        *score += weight;
+        reasons.push(reason.to_string());
+    }
+}
+
+fn confidence_label(score: f64) -> &'static str {
+    if score >= 0.8 {
+        "high"
+    } else if score >= 0.6 {
+        "medium"
+    } else {
+        "low"
+    }
+}
+
+fn group_validations_by_intent(
+    snapshot: &crate::db::queries::QuerySnapshot,
+) -> std::collections::HashMap<&str, Vec<&crate::types::Validation>> {
+    let validation_by_id: std::collections::HashMap<&str, &crate::types::Validation> = snapshot
+        .validations
+        .iter()
+        .map(|validation| (validation.id.as_str(), validation))
+        .collect();
+    let mut out: std::collections::HashMap<&str, Vec<&crate::types::Validation>> =
+        std::collections::HashMap::new();
+    for edge in &snapshot.validates {
+        if let Some(validation) = validation_by_id.get(edge.validation_id.as_str()).copied() {
+            out.entry(edge.intent_id.as_str())
+                .or_default()
+                .push(validation);
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -910,6 +1658,25 @@ mod tests {
     }
     fn has_rule(rules: &[PackRule], name: &str) -> bool {
         rules.iter().any(|r| r.name == name)
+    }
+
+    #[test]
+    fn docker_pack_carries_container_creation_standards() {
+        let docker = pack("docker");
+        for r in [
+            "docker-build-proven",
+            "docker-multistage-minimal-runtime",
+            "docker-cache-friendly-layers",
+            "docker-context-pruned",
+            "docker-non-root-runtime",
+            "docker-no-secrets-in-image",
+            "docker-runtime-contract-declared",
+        ] {
+            assert!(has_rule(docker, r), "docker pack missing rule '{r}'");
+        }
+        assert_eq!(pack_rule_effort("docker-context-pruned"), "low");
+        assert_eq!(pack_rule_effort("docker-non-root-runtime"), "low");
+        assert_eq!(pack_rule_effort("docker-no-secrets-in-image"), "low");
     }
 
     /// Design-system standards (`design-system standards via QualityRule packs`):

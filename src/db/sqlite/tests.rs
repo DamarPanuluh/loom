@@ -85,9 +85,9 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
         1,
         "hierarchy edge must survive the intent-table rebuild (no FK cascade)"
     );
-    // Version stamped only after the migration (v14 = autonomy mode).
+    // Version stamped only after the migration (v15 = recommendation metadata).
     let meta = store.graph_meta().unwrap().unwrap();
-    assert_eq!(meta.version, "14");
+    assert_eq!(meta.version, "15");
     // The v14 autonomy column is backfilled by ensure_meta_columns on a
     // pre-autonomy graph (this seed had no `autonomy` column) — defaulting to
     // the cautious `guided` mode, never NULL.

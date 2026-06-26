@@ -11,7 +11,7 @@ symbols:
   - pub fn extract_physical_facts
 provenance:
   src/commands/detect.rs: 2bf1e6ebed71e589
-  src/repo.rs: fca7873e11343725
+  src/repo.rs: ad374b61242ccdb5
   src/ts_imports.rs: 486cba7fb2af4086
 ---
 
@@ -41,6 +41,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

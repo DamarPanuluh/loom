@@ -676,7 +676,7 @@ loom smells [--limit N] [--summary]
   adjudicated rulings, and advisory bodies; load it only when a specific
   finding needs inspection.
 
-loom rule seed iso5055|mobile|web-ui|service|data|concurrency
+loom rule seed iso5055|mobile|web-ui|service|data|concurrency|docker
   Seed a built-in measuring-stick pack — the repo-kind VANTAGE POINTS for 360°
   normative coverage, each rule written for LLM inspection (detection_logic
   says exactly what to look for). Idempotent (existing names skipped).
@@ -692,9 +692,33 @@ loom rule seed iso5055|mobile|web-ui|service|data|concurrency
   I/O/await, atomic multi-step, deadlock ordering, cancellation safety,
   bounded concurrency, plus perf-budget-proven (hot-path intents must state a
   budget in their criterion AND carry a passing benchmark validation — the
-  normative plane demanding proof in the validation plane).
+  normative plane demanding proof in the validation plane) · docker = image
+  size, cache-friendly layers, pruned build context, non-root runtime, secret
+  hygiene, runtime contract, and docker build/run proof as a Validation.
   `loom detect` recommends which packs fit this repo. After seeding,
   `loom next --mode quality` serves every never-measured rule×intent pair.
+
+loom rule add --name <name> --description <norm> --severity warning|error
+              [--kind security|correctness|performance|architecture|resource_safety]
+              [--effort low|mid|high]
+              [--applies-when '<json>']
+  Add a repo-specific measuring stick. `--applies-when` is optional persisted
+  recommendation metadata used by `loom rule recommend`; it must be a JSON
+  object with a `signals` array. Signal sources: `intent_text`, `path`, `import`,
+  `validation_all`, `missing_validation_all`. Each signal carries `terms` or
+  `groups`, a positive `weight`, and a human-readable `reason`. It ranks likely
+  inspections only; it never records verdict truth.
+
+loom rule recommend <intent> [--limit N]
+loom rule recommend --all [--limit N]
+  Deterministically recommend likely QualityRule×Intent inspections from graph
+  signals declared in `QualityRule.applies_when` (or legacy built-in fallbacks):
+  intent words/metadata, grounded file paths, imports, and proof gaps such as a
+  Dockerfile-grounded intent without a docker build/run Validation.
+  This is triage only: it returns a score, confidence, concrete reasons, and a
+  suggested `loom rule verdict …` command. An LLM or human still inspects the
+  code and records `passing`, `failing`, or `independent`; recommendations never
+  auto-stamp truth.
 
 loom export [path]                    (default loom.graph.json; "-" = stdout;
                                        positional, mirroring `loom import <file>`;

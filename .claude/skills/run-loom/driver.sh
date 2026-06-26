@@ -65,6 +65,7 @@ echo "── lane + evidence gates reject bad input ──"
 LOOM_AGENT=llm:analyzer "$L" edge explore "add item" "reject empty" ground --criterion "todo" 2>/dev/null \
   && fail "vacuous criterion accepted" || ok "vacuous criterion rejected"
 LOOM_AGENT=llm:analyzer "$L" edge explore "add item" "reject empty" ground \
+  --kind manual \
   --criterion "the empty-guard runs before save, so both intents live in def add without conflict" >/dev/null
 ok "analyzer grounds with substantive criterion"
 
@@ -73,14 +74,21 @@ touch app.py store.py
 [ "$("$L" sync --json | jget "['files_changed']")" = 0 ] \
   || fail "touch-only mtime churn flagged a change (content-hash regression)"
 ok "touch-only churn flags nothing (detection is content-based)"
-printf '\n# touched\n' >> app.py
+python3 - <<'PY'
+from pathlib import Path
+p = Path("app.py")
+s = p.read_text()
+p.write_text(s.replace("save(text)", "save(text.strip())"))
+PY
 R="$("$L" sync --json)"
 [ "$(echo "$R" | jget "['files_changed']")" = 1 ] || fail "sync content change"
 [ "$(echo "$R" | jget "['relates_to_edges_flagged']")" = 1 ] || fail "sync ripple"
-"$L" note list --kind transition | grep -q "(sync: app.py changed)" \
+NL="$("$L" note list --kind transition)"
+echo "$NL" | grep -q "(sync: app.py changed)" \
   || fail "stale-cause transition note missing"
 "$L" smells --limit 50 --json | jget "['total']" >/dev/null
 LOOM_AGENT=llm:fixer "$L" edge explore "add item" "reject empty" ground \
+  --kind manual \
   --criterion "the empty-guard runs before save, so both intents live in def add without conflict" >/dev/null
 ok "code change → edge stale (cause noted on the edge) → re-grounded"
 
@@ -97,15 +105,23 @@ ok "360°: quality queue serves never-measured pairs (detection logic attached)"
 "$L" rule verdict iso5055-perf-bounded-work "reject empty" --status independent \
   --criterion "no iteration over external-sized data exists anywhere in this path" \
   --evidence "def add validates a single string and persists once; there is no loop or recursion" >/dev/null
-[ "$("$L" status --json | jget "['graph_state']['coverage']['measured_pairs']['covered']")" -ge 1 ] \
+STATUS_JSON="$("$L" status --json)"
+[ "$(echo "$STATUS_JSON" | jget "['graph_state']['coverage']['measured_pairs']['covered']")" -ge 1 ] \
   || fail "one-command verdict did not count as measured"
-"$L" status | grep -q "360°:" || fail "360° coverage line missing from the pulse"
+STATUS_TEXT="$("$L" status)"
+echo "$STATUS_TEXT" | grep -q "360°:" || fail "360° coverage line missing from the pulse"
 ok "360°: one-command verdict (no apply) creates the edge; coverage counts it"
 "$L" rule apply iso5055-rel-boundary-validation "add item" >/dev/null
 "$L" rule verdict iso5055-rel-boundary-validation "add item" --status passing \
   --criterion "blank input raises before any write happens" \
-  --evidence "app.py def add: strip-check raises ValueError before save() is reached" >/dev/null
-printf '# touched again\n' >> app.py
+  --evidence "app.py def add: strip-check raises ValueError before save() is reached" \
+  --evidence-locator app.py:2-5 >/dev/null
+python3 - <<'PY'
+from pathlib import Path
+p = Path("app.py")
+s = p.read_text()
+p.write_text(s.replace('raise ValueError("empty")', 'raise ValueError("blank")'))
+PY
 [ "$("$L" sync --json | jget "['governs_edges_flagged']")" = 1 ] || fail "governs ripple"
 ok "passing GOVERNS goes stale when its code changes"
 
@@ -126,15 +142,19 @@ RQ="$("$L" next --mode review --json)"
 [ "$(echo "$RQ" | jget "['effort']")" = high ] || fail "review items must carry effort=high"
 LOOM_AGENT=llm:analyzer "$L" edge explore "add item" "reject empty" ground \
   --criterion "traced: the strip-guard raises before save() is reachable in def add" \
+  --evidence "app.py def add checks strip() and raises before the save(text.strip()) call" \
+  --evidence-locator app.py:2-5 \
   --confidence 0.9 >/dev/null
-[ "$("$L" next --mode review --json | jget "['status']")" = empty ] \
-  || fail "re-recording with confidence >= 0.7 must resolve the review item"
+REVIEW_AFTER="$("$L" next --mode review --json)"
+python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("status") == "empty" or d.get("kind") != "relates_to" else 1)' <<<"$REVIEW_AFTER" \
+  || fail "re-recording with confidence >= 0.7 must resolve the RELATES review item"
 ok "review: honest uncertainty surfaces (effort=high), confident re-inspection resolves"
 
 echo "── directed handoff: a note addressed to a lane ──"
 "$L" note add --text "locator for def add may drift after the refactor — re-ground it" \
   --kind todo --intent "add item" --for builder >/dev/null
-"$L" note list --for builder | grep -q "re-ground it" || fail "lane inbox (--for) filter"
+BUILDER_NOTES="$("$L" note list --for builder)"
+echo "$BUILDER_NOTES" | grep -q "re-ground it" || fail "lane inbox (--for) filter"
 ok "notes carry an audience; the lane inbox filters on it"
 
 echo "── find: ask the map (BM25 over the semantic plane) ──"
@@ -143,14 +163,15 @@ F="$("$L" find "blank text raises without writing" --json)"
 [ "$(echo "$F" | jget "['hits'][0]['parent_chain'][0]")" = "todo app" ] || fail "find: parent chain missing"
 echo "$F" | jget "['hits'][0]['groundings'][0]['path']" | grep -q "app.py" || fail "find: groundings missing"
 [ "$("$L" find "zzz qqq nonexistent" --json | jget "['total']")" = 0 ] || fail "find: miss should return 0 hits"
-"$L" find "zzz qqq nonexistent" | grep -q "loom coverage" \
+MISS_TEXT="$("$L" find "zzz qqq nonexistent")"
+echo "$MISS_TEXT" | grep -q "loom coverage" \
   || fail "find: a miss must distinguish 'not mapped' from 'doesn't exist'"
 ok "find: ranked hit carries chain + groundings; a miss points at coverage"
 
 echo "── validator: proof that invokes loom (lock regression) ──"
 export LOOM_AGENT=llm:validator
 "$L" validation add --name "loom self-read under validate" --type assertion \
-  --command "\"$L\" status --json > /dev/null" --intent "add item" >/dev/null
+  --command "\"$L\" status --json > /dev/null && echo '1 passed'" --intent "add item" >/dev/null
 OUT="$("$L" validate "add item")"
 echo "$OUT" | grep -q "1/1 passed" || fail "validate (DB lock regression?): $OUT"
 ok "validation command may read the graph (session released during exec)"
@@ -171,7 +192,8 @@ echo "── blocked proof: reason required, out of the queue, visible ──"
   --reason "needs a live staging URL which does not exist in this sandbox" >/dev/null
 [ "$("$L" next --mode validate --json | jget "['status']")" = empty ] \
   || fail "blocked proof still nags the validator queue"
-"$L" validation list --json | grep -q '"blocked"' || fail "blocked not visible in list"
+VALIDATIONS="$("$L" validation list --json)"
+echo "$VALIDATIONS" | grep -q '"blocked"' || fail "blocked not visible in list"
 ok "blocked: reason gated, queue silent, state visible"
 
 echo "── graph pin: LOOM_GRAPH beats cwd (the cd-fallback incident class) ──"
@@ -182,7 +204,8 @@ LOOM_GRAPH="$PINHOME" "$L" note add --text "pinned write landed in the pinned gr
   || fail "pinned command failed from foreign cwd"
 "$L" status >/dev/null 2>&1 && fail "unpinned command in a bare dir found a graph" || true
 cd "$PINHOME"; rm -rf "$FOREIGN"
-"$L" note list --kind commentary | grep -q "pinned write landed" || fail "pin write missing from pinned graph"
+PIN_NOTES="$("$L" note list --kind commentary)"
+echo "$PIN_NOTES" | grep -q "pinned write landed" || fail "pin write missing from pinned graph"
 ok "graph pin: foreign-cwd mutation hit the pinned graph; unpinned stays strict"
 
 echo "── closeout ──"

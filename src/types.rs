@@ -664,6 +664,11 @@ pub struct QualityRule {
     /// Empty array = no static expectations. The contradiction-check basis.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub signal_expectations: String,
+    /// JSON object declaring deterministic recommendation signals. Empty object
+    /// = no programmatic recommendation metadata. The quality verdict remains
+    /// human/LLM-inspected; this only ranks likely rule×intent inspections.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub applies_when: String,
 }
 
 /// The RELATES_TO relationship taxonomy. The single home for each kind's

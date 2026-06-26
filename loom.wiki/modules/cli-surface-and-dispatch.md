@@ -43,9 +43,9 @@ symbols:
   - resolve_intent_with_db
 provenance:
   build.rs: f4c28cfa329bcb8a
-  src/cli.rs: 55a1c8e397f8534e
+  src/cli.rs: 040559558947ede1
   src/commands/batch.rs: fdeac7cb8993fabd
-  src/commands/codefile.rs: d887ca066e4fa091
+  src/commands/codefile.rs: 0ee513864c1cef40
   src/commands/edge.rs: bbc5a5542e3589ee
   src/commands/export.rs: 35756c578400e3a2
   src/commands/ignore.rs: 7997dfb337dad444
@@ -55,14 +55,14 @@ provenance:
   src/commands/mod.rs: 515a7e3b353a4c91
   src/commands/note.rs: 04649ff93c77aedd
   src/commands/resolve.rs: 6e16bf8f5c8ea1d0
-  src/commands/rule.rs: 869b1d2e87b7bf3d
+  src/commands/rule.rs: b18dabb7855b3e72
   src/commands/validate.rs: 2a39afe499c31948
   src/commands/validation.rs: d726cbcb95e66827
   src/commands/whoami.rs: 2a7a1af42cbd7f32
   src/db/mod.rs: c0c82ec69ea7831f
   src/db/queries/intent.rs: 754f0308ba488a87
-  src/db/queries/scoring.rs: ac252f70f0cebb30
-  src/db/sqlite/writes.rs: b7cd81dd5f30f359
+  src/db/queries/scoring.rs: a247bbc1b605ec87
+  src/db/sqlite/writes.rs: 52af6570fe6659e9
   src/main.rs: 2545218dfc241471
 ---
 
@@ -92,6 +92,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

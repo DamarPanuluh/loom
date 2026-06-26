@@ -414,6 +414,29 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
             reason: "frontend files detected (tsx/jsx/vue/svelte/html/css) — view states, accessibility, XSS, client-side trust".into(),
         });
     }
+    if root.join("Dockerfile").exists()
+        || root.join(".dockerignore").exists()
+        || files.iter().any(|f| {
+            let p = f.to_ascii_lowercase();
+            p == "dockerfile"
+                || p.ends_with("/dockerfile")
+                || p == ".dockerignore"
+                || p.ends_with("/.dockerignore")
+                || p == "docker-compose.yml"
+                || p.ends_with("/docker-compose.yml")
+                || p == "docker-compose.yaml"
+                || p.ends_with("/docker-compose.yaml")
+                || p == "compose.yml"
+                || p.ends_with("/compose.yml")
+                || p == "compose.yaml"
+                || p.ends_with("/compose.yaml")
+        })
+    {
+        packs.push(PackHint {
+            pack: "docker".into(),
+            reason: "Dockerfile/compose build artifacts detected — container image size, cache shape, runtime hardening, secret hygiene, and build/run proof".into(),
+        });
+    }
     if stacks.iter().any(|s| {
         matches!(
             s.as_str(),
