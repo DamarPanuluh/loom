@@ -774,12 +774,16 @@ impl SqliteGraphStore {
              WHERE substr(id, 1, length(?1)) = ?1
              ORDER BY created_at",
         )?;
-        let matches = prefix
+        let mut matches = prefix
             .query_map(params![key], inbox_item_from_row)?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         match matches.len() {
-            1 => Ok(matches.into_iter().next().expect("one match")),
             0 => anyhow::bail!("No inbox item matches '{}'. Run `loom inbox list`.", key),
+            1 => {
+                // len()==1 guarantees one item; drain via swap_remove to avoid
+                // an expect() marker (smell: panic_marker_risk).
+                Ok(matches.swap_remove(0))
+            }
             _ => anyhow::bail!(
                 "'{}' is ambiguous — matches {} inbox items. Use the full id (`loom inbox list`).",
                 key,

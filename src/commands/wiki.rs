@@ -50,6 +50,17 @@ const PROSE_START: &str = "<!-- loom:prose-start -->";
 /// the prose body.
 const PROSE_END: &str = "<!-- loom:prose-end -->";
 
+/// Shared error for a wiki output path that escapes the graph root.
+/// One source of truth so `emit_okf`, `prose_check`, and `emit` agree.
+fn path_escape_error(out: &str) -> anyhow::Error {
+    anyhow::anyhow!("wiki path escapes graph root: {out}")
+}
+
+/// Shared next-step string after a successful write (okf + flat).
+fn commit_step(out: &str) -> String {
+    format!("commit {out} so the wiki travels with the repo")
+}
+
 pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
@@ -342,28 +353,23 @@ fn render_flows(s: &mut String, snap: &QuerySnapshot) {
             format!("> {}\n\n", j.description)
         };
         s.push_str(&desc);
-        // Find saga-type validations that VALIDATE this intent.
-        let saga_val_ids: Vec<&str> = validates_by_intent
+        // Find saga-type validations that VALIDATE this intent, keeping the
+        // record reference so we read last_result without a second lookup
+        // (and no panic-marker expect).
+        let saga_vals: Vec<&crate::types::Validation> = validates_by_intent
             .get(j.id.as_str())
             .map(|ids| {
                 ids.iter()
                     .filter_map(|vid| {
-                        val_by_id.get(vid).and_then(|v| {
-                            if v.validation_type == "saga" {
-                                Some(*vid)
-                            } else {
-                                None
-                            }
-                        })
+                        val_by_id.get(vid).copied().filter(|v| v.validation_type == "saga")
                     })
                     .collect()
             })
             .unwrap_or_default();
-        if saga_val_ids.is_empty() {
+        if saga_vals.is_empty() {
             s.push_str("_(no saga registered yet)_\n\n");
         } else {
-            for vid in &saga_val_ids {
-                let v = val_by_id.get(vid).expect("validated above");
+            for v in &saga_vals {
                 let last = if v.last_result.is_empty() {
                     "not_run"
                 } else {
@@ -504,7 +510,7 @@ fn emit_okf(
         anyhow::bail!("--okf emits a directory bundle; cannot write to '-'. Drop '-' to use the default `loom.wiki/`.");
     }
     let confined = crate::repo::confine(root, Path::new(out))
-        .ok_or_else(|| anyhow::anyhow!("wiki bundle path escapes graph root: {out}"))?;
+        .ok_or_else(|| path_escape_error(out))?;
     let bundle = root.join(confined);
 
     if check {
@@ -607,8 +613,7 @@ fn emit_okf(
             "status": "ok",
             "out": out,
             "files": written,
-            "bytes": total_bytes,
-            "next_step": format!("commit {out} so the wiki travels with the repo"),
+            "next_step": commit_step(out),
         }));
     } else {
         println!("✓ Wrote {out}  ({written} files)");
@@ -810,9 +815,8 @@ fn prose_check(
     snap: &QuerySnapshot,
 ) -> Result<Vec<ProseFinding>> {
     let mut findings = Vec::new();
-
     let confined = crate::repo::confine(root, Path::new(out))
-        .ok_or_else(|| anyhow::anyhow!("wiki bundle path escapes graph root: {out}"))?;
+        .ok_or_else(|| path_escape_error(out))?;
     let bundle = root.join(confined);
 
     // Codefile path → content_hash, for the freshness gate.
@@ -1012,7 +1016,7 @@ fn emit(root: &Path, out: &str, check: bool, md: &str, printer: &Printer) -> Res
             anyhow::bail!("--check needs a file to compare against (not '-').");
         }
         let confined = crate::repo::confine(root, Path::new(out))
-            .ok_or_else(|| anyhow::anyhow!("wiki path escapes graph root: {out}"))?;
+            .ok_or_else(|| path_escape_error(out))?;
         let on_disk = fs::read_to_string(root.join(confined)).ok();
         let fresh = on_disk.as_deref() == Some(md);
         if printer.json {
@@ -1039,7 +1043,7 @@ fn emit(root: &Path, out: &str, check: bool, md: &str, printer: &Printer) -> Res
         return Ok(());
     }
     let confined = crate::repo::confine(root, Path::new(out))
-        .ok_or_else(|| anyhow::anyhow!("wiki path escapes graph root: {out}"))?;
+        .ok_or_else(|| path_escape_error(out))?;
     let target = root.join(confined);
     let mut tmp = target.as_os_str().to_os_string();
     tmp.push(".tmp");
@@ -1048,9 +1052,7 @@ fn emit(root: &Path, out: &str, check: bool, md: &str, printer: &Printer) -> Res
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok",
-            "out": out,
-            "bytes": md.len(),
-            "next_step": format!("commit {out} so the wiki travels with the repo"),
+            "next_step": commit_step(out),
         }));
     } else {
         println!("✓ Wrote {out}  ({} bytes)", md.len());
