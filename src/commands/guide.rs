@@ -53,6 +53,8 @@ const RIPPLE: &[&str] = &[
     "the auto `transition` notes recording these flips are bounded per target (transition_cap, default 20) so the flip-flop log never bloats — `loom sync` trims it; tune with `loom note prune --set-cap N` (0 = off). `loom smells` also surfaces ADVISORY `cochange_coupling` (files that change together in git but whose intents aren't linked), `shotgun_surgery` (one intent repeatedly co-changing with many unrelated intents), and `code_clone` (cross-file structural duplication via per-symbol shape_hash, with exact body_hash fallback)",
 ];
 
+const ARCHITECTURE_METADATA_GUIDANCE: &str = "Architecture metadata is positive evidence, not a template. Use `--domain` for product/business facets (auth, billing, onboarding); it has NO layering effect. Use `--layer` only for dependency direction you mean to audit — do NOT invent generic backend/frontend/database labels unless the repo actually has those seams. Prefer repo-shaped names (for a CLI: presentation/commands/application/queries/persistence, etc.). Once enough coded intents carry honest layer labels, run `loom layer list`; if layers are in use but the order is empty, tell the user the layering detector is unarmed, then declare the real order with `loom layer order <top> … <bottom>`. That arms `layering_violation`: imports pointing UP the declared order are findings, and a recorded RELATES_TO edge does not excuse direction. Leave `--layer` unset when the direction is unknown or not enforceable. Use `--boundary inbound|outbound` only for system-boundary crossings (provider surfaces or external consumer dependencies); internal machinery stays unset.";
+
 /// The role lanes: who does what, and which `loom next` mode serves the lane.
 /// Declared roles (LOOM_AGENT=llm:<role>) are ENFORCED — an agent acting
 /// outside its lane gets an error. Bare 'llm'/'human' = solo mode (all lanes).
@@ -84,6 +86,7 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
      &[
         "THE LOOP, per planned leaf: the criterion IS the spec AND the acceptance test. Write the code it demands → `loom codefile add` → `loom edge implement <intent> <file> --locator \"<symbol AS IT APPEARS>\"` (verified against the file NOW — a typo'd symbol is rejected here) → PROVE the criterion (add + run a validation) → `loom intent mark <id> --lifecycle implemented`.",
         "GRANULARITY when seeding: 1–3 `system`, 5–15 `component`, MANY ATOMIC `feature` leaves — ONE falsifiable criterion each. Description needs an 'and'? It is several intents — split it. (Too coarse trips the `scattered` smell later.)",
+        ARCHITECTURE_METADATA_GUIDANCE,
         "A planned PARENT whose children are implemented is a ROLL-UP: verify each child meets its criterion, then mark it — NEVER write code at that altitude.",
         "SUPERSEDED design → `loom intent retire <id> --reason … [--replaced-by …]` (keeps history, exits computation). Delete is ONLY for things that should never have existed.",
         "REFUSE to grade your own work: you record NO criterion/evidence/verdicts on it — analyzer grounds it, validator proves it, quality grades it. That separation is what makes the graph trustworthy; `loom doctor` audits it.",
@@ -361,6 +364,7 @@ const GUIDE_SECTIONS: &[&str] = &[
     "what_is_loom",
     "planes",
     "lifecycle",
+    "architecture_metadata",
     "steps",
     "golden_rules",
     "deeper_rules",
@@ -788,6 +792,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
                     "family": family, "meaning": meaning,
                 })).collect::<Vec<_>>(),
             },
+            "architecture_metadata": ARCHITECTURE_METADATA_GUIDANCE,
             "steps": steps.iter().map(|(t, d)| serde_json::json!({"step": t, "do": d})).collect::<Vec<_>>(),
             "golden_rules": CORE_RULES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
             "deeper_rules": DEEPER_RULES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
@@ -907,6 +912,9 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
     for (family, meaning) in RELATED_STATUS_FAMILIES {
         println!("  - {family}: {meaning}");
     }
+    println!();
+    println!("ARCHITECTURE METADATA");
+    println!("  {}", ARCHITECTURE_METADATA_GUIDANCE);
     println!();
     println!(
         "PLAYBOOK ({} — {})",
@@ -1068,6 +1076,35 @@ mod tests {
                 "role '{role}' serves a non-empty discipline body"
             );
         }
+    }
+
+    #[test]
+    fn architecture_metadata_guidance_reaches_goldfish_surfaces() {
+        let guide = guide_json("brownfield");
+        let arch = guide["architecture_metadata"]
+            .as_str()
+            .expect("architecture metadata guidance is a first-class section");
+        for required in [
+            "positive evidence, not a template",
+            "backend/frontend/database",
+            "--domain",
+            "--layer",
+            "loom layer list",
+            "detector is unarmed",
+            "--boundary inbound|outbound",
+        ] {
+            assert!(
+                arch.contains(required),
+                "architecture guidance must teach '{required}': {arch}"
+            );
+        }
+
+        let builder = serde_json::to_string(&charge_json("builder")).unwrap();
+        assert!(
+            builder.contains("backend/frontend/database")
+                && builder.contains("detector is unarmed"),
+            "builder lane must carry architecture-boundary guidance for cold LLMs: {builder}"
+        );
     }
 
     #[test]
