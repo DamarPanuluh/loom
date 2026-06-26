@@ -147,6 +147,28 @@ fn execute_and_record(
             }
             continue;
         }
+        // A hand-marked verdict is a HUMAN decision (`loom validation mark`) —
+        // `loom validate` re-runs an intent's proofs, but it must never silently
+        // overwrite a manual mark by running the command underneath it (the
+        // re-run/re-block loop that drops a marked-passed saga back to blocked).
+        // It stays put until the code changes (`loom sync` resets it to not_run)
+        // or the operator re-marks it (`loom validation mark <id> --result …`,
+        // including `--result not_run` to clear and force a fresh run).
+        if manual_verdict_is_sticky(validation) {
+            results.push(serde_json::json!({
+                "validation_id": validation.id,
+                "name":          validation.name,
+                "result":        validation.last_result,
+                "reason":        "kept — hand-marked result; `loom validate` won't overwrite a manual mark. Clear with `loom validation mark <id> --result not_run`, or it resets on `loom sync` when the code changes.",
+            }));
+            if !printer.json {
+                println!(
+                    "  = {} [{} — kept manual mark; not re-run]",
+                    validation.name, validation.last_result
+                );
+            }
+            continue;
+        }
         if validation.command.is_empty() {
             results.push(serde_json::json!({
                 "validation_id": validation.id,
@@ -163,12 +185,18 @@ fn execute_and_record(
             continue;
         }
 
-        // A saga consumes a LIVE target via `{{ env.X }}` values passed at
-        // invocation. If they're missing here, the proof CANNOT run — that is
-        // `blocked` (environment not ready), not `failed` (code wrong). Running
-        // the command anyway would record a dishonest failure and send the
-        // driver chasing a phantom code bug.
-        if validation.validation_type == "saga" {
+        // The built-in saga engine (`loom saga run`) consumes a LIVE target via
+        // `{{ env.X }}` values passed at invocation. If they're missing here, the
+        // proof CANNOT run — that is `blocked` (environment not ready), not
+        // `failed` (code wrong). Running the command anyway would record a
+        // dishonest failure and send the driver chasing a phantom code bug.
+        // A saga whose command is anything ELSE (a self-contained script that
+        // brings up its own target, waits for health, runs the chain, tears it
+        // down) owns its environment — honor it like any other command and let
+        // its exit code speak; the ambient-env precheck does not apply.
+        if validation.validation_type == "saga"
+            && saga_command_uses_builtin_engine(&validation.command)
+        {
             if let Some(missing) = saga_missing_env(cwd, validation) {
                 let invocation: String = missing
                     .iter()
@@ -241,10 +269,18 @@ fn execute_and_record(
         // G2: only a PASSED run whose captured output shows a runner ASSERTING
         // earns `discriminating` (→ EXECUTED tier). A passed-but-inert run
         // (exit 0, no assertion signal) or any non-pass run is `ran_inert`.
-        let raw_discrimination = if result == ValidationResult::Passed {
-            proof_discrimination(&output)
-        } else {
+        let raw_discrimination = if result != ValidationResult::Passed {
             "ran_inert"
+        } else if validation.validation_type == "saga" {
+            // A passing saga is a runtime proof against a live target: it
+            // asserted each step's response, exactly as the `loom saga run`
+            // engine path does (which stamps `discriminating`). A saga script's
+            // output won't carry a unit-runner pass-string, so don't route it
+            // through the runner-output heuristic — credit it directly. The
+            // forgery guard below still demotes a print-only command posing as a saga.
+            "discriminating"
+        } else {
+            proof_discrimination(&output)
         };
         // FORGERY GUARD: a runner pass-signal in stdout only earns EXECUTED-proven
         // if the command actually RAN a test. A command whose every segment is a
@@ -724,7 +760,7 @@ fn strip_literals_and_comments(content: &str) -> String {
                 out.push(' ');
             }
             '/' if chars.peek() == Some(&'/') => {
-                while let Some(d) = chars.next() {
+                for d in chars.by_ref() {
                     if d == '\n' {
                         out.push('\n');
                         break;
@@ -732,7 +768,7 @@ fn strip_literals_and_comments(content: &str) -> String {
                 }
             }
             '#' => {
-                while let Some(d) = chars.next() {
+                for d in chars.by_ref() {
                     if d == '\n' {
                         out.push('\n');
                         break;
@@ -934,6 +970,7 @@ fn parse_lcov(root: &std::path::Path, content: &str) -> CoverageReport {
 /// Discover a coverage report for this repo, consulting (in order):
 ///   1. `LOOM_COVERAGE_FILE` env var (explicit override)
 ///   2. Common LCOV paths relative to root (coverage.lcov, lcov.info, etc.)
+///
 /// Returns None if no report is found or it can't be parsed.
 fn discover_coverage(root: &std::path::Path) -> Option<CoverageReport> {
     let candidates: Vec<std::path::PathBuf> =
@@ -1138,6 +1175,27 @@ fn terminate_command_tree(child: &mut std::process::Child) {
 // ---------------------------------------------------------------------------
 // Private: saga env pre-flight
 // ---------------------------------------------------------------------------
+
+/// True when a saga validation's command drives the built-in engine (`loom saga
+/// run`), which reads its target from ambient `{{ env.X }}` values at invocation
+/// — the only case the missing-env precheck guards. Any other command (a
+/// self-contained script that brings its own target up) owns its environment, so
+/// it runs like a normal proof and its exit code is the verdict.
+fn saga_command_uses_builtin_engine(command: &str) -> bool {
+    command.contains("loom saga run")
+}
+
+/// True when this validation's CURRENT verdict was recorded by a hand-mark
+/// (`loom validation mark`) rather than an executor run — a sticky human
+/// decision `loom validate` must not overwrite by re-running. It rests on the
+/// documented invariant that a hand-mark stamps `last_run` but NEVER
+/// `last_executed_run`, while an executor run stamps both to the same instant:
+/// so a settled verdict whose two timestamps disagree was last set by hand.
+/// not_run / blocked are handled on their own branches, so only passed/failed
+/// can be sticky here.
+fn manual_verdict_is_sticky(v: &crate::types::Validation) -> bool {
+    (v.last_result == "passed" || v.last_result == "failed") && v.last_run != v.last_executed_run
+}
 
 /// For a saga validation: the env vars its spec needs that this process
 /// doesn't have, or None when there's nothing missing / the spec can't be

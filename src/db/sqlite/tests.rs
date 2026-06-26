@@ -85,8 +85,16 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
         1,
         "hierarchy edge must survive the intent-table rebuild (no FK cascade)"
     );
-    // Version stamped only after the migration (v13 = wiki v2 hard-cut).
-    assert_eq!(store.graph_meta().unwrap().unwrap().version, "13");
+    // Version stamped only after the migration (v14 = autonomy mode).
+    let meta = store.graph_meta().unwrap().unwrap();
+    assert_eq!(meta.version, "14");
+    // The v14 autonomy column is backfilled by ensure_meta_columns on a
+    // pre-autonomy graph (this seed had no `autonomy` column) — defaulting to
+    // the cautious `guided` mode, never NULL.
+    assert_eq!(
+        meta.autonomy, "guided",
+        "autonomy column backfilled to the guided default on migration"
+    );
     // The widened CHECK now admits to_be_removed.
     let check: String = store
         .conn
@@ -604,6 +612,60 @@ fn sqlite_import_export_round_trip() {
     assert_eq!(
         normalized_for_semantic_compare(data),
         normalized_for_semantic_compare(exported)
+    );
+}
+
+#[test]
+fn sqlite_autonomy_defaults_guided_and_set_persists() {
+    let now = "2026-01-01T00:00:00Z";
+    let store = SqliteGraphStore::in_memory().unwrap();
+    store
+        .initialize(
+            crate::db::schema::SCHEMA_VERSION,
+            "graph-autonomy",
+            "test",
+            "owned",
+            now,
+        )
+        .unwrap();
+
+    // Fresh graphs default to the cautious `guided` mode (the DDL default).
+    assert_eq!(store.graph_meta().unwrap().unwrap().autonomy, "guided");
+
+    // The dedicated setter flips it both ways.
+    store.set_autonomy("autonomous").unwrap();
+    assert_eq!(store.graph_meta().unwrap().unwrap().autonomy, "autonomous");
+    store.set_autonomy("guided").unwrap();
+    assert_eq!(store.graph_meta().unwrap().unwrap().autonomy, "guided");
+}
+
+#[test]
+fn sqlite_autonomy_round_trips_through_export_import() {
+    let now = "2026-01-01T00:00:00Z";
+    let store = SqliteGraphStore::in_memory().unwrap();
+    store
+        .initialize(
+            crate::db::schema::SCHEMA_VERSION,
+            "graph-autonomy-rt",
+            "test",
+            "owned",
+            now,
+        )
+        .unwrap();
+    store.set_autonomy("autonomous").unwrap();
+
+    let exported = store.export_json().unwrap();
+    assert_eq!(
+        exported["autonomy"], "autonomous",
+        "autonomy travels in the export artifact"
+    );
+
+    let mut imported = SqliteGraphStore::in_memory().unwrap();
+    imported.import_export_json(&exported).unwrap();
+    assert_eq!(
+        imported.graph_meta().unwrap().unwrap().autonomy,
+        "autonomous",
+        "autonomy survives an export → import round-trip"
     );
 }
 

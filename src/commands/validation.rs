@@ -190,23 +190,30 @@ fn prepare_mark_result(
 ) -> Result<(String, ValidationResult, String)> {
     let marker = crate::gate::acting_in_lane(&crate::gate::lane::MARK_VALIDATION, None)?;
     let res: ValidationResult = result.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
-    if res == ValidationResult::NotRun {
-        anyhow::bail!(
-            "--result must be 'passed', 'failed', or 'blocked' (not_run is not a verdict)."
-        );
-    }
-    let edge_note = if res == ValidationResult::Blocked {
-        let r = reason.unwrap_or("");
-        crate::gate::require_substantive(
-            "reason",
-            r,
-            "why this proof cannot run yet (what it is waiting on)",
-        )?;
-        format!("blocked: {r}")
-    } else {
-        let ev = evidence.unwrap_or("");
-        crate::gate::require_substantive("evidence", ev, "what you checked to reach this verdict")?;
-        ev.to_string()
+    let edge_note = match res {
+        // not_run is not a VERDICT — it CLEARS a prior mark: the proof drops back
+        // to pending (out of the EXECUTED/ASSERTED tiers, VALIDATES → uninspected)
+        // so `loom validate` will run it afresh, unsticking a hand-mark. No
+        // evidence/reason to record.
+        ValidationResult::NotRun => String::new(),
+        ValidationResult::Blocked => {
+            let r = reason.unwrap_or("");
+            crate::gate::require_substantive(
+                "reason",
+                r,
+                "why this proof cannot run yet (what it is waiting on)",
+            )?;
+            format!("blocked: {r}")
+        }
+        _ => {
+            let ev = evidence.unwrap_or("");
+            crate::gate::require_substantive(
+                "evidence",
+                ev,
+                "what you checked to reach this verdict",
+            )?;
+            ev.to_string()
+        }
     };
     Ok((marker, res, edge_note))
 }
@@ -216,6 +223,9 @@ fn validation_mark_next_step(res: &ValidationResult) -> String {
         ValidationResult::Passed => "`loom next --mode validate` for the next proof".to_string(),
         ValidationResult::Failed => {
             "a failed proof = broken behavior; NEVER accept a red proof as green. Discharge it: FIX the code (`loom sync`, re-run `loom validate`); or if the PROOF is wrong (the test, not the code) fix the proof and re-run; or DEFER the repair as tracked work (`loom intent mark <intent> --lifecycle needs_change --reason \"<failure>\"`, or `loom hypothesis add` for a planned fix).".to_string()
+        }
+        ValidationResult::NotRun => {
+            "cleared → pending again; run it afresh with `loom validate <intent>` (or `loom validate --all`)".to_string()
         }
         _ => {
             "out of the validator queue until re-marked; visible in `loom validation list` / `loom report`".to_string()

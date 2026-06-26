@@ -679,6 +679,16 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+    /// Set the graph's autonomy mode (`autonomous` | `guided`). A behavioral
+    /// tunable like `transition_cap`, not graph identity — so it lives in its own
+    /// setter rather than threading through `initialize`/`set_identity`.
+    pub fn set_autonomy(&self, autonomy: &str) -> Result<()> {
+        self.write_one(
+            "UPDATE meta SET autonomy = ?1 WHERE id = 1",
+            params![autonomy],
+        )?;
+        Ok(())
+    }
     pub fn set_transition_cap(&self, cap: usize) -> Result<()> {
         self.write_one(
             "UPDATE meta SET transition_cap = ?1 WHERE id = 1",

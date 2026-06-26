@@ -72,8 +72,8 @@ pub fn dispatch(cli: Cli) -> Result<()> {
             None => return orient(&printer),
         };
         match command {
-        Command::Init        { path, name, observed, no_hook } =>
-            init::run(&path, name.as_deref(), observed, no_hook, &printer),
+        Command::Init        { path, name, observed, autonomy, no_hook } =>
+            init::run(&path, name.as_deref(), observed, autonomy.as_deref(), no_hook, &printer),
         Command::Status                     => status::run(&printer),
         Command::Whoami                     => whoami::run(&printer),
         Command::Corpus      { subcommand } => corpus::run(subcommand, &printer),

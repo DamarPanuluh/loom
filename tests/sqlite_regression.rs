@@ -456,9 +456,9 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
     assert_eq!(migrated["status"], "ok");
     assert_eq!(migrated["backend"], "sqlite");
     assert_eq!(migrated["migrated"], false);
-    assert_eq!(migrated["version"], "13");
+    assert_eq!(migrated["version"], "14");
     assert_eq!(migrated["current"], true);
-    assert_eq!(migrated["expected"], "13");
+    assert_eq!(migrated["expected"], "14");
     assert!(
         migrated["next_step"].is_null(),
         "current graph needs no rebuild: {migrated}"
@@ -12480,5 +12480,233 @@ fn sqlite_no_coverage_falls_back_to_static_heuristic() {
     assert_eq!(
         v["results"][0]["discrimination"], "discriminating",
         "no coverage report → static heuristic confirms a real test: {v}"
+    );
+}
+
+/// Issue 1: a saga whose `command` drives the BUILT-IN engine (`loom saga run`)
+/// stays BLOCKED when its `{{ env.X }}` target is absent — but a saga rebound to
+/// a SELF-CONTAINED command (a script that brings up its own target) must RUN
+/// like any other proof, its exit code the verdict, NOT be short-circuited by
+/// the ambient-env precheck. A passing self-contained saga earns
+/// `discriminating` (a runtime proof against a live target), same tier as the
+/// engine path.
+#[test]
+fn sqlite_validate_honors_self_contained_saga_command() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("validate-self-contained-saga");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "app.py", "def do_GET(self):\n    pass\n");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "app.py", "--json"],
+        "llm:builder",
+    );
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "browse the product catalog",
+            "--description",
+            "A shopper GETs the catalog and sees the product list",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--boundary",
+            "inbound",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &intent,
+            "app.py",
+            "--locator",
+            "def do_GET",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+
+    write_scratch_file(
+        &graph.root,
+        "journeys/catalog.yaml",
+        r#"
+saga: catalog-journey
+base: "{{ env.LOOM_TEST_SELF_CONTAINED_SAGA_BASE }}"
+steps:
+  - name: browse catalog
+    intent: browse the product catalog
+    request: { method: GET, url: /catalog }
+    expect: { status: 200 }
+"#,
+    );
+    run_json_as(
+        &graph.root,
+        &["saga", "add", "journeys/catalog.yaml", "--json"],
+        "llm:validator",
+    );
+
+    // Engine-driven command + missing env → blocked (cannot run yet, not failed).
+    let blocked = run_json(&graph.root, &["validate", &intent, "--json"]);
+    assert_eq!(
+        blocked["results"][0]["result"], "blocked",
+        "engine-driven saga with missing env must block, not run: {blocked}"
+    );
+    let vid = blocked["results"][0]["validation_id"]
+        .as_str()
+        .expect("validation id")
+        .to_string();
+
+    // Rebind to a SELF-CONTAINED command (owns its target). The ambient-env
+    // precheck no longer applies — the command runs, its exit code the verdict.
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "update",
+            &vid,
+            "--command",
+            "sh -c 'exit 0'",
+            "--json",
+        ],
+        "llm:validator",
+    );
+    let ran = run_json(&graph.root, &["validate", &intent, "--json"]);
+    assert_eq!(
+        ran["results"][0]["result"], "passed",
+        "self-contained saga command must RUN and pass, not block: {ran}"
+    );
+    assert_eq!(
+        ran["results"][0]["discrimination"], "discriminating",
+        "a passing self-contained saga is a runtime proof → discriminating: {ran}"
+    );
+}
+
+/// Issue 2: a hand-marked passed/failed verdict is STICKY — `loom validate` must
+/// NOT re-run the command underneath it and overwrite the human decision (the
+/// re-run/re-block loop that dropped a marked-passed saga back to blocked).
+/// `loom validation mark --result not_run` is the escape hatch: it CLEARS the
+/// mark so the proof runs afresh on the next `loom validate`.
+#[test]
+fn sqlite_validate_keeps_hand_marked_verdict_until_cleared() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("validate-sticky-hand-mark");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "app.py", "def do_GET(self):\n    pass\n");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "app.py", "--json"],
+        "llm:builder",
+    );
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "place an order",
+            "--description",
+            "A shopper POSTs a cart and receives an order confirmation",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--boundary",
+            "inbound",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &intent,
+            "app.py",
+            "--locator",
+            "def do_GET",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+
+    // A command-bearing proof whose command FAILS if run — linked to the intent.
+    let vid = run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "order checkout proof",
+            "--type",
+            "test",
+            "--command",
+            "sh -c 'exit 1'",
+            "--intent",
+            &intent,
+            "--json",
+        ],
+        "llm:validator",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Hand-mark it passed (a human decision): last_run set, last_executed_run not.
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "mark",
+            &vid,
+            "--result",
+            "passed",
+            "--evidence",
+            "verified by hand against staging; checkout returned 201",
+            "--json",
+        ],
+        "llm:validator",
+    );
+
+    // validate must KEEP the mark — never re-run the (failing) command beneath it.
+    let kept = run_json(&graph.root, &["validate", &intent, "--json"]);
+    assert_eq!(
+        kept["results"][0]["result"], "passed",
+        "hand-marked passed must survive `loom validate` (not re-run to failed): {kept}"
+    );
+    assert!(
+        kept["results"][0]["reason"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("kept"),
+        "kept result must explain it preserved a manual mark: {kept}"
+    );
+
+    // Clear with --result not_run, then validate runs the command afresh → failed.
+    run_json_as(
+        &graph.root,
+        &["validation", "mark", &vid, "--result", "not_run", "--json"],
+        "llm:validator",
+    );
+    let rerun = run_json(&graph.root, &["validate", &intent, "--json"]);
+    assert_eq!(
+        rerun["results"][0]["result"], "failed",
+        "after `mark --result not_run`, validate must run the command (now failing): {rerun}"
     );
 }

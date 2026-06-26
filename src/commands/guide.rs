@@ -577,6 +577,7 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
         Hand off via `loom note add --for <role>`; bare `llm`/`human` = solo mode (all lanes).";
     let skill = role_skill_name(role);
     let (description, anchor, discipline) = role_discipline(role).unwrap_or(("", "", &[]));
+    let (autonomy_mode, autonomy_doc) = autonomy_guidance();
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -589,6 +590,11 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
             "lane": lane,
             "anchor": anchor,
             "discipline": discipline,
+            "operating_mode": {
+                "autonomy": autonomy_mode,
+                "guidance": autonomy_doc,
+                "set_with": "loom init --autonomy <autonomous|guided>",
+            },
             "out_of_lane": out_of_lane,
             // The binary IS the skill server: this charge is the complete,
             // self-contained `loom-<role>` skill, served JIT — no install needed.
@@ -618,6 +624,8 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     println!();
     println!("CORE REFLEX (every turn): `loom status` → `loom next` → do the work → `loom sync` after ANY code change.");
     println!("  Full golden rules + ripple + playbook: `loom guide --all`.");
+    println!();
+    println!("  AUTONOMY ({autonomy_mode}): {autonomy_doc}");
     println!();
     for action in &lane {
         println!("  • {action}");
@@ -677,6 +685,38 @@ fn focus_lane_role() -> Option<&'static str> {
     lane_to_role(lane)
 }
 
+/// The graph's autonomy mode + how it changes the driving cadence. Read from the
+/// live meta sentinel (best-effort: a fresh/unopenable graph reads as the
+/// cautious `guided` default). This is the ONE place the protocol tells the
+/// driver how much it may drive without pausing — `init --autonomy` sets it.
+fn autonomy_guidance() -> (&'static str, &'static str) {
+    let autonomous = (|| {
+        let root = crate::db::resolve_root().ok()?;
+        let store = GraphReadHandle::open(&root).ok()?;
+        let snap = store.query_snapshot().ok()?;
+        Some(store.graph_state(&snap).ok()?.autonomy == "autonomous")
+    })()
+    .unwrap_or(false);
+    if autonomous {
+        (
+            "autonomous",
+            "Drain every AUTONOMOUS lane without pausing for per-step user confirmation; \
+             escalate to the user ONLY for genuine ambiguity and USER-GATED work (align drift, \
+             hypothesis rulings, manual-check confirms, blocked proofs) — batch those via \
+             `loom session`. This is an interrupt budget, NOT a license to skip inspection: \
+             smell/decision rulings are still earned per-finding (the write gate rejects vacuous \
+             or templated rulings), and advisory smells are still never auto-fixed.",
+        )
+    } else {
+        (
+            "guided",
+            "Interrupt-by-default: surface a confirmation beat at each lane edge and route more \
+             decisions back to the user. Lead with `loom session` when user-gated work exists. \
+             Flip to hands-off with `loom init --autonomy autonomous` once the user trusts the loop.",
+        )
+    }
+}
+
 /// Invert the enforced lane table (its `mode` field IS the lane) → the role that
 /// owns it. Single-sourced from ROLE_LANES so it can't drift from the gate.
 fn lane_to_role(lane: &str) -> Option<&'static str> {
@@ -718,9 +758,16 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
         _ => brownfield(),
     };
 
+    let (autonomy_mode, autonomy_doc) = autonomy_guidance();
+
     if printer.json {
         printer.print_json(&serde_json::json!({
             "mode": m,
+            "operating_mode": {
+                "autonomy": autonomy_mode,
+                "guidance": autonomy_doc,
+                "set_with": "loom init --autonomy <autonomous|guided>",
+            },
             "what_is_loom": "Externalized, falsifiable memory for understanding, building, and cleaning up a codebase. \
                 A living graph of intents (what code should do), grounded in real files, every relationship carrying a \
                 verification status + evidence. The graph is durable memory; the context window is the working set.",
@@ -837,6 +884,9 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
     for r in CORE_RULES {
         println!("  • {}", r);
     }
+    println!();
+    println!("OPERATING MODE (autonomy: {autonomy_mode} — set with `loom init --autonomy <mode>`)");
+    println!("  {autonomy_doc}");
     println!();
     // ── DEEPER: the detail you reach for when the core isn't enough ─────────
     println!("── DEEPER ────────────────────────────────────────────────────────────");

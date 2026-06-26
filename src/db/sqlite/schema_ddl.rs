@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS meta(
   graph_id TEXT NOT NULL,
   graph_name TEXT NOT NULL,
   custody TEXT NOT NULL CHECK(custody IN ('owned','observed','')),
+  autonomy TEXT NOT NULL DEFAULT 'guided' CHECK(autonomy IN ('autonomous','guided','')),
   created_at TEXT NOT NULL DEFAULT '',
   last_synced TEXT NOT NULL DEFAULT '',
   transition_cap TEXT NOT NULL DEFAULT '',
@@ -385,6 +386,7 @@ impl SqliteGraphStore {
             ("created_at", "TEXT NOT NULL DEFAULT ''"),
             ("last_synced", "TEXT NOT NULL DEFAULT ''"),
             ("transition_cap", "TEXT NOT NULL DEFAULT ''"),
+            ("autonomy", "TEXT NOT NULL DEFAULT 'guided'"),
         ] {
             if !table_has_column(&self.conn, "meta", column)? {
                 let column = checked_sql_ident(column)?;

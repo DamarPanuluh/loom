@@ -18,12 +18,13 @@
 //!
 //! `loom wiki --okf --prose-check` certifies the prose by three mechanical gates
 //! from `docs/repo-wiki-ladder-proposal.md`:
-//!   1. COVERAGE   — every salient intent with grounded files has its files
-//!                   appear in some page's `sourceFiles`.
-//!   2. FRESHNESS  — the manifest's `provenance` stamp matches the current
-//!                   graph's content hashes (byte-checked via `--check`).
+//!   1. COVERAGE — every salient intent with grounded files has its files
+//!      appear in some page's `sourceFiles`.
+//!   2. FRESHNESS — the manifest's `provenance` stamp matches the current
+//!      graph's content hashes (byte-checked via `--check`).
 //!   3. CONSISTENCY — every file path in `sourceFiles` and every codefile link
-//!                    in prose resolves to a registered CodeFile.
+//!      in prose resolves to a registered CodeFile.
+//!
 //! Prose QUALITY stays human-gated, never machine-green (proposal 4).
 
 use std::collections::{HashMap, HashSet};
@@ -334,10 +335,7 @@ fn collect_descendants(parent_id: &str, snap: &QuerySnapshot) -> Vec<String> {
         children_map.entry(p.as_str()).or_default().push(c.as_str());
     }
     let mut result = Vec::new();
-    let mut queue: Vec<&str> = children_map
-        .get(parent_id)
-        .map(|v| v.clone())
-        .unwrap_or_default();
+    let mut queue: Vec<&str> = children_map.get(parent_id).cloned().unwrap_or_default();
     let mut visited: HashSet<&str> = HashSet::new();
     while let Some(id) = queue.pop() {
         if !visited.insert(id) {
@@ -741,7 +739,7 @@ fn emit_okf(
         } else if fresh {
             println!(
                 "{}",
-                crate::output::up_to_date_line(&format!("{out} ({}) ", pages.len()))
+                crate::output::up_to_date_line(format!("{out} ({}) ", pages.len()))
             );
         } else {
             for m in &missing {
@@ -930,9 +928,9 @@ fn extract_prose_citations(prose: &str) -> Vec<ProseCitation> {
             if let Some(close_bracket) = prose[i + 1..].find(']') {
                 let label_end = i + 1 + close_bracket;
                 let after = &prose[label_end + 1..];
-                if after.starts_with('(') {
-                    if let Some(close_paren) = after[1..].find(')') {
-                        let target = &after[1..1 + close_paren];
+                if let Some(stripped) = after.strip_prefix('(') {
+                    if let Some(close_paren) = stripped.find(')') {
+                        let target = &stripped[..close_paren];
                         let target = target.split_whitespace().next().unwrap_or(target);
                         let is_dir = target.ends_with('/');
                         let is_intra_wiki_md = target.ends_with(".md")

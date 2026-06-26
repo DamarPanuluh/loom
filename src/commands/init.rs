@@ -12,6 +12,7 @@ pub fn run(
     path_str: &str,
     name: Option<&str>,
     observed: bool,
+    autonomy: Option<&str>,
     no_hook: bool,
     printer: &Printer,
 ) -> Result<()> {
@@ -103,11 +104,25 @@ pub fn run(
         if changed {
             store.set_identity(&new_id, &new_name, &new_custody)?;
         }
+        // Autonomy is a behavioral tunable, not identity — only an explicit
+        // `--autonomy <mode>` writes it; omitting it keeps the current mode.
+        // Empty (pre-autonomy graph) reads as the `guided` default.
+        let new_autonomy = match autonomy {
+            Some(a) => {
+                if a != meta.autonomy {
+                    store.set_autonomy(a)?;
+                }
+                a.to_string()
+            }
+            None if meta.autonomy.is_empty() => "guided".to_string(),
+            None => meta.autonomy.clone(),
+        };
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "ok",
                 "message": format!("Already initialised at {}", loom.display()),
                 "graph_id": new_id, "graph_name": new_name, "custody": new_custody,
+                "autonomy": new_autonomy,
                 "identity_updated": changed,
                 "pre_commit_hook": hook_status,
                 "gitignore": gitignore_status,
@@ -124,6 +139,7 @@ pub fn run(
                 new_custody,
                 if changed { "  [identity updated]" } else { "" }
             );
+            println!("  autonomy:        {new_autonomy}");
             println!("  pre-commit hook: {hook_status}");
             println!("  .gitignore:      {gitignore_status}");
         }
@@ -135,6 +151,12 @@ pub fn run(
     let graph_id = uuid::Uuid::new_v4().to_string();
     let graph_name = name.map(str::to_string).unwrap_or(default_name);
     store.initialize(SCHEMA_VERSION, &graph_id, &graph_name, custody, &now)?;
+    // `initialize` seeds the DDL default (`guided`); only an explicit
+    // `--autonomy <mode>` overrides it on a fresh graph.
+    let autonomy_mode = autonomy.unwrap_or("guided");
+    if autonomy_mode != "guided" {
+        store.set_autonomy(autonomy_mode)?;
+    }
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -144,6 +166,7 @@ pub fn run(
             "graph_id": graph_id,
             "graph_name": graph_name,
             "custody": custody,
+            "autonomy": autonomy_mode,
             "pre_commit_hook": hook_status,
             "gitignore": gitignore_status,
             "next_steps": [
@@ -160,11 +183,18 @@ pub fn run(
             "  graph: '{}' ({})  custody: {}",
             graph_name, graph_id, custody
         );
+        println!("  autonomy:        {autonomy_mode}");
         println!("  pre-commit hook: {hook_status}");
         println!("  .gitignore:      {gitignore_status}");
         if observed {
             println!("  Observed graph: you're mapping code you don't own — build/fix lanes are");
             println!("  disabled; record findings (issue verdicts, notes), not fixes.");
+        }
+        if autonomy_mode == "autonomous" {
+            println!("  Autonomous mode: drain autonomous lanes without per-step confirmation;");
+            println!(
+                "  escalate only genuine ambiguity / user-gated work. Inspection still earned."
+            );
         }
         println!();
         println!("  → Next: `loom guide` to learn the loop, then SEED the full surface:");

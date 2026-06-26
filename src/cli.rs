@@ -55,6 +55,12 @@ pub enum Command {
     /// Initialise a .loom/ directory and its embedded graph database. Stamps
     /// the graph's identity (graph_id + name) — re-running is safe and
     /// backfills identity on older graphs.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom init                              # map THIS repo (owned, guided)\n  \
+        loom init --name billing-api           # give the graph a federation name\n  \
+        loom init --observed                   # map a repo you don't own (no build/fix lanes)\n  \
+        loom init --autonomy autonomous        # let the agent drain autonomous lanes without per-step asks\n  \
+        loom init --autonomy guided            # flip an existing graph back to interrupt-by-default")]
     Init {
         /// Directory to initialise (default: current directory).
         #[arg(default_value = ".")]
@@ -71,6 +77,17 @@ pub enum Command {
         /// fixes. Verdicts export as observer testimony.
         #[arg(long)]
         observed: bool,
+
+        /// How much the agent may drive without pausing for the user.
+        /// `autonomous` drains autonomous lanes without per-step confirmation and
+        /// escalates only genuine ambiguity / user-gated work; `guided` (the
+        /// default) lowers that threshold and surfaces a confirmation beat at
+        /// each lane edge. This tunes the INTERRUPT BUDGET, not whether
+        /// per-finding inspection happens — smell/decision rulings are still
+        /// earned, never auto-stamped. Re-run with a new value to flip an
+        /// existing graph; omit it to keep the current mode.
+        #[arg(long, value_parser = ["autonomous", "guided"])]
+        autonomy: Option<String>,
 
         /// Skip installing the git pre-commit hook (the green-bar gate:
         /// `loom export --check` + `loom wiki --check`, plus a teach-adapt slot
@@ -2380,9 +2397,11 @@ pub enum ValidationCmd {
         /// Validation id, name, or unique name fragment.
         id: String,
 
-        /// The verdict: passed | failed | blocked. `blocked` = cannot run yet
-        /// for a recorded external reason (distinct from not_run = forgotten);
-        /// blocked proofs leave the validator queue until you mark them again.
+        /// passed | failed | blocked | not_run. `blocked` = cannot run yet for a
+        /// recorded external reason; blocked proofs leave the validator queue
+        /// until you mark them again. A hand-marked passed/failed is STICKY —
+        /// `loom validate` won't overwrite it by re-running. `not_run` is not a
+        /// verdict: it CLEARS a prior mark so the proof runs afresh.
         #[arg(long)]
         result: String,
 

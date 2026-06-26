@@ -121,9 +121,9 @@ impl SqliteGraphStore {
         let layer_order = compact_json(data.get("layer_order").unwrap_or(&json!([])))?;
         tx.execute(
             "INSERT INTO meta(
-                id, schema_version, graph_id, graph_name, custody, created_at,
+                id, schema_version, graph_id, graph_name, custody, autonomy, created_at,
                 last_synced, transition_cap, layer_order
-             ) VALUES(1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+             ) VALUES(1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 // Stamp the ACTIVE schema version, not the export's: the data is
                 // normalized into THIS loom's schema on import, so an older
@@ -133,6 +133,9 @@ impl SqliteGraphStore {
                 str_top(data, "graph_id"),
                 str_top(data, "graph_name"),
                 str_top(data, "custody"),
+                // Pre-autonomy exports omit the field → "" imports and reads as
+                // the `guided` default (GraphState.autonomy), never NULL.
+                str_top(data, "autonomy"),
                 str_top(data, "created_at"),
                 str_top(data, "last_synced"),
                 str_top(data, "transition_cap"),
@@ -170,6 +173,7 @@ impl SqliteGraphStore {
             graph_id,
             graph_name,
             custody,
+            autonomy,
             created_at,
             last_synced,
             transition_cap,
@@ -183,10 +187,11 @@ impl SqliteGraphStore {
             String,
             String,
             String,
+            String,
         ) = self
             .conn
             .query_row(
-                "SELECT schema_version, graph_id, graph_name, custody, created_at, \
+                "SELECT schema_version, graph_id, graph_name, custody, autonomy, created_at, \
                  last_synced, transition_cap, layer_order FROM meta WHERE id = 1",
                 [],
                 |row| {
@@ -199,6 +204,7 @@ impl SqliteGraphStore {
                         row.get(5)?,
                         row.get(6)?,
                         row.get(7)?,
+                        row.get(8)?,
                     ))
                 },
             )
@@ -233,6 +239,7 @@ impl SqliteGraphStore {
             "graph_id": graph_id,
             "graph_name": graph_name,
             "custody": custody,
+            "autonomy": autonomy,
             "created_at": created_at,
             "last_synced": last_synced,
             "transition_cap": transition_cap,

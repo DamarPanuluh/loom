@@ -671,6 +671,7 @@ mod tests {
             graph_id: "test-graph".to_string(),
             graph_name: name.to_string(),
             custody: "owned".to_string(),
+            autonomy: "guided".to_string(),
             intents: 0,
             relates_to_edges: 0,
             implements_edges: 0,

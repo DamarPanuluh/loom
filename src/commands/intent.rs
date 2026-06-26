@@ -683,6 +683,7 @@ struct UpdatePrintContext<'a> {
     intent: &'a Intent,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_changes<'a>(
     id: &str,
     intent: &'a Intent,

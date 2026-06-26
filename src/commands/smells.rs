@@ -77,6 +77,7 @@ pub fn run(
     run_with_db(&store, &cwd, limit, take, kind, summary, stale, printer)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_with_db(
     db: &dyn GraphReadRepository,
     root: &std::path::Path,
@@ -531,7 +532,7 @@ fn render(
         decision_notes,
         hypotheses,
     );
-    let show_clone = kind.map_or(true, |k| k == "code_clone");
+    let show_clone = kind.is_none_or(|k| k == "code_clone");
     let clone_total = if show_clone { clone_rollup.total } else { 0 };
     let clone_deliberate = if show_clone {
         clone_rollup.deliberate

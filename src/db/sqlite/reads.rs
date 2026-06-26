@@ -608,7 +608,7 @@ impl SqliteGraphStore {
     pub fn graph_meta(&self) -> Result<Option<GraphMeta>> {
         self.conn
             .query_row(
-                "SELECT schema_version, created_at, last_synced, graph_id, graph_name, custody
+                "SELECT schema_version, created_at, last_synced, graph_id, graph_name, custody, autonomy
                  FROM meta
                  WHERE id = 1",
                 [],
@@ -620,6 +620,7 @@ impl SqliteGraphStore {
                         graph_id: row.get(3)?,
                         graph_name: row.get(4)?,
                         custody: row.get(5)?,
+                        autonomy: row.get(6)?,
                     })
                 },
             )

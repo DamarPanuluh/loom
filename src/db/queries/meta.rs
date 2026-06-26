@@ -17,6 +17,12 @@ pub struct GraphMeta {
     pub graph_name: String,
     /// "owned" | "observed" ("" on pre-identity graphs = owned).
     pub custody: String,
+    /// "autonomous" | "guided" ("" on pre-autonomy graphs = guided). Tunes the
+    /// driver's INTERRUPT BUDGET, not whether inspection happens: `autonomous`
+    /// drains autonomous lanes without pausing and escalates only genuine
+    /// ambiguity / user-gated work; `guided` lowers that threshold and surfaces
+    /// a confirmation beat at each lane edge.
+    pub autonomy: String,
 }
 
 impl GraphMeta {

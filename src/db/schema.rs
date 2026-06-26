@@ -101,7 +101,14 @@
 /// graph-primary OKF emitter are deleted. No schema changes — same graph shape,
 /// different wiki projection. Migration: re-export with v13 binary, delete old
 /// `loom.wiki.md`, run `loom wiki` to generate the v2 bundle.
-pub const SCHEMA_VERSION: &str = "13";
+/// v14 (autonomy mode): LoomMeta gains `autonomy` ("autonomous" | "guided",
+/// default "guided") — the driver's INTERRUPT BUDGET, set at `loom init
+/// --autonomy <mode>` and surfaced by `loom status`/`loom guide`. Column-additive
+/// (backfilled on open via ensure_meta_columns, "" reads as guided), but the
+/// version IS bumped: the `open_readonly` fast path skips migration when the
+/// on-disk version already matches, so an additive meta column needs the bump to
+/// reach graphs already stamped at the prior version (the v7/v8/v12 pattern).
+pub const SCHEMA_VERSION: &str = "14";
 pub const INBOX_KINDS: &[&str] = &[
     "observation",
     "user_request",

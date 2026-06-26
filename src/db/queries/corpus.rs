@@ -191,7 +191,7 @@ pub fn extract_ids(line: &str, prefixes: &[&str]) -> Vec<String> {
             continue;
         }
         let prefix = &line[start..i];
-        if !prefixes.iter().any(|p| *p == prefix) {
+        if !prefixes.contains(&prefix) {
             i += 1;
             continue;
         }

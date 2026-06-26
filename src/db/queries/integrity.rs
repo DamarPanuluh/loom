@@ -162,6 +162,12 @@ pub fn check_graph_from_parts(
                 m.custody
             ));
         }
+        if !m.autonomy.is_empty() && !matches!(m.autonomy.as_str(), "autonomous" | "guided") {
+            issues.push(format!(
+                "LoomMeta has invalid autonomy '{}' (valid: autonomous, guided)",
+                m.autonomy
+            ));
+        }
         if m.graph_id.is_empty() {
             hints.push(
                 "this graph has no identity (pre-federation) — run `loom init .` to backfill \

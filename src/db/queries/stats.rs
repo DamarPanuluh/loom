@@ -70,6 +70,9 @@ pub struct GraphState {
     pub graph_name: String,
     /// "owned" | "observed" ("" = owned, pre-identity graph).
     pub custody: String,
+    /// "autonomous" | "guided" ("" = guided, pre-autonomy graph). The driver's
+    /// interrupt budget — how much it may drive without pausing for the user.
+    pub autonomy: String,
     pub intents: i64,
     pub relates_to_edges: i64,
     pub implements_edges: i64,
@@ -674,6 +677,10 @@ pub fn graph_state_from_snapshot_parts(
             .map(|m| m.graph_name.clone())
             .unwrap_or_default(),
         custody: meta.as_ref().map(|m| m.custody.clone()).unwrap_or_default(),
+        autonomy: meta
+            .as_ref()
+            .map(|m| m.autonomy.clone())
+            .unwrap_or_default(),
         intents,
         relates_to_edges,
         implements_edges,

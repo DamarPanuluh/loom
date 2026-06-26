@@ -56,7 +56,7 @@ fn run_graph(
                 },
             }));
         } else if fresh {
-            println!("{}", crate::output::up_to_date_line(&out));
+            println!("{}", crate::output::up_to_date_line(out));
         } else if on_disk.is_none() {
             println!("✗ {out} does not exist — run `loom export` and commit it.");
         } else {
