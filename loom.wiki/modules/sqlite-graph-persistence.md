@@ -62,8 +62,8 @@ provenance:
   src/db/schema.rs: e561ff6cbb65f572
   src/db/sqlite.rs: 1bb73bc78f225241
   src/db/sqlite/writes.rs: b7cd81dd5f30f359
-  src/repo.rs: 9b8d91b2081f6e75
-  src/types.rs: 6c6ae58e65299ae4
+  src/repo.rs: fca7873e11343725
+  src/types.rs: 5e23066c85babdab
   src/vec_utils.rs: 94f14a1584e50bba
 ---
 
@@ -93,6 +93,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

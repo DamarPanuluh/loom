@@ -595,6 +595,36 @@ pub struct SymbolFact {
     /// exact change detection.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub shape_hash: String,
+    /// Deterministic syntax metrics extracted from the symbol body. These are
+    /// physical facts, not verdicts: smell detectors decide whether a metric
+    /// combination is worth inspection. Empty/default on legacy graphs,
+    /// unsupported languages, and feature-light builds.
+    #[serde(default, skip_serializing_if = "symbol_metrics_is_empty")]
+    pub metrics: SymbolMetrics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct SymbolMetrics {
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub cyclomatic: usize,
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub cognitive: usize,
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub branch_count: usize,
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub max_nesting: usize,
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub exit_count: usize,
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub arg_count: usize,
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub closure_count: usize,
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub await_count: usize,
+}
+
+fn symbol_metrics_is_empty(m: &SymbolMetrics) -> bool {
+    m == &SymbolMetrics::default()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

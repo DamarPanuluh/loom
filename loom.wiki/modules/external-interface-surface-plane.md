@@ -46,7 +46,7 @@ provenance:
   src/db/schema.rs: e561ff6cbb65f572
   src/db/sqlite.rs: 1bb73bc78f225241
   src/db/sqlite/edge_writes.rs: a5823037fd573ddb
-  src/types.rs: 6c6ae58e65299ae4
+  src/types.rs: 5e23066c85babdab
   tests/sqlite_regression.rs: d934d4f4cb85d80a
 ---
 
@@ -76,6 +76,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

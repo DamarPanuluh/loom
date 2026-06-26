@@ -1315,6 +1315,7 @@ mod tests {
             panic_markers: Vec::new(),
             body_hash: body_hash.into(),
             shape_hash: shape_hash.into(),
+            metrics: crate::types::SymbolMetrics::default(),
         }
     }
 

@@ -1107,6 +1107,7 @@ mod epistemic_tests {
             panic_markers: vec![],
             body_hash: String::new(),
             shape_hash: String::new(),
+            metrics: crate::types::SymbolMetrics::default(),
         };
         let cf = CodeFile {
             id: "cf1".into(),

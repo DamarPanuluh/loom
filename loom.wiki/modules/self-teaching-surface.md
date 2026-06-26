@@ -11,7 +11,7 @@ sourceFiles:
 symbols:
   - pub fn run
 provenance:
-  docs/COMMANDS.md: 3d9f88b3a090bbca
+  docs/COMMANDS.md: c27b117d68dbc06d
   src/commands/guide.rs: 0e285dcdf59a944c
   src/commands/schema.rs: 7eaa800919627bcd
   src/commands/tour.rs: 087ff8074208007c
@@ -43,6 +43,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

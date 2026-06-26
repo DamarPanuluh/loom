@@ -3,8 +3,9 @@ use std::collections::{HashMap, HashSet};
 use super::{
     adjudicate, behavioral_symbol_kind, capped_join, command_or_public_surface,
     normalized_contract_string, scatter_threshold, short_contract_excerpt, teaching_for,
-    AdjudicatedSmell, Smell, SmellCtx, StringContractLoc, LARGE_BEHAVIORAL_SYMBOL_LINES,
-    OVERSIZED_FILE_LINES, TANGLE_INTENTS,
+    AdjudicatedSmell, Smell, SmellCtx, StringContractLoc, COMPLEX_SYMBOL_COGNITIVE,
+    COMPLEX_SYMBOL_CYCLOMATIC, DEEPLY_NESTED_SYMBOL_DEPTH, LARGE_BEHAVIORAL_SYMBOL_LINES,
+    MANY_ARGUMENTS, MANY_AWAITS, MANY_EXIT_PATHS, OVERSIZED_FILE_LINES, TANGLE_INTENTS,
 };
 use crate::db::queries::snapshot::QuerySnapshot;
 
@@ -36,6 +37,8 @@ pub(super) fn detect_physical_plane(
         adj,
     );
     detect_large_behavioral_symbol(ctx.snapshot, &ctx.last_decision, smells, adj);
+    detect_complex_symbol(ctx.snapshot, &ctx.last_decision, smells, adj);
+    detect_hub_file(ctx.snapshot, &ctx.last_decision, smells, adj);
     detect_panic_marker_risk(ctx.snapshot, &ctx.last_decision, smells, adj);
     detect_oversized_file(ctx.snapshot, &ctx.last_decision, smells, adj);
     detect_string_contract_duplicate(ctx.snapshot, &ctx.last_decision, smells, adj);
@@ -267,6 +270,166 @@ fn detect_large_behavioral_symbol(
                 teaching: teaching_for("large_behavioral_symbol"),
             });
         }
+    }
+}
+
+/// 4b2. Complex symbol — deterministic syntax metrics over branchiness,
+/// nesting, exits, broad signatures, and async suspension points. Advisory: a
+/// routing signal for inspection rather than an automatic design verdict.
+fn detect_complex_symbol(
+    snapshot: &QuerySnapshot,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    for cf in &snapshot.codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test || !behavioral_symbol_kind(f.kind.as_str()) {
+                continue;
+            }
+            let m = &f.metrics;
+            let mut triggers = Vec::new();
+            if m.cyclomatic >= COMPLEX_SYMBOL_CYCLOMATIC {
+                triggers.push(format!("cyclomatic {}", m.cyclomatic));
+            }
+            if m.cognitive >= COMPLEX_SYMBOL_COGNITIVE {
+                triggers.push(format!("cognitive {}", m.cognitive));
+            }
+            if m.max_nesting >= DEEPLY_NESTED_SYMBOL_DEPTH {
+                triggers.push(format!("nesting {}", m.max_nesting));
+            }
+            if m.exit_count >= MANY_EXIT_PATHS {
+                triggers.push(format!("exits {}", m.exit_count));
+            }
+            if m.arg_count >= MANY_ARGUMENTS {
+                triggers.push(format!("args {}", m.arg_count));
+            }
+            if m.await_count >= MANY_AWAITS {
+                triggers.push(format!("awaits {}", m.await_count));
+            }
+            if triggers.is_empty() {
+                continue;
+            }
+
+            let summary = format!(
+                "{} in {} has high control-flow complexity ({})",
+                f.label,
+                cf.path,
+                triggers.join(", ")
+            );
+            let adj_scope = format!("{}:{}", cf.path, f.label);
+            if let Some(note) = adjudicate(
+                last_decision,
+                "complex_symbol",
+                &adj_scope,
+                cf.last_modified.as_str(),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "complex_symbol".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: REOPENS_ON_FILE_EDIT.into(),
+                    teaching: teaching_for("complex_symbol"),
+                });
+                continue;
+            }
+            let span = f.line_end.saturating_sub(f.line_start) + 1;
+            smells.push(Smell {
+                kind: "complex_symbol".into(),
+                score: m.cognitive as f64
+                    + m.cyclomatic as f64
+                    + (m.max_nesting as f64 * 2.0)
+                    + m.exit_count as f64
+                    + m.await_count as f64,
+                summary,
+                evidence: format!(
+                    "{}:{}-{} span={} cyclomatic={} cognitive={} branches={} nesting={} exits={} args={} closures={} awaits={}",
+                    cf.path,
+                    f.line_start,
+                    f.line_end,
+                    span,
+                    m.cyclomatic,
+                    m.cognitive,
+                    m.branch_count,
+                    m.max_nesting,
+                    m.exit_count,
+                    m.arg_count,
+                    m.closure_count,
+                    m.await_count,
+                ),
+                remedy: format!(
+                    "inspect {}:{}-{}; split phases/modes/failure paths into named units, add direct proofs for risky branches, or rule it deliberate: `loom note add --smell \"complex_symbol:{}:{}\" --kind decision --text \"<the branch decomposition considered and why this control-flow shape is right HERE>\"` resolves THIS finding (editing the file re-opens it)",
+                    cf.path, f.line_start, f.line_end, cf.path, f.label
+                ),
+                teaching: teaching_for("complex_symbol"),
+            });
+        }
+    }
+}
+
+/// 4b3. Hub file — reverse-import centrality. Advisory: shared primitives are
+/// allowed, but broad dependency blast radius should be visible to the driver.
+fn detect_hub_file(
+    snapshot: &QuerySnapshot,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    const HUB_IMPORTERS: usize = 12;
+    let mut importers: HashMap<&str, Vec<&str>> = HashMap::new();
+    for cf in &snapshot.codefiles {
+        for imported in &cf.imports {
+            if imported != &cf.path {
+                importers
+                    .entry(imported.as_str())
+                    .or_default()
+                    .push(cf.path.as_str());
+            }
+        }
+    }
+    for cf in &snapshot.codefiles {
+        let Some(mut incoming) = importers.remove(cf.path.as_str()) else {
+            continue;
+        };
+        incoming.sort();
+        incoming.dedup();
+        if incoming.len() < HUB_IMPORTERS {
+            continue;
+        }
+        let summary = format!("{} is imported by {} file(s)", cf.path, incoming.len());
+        if let Some(note) = adjudicate(
+            last_decision,
+            "hub_file",
+            cf.path.as_str(),
+            cf.last_modified.as_str(),
+        ) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "hub_file".into(),
+                summary,
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: REOPENS_ON_FILE_EDIT.into(),
+                teaching: teaching_for("hub_file"),
+            });
+            continue;
+        }
+        smells.push(Smell {
+            kind: "hub_file".into(),
+            score: incoming.len() as f64,
+            summary,
+            evidence: format!(
+                "reverse imports: {}",
+                capped_join(&incoming, ", ")
+            ),
+            remedy: format!(
+                "inspect {path}'s public surface and importers; split accidental utility grab-bags along intent/module lines, or rule the centrality deliberate: `loom note add --smell \"hub_file:{path}\" --kind decision --text \"<why this module is a stable shared hub>\"` resolves THIS finding (editing the file re-opens it)",
+                path = cf.path
+            ),
+            teaching: teaching_for("hub_file"),
+        });
     }
 }
 

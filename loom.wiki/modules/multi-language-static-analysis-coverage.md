@@ -20,7 +20,7 @@ symbols:
 provenance:
   src/commands/codefile.rs: d887ca066e4fa091
   src/db/queries/symbol_match.rs: f2cf13a911c33537
-  src/repo.rs: 9b8d91b2081f6e75
+  src/repo.rs: fca7873e11343725
   src/vec_utils.rs: 94f14a1584e50bba
 ---
 
@@ -50,6 +50,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

@@ -7,7 +7,7 @@ use std::path::Path;
 
 use tree_sitter::{Language, Node, Parser, Tree};
 
-use crate::types::{StringLiteralFact, SymbolFact};
+use crate::types::{StringLiteralFact, SymbolFact, SymbolMetrics};
 use crate::vec_utils::push_unique_nonempty;
 
 #[derive(Debug, Default)]
@@ -551,6 +551,7 @@ fn rust_symbol_fact(
         panic_markers: panic_markers(node, content),
         body_hash: String::new(),
         shape_hash: shape_hash(node, content),
+        metrics: symbol_metrics(node),
     })
 }
 
@@ -592,6 +593,7 @@ fn rust_method_fact(
         panic_markers: panic_markers(node, content),
         body_hash: String::new(),
         shape_hash: shape_hash(node, content),
+        metrics: symbol_metrics(node),
     })
 }
 
@@ -638,6 +640,7 @@ fn js_ts_symbol_fact(
         panic_markers: panic_markers(node, content),
         body_hash: String::new(),
         shape_hash: shape_hash(node, content),
+        metrics: symbol_metrics(node),
     })
 }
 
@@ -693,6 +696,7 @@ fn collect_js_ts_binding_facts(
                                 panic_markers: panic_markers(child, content),
                                 body_hash: String::new(),
                                 shape_hash: shape_hash(child, content),
+                                metrics: symbol_metrics(child),
                             },
                         );
                     }
@@ -735,7 +739,107 @@ fn python_symbol_fact(
         panic_markers: panic_markers(node, content),
         body_hash: String::new(),
         shape_hash: shape_hash(node, content),
+        metrics: symbol_metrics(node),
     })
+}
+
+fn symbol_metrics(root: Node<'_>) -> SymbolMetrics {
+    let mut metrics = SymbolMetrics {
+        arg_count: argument_count(root),
+        cyclomatic: 1,
+        ..SymbolMetrics::default()
+    };
+    collect_symbol_metrics(root, 0, &mut metrics);
+    metrics.cyclomatic = metrics.branch_count + 1;
+    metrics
+}
+
+fn collect_symbol_metrics(node: Node<'_>, depth: usize, metrics: &mut SymbolMetrics) {
+    let kind = node.kind();
+    if is_branch_node(kind) {
+        metrics.branch_count += 1;
+        metrics.cognitive += 1 + depth;
+        metrics.max_nesting = metrics.max_nesting.max(depth + 1);
+    }
+    if is_exit_node(kind) {
+        metrics.exit_count += 1;
+    }
+    if is_closure_node(kind) {
+        metrics.closure_count += 1;
+    }
+    if kind == "await_expression" {
+        metrics.await_count += 1;
+    }
+
+    let child_depth = if is_branch_node(kind) {
+        depth + 1
+    } else {
+        depth
+    };
+    for_each_named_child(node, |child| {
+        collect_symbol_metrics(child, child_depth, metrics)
+    });
+}
+
+fn argument_count(node: Node<'_>) -> usize {
+    let Some(params) = node.child_by_field_name("parameters") else {
+        return 0;
+    };
+    let mut count = 0;
+    for_each_named_child(params, |child| {
+        if !matches!(
+            child.kind(),
+            "self_parameter" | "variadic_parameter" | "rest_pattern"
+        ) {
+            count += 1;
+        }
+    });
+    count
+}
+
+fn is_branch_node(kind: &str) -> bool {
+    matches!(
+        kind,
+        "if_expression"
+            | "else_clause"
+            | "match_expression"
+            | "match_arm"
+            | "while_expression"
+            | "loop_expression"
+            | "for_expression"
+            | "try_expression"
+            | "if_statement"
+            | "switch_statement"
+            | "switch_case"
+            | "catch_clause"
+            | "conditional_expression"
+            | "for_statement"
+            | "for_in_statement"
+            | "while_statement"
+            | "try_statement"
+            | "except_clause"
+            | "with_statement"
+            | "boolean_operator"
+    )
+}
+
+fn is_exit_node(kind: &str) -> bool {
+    matches!(
+        kind,
+        "return_expression"
+            | "break_expression"
+            | "continue_expression"
+            | "return_statement"
+            | "break_statement"
+            | "continue_statement"
+            | "throw_statement"
+            | "raise_statement"
+            | "yield"
+    )
+}
+
+fn is_closure_node(kind: &str) -> bool {
+    matches!(kind, "closure_expression" | "arrow_function" | "lambda")
 }
 
 fn string_literal_facts(node: Node<'_>, content: &str) -> Vec<StringLiteralFact> {
@@ -1426,5 +1530,48 @@ impl Bar {
             "an impl-direct (non-method) literal must remain on the impl fact: {:?}",
             impl_fact.string_literals
         );
+    }
+
+    #[test]
+    fn rust_symbol_metrics_capture_branching_nesting_exits_and_args() {
+        let src = "\
+pub fn route(a: i32, b: i32, c: i32) -> i32 {
+    if a > 0 {
+        for n in 0..a {
+            if n == b {
+                return c;
+            }
+        }
+    } else if b > 0 {
+        while c > b {
+            break;
+        }
+    }
+    match a {
+        1 => 1,
+        2 => 2,
+        _ => 0,
+    }
+}
+";
+        let facts = extract_physical_facts("src/route.rs", src).expect("rust facts extracted");
+        let route = facts
+            .symbol_facts
+            .iter()
+            .find(|f| f.name == "route")
+            .expect("route fact present");
+
+        assert_eq!(route.metrics.arg_count, 3);
+        assert!(
+            route.metrics.cyclomatic >= 8,
+            "branch count should produce useful cyclomatic complexity: {:?}",
+            route.metrics
+        );
+        assert!(
+            route.metrics.max_nesting >= 3,
+            "nested if/for/if should be recorded: {:?}",
+            route.metrics
+        );
+        assert_eq!(route.metrics.exit_count, 2); // return + break
     }
 }

@@ -1380,6 +1380,7 @@ fn push_heuristic_symbol(
         panic_markers: Vec::new(),
         body_hash: content_hash(line.as_bytes()),
         shape_hash: content_hash(format!("{kind} _").as_bytes()),
+        metrics: crate::types::SymbolMetrics::default(),
     });
 }
 

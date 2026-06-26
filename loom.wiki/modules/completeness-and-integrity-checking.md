@@ -39,12 +39,12 @@ provenance:
   src/commands/status.rs: a69f37ff67f2cd79
   src/db/queries/completeness.rs: 0b326860a21cc0cd
   src/db/queries/comprehensiveness.rs: 92ecbff1ee84ea92
-  src/db/queries/integrity.rs: 5e30b7279342d771
+  src/db/queries/integrity.rs: c31c55865772206b
   src/db/queries/maturity.rs: 0685a4666057bf0e
   src/db/queries/maturity/tests.rs: d5acae9d4d85d6ad
   src/db/queries/stats.rs: 9cc813faa83897ef
   src/db/queries/stats/tests.rs: 1f6d19b81465589b
-  src/db/queries/symbol_accountability.rs: ec99242453ccb962
+  src/db/queries/symbol_accountability.rs: e03ede9b683eeecc
 ---
 
 # completeness and integrity checking
@@ -73,6 +73,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 
