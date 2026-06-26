@@ -34,11 +34,11 @@ provenance:
   src/commands/next/modes.rs: 3501df180644d7c4
   src/commands/sync.rs: 93ff4e43a7481814
   src/commands/validation.rs: d726cbcb95e66827
-  src/db/queries/smells.rs: d2f464066e661a2d
+  src/db/queries/smells.rs: e70919e9d98f7fae
   src/db/queries/smells/lifecycle.rs: 407a6815b60abe72
   src/db/schema.rs: e561ff6cbb65f572
   src/db/sqlite/edge_writes.rs: a5823037fd573ddb
-  src/types.rs: 6c6ae58e65299ae4
+  src/types.rs: 5e23066c85babdab
 ---
 
 # hypothesis plane
@@ -67,6 +67,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

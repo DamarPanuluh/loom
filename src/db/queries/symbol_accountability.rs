@@ -462,6 +462,7 @@ mod tests {
             panic_markers: Vec::new(),
             body_hash: String::new(),
             shape_hash: String::new(),
+            metrics: crate::types::SymbolMetrics::default(),
         }
     }
 

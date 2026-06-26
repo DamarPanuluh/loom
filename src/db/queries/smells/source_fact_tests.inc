@@ -23,6 +23,7 @@ mod large_behavioral_symbol_tests {
             panic_markers: Vec::new(),
             body_hash: String::new(),
             shape_hash: String::new(),
+            metrics: crate::types::SymbolMetrics::default(),
         }
     }
 
@@ -273,6 +274,7 @@ mod source_fact_smell_tests {
             panic_markers: Vec::new(),
             body_hash: String::new(),
             shape_hash: String::new(),
+            metrics: crate::types::SymbolMetrics::default(),
         }
     }
 
@@ -290,6 +292,11 @@ mod source_fact_smell_tests {
         fact
     }
 
+    fn with_metrics(mut fact: SymbolFact, metrics: crate::types::SymbolMetrics) -> SymbolFact {
+        fact.metrics = metrics;
+        fact
+    }
+
     fn cf(path: &str, facts: Vec<SymbolFact>) -> CodeFile {
         CodeFile {
             id: path.into(),
@@ -299,6 +306,20 @@ mod source_fact_smell_tests {
             imports: Vec::new(),
             symbols: facts.iter().map(|f| f.label.clone()).collect(),
             symbol_facts: facts,
+            content_hash: String::new(),
+            extractor_grade: String::new(),
+        }
+    }
+
+    fn cf_importing(path: &str, imports: Vec<String>) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: "2026-06-15T00:00:00+00:00".into(),
+            imports,
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
             content_hash: String::new(),
             extractor_grade: String::new(),
         }
@@ -473,5 +494,58 @@ mod source_fact_smell_tests {
         );
         assert!(of_kind(&r, "panic_marker_risk").is_empty());
         assert!(r.adjudicated.iter().any(|s| s.kind == "panic_marker_risk"));
+    }
+
+    #[test]
+    fn complex_symbol_metrics_flag_as_advisory() {
+        let r = report(
+            vec![cf(
+                "src/flow.rs",
+                vec![with_metrics(
+                    sym("fn route"),
+                    crate::types::SymbolMetrics {
+                        cyclomatic: COMPLEX_SYMBOL_CYCLOMATIC,
+                        cognitive: COMPLEX_SYMBOL_COGNITIVE,
+                        branch_count: COMPLEX_SYMBOL_CYCLOMATIC - 1,
+                        max_nesting: DEEPLY_NESTED_SYMBOL_DEPTH,
+                        exit_count: MANY_EXIT_PATHS,
+                        arg_count: MANY_ARGUMENTS,
+                        closure_count: 1,
+                        await_count: MANY_AWAITS,
+                    },
+                )],
+            )],
+            &[],
+        );
+
+        let found = of_kind(&r, "complex_symbol");
+        assert_eq!(found.len(), 1, "complex symbol should flag: {found:?}");
+        assert!(found[0].evidence.contains("cyclomatic="));
+        assert!(found[0].evidence.contains("nesting="));
+        assert!(
+            r.open.iter().all(|s| s.kind != "complex_symbol"),
+            "complexity is advisory, not a green gate"
+        );
+    }
+
+    #[test]
+    fn hub_file_reverse_imports_flag_as_advisory() {
+        let mut files = vec![cf("src/hub.rs", Vec::new())];
+        for i in 0..12 {
+            files.push(cf_importing(
+                &format!("src/user_{i}.rs"),
+                vec!["src/hub.rs".into()],
+            ));
+        }
+        let r = report(files, &[]);
+
+        let found = of_kind(&r, "hub_file");
+        assert_eq!(found.len(), 1, "hub file should flag: {found:?}");
+        assert!(found[0].summary.contains("imported by 12 file"));
+        assert!(found[0].evidence.contains("src/user_0.rs"));
+        assert!(
+            r.open.iter().all(|s| s.kind != "hub_file"),
+            "hub centrality is advisory, not a green gate"
+        );
     }
 }

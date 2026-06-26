@@ -276,6 +276,7 @@ mod proof_locality_tests {
                 panic_markers: Vec::new(),
                 body_hash: String::new(),
                 shape_hash: String::new(),
+                metrics: crate::types::SymbolMetrics::default(),
             });
         }
         for s in code_syms {
@@ -292,6 +293,7 @@ mod proof_locality_tests {
                 panic_markers: Vec::new(),
                 body_hash: String::new(),
                 shape_hash: String::new(),
+                metrics: crate::types::SymbolMetrics::default(),
             });
         }
         CodeFile {
@@ -618,6 +620,7 @@ mod clone_tests {
             panic_markers: Vec::new(),
             body_hash: body_hash.into(),
             shape_hash: shape_hash.into(),
+            metrics: crate::types::SymbolMetrics::default(),
         }
     }
 

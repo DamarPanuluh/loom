@@ -626,6 +626,11 @@ loom smells [--limit N] [--summary]
   point the right way?"; undeclared layers are exempt; a kind=decision note
   on the importing intent newer than its newest grounding records "this
   layer may reach up" and resolves it, a new grounding re-flags),
+  complex symbols (tree-sitter metrics — cyclomatic, cognitive, nesting,
+  exits, arguments, closures, awaits — cross conservative thresholds; advisory
+  only, because complexity is an inspection router rather than proof a split is
+  correct), hub files (reverse-import centrality; advisory only, because stable
+  shared primitives are allowed but blast radius should be visible),
   vocab drift (two registered terms that read like the same word — remedy is
   the exact `loom vocab merge`), and unjourneyed surface (the consumer
   plane's completeness check: a user_visible intent with real code that NO
@@ -662,7 +667,9 @@ loom smells [--limit N] [--summary]
   nonlocal_proof (`proof_locality_suggestions`, a proven leaf whose only `test`
   proof lives in other files), and code_clone (`code_clones`, cross-file
   EXACT-text duplication via per-symbol body_hash — size-floored and
-  ignore-aware, the one duplication the intent-level detectors are blind to).
+  ignore-aware, the one duplication the intent-level detectors are blind to),
+  plus the physical advisories above (`oversized_file`,
+  `large_behavioral_symbol`, `complex_symbol`, `hub_file`).
   Use `loom smells --summary --json` for bounded audit routing: counts by
   kind, top remedies, advisory totals, and detector blind spots. Full
   `loom smells --json` includes per-finding evidence, teaching text,
