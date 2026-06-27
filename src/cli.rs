@@ -191,6 +191,14 @@ pub enum Command {
         /// Supported for the RELATES_TO queues (discovery and fix).
         #[arg(long, conflicts_with_all = ["all", "take"])]
         compact: bool,
+
+        /// Restrict this mode's queue to ONE horizontal slice's territory (its
+        /// id from `loom slice plan`, e.g. slice:auth). A dispatched subagent
+        /// then sees only work inside its assigned boundary; an unknown id
+        /// errors, and an empty slice yields an honest empty queue, not the
+        /// global one.
+        #[arg(long)]
+        slice: Option<String>,
     },
 
     /// Return all unresolved edges touching a given intent — batch a
@@ -198,6 +206,16 @@ pub enum Command {
     Cluster {
         /// Intent ID to cluster around.
         intent_id: String,
+    },
+
+    /// Compute horizontal work territories — the scheduling-advice FACT. One
+    /// slice per top-level intent subtree, each with its codefile footprint,
+    /// cross-slice conflicts, and a conservative parallel-safety class. Pair
+    /// with `loom next --slice <id>` and the orchestrator hat
+    /// `loom guide --mode orchestrate`. loom advises territory; it never spawns.
+    Slice {
+        #[command(subcommand)]
+        subcommand: SliceCmd,
     },
 
     /// Manage quality rules.
@@ -886,6 +904,20 @@ pub enum DelegateCmd {
 
     /// List all delegations (and whether each child export exists).
     List,
+}
+
+// ---------------------------------------------------------------------------
+// Slice subcommands
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum SliceCmd {
+    /// Print the horizontal work-territory map: one slice per top-level intent
+    /// subtree, with codefile footprint, conflicts, and parallel-safety class.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom slice plan --json            # the territory map for an orchestrator\n  \
+        loom next --mode discovery --slice slice:auth --json   # queue scoped to one slice")]
+    Plan,
 }
 
 // ---------------------------------------------------------------------------

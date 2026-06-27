@@ -12,10 +12,10 @@ title: "loom — repo wiki"
 
 ## Overview
 
-- **Intents:** 109 (system: 1, component: 22, feature: 86)
+- **Intents:** 115 (system: 1, component: 23, feature: 91)
 - **Domains:** analysis, audit, cli, concurrency, core, db, developer-experience, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
 - **Layers:** application, cli, graph, persistence, presentation, queries, runtime, test
-- **Code files mapped:** 125
+- **Code files mapped:** 127
 - **Quality rules:** 63
 
 ## Reading order
@@ -28,7 +28,7 @@ A newcomer should read in this order:
 4. [Glossary](glossary.md) — the bounded `loom vocab` registry.
 5. [Design decisions](decisions.md) — `kind=decision` notes with rationale.
 6. [Journeys & flows](flows.md) — user-visible intents and their saga proofs.
-7. [Module pages](modules/) — one deep-dive per component (22 pages).
+7. [Module pages](modules/) — one deep-dive per component (23 pages).
 
 ## Prose layer
 
@@ -47,6 +47,7 @@ is the codebase's, not the graph's.
 
 
 <!-- loom:prose-start -->
+
 
 
 

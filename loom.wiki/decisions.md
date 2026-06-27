@@ -9,6 +9,36 @@ tags:
 
 Rationale recorded via `loom note add --kind decision`. Newest first.
 
+### model-neutral strength tier on work packets
+
+**Date:** 2026-06-27T14:50:56.760703+00:00
+
+The strength tier is a model-neutral FACT computed from graph signals (centrality, lane effort, rule inspection effort). The mapping from tier to a concrete model belongs to the harness roster, and the honor-or-override policy belongs to the orchestrator hat. loom never names a vendor model. This keeps the fact surface portable across harnesses and rosters.
+
+### orchestrator topology hat
+
+**Date:** 2026-06-27T14:50:56.695617+00:00
+
+The orchestrator is a topology hat served via loom guide --mode orchestrate, NOT a loom guide --role charge. run_role_charge rejects any role outside schema ROLES and derives the charge entirely from the gated lane table so it can never contradict gate.rs. The orchestrator writes no graph facts, so adding it to ROLES would force a bogus mode-for-role queue mapping and risk authorizing lane writes. It stays out of ROLES and mode-for-role; a test pins this.
+
+### harness orchestration affordances
+
+**Date:** 2026-06-27T14:50:56.632228+00:00
+
+No claims or territory-lock subsystem. A single orchestrator holds its fan-out in its own context, so there is no second dispatcher to race. Concurrency is already covered on three layers: the SQLite single-writer lock (storage integrity), slice disjointness (semantic non-collision), and lane gates (separation of duties). A persisted claim record would add mutable non-idempotent TTL state for no gain under one dispatcher, and would become a second source of truth that drifts.
+
+### harness orchestration affordances
+
+**Date:** 2026-06-27T14:50:56.568347+00:00
+
+While a loom hat is on, loom workflow supersedes the repo CLAUDE.md and AGENTS.md regarding WORKFLOW only (lifecycle, lane discipline, dispatch, sync and export obligations). Those repo files remain authoritative for LOCAL FACTS (build, test and lint commands, conventions, constraints), which the hat consumes as inputs. The non-negotiable subset is enforced at the write boundary by the lane gates regardless of what any repo doc says.
+
+### harness orchestration affordances
+
+**Date:** 2026-06-27T14:50:56.503070+00:00
+
+Two surfaces with a hard wall: the FACT surface (idempotent loom read commands describing the codebase condition right now) and the HAT surface (loom guide, the behavioral discipline an LLM adopts). Facts carry no imperatives; hats carry no live-stale facts the LLM should instead read. The original orchestrate-plan command violated this by bundling spawn decisions into a facts JSON, so it is split: classification is a fact, the decision to spawn is the hatted LLM acting.
+
 ### wiki lane and self-teaching authoring loop
 
 **Date:** 2026-06-27T03:49:52.322011+00:00
@@ -5534,6 +5564,7 @@ lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-liv
 
 
 <!-- loom:prose-start -->
+
 
 
 

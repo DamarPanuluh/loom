@@ -41,6 +41,7 @@ pub mod schema;
 pub mod seed;
 pub mod session;
 pub mod skill;
+pub mod slice;
 pub mod smells;
 pub mod status;
 pub mod sync;
@@ -90,9 +91,10 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Inbox       { subcommand } => inbox::run(subcommand, &printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),
         Command::Edge        { subcommand } => edge::run(subcommand, &printer),
-        Command::Next        { mode, all, take, discovery_class, kind, compact } =>
-            next::run(mode.as_deref(), all, take, discovery_class.as_deref(), kind.as_deref(), compact, &printer),
+        Command::Next        { mode, all, take, discovery_class, kind, compact, slice } =>
+            next::run(mode.as_deref(), all, take, discovery_class.as_deref(), kind.as_deref(), compact, slice.as_deref(), &printer),
         Command::Cluster     { intent_id }  => cluster::run(&intent_id, &printer),
+        Command::Slice       { subcommand } => slice::run(subcommand, &printer),
         Command::Rule        { subcommand } => rule::run(subcommand, &printer),
         Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),
         Command::Validation  { subcommand } => validation::run(subcommand, &printer),

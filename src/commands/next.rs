@@ -24,6 +24,8 @@ mod relates;
 mod render;
 mod review;
 mod scoring;
+mod slice_filter;
+use slice_filter::SlicedRepo;
 
 use align::{run_align, run_take_align};
 use modes::{run_build, run_prove, run_validate};
@@ -61,6 +63,7 @@ fn print_batch_template_header() {
     }
 }
 
+#[derive(Clone)]
 struct NextOpts<'a> {
     mode: &'a str,
     all: bool,
@@ -75,6 +78,11 @@ struct NextOpts<'a> {
     /// Carried into each non-bulk renderer so both the human line and the JSON
     /// `take_note` field surface it (human/json parity).
     take_note: Option<String>,
+    /// Restrict the queue to ONE slice's territory (`loom slice plan` id), or
+    /// None for the whole graph. Applied once at the top of `run_with_repo` by
+    /// swapping in a snapshot-filtering repository, so every mode is scoped at a
+    /// single chokepoint.
+    slice: Option<&'a str>,
 }
 
 /// `loom-dx #6`: the default mode when `--mode` is omitted follows the compass
@@ -208,6 +216,7 @@ pub(crate) fn inject_take_note(
     v
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run(
     mode: Option<&str>,
     all: bool,
@@ -215,6 +224,7 @@ pub fn run(
     discovery_class: Option<&str>,
     kind: Option<&str>,
     compact: bool,
+    slice: Option<&str>,
     printer: &Printer,
 ) -> Result<()> {
     // An explicit `--take 0` (e.g. a programmatically-computed zero-size chunk)
@@ -321,6 +331,7 @@ pub fn run(
             kind,
             compact,
             take_note,
+            slice,
         },
         printer,
     )
@@ -339,6 +350,27 @@ fn run_with_repo(
     let kind = opts.kind;
     let compact = opts.compact;
     let take_note = opts.take_note.as_deref();
+    // Slice scope: restrict every mode's candidate snapshot to one territory at
+    // a single chokepoint (a snapshot-filtering repository), then re-enter with
+    // the scope cleared. populate/wiki draw from non-snapshot surfaces, so they
+    // are not slice-scoped.
+    if let Some(slice_id) = opts.slice {
+        if matches!(mode, "populate" | "wiki") {
+            anyhow::bail!(
+                "--slice scopes the queue modes (discovery/fix/build/validate/quality/review/prove/align/refactor); \
+                 '{mode}' is not slice-scoped."
+            );
+        }
+        let full = db.query_snapshot()?;
+        let intents = crate::commands::slice::slice_intent_ids(&full, slice_id)?;
+        let sliced = SlicedRepo {
+            inner: db,
+            snapshot: full.restricted_to(&intents),
+        };
+        let mut inner = opts.clone();
+        inner.slice = None;
+        return run_with_repo(&sliced, root, &inner, printer);
+    }
     if all {
         return run_all(db, root, printer);
     }

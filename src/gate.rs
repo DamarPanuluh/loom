@@ -59,6 +59,15 @@ pub fn mode_for_role(r: &str) -> Option<&'static str> {
     }
 }
 
+/// Whether a role's lane EDITS CODE (builder realizes, fixer repairs) versus
+/// writing only graph facts (analyzer/validator/quality). The single source for
+/// the orchestrator's `may_edit_files` / sync-after-success dispatch contract
+/// AND the per-item parallel-safety class, so both agree on which lanes need
+/// exclusive territory and a `loom sync` afterward.
+pub fn role_edits_code(role: &str) -> bool {
+    matches!(role, role::BUILDER | role::FIXER)
+}
+
 /// The roles permitted to record a verdict on an edge of `etype` (GOVERNS is the
 /// quality lane; every other inspectable edge is analyzer/fixer). This is the
 /// SINGLE source of truth shared by the write-time lane gate (whose per-command

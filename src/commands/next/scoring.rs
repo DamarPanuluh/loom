@@ -173,8 +173,76 @@ pub(super) fn add_dispatch_for_lane(
 ) {
     obj.insert("owner_role".to_string(), serde_json::json!(role));
     obj.insert("effort".to_string(), serde_json::json!(effort));
+    // `risk` + `parallel_safety` ride alongside `effort` (same model-neutral
+    // contract): a statement about the WORK, for a harness to schedule on.
+    obj.insert(
+        "risk".to_string(),
+        serde_json::json!(if effort == "high" {
+            "cross_cutting"
+        } else {
+            "local"
+        }),
+    );
+    obj.insert(
+        "parallel_safety".to_string(),
+        serde_json::json!(parallel_safety_for_role(role)),
+    );
     obj.insert(
         "dispatch".to_string(),
         serde_json::json!(dispatch_line_for_lane(role, lane)),
     );
+}
+
+/// Conservative per-item parallel-safety class for bare `loom next` (no slice
+/// context). The role vocabulary is closed (`schema::ROLES`): graph-fact roles
+/// (analyzer/quality/validator) write distinct facts and are `safe` to run in
+/// parallel — true even for an analyzer item served by the mixed `fix` queue,
+/// because the ROLE, not the queue, says whether code is edited. Code-editing
+/// roles (builder/fixer) are `exclusive_slice` — sole ownership of their
+/// territory. An unknown role is `serial` (when unsure, do not claim
+/// parallelism). The full safe|exclusive_slice|serial partition over real
+/// territory is `loom slice plan`'s job.
+fn parallel_safety_for_role(role: &str) -> &'static str {
+    use crate::db::schema::role;
+    if crate::gate::role_edits_code(role) {
+        "exclusive_slice"
+    } else if matches!(role, role::ANALYZER | role::QUALITY | role::VALIDATOR) {
+        "safe"
+    } else {
+        "serial"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn work_packets_carry_strength_tier() {
+        let mut obj = serde_json::Map::new();
+        add_dispatch(&mut obj, "analyzer", "mid");
+        assert_eq!(obj["owner_role"], serde_json::json!("analyzer"));
+        assert_eq!(obj["effort"], serde_json::json!("mid"));
+        assert_eq!(obj["risk"], serde_json::json!("local"));
+        assert!(obj.contains_key("parallel_safety"));
+        // high effort reads as cross_cutting risk
+        let mut hi = serde_json::Map::new();
+        add_dispatch(&mut hi, "builder", "high");
+        assert_eq!(hi["risk"], serde_json::json!("cross_cutting"));
+        // never a vendor model name
+        let dump = serde_json::to_string(&obj).unwrap().to_lowercase();
+        for forbidden in ["opus", "sonnet", "gemini", "gpt-"] {
+            assert!(!dump.contains(forbidden), "no model name leaks: {dump}");
+        }
+    }
+
+    #[test]
+    fn parallel_safety_classifies_by_role() {
+        assert_eq!(parallel_safety_for_role("analyzer"), "safe");
+        assert_eq!(parallel_safety_for_role("quality"), "safe");
+        assert_eq!(parallel_safety_for_role("validator"), "safe");
+        assert_eq!(parallel_safety_for_role("builder"), "exclusive_slice");
+        assert_eq!(parallel_safety_for_role("fixer"), "exclusive_slice");
+        assert_eq!(parallel_safety_for_role("mystery"), "serial");
+    }
 }

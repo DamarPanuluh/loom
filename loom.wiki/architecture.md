@@ -89,6 +89,12 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **interface surface inspection commands** — Expose CLI reads that list and inspect interface surfaces, showing method/path or equivalent identity, owning intent or implementation grounding, saga callers, validation state, and quality-rule verdict coverage.
     - **interface surface schema vocabulary** — Add the schema/type/export/import vocabulary for a generic interface surface node and a stable call edge, with identity fields that support HTTP endpoints first and leave room for CLI commands, RPC methods, and event topics.
     - **saga steps resolve interface calls** — During saga add, normalize each step request into an interface surface, resolve or create that surface, and record the ordered call relationship while keeping the step intent binding as the semantic behavior under proof.
+  - **harness orchestration affordances** — loom exposes scheduling-advice facts (work slices, conflicts, parallel-safety class, strength tier) and an orchestrator topology hat so any external harness can safely fan out subagents; loom informs and advises while the harness executes
+    - **horizontal work slices** — loom slice plan computes conservative disjoint territories (clusters of related intents plus their codefile footprint) from existing cluster, smells and impact signals, with cross-slice conflict edges, so parallel agents never receive overlapping territory
+    - **model-neutral strength tier on work packets** — every work packet from next and slice plan carries a model-neutral capability tier (effort low mid high plus a risk facet) derived from centrality, lane effort and rule inspection effort, so a harness maps difficulty to its own model roster without loom naming a vendor model
+    - **orchestrator topology hat** — loom guide --mode orchestrate serves a spawn-agnostic driving protocol: read the fact surface, dispatch disjoint slices, hand each subagent its role charge plus territory boundary, sync after code edits, then re-plan; it names no spawn mechanism and no model, states that loom workflow supersedes repo workflow docs, and keeps the orchestrator out of the gated write-lane roles
+    - **parallel-safety classification** — each slice and packet is classified safe, exclusive-slice or serial, plus human-gated and blocked, conservatively so that when loom is unsure it marks conflicting, letting a harness know which work may run concurrently
+    - **slice-scoped work queue** — loom next accepts a slice filter to restrict any mode queue to one slice territory, so a dispatched subagent only sees work inside its assigned boundary
   - **hypothesis plane** — The pre-decision plane: improvement hypotheses that any lane can propose, an analyzer proves against current code, and a builder adopts into planned intents. Speculation stays invisible to coverage and completeness until adoption converts it into the existing lifecycle.
     - **adoption spawns outcome proof** — Adopting a hypothesis writes its predicted_outcome as a not_run Validation attached to the spawned intents; when the validator lane passes it, the hypothesis derives confirmed. Every adopted improvement gets checked for whether it actually delivered.
     - **hypothesis lifecycle commands** — loom hypothesis add/list/show/prove/adopt/reject drives the state machine with gates: claim and predicted_outcome must be substantive and falsifiable, the prover's provenance must differ from the proposer's, only a proposed hypothesis can be proven, and only a supported one adopted. Every transition is recorded as an append-only note.
@@ -132,6 +138,7 @@ The intent hierarchy — what the system is, decomposed top-down.
 
 
 <!-- loom:prose-start -->
+
 
 
 

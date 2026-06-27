@@ -121,6 +121,83 @@ impl QuerySnapshot {
         }
     }
 
+    /// A copy of this snapshot restricted to one slice's intent territory — the
+    /// chokepoint that makes every `loom next` mode slice-aware. Keeps only
+    /// intents in `intent_ids`, their groundings/codefiles, INTRA-slice
+    /// RELATES_TO edges (both ends in the slice — cross-slice edges are
+    /// conflicts, not slice work), their GOVERNS/VALIDATES edges and the
+    /// validations those reach. Quality rules are global norms, kept whole.
+    /// `degrees`/`betweenness` recompute over the restricted graph; notes
+    /// reload lazily.
+    pub fn restricted_to(&self, intent_ids: &HashSet<String>) -> QuerySnapshot {
+        let intents: Vec<Intent> = self
+            .intents
+            .iter()
+            .filter(|i| intent_ids.contains(&i.id))
+            .cloned()
+            .collect();
+        let implements: Vec<Implements> = self
+            .implements
+            .iter()
+            .filter(|im| intent_ids.contains(&im.intent_id))
+            .cloned()
+            .collect();
+        let kept_paths: HashSet<&str> = implements
+            .iter()
+            .map(|im| im.codefile_path.as_str())
+            .collect();
+        let codefiles: Vec<CodeFile> = self
+            .codefiles
+            .iter()
+            .filter(|c| kept_paths.contains(c.path.as_str()))
+            .cloned()
+            .collect();
+        let relates: Vec<RelatesTo> = self
+            .relates
+            .iter()
+            .filter(|e| intent_ids.contains(&e.from_id) && intent_ids.contains(&e.to_id))
+            .cloned()
+            .collect();
+        let hierarchy: Vec<(String, String)> = self
+            .hierarchy
+            .iter()
+            .filter(|(p, c)| intent_ids.contains(p) && intent_ids.contains(c))
+            .cloned()
+            .collect();
+        let governs: Vec<Governs> = self
+            .governs
+            .iter()
+            .filter(|g| intent_ids.contains(&g.intent_id))
+            .cloned()
+            .collect();
+        let validates: Vec<ValidatesEdge> = self
+            .validates
+            .iter()
+            .filter(|v| intent_ids.contains(&v.intent_id))
+            .cloned()
+            .collect();
+        let kept_validations: HashSet<&str> =
+            validates.iter().map(|v| v.validation_id.as_str()).collect();
+        let validations: Vec<Validation> = self
+            .validations
+            .iter()
+            .filter(|v| kept_validations.contains(v.id.as_str()))
+            .cloned()
+            .collect();
+        QuerySnapshot::from_parts(
+            intents,
+            hierarchy,
+            relates,
+            governs,
+            self.rules.clone(),
+            validates,
+            validations,
+            implements,
+            codefiles,
+            None,
+        )
+    }
+
     /// Notes for this snapshot — loaded once, then shared. `query_snapshot` no
     /// longer eagerly loads the (often many-thousand-row) Note label, so a
     /// note-free consumer (`report`, `coverage`, `hotspots`) never pays the

@@ -737,9 +737,120 @@ fn lane_to_role(lane: &str) -> Option<&'static str> {
         .map(|(role, _, _)| *role)
 }
 
+/// `loom guide --mode orchestrate` — the orchestrator TOPOLOGY hat.
+///
+/// The one hat that is NOT a gated write-lane role: the orchestrator writes no
+/// graph facts. It reads the fact surface and dispatches workers, each of which
+/// adopts a gated role hat (`loom guide --role <role>`). Its dispatch roster is
+/// DERIVED from the lane table (`ROLE_LANES`) so it can never drift from the
+/// roles loom actually enforces. loom names no spawn mechanism and no model —
+/// the harness owns spawning and the effort-tier→model mapping.
+fn run_orchestrate_hat(printer: &Printer) -> Result<()> {
+    let targets: Vec<(&str, &str, &str, bool)> = ROLE_LANES
+        .iter()
+        .map(|(role, mode, what)| (*role, *mode, *what, crate::gate::role_edits_code(role)))
+        .collect();
+
+    let not_a_role = "The orchestrator is NOT a gated role: it is absent from loom's write-lane set, \
+        writes no graph facts, and appears in no `loom next` queue. It only reads facts and dispatches \
+        workers who each adopt a gated role hat.";
+    let supersedes = "While this hat is on, loom's lifecycle SUPERSEDES the repo's CLAUDE.md / AGENTS.md \
+        WORKFLOW (lifecycle, lane discipline, dispatch order, sync/export obligations). Read those repo \
+        files only for LOCAL FACTS — build/test/lint commands, conventions, constraints — and feed them \
+        into the work; never let them reorder loom's lifecycle.";
+    let principle = "Two surfaces with a hard wall. The FACT surface (idempotent loom reads) says what IS; \
+        this HAT says how to ACT. Facts carry no imperatives; this hat carries no live-stale facts — re-read \
+        after every sync. loom advises, you decide, your harness executes.";
+    let you_do_not_spawn = "loom names NO spawn mechanism and NO model. Translate each dispatch into YOUR \
+        harness's worker primitive, and map each effort tier (low/mid/high) to YOUR model roster. A single \
+        orchestrator holds its own fan-out, so loom needs no claim or lock for that.";
+
+    let protocol = [
+        "Adopt this hat: loom workflow supersedes repo workflow docs (local facts only).",
+        "Read the fact surface (loom status, loom slice plan, loom next --all). Never dispatch on stale facts — re-read after every sync.",
+        "Parallelize SAFE/disjoint slices. Never hand two parallel CODE-EDITING workers overlapping territory — honor each slice's conflicts_with; one writer per slice for editing lanes.",
+        "Per worker, hand the dispatch contract below: its role charge, its LOOM_AGENT, its slice-scoped queue, its allowed_codefiles boundary. Spawn it however your harness spawns; pick a model for its effort tier.",
+        "Human-gated work (align drift, hypothesis rulings, blocked proofs — loom status / loom next --mode align): do NOT spawn; surface it to the user.",
+        "On fan-in, verify each worker's diff stays inside its slice; reject out-of-boundary edits.",
+        "After any code-editing worker returns: loom sync, then re-plan from fresh facts. Before commit: loom export --check.",
+    ];
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "hat": "orchestrate",
+            "not_a_role": not_a_role,
+            "supersedes_repo_workflow": supersedes,
+            "principle": principle,
+            "you_do_not_spawn": you_do_not_spawn,
+            "fact_surface": [
+                {"read": "loom status --json", "for": "phase, drift, sync/export obligations, human-gated counts"},
+                {"read": "loom slice plan --json", "for": "disjoint territories, conflicts, parallel_safety, effort/risk"},
+                {"read": "loom next --mode <lane> --slice <id> --json", "for": "the scoped queue for one worker"},
+                {"read": "loom next --all --json", "for": "every role queue at once"},
+            ],
+            "protocol": protocol.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+            "dispatch_targets": targets.iter().map(|(role, mode, what, edits)| serde_json::json!({
+                "role": role,
+                "charge": format!("loom guide --role {role}"),
+                "agent_export": format!("export LOOM_AGENT=llm:{role}"),
+                "queue": format!("loom next --mode {mode} --slice <id> --json"),
+                "may_edit_files": edits,
+                "sync_after": edits,
+                "does": what,
+            })).collect::<Vec<_>>(),
+            "parallel_safety": {
+                "safe": "read-only graph-fact work on disjoint slices — run in parallel",
+                "exclusive_slice": "code-editing on one slice — one worker, parallel with OTHER slices",
+                "serial": "shares central files or cross-slice edges — no safe partition; run alone",
+                "human_gated": "needs the user (align drift, hypothesis rulings, blocked proofs) — do not spawn",
+                "blocked": "a prerequisite is missing — no worker can proceed",
+            },
+            "after": {
+                "code_edits": "loom sync, then re-read the fact surface before the next dispatch",
+                "before_commit": "loom export --check",
+            },
+        }));
+        return Ok(());
+    }
+
+    println!("── loom guide --mode orchestrate (topology hat) ──────────────────────");
+    println!();
+    println!("{not_a_role}");
+    println!();
+    println!("SUPERSEDES: {supersedes}");
+    println!();
+    println!("PRINCIPLE: {principle}");
+    println!();
+    println!("YOU DO NOT SPAWN: {you_do_not_spawn}");
+    println!();
+    println!("FACT SURFACE (read; never act on stale facts):");
+    println!("  loom status --json          phase, drift, sync/export, human-gated");
+    println!("  loom slice plan --json      territories, conflicts, parallel_safety, effort/risk");
+    println!("  loom next --mode <lane> --slice <id> --json   one worker's scoped queue");
+    println!("  loom next --all --json      every role queue at once");
+    println!();
+    println!("PROTOCOL:");
+    for (i, step) in protocol.iter().enumerate() {
+        println!("  {i}. {step}");
+    }
+    println!();
+    println!("DISPATCH TARGETS (loom's gated roles — hand each worker its charge):");
+    for (role, mode, what, edits) in &targets {
+        println!("  {role:<10} loom guide --role {role}");
+        println!("    export LOOM_AGENT=llm:{role}  ·  loom next --mode {mode} --slice <id>");
+        println!("    may_edit_files: {edits}  ·  sync_after: {edits}  ·  {what}");
+    }
+    println!();
+    println!("AFTER: code edits → loom sync → re-read facts. Before commit → loom export --check.");
+    Ok(())
+}
+
 pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer) -> Result<()> {
     if let Some(r) = role {
         return run_role_charge(r, printer);
+    }
+    if matches!(mode, Some("orchestrate")) {
+        return run_orchestrate_hat(printer);
     }
     // Bare `loom guide` is FOCUS-SCOPED (JIT): serve the skill for the focus
     // rung's lane so the entry point answers "how do I do THIS rung" instead of
@@ -1125,6 +1236,57 @@ mod tests {
             err.contains("analyzer"),
             "the error inlines the valid roles: {err}"
         );
+    }
+
+    #[test]
+    fn orchestrate_hat_not_a_gated_role() {
+        use crate::db::schema::ROLES;
+        assert!(
+            !ROLES.contains(&"orchestrator") && !ROLES.contains(&"orchestrate"),
+            "orchestrator must not be a gated write-lane role: {ROLES:?}"
+        );
+        assert!(crate::gate::mode_for_role("orchestrator").is_none());
+        assert!(crate::gate::mode_for_role("orchestrate").is_none());
+        // and `--role orchestrate` is rejected (it is not a charge-able lane)
+        let p = Printer::capturing(true);
+        assert!(run(None, Some("orchestrate"), false, &p).is_err());
+    }
+
+    #[test]
+    fn orchestrate_hat_is_spawn_agnostic() {
+        let p = Printer::capturing(true);
+        run(Some("orchestrate"), None, false, &p).expect("orchestrate hat opens no graph");
+        let out = p.captured().expect("captured json");
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["hat"], serde_json::json!("orchestrate"));
+        // model-neutral: names no concrete vendor model
+        let lower = out.to_lowercase();
+        for forbidden in ["opus", "sonnet", "gemini", "haiku", "gpt-"] {
+            assert!(
+                !lower.contains(forbidden),
+                "must not name model {forbidden}: {out}"
+            );
+        }
+        // the supersession preamble is present
+        assert!(v.get("supersedes_repo_workflow").is_some());
+        // dispatch roster is DERIVED from the gated lane table
+        let targets = v["dispatch_targets"].as_array().unwrap();
+        assert_eq!(
+            targets.len(),
+            crate::db::schema::ROLES.len(),
+            "one dispatch target per gated role"
+        );
+        let builder = targets
+            .iter()
+            .find(|t| t["role"] == serde_json::json!("builder"))
+            .expect("builder target");
+        assert_eq!(builder["may_edit_files"], serde_json::json!(true));
+        assert_eq!(builder["sync_after"], serde_json::json!(true));
+        let analyzer = targets
+            .iter()
+            .find(|t| t["role"] == serde_json::json!("analyzer"))
+            .expect("analyzer target");
+        assert_eq!(analyzer["may_edit_files"], serde_json::json!(false));
     }
 
     /// COMPLETENESS RATCHET (coverage leg): every section in the teaching

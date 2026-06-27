@@ -48,16 +48,16 @@ provenance:
   src/commands/codefile.rs: 0ee513864c1cef40
   src/commands/explain.rs: f4b96fd76b56627e
   src/commands/export.rs: 35756c578400e3a2
-  src/commands/guide.rs: 87c1a8a927e008f2
+  src/commands/guide.rs: a49f56e0347292e9
   src/commands/import.rs: 93f197ec9bd9b116
   src/commands/migrate.rs: 904a0c11dc0e329d
-  src/commands/next.rs: 270543c60daca32e
+  src/commands/next.rs: a31c215e6d188b66
   src/commands/note.rs: 230f52cc758d8442
   src/db/mod.rs: c0c82ec69ea7831f
   src/db/queries/meta.rs: 5cd15e776c9e445a
   src/db/queries/mod.rs: 4fe0b3e26d53c011
   src/db/queries/relates_to.rs: 59109a37ebe69b38
-  src/db/queries/snapshot.rs: 4bdafb877455648c
+  src/db/queries/snapshot.rs: 0c4997f46bf108e9
   src/db/queries/symbol_match.rs: f2cf13a911c33537
   src/db/schema.rs: 429002a41cd81880
   src/db/sqlite.rs: bbee90eb9b991b53
@@ -93,6 +93,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 
