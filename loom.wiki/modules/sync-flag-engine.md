@@ -6,7 +6,7 @@ tags:
 sourceFiles:
   - src/commands/sync.rs
 provenance:
-  src/commands/sync.rs: 93ff4e43a7481814
+  src/commands/sync.rs: 8df0f2a98f22a39e
 ---
 
 # sync flag engine
@@ -35,6 +35,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

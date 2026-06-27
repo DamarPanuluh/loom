@@ -54,6 +54,11 @@ const RIPPLE: &[&str] = &[
 ];
 
 const ARCHITECTURE_METADATA_GUIDANCE: &str = "Architecture metadata is positive evidence, not a template. Use `--domain` for product/business facets (auth, billing, onboarding); it has NO layering effect. Use `--layer` only for dependency direction you mean to audit — do NOT invent generic backend/frontend/database labels unless the repo actually has those seams. Prefer repo-shaped names (for a CLI: presentation/commands/application/queries/persistence, etc.). Once enough coded intents carry honest layer labels, run `loom layer list`; if layers are in use but the order is empty, tell the user the layering detector is unarmed, then declare the real order with `loom layer order <top> … <bottom>`. That arms `layering_violation`: imports pointing UP the declared order are findings, and a recorded RELATES_TO edge does not excuse direction. Leave `--layer` unset when the direction is unknown or not enforceable. Use `--boundary inbound|outbound` only for system-boundary crossings (provider surfaces or external consumer dependencies); internal machinery stays unset.";
+const AUTONOMY_SET_WITH: &str = "loom init --autonomy <autonomous|guided>";
+
+fn role_setup(role: &str) -> String {
+    format!("export LOOM_AGENT=llm:{role}")
+}
 
 /// The role lanes: who does what, and which `loom next` mode serves the lane.
 /// Declared roles (LOOM_AGENT=llm:<role>) are ENFORCED — an agent acting
@@ -184,9 +189,8 @@ pub(crate) fn lane_skill_markdown(role: &str) -> String {
     ));
     s.push_str(&format!("**THE LAW** — {anchor}\n\n"));
     s.push_str(&format!("**Mandate.** {mandate}\n\n"));
-    s.push_str(&format!(
-        "## Adopt\n\n```\nexport LOOM_AGENT=llm:{role}\n{queue}\n```\n\n"
-    ));
+    let setup = role_setup(role);
+    s.push_str(&format!("## Adopt\n\n```\n{setup}\n{queue}\n```\n\n"));
     s.push_str("## Your lane (everything else errors — hand it off)\n\n");
     for l in crate::gate::actions_for_role(role) {
         s.push_str(&format!("- {}\n", l.action));
@@ -430,7 +434,7 @@ fn brownfield() -> Vec<(&'static str, &'static str)> {
         ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`. Manual/async proofs: `loom validation mark <id> --result passed|failed --evidence …` (or `--result blocked --reason …` while something external is in the way)."),
         ("prove from outside", "If the system exposes endpoints, prove the COMPOSITION from the consumer's vantage: write a saga spec (ordered chain, each step bound to its intent), `loom saga add`, use `loom saga diagnose` for failure triage without stamping, then `loom saga run` to stamp runtime evidence along the intent path; a run failure lands as a failing edge naming the broken boundary."),
         ("gate", "Encode the codebase's norms: seed the packs `loom detect` recommends (`loom rule seed iso5055` baseline; `mobile`/`web-ui`/`service`/`data`/`concurrency`/`docker` per repo kind) plus `loom rule add …` for repo-specific sticks. Then `loom next --mode quality` serves every never-measured rule×intent pair — ONE command resolves each: `loom rule verdict … --status passing|failing|independent --criterion … --evidence …` (the verdict CREATES the edge; independent = measured, doesn't apply). Measure at the highest HONEST altitude: a verdict on a component covers its descendants ONLY with --covers-descendants; otherwise it covers the component alone — drop to a leaf only where the rule has specific bite. The layer order is a norm too: if intents carry architecture layers, `loom layer order <top> … <bottom>` arms the layering audit."),
-        ("audit", "`loom smells --summary` first — it reports counts by smell kind, top remedies, advisory totals, and detector blind spots without dumping evidence/teaching bodies. `loom status` also carries an audit pulse with top open smell kinds. Use full `loom smells --json` only when you need to inspect a specific finding. Smells are derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code, with a weaker lexical fallback for under-tagged coded pairs), overlapping ownership, scatter, tangles, oversized behavioral symbols, duplicated string contracts, panic/unwrap/todo markers in behavior, undeclared coupling, layering violations (imports pointing UP the declared `loom layer order` — a recorded relationship doesn't excuse direction; adjudicate a deliberate up-dependency with a decision note on the importing intent), symbol-accountability gaps (public/risky symbols without precise ownership), vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). Advisory smells (code clones, pairwise co-change, shotgun surgery, proof-locality drift) never gate green, but the compass counts them so drivers know where optional cleanup is waiting. OPEN findings GATE GREEN: once every queue is dry the compass still says audit until these are resolved or explicitly refuted. ADJUDICATE ONE FINDING AT A TIME, after reading ITS code — a decision note is audit trail, not a fix: it must name the decomposition you considered and the concrete reason it is wrong for THIS finding, in terms true only of it. A ruling that restates the size/shape ('size reflects N cases', 'one cohesive module') is not an inspection; identical rationales across findings are rubber-stamping. loom now REJECTS a smell ruling that is vacuous or reuses the wording of one you recorded on another finding (`loom note add --smell` bounces it), and `loom doctor` flags templated clusters already on the graph — so audit each finding on its own merits, or split the code. Batch-stamping every finding to clear the gate is the failure mode this guards against."),
+        ("audit", "`loom smells --summary` first — it reports counts by smell kind, top remedies, excellence-debt totals, and detector blind spots without dumping evidence/teaching bodies. `loom status` also carries an audit pulse with top open smell kinds and a certification roll-up. Use full `loom smells --json` only when you need to inspect a specific finding. Smells are derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code, with a weaker lexical fallback for under-tagged coded pairs), overlapping ownership, scatter, tangles, oversized behavioral symbols, duplicated string contracts, panic/unwrap/todo markers in behavior, undeclared coupling, layering violations (imports pointing UP the declared `loom layer order` — a recorded relationship doesn't excuse direction; adjudicate a deliberate up-dependency with a decision note on the importing intent), symbol-accountability gaps (public/risky symbols without precise ownership), vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). OPEN findings gate Hardened/Production-ready until fixed or explicitly refuted. Excellence-debt findings (size/clone/proof-locality/metadata debt) gate the Excellent certificate: fixing or proving false-positive/deliberate-design clears them; accepting or deferring real debt keeps overall/excellence yellow. ADJUDICATE ONE FINDING AT A TIME, after reading ITS code — a decision note is audit trail, not a fix: it must name the decomposition you considered and the concrete reason it is wrong for THIS finding, in terms true only of it. A ruling that restates the size/shape ('size reflects N cases', 'one cohesive module') is not an inspection; identical rationales across findings are rubber-stamping. loom now REJECTS a smell ruling that is vacuous or reuses the wording of one you recorded on another finding (`loom note add --smell` bounces it), and `loom doctor` flags templated clusters already on the graph — so audit each finding on its own merits, or split the code. Batch-stamping every finding to clear the gate is the failure mode this guards against."),
         ("close out", "`loom next --all` — every lane's remainder as one prioritized list. Then `loom export --check` before committing, so the graph travels with the repo."),
     ]
 }
@@ -576,7 +580,7 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
         .iter()
         .map(|l| l.action)
         .collect();
-    let setup = format!("export LOOM_AGENT=llm:{role}");
+    let setup = role_setup(role);
     let out_of_lane = "Acting outside the lane is a hard error naming the owner. \
         Hand off via `loom note add --for <role>`; bare `llm`/`human` = solo mode (all lanes).";
     let skill = role_skill_name(role);
@@ -597,7 +601,7 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
             "operating_mode": {
                 "autonomy": autonomy_mode,
                 "guidance": autonomy_doc,
-                "set_with": "loom init --autonomy <autonomous|guided>",
+                "set_with": AUTONOMY_SET_WITH,
             },
             "out_of_lane": out_of_lane,
             // The binary IS the skill server: this charge is the complete,
@@ -663,10 +667,11 @@ fn focus_lane_role() -> Option<&'static str> {
     let snap = store.query_snapshot().ok()?;
     let gs = store.graph_state(&snap).ok()?;
     let decision_notes = store.notes_by_kind("decision").ok()?;
-    let (open_smells, advisory_count) = if matches!(gs.phase.as_str(), "audit" | "complete") {
+    let (open_smells, excellence_debt_count) = if matches!(gs.phase.as_str(), "audit" | "complete")
+    {
         let report = store.smell_report(&snap).ok()?;
-        let advisory_count = report.advisory.len();
-        (report.open, advisory_count)
+        let excellence_debt_count = report.advisory.len() + report.debt.len();
+        (report.open, excellence_debt_count)
     } else {
         (Vec::new(), 0)
     };
@@ -680,7 +685,7 @@ fn focus_lane_role() -> Option<&'static str> {
         &decision_notes,
         &inbox_items,
         &open_smells,
-        advisory_count,
+        excellence_debt_count,
         inbox_untriaged,
         export_stale,
     )
@@ -709,7 +714,7 @@ fn autonomy_guidance() -> (&'static str, &'static str) {
              hypothesis rulings, manual-check confirms, blocked proofs) — batch those via \
              `loom session`. This is an interrupt budget, NOT a license to skip inspection: \
              smell/decision rulings are still earned per-finding (the write gate rejects vacuous \
-             or templated rulings), and advisory smells are still never auto-fixed.",
+             or templated rulings), and excellence-debt findings are still never auto-fixed.",
         )
     } else {
         (
@@ -770,7 +775,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
             "operating_mode": {
                 "autonomy": autonomy_mode,
                 "guidance": autonomy_doc,
-                "set_with": "loom init --autonomy <autonomous|guided>",
+                "set_with": AUTONOMY_SET_WITH,
             },
             "what_is_loom": "Externalized, falsifiable memory for understanding, building, and cleaning up a codebase. \
                 A living graph of intents (what code should do), grounded in real files, every relationship carrying a \
@@ -853,7 +858,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
                 "vertical": "BINDING spine, mechanically verifiable: HIERARCHY is a well-formed tree (one parent per non-root intent, no cycles); every implemented leaf intent has ≥1 IMPLEMENTS (realized); every CodeFile is reached by ≥1 IMPLEMENTS. Surfaced as `vertically_complete` in `loom status`; details in `loom report` + `loom doctor` + `loom coverage`.",
                 "horizontal": "Feeds the HARDENED rung (not the vertical spine): every intent pair has an inspected RELATES_TO edge (passing/failing/independent). Surfaced as `horizontally_explored`. `loom edge unexplored` lists what's owed; batch `independent` verdicts for the unrelated pairs (and `ground` the real couplings) via `loom batch` — the count is per-pair, no altitude shortcut yet.",
             },
-            "done_condition": "The MATURITY LADDER is the single ordinal \"done\" — a rung-vector (`loom status` / `loom complete` → `maturity.rungs`) with a FOCUS = the lowest unmet rung, where `loom next` routes. Ordered by RECORD ≠ DISCHARGE: SEEDED (every responsibility captured; entrypoint owned, inbox triaged) → REALIZED (every leaf grounded + proven by an EXECUTED discriminating test, `proven_executed == realized`, no doc-only spec-as-built) → PROVEN (every user_visible journey has a passing boundary proof — saga or human manual_check; N/A and collapses when there are no journeys) → HARDENED (measured under rules, the RELATES_TO grid explored, failure-path siblings realized, ZERO open `loom smells` findings) → PRODUCTION-READY (all lower rungs cleared + wiki fresh, inbox drained, boundary owned — the former `fully_proven` ceiling, now the top rung). COMPREHENSION AXIS (parallel, routing-gated behind Production-ready): `loom next --mode wiki` drains the code-primary wiki prose queue — author narrative prose citing source files (not intent UUIDs); `loom wiki --prose-check` certifies coverage + freshness + consistency gates green. It is a VECTOR, never a scalar: a graph can be Hardened while Realized is still ◐, so read every rung, then drive the focus.",
+            "done_condition": "The MATURITY LADDER is now a certification vector, not just a completion scalar (`loom status` / `loom complete` → `maturity.rungs`) with a FOCUS = the lowest unmet rung, where `loom next` routes. Ordered by RECORD ≠ DISCHARGE: SEEDED (every responsibility captured; entrypoint owned, inbox triaged) → REALIZED (every leaf grounded + proven by an EXECUTED discriminating test, `proven_executed == realized`, no doc-only spec-as-built) → PROVEN (every user_visible journey has a passing boundary proof — saga or human manual_check; N/A and collapses when there are no journeys) → HARDENED (measured under rules, the RELATES_TO grid explored, failure-path siblings realized, ZERO open `loom smells` findings) → PRODUCTION-READY (all lower rungs cleared + wiki fresh, inbox drained, boundary owned — deploy-fitness) → EXCELLENT (Production-ready plus zero unresolved excellence debt: refactor/design/proof-locality debt is fixed, false-positive, or deliberate design; accepted/deferred real debt keeps overall yellow). COMPREHENSION AXIS (parallel, routing-gated behind Production-ready): `loom next --mode wiki` drains the code-primary wiki prose queue — author narrative prose citing source files (not intent UUIDs); `loom wiki --prose-check` certifies coverage + freshness + consistency gates green. It is a VECTOR, never a scalar: a graph can be Production-ready while Excellent is still ◐, so read every rung, then drive the focus.",
             "output_hygiene": {
                 "rule": "High-volume audit commands have summary mode. Start with `loom smells --summary --json` and `loom coverage --summary --json`; only request full JSON when a specific finding/gap needs evidence.",
                 "why": "`loom smells --json` includes per-finding evidence, teaching, adjudicated rulings, and advisory bodies; `loom coverage --json` includes full file/symbol/raw-gap/adjudication archives. Summary mode preserves routing facts without blowing the driver context."
@@ -1018,7 +1023,7 @@ mod tests {
             assert!(!want.is_empty(), "every role owns ≥1 lane: '{role}'");
             assert_eq!(
                 v["setup"],
-                serde_json::json!(format!("export LOOM_AGENT=llm:{role}")),
+                serde_json::json!(role_setup(role)),
                 "setup names the role"
             );
         }

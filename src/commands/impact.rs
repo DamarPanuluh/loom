@@ -322,21 +322,13 @@ fn compute_coupled_intent_pairs(
             for a in owners_a {
                 for b in owners_b {
                     if a != b {
-                        coupled.insert(sorted_pair(a, b));
+                        coupled.insert(super::sorted_pair(a, b));
                     }
                 }
             }
         }
     }
     coupled
-}
-
-fn sorted_pair(a: &str, b: &str) -> (String, String) {
-    if a <= b {
-        (a.to_string(), b.to_string())
-    } else {
-        (b.to_string(), a.to_string())
-    }
 }
 
 fn relates_edge_would_stale(
@@ -346,7 +338,7 @@ fn relates_edge_would_stale(
     if edge.stable {
         return false;
     }
-    let pair = sorted_pair(&edge.from_id, &edge.to_id);
+    let pair = super::sorted_pair(&edge.from_id, &edge.to_id);
     if edge.inspection_status == "independent" {
         return coupled.contains(&pair);
     }

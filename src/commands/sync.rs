@@ -260,22 +260,12 @@ fn compute_coupled_intent_pairs(
                     if a == b {
                         continue;
                     }
-                    coupled.insert(sorted_pair(a, b));
+                    coupled.insert(super::sorted_pair(a, b));
                 }
             }
         }
     }
     coupled
-}
-
-/// Lexicographically-ordered (min, max) id pair — the direction-agnostic key for
-/// the coupled-pair set and its lookups.
-fn sorted_pair(a: &str, b: &str) -> (String, String) {
-    if a <= b {
-        (a.to_string(), b.to_string())
-    } else {
-        (b.to_string(), a.to_string())
-    }
 }
 
 /// One changed file's deferred code ripple: the intents it affects and the
@@ -510,7 +500,7 @@ fn flag_relates(
                 return false;
             }
             if edge.inspection_status == "independent" {
-                return coupled.contains(&sorted_pair(&edge.from_id, &edge.to_id));
+                return coupled.contains(&super::sorted_pair(&edge.from_id, &edge.to_id));
             }
             // A meaning-only edge (every kind is shares_vocab/same_domain/
             // doc_reference) tracks concept overlap, not code — never re-open it.
@@ -535,7 +525,7 @@ fn flag_relates(
             if edge.inspection_status == "passing"
                 && crate::types::relates_is_import_only_coupling(&edge.kinds)
             {
-                return !coupled.contains(&sorted_pair(&edge.from_id, &edge.to_id));
+                return !coupled.contains(&super::sorted_pair(&edge.from_id, &edge.to_id));
             }
             // Reaching here means it stales (a non-passing edge, or a judgment
             // coupling on a passing edge).

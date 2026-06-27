@@ -20,15 +20,24 @@ impl SqliteGraphStore {
         }
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn count_all_intents(&self) -> Result<usize> {
         count_table(&self.conn, "intent")
     }
+}
+
+impl SqliteGraphStore {
     /// Active + deprecated intent count as `i64` — an inherent alias so the
     /// GraphReadRepository delegation macro can forward uniformly by trait-method
     /// name (it would otherwise need a hand-written exception).
     pub fn count_intents_including_deprecated(&self) -> Result<i64> {
         Ok(self.count_all_intents()? as i64)
     }
+}
+
+impl SqliteGraphStore {
     pub fn query_snapshot(&self) -> Result<QuerySnapshot> {
         // Snapshot.intents is active-only (list_active_intents excludes
         // deprecated). The IMPLEMENTS table has no such filter — retire_intent
@@ -63,6 +72,9 @@ impl SqliteGraphStore {
             None,
         ))
     }
+}
+
+impl SqliteGraphStore {
     pub fn graph_state(&self, snapshot: &QuerySnapshot) -> Result<GraphState> {
         let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         let vocab_terms = self.list_vocab_terms()?;
@@ -125,6 +137,9 @@ impl SqliteGraphStore {
             },
         )
     }
+}
+
+impl SqliteGraphStore {
     pub fn smell_report(
         &self,
         snapshot: &QuerySnapshot,
@@ -145,13 +160,22 @@ impl SqliteGraphStore {
             },
         )
     }
+}
+
+impl SqliteGraphStore {
     pub fn vocab_term_count(&self) -> Result<usize> {
         Ok(self.list_vocab_terms()?.len())
     }
+}
+
+impl SqliteGraphStore {
     pub fn align_candidates(&self, snapshot: &QuerySnapshot) -> Result<Vec<AlignCandidate>> {
         let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         Ok(align_candidates_from_snapshot_notes(snapshot, notes))
     }
+}
+
+impl SqliteGraphStore {
     pub fn doctor_report(&self, snapshot: &QuerySnapshot) -> Result<DoctorReport> {
         let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         let meta = self.graph_meta()?;
@@ -193,10 +217,16 @@ impl SqliteGraphStore {
         // synthetic tree-less checkout) without adding a gate the compass
         // doesn't already hold.
     }
+}
+
+impl SqliteGraphStore {
     pub fn align_candidate_count(&self, snapshot: &QuerySnapshot) -> Result<i64> {
         let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         Ok(align_candidates_from_snapshot_notes(snapshot, notes).len() as i64)
     }
+}
+
+impl SqliteGraphStore {
     pub fn prove_candidates(&self, snapshot: &QuerySnapshot) -> Result<Vec<(Hypothesis, f64)>> {
         Ok(prove_candidates_from_parts(
             self.list_hypotheses(None)?,
@@ -204,6 +234,9 @@ impl SqliteGraphStore {
             &snapshot.degrees,
         ))
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_intents(
         &self,
         status_filter: Option<&str>,
@@ -218,6 +251,9 @@ impl SqliteGraphStore {
         }
         Ok(intents)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_intent(&self, id: &str) -> Result<Option<Intent>> {
         self.conn
             .query_row(
@@ -251,6 +287,9 @@ impl SqliteGraphStore {
             .optional()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn retire_fallout(&self, id: &str) -> Result<RetireFallout> {
         let name_of: std::collections::HashMap<String, String> = self
             .list_all_intents()?
@@ -329,6 +368,9 @@ impl SqliteGraphStore {
             edges_leaving_computation,
         })
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_implements_for_intent(&self, intent_id: &str) -> Result<Vec<Implements>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.intent_id, e.codefile_id, i.name, cf.path, e.inspection_status,
@@ -362,6 +404,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn validations_for_intent(&self, intent_id: &str) -> Result<Vec<Validation>> {
         let mut stmt = self.conn.prepare(
             "SELECT v.id, v.name, v.description, v.validation_type, v.command,
@@ -386,6 +431,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn notes_for_target(&self, target_id: &str) -> Result<Vec<Note>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, kind, text, author, target_kind, target_id, audience, created_at, resolution
@@ -409,6 +457,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn notes_by_kind(&self, kind: &str) -> Result<Vec<Note>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, kind, text, author, target_kind, target_id, audience, created_at, resolution
@@ -432,6 +483,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_ignores(&self) -> Result<Vec<Ignore>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, pattern, reason, author, created_at
@@ -450,6 +504,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_delegations(&self) -> Result<Vec<Delegation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, pattern, target, author, created_at, export_hash, seam_intents
@@ -470,6 +527,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     /// Resolve a delegation by id or pattern.
     pub fn resolve_delegation(&self, key: &str) -> Result<Delegation> {
         let delegations = self.list_delegations()?;
@@ -483,6 +543,9 @@ impl SqliteGraphStore {
                 )
             })
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_hierarchy_for_intent(&self, intent_id: &str) -> Result<Vec<Hierarchy>> {
         let mut edges = Vec::new();
         for (sql, param) in [
@@ -524,6 +587,9 @@ impl SqliteGraphStore {
         edges.retain(|edge: &Hierarchy| seen.insert(edge.id.clone()));
         Ok(edges)
     }
+}
+
+impl SqliteGraphStore {
     pub fn edges_for_intent(&self, intent_id: &str) -> Result<Vec<RelatesTo>> {
         let mut edges = Vec::new();
         for (sql, param) in [
@@ -581,6 +647,9 @@ impl SqliteGraphStore {
         edges.retain(|edge: &RelatesTo| seen.insert(edge.id.clone()));
         Ok(edges)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_codefiles(&self) -> Result<Vec<CodeFile>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, path, language, last_modified, imports, symbols, symbol_facts, content_hash, extractor_grade
@@ -605,6 +674,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn graph_meta(&self) -> Result<Option<GraphMeta>> {
         self.conn
             .query_row(
@@ -627,6 +699,9 @@ impl SqliteGraphStore {
             .optional()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn transition_cap(&self) -> Result<usize> {
         let raw = self
             .conn
@@ -641,6 +716,9 @@ impl SqliteGraphStore {
             Ok(raw.parse::<usize>().unwrap_or(DEFAULT_TRANSITION_CAP))
         }
     }
+}
+
+impl SqliteGraphStore {
     pub fn layer_order(&self) -> Result<Vec<String>> {
         let raw = self
             .conn
@@ -651,9 +729,15 @@ impl SqliteGraphStore {
             .unwrap_or_else(|| "[]".to_string());
         string_list(&raw)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_relates_to_between(&self, from_id: &str, to_id: &str) -> Result<Option<RelatesTo>> {
         super::get_relates_to_between_conn(&self.conn, from_id, to_id)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_hypotheses(&self, status: Option<&str>) -> Result<Vec<Hypothesis>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, claim, proposal, predicted_outcome, status, author, evidence,
@@ -685,15 +769,24 @@ impl SqliteGraphStore {
         }
         Ok(hypotheses)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_hypothesis(&self, id: &str) -> Result<Option<Hypothesis>> {
         Ok(self
             .list_hypotheses(None)?
             .into_iter()
             .find(|hypothesis| hypothesis.id == id))
     }
+}
+
+impl SqliteGraphStore {
     pub fn resolve_hypothesis(&self, key: &str) -> Result<String> {
         crate::db::queries::resolve_hypothesis_from_list(&self.list_hypotheses(None)?, key)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_personas(&self) -> Result<Vec<Persona>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, author, created_at, updated_at
@@ -713,6 +806,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_interface_surfaces(&self) -> Result<Vec<InterfaceSurface>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, surface_kind, method, target, created_at, updated_at
@@ -734,6 +830,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_inbox_items(
         &self,
         status: Option<&str>,
@@ -752,6 +851,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn resolve_inbox_item(&self, key: &str) -> Result<InboxItem> {
         let mut exact = self.conn.prepare(
             "SELECT id, raw_text, normalized_claim, kind, status, source, author,
@@ -792,6 +894,9 @@ impl SqliteGraphStore {
             ),
         }
     }
+}
+
+impl SqliteGraphStore {
     pub fn resolve_interface_surface(&self, key: &str) -> Result<InterfaceSurface> {
         let surfaces = self.list_interface_surfaces()?;
         if let Some(surface) = surfaces.iter().find(|surface| surface.id == key) {
@@ -825,6 +930,9 @@ impl SqliteGraphStore {
             ),
         }
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_calls_for_interface(&self, interface_id: &str) -> Result<Vec<CallsEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT c.validation_id, c.interface_id, v.name, s.name, c.step_index,
@@ -840,6 +948,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_all_calls(&self) -> Result<Vec<CallsEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT c.validation_id, c.interface_id, v.name, s.name, c.step_index,
@@ -854,6 +965,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_serves_between(
         &self,
         persona_id: &str,
@@ -893,6 +1007,9 @@ impl SqliteGraphStore {
             .optional()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_serves_for_persona(&self, persona_id: &str) -> Result<Vec<ServesEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.persona_id, e.intent_id, p.name, i.name, e.inspection_status,
@@ -927,6 +1044,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_journeys_between(
         &self,
         persona_id: &str,
@@ -961,6 +1081,9 @@ impl SqliteGraphStore {
             .optional()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_journeys_for_persona(&self, persona_id: &str) -> Result<Vec<JourneysEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.persona_id, e.validation_id, p.name, v.name, e.notes, e.created_at
@@ -986,6 +1109,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_targets_for_hypothesis(&self, hypothesis_id: &str) -> Result<Vec<TargetsEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.hypothesis_id, e.intent_id, h.name, i.name, e.inspection_status,
@@ -1017,6 +1143,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_targets_between(
         &self,
         hypothesis_id: &str,
@@ -1027,6 +1156,9 @@ impl SqliteGraphStore {
             .into_iter()
             .find(|edge| edge.intent_id == intent_id))
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_all_targets(&self) -> Result<Vec<TargetsEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.hypothesis_id, e.intent_id, h.name, i.name, e.inspection_status,
@@ -1058,6 +1190,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_all_serves(&self) -> Result<Vec<ServesEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.persona_id, e.intent_id, p.name, i.name, e.inspection_status,
@@ -1091,6 +1226,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_vocab_terms(&self) -> Result<Vec<VocabTerm>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, author, created_at FROM vocab_term ORDER BY name",
@@ -1107,6 +1245,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_validations(&self) -> Result<Vec<Validation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, validation_type, command, last_run, last_result, last_executed_run, discrimination_status
@@ -1129,6 +1270,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_rules(&self) -> Result<Vec<QualityRule>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, detection_logic, severity, inspection_effort, kind,
@@ -1153,6 +1297,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn resolve_rule(&self, key: &str) -> Result<String> {
         let rules = self.list_rules()?;
         if rules.iter().any(|rule| rule.id == key) {
@@ -1183,6 +1330,9 @@ impl SqliteGraphStore {
             ),
         }
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_governs_for_intent(&self, intent_id: &str) -> Result<Vec<Governs>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.rule_id, e.intent_id, r.name, i.name, e.inspection_status, e.criterion,
@@ -1217,6 +1367,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn list_notes(&self, target_id: Option<&str>, kind: Option<&str>) -> Result<Vec<Note>> {
         // Push the filters into SQL so SQLite serves them from idx_note_target_only
         // / idx_note_kind instead of materializing every note body and discarding
@@ -1254,6 +1407,9 @@ impl SqliteGraphStore {
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn dangling_notes(&self) -> Result<Vec<Note>> {
         let intent_ids: std::collections::HashSet<String> =
             self.list_all_intents()?.into_iter().map(|i| i.id).collect();
@@ -1274,6 +1430,9 @@ impl SqliteGraphStore {
             })
             .collect())
     }
+}
+
+impl SqliteGraphStore {
     pub fn prunable_transition_notes(&self, keep_per_target: usize) -> Result<Vec<Note>> {
         let transitions = self.list_notes(None, Some("transition"))?;
         let mut by_target: std::collections::HashMap<&str, Vec<&Note>> =
@@ -1300,6 +1459,9 @@ impl SqliteGraphStore {
         }
         Ok(to_drop)
     }
+}
+
+impl SqliteGraphStore {
     pub fn edge_id_exists(&self, edge_id: &str) -> Result<bool> {
         for spec in EDGE_SPECS {
             for (from_id, to_id) in super::edge_pairs(&self.conn, spec)? {

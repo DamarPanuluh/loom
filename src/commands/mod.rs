@@ -57,6 +57,16 @@ pub(crate) const EXPORT_STALE_WARNING: &str =
     "⚠ committed loom.graph.json is STALE — `loom export` before committing code.";
 pub(crate) const REQUIRED_HUMAN_GATED_DEBT_KEY: &str = "required_human_gated_debt";
 
+/// Lexicographically ordered `(min, max)` key for direction-agnostic command
+/// analyses that compare coupled intent/file pairs.
+pub(crate) fn sorted_pair(a: &str, b: &str) -> (String, String) {
+    if a <= b {
+        (a.to_string(), b.to_string())
+    } else {
+        (b.to_string(), a.to_string())
+    }
+}
+
 pub fn dispatch(cli: Cli) -> Result<()> {
     let printer = Printer::new(cli.json);
     if let Some(g) = &cli.graph {

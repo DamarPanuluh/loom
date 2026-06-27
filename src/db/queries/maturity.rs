@@ -7,7 +7,10 @@
 //! survives here as rung INPUTS — no new schema, no new queries.
 //!
 //! Ordered by loom's honesty law `RECORD ≠ DISCHARGE`: **Seeded** is
-//! RECORD-complete; **Realized → Production-ready** are progressive DISCHARGE.
+//! RECORD-complete; **Realized → Production-ready** are progressive DISCHARGE,
+//! and **Excellent** is the stricter codebase-health certificate. Production-ready
+//! can be true while Excellent is false; plain overall green must mean the
+//! selected certification profile, not merely that the map is complete.
 //! The ladder is a VECTOR (every rung's true state) with a FOCUS (the lowest
 //! unmet rung, where work routes) — never a scalar, because the axes are
 //! genuinely independent: a repo can be Hardened before it is Proven (loom
@@ -76,7 +79,7 @@ pub struct Rung {
 }
 
 /// The ladder: a vector of rungs + the focus (lowest unmet rung index, where
-/// `loom next` routes). `focus == None` ⇒ every rung cleared ⇒ Production-ready.
+/// `loom next` routes). `focus == None` ⇒ every rung cleared ⇒ Excellent.
 #[derive(Debug, Clone, Serialize)]
 pub struct MaturityLadder {
     pub rungs: Vec<Rung>,
@@ -89,7 +92,7 @@ impl MaturityLadder {
     }
 
     /// The lane (work-type) that climbs the focus rung — where `loom next` routes.
-    /// None when every rung is cleared (Production-ready / all green).
+    /// None when every rung is cleared (Excellent / selected overall green).
     pub fn focus_lane(&self) -> Option<&'static str> {
         self.focus_rung().and_then(|r| r.lane)
     }
@@ -125,9 +128,9 @@ impl MaturityLadder {
                     .iter()
                     .any(|r| r.name == "Proven" && r.status == RungStatus::NotApplicable);
                 if proven_na {
-                    "✓ PRODUCTION-READY — comprehensive, durable; leaves proven at Realized, no user-visible journeys to boundary-prove (Proven rung N/A).".to_string()
+                    "✓ EXCELLENT — production-ready plus no unresolved excellence debt; leaves proven at Realized, no user-visible journeys to boundary-prove (Proven rung N/A).".to_string()
                 } else {
-                    "✓ PRODUCTION-READY — proven, comprehensive, durable.".to_string()
+                    "✓ EXCELLENT — proven, comprehensive, durable, with no unresolved excellence debt.".to_string()
                 }
             }
             Some(r) => {
@@ -151,12 +154,11 @@ pub struct LadderInputs<'a> {
     pub journey: &'a Ledger,
     pub behavioral: &'a Ledger,
     pub open_smells: &'a [Smell],
-    /// Static, NON-GATING advisory findings (size: oversized_file /
-    /// large_behavioral_symbol). Surfaced on the Hardened rung's `detail` so the
-    /// vector honestly shows routed-but-unblocking refactor work; it never enters
-    /// `reasons`, so it can never move Hardened off `Met` (a hard gate here would
-    /// only pressure laundering coarse judgment calls — see SIZE_ADVISORY_KINDS).
-    pub advisory_count: usize,
+    /// Unresolved excellence debt: refactor/design/proof-locality findings that
+    /// do not necessarily block Production-ready, but do block the stronger
+    /// "best codebase" claim. Recording or accepting this debt can make the map
+    /// honest; it must not certify the codebase as Excellent.
+    pub excellence_debt_count: usize,
     pub doc_only_realizations: &'a [String],
     pub inbox_untriaged: usize,
     pub source_corpus_unresolved: usize,
@@ -362,17 +364,10 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     } else {
         "build"
     };
-    // Advisory findings are surfaced in `detail` (NEVER `reasons`): they make the
-    // routed-but-unblocking refactor work visible on the rung without gating it.
-    let hardened_detail = if input.advisory_count > 0 {
-        format!("{} advisory", input.advisory_count)
-    } else {
-        String::new()
-    };
     let hardened = graded(
         "Hardened",
         hardened_reasons,
-        hardened_detail,
+        String::new(),
         (measured.total > 0 && axis_cleared(measured)) || gs.horizontally_explored,
         hardened_lane,
     );
@@ -424,6 +419,48 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
         lane: prod_lane,
     });
 
+    // ---- Rung 6: Excellent (CERTIFICATION: codebase health) ----
+    // Production-ready says the system is understood, proven, and deploy-fit.
+    // Excellent is deliberately stricter: unresolved refactor/design/proof-locality
+    // debt keeps the codebase from reading as "green" even though the map is
+    // honest and production may be safe. This closes the old laundering hole
+    // where "advisory, never gates green" could make a fully documented mess look
+    // like the best possible codebase.
+    let excellent_status = if prod_status == RungStatus::Met && input.excellence_debt_count == 0 {
+        RungStatus::Met
+    } else if prod_status == RungStatus::Met {
+        RungStatus::Partial
+    } else {
+        RungStatus::Unmet
+    };
+    let mut excellent_reasons = Vec::new();
+    if prod_status != RungStatus::Met {
+        excellent_reasons.push("Production-ready is not yet certified".to_string());
+    }
+    if input.excellence_debt_count > 0 {
+        excellent_reasons.push(format!(
+            "{} unresolved excellence debt item(s) — refactor/adjudicate as fixed, false-positive, or deliberate design; accepted/deferred real debt does not certify Excellent",
+            input.excellence_debt_count
+        ));
+    }
+    rungs.push(Rung {
+        name: "Excellent",
+        status: excellent_status,
+        detail: if input.excellence_debt_count > 0 {
+            format!("{} debt", input.excellence_debt_count)
+        } else {
+            String::new()
+        },
+        reasons: excellent_reasons,
+        lane: if excellent_status == RungStatus::Met {
+            None
+        } else if prod_status == RungStatus::Met {
+            Some("refactor")
+        } else {
+            Some("build")
+        },
+    });
+
     let focus = rungs.iter().position(|r| !r.status.cleared());
     MaturityLadder { rungs, focus }
 }
@@ -447,8 +484,8 @@ pub struct LadderBundle {
 }
 
 /// Assemble the ladder from a snapshot + the store-derived inputs the caller
-/// already has in scope (decision notes, audit-gated open smells, the non-gating
-/// advisory count, the untriaged inbox count, export staleness). The former
+/// already has in scope (decision notes, audit-gated open smells, unresolved
+/// excellence debt, the untriaged inbox count, export staleness). The former
 /// `fully_proven` gate set is folded in as the Production-ready rung's input —
 /// its math survives, its badge does not. The arg list is wide because it
 /// re-sequences several already-computed planes the caller holds; bundling them
@@ -461,7 +498,7 @@ pub fn build_ladder(
     decision_notes: &[Note],
     inbox_items: &[InboxItem],
     open_smells: &[Smell],
-    advisory_count: usize,
+    excellence_debt_count: usize,
     inbox_untriaged: usize,
     export_stale: bool,
 ) -> LadderBundle {
@@ -501,7 +538,7 @@ pub fn build_ladder(
         journey: &journey,
         behavioral: &behavioral,
         open_smells,
-        advisory_count,
+        excellence_debt_count,
         doc_only_realizations: &doc_only,
         inbox_untriaged,
         source_corpus_unresolved: source_corpus.unresolved,

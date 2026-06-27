@@ -140,14 +140,14 @@ pub enum Command {
         /// meaning against the user) | quality (quality: earn GOVERNS green)
         /// | review (re-inspect uncertain or high-risk verdicts) | prove
         /// (analyzer: prove proposed hypotheses — the pre-decision plane, optional)
-        /// | refactor (builder: real-code ADVISORY findings — size + open code
-        /// clones — never gates green, the post-green TDD refactor step).
+        /// | refactor (builder: excellence-debt findings — size, metadata debt,
+        /// proof-locality, and open code clones — blocks Excellent, not Production-ready).
         /// OMIT --mode to follow the compass phase (`loom status` shows it):
         /// bare `loom next` serves the phase's lane — fix when there are
         /// failures/staleness, build when intents need realizing, validate
         /// when proofs are pending, quality when gates are unchecked, discovery
-        /// once the vertical spine is green, and refactor once every gating rung
-        /// is cleared (advisory work, never blocking).
+        /// once the vertical spine is green, and refactor when the Excellent rung
+        /// is blocked by codebase-health debt.
         #[arg(long)]
         mode: Option<String>,
 

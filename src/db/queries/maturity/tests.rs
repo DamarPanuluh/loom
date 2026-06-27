@@ -51,7 +51,7 @@ fn reproduces_loom_frozen_rung_vector() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
-        advisory_count: 0,
+        excellence_debt_count: 0,
         doc_only_realizations: &doc_only,
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,
@@ -61,7 +61,7 @@ fn reproduces_loom_frozen_rung_vector() {
     };
     let ladder = maturity_ladder(&input);
 
-    assert_eq!(ladder.rungs.len(), 5);
+    assert_eq!(ladder.rungs.len(), 6);
     assert_eq!(ladder.rungs[0].name, "Seeded");
     assert_eq!(ladder.rungs[0].status, RungStatus::Met);
     assert_eq!(ladder.rungs[1].name, "Realized");
@@ -114,7 +114,7 @@ fn library_collapses_proven_to_not_applicable() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
-        advisory_count: 0,
+        excellence_debt_count: 0,
         doc_only_realizations: &[],
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,
@@ -125,13 +125,14 @@ fn library_collapses_proven_to_not_applicable() {
     let ladder = maturity_ladder(&input);
     assert_eq!(ladder.rungs[2].name, "Proven");
     assert_eq!(ladder.rungs[2].status, RungStatus::NotApplicable);
-    // N/A counts as cleared, so a fully-proven library is Production-ready.
+    // N/A counts as cleared, so a fully-proven library is Production-ready and Excellent.
     assert_eq!(ladder.rungs[4].status, RungStatus::Met);
+    assert_eq!(ladder.rungs[5].status, RungStatus::Met);
     assert_eq!(ladder.focus, None);
     // Honesty: the tagline must NOT assert "proven" when the Proven rung
     // collapsed to N/A (no journeys were boundary-proven).
     let tagline = ladder.focus_summary();
-    assert!(tagline.contains("PRODUCTION-READY"), "{tagline}");
+    assert!(tagline.contains("EXCELLENT"), "{tagline}");
     assert!(
         !tagline.contains("— proven,"),
         "N/A Proven must not be advertised as 'proven': {tagline}"
@@ -142,9 +143,9 @@ fn library_collapses_proven_to_not_applicable() {
     );
 }
 
-/// Everything discharged ⇒ Production-ready Met, focus None.
+/// Everything discharged with no excellence debt ⇒ Excellent Met, focus None.
 #[test]
-fn all_green_is_production_ready() {
+fn all_green_is_excellent() {
     let gs = GraphState {
         vertically_complete: true,
         horizontally_explored: true,
@@ -167,7 +168,7 @@ fn all_green_is_production_ready() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
-        advisory_count: 0,
+        excellence_debt_count: 0,
         doc_only_realizations: &[],
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,
@@ -178,21 +179,22 @@ fn all_green_is_production_ready() {
     let ladder = maturity_ladder(&input);
     assert!(ladder.rungs.iter().all(|r| r.status.cleared()));
     assert_eq!(ladder.rungs[4].status, RungStatus::Met);
+    assert_eq!(ladder.rungs[5].status, RungStatus::Met);
     assert_eq!(ladder.focus, None);
     // When the Proven rung is genuinely MET (journeys boundary-proven), the
     // tagline legitimately keeps its "proven" claim.
     assert_eq!(
         ladder.focus_summary(),
-        "✓ PRODUCTION-READY — proven, comprehensive, durable."
+        "✓ EXCELLENT — proven, comprehensive, durable, with no unresolved excellence debt."
     );
 }
 
 /// Advisory findings are surfaced on the Hardened rung's `detail` but NEVER
 /// gate it: a fully-green repo with open advisories stays Hardened ✓ /
-/// Production-ready, and the vector discloses the count so green never reads as
-/// "nothing left to look at" (the routed-not-gated refactor step).
+/// Excellence debt does not block Production-ready, but it does block the stronger
+/// Excellent certificate so overall green no longer means "mapped but messy".
 #[test]
-fn advisories_show_on_hardened_detail_without_gating() {
+fn excellence_debt_blocks_excellent_without_blocking_production_ready() {
     let gs = GraphState {
         vertically_complete: true,
         horizontally_explored: true,
@@ -215,7 +217,7 @@ fn advisories_show_on_hardened_detail_without_gating() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
-        advisory_count: 7,
+        excellence_debt_count: 7,
         doc_only_realizations: &[],
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,
@@ -224,15 +226,18 @@ fn advisories_show_on_hardened_detail_without_gating() {
         fully_proven_reasons: &[],
     };
     let ladder = maturity_ladder(&input);
-    // Non-gating: Hardened is still Met and the repo is still Production-ready.
+    // Non-production-gating: Hardened and Production-ready still pass.
     assert_eq!(ladder.rungs[3].name, "Hardened");
     assert_eq!(ladder.rungs[3].status, RungStatus::Met);
+    assert_eq!(ladder.rungs[4].name, "Production-ready");
     assert_eq!(ladder.rungs[4].status, RungStatus::Met);
-    assert_eq!(ladder.focus, None);
-    // ...but the advisory count is VISIBLE on the rung detail / vector line.
-    assert_eq!(ladder.rungs[3].detail, "7 advisory");
+    // ...but the stricter Excellent certificate is blocked and becomes the focus.
+    assert_eq!(ladder.rungs[5].name, "Excellent");
+    assert_eq!(ladder.rungs[5].status, RungStatus::Partial);
+    assert_eq!(ladder.rungs[5].detail, "7 debt");
+    assert_eq!(ladder.focus, Some(5));
     assert!(
-        ladder.vector_line().contains("Hardened ✓ 7 advisory"),
+        ladder.vector_line().contains("Excellent ◐ 7 debt"),
         "{}",
         ladder.vector_line()
     );
@@ -264,7 +269,7 @@ fn focus_is_lowest_unmet_despite_higher_rung_met() {
         journey: &journey,
         behavioral: &behavioral,
         open_smells: &[],
-        advisory_count: 0,
+        excellence_debt_count: 0,
         doc_only_realizations: &[],
         inbox_untriaged: 0,
         source_corpus_unresolved: 0,

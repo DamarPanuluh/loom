@@ -2,11 +2,11 @@
 
 use anyhow::Result;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::types::{Governs, Intent, IntentCentrality, Note, RelatesTo, StatusReport, Validation};
 
-use super::completeness::vertical_completeness_from_snapshot;
+use super::completeness::{vertical_completeness_from_snapshot, VerticalCompleteness};
 use super::meta::GraphMeta;
 use super::scoring::{
     count_unexplored_pairs_from, normative_coverage_from_snapshot, validate_selection_from_snapshot,
@@ -169,21 +169,36 @@ impl NoteLogStats {
     }
 }
 
-pub fn graph_state_from_snapshot_parts(
-    snapshot: &QuerySnapshot,
-    context: GraphStateContext,
-    mut open_findings: impl FnMut(&QuerySnapshot) -> Result<usize>,
-    mut proposed_hypotheses: impl FnMut() -> Result<usize>,
-    mut disk_integrity_issues: impl FnMut(&QuerySnapshot) -> Result<usize>,
-) -> Result<GraphState> {
-    // Active intents only: retired (deprecated) design is invisible to every
-    // computed number here — counts, pair denominators, coverage axes.
-    let all_intents = &snapshot.intents;
-    let intents = all_intents.len() as i64;
-    let codefiles = snapshot.codefiles.len() as i64;
-    let validations = snapshot.validations.len() as i64;
-    let notes = context.notes;
+#[derive(Debug, Default)]
+struct EdgeStatusSummary {
+    total_edges: i64,
+    rt_uninspected: i64,
+    rt_failing: i64,
+    rt_needs_rev: i64,
+    g_uninspected: i64,
+    g_failing: i64,
+    g_needs_rev: i64,
+}
 
+#[derive(Debug)]
+struct ValidationBacklogSummary<'a> {
+    validation_result: HashMap<&'a str, &'a str>,
+    validate_backlog_len: usize,
+    v_failing_in_backlog: bool,
+    v_no_proof: usize,
+    v_uninspected: i64,
+    v_failing: i64,
+}
+
+fn pair_key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
+    if a < b {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
+
+fn edge_status_summary(snapshot: &QuerySnapshot, active_ids: &HashSet<&str>) -> EdgeStatusSummary {
     let mut by_status: HashMap<&str, i64> = HashMap::new();
     for s in snapshot
         .relates
@@ -212,44 +227,35 @@ pub fn graph_state_from_snapshot_parts(
             *by_status.entry(s).or_insert(0) += 1;
         }
     }
-    let total_edges: i64 = by_status.values().sum();
 
-    // The discovery/fix loop only actions RELATES_TO, so the phase + the
-    // "unresolved" backlog are computed from RELATES_TO specifically. IMPLEMENTS/
-    // GOVERNS/HIERARCHY are structural (default passing); VALIDATES completeness
-    // is surfaced by `loom report`, not the compass. (Counting all edge types
-    // here would tell the user to run `loom next` for work it can't action.)
-    let all_relates = &snapshot.relates;
-    let active_ids: std::collections::HashSet<&str> =
-        all_intents.iter().map(|i| i.id.as_str()).collect();
-    let mut rt_uninspected = 0;
-    let mut rt_failing = 0;
-    let mut rt_needs_rev = 0;
-    for e in all_relates {
+    let mut summary = EdgeStatusSummary {
+        total_edges: by_status.values().sum(),
+        ..EdgeStatusSummary::default()
+    };
+    for e in &snapshot.relates {
         if !active_ids.contains(e.from_id.as_str()) || !active_ids.contains(e.to_id.as_str()) {
             continue;
         }
         match e.inspection_status.as_str() {
-            "uninspected" => rt_uninspected += 1,
-            "failing" => rt_failing += 1,
-            "needs_reverification" => rt_needs_rev += 1,
+            "uninspected" => summary.rt_uninspected += 1,
+            "failing" => summary.rt_failing += 1,
+            "needs_reverification" => summary.rt_needs_rev += 1,
             _ => {}
         }
     }
+    for e in &snapshot.governs {
+        match e.inspection_status.as_str() {
+            "uninspected" => summary.g_uninspected += 1,
+            "failing" => summary.g_failing += 1,
+            "needs_reverification" => summary.g_needs_rev += 1,
+            _ => {}
+        }
+    }
+    summary
+}
 
-    // VALIDATES has its own loop (`loom validate`). The compass routes on the
-    // validator queue's OWN selection (`validate_selection` — shared verbatim
-    // with `loom next --mode validate`), never on raw edge-state counts: the
-    // two once disagreed (a multi-intent validation's passed run left sibling
-    // edges uninspected → phase=validate with an empty queue). Edge counts
-    // below feed only the `unresolved` tally.
+fn validation_backlog_summary(snapshot: &QuerySnapshot) -> ValidationBacklogSummary<'_> {
     let validate_backlog = validate_selection_from_snapshot(snapshot);
-    let v_failing_in_backlog = validate_backlog.iter().any(|(_, u, _)| *u >= 4.0);
-    let v_no_proof = validate_backlog
-        .iter()
-        .filter(|(_, u, _)| *u >= 3.0 && *u < 4.0)
-        .count();
-
     let validation_result: HashMap<&str, &str> = snapshot
         .validations
         .iter()
@@ -270,33 +276,262 @@ pub fn graph_state_from_snapshot_parts(
             _ => {}
         }
     }
-    let v_uninspected = (v_uninspected_raw - blocked_uninspected).max(0);
+    ValidationBacklogSummary {
+        validate_backlog_len: validate_backlog.len(),
+        v_failing_in_backlog: validate_backlog.iter().any(|(_, u, _)| *u >= 4.0),
+        v_no_proof: validate_backlog
+            .iter()
+            .filter(|(_, u, _)| *u >= 3.0 && *u < 4.0)
+            .count(),
+        validation_result,
+        v_uninspected: (v_uninspected_raw - blocked_uninspected).max(0),
+        v_failing,
+    }
+}
+
+fn explored_pairs_axis(
+    intents: i64,
+    all_intents: &[Intent],
+    hierarchy: &[(String, String)],
+    all_relates: &[RelatesTo],
+) -> CoverageAxis {
+    let active_ids: HashSet<&str> = all_intents.iter().map(|i| i.id.as_str()).collect();
+    let hier_pairs: HashSet<(&str, &str)> = hierarchy
+        .iter()
+        .filter(|(p, c)| active_ids.contains(p.as_str()) && active_ids.contains(c.as_str()))
+        .map(|(p, c)| pair_key(p, c))
+        .collect();
+    let mut inspected_pairs: HashSet<(&str, &str)> = HashSet::new();
+    for e in all_relates {
+        if matches!(
+            e.inspection_status.as_str(),
+            "passing" | "failing" | "independent"
+        ) && active_ids.contains(e.from_id.as_str())
+            && active_ids.contains(e.to_id.as_str())
+        {
+            let k = pair_key(&e.from_id, &e.to_id);
+            if !hier_pairs.contains(&k) {
+                inspected_pairs.insert(k);
+            }
+        }
+    }
+    CoverageAxis {
+        covered: inspected_pairs.len() as i64,
+        total: intents * (intents - 1) / 2 - hier_pairs.len() as i64,
+    }
+}
+
+fn proof_axes<'a>(
+    implemented_leaves: &[&'a Intent],
+    snapshot: &'a QuerySnapshot,
+    validation_result: &HashMap<&str, &str>,
+) -> (CoverageAxis, CoverageAxis, CoverageAxis) {
+    let validation_by_id: HashMap<&str, &Validation> = snapshot
+        .validations
+        .iter()
+        .map(|v| (v.id.as_str(), v))
+        .collect();
+    let mut proven_ids: HashSet<&str> = HashSet::new();
+    let mut executed_intent_ids: HashSet<&str> = HashSet::new();
+    for edge in snapshot.validates.iter().filter(|edge| {
+        validation_result.get(edge.validation_id.as_str()).copied() == Some("passed")
+    }) {
+        proven_ids.insert(edge.intent_id.as_str());
+        if let Some(v) = validation_by_id.get(edge.validation_id.as_str()) {
+            if !v.command.is_empty()
+                && v.validation_type != "manual_check"
+                && !v.last_executed_run.is_empty()
+                && v.discrimination_status == "discriminating"
+            {
+                executed_intent_ids.insert(edge.intent_id.as_str());
+            }
+        }
+    }
+    let total = implemented_leaves.len() as i64;
+    (
+        CoverageAxis {
+            covered: implemented_leaves
+                .iter()
+                .filter(|i| proven_ids.contains(i.id.as_str()))
+                .count() as i64,
+            total,
+        },
+        CoverageAxis {
+            covered: implemented_leaves
+                .iter()
+                .filter(|i| executed_intent_ids.contains(i.id.as_str()))
+                .count() as i64,
+            total,
+        },
+        CoverageAxis {
+            covered: implemented_leaves
+                .iter()
+                .filter(|i| {
+                    proven_ids.contains(i.id.as_str())
+                        && !executed_intent_ids.contains(i.id.as_str())
+                })
+                .count() as i64,
+            total,
+        },
+    )
+}
+
+struct PhaseInputs<'a> {
+    intents: i64,
+    needs_change: i64,
+    planned: i64,
+    vc: &'a VerticalCompleteness,
+    edge_status: &'a EdgeStatusSummary,
+    validation_backlog: &'a ValidationBacklogSummary<'a>,
+    unmeasured_queue: usize,
+    rules_count: i64,
+    intents_with_code: i64,
+    unexplored_pairs: i64,
+}
+
+fn decide_phase(
+    inputs: PhaseInputs<'_>,
+    snapshot: &QuerySnapshot,
+    mut disk_integrity_issues: impl FnMut(&QuerySnapshot) -> Result<usize>,
+    mut open_findings: impl FnMut(&QuerySnapshot) -> Result<usize>,
+    mut proposed_hypotheses: impl FnMut() -> Result<usize>,
+) -> Result<(&'static str, &'static str, String)> {
+    let vc = inputs.vc;
+    let edge_status = inputs.edge_status;
+    let validation_backlog = inputs.validation_backlog;
+    if inputs.intents == 0 {
+        return Ok(("seed", "directive", "Empty graph — SEED the full surface, not a sketch: `loom seed --inbox` ingests every doc + source file into the inbox to triage (empty repo → a vision prompt). Then `loom inbox triage` decomposes each into intents. `loom guide --mode seed` teaches the loop.".to_string()));
+    }
+    if inputs.needs_change > 0 {
+        return Ok((
+            "build",
+            "directive",
+            format!(
+                "{} intent(s) need changes (known issues/refactor): `loom next --mode build`.",
+                inputs.needs_change
+            ),
+        ));
+    }
+    if !vc.unremoved_leaves.is_empty() {
+        return Ok(("build", "directive", format!("{} intent(s) marked for removal still have code — delete it (cleanup is done by absence): `loom next --mode build`.", vc.unremoved_leaves.len())));
+    }
+    if edge_status.rt_failing > 0 {
+        return Ok(("fix", "directive", format!("{} relationship(s) FAILING — `loom next --mode fix` (resolve violations at root cause).", edge_status.rt_failing)));
+    }
+    if inputs.planned > 0 {
+        return Ok((
+            "build",
+            "recommended",
+            format!(
+                "{} planned intent(s) to build: `loom next --mode build`.",
+                inputs.planned
+            ),
+        ));
+    }
+    if !vc.multi_parent.is_empty() || vc.cycle {
+        return Ok(("incomplete", "directive", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string()));
+    }
+    if !vc.unrealized_leaves.is_empty() {
+        return Ok(("ground", "directive", format!("{} leaf intent(s) implemented but not grounded — `loom edge implement` them, or decompose with `loom edge hierarchy` (see `loom report`).", vc.unrealized_leaves.len())));
+    }
+    if !vc.unreached_codefiles.is_empty() {
+        return Ok(("ground", "directive", format!("{} CodeFile(s) reached by no intent — see which with `loom coverage`, then ground them (`loom edge implement`) or `loom ignore` them.", vc.unreached_codefiles.len())));
+    }
+    if validation_backlog.v_failing_in_backlog {
+        return Ok(("validate", "directive", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string()));
+    }
+    if validation_backlog.validate_backlog_len > 0 {
+        let msg = if validation_backlog.v_no_proof > 0 {
+            format!("{} intent(s) need proof (missing or unrun validations): `loom next --mode validate`.", validation_backlog.validate_backlog_len)
+        } else {
+            "Run pending validations: `loom next --mode validate`.".to_string()
+        };
+        return Ok(("validate", "recommended", msg));
+    }
+    if edge_status.g_failing > 0 {
+        return Ok(("quality", "directive", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string()));
+    }
+    if edge_status.g_needs_rev > 0 {
+        return Ok(("quality", "recommended", "Quality green went stale (the code under a passing verdict changed) — `loom next --mode quality`, re-inspect, re-earn with `loom rule verdict`.".to_string()));
+    }
+    if edge_status.g_uninspected > 0 {
+        return Ok(("quality", "recommended", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string()));
+    }
+    if inputs.unmeasured_queue > 0 {
+        return Ok(("quality", "recommended", format!("{} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a component verdict covers descendants ONLY with --covers-descendants; independent = measured, doesn't apply).", inputs.unmeasured_queue)));
+    }
+    if inputs.rules_count == 0 && inputs.intents_with_code > 0 {
+        return Ok(("quality", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string()));
+    }
+
+    let disk_issues = disk_integrity_issues(snapshot)?;
+    if disk_issues > 0 {
+        return Ok(("audit", "directive", format!("{disk_issues} file(s) on disk the graph doesn't account for (unmapped, drifted, or missing) — the map must match the territory before green: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude.")));
+    }
+    let open_findings = open_findings(snapshot)?;
+    if open_findings > 0 {
+        return Ok(("audit", "recommended", format!("{open_findings} open finding(s) — `loom smells`: resolve each via its remedy, ONE at a time after reading its code. A decision note must give a finding-specific reason (the decomposition considered + why it's wrong HERE), not a reused template — loom rejects vacuous/rubber-stamped rulings. Green requires 0 open findings.")));
+    }
+    if edge_status.rt_needs_rev > 0 {
+        return Ok(("fix", "recommended", format!("{} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`.", edge_status.rt_needs_rev)));
+    }
+    if edge_status.rt_uninspected > 0 || inputs.unexplored_pairs > 0 {
+        return Ok(("discovery", "recommended", format!("Vertical spine complete ✓ — but the HARDENED rung REQUIRES the N×N grid explored: {} unexplored pair(s) + {} uninspected edge(s) left. `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones. The count is per-pair — most pairs are genuinely unrelated, so batch `independent` verdicts (and `ground` the real couplings) via `loom batch`.", inputs.unexplored_pairs, edge_status.rt_uninspected)));
+    }
+
+    let proposed = proposed_hypotheses()?;
+    let mut msg = "Production-ready checks are clear: vertically complete ✓, horizontally explored ✓, disk reconciled ✓ (nothing on disk unmapped/drifted/missing), 0 open Production-ready findings ✓ — confirm the roll-up with `loom report`. Then make the evidence durable: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode). The stricter Excellent certificate is reported by `loom status`/`loom next --mode refactor`.".to_string();
+    if proposed > 0 {
+        msg.push_str(&format!(" Pre-decision plane: {proposed} proposed hypothesis(es) await proof — optional, not part of the selected certification profile: `loom next --mode prove`."));
+    }
+    Ok(("complete", "recommended", msg))
+}
+
+pub fn graph_state_from_snapshot_parts(
+    snapshot: &QuerySnapshot,
+    context: GraphStateContext,
+    open_findings: impl FnMut(&QuerySnapshot) -> Result<usize>,
+    proposed_hypotheses: impl FnMut() -> Result<usize>,
+    disk_integrity_issues: impl FnMut(&QuerySnapshot) -> Result<usize>,
+) -> Result<GraphState> {
+    // Active intents only: retired (deprecated) design is invisible to every
+    // computed number here — counts, pair denominators, coverage axes.
+    let all_intents = &snapshot.intents;
+    let intents = all_intents.len() as i64;
+    let codefiles = snapshot.codefiles.len() as i64;
+    let validations = snapshot.validations.len() as i64;
+    let notes = context.notes;
+
+    // The discovery/fix loop only actions RELATES_TO, so the phase + the
+    // "unresolved" backlog are computed from RELATES_TO specifically. IMPLEMENTS/
+    // GOVERNS/HIERARCHY are structural (default passing); VALIDATES completeness
+    // is surfaced by `loom report`, not the compass. (Counting all edge types
+    // here would tell the user to run `loom next` for work it can't action.)
+    let all_relates = &snapshot.relates;
+    let active_ids: HashSet<&str> = all_intents.iter().map(|i| i.id.as_str()).collect();
+    let edge_status = edge_status_summary(snapshot, &active_ids);
+
+    // VALIDATES has its own loop (`loom validate`). The compass routes on the
+    // validator queue's OWN selection (`validate_selection` — shared verbatim
+    // with `loom next --mode validate`), never on raw edge-state counts: the
+    // two once disagreed (a multi-intent validation's passed run left sibling
+    // edges uninspected → phase=validate with an empty queue). Edge counts
+    // below feed only the `unresolved` tally.
+    let validation_backlog = validation_backlog_summary(snapshot);
 
     // GOVERNS is the green gate: an uninspected gate is an unchecked quality
     // claim; failing is a violation; needs_reverification is green that must
     // be re-earned after a code change. ALL THREE are quality work — exactly
     // what `loom next --mode quality` serves (stale GOVERNS once drove the
     // queue but not the compass or the unresolved tally — a coherence bug).
-    let mut g_uninspected = 0;
-    let mut g_failing = 0;
-    let mut g_needs_rev = 0;
-    for e in &snapshot.governs {
-        match e.inspection_status.as_str() {
-            "uninspected" => g_uninspected += 1,
-            "failing" => g_failing += 1,
-            "needs_reverification" => g_needs_rev += 1,
-            _ => {}
-        }
-    }
-
-    let unresolved_edges = rt_uninspected
-        + rt_failing
-        + rt_needs_rev
-        + v_uninspected
-        + v_failing
-        + g_uninspected
-        + g_failing
-        + g_needs_rev;
+    let unresolved_edges = edge_status.rt_uninspected
+        + edge_status.rt_failing
+        + edge_status.rt_needs_rev
+        + validation_backlog.v_uninspected
+        + validation_backlog.v_failing
+        + edge_status.g_uninspected
+        + edge_status.g_failing
+        + edge_status.g_needs_rev;
 
     let relates_to_edges = snapshot.relates.len() as i64;
     let implements_edges = snapshot.implements.len() as i64;
@@ -324,7 +559,8 @@ pub fn graph_state_from_snapshot_parts(
     // (optional) is the N×N grid. The compass routes vertical gaps ahead of
     // optional discovery, and only calls the graph "complete" when both hold.
     let vc = vertical_completeness_from_snapshot(snapshot);
-    let horizontally_explored = unexplored_pairs == 0 && rt_uninspected == 0 && rt_needs_rev == 0;
+    let horizontally_explored =
+        unexplored_pairs == 0 && edge_status.rt_uninspected == 0 && edge_status.rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------
     let nc = normative_coverage_from_snapshot(snapshot);
@@ -371,40 +607,7 @@ pub fn graph_state_from_snapshot_parts(
     // holds exactly. (A hierarchy edge touching a retired intent once leaked
     // into the denominator, making status report covered/total/unexplored
     // numbers that didn't add up.)
-    fn pair_key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
-        if a < b {
-            (a, b)
-        } else {
-            (b, a)
-        }
-    }
-    let active_ids: std::collections::HashSet<&str> =
-        all_intents.iter().map(|i| i.id.as_str()).collect();
-    let hier_pairs: std::collections::HashSet<(&str, &str)> = hierarchy
-        .iter()
-        .filter(|(p, c)| active_ids.contains(p.as_str()) && active_ids.contains(c.as_str()))
-        .map(|(p, c)| pair_key(p, c))
-        .collect();
-    let mut inspected_pairs: std::collections::HashSet<(&str, &str)> =
-        std::collections::HashSet::new();
-    for e in all_relates {
-        if matches!(
-            e.inspection_status.as_str(),
-            "passing" | "failing" | "independent"
-        ) && active_ids.contains(e.from_id.as_str())
-            && active_ids.contains(e.to_id.as_str())
-        {
-            let k = pair_key(&e.from_id, &e.to_id);
-            if !hier_pairs.contains(&k) {
-                inspected_pairs.insert(k);
-            }
-        }
-    }
-    let candidate_pair_total = intents * (intents - 1) / 2 - hier_pairs.len() as i64;
-    let explored_pairs = CoverageAxis {
-        covered: inspected_pairs.len() as i64,
-        total: candidate_pair_total,
-    };
+    let explored_pairs = explored_pairs_axis(intents, all_intents, hierarchy, all_relates);
 
     // Proven = implemented leaves whose proof actually PASSED (blocked/not_run
     // are visible elsewhere; this axis counts earned proof only). Split into
@@ -420,62 +623,11 @@ pub fn graph_state_from_snapshot_parts(
     // observed not declared. `last_result=passed` already implies sync hasn't
     // invalidated it (sync flips a stale proof to not_run on code change), so
     // `last_executed_run` non-empty + passed = ran AND still current.
-    let validation_by_id: std::collections::HashMap<&str, &Validation> = snapshot
-        .validations
-        .iter()
-        .map(|v| (v.id.as_str(), v))
-        .collect();
-    let mut proven_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
-    let mut executed_intent_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
-    for edge in snapshot.validates.iter().filter(|edge| {
-        validation_result.get(edge.validation_id.as_str()).copied() == Some("passed")
-    }) {
-        proven_ids.insert(edge.intent_id.as_str());
-        if let Some(v) = validation_by_id.get(edge.validation_id.as_str()) {
-            // EXECUTED requires the command actually RAN (last_executed_run
-            // stamped by the executor) — not merely that a command string
-            // exists. command non-empty + type != manual_check are kept as
-            // guards (an empty-command or manual_check proof is never executed
-            // even if somehow stamped), but last_executed_run is the load-bearing
-            // discriminator.
-            // G2: EXECUTED additionally requires the executor to have OBSERVED
-            // the runner ASSERT (discrimination_status == "discriminating"). An
-            // exit-0 run that asserted nothing is `ran_inert` and falls to the
-            // ASSERTED tier — exit-0 alone can no longer mint EXECUTED.
-            if !v.command.is_empty()
-                && v.validation_type != "manual_check"
-                && !v.last_executed_run.is_empty()
-                && v.discrimination_status == "discriminating"
-            {
-                executed_intent_ids.insert(edge.intent_id.as_str());
-            }
-        }
-    }
-    let proven_leaves = CoverageAxis {
-        covered: implemented_leaves
-            .iter()
-            .filter(|i| proven_ids.contains(i.id.as_str()))
-            .count() as i64,
-        total: implemented_leaves.len() as i64,
-    };
-    let proven_executed_leaves = CoverageAxis {
-        covered: implemented_leaves
-            .iter()
-            .filter(|i| executed_intent_ids.contains(i.id.as_str()))
-            .count() as i64,
-        total: implemented_leaves.len() as i64,
-    };
-    // Asserted-only = proven but with NO executed-type pass (proven entirely by
-    // hand-marked acceptance). Invariant: proven == executed + asserted-only.
-    let proven_asserted_leaves = CoverageAxis {
-        covered: implemented_leaves
-            .iter()
-            .filter(|i| {
-                proven_ids.contains(i.id.as_str()) && !executed_intent_ids.contains(i.id.as_str())
-            })
-            .count() as i64,
-        total: implemented_leaves.len() as i64,
-    };
+    let (proven_leaves, proven_executed_leaves, proven_asserted_leaves) = proof_axes(
+        &implemented_leaves,
+        snapshot,
+        &validation_backlog.validation_result,
+    );
 
     let coverage = Coverage360 {
         grounded_files,
@@ -495,132 +647,24 @@ pub fn graph_state_from_snapshot_parts(
     // or a binding vertical gap the agent should just act on; "recommended" when
     // the work is discretionary improvement it may sequence against other open
     // lanes (the verb the `→ Next:` / `→ Recommended:` line picks from).
-    let (phase, next_kind, next_action) = if intents == 0 {
-        ("seed", "directive", "Empty graph — SEED the full surface, not a sketch: `loom seed --inbox` ingests every doc + source file into the inbox to triage (empty repo → a vision prompt). Then `loom inbox triage` decomposes each into intents. `loom guide --mode seed` teaches the loop.".to_string())
-    } else if needs_change > 0 {
-        ("build", "directive", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
-    } else if !vc.unremoved_leaves.is_empty() {
-        ("build", "directive", format!("{} intent(s) marked for removal still have code — delete it (cleanup is done by absence): `loom next --mode build`.", vc.unremoved_leaves.len()))
-    } else if rt_failing > 0 {
-        (
-            "fix",
-            "directive",
-            format!("{rt_failing} relationship(s) FAILING — `loom next --mode fix` (resolve violations at root cause)."),
-        )
-    } else if planned > 0 {
-        (
-            "build",
-            "recommended",
-            format!("{planned} planned intent(s) to build: `loom next --mode build`."),
-        )
-    } else if !vc.multi_parent.is_empty() || vc.cycle {
-        ("incomplete", "directive", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string())
-    } else if !vc.unrealized_leaves.is_empty() {
-        ("ground", "directive", format!(
-            "{} leaf intent(s) implemented but not grounded — `loom edge implement` them, or decompose with `loom edge hierarchy` (see `loom report`).",
-            vc.unrealized_leaves.len()
-        ))
-    } else if !vc.unreached_codefiles.is_empty() {
-        ("ground", "directive", format!(
-            "{} CodeFile(s) reached by no intent — see which with `loom coverage`, then ground them (`loom edge implement`) or `loom ignore` them.",
-            vc.unreached_codefiles.len()
-        ))
-    } else if v_failing_in_backlog {
-        ("validate", "directive", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string())
-    } else if !validate_backlog.is_empty() {
-        (
-            "validate",
-            "recommended",
-            if v_no_proof > 0 {
-                format!("{} intent(s) need proof (missing or unrun validations): `loom next --mode validate`.", validate_backlog.len())
-            } else {
-                "Run pending validations: `loom next --mode validate`.".to_string()
-            },
-        )
-    } else if g_failing > 0 {
-        ("quality", "directive", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string())
-    } else if g_needs_rev > 0 {
-        ("quality", "recommended", "Quality green went stale (the code under a passing verdict changed) — `loom next --mode quality`, re-inspect, re-earn with `loom rule verdict`.".to_string())
-    } else if g_uninspected > 0 {
-        ("quality", "recommended", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string())
-    } else if unmeasured_queue > 0 {
-        ("quality", "recommended", format!(
-            "{unmeasured_queue} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a component verdict covers descendants ONLY with --covers-descendants; independent = measured, doesn't apply)."
-        ))
-    } else if rules_count == 0 && nc.intents_with_code > 0 {
-        ("quality", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string())
-    } else {
-        // The audit gate — the binding structural gate, checked BEFORE the
-        // horizontal tail. Open smells (godfiles, oversized functions,
-        // undeclared coupling) are structural problems that gate phase=complete
-        // and rank ABOVE stale-grid re-verification and discovery in the cascade
-        // ORDER. But stale RELATES_TO and unexplored pairs are ALSO required for
-        // phase=complete (the horizontal grid is part of full-green) — they are
-        // simply checked after audit, not optional. The
-        // false-green hole this closes: stale edges (recommended) used to
-        // route to `fix` before the audit gate was reached, deferring open
-        // findings indefinitely behind "audit: deferred while phase=fix
-        // keeps another lane active."
-        //
-        // The FIRST sub-check is map-vs-territory: files on disk the graph
-        // doesn't account for (unmapped real files, drifted content, phantom
-        // registrations). This is the false-green hole — green used to TRUST
-        // the declared graph and only TELL you to "confirm with `loom coverage`",
-        // so a file with no intent laundered into a clean compass. Now it GATES:
-        // the map must match the territory. Computed lazily (only graphs that
-        // cleared every other gate pay for the on-disk walk + content-hash
-        // pass), and the caller supplies the count so the pure-graph layer
-        // stays disk-free.
-        let disk_issues = disk_integrity_issues(snapshot)?;
-        if disk_issues > 0 {
-            ("audit", "directive", format!(
-                "{disk_issues} file(s) on disk the graph doesn't account for (unmapped, drifted, or missing) — the map must match the territory before green: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude."
-            ))
-        } else {
-            // Open smells are unadjudicated suspicions; green means every one
-            // was ANSWERED (structurally fixed, or refuted via its remedy — an
-            // `independent` verdict / vocab merge / decision note counts
-            // exactly as much as a fix). Computed lazily: only graphs that
-            // cleared every other gate pay for the O(N²) scan.
-            let open_findings = open_findings(snapshot)?;
-            if open_findings > 0 {
-                ("audit", "recommended", format!(
-                    "{open_findings} open finding(s) — `loom smells`: resolve each via its remedy, ONE at a time after reading its code. A decision note must give a finding-specific reason (the decomposition considered + why it's wrong HERE), not a reused template — loom rejects vacuous/rubber-stamped rulings. Green requires 0 open findings."
-                ))
-            } else if rt_needs_rev > 0 {
-                // Stale RELATES_TO is the OPTIONAL horizontal grid —
-                // re-verification ranks BELOW the audit gate (binding for
-                // green) but above discovery (pure exploration). `rt_failing`
-                // (a genuine violation) is handled above and stays urgent.
-                // Both branches route to the same `loom next --mode fix` queue,
-                // which serves failing|needs_reverification; here
-                // rt_failing == 0, so it serves the stale items.
-                (
-                    "fix",
-                    "recommended",
-                    format!("{rt_needs_rev} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`."),
-                )
-            } else if rt_uninspected > 0 || unexplored_pairs > 0 {
-                ("discovery", "recommended", format!(
-                    "Vertical spine complete ✓ — but the HARDENED rung REQUIRES the N×N grid explored: {unexplored_pairs} unexplored pair(s) + {rt_uninspected} uninspected edge(s) left. `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones. The count is per-pair — most pairs are genuinely unrelated, so batch `independent` verdicts (and `ground` the real couplings) via `loom batch`."
-                ))
-            } else {
-                // The pre-decision plane never gates green (a proposal is not
-                // state of the world — see Hypothesis), but it must not rot
-                // invisibly either: pending proofs are disclosed at the one
-                // message every agent reads. Computed lazily with the same
-                // justification as the smells scan above.
-                let proposed = proposed_hypotheses()?;
-                let mut msg = "Vertically complete ✓, horizontally explored ✓, disk reconciled ✓ (nothing on disk unmapped/drifted/missing), 0 open findings ✓ — confirm the roll-up with `loom report`. Then make the green DURABLE: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode).".to_string();
-                if proposed > 0 {
-                    msg.push_str(&format!(
-                        " Pre-decision plane: {proposed} proposed hypothesis(es) await proof — optional, never gates green: `loom next --mode prove`."
-                    ));
-                }
-                ("complete", "recommended", msg)
-            }
-        }
-    };
+    let (phase, next_kind, next_action) = decide_phase(
+        PhaseInputs {
+            intents,
+            needs_change,
+            planned,
+            vc: &vc,
+            edge_status: &edge_status,
+            validation_backlog: &validation_backlog,
+            unmeasured_queue,
+            rules_count,
+            intents_with_code: nc.intents_with_code,
+            unexplored_pairs,
+        },
+        snapshot,
+        disk_integrity_issues,
+        open_findings,
+        proposed_hypotheses,
+    )?;
 
     // Note-hygiene nudge: when the log is heavy enough to drag the read path,
     // teach the lever. The cap auto-bounds via sync, so this fires mainly for
@@ -684,7 +728,7 @@ pub fn graph_state_from_snapshot_parts(
         intents,
         relates_to_edges,
         implements_edges,
-        total_edges,
+        total_edges: edge_status.total_edges,
         unresolved_edges,
         unexplored_pairs,
         codefiles,

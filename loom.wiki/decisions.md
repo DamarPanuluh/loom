@@ -11,6 +11,72 @@ Rationale recorded via `loom note add --kind decision`. Newest first.
 
 ### (floating)
 
+**Date:** 2026-06-26T21:13:35.841560+00:00
+
+Deliberate command shim symmetry: report::run and status::run are independent public command entrypoints that open the active graph then call distinct run_with_db implementations. Keeping the tiny shims local preserves command readability.
+
+### (floating)
+
+**Date:** 2026-06-26T21:13:35.804720+00:00
+
+Deliberate command shim symmetry: export::run and find::run both resolve the graph root and open a read handle, but delegate to different run_with_db contracts. A shared wrapper would obscure command-specific argument flow for no behavior gain.
+
+### (floating)
+
+**Date:** 2026-06-26T21:13:35.766533+00:00
+
+False-positive tiny match clone: seed grade_label maps extractor quality to display words; validate validation_result_edge_status maps proof result to edge inspection_status. Same match silhouette, different domain vocabulary and invariants.
+
+### (floating)
+
+**Date:** 2026-06-26T21:13:35.727425+00:00
+
+False-positive format-shape clone: inbox normalize_template/normalize_hint are paired user-facing command examples, while no_intent_match_message is resolver error text. The common shape is only format!-return plumbing; the strings evolve with different user workflows.
+
+### (floating)
+
+**Date:** 2026-06-26T21:13:35.685738+00:00
+
+False-positive structural clone: batch required_fields, next phase_default_mode, and schema role_desc are three independent match tables with different domains, keys, and output contracts. Sharing a helper would hide distinct CLI error/schema/queue vocabulary and increase coupling.
+
+### (floating)
+
+**Date:** 2026-06-26T18:53:04.236886+00:00
+
+For loom init --autonomy <autonomous|guided>: one copy is narrative prose in the human guide section and one is a JSON worked-example string; autonomy semantics must stay copy-pasteable in CLI examples without pulling prose wrappers from the human template
+
+### (floating)
+
+**Date:** 2026-06-26T18:53:04.202664+00:00
+
+For export LOOM_AGENT=llm:{role}: the markdown template at guide.rs ~188 teaches humans in rendered guide output while setup at ~579 is injected into JSON guide responses; merging would force JSON consumers to parse markdown fragments
+
+### (floating)
+
+**Date:** 2026-06-26T18:52:38.518196+00:00
+
+Autonomy init examples appear in human guide prose and JSON worked examples; both must stay readable in their respective output modes without forcing a shared string through formatting layers
+
+### (floating)
+
+**Date:** 2026-06-26T18:52:38.490184+00:00
+
+The export LOOM_AGENT=llm:{role} string appears once in human markdown template (line ~188) and once in programmatic setup JSON (line ~579); same teaching content but different emission channels — extracting would couple guide prose to JSON builder
+
+### (floating)
+
+**Date:** 2026-06-26T18:52:38.464205+00:00
+
+Each SQLite column declaration repeats TEXT NOT NULL DEFAULT '' because DDL has no shared column macro; the repeated fragment is syntactic boilerplate per column, not a shared semantic contract that must stay byte-identical across files
+
+### (floating)
+
+**Date:** 2026-06-26T18:52:38.433680+00:00
+
+print_json uses unwrap_or_else only to serialize a fallback JSON error envelope when the primary payload fails serde; the inner expect targets a trivial {error:string} object that cannot fail serialization — this is a last-resort diagnostic path, not user-input handling
+
+### (floating)
+
 **Date:** 2026-06-26T11:47:56.566633+00:00
 
 Deliberate: wiki.rs is the v2 code-primary bundle coordinator — render_okf_bundle (emitter), resolve_file_to_intent_ids (manifest resolver), and run_next_wiki (wiki lane) share QuerySnapshot/page rendering; run() also wires Printer (dual-mode output). Splitting would fragment the manifest+prose pipeline that must stay byte-stable across one command surface.
@@ -4568,6 +4634,7 @@ lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-liv
 
 
 <!-- loom:prose-start -->
+
 
 
 

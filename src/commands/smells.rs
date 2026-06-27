@@ -503,8 +503,8 @@ fn render(
     let shotgun_total = shotgun_adv.len();
     let shotgun_shown: Vec<_> = shotgun_adv.into_iter().take(limit.max(1)).collect();
 
-    // Advisory proof-locality: STATIC (no git, no coverage run), never gates
-    // green. Flags leaves the `proven` axis counts whose only `test` proof
+    // Advisory proof-locality: STATIC (no git, no coverage run). It does not
+    // block Production-ready, but it is excellence debt. Flags leaves the `proven` axis counts whose only `test` proof
     // resolves to other files than their grounded code.
     let (mut proof_adv, adjudicated_proof) = split_advisories_for_adjudication(
         snapshot,
@@ -521,7 +521,7 @@ fn render(
     // Advisory code-clone detection: cross-file normalized structural
     // duplication via SymbolFact.shape_hash, with body_hash fallback for
     // pre-upgrade facts. Ignore-aware (reuse the coverage-exclusion globs),
-    // size-floored, never gates green.
+    // size-floored. It does not block Production-ready, but it is excellence debt.
     let clone_patterns: Vec<glob::Pattern> = ignores
         .iter()
         .filter_map(|i| glob::Pattern::new(&i.pattern).ok())

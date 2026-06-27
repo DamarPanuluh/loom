@@ -1,6 +1,8 @@
 use super::SqliteGraphStore;
 use super::*;
 
+const SQL_TEXT_DEFAULT_EMPTY: &str = "TEXT NOT NULL DEFAULT ''";
+
 fn create_table_batch() -> &'static str {
     r#"
 CREATE TABLE IF NOT EXISTS meta(
@@ -341,35 +343,27 @@ impl SqliteGraphStore {
     fn ensure_taxonomy_columns(&self) -> Result<()> {
         for (table, column, definition) in [
             ("relates_to", "kinds", "TEXT NOT NULL DEFAULT '[]'"),
-            ("relates_to", "stable", "TEXT NOT NULL DEFAULT ''"),
-            ("quality_rule", "kind", "TEXT NOT NULL DEFAULT ''"),
-            ("intent", "criterion", "TEXT NOT NULL DEFAULT ''"),
-            ("delegation", "export_hash", "TEXT NOT NULL DEFAULT ''"),
+            ("relates_to", "stable", SQL_TEXT_DEFAULT_EMPTY),
+            ("quality_rule", "kind", SQL_TEXT_DEFAULT_EMPTY),
+            ("intent", "criterion", SQL_TEXT_DEFAULT_EMPTY),
+            ("delegation", "export_hash", SQL_TEXT_DEFAULT_EMPTY),
             ("delegation", "seam_intents", "TEXT NOT NULL DEFAULT '[]'"),
-            (
-                "validation",
-                "last_executed_run",
-                "TEXT NOT NULL DEFAULT ''",
-            ),
+            ("validation", "last_executed_run", SQL_TEXT_DEFAULT_EMPTY),
             (
                 "validation",
                 "discrimination_status",
-                "TEXT NOT NULL DEFAULT ''",
+                SQL_TEXT_DEFAULT_EMPTY,
             ),
-            (
-                "quality_rule",
-                "evidence_examples",
-                "TEXT NOT NULL DEFAULT ''",
-            ),
+            ("quality_rule", "evidence_examples", SQL_TEXT_DEFAULT_EMPTY),
             (
                 "quality_rule",
                 "signal_expectations",
                 "TEXT NOT NULL DEFAULT '[]'",
             ),
             ("quality_rule", "applies_when", "TEXT NOT NULL DEFAULT '{}'"),
-            ("governs", "covers_descendants", "TEXT NOT NULL DEFAULT ''"),
-            ("codefile", "extractor_grade", "TEXT NOT NULL DEFAULT ''"),
-            ("note", "resolution", "TEXT NOT NULL DEFAULT ''"),
+            ("governs", "covers_descendants", SQL_TEXT_DEFAULT_EMPTY),
+            ("codefile", "extractor_grade", SQL_TEXT_DEFAULT_EMPTY),
+            ("note", "resolution", SQL_TEXT_DEFAULT_EMPTY),
         ] {
             if !table_has_column(&self.conn, table, column)? {
                 let table = checked_sql_ident(table)?;
@@ -382,12 +376,14 @@ impl SqliteGraphStore {
         }
         Ok(())
     }
+}
 
+impl SqliteGraphStore {
     fn ensure_meta_columns(&self) -> Result<()> {
         for (column, definition) in [
-            ("created_at", "TEXT NOT NULL DEFAULT ''"),
-            ("last_synced", "TEXT NOT NULL DEFAULT ''"),
-            ("transition_cap", "TEXT NOT NULL DEFAULT ''"),
+            ("created_at", SQL_TEXT_DEFAULT_EMPTY),
+            ("last_synced", SQL_TEXT_DEFAULT_EMPTY),
+            ("transition_cap", SQL_TEXT_DEFAULT_EMPTY),
             ("autonomy", "TEXT NOT NULL DEFAULT 'guided'"),
         ] {
             if !table_has_column(&self.conn, "meta", column)? {
@@ -400,7 +396,9 @@ impl SqliteGraphStore {
         }
         Ok(())
     }
+}
 
+impl SqliteGraphStore {
     /// v10 widened the intent.lifecycle CHECK to admit `to_be_removed`, but a
     /// CHECK constraint cannot be ALTERed in place. `CREATE TABLE IF NOT EXISTS`
     /// is a no-op on an existing table, so a pre-v10 graph would keep the old
@@ -468,7 +466,9 @@ PRAGMA foreign_keys=ON;
         )?;
         Ok(())
     }
+}
 
+impl SqliteGraphStore {
     /// v12 widened the governs.inspection_status CHECK to admit `partial`
     /// (measured but not fully discharged). A CHECK constraint cannot be
     /// ALTERed in place, and `CREATE TABLE IF NOT EXISTS` is a no-op on an
@@ -525,7 +525,9 @@ PRAGMA foreign_keys=ON;
         )?;
         Ok(())
     }
+}
 
+impl SqliteGraphStore {
     fn ensure_inbox_kind_vocabulary(&self) -> Result<()> {
         let create_sql: Option<String> = self
             .conn

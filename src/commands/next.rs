@@ -96,15 +96,15 @@ fn phase_default_mode(phase: &str) -> &'static str {
 }
 
 /// Map the maturity ladder's FOCUS lane (+ compass phase fallback) to the bare-
-/// `loom next` mode. A gating focus lane routes to its own queue; `None` — every
-/// gating rung cleared — routes to the post-green TDD `refactor` step (the
-/// non-gating advisory queue), so green never reads as "nothing left to look
-/// at"; any other focus lane (e.g. export/triage on Production-ready) falls back
-/// to the phase default. The caller's dead-end guard then refines this, EXCEPT
-/// for `refactor`, which is the deliberate post-green terminus.
+/// `loom next` mode. A certification focus lane routes to its own queue; the
+/// Excellent rung uses `refactor`, so bare `loom next` works on the debt that
+/// blocks the best-codebase certificate instead of treating it as optional
+/// post-green cleanup. `None` means every rung, including Excellent, is cleared.
 fn focus_default_mode(focus_lane: Option<&str>, phase: &str) -> String {
     match focus_lane {
-        Some(l @ ("build" | "fix" | "validate" | "quality" | "discovery")) => l.to_string(),
+        Some(l @ ("build" | "fix" | "validate" | "quality" | "discovery" | "refactor")) => {
+            l.to_string()
+        }
         None => "refactor".to_string(),
         _ => phase_default_mode(phase).to_string(),
     }
@@ -240,14 +240,14 @@ pub fn run(
             // back to the cascade default. Fixes the cascade under-routing (e.g.
             // phase=complete while the ladder focus is Realized · validate).
             let decision_notes = store.notes_by_kind("decision")?;
-            let (open_smells, advisory_count) = if matches!(gs.phase.as_str(), "audit" | "complete")
-            {
-                let report = store.smell_report(&snap)?;
-                let advisory_count = report.advisory.len();
-                (report.open, advisory_count)
-            } else {
-                (Vec::new(), 0)
-            };
+            let (open_smells, excellence_debt_count) =
+                if matches!(gs.phase.as_str(), "audit" | "complete") {
+                    let report = store.smell_report(&snap)?;
+                    let excellence_debt_count = report.advisory.len() + report.debt.len();
+                    (report.open, excellence_debt_count)
+                } else {
+                    (Vec::new(), 0)
+                };
             let inbox_items = store.list_inbox_items(None, None)?;
             let inbox_untriaged = inbox_items.iter().filter(|i| i.status == "new").count();
             let export_stale = store.committed_export_stale(&cwd)? == Some(true);
@@ -258,7 +258,7 @@ pub fn run(
                 &decision_notes,
                 &inbox_items,
                 &open_smells,
-                advisory_count,
+                excellence_debt_count,
                 inbox_untriaged,
                 export_stale,
             )
@@ -271,9 +271,10 @@ pub fn run(
             // "nothing to <lane>", fall through to the highest-priority lane that
             // actually has drainable work; the compass's next_action footer still
             // names the real blocker. The focus mode survives only when EVERY lane
-            // is empty (the honest terminus). The post-green refactor route is
-            // EXEMPT: it is the deliberate terminus once gating is done, so it must
-            // not be overridden by OPTIONAL discovery work (unexplored pairs).
+            // is empty (the honest terminus). The refactor route is EXEMPT: it
+            // is either the Excellent-rung lane or the deliberate terminus once
+            // every certification rung is done, so it must not be overridden by
+            // OPTIONAL discovery work (unexplored pairs).
             let mode = if mode == "refactor" || lane_has_work(&snap, &decision_notes, &mode)? {
                 mode
             } else {
@@ -368,7 +369,7 @@ fn run_with_repo(
              quality = earn GOVERNS green (quality) · review = re-inspect uncertain or high-risk verdicts \
              (the tiered double-check; resolves by re-recording with confidence ≥ 0.7 or overturning) · \
              prove = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional) · \
-             refactor = address real-code ADVISORY findings (builder; size + open code clones — never gates green, the post-green TDD refactor step) · \
+             refactor = address excellence-debt findings (builder; size + open code clones + proof-locality — gates the Excellent certificate, not Production-ready) · \
              wiki = author code-primary wiki prose (the comprehension axis; drains prose-empty, stale, and fabricated-link findings).",
             mode
         );
@@ -522,11 +523,18 @@ mod tests {
     #[test]
     fn focus_default_mode_routes_gating_lanes_refactor_and_fallback() {
         // A gating focus lane routes to its own queue.
-        for lane in ["build", "fix", "validate", "quality", "discovery"] {
+        for lane in [
+            "build",
+            "fix",
+            "validate",
+            "quality",
+            "discovery",
+            "refactor",
+        ] {
             assert_eq!(focus_default_mode(Some(lane), "complete"), lane);
         }
-        // Every gating rung cleared (focus None) → the post-green refactor step,
-        // regardless of the compass phase.
+        // Every rung cleared (focus None) → refactor as the honest empty/default
+        // terminus; the refactor lane itself gates Excellent when it is focused.
         assert_eq!(focus_default_mode(None, "complete"), "refactor");
         assert_eq!(focus_default_mode(None, "discovery"), "refactor");
         // A non-queue focus lane (export/triage on Production-ready) falls back

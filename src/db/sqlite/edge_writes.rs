@@ -56,6 +56,9 @@ impl SqliteGraphStore {
         }
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn delete_implements(&self, intent_id: &str, codefile_id: &str) -> Result<bool> {
         let changed = self.write_one(
             "DELETE FROM implements WHERE intent_id = ?1 AND codefile_id = ?2",
@@ -63,6 +66,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_hierarchy(
         &self,
         parent_id: &str,
@@ -132,6 +138,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     /// Set the relationship-kind multiset on a RELATES_TO edge (the taxonomy
     /// program's `populate kinds` backfill + judgment assignment write here).
     pub fn update_relates_to_kinds(
@@ -146,6 +155,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_or_create_relates_to(
         &self,
         from_id: &str,
@@ -154,6 +166,9 @@ impl SqliteGraphStore {
     ) -> Result<RelatesTo> {
         super::get_or_create_relates_to_conn(&self.conn, from_id, to_id, now)
     }
+}
+
+impl SqliteGraphStore {
     /// Set (or clear) the `stable` low-churn flag on a RELATES_TO edge. Returns
     /// false when no such edge exists. A stable edge is exempt from `loom sync`
     /// code-change reverification (see sync.rs).
@@ -172,6 +187,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn upsert_relates_to_ground(
         &mut self,
@@ -209,6 +227,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(edge)
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn upsert_relates_to_issue(
         &mut self,
@@ -246,6 +267,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(edge)
     }
+}
+
+impl SqliteGraphStore {
     pub fn upsert_relates_to_independent(
         &mut self,
         from_id: &str,
@@ -272,6 +296,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(edge)
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn update_relates_to_ground(
         &mut self,
@@ -311,6 +338,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn update_relates_to_issue(
         &mut self,
@@ -350,6 +380,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_relates_to_independent(
         &mut self,
         from_id: &str,
@@ -378,6 +411,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn flag_relates_to_needs_reverification(
         &mut self,
         edge: &RelatesTo,
@@ -401,6 +437,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_validates(
         &self,
         validation_id: &str,
@@ -444,6 +483,9 @@ impl SqliteGraphStore {
         }
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_call(
         &self,
         validation_id: &str,
@@ -472,6 +514,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn delete_calls_for_validation(&self, validation_id: &str) -> Result<usize> {
         let deleted = self.write_one(
             "DELETE FROM calls WHERE validation_id = ?1",
@@ -479,6 +524,9 @@ impl SqliteGraphStore {
         )?;
         Ok(deleted)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_or_create_serves(
         &self,
         persona_id: &str,
@@ -507,6 +555,9 @@ impl SqliteGraphStore {
             ),
         }
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn update_serves_ground(
         &mut self,
@@ -553,6 +604,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn update_serves_issue(
         &mut self,
@@ -599,6 +653,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_serves_independent(
         &mut self,
         persona_id: &str,
@@ -632,6 +689,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_or_create_journeys(
         &self,
         persona_id: &str,
@@ -657,6 +717,9 @@ impl SqliteGraphStore {
             ),
         }
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_targets(&self, hypothesis_id: &str, intent_id: &str, now: &str) -> Result<()> {
         let changed = self.write_one(
             "INSERT OR IGNORE INTO targets(
@@ -682,6 +745,9 @@ impl SqliteGraphStore {
         }
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn set_targets_status_for_hypothesis(
         &mut self,
@@ -728,6 +794,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(changed)
     }
+}
+
+impl SqliteGraphStore {
     pub fn flag_targets_needs_reverification(
         &mut self,
         edge: &TargetsEdge,
@@ -766,6 +835,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     /// Reconcile settled hypothesis lineage: a confirmed hypothesis's TARGETS are
     /// historical (prove is closed, the live proof is the spawned intents'
     /// validations), so any left `needs_reverification` — e.g. staled before sync
@@ -781,6 +853,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(n)
     }
+}
+
+impl SqliteGraphStore {
     pub fn flag_serves_needs_reverification(
         &mut self,
         edge: &ServesEdge,
@@ -804,6 +879,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn flag_implements_needs_reverification(
         &self,
         intent_id: &str,
@@ -817,6 +895,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_governs(
         &self,
         rule_id: &str,
@@ -848,6 +929,9 @@ impl SqliteGraphStore {
         }
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn update_governs_verdict(
         &mut self,
@@ -895,6 +979,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn upsert_governs_verdict(
         &mut self,
@@ -968,6 +1055,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn flag_governs_needs_reverification(
         &mut self,
         edge: &Governs,

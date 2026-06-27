@@ -10,6 +10,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn add_source_ref(
         &mut self,
         id: &str,
@@ -35,6 +38,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(Some(refs))
     }
+}
+
+impl SqliteGraphStore {
     pub fn remove_source_ref(
         &mut self,
         id: &str,
@@ -58,6 +64,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(Some(true))
     }
+}
+
+impl SqliteGraphStore {
     pub fn initialize(
         &self,
         schema_version: &str,
@@ -75,6 +84,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_identity(&self, graph_id: &str, graph_name: &str, custody: &str) -> Result<()> {
         self.write_one(
             "UPDATE meta SET graph_id = ?1, graph_name = ?2, custody = ?3 WHERE id = 1",
@@ -82,6 +94,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_intent(&self, intent: &Intent) -> Result<()> {
         self.write_one(
             "INSERT INTO intent(
@@ -110,6 +125,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn confirm_intent(
         &mut self,
         id: &str,
@@ -154,6 +172,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_intent_lifecycle(
         &mut self,
         id: &str,
@@ -173,6 +194,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_intent_visibility(
         &self,
         id: &str,
@@ -190,6 +214,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_intent_layer(&self, id: &str, layer: &str, updated_at: &str) -> Result<bool> {
         let changed = self.write_one(
             "UPDATE intent SET layer = ?1, updated_at = ?2 WHERE id = ?3",
@@ -197,6 +224,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     /// Set the intent's first-class falsifiable criterion (v10). The caller
     /// records the prior value in a decision note (the version chain).
     pub fn set_intent_criterion(
@@ -211,6 +241,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_intent_boundary(&self, id: &str, boundary: &str, updated_at: &str) -> Result<bool> {
         if !matches!(boundary, "" | "inbound" | "outbound") {
             anyhow::bail!("Invalid boundary '{boundary}'. Valid: inbound | outbound | \"\".");
@@ -221,6 +254,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     /// Set the intent's product/business domain facet (auth, billing, …). Metadata
     /// only — domains are not the architecture layer order, so this never ripples.
     pub fn set_intent_domain(&self, id: &str, domain: &str, updated_at: &str) -> Result<bool> {
@@ -230,6 +266,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     /// Set the intent's behavioural aspect (happy/sad/fallback/edge_case, or "" to
     /// clear). Metadata only — the happy_path_only audit reads it but no edge ripples.
     pub fn set_intent_aspect(&self, id: &str, aspect: &str, updated_at: &str) -> Result<bool> {
@@ -244,6 +283,9 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_intent_meaning(
         &self,
         id: &str,
@@ -282,6 +324,9 @@ impl SqliteGraphStore {
         }
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn ripple_intent_redefinition(
         &mut self,
         intent_id: &str,
@@ -390,6 +435,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(ripple)
     }
+}
+
+impl SqliteGraphStore {
     pub fn retire_intent(
         &mut self,
         id: &str,
@@ -519,6 +567,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn delete_intent(&mut self, id: &str) -> Result<bool> {
         let exists = self.get_intent(id)?.is_some();
         if !exists {
@@ -531,6 +582,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_ignore(&self, ignore: &Ignore) -> Result<()> {
         self.write_one(
             "INSERT INTO ignore_rule(id, pattern, reason, author, created_at)
@@ -545,6 +599,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_delegation(&self, delegation: &Delegation) -> Result<()> {
         self.write_one(
             "INSERT INTO delegation(id, pattern, target, author, created_at, export_hash, seam_intents)
@@ -561,6 +618,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     /// Add a parent seam intent to a delegation (idempotent, sorted, deduped).
     pub fn add_delegation_seam(&mut self, delegation_id: &str, intent_id: &str) -> Result<bool> {
         let mut delegation = self.resolve_delegation(delegation_id)?;
@@ -581,6 +641,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     /// Persist the observed child-export content hash (the watched baseline).
     pub fn set_delegation_export_hash(&mut self, delegation_id: &str, hash: &str) -> Result<()> {
         let tx = self.write_tx()?;
@@ -591,6 +654,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn delete_delegation(&self, pattern: &str) -> Result<Option<Delegation>> {
         let existing = self
             .list_delegations()?
@@ -605,6 +671,9 @@ impl SqliteGraphStore {
         )?;
         Ok(existing)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_codefile(&self, codefile: &CodeFile) -> Result<()> {
         self.write_one(
             "INSERT INTO codefile(id, path, language, last_modified, imports, symbols, symbol_facts, content_hash, extractor_grade)
@@ -623,6 +692,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_codefile_extractor_grade(&self, id: &str, grade: &str) -> Result<()> {
         self.write_one(
             "UPDATE codefile SET extractor_grade = ?1 WHERE id = ?2",
@@ -630,6 +702,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn delete_codefile(&mut self, key: &str) -> Result<Option<CodeFile>> {
         let Some(codefile) = self
             .list_codefiles()?
@@ -644,6 +719,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(Some(codefile))
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_codefile_hash(&self, id: &str, hash: &str) -> Result<()> {
         self.write_one(
             "UPDATE codefile SET content_hash = ?1 WHERE id = ?2",
@@ -651,6 +729,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_codefile_hash_and_mtime(&self, id: &str, hash: &str, mtime: &str) -> Result<()> {
         self.write_one(
             "UPDATE codefile SET content_hash = ?1, last_modified = ?2 WHERE id = ?3",
@@ -658,6 +739,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_codefile_imports(&self, id: &str, imports: &[String]) -> Result<()> {
         self.write_one(
             "UPDATE codefile SET imports = ?1 WHERE id = ?2",
@@ -665,6 +749,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_codefile_symbols(&self, id: &str, symbols: &[String]) -> Result<()> {
         self.write_one(
             "UPDATE codefile SET symbols = ?1 WHERE id = ?2",
@@ -672,6 +759,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_codefile_symbol_facts(&self, id: &str, facts: &[SymbolFact]) -> Result<()> {
         self.write_one(
             "UPDATE codefile SET symbol_facts = ?1 WHERE id = ?2",
@@ -679,6 +769,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     /// Set the graph's autonomy mode (`autonomous` | `guided`). A behavioral
     /// tunable like `transition_cap`, not graph identity — so it lives in its own
     /// setter rather than threading through `initialize`/`set_identity`.
@@ -689,6 +782,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_transition_cap(&self, cap: usize) -> Result<()> {
         self.write_one(
             "UPDATE meta SET transition_cap = ?1 WHERE id = 1",
@@ -696,6 +792,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_layer_order(&self, order: &[String]) -> Result<Vec<String>> {
         let previous = self.layer_order()?;
         let order_json = serde_json::to_string(order)?;
@@ -705,6 +804,9 @@ impl SqliteGraphStore {
         )?;
         Ok(previous)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_hypothesis(&self, hypothesis: &Hypothesis) -> Result<()> {
         self.write_one(
             "INSERT INTO hypothesis(
@@ -728,6 +830,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_hypothesis_status(
         &mut self,
         hypothesis_id: &str,
@@ -755,6 +860,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_hypothesis_verdict(
         &mut self,
         hypothesis_id: &str,
@@ -789,6 +897,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_persona(&self, persona: &Persona) -> Result<()> {
         self.write_one(
             "INSERT INTO persona(id, name, description, author, created_at, updated_at)
@@ -804,6 +915,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_inbox_item(&self, item: &InboxItem) -> Result<()> {
         self.write_one(
             "INSERT INTO inbox_item(
@@ -832,6 +946,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_inbox_item(&self, item: &InboxItem) -> Result<()> {
         self.write_one(
             "UPDATE inbox_item
@@ -870,6 +987,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn get_or_create_interface_surface(
         &self,
         surface_kind: &str,
@@ -915,6 +1035,9 @@ impl SqliteGraphStore {
             )
             .map_err(Into::into)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_vocab_term(&self, term: &VocabTerm) -> Result<()> {
         self.write_one(
             "INSERT INTO vocab_term(id, name, description, author, created_at)
@@ -929,6 +1052,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn merge_vocab_terms(&mut self, from: &str, to: &str, now: &str) -> Result<usize> {
         let tx = self.write_tx()?;
         let from_exists: bool =
@@ -971,6 +1097,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(retagged)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_validation(&self, validation: &Validation) -> Result<()> {
         self.write_one(
             "INSERT INTO validation(id, name, description, validation_type, command, last_run, last_result, last_executed_run, discrimination_status)
@@ -989,6 +1118,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     #[allow(clippy::too_many_arguments)]
     pub fn mark_validation_result(
         &mut self,
@@ -1061,6 +1193,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok((validation.id, intents_updated as usize))
     }
+}
+
+impl SqliteGraphStore {
     pub fn update_validation_definition(
         &mut self,
         key: &str,
@@ -1099,6 +1234,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok((validation.id, command_changed, reset_edges))
     }
+}
+
+impl SqliteGraphStore {
     /// Delete an InterfaceSurface (CALLS edges cascade via FK). The escape hatch
     /// the `surface_without_calls` gap remedy points at — previously the remedy
     /// ("remove the stale interface surface") was unreachable through loom.
@@ -1112,6 +1250,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     /// Delete a Persona (SERVES + JOURNEYS edges cascade via FK).
     pub fn delete_persona(&mut self, id: &str) -> Result<bool> {
         let tx = self.write_tx()?;
@@ -1121,6 +1262,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(changed > 0)
     }
+}
+
+impl SqliteGraphStore {
     pub fn delete_validation(&mut self, key: &str) -> Result<String> {
         let validation = self.resolve_validation(key)?;
         let tx = self.write_tx()?;
@@ -1132,6 +1276,9 @@ impl SqliteGraphStore {
         tx.commit()?;
         Ok(validation.id)
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_rule(&self, rule: &QualityRule) -> Result<()> {
         self.write_one(
             "INSERT OR REPLACE INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort, kind,
@@ -1152,6 +1299,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn insert_note(&self, note: &Note) -> Result<()> {
         self.write_one(
             "INSERT INTO note(id, kind, text, author, target_kind, target_id, created_at, audience, resolution)
@@ -1170,7 +1320,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
 
+impl SqliteGraphStore {
     /// Close an open `todo` note with a reason (the resolution lifecycle). Returns
     /// the note's kind+text for the caller's confirmation, or None if no such id.
     /// loom can't auto-clear a free-form todo, so closing is an explicit, conscious
@@ -1197,11 +1349,17 @@ impl SqliteGraphStore {
         )?;
         Ok(Some((kind, text)))
     }
+}
+
+impl SqliteGraphStore {
     pub fn delete_note_by_id(&self, note_id: &str) -> Result<()> {
         self.conn
             .execute("DELETE FROM note WHERE id = ?1", params![note_id])?;
         Ok(())
     }
+}
+
+impl SqliteGraphStore {
     pub fn invalidate_validation(&self, validation_id: &str) -> Result<bool> {
         let last_result: Option<String> = self
             .conn
@@ -1220,6 +1378,9 @@ impl SqliteGraphStore {
         self.write_one(SQL_RESET_VALIDATION, params![validation_id])?;
         Ok(true)
     }
+}
+
+impl SqliteGraphStore {
     pub fn set_last_synced(&self, now: &str) -> Result<()> {
         self.write_one(
             "UPDATE meta SET last_synced = ?1 WHERE id = 1",
@@ -1227,7 +1388,9 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+}
 
+impl SqliteGraphStore {
     /// SECURITY: after an import, neutralize unvetted command-carrying proofs so a
     /// bulk `loom validate --all` cannot SILENTLY execute shell commands that
     /// arrived in a (possibly untrusted) imported graph — the supply-chain RCE

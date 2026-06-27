@@ -1,6 +1,6 @@
 //! `loom complete` — the MATURITY-LADDER view with comprehensiveness detail.
 //!
-//! Renders loom's single ordinal "done" (the rung-vector + focus) and, beneath
+//! Renders loom's certification vector (the rung-vector + focus) and, beneath
 //! it, the five comprehensiveness dimensions that feed the rungs
 //! (Seeded/Proven/Hardened). The crux it surfaces everywhere: RECORD ≠ DISCHARGE.
 //! `--teach` serves the canonical rubric the LLM instantiates per repo. The old
@@ -32,10 +32,11 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
     let decision_notes = store.notes_by_kind("decision")?;
 
     // Open smells are meaningful only at the audit gate (same rule as status).
-    let (open_smells, advisory_count) = if matches!(gs.phase.as_str(), "audit" | "complete") {
+    let (open_smells, excellence_debt_count) = if matches!(gs.phase.as_str(), "audit" | "complete")
+    {
         let report = store.smell_report(&snapshot)?;
-        let advisory_count = report.advisory.len();
-        (report.open, advisory_count)
+        let excellence_debt_count = report.advisory.len() + report.debt.len();
+        (report.open, excellence_debt_count)
     } else {
         (Vec::new(), 0)
     };
@@ -50,7 +51,7 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
         &decision_notes,
         &inbox,
         &open_smells,
-        advisory_count,
+        excellence_debt_count,
         inbox_untriaged,
         export_stale,
     );
@@ -95,8 +96,8 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
     let name = root.file_name().and_then(|n| n.to_str()).unwrap_or("graph");
     println!("── loom complete: {name} ─────────────────────────────────────────────");
 
-    // The ladder — loom's single ordinal "done" (a rung-vector + focus).
-    println!("  MATURITY LADDER — the single ordinal \"done\" (focus = the lowest unmet rung)");
+    // The ladder — loom's certification vector (a rung-vector + focus).
+    println!("  MATURITY LADDER — certification vector (focus = the lowest unmet rung)");
     println!("    {}", b.ladder.vector_line());
     println!("    → {}", b.ladder.focus_summary());
     println!();

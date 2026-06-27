@@ -22,6 +22,22 @@ struct AdvisoryCounts {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+struct CertificationRollup {
+    /// Default user-facing certification. Loom's default policy is now
+    /// excellence-oriented: a production-ready-but-messy codebase is yellow, not
+    /// green. Consumers that only need deploy fitness can read `production`.
+    overall: String,
+    default_profile: String,
+    map_integrity: String,
+    behavior: String,
+    quality: String,
+    production: String,
+    excellence: String,
+    excellence_debt: usize,
+    note: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
 struct AuditPulse {
     computed: bool,
     /// `None` when the audit scan was deferred (`computed: false`) — serialized
@@ -207,12 +223,12 @@ pub fn run_with_db(
     let advisories = advisory_counts(root, &snapshot, &ignores, &decision_notes);
     // Open smells are computed once at the audit gate (phase audit|complete) and
     // reused for BOTH the audit pulse and the fully_proven badge's proof-locality.
-    let (open_smells, advisory_count) = if should_compute_audit_pulse(&gs) {
+    let (open_smells, excellence_debt_count) = if should_compute_audit_pulse(&gs) {
         let report = db.smell_report(&snapshot)?;
-        let advisory_count = report.advisory.len();
-        (report.open, advisory_count)
+        let excellence_debt_count = report.advisory.len() + report.debt.len() + advisories.total;
+        (report.open, excellence_debt_count)
     } else {
-        (Vec::new(), 0)
+        (Vec::new(), advisories.total)
     };
     let audit = if should_compute_audit_pulse(&gs) {
         audit_pulse(open_smells.clone())
@@ -243,7 +259,7 @@ pub fn run_with_db(
     // audit gate), so a red graph can't hide files-on-disk the graph ignores.
     let disk = disk_pulse(&snapshot, db, root)?;
 
-    // The maturity ladder — loom's single ordinal "done". Rolled up from the
+    // The maturity ladder — loom's certification vector. Rolled up from the
     // gates above (vertical spine, comprehensiveness ledgers, and the former
     // fully_proven gate set), it REPLACES the scattered badges. The assembly is
     // shared verbatim with `loom complete`, so the two reads cannot drift.
@@ -255,12 +271,14 @@ pub fn run_with_db(
         &decision_notes,
         &inbox_items,
         &open_smells,
-        advisory_count,
+        excellence_debt_count,
         intake.untriaged.max(0) as usize,
         export_freshness == "stale",
     );
     let source_corpus = ladder_bundle.source_corpus.clone();
     let ladder = ladder_bundle.ladder;
+    let certification =
+        certification_rollup(&ladder, &gs, &disk, export_freshness, excellence_debt_count);
     // Normative blind spot: coded intents not covered by any inspected GOVERNS
     // verdict — neither directly nor via an ancestor with covers_descendants.
     // Only alarms when rules exist — an empty normative plane is routed by the
@@ -328,10 +346,76 @@ pub fn run_with_db(
         export_freshness,
         &disk,
         &ladder,
+        &certification,
         &source_corpus,
         unmeasured_intents,
         printer,
     )
+}
+
+fn rung_status(ladder: &MaturityLadder, name: &str) -> Option<crate::db::queries::RungStatus> {
+    ladder
+        .rungs
+        .iter()
+        .find(|r| r.name == name)
+        .map(|r| r.status)
+}
+
+fn status_word(ok: bool) -> String {
+    if ok { "green" } else { "red" }.to_string()
+}
+
+fn certification_rollup(
+    ladder: &MaturityLadder,
+    gs: &GraphState,
+    disk: &DiskPulse,
+    export_freshness: &str,
+    excellence_debt: usize,
+) -> CertificationRollup {
+    let seeded_ok = rung_status(ladder, "Seeded").is_some_and(|s| s.cleared());
+    let realized_ok = rung_status(ladder, "Realized").is_some_and(|s| s.cleared());
+    let proven_ok = rung_status(ladder, "Proven").is_some_and(|s| s.cleared());
+    let hardened_ok = rung_status(ladder, "Hardened").is_some_and(|s| s.cleared());
+    let production_ok = rung_status(ladder, "Production-ready").is_some_and(|s| s.cleared());
+    let excellent_ok = rung_status(ladder, "Excellent").is_some_and(|s| s.cleared());
+
+    let map_ok = seeded_ok
+        && gs.vertically_complete
+        && gs.horizontally_explored
+        && disk.total == 0
+        && export_freshness != "stale";
+    let behavior_ok = realized_ok && proven_ok;
+    let quality_ok = hardened_ok;
+    let excellence = if excellent_ok {
+        "green"
+    } else if production_ok {
+        "yellow"
+    } else {
+        "red"
+    }
+    .to_string();
+    let note = if excellent_ok {
+        "Excellent: the map is trustworthy, production fitness is certified, and no unresolved excellence debt remains.".to_string()
+    } else if production_ok {
+        format!(
+            "Production-ready, but not Excellent: {excellence_debt} unresolved excellence debt item(s) remain. The map may be green while codebase excellence is still yellow."
+        )
+    } else {
+        "Not production-ready yet; climb the focus rung before pursuing excellence debt."
+            .to_string()
+    };
+
+    CertificationRollup {
+        overall: excellence.clone(),
+        default_profile: "excellent".to_string(),
+        map_integrity: status_word(map_ok),
+        behavior: status_word(behavior_ok),
+        quality: status_word(quality_ok),
+        production: status_word(production_ok),
+        excellence,
+        excellence_debt,
+        note,
+    }
 }
 
 fn intake_counts(db: &dyn GraphReadRepository) -> Result<IntakeCounts> {
@@ -527,7 +611,7 @@ fn one_turn_plan(gs: &GraphState, ladder: &MaturityLadder) -> OneTurnPlan {
     OneTurnPlan {
         focus_rung,
         focus_lane: lane,
-        agent_export: format!("export LOOM_AGENT=llm:{role}"),
+        agent_export: ["export LOOM_AGENT=llm:", role.as_str()].concat(),
         guide_command: format!("loom guide --role {role}"),
         agent_role: role,
         next_command,
@@ -535,13 +619,13 @@ fn one_turn_plan(gs: &GraphState, ladder: &MaturityLadder) -> OneTurnPlan {
     }
 }
 
-/// Autonomous lanes that don't gate "green" but MUST stay visible. The single
+/// Autonomous lanes that don't gate the selected certification profile but MUST stay visible. The single
 /// compass pointer names one lane; `other_lanes` covers the *required* closable
 /// queues; `horizontal ○` flags optional discovery. Review (the tiered
 /// double-check of low-confidence verdicts) and prove (hypotheses awaiting their
 /// proof) had NO compass signal at all — so a status-driven driver was blind to
 /// real autonomous work and could mistake it for human-gated or nonexistent.
-/// This surfaces them honestly: autonomous, drainable now, not required for green.
+/// This surfaces them honestly: autonomous, drainable now, not required for certification.
 #[derive(Debug, Clone, Copy)]
 struct OptionalLanes {
     review: i64,
@@ -718,6 +802,7 @@ fn render_status(
     export_freshness: &str,
     disk: &DiskPulse,
     ladder: &MaturityLadder,
+    certification: &CertificationRollup,
     source_corpus: &SourceCorpusCoverage,
     unmeasured_intents: i64,
     printer: &Printer,
@@ -738,8 +823,8 @@ fn render_status(
                     "review": optional.review,
                     "prove": optional.prove,
                     "gate": "autonomous",
-                    "required_for_green": false,
-                    "note": "Drainable now by an agent (reviewer re-checks uncertain or high-risk verdicts; prove tests hypotheses) — not human-gated, not required for green.",
+                    "required_for_certification": false,
+                    "note": "Drainable now by an agent (reviewer re-checks uncertain or high-risk verdicts; prove tests hypotheses) — not human-gated, not required for the selected certification profile.",
                 }),
             );
             obj.insert(
@@ -771,8 +856,12 @@ fn render_status(
                 "committed_export".to_string(),
                 serde_json::json!(export_freshness),
             );
-            // The maturity ladder — loom's single ordinal "done" (rung-vector).
+            // The maturity ladder — loom's certification vector (rung-vector).
             obj.insert("maturity".to_string(), serde_json::to_value(ladder)?);
+            obj.insert(
+                "certification".to_string(),
+                serde_json::to_value(certification)?,
+            );
             obj.insert(
                 "one_turn".to_string(),
                 serde_json::to_value(one_turn_plan(gs, ladder))?,
@@ -825,6 +914,7 @@ fn render_status(
             export_freshness,
             disk,
             ladder,
+            certification,
             source_corpus,
             unmeasured_intents,
             totals,
@@ -851,6 +941,7 @@ fn render_plain_status(
     export_freshness: &str,
     disk: &DiskPulse,
     ladder: &MaturityLadder,
+    certification: &CertificationRollup,
     source_corpus: &SourceCorpusCoverage,
     unmeasured_intents: i64,
     totals: CompletionTotals,
@@ -872,7 +963,21 @@ fn render_plain_status(
         }
         println!();
     }
-    // The maturity ladder — the FRAME, surfaced FIRST: the map (all rungs), the
+    println!(
+        "certification: overall {} (profile: {}) — {}",
+        certification.overall, certification.default_profile, certification.note
+    );
+    println!(
+        "  axes: map {} · behavior {} · quality {} · production {} · excellence {} (debt {})",
+        certification.map_integrity,
+        certification.behavior,
+        certification.quality,
+        certification.production,
+        certification.excellence,
+        certification.excellence_debt
+    );
+
+    // The maturity ladder — the FRAME: the map (all rungs), the
     // cursor (focus rung), the directive. A cold reader gets "where am I → what
     // to do" before the supporting detail below. Shown ALWAYS (no phase gating).
     println!("ladder: {}", ladder.vector_line());
@@ -1041,7 +1146,7 @@ fn render_plain_status(
             ));
         }
         println!(
-            "  optional autonomous: {} — an AGENT drains these (not human-gated), drainable now, not required for green: `loom next --mode review`/`--mode prove`.",
+            "  optional autonomous: {} — an AGENT drains these (not human-gated), drainable now, not required for the selected certification profile: `loom next --mode review`/`--mode prove`.",
             bits.join(" · ")
         );
     }

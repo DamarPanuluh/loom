@@ -43,7 +43,7 @@ symbols:
   - resolve_intent_with_db
 provenance:
   build.rs: f4c28cfa329bcb8a
-  src/cli.rs: 040559558947ede1
+  src/cli.rs: 8202f67574f12be8
   src/commands/batch.rs: fdeac7cb8993fabd
   src/commands/codefile.rs: 0ee513864c1cef40
   src/commands/edge.rs: bbc5a5542e3589ee
@@ -52,7 +52,7 @@ provenance:
   src/commands/import.rs: 93f197ec9bd9b116
   src/commands/init.rs: a1dc464a4c6cf3e3
   src/commands/intent.rs: ec7ad101ea150ed2
-  src/commands/mod.rs: 515a7e3b353a4c91
+  src/commands/mod.rs: 260aa6729ebe4bb9
   src/commands/note.rs: 04649ff93c77aedd
   src/commands/resolve.rs: 6e16bf8f5c8ea1d0
   src/commands/rule.rs: b18dabb7855b3e72
@@ -62,7 +62,7 @@ provenance:
   src/db/mod.rs: c0c82ec69ea7831f
   src/db/queries/intent.rs: 754f0308ba488a87
   src/db/queries/scoring.rs: a247bbc1b605ec87
-  src/db/sqlite/writes.rs: 52af6570fe6659e9
+  src/db/sqlite/writes.rs: 2612007f692f01e2
   src/main.rs: 2545218dfc241471
 ---
 
@@ -92,6 +92,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

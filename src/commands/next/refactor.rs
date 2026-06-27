@@ -2,31 +2,37 @@ use super::scoring::dispatch_line_for_lane;
 use super::*;
 
 // ---------------------------------------------------------------------------
-// Refactor mode: the TDD "refactor" step, loom-native. Serves the real-code
-// ADVISORY findings — size (`oversized_file`, `large_behavioral_symbol`) and
-// open `code_clone` groups — that are deliberately NOT in the gating `open`
-// set (hard-gating coarse judgment calls only pressures laundering them away
-// with decision notes). This lane ROUTES to them instead: bare `loom next`
-// reaches it only once every gating rung is cleared (focus_lane()==None), so
-// green never reads as "nothing left to look at". Each item carries the
-// loom-native three-way remedy (fix now / defer via `loom hypothesis add` /
-// rule deliberate via `loom note add --smell`).
+// Refactor mode: the excellence-debt lane, loom-native. Serves the real-code
+// findings — size (`oversized_file`, `large_behavioral_symbol`), metadata debt,
+// proof-locality drift, and open `code_clone` groups — that do not necessarily
+// block Production-ready but DO block the stricter Excellent certificate. Each
+// item carries the loom-native
+// three-way remedy (fix now / defer as tracked debt via `loom hypothesis add` /
+// rule deliberate via `loom note add --smell`). Accepted/deferred real debt keeps
+// Excellent yellow; only fixed, false-positive, or deliberate-design rulings clear
+// the best-codebase claim.
 //
 // STATIC by construction (snapshot-only): the git-derived advisories
 // (`cochange_coupling`, `shotgun_surgery`) stay in `loom smells` so this lane
-// keeps `loom next` git-free, fast, and deterministic — never gating green.
+// keeps `loom next` git-free, fast, and deterministic.
 // ---------------------------------------------------------------------------
 
 const REFACTOR_EMPTY_MESSAGE: &str =
-    "No advisory findings — no oversized files, large behavioral symbols, or open code clones to refactor.";
+    "No excellence-debt findings — no oversized files/symbols, metadata debt, proof-locality drift, or open code clones to refactor.";
 
-/// Combine and rank the two STATIC advisory sources into one queue: size
-/// advisories first extended with open code-clone advisories, sorted by score
+/// Combine and rank the STATIC excellence-debt sources into one queue: local
+/// debt/advisories plus proof-locality and open code-clone advisories, sorted by score
 /// (blast radius) descending with stable kind/summary tiebreaks. Pure over its
 /// inputs so the ranking is unit-testable without a store — and so the
 /// git-derived advisories simply have no path in here.
-fn rank_refactor_advisories(size_advisories: Vec<Smell>, clone_open: Vec<Smell>) -> Vec<Smell> {
-    let mut out = size_advisories;
+fn rank_refactor_advisories(
+    mut local_debt: Vec<Smell>,
+    proof_open: Vec<Smell>,
+    clone_open: Vec<Smell>,
+) -> Vec<Smell> {
+    let mut out = Vec::new();
+    out.append(&mut local_debt);
+    out.extend(proof_open);
     out.extend(clone_open);
     out.sort_by(|a, b| {
         b.score
@@ -38,15 +44,17 @@ fn rank_refactor_advisories(size_advisories: Vec<Smell>, clone_open: Vec<Smell>)
     out
 }
 
-/// The static advisory queue for the refactor lane: size advisories from the
-/// (git-free) smell report plus the OPEN code-clone advisories (deliberate and
-/// hypothesis-tracked clones are already disposed by `code_clone_dispositions`).
+/// The static excellence-debt queue for the refactor lane: local debt/advisories
+/// from the (git-free) smell report plus proof-locality and OPEN code-clone
+/// advisories (deliberate and hypothesis-tracked clones are already disposed by
+/// `code_clone_dispositions`).
 fn refactor_candidates(
     db: &dyn GraphReadRepository,
     snapshot: &QuerySnapshot,
 ) -> Result<Vec<Smell>> {
     let report = db.smell_report(snapshot)?;
-    let size_advisories = report.advisory;
+    let mut local_debt = report.advisory;
+    local_debt.extend(report.debt);
 
     let clone_patterns: Vec<glob::Pattern> = db
         .list_ignores()?
@@ -55,6 +63,11 @@ fn refactor_candidates(
         .collect();
     let decision_notes = db.notes_by_kind("decision")?;
     let hypotheses = db.list_hypotheses(None)?;
+    let (proof_open, _) = crate::commands::smells::split_advisories_for_adjudication(
+        snapshot,
+        crate::db::queries::proof_locality_suggestions(snapshot),
+        &decision_notes,
+    );
     let clone_open = crate::commands::smells::code_clone_dispositions(
         snapshot,
         crate::db::queries::clone_suggestions(snapshot, &clone_patterns),
@@ -63,7 +76,7 @@ fn refactor_candidates(
     )
     .open_advisories;
 
-    Ok(rank_refactor_advisories(size_advisories, clone_open))
+    Ok(rank_refactor_advisories(local_debt, proof_open, clone_open))
 }
 
 pub(super) fn run_refactor(
@@ -102,7 +115,8 @@ pub(super) fn run_refactor(
         printer.print_json(&inject_take_note(
             serde_json::json!({
                 "mode": "refactor",
-                "work_kind": "advisory_smell",
+                "work_kind": "excellence_debt",
+                "debt_kind": &top.kind,
                 "advisory_kind": &top.kind,
                 "priority_score": top.score,
                 "summary": &top.summary,
@@ -115,7 +129,7 @@ pub(super) fn run_refactor(
                 "effort": "high",
                 "dispatch": dispatch_line_for_lane("builder", "refactor"),
                 "next_step": &top.remedy,
-                "note": "ADVISORY — refactor findings never gate green. Resolve each by fixing now, deferring as tracked work (`loom hypothesis add` → `loom hypothesis adopt --spawned`), or ruling it deliberate (`loom note add --smell …`).",
+                "note": "EXCELLENCE DEBT — these findings gate the Excellent certificate, not Production-ready. Resolve each by fixing now, deferring as tracked work (`loom hypothesis add` → `loom hypothesis adopt --spawned`), or ruling it false-positive/deliberate-design (`loom note add --smell …`). Accepted/deferred real debt remains debt.",
                 "graph_state": pulse_json(&gs),
             }),
             take_note,
@@ -124,7 +138,7 @@ pub(super) fn run_refactor(
     }
 
     println!(
-        "── Next Refactor Item  [{}  priority={:.1}  · ADVISORY, never gates green] ──",
+        "── Next Refactor Item  [{}  priority={:.1}  · EXCELLENCE DEBT] ──",
         top.kind, top.score
     );
     println!();
@@ -190,10 +204,10 @@ pub(super) fn run_take_refactor(
     }
 
     let n = take.min(TAKE_CAP).min(candidates.len());
-    let guidance = "ADVISORY — these never gate green. Per finding, read ITS code, then pick one: \
+    let guidance = "EXCELLENCE DEBT — these gate the Excellent certificate, not Production-ready. Per finding, read ITS code, then pick one: \
         fix now (split/dedupe), DEFER as tracked work (`loom hypothesis add` the smell as the claim \
         and the collapsed/split outcome as the prediction → `loom hypothesis adopt --spawned`), or \
-        rule it deliberate (`loom note add --smell \"<id>\" --kind decision --text \"<finding-specific reason>\"`).";
+        rule it false-positive/deliberate-design (`loom note add --smell \"<id>\" --kind decision --text \"<finding-specific reason>\"`). Accepted/deferred real debt remains visible debt.";
 
     if printer.json {
         let items: Vec<serde_json::Value> = candidates
@@ -219,9 +233,7 @@ pub(super) fn run_take_refactor(
         return Ok(());
     }
 
-    println!(
-        "── Refactor: {n} of {queue_total} advisory finding(s) — ranked (never gates green) ──"
-    );
+    println!("── Refactor: {n} of {queue_total} excellence-debt finding(s) — ranked ──");
     println!();
     for s in candidates.iter().take(n) {
         println!("  [{}  score {:.1}]  {}", s.kind, s.score, s.summary);
@@ -268,7 +280,7 @@ mod tests {
             smell("large_behavioral_symbol", "big fn", 10.0),
         ];
         let clone_open = vec![smell("code_clone", "5-copy clone", 25.0)];
-        let ranked = rank_refactor_advisories(size, clone_open);
+        let ranked = rank_refactor_advisories(size, Vec::new(), clone_open);
         let kinds: Vec<&str> = ranked.iter().map(|s| s.kind.as_str()).collect();
         assert_eq!(
             kinds,
@@ -283,6 +295,7 @@ mod tests {
         // (cochange_coupling / shotgun_surgery) have no path into the queue.
         let ranked = rank_refactor_advisories(
             vec![smell("oversized_file", "f", 1.0)],
+            Vec::new(),
             vec![smell("code_clone", "c", 2.0)],
         );
         assert!(ranked
@@ -295,6 +308,6 @@ mod tests {
 
     #[test]
     fn empty_sources_yield_empty_queue() {
-        assert!(rank_refactor_advisories(Vec::new(), Vec::new()).is_empty());
+        assert!(rank_refactor_advisories(Vec::new(), Vec::new(), Vec::new()).is_empty());
     }
 }

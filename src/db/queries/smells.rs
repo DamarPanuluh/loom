@@ -353,19 +353,21 @@ pub struct SmellTeaching {
     pub done_when: String,
 }
 
-/// What the instrument actually measured: open suspicions AND the suppressed
-/// ones with their rulings. Phase/ladder gating consumes ONLY `open`; `advisory`
-/// (size/LOC flags) and `adjudicated` are surfaced by `loom smells` but gate nothing.
+/// What the instrument actually measured: open suspicions AND the surfaced debt
+/// buckets with their rulings. Hardened/Production-ready gating consumes `open`;
+/// the stricter Excellent certificate also consumes `debt` and `advisory` counts.
+/// A finding can be known without making the codebase excellent: accepted or
+/// deferred real debt remains visible until fixed, disproven, or ruled deliberate design.
 #[derive(Debug, Clone, Serialize)]
 pub struct SmellReport {
     pub open: Vec<Smell>,
     /// Dischargeable metadata-completeness debt (see DEBT_KINDS): surfaced by
-    /// `loom smells` but excluded from `open`, so it never gates the ladder — a
-    /// hard gate here would only pressure laundering it away with a ruling.
+    /// `loom smells`, excluded from Production-ready `open`, but counted by the
+    /// Excellent certificate so the detector being under-armed is not hidden.
     pub debt: Vec<Smell>,
-    /// Size/LOC flags (oversized_file, large_behavioral_symbol): ADVISORY, never
-    /// gating — a coarse signal for the LLM to inspect case-by-case. Surfaced by
-    /// `loom smells`, excluded from `open` so phase/ladder gating ignores them.
+    /// Size/LOC flags (oversized_file, large_behavioral_symbol): coarse signals
+    /// for the LLM to inspect case-by-case. Surfaced by `loom smells`, excluded
+    /// from Production-ready `open`, but counted as Excellence debt.
     pub advisory: Vec<Smell>,
     pub adjudicated: Vec<AdjudicatedSmell>,
     /// Coverage disclosure for `duplicated_responsibility`: tag collisions are
@@ -904,7 +906,8 @@ pub fn cochange_suggestions(
 /// `shotgun_surgery` suggestions — the higher-level sibling of
 /// `cochange_coupling`. Instead of serving one intent pair, it flags an intent
 /// whose owned files repeatedly co-change with MANY unrelated owned files. This
-/// is ADVISORY and git-derived: it never gates green.
+/// is git-derived excellence signal: it does not block Production-ready, but it
+/// keeps maintenance debt visible for the Excellent profile.
 pub fn shotgun_surgery_suggestions(
     snapshot: &QuerySnapshot,
     pairs: &HashMap<(String, String), usize>,

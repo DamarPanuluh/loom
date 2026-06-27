@@ -10,7 +10,7 @@ symbols:
   - run_refactor
 provenance:
   src/commands/cluster.rs: 3648c72ec7c6b3b2
-  src/commands/next/refactor.rs: 80898d6160b195c7
+  src/commands/next/refactor.rs: c85673c5ca3c63f8
 ---
 
 # priority-scored work queues
@@ -39,6 +39,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

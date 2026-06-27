@@ -1169,13 +1169,13 @@ fn sqlite_next_explicit_mode_overrides_phase_default() {
     }
 }
 
-// Refactor lane: the post-green TDD step. `loom next --mode refactor` serves the
-// static, NON-GATING advisory queue (size + open code clones). run_json panics
-// on non-zero exit, so reaching the assertions proves the lane is wired; the
-// fixture may legitimately have no advisories, so we accept either disposition
-// as long as the envelope is refactor-shaped and never claims to gate green.
+// Refactor lane: the Excellent-certification lane. `loom next --mode refactor`
+// serves the static excellence-debt queue (size + metadata/proof-locality + open
+// code clones). run_json panics on non-zero exit, so reaching the assertions
+// proves the lane is wired; the fixture may legitimately have no findings, so we
+// accept either disposition as long as the envelope is refactor-shaped.
 #[test]
-fn sqlite_next_refactor_mode_serves_advisories_without_gating() {
+fn sqlite_next_refactor_mode_serves_excellence_debt() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("next-refactor-mode");
 
@@ -4445,9 +4445,9 @@ fn sqlite_status_surfaces_optional_autonomous_lanes() {
         "review is labeled autonomous, not human-gated: {opt}"
     );
     assert_eq!(
-        opt["required_for_green"].as_bool(),
+        opt["required_for_certification"].as_bool(),
         Some(false),
-        "review is optional, not required for green: {opt}"
+        "review is optional, not required for the selected certification profile: {opt}"
     );
     let one_turn = &st["one_turn"];
     let agent_export = one_turn["agent_export"].as_str().unwrap_or("");
@@ -6806,6 +6806,7 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "alarms",
         "audit",
         "blocked_validations",
+        "certification",
         "committed_export",
         "completion",
         "failing_edges",

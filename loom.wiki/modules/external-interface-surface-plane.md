@@ -35,19 +35,19 @@ symbols:
   - sqlite_status_surfaces_populate_gap_lane
   - struct InterfaceSurface
 provenance:
-  src/cli.rs: 040559558947ede1
+  src/cli.rs: 8202f67574f12be8
   src/commands/interface.rs: ad57947fed162c99
-  src/commands/mod.rs: 515a7e3b353a4c91
-  src/commands/next.rs: 0aa0c223261f7268
+  src/commands/mod.rs: 260aa6729ebe4bb9
+  src/commands/next.rs: b399682a73710264
   src/commands/next/render.rs: 3a894db5f322fe8f
   src/commands/populate.rs: 84469207cdf39230
   src/commands/saga.rs: d6c547a8139bcf7e
-  src/commands/status.rs: a69f37ff67f2cd79
+  src/commands/status.rs: a659d4a45f0ee654
   src/db/schema.rs: 429002a41cd81880
   src/db/sqlite.rs: bbee90eb9b991b53
-  src/db/sqlite/edge_writes.rs: a5823037fd573ddb
+  src/db/sqlite/edge_writes.rs: 47fc4a616ebdd55b
   src/types.rs: d61e6e7631304228
-  tests/sqlite_regression.rs: b34990ecc26b3bc8
+  tests/sqlite_regression.rs: 96b425573366a943
 ---
 
 # external interface surface plane
@@ -76,6 +76,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 
