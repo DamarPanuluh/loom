@@ -15,6 +15,7 @@ const CORE_RULES: &[&str] = &[
     "Batch by neighborhood: `loom cluster <intent>` lists every unresolved edge on one node — work those while context is loaded.",
     "`→ Next:` is DIRECTIVE (just do it); `→ Recommended:` is DISCRETIONARY (your call — override when you hold priorities the graph can't see).",
     "Evidence and criteria must be substantive. The write gate is SYNTACTIC — it rejects empty / too-short / obvious-placeholder values (TODO, n/a, xxxx, one word repeated), NOT a grammatical-but-content-free criterion ('they are related yes indeed'); judging whether a criterion is truly FALSIFIABLE is the review lane's job (a <0.7 confidence routes to `loom next --mode review`). doctor audits provenance + vacuity, not semantic substance.",
+    "Graph prose is plain text, not Markdown: in criteria, evidence, notes, reasons, text, and why fields, do not use backticks. Name commands and symbols in words; use locator fields for exact code anchors.",
     "CLOSE OUT: `loom next --all` → `loom export` → `loom export --check`.",
 ];
 
@@ -104,6 +105,7 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
      &[
         "THE SOCRATIC LOOP is the skill; everything else is mechanical. Per edge: read both intents → form a hypothesis (\"I expect the code to show X\") → read the ACTUAL code → record exactly ONE verdict. NEVER record a verdict you didn't check — no code read, no verdict.",
         "VERDICTS: `loom edge explore <a> <b> ground --criterion … --confidence <honest>` (it holds — the criterion IS the assertion, so a ground carries no evidence field) · `… issue --criterion … --evidence …` (the code CONTRADICTS the claim — evidence is what backs the contradiction) · `… independent --notes …` (they don't interact). Independence is a REAL verdict — it gives closure at zero centrality cost. NEVER fake a relationship to look productive: when the evidence reads 'foundation / universal / not specific', the verdict is INDEPENDENT, not passing@0.6.",
+        "PLAIN PROSE ONLY: criteria, evidence, notes, reasons, text, and why fields are not Markdown. Do not use backticks; name commands and symbols in words and put exact anchors in locator fields.",
         "CONFIDENCE is the cross-tier channel: anything <0.7 auto-surfaces in `loom next --mode review` for a stronger pass. Record the confidence you ACTUALLY have — the review queue exists so your uncertainty is SAFE to record, not something to hide behind a fake 0.9.",
         "REVIEW sub-lane (`loom next --mode review`): re-inspect low-confidence × central verdicts. Form your OWN hypothesis FIRST, THEN read the recorded evidence, then CONFIRM or OVERTURN — never rubber-stamp.",
         "BULK: `loom next --mode discovery --take 50` groups unexplored pairs with both intents + groundings inline — read each neighborhood ONCE, apply the whole group in one `loom batch -`. `loom cluster <intent>` lists every unresolved edge on one node.",

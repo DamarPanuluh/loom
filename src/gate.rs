@@ -531,6 +531,14 @@ pub fn is_vacuous(value: &str) -> bool {
 /// `field` is the flag name (e.g. "criterion"); `purpose` finishes the sentence
 /// "it must state …" so the error teaches what a good value looks like.
 pub fn require_substantive(field: &str, value: &str, purpose: &str) -> Result<()> {
+    if value.contains('`') {
+        anyhow::bail!(
+            "--{field} must be plain prose, not Markdown/code formatting: remove backticks and \
+             name commands or symbols in words. Use structured locator fields for exact file/code anchors. \
+             Got: '{got}'.",
+            got = value.trim(),
+        );
+    }
     if is_vacuous(value) {
         anyhow::bail!(
             "--{field} must be substantive (≥{min} chars, not a placeholder): it must state {purpose}. \
@@ -1074,6 +1082,24 @@ mod tests {
         let good = "loom sync flags IMPLEMENTS edges of files whose mtime advanced";
         assert!(!is_vacuous(good));
         assert!(require_substantive("criterion", good, "what passing looks like").is_ok());
+    }
+
+    #[test]
+    fn substantive_values_reject_markdown_backticks() {
+        let good = "the loom sync command flags stale graph claims after source changes";
+        assert!(require_substantive("notes", good, "why the intents are independent").is_ok());
+
+        let err = require_substantive(
+            "notes",
+            "the `loom sync` command belongs to the freshness lane",
+            "why the intents are independent",
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            err.contains("plain prose") && err.contains("remove backticks"),
+            "error should teach plain prose instead of shell machinery: {err}"
+        );
     }
 
     #[test]

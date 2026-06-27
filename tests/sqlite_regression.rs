@@ -4,7 +4,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::{Mutex, MutexGuard};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -131,6 +131,48 @@ fn run_text_as(cwd: &Path, args: &[&str], agent: &str) -> String {
         .unwrap_or_else(|err| panic!("loom {args:?} emitted non-UTF8 stdout: {err}"))
 }
 
+fn run_with_stdin_failure_as(cwd: &Path, args: &[&str], stdin: &str, agent: &str) -> Value {
+    let mut child = Command::new(loom_bin())
+        .args(args)
+        .current_dir(cwd)
+        .env("LOOM_AGENT", agent)
+        .env_remove("LOOM_GRAPH")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|err| panic!("failed to run loom {args:?}: {err}"));
+
+    child
+        .stdin
+        .as_mut()
+        .expect("stdin pipe")
+        .write_all(stdin.as_bytes())
+        .expect("write stdin");
+
+    let output = child
+        .wait_with_output()
+        .unwrap_or_else(|err| panic!("failed waiting for loom {args:?}: {err}"));
+
+    if output.status.success() {
+        panic!(
+            "loom {:?} unexpectedly succeeded\nstdout:\n{}\nstderr:\n{}",
+            args,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    serde_json::from_slice(&output.stdout).unwrap_or_else(|err| {
+        panic!(
+            "loom {:?} emitted invalid JSON after failure: {err}\nstdout:\n{}\nstderr:\n{}",
+            args,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+    })
+}
+
 fn setup_imported_graph(prefix: &str) -> ScratchGraph {
     let graph = ScratchGraph::new(prefix);
     run_json(&graph.root, &["init", ".", "--json"]);
@@ -196,6 +238,59 @@ fn seed_unexplored_signal_pair(root: &Path, tag: &str) -> (String, String) {
         );
     }
     (names[0].clone(), names[1].clone())
+}
+
+#[test]
+fn sqlite_edge_independent_rejects_backticks_in_notes() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("plain-prose-edge");
+    let (a, b) = seed_unexplored_signal_pair(&graph.root, "plain-prose-edge");
+
+    let err = run_json_failure_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "independent",
+            "--notes",
+            "the `loom sync` command belongs to graph freshness, not this behavior boundary",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains("plain prose") && rendered.contains("remove backticks"),
+        "backtick rejection should teach plain prose: {rendered}"
+    );
+}
+
+#[test]
+fn sqlite_batch_independent_rejects_backticks_in_notes() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("plain-prose-batch");
+    let (a, b) = seed_unexplored_signal_pair(&graph.root, "plain-prose-batch");
+    let line = serde_json::json!({
+        "op": "independent",
+        "a": a,
+        "b": b,
+        "notes": "the `loom sync` command belongs to graph freshness, not this behavior boundary"
+    })
+    .to_string();
+
+    let err = run_with_stdin_failure_as(
+        &graph.root,
+        &["batch", "-", "--json"],
+        &(line + "\n"),
+        "llm:analyzer",
+    );
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains("plain prose") && rendered.contains("remove backticks"),
+        "batch backtick rejection should teach plain prose: {rendered}"
+    );
 }
 
 fn unsigned_jwt(claims: serde_json::Value) -> String {
