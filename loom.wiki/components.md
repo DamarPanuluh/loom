@@ -187,6 +187,7 @@ Intents grouped by domain, with where each is grounded in code.
 ### workflow
 
 - **adoption spawns outcome proof** — Adopting a hypothesis writes its predicted_outcome as a not_run Validation attached to the spawned intents; when the validator lane passes it, the hypothesis derives confirmed. Every adopted improvement gets checked for whether it actually delivered.  `src/commands/hypothesis.rs`, `src/commands/validation.rs`
+- **agent intake discipline (capture out-of-band findings)** — loom's driving protocol and every role charge teach the agent to capture an out-of-band finding (debt, ambiguity, an unowned gap, a scope question) as a triageable inbox lead rather than fix it silently or decide inline; the intake boundary refuses agent gap-laundering the same way the door refuses user prose-laundering  `src/commands/guide.rs`
 - **bounded tag vocabulary** — loom vocab maintains a small normalized tag registry for intent tags; write-time validation inlines the registry and drift remedies merge near-duplicate keys so discovery and smells get deliberate collisions.  `src/commands/vocab.rs`, `src/db/queries/vocab.rs`
 - **discovery queue ranks pairs by plausibility** — unexplored RELATES_TO pairs should be ranked beyond raw centrality (e.g. shared files, shared domain, co-change) so a driver is not pointed at 31 equally-scored pairs on a 10-intent graph  `src/db/queries/scoring.rs`
 - **harness orchestration affordances** — loom exposes scheduling-advice facts (work slices, conflicts, parallel-safety class, strength tier) and an orchestrator topology hat so any external harness can safely fan out subagents; loom informs and advises while the harness executes
@@ -209,6 +210,7 @@ Intents grouped by domain, with where each is grounded in code.
 
 
 <!-- loom:prose-start -->
+
 
 
 

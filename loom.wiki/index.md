@@ -12,7 +12,7 @@ title: "loom — repo wiki"
 
 ## Overview
 
-- **Intents:** 115 (system: 1, component: 23, feature: 91)
+- **Intents:** 116 (system: 1, component: 23, feature: 92)
 - **Domains:** analysis, audit, cli, concurrency, core, db, developer-experience, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
 - **Layers:** application, cli, graph, persistence, presentation, queries, runtime, test
 - **Code files mapped:** 127
@@ -47,6 +47,7 @@ is the codebase's, not the graph's.
 
 
 <!-- loom:prose-start -->
+
 
 
 

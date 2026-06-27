@@ -10,6 +10,7 @@ use crate::output::Printer;
 const CORE_RULES: &[&str] = &[
     "`loom next` is the router — it tells you the exact next command. Don't guess.",
     "`loom sync` after ANY code change. Bulk-drain: `loom next --mode fix --take 20` / `--mode quality --take 20` → `loom batch -` → `loom validate --all`.",
+    "CAPTURE THE LEAD, don't launder the gap: a finding OFF your current work item (debt, ambiguity, an unowned gap, a scope question) → `loom inbox add \"<finding>\" --source code_audit --link file:<path>` FIRST, then let triage route it. A silent fix or an in-your-head decision leaves NO trail — an out-of-scope finding with no card is laundering, the same sin as a faked verdict; the gap must become a triageable lead, not die in your context. In-scope, trivial work on your CURRENT item: just do it.",
     "The Socratic loop per edge: read both intents → hypothesize → inspect code → ONE verdict. No code read, no verdict.",
     "HONEST confidence: 0.5-and-true beats 0.9-and-guessed. <0.7 routes to review. Empty evidence = laundered claim.",
     "Batch by neighborhood: `loom cluster <intent>` lists every unresolved edge on one node — work those while context is loaded.",
@@ -583,8 +584,10 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
         .map(|l| l.action)
         .collect();
     let setup = role_setup(role);
-    let out_of_lane = "Acting outside the lane is a hard error naming the owner. \
-        Hand off via `loom note add --for <role>`; bare `llm`/`human` = solo mode (all lanes).";
+    let out_of_lane = "A finding OUTSIDE your lane is CAPTURED, never dropped or inline-decided: \
+        `loom inbox add \"<finding>\" --source code_audit --link file:<path>` (a triageable lead), \
+        or `loom note add --for <role>` for a clear handoff to a specific lane. Acting outside the \
+        lane itself is a hard error naming the owner; bare `llm`/`human` = solo mode (all lanes).";
     let skill = role_skill_name(role);
     let (description, anchor, discipline) = role_discipline(role).unwrap_or(("", "", &[]));
     let (autonomy_mode, autonomy_doc) = autonomy_guidance();
@@ -1301,6 +1304,28 @@ mod tests {
             assert!(
                 v.get(key).is_some(),
                 "guide --json is missing canonical teaching section '{key}'. Provide it in the json payload, or remove it from GUIDE_SECTIONS — the build refuses a half-landed section."
+            );
+        }
+    }
+
+    /// The intake boundary cuts both ways: loom refuses USER prose laundering at
+    /// the door, and this rule refuses AGENT gap-laundering — an out-of-band
+    /// finding must become a triageable inbox lead, never a silent inline
+    /// decision. Pinned so the doctrine can't be dropped from the driving
+    /// protocol or the role charges.
+    #[test]
+    fn capture_the_lead_is_taught_as_doctrine() {
+        let rules = serde_json::to_string(&guide_json("brownfield")["golden_rules"]).unwrap();
+        assert!(
+            rules.contains("loom inbox add") && rules.to_lowercase().contains("launder"),
+            "capture-the-lead must be a golden rule that names the inbox: {rules}"
+        );
+        // every role charge (single-sourced out_of_lane) routes a finding to a lead
+        for role in crate::db::schema::ROLES {
+            let oo = serde_json::to_string(&charge_json(role)["out_of_lane"]).unwrap();
+            assert!(
+                oo.contains("loom inbox add"),
+                "{role} charge must route an out-of-lane finding to an inbox lead: {oo}"
             );
         }
     }
