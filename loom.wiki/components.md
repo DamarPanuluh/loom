@@ -195,6 +195,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **hypothesis lifecycle commands** — loom hypothesis add/list/show/prove/adopt/reject drives the state machine with gates: claim and predicted_outcome must be substantive and falsifiable, the prover's provenance must differ from the proposer's, only a proposed hypothesis can be proven, and only a supported one adopted. Every transition is recorded as an append-only note.  `src/cli.rs`, `src/commands/hypothesis.rs`
 - **hypothesis node and TARGETS edge** — Schema v4 adds a Hypothesis node (claim, proposal, predicted_outcome, status: proposed/supported/refuted/adopted/rejected, provenance) and a TARGETS edge (Hypothesis to Intent) carrying the standard inspectable meta. Both persist through the deterministic export/import round-trip with two-phase validation, and loom doctor audits their required properties and value vocabularies.  `src/db/schema.rs`, `src/types.rs`
 - **hypothesis plane** — The pre-decision plane: improvement hypotheses that any lane can propose, an analyzer proves against current code, and a builder adopts into planned intents. Speculation stays invisible to coverage and completeness until adoption converts it into the existing lifecycle.
+- **indirect-wiring inspection discipline** — loom teaches that import analysis sees only static wiring; indirect wiring (event pub/sub, DI/registry, config-keyed dispatch, RPC/queue) shares only a string key or type and must be hunted while grounding, recorded as a manual RELATES_TO, proven by a saga, and captured as a lead when incomplete — wiring completeness is a judgment+proof axis loom cannot compute mechanically  `src/commands/guide.rs`
 - **model-neutral strength tier on work packets** — every work packet from next and slice plan carries a model-neutral capability tier (effort low mid high plus a risk facet) derived from centrality, lane effort and rule inspection effort, so a harness maps difficulty to its own model roster without loom naming a vendor model  `src/commands/next/scoring.rs`
 - **orchestrator topology hat** — loom guide --mode orchestrate serves a spawn-agnostic driving protocol: read the fact surface, dispatch disjoint slices, hand each subagent its role charge plus territory boundary, sync after code edits, then re-plan; it names no spawn mechanism and no model, states that loom workflow supersedes repo workflow docs, and keeps the orchestrator out of the gated write-lane roles  `src/commands/guide.rs`
 - **parallel-safety classification** — each slice and packet is classified safe, exclusive-slice or serial, plus human-gated and blocked, conservatively so that when loom is unsure it marks conflicting, letting a harness know which work may run concurrently  `src/commands/next/scoring.rs`
@@ -210,6 +211,7 @@ Intents grouped by domain, with where each is grounded in code.
 
 
 <!-- loom:prose-start -->
+
 
 
 
