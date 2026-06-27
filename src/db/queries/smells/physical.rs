@@ -19,7 +19,13 @@ pub(super) fn detect_physical_plane(
     smells: &mut Vec<Smell>,
     adj: &mut Vec<AdjudicatedSmell>,
 ) {
-    detect_overlapping_ownership(ctx.intents, &ctx.linked, &ctx.files_of, smells);
+    detect_overlapping_ownership(
+        ctx.intents,
+        &ctx.linked,
+        ctx.implements,
+        &ctx.files_of,
+        smells,
+    );
     detect_scattered_intent(
         ctx.intents,
         &ctx.files_of,
@@ -48,29 +54,47 @@ pub(super) fn detect_physical_plane(
 fn detect_overlapping_ownership(
     intents: &[crate::types::Intent],
     linked: &HashSet<(&str, &str)>,
+    implements: &[crate::types::Implements],
     files_of: &HashMap<&str, HashSet<&str>>,
     smells: &mut Vec<Smell>,
 ) {
+    let mut claims_by_intent: HashMap<&str, Vec<&crate::types::Implements>> = HashMap::new();
+    for im in implements {
+        // Match the active-owner filter already used by every physical-plane
+        // detector. Retired/deprecated intents can keep historical IMPLEMENTS
+        // rows, but they no longer own living code.
+        if files_of.contains_key(im.intent_id.as_str()) {
+            claims_by_intent
+                .entry(im.intent_id.as_str())
+                .or_default()
+                .push(im);
+        }
+    }
+
     for i in 0..intents.len() {
         for j in (i + 1)..intents.len() {
             let (a, b) = (&intents[i], &intents[j]);
             if linked.contains(&(a.id.as_str(), b.id.as_str())) {
                 continue;
             }
-            let (Some(fa), Some(fb)) = (files_of.get(a.id.as_str()), files_of.get(b.id.as_str()))
-            else {
+            let (Some(a_claims), Some(b_claims)) = (
+                claims_by_intent.get(a.id.as_str()),
+                claims_by_intent.get(b.id.as_str()),
+            ) else {
                 continue;
             };
-            let shared: Vec<&&str> = fa.intersection(fb).collect();
+            let shared = overlapping_claims(a_claims, b_claims);
             if !shared.is_empty() {
-                let mut names: Vec<String> = shared.iter().map(|s| s.to_string()).collect();
+                let mut names: Vec<String> = shared;
                 names.sort();
                 smells.push(Smell {
                     kind: "overlapping_ownership".into(),
-                    score: 3.0 * shared.len() as f64,
+                    score: 3.0 * names.len() as f64,
                     summary: format!(
-                        "'{}' and '{}' both claim {} file(s) but no relationship is recorded",
-                        a.name, b.name, shared.len()
+                        "'{}' and '{}' both claim {} code ownership target(s) but no relationship is recorded",
+                        a.name,
+                        b.name,
+                        names.len()
                     ),
                     evidence: format!("shared: {}", capped_join(&names, ", ")),
                     remedy: format!(
@@ -82,6 +106,36 @@ fn detect_overlapping_ownership(
             }
         }
     }
+}
+
+fn overlapping_claims(
+    a_claims: &[&crate::types::Implements],
+    b_claims: &[&crate::types::Implements],
+) -> Vec<String> {
+    let mut shared: HashSet<String> = HashSet::new();
+    for a in a_claims {
+        for b in b_claims {
+            if a.codefile_path != b.codefile_path {
+                continue;
+            }
+            let a_locator = a.locator.trim();
+            let b_locator = b.locator.trim();
+            match (a_locator.is_empty(), b_locator.is_empty()) {
+                // Whole-file ownership overlaps every claim inside the file.
+                (true, _) | (_, true) => {
+                    shared.insert(format!("{} (whole file)", a.codefile_path));
+                }
+                // Precise symbol ownership only overlaps when both intents claim
+                // the same located region. Different symbols in the same module
+                // are co-location/tangle evidence, not overlapping ownership.
+                (false, false) if a_locator == b_locator => {
+                    shared.insert(format!("{} @ {}", a.codefile_path, a_locator));
+                }
+                (false, false) => {}
+            }
+        }
+    }
+    shared.into_iter().collect()
 }
 
 /// 3. Scattered intent — one responsibility smeared across many files (threshold

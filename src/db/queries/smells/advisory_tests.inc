@@ -57,6 +57,13 @@ mod shotgun_surgery_tests {
         }
     }
 
+    fn located_imp(intent_id: &str, path: &str, locator: &str) -> Implements {
+        Implements {
+            locator: locator.into(),
+            ..imp(intent_id, path)
+        }
+    }
+
     fn rel(a: &str, b: &str) -> RelatesTo {
         RelatesTo {
             id: format!("{a}:{b}"),
@@ -138,6 +145,84 @@ mod shotgun_surgery_tests {
             overlap_deprecated, 0,
             "a deprecated co-owner must not own the file for smells: {:?}",
             deprecated.open
+        );
+    }
+
+    #[test]
+    fn distinct_located_symbols_in_one_file_are_not_overlapping_ownership() {
+        let report = compute_smells_from_parts(
+            &QuerySnapshot::from_parts(
+                vec![intent("a", "alpha config owner"), intent("b", "beta config owner")],
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                vec![
+                    located_imp("a", "src/shared.rs", "fn alpha"),
+                    located_imp("b", "src/shared.rs", "fn beta"),
+                ],
+                vec![cf("src/shared.rs")],
+                Some(Vec::new()),
+            ),
+            SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap();
+
+        let overlap = report
+            .open
+            .iter()
+            .filter(|s| s.kind == "overlapping_ownership")
+            .count();
+        assert_eq!(
+            overlap, 0,
+            "different located symbols in the same module are co-location, not ownership overlap: {:?}",
+            report.open
+        );
+    }
+
+    #[test]
+    fn same_located_symbol_in_one_file_is_overlapping_ownership() {
+        let report = compute_smells_from_parts(
+            &QuerySnapshot::from_parts(
+                vec![intent("a", "alpha config owner"), intent("b", "beta config owner")],
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                vec![
+                    located_imp("a", "src/shared.rs", "fn shared"),
+                    located_imp("b", "src/shared.rs", "fn shared"),
+                ],
+                vec![cf("src/shared.rs")],
+                Some(Vec::new()),
+            ),
+            SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap();
+
+        assert!(
+            report
+                .open
+                .iter()
+                .any(|s| s.kind == "overlapping_ownership"),
+            "same located symbol should still raise overlapping ownership: {:?}",
+            report.open
         );
     }
 
