@@ -34,7 +34,7 @@ provenance:
   src/commands/coverage.rs: 087c7096985d7202
   src/commands/doctor.rs: 7455e3f6b39aa8a5
   src/commands/hotspots.rs: 67cf959d9d79973e
-  src/commands/impact.rs: 05d9b9bc27c681af
+  src/commands/impact.rs: 4da1713958fa1b7c
   src/commands/report.rs: 971ee5ab621f9632
   src/commands/status.rs: a659d4a45f0ee654
   src/db/queries/completeness.rs: 0b326860a21cc0cd
@@ -73,6 +73,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

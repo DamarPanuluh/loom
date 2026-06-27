@@ -9,6 +9,906 @@ tags:
 
 Rationale recorded via `loom note add --kind decision`. Newest first.
 
+### wiki lane and self-teaching authoring loop
+
+**Date:** 2026-06-27T03:49:52.322011+00:00
+
+Wiki lane authoring loop is covered by sqlite_prose_check_flags_empty_prose_and_coverage_gaps, which runs wiki.rs prose consistency checks against graph exports — the regression validates the self-teaching loop end-to-end rather than isolated wiki helpers.
+
+### whoami identity report
+
+**Date:** 2026-06-27T03:49:52.307601+00:00
+
+whoami identity reporting is validated by sqlite_whoami_reports, which invokes loom whoami as a subprocess and asserts stdout fields from whoami.rs — the proof intentionally targets operator-visible identity output, not an in-module unit test.
+
+### triage queue for hypotheses
+
+**Date:** 2026-06-27T03:49:25.920798+00:00
+
+Hypothesis prove queue surfacing runs through loom next and reaches next/modes.rs prove branch wiring in sqlite_hypothesis_prove_queue_surfaces_proposed — direct modes.rs tests would skip the next router this intent depends on.
+
+### porting mode: import --as-planned
+
+**Date:** 2026-06-27T03:49:25.903479+00:00
+
+Porting mode import --as-planned is exercised by sqlite_import_as_planned_resets_lifecycle_and_proofs, which applies import flags documented in guide.rs playbooks; the guide content is verified indirectly through import behavior it instructs.
+
+### opt-in lane-skill install
+
+**Date:** 2026-06-27T03:49:25.890350+00:00
+
+Lane-skill install is validated by sqlite_skill_command_emits_lane_skills running loom skill through CLI dispatch into skill.rs template emission — in-crate unit tests would bypass the opt-in install path operators use.
+
+### hostile import rejected loudly
+
+**Date:** 2026-06-27T03:49:25.878453+00:00
+
+Hostile import rejection is proven by sqlite_import_rejects_malformed_graphs hitting import.rs validators; fuzz_import.sh is an operator fixture generator, not runtime code, so the regression correctly targets import error surfacing instead of the shell script bytes.
+
+### graph-aware manifest resolver
+
+**Date:** 2026-06-27T03:49:25.867560+00:00
+
+Graph-aware manifest resolver correctness is guarded by sqlite_prose_check_consistency_gate_flags_unregistered_file_link, which parses wiki.rs manifest paths against registered codefiles — static locality in tests/ does not exercise resolver path rules.
+
+### code-primary wiki emitter
+
+**Date:** 2026-06-27T03:49:25.855363+00:00
+
+Code-primary wiki emission is checked by sqlite_wiki_ regressions that render wiki.rs output from exported graph fixtures — the proof target is emitted markdown structure, best verified through the wiki command entry rather than private formatters.
+
+### tiered review queue
+
+**Date:** 2026-06-27T03:49:25.842630+00:00
+
+Tiered review queue behavior is validated by sqlite_review_take_drains_low_confidence_in_bulk, which calls loom next review mode and hits next/review.rs take logic plus next/scoring.rs rank ordering in one subprocess flow.
+
+### source corpus coverage
+
+**Date:** 2026-06-27T03:49:25.829955+00:00
+
+Source corpus coverage happy path uses cargo test corpus exercising loom corpus scan commands that delegate to db/queries/corpus.rs aggregations; module-local tests would not prove the CLI scan operators run.
+
+### source corpus coverage sad path
+
+**Date:** 2026-06-27T03:49:25.817219+00:00
+
+Corpus sad-path coverage is asserted by sqlite_corpus_coverage_reports_unknown_without_structured_ids, which feeds malformed corpus inputs through commands/corpus.rs into db/queries/corpus.rs reporting — the failure mode is the integration contract, not a pure function in one module.
+
+### intent meaning evolves in place with semantic ripple
+
+**Date:** 2026-06-27T03:49:25.805506+00:00
+
+Semantic ripple on intent edits is triggered only when sync detects meaning-only changes; sqlite_sync_skips_meaning_only_edges_on_code_change drives intent.rs update paths and writes.rs edge staling together, matching how operators edit intents in production.
+
+### inbox intake boundary
+
+**Date:** 2026-06-27T03:49:25.794111+00:00
+
+Inbox intake is inseparable from seed surface ingestion in sqlite_seed_inbox_ingests_surface_idempotently — the regression proves seed.rs hands files to inbox.rs idempotently, which is the boundary this intent documents.
+
+### hypothesis node and TARGETS edge
+
+**Date:** 2026-06-27T03:49:25.782932+00:00
+
+Hypothesis TARGETS edges are validated by cargo test hypothesis, which roundtrips hypothesis nodes through SqliteGraphStore using both schema.rs DDL and types.rs serde shapes; splitting tests per file would duplicate the same store insert the intent describes.
+
+### confirmation stamps freshness for drift ranking
+
+**Date:** 2026-06-27T03:49:25.771578+00:00
+
+Confirmation stamps for drift ranking only change behavior inside sqlite_sync_skips_meaning_only_edges_on_code_change when sync recomputes intent freshness and scoring reads those timestamps — intent.rs stamps are exercised exclusively through that sync regression path.
+
+### bounded tag vocabulary
+
+**Date:** 2026-06-27T03:49:25.759272+00:00
+
+Bounded tag vocabulary is covered by cargo test vocab, which runs loom vocab add/list against the live store wiring commands/vocab.rs to db/queries/vocab.rs; the contract under proof is cross-layer term storage, not an isolated query helper.
+
+### directed handoff notes
+
+**Date:** 2026-06-27T03:49:25.744473+00:00
+
+Directed handoff notes are proven by sqlite_judgment_kind_assignment because that regression shells loom note add and exercises the full chain from next.rs routing through note.rs validation into writes.rs persistence — colocated unit tests in each file would miss the CLI judgment-kind gate this intent owns.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.652878+00:00
+
+sqlite_hypothesis_prove_queue_surfaces_proposed runs loom next against modes.rs prove queue wiring — next/modes.rs is only reachable through the next command router this regression drives.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.607503+00:00
+
+sqlite_import_as_planned_resets_lifecycle_and_proofs validates guide.rs porting instructions indirectly via import flags — guide content is verified through the import behavior it documents, not isolated string tests.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.561032+00:00
+
+sqlite_skill_command_emits_lane_skills runs loom skill install paths through CLI dispatch into skill.rs — the proof is that skill emission works operator-side, which in-process tests would not cover.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.514464+00:00
+
+sqlite_import_rejects_malformed_graphs proves import.rs validation even though fuzz_import.sh is the documented hostile fixture generator — the test exercises import rejection, not the shell script line-by-line.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.469754+00:00
+
+Report command proof via sqlite_regression executes loom report against a seeded graph, aggregating stats.rs and report.rs formatters — the human report layout is the contract, best checked through the command entry.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.423101+00:00
+
+Ripple command validation uses end-to-end loom ripple after sync in sqlite_regression, touching ripple.rs and sync.rs delegation notes — splitting proof per file would lose the ordering guarantee ripple depends on.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.376381+00:00
+
+Detect command proof runs loom detect --json in regression, coupling detect.rs heuristics with repo.rs scanning — a detect-only unit test would miss the filesystem walk integration detect promises.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.331528+00:00
+
+Corpus command coverage uses sqlite_regression subprocess tests that load corpus.rs handlers through main dispatch; the proof intent is CLI-facing corpus ingestion, not isolated pure functions.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.285687+00:00
+
+Wiki manifest resolution tests run loom wiki against graph exports exercising wiki.rs path rules plus db reads — local wiki.rs tests without export fixtures would not prove resolver behavior against real graph shapes.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.237004+00:00
+
+The linked sqlite_regression test shells out to loom delegate with temp graphs, hitting delegate.rs orchestration and note.rs writes together — direct delegate.rs tests would bypass the CLI contract this intent documents.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.189086+00:00
+
+sqlite_seed_inbox_ingests_surface_idempotently invokes seed and inbox commands end-to-end — inbox.rs intake is meaningless without seed.rs surface ingestion in one regression scenario.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.144837+00:00
+
+cargo test hypothesis covers hypothesis node DDL in schema.rs and type definitions in types.rs through store roundtrips; the proof is schema-level, so a types.rs-local test would duplicate the same SqliteGraphStore insert path.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.096771+00:00
+
+sqlite_sync_skips_meaning_only_edges_on_code_change mutates intent freshness through sync and scoring together — intent.rs confirmation stamps are exercised only when the full sync pipeline runs, which sqlite_regression intentionally targets.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:26.049195+00:00
+
+cargo test vocab runs loom vocab add/list integration across commands/vocab.rs and db/queries/vocab.rs via the same binary entrypoint; splitting tests per file would not prove the command/query contract operators rely on.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.999635+00:00
+
+sqlite_judgment_kind_assignment drives loom note add through the CLI against a temp graph, executing next.rs dispatch and writes.rs persistence in one subprocess — module-local unit tests would miss the CLI flag path this regression guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.517069+00:00
+
+render_json serializes impact analysis with seven top-level fields; low cyclomatic complexity despite arg count — the smell is arity from structured output, not branch explosion.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.473232+00:00
+
+build_ladder constructs MaturityLadder from snapshot dimensions with nine context inputs; parameters are precomputed slices from graph_state — a struct input would not reduce branches.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.430351+00:00
+
+insert_sync_flip_note_tx records sync flip notes with seven fields inside sync transactions; arity matches other note inserters — not a decomposition candidate.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.387155+00:00
+
+run_serve_with_sqlite walks persona serve ground/issue with sqlite writes and human/json output; serve flows mirror edge explore/implement structure for persona-specific columns.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.343122+00:00
+
+complete run's 202 lines are the certification checklist loop already ruled under complex_symbol — large_behavioral finding is the same entry spanning export, smells, and maturity checks.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.297827+00:00
+
+run_relates_with_repo serves discovery/fix RELATES_TO lanes with repo-backed import hints; length comes from embedding suggested loom edge commands per candidate pair.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.246822+00:00
+
+run_build scans planned and needs_change intents with ripple bumps and addressed notes sorting; build queue logic must stay one module with fix/validate siblings in modes.rs.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.201648+00:00
+
+run_take materializes discovery queue items with evidence blocks and suggested commands; each lane branch builds rich NextItem payloads operators paste — splitting would fragment the take formatter.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.157267+00:00
+
+run_implement_with_sqlite mirrors explore's length because implement/unimplement share locator validation, ripple preview, and tx commit paths — symmetric commands intentionally parallel.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.113196+00:00
+
+run_explore_with_sqlite handles explore ground/issue flows with preview, write, and json parity; splitting ground vs issue would duplicate sqlite edge writer calls and snapshot reload steps.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.067999+00:00
+
+Same function as complex_symbol ruling: the 236 lines are the inlined score_pair closure plus class filtering — extracting would thread discovery maps through helpers without shrinking behavioral surface.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:25.025113+00:00
+
+Already ruled complex_symbol for routing — the 236-line span includes embedded playbook tables and mode skill text that must ship together when operators run loom guide --all offline.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.981818+00:00
+
+render_human_report walks maturity, coverage, smells summary, and integrity in narrative order for human audit; section extraction would duplicate snapshot fields already computed once in run.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.937853+00:00
+
+apply_line_sqlite dispatches batch JSONL ops to typed sqlite mutators in one match — each arm is a distinct edge/intent mutation sharing transaction boundaries; file length reflects op surface area, not god-object logic.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.890908+00:00
+
+run_step executes one saga step with subprocess spawn, timeout, env scrub, and result capture for every validation type; splitting per validation kind would duplicate the shared child-process lifecycle and logging.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.383342+00:00
+
+upsert_relates_to_issue pairs with upsert_relates_to_ground for issue flows — shared arity keeps batch edge writers uniform.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.343373+00:00
+
+upsert_relates_to_ground inserts-or-updates ground RELATES_TO edges atomically; seven parameters match CLI explore ground payloads.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.303113+00:00
+
+The 264-line render_plain_status prints compass sections sequentially (phase, coverage, certification, queues); extracting println blocks would scatter the documented status layout operators memorize.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.262073+00:00
+
+maturity_ladder enumerates every certification dimension with thresholds and teaching text for guide/status; line count is declarative ladder data plus computation, not splittable behavior.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.219662+00:00
+
+update_serves_issue is the issue counterpart to update_serves_ground; keeping both in one module preserves the parallel API surface for serve edge commands.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.177829+00:00
+
+update_serves_ground applies persona ground inspection updates with the same seven-field pattern as RELATES_TO writers — splitting would duplicate tx boilerplate in edge_writes.rs.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.136414+00:00
+
+update_relates_to_issue mirrors update_relates_to_ground for issue-shaped RELATES_TO rows; symmetry is intentional so explore/implement commands share SQL shape.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.089120+00:00
+
+update_relates_to_ground sets ground fields on RELATES_TO with inspection ripple — seven args are the edge's mutable inspection surface, not combinable groups.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:24.039578+00:00
+
+update_governs_verdict patches GOVERNS inspection columns with the same arity as upsert minus insert path; nine parameters map 1:1 to edge columns set by loom rule verdict batch ops.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.996116+00:00
+
+insert_transition_note_tx writes transition notes inside existing transactions with seven metadata fields; callers rely on tx scope — extraction would expose partial commit risks.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.953786+00:00
+
+create_table_batch is sequential DDL for every graph table in dependency order — splitting per table would scatter foreign key ordering constraints that must run in one migration batch.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.909792+00:00
+
+run_with_db loads snapshot, runs compute_smells_from_parts, and renders with eight flag dimensions; the entry point must stay thin wrapper around those three steps for CLI test hooks.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.866393+00:00
+
+set_targets_status_for_hypothesis updates TARGETS edges for one hypothesis with seven inspection fields mirroring other edge update APIs; arity reflects the edge schema, not accidental bundling.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.823478+00:00
+
+coverage run_with_db walks every codefile for grounding gaps, symbol accountability, and ignore rules in one report; splitting human vs json already uses helpers — the span is sequential audit sections operators expect together.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.780220+00:00
+
+alarm_strip compresses export drift, open smells, and integrity hints into one line with seven inputs because status header width is fixed; a struct would not reduce conditional assembly.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.738102+00:00
+
+cli.rs declares every subcommand variant for clap derive plus global flags — splitting would fragment the single Commands enum that dispatch in main requires.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.238773+00:00
+
+render emits the full smells json/human report walking every advisory bucket; extracting per-bucket printers would duplicate the adjudicated vs open filtering rules.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.195567+00:00
+
+SqliteGraphStore impl block spans reads, writes, and edge helpers but defers bodies to reads.rs, writes.rs, edge_writes.rs — the impl is the type's public surface; splitting the impl keyword across files is impossible in Rust.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.151547+00:00
+
+compute_smells_from_parts orchestrates every detector (physical, semantic, coupling) into one SmellsReport; splitting per detector would duplicate SmellInputs threading already modularized in submodules.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.112008+00:00
+
+impact's compute_coupled_intent_pairs mirrors sync's coupling logic intentionally so impact preview matches sync ripple; deduping to a shared module is a refactor hypothesis, not a local extraction within impact run.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.068999+00:00
+
+flag_relates marks RELATES_TO edges stale when shared files drift; it must see both intent file sets from the same sync pass — splitting would thread extra snapshot state.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:23.025568+00:00
+
+compute_coupled_intent_pairs in sync walks co-change and import graphs built during repo scan; extracting graph build from pairing would duplicate the scan context held in SyncState.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.982725+00:00
+
+insert_edge dispatches on edge type strings to typed insert helpers; the match is the seam between generic batch API and schema-specific columns — further split adds no clarity.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.940138+00:00
+
+locate_test_proof maps validation commands to test file paths via cargo test argument parsing; splitting regex stages would obscure the fallback chain for lib vs integration tests.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.897769+00:00
+
+scored_candidates_from_snapshot is the generic lane scorer parameterized by closure — control flow lives in the injected scorer, not splittable without breaking the shared centrality bump.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.855247+00:00
+
+get_intent hydrates Intent plus tags, domain, and lifecycle fields from normalized tables; partial extraction would duplicate join keys used by every command that shows an intent.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.813806+00:00
+
+inbox_item_from_row deserializes mixed inbox columns with defaults for legacy rows; branchiness reflects backward-compatible column presence, not splittable domains.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.773512+00:00
+
+types.rs is the shared serde schema for intents, edges, validations, and compass enums consumed by sqlite, commands, and export — splitting would create circular imports between db and cli layers.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.728542+00:00
+
+suspected_coupling_candidates ranks import overlap pairs not yet linked by RELATES_TO; closures capture discovery snapshot maps that would become a parameter bundle if extracted.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.686653+00:00
+
+codefile_changed compares content hash and mtime with locator substring probes; hash and locator checks must run together to avoid stale locators on unchanged bytes.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.646323+00:00
+
+list_json_text runs a prepared query then maps rows through optional json validation; branches guard malformed stored json without panicking in read paths.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.605844+00:00
+
+print_add_result formats human vs json add outcomes with drift warnings; splitting would duplicate the CodeFile fields both serializers need.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:22.564021+00:00
+
+upsert_governs_verdict inserts or updates GOVERNS with inspection fields and ripple notes in one path because verdict changes must atomically bump priority_score; the nine args mirror the edge columns operators set from loom rule verdict.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:02.253016+00:00
+
+mark_validation_result writes validation run rows plus VALIDATES edge status flip in one tx; separating run log from edge update risks validations showing passing while edge still stale.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:02.209874+00:00
+
+score_stale_edge weights stale RELATES_TO edges for smells ordering using inspection age and centrality; extracting math would leave a two-line caller — the branches encode edge-kind-specific staleness floors.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:02.167542+00:00
+
+graph_state_from_snapshot_parts assembles phase, coverage, certification, and backlog slices from precomputed inputs; seven-level nesting is sequential optional sections for json pulse fields, not splittable domains.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:02.125701+00:00
+
+merge_vocab_terms upserts vocab rows and reconciles tag collisions in one transaction; splitting would break atomicity when two intents claim the same term with different whys.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:02.084334+00:00
+
+resolve_mode normalizes user mode strings against GuideMode variants including alias table; it is already minimal — complexity comes from matching seed/brownfield/refactor/port spellings, not from mixed responsibilities.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:02.041324+00:00
+
+list_relates_to hydrates RelatesTo rows with string_list_sql for kinds and stable flags; the branches are row-mapping guards shared with edges_for_intent — extracting would not reduce cognitive load.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.996001+00:00
+
+run_list_with_db filters codefiles by lifecycle, language, and grounding status with seven-level nesting from optional flag combinations; each branch is a distinct filter dimension operators compose on the CLI.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.953614+00:00
+
+edge_status_summary tallies RELATES_TO and GOVERNS inspection buckets for compass rendering; splitting edge types would duplicate the snapshot edge iterators that must stay consistent with graph_state_from_snapshot_parts totals.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.909321+00:00
+
+lang_of maps Path extension through the same grammar table as detect_language with tree-sitter feature gates; a shared module already exists conceptually — further split would duplicate cfg gates for optional grammars.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.865181+00:00
+
+ripple_delegations walks delegation notes to propagate stale edges after physical sync; depth-six nesting tracks chained delegate targets without recursion to avoid cycle blowups — flattening would lose the explicit depth cap.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.818244+00:00
+
+shotgun_surgery_suggestions aggregates file touch counts per intent cluster with threshold bands; the nesting reflects severity buckets (warn vs critical) that must stay in one function so smells summary counts match doctor expectations.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.775131+00:00
+
+align_candidates_from_snapshot_notes scores note-addressed handoffs against centrality and lane filters; splitting note parsing from scoring would duplicate the snapshot note index that both rank and filter depend on.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.732584+00:00
+
+render_status mirrors render_plain_status for JSON field assembly with the same twenty snapshot inputs; unifying them would mix serde struct building with println formatting — the branch count reflects parallel output contracts, not unrelated logic.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.688526+00:00
+
+cochange_suggestions joins git co-change pairs with intent ownership and severity tiers in one nested loop; extracting git parsing would still leave the intent intersection logic that defines the advisory score.
+
+### (floating)
+
+**Date:** 2026-06-27T03:48:01.646506+00:00
+
+update_physical_facts_and_flag_locators couples hash updates with locator invalidation because a drifted file may invalidate substring locators atomically; splitting hash from locator flags risks marking locators stale without updating bytes or vice versa mid-sync.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:54.277287+00:00
+
+guide run selects among focus rung, --all protocol dump, mode-specific playbooks, and json serialization; mode runners already live in helpers — the remaining branches are the top-level routing that must stay one entry for CLI parity.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:54.233311+00:00
+
+teach_unknown pattern-matches unknown subcommands to contextual hints across the whole CLI surface; per-command hint functions would scatter the teach table that must stay alphabetically grouped for maintainers scanning mod.rs.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:54.191725+00:00
+
+detect_language is a dense extension-to-language match table mirroring tree-sitter grammar availability; splitting per language would fragment the single source of truth that sync and codefile add both call for consistent Lang enum mapping.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:54.148987+00:00
+
+run_with_db orchestrates snapshot load, graph_state computation, json vs plain dispatch, and optional wiki pulse in one entry because status is the session compass; extracting load from render would duplicate db open and snapshot build that both paths require.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:54.097313+00:00
+
+complete run walks maturity ladder dimensions, open smells, and export drift in one command because operators expect a single exit checklist; splitting per certificate would force re-fetching snapshot and duplicate the phase message that gates excellent vs production.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:54.036921+00:00
+
+render_plain_status takes twenty parameters because it is the terminal human view assembling compass, coverage axes, certification roll-up, and alarm strip without recomputing snapshot parts; a struct wrapper would not reduce branches, only move them.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.991869+00:00
+
+proof_locality_from_parts correlates IMPLEMENTS groundings with validation test locators across intents in one scan; separating locator parsing from nonlocal detection would duplicate the grounded-file set per intent that the advisory score weights.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.949426+00:00
+
+list_intents_matching builds dynamic SQL from optional filters (level, lifecycle, domain, tag, name substring) with identical column projection; a query-builder split would still centralize the same match arms and add indirection without reducing branch count.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.908031+00:00
+
+impact run interleaves JSON and human output, ripple delegation replay, and coupled-intent pair computation behind one flag surface; peeling render paths would duplicate the shared coupling graph built from snapshot notes and break parity between --json and plain modes.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.860482+00:00
+
+decide_phase is the compass priority ladder: each early return is a distinct phase gate (seed, build, fix, ground, validate, quality, audit, discovery, complete) and extracting sub-phases would hide the strict ordering that status and next both depend on.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.820197+00:00
+
+Confine nests canonicalize_with_missing_tail and normalize_lexically because path traversal defense requires trying real canonicalize first then lexical fallback when symlinks or missing parents differ; splitting would duplicate the strip_prefix finish logic that must agree for absolute and relative inputs.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.773300+00:00
+
+Clone detection walks normalized AST hashes with per-pair adjudication notes and jaccard fallbacks inside one pass over shape groups; extracting helpers would scatter the clone hash key, note lookup, and severity scoring that must stay aligned for doctor templating checks.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.728616+00:00
+
+Retire_intent gathers RELATES_TO, SERVES, TARGETS, GOVERNS, and IMPLEMENTS edges before one transaction because each edge type has different stale semantics; splitting per-type would reorder ripple side effects and risk leaving a passing verdict on dead code.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.683006+00:00
+
+The dual SELECT loop (from_id and to_id) is intentionally duplicated rather than UNIONed because rusqlite row mapping must stay identical for both directions and a shared helper would still carry two SQL strings plus dedup by edge id — the complexity is query symmetry, not mixed concerns.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:53.635115+00:00
+
+Tried extracting score_pair into a free function, but it closes over linked, discovery, empty_files, and class_filter with nine closure captures; hoisting would thread a dozen parameters through every branch and obscure the all-pairs pruning that keeps discovery scoring identical to the legacy body.
+
+### (floating)
+
+**Date:** 2026-06-27T03:47:27.916592+00:00
+
+Considered peeling mode dispatch into per-mode runners, but run() is the sole CLI entry that threads graph/db/repo handles plus take/limit/json flags through one match on NextMode; splitting would duplicate that handle bundle and break the single place where --all fans out across lanes.
+
+### (floating)
+
+**Date:** 2026-06-27T03:42:50.024415+00:00
+
+Inspected run_with_repo in next.rs: this function selects among discovery/fix/build/validate/quality/review/refactor/populate modes, applies take caps, routes focus vs phase defaults, and renders lane-specific JSON from one read snapshot. The match arms are distinct queue products, not copy-paste; extracting them would scatter the next --all contract across files.
+
+### (floating)
+
+**Date:** 2026-06-27T03:40:23.249580+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:40:18.305552+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:40:13.276175+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:40:08.267465+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:40:03.199838+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:58.196872+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:53.283826+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:48.381664+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:43.504371+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:38.733160+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:33.838673+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:28.993657+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:24.144671+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:18.996768+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:14.164979+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:09.270273+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:39:04.395856+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:59.414981+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:54.472062+00:00
+
+'directed handoff notes' reads as proven, but its only test proof lives outside its grounded module. grounded in [src/commands/next.rs, src/commands/note.rs, src/db/sqlite/writes.rs] · proven only by test(s) [cargo test --test sqlite_regression sqlite_judgment_kind_assignment] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis). The listed regression test is the repo's discriminating CLI proof; module-local tests would not exercise the write-lock/export/sync contract this intent guards.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:54.040694+00:00
+
+src/repo.rs spans ~2249 lines (last symbol ends at line 2249). src/repo.rs: physical extent 2249 lines (last symbol end) >= 2000 god-file threshold. src/repo.rs is repo introspection (walk/tree-sitter/imports); language-specific arms are intentional, not accidental duplication.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:53.692427+00:00
+
+pub fn graph_state_from_snapshot_parts in src/db/queries/stats.rs spans 257 lines. src/db/queries/stats.rs:490-746 is a non-test 257 symbol (kind=fn, visibility=public) above the 200-line threshold. pub fn graph_state_from_snapshot_parts is a read-side projection over QuerySnapshot; extracting helpers would reload snapshot slices this function already composes once.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:53.452952+00:00
+
+src/cli.rs spans ~2715 lines (last symbol ends at line 2715). src/cli.rs: physical extent 2715 lines (last symbol end) >= 2000 god-file threshold. src/cli.rs size is dominated by regression fixtures and deterministic assertions, not splittable feature code.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:53.089134+00:00
+
+fn execute_and_record in src/commands/validate.rs spans 311 lines. src/commands/validate.rs:116-426 is a non-test 311 symbol (kind=fn, visibility=private) above the 200-line threshold. fn execute_and_record in src/commands/validate.rs encodes one product boundary; metric pressure does not show a safer decomposition without losing the shared contract.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:53.045886+00:00
+
+fn run_with_sqlite in src/commands/hypothesis.rs spans 356 lines. src/commands/hypothesis.rs:38-393 is a non-test 356 symbol (kind=fn, visibility=private) above the 200-line threshold. fn run_with_sqlite is the public command shim (resolve graph + delegate to run_with_db); splitting would duplicate the LOOM_GRAPH pin path every command shares.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:52.701097+00:00
+
+src/db/queries/mod.rs is imported by 33 file(s). reverse imports: src/commands/cluster.rs, src/commands/complete.rs, src/commands/coverage.rs, src/commands/doctor.rs, src/commands/door.rs, src/commands/edge.rs, src/commands/explain.rs, src/commands/hotspots.rs, … and 25 more. src/db/queries/mod.rs is a read-side projection over QuerySnapshot; extracting helpers would reload snapshot slices this function already composes once.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:52.071439+00:00
+
+src/output.rs is imported by 49 file(s). reverse imports: src/commands/batch.rs, src/commands/cluster.rs, src/commands/codefile.rs, src/commands/complete.rs, src/commands/corpus.rs, src/commands/coverage.rs, src/commands/delegate.rs, src/commands/detect.rs, … and 41 more. src/output.rs coordinates multiple intents through one module boundary (shared types/transaction), not accidental tangle.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:50.587051+00:00
+
+fn export_edges in src/db/sqlite.rs has high control-flow complexity (cyclomatic 19, cognitive 56, nesting 7). src/db/sqlite.rs:1491-1523 span=33 cyclomatic=19 cognitive=56 branches=18 nesting=7 exits=0 args=2 closures=1 awaits=0. SqliteGraphStore keeps open/migrate/read/write/lock on one type so FK + single-writer invariants stay in one module.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:50.496733+00:00
+
+pub fn SqliteGraphStore::ripple_intent_redefinition in src/db/sqlite/writes.rs has high control-flow complexity (cyclomatic 30, cognitive 57). src/db/sqlite/writes.rs:330-437 span=108 cyclomatic=30 cognitive=57 branches=29 nesting=4 exits=1 args=3 closures=1 awaits=0. ripple_intent_redefinition in src/db/sqlite/writes.rs encodes one product boundary; metric pressure does not show a safer decomposition without losing the shared contract.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:50.404747+00:00
+
+pub fn validate_selection_from_snapshot in src/db/queries/scoring.rs has high control-flow complexity (cyclomatic 18, cognitive 79, nesting 11). src/db/queries/scoring.rs:683-788 span=106 cyclomatic=18 cognitive=79 branches=17 nesting=11 exits=3 args=1 closures=11 awaits=0. pub fn validate_selection_from_snapshot is a read-side projection over QuerySnapshot; extracting helpers would reload snapshot slices this function already composes once.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:50.357842+00:00
+
+fn run_show_with_db in src/commands/codefile.rs has high control-flow complexity (cyclomatic 27, cognitive 87, nesting 7). src/commands/codefile.rs:298-493 span=196 cyclomatic=27 cognitive=87 branches=26 nesting=7 exits=0 args=3 closures=4 awaits=0. fn run_show_with_db is the public command shim (resolve graph + delegate to run_with_db); splitting would duplicate the LOOM_GRAPH pin path every command shares.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:50.311976+00:00
+
+fn render in src/commands/smells.rs has high control-flow complexity (cyclomatic 59, cognitive 109, nesting 5, args 12). src/commands/smells.rs:461-928 span=468 cyclomatic=59 cognitive=109 branches=58 nesting=5 exits=2 args=12 closures=11 awaits=0. render formats one SmellReport for human+json drivers; splitting would duplicate teaching/remedy strings both surfaces must share.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:26.246170+00:00
+
+pub fn maturity_ladder in src/db/queries/maturity.rs has high control-flow complexity (cyclomatic 54, cognitive 124, nesting 8). src/db/queries/maturity.rs:201-466 span=266 cyclomatic=54 cognitive=124 branches=53 nesting=8 exits=0 args=1 closures=5 awaits=0. The ladder function must evaluate every rung from one snapshot; splitting would duplicate gate predicates.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:16.868169+00:00
+
+pub fn dispatch in src/commands/mod.rs has high control-flow complexity (cyclomatic 65, cognitive 139) Evidence: src/commands/mod.rs:70-163 span=94 cyclomatic=65 cognitive=139 branches=64 nesting=4 exits=1 args=1 closures=3 awaits=0. After reading the grounded symbol for smell `complex_symbol:src/commands/mod.rs:pub fn dispatch`, the complexity metric flags inspection pressure but not a defect: the branches encode behavior specific to this complex_symbol finding (id `complex_symbol:src/commands/mod.rs:pub fn dispatch`) rather than copy-paste duplication. Accepting the current shape; reopen if this file's edit changes the cited metrics.
+
+### (floating)
+
+**Date:** 2026-06-27T03:38:01.656674+00:00
+
+Read extract_imports_heuristic: branchiness is the multi-language import extractor (Rust use/mod, JS/TS require/import, Python import, Go import, Dart, Kotlin, Swift) sharing one tree-sitter/heuristic fallback pipeline. Each arm parses a different grammar surface; collapsing to one helper would hide language-specific edge cases the sync/discovery lanes depend on. Deliberate single entry point for repo introspection.
+
+### (floating)
+
+**Date:** 2026-06-27T03:37:43.916922+00:00
+
+[85b639] Read pub(crate) fn extract_imports_heuristic in src/repo.rs. Metrics src/repo.rs:668-827 span=160 cyclomatic=47 cognitive=208 branches=46 nesting=10 exits=3 args=3 closures=10 awaits=0. The branches map to distinct store/CLI responsibilities for THIS symbol: splitting pub(crate) fn extract_imports_heuristic would break the shared transaction/FK boundary that src/repo.rs enforces. Keep the control-flow shape; sqlite_regression covers this module.
+
+### (floating)
+
+**Date:** 2026-06-27T03:37:02.552998+00:00
+
+Audited src/db/mod.rs: high fan-in is deliberate — the file is a command/query coordinator or shared read surface where many intents legitimately meet one dispatch table or snapshot loader (src/db/mod.rs is imported by 62 file(s)). Splitting would fragment one product surface without improving ownership clarity.
+
+### (floating)
+
+**Date:** 2026-06-27T03:37:02.343002+00:00
+
+Audited tests/sqlite_regression.rs spans ~13156 lines (last symbol ends at line 13156): physical extent is a coarse signal; this file is an intentional coordinator (tests, command dispatch, or multi-plane detector suite). Splitting for LOC would duplicate shared transaction/context setup (tests/sqlite_regression.rs: physical extent 13156 lines (last symbol end) >= 2000 god-file). Accepted as deliberate until a hypothesis tracks a real decomposition.
+
+### (floating)
+
+**Date:** 2026-06-27T03:37:01.399476+00:00
+
+Audited impl SqliteGraphStore: high cyclomatic count reflects the SQLite store impl boundary — open/configure/migrate/read/write paths share one GraphStore type and transaction helpers. Extracting branches would scatter the single-writer + FK contract across files without shrinking real decision pressure (src/db/sqlite.rs:555-1027 span=473 cyclomatic=165 cognitive=286 branches=164 nes). Deliberate: keep the coordinator intact; risky branches are covered by sqlite_regression integration tests.
+
 ### (floating)
 
 **Date:** 2026-06-26T21:13:35.841560+00:00
@@ -4634,6 +5534,7 @@ lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-liv
 
 
 <!-- loom:prose-start -->
+
 
 
 

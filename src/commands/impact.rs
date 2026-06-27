@@ -480,6 +480,7 @@ fn render_json(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commands::sorted_pair;
     use crate::types::{DiscoveryCentrality, RelatesTo};
 
     fn rel(status: &str, kinds: &[&str]) -> RelatesTo {

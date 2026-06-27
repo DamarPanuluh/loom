@@ -47,7 +47,7 @@ provenance:
   src/db/sqlite.rs: bbee90eb9b991b53
   src/db/sqlite/edge_writes.rs: 47fc4a616ebdd55b
   src/types.rs: d61e6e7631304228
-  tests/sqlite_regression.rs: 96b425573366a943
+  tests/sqlite_regression.rs: 9f5edeb870d45f8d
 ---
 
 # external interface surface plane
@@ -76,6 +76,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

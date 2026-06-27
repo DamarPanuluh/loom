@@ -9878,12 +9878,14 @@ fn sqlite_smells_flags_under_reporting_when_facts_drift() {
 /// because coded intents are untagged) is dischargeable METADATA DEBT, not a code
 /// defect. Hard-gating it pressures the driver to launder it away with a
 /// `--kind decision` ruling instead of discharging it (tagging). So it is surfaced
-/// in the `debt` bucket but kept OUT of the gating `smells`/open set. loom's own
-/// graph has 81/98 untagged coded intents, so the finding fires here.
+/// in the `debt` bucket but kept OUT of the gating `smells`/open set.
 #[test]
 fn sqlite_smells_routes_metadata_debt_out_of_gating_open() {
     let _guard = sqlite_test_lock();
-    let graph = setup_imported_graph("smells-debt");
+    let graph = ScratchGraph::new("smells-debt");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    // Two coded, untagged intents — enough to arm the detector on a fresh graph.
+    seed_unexplored_signal_pair(&graph.root, "debt");
     let out = run_json(&graph.root, &["smells", "--json"]);
     let in_open = out["smells"]
         .as_array()
