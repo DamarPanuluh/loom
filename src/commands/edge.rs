@@ -817,10 +817,10 @@ fn run_list_with_sqlite(
     Ok(())
 }
 
-/// List the intent pairs that have NO RELATES_TO edge yet — the drainable form of
-/// the `unexplored_pairs` count the compass reports. Reuses the SAME candidate
-/// generation `loom next --mode discovery` uses, so the count and this list agree.
-/// Each pair carries a pre-filled `loom edge explore` command for batching.
+/// List the intent pairs that have NO RELATES_TO edge yet. `--class
+/// suspected-coupling` is the HARDENED risk backlog; `--class all` is the full
+/// optional survey count the compass reports. Each pair carries a pre-filled
+/// `loom edge explore` command for batching.
 fn run_unexplored_with_sqlite(
     root: &std::path::Path,
     class: Option<String>,
@@ -833,8 +833,9 @@ fn run_unexplored_with_sqlite(
     };
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let snapshot = store.query_snapshot()?;
-    // Default to `all`: every unexplored pair is owed for phase=complete. The
-    // narrower classes (`suspected-coupling`, `impact-map`) only prioritise.
+    // Keep default `all`: this command is the full residual survey surface.
+    // Status/next point at `suspected-coupling` for the required HARDENED risk
+    // backlog.
     let class_filter = DiscoveryClassFilter::parse(class.as_deref().or(Some("all")))?;
     // The dense-bucket cap only fires in the `suspected-coupling` lane; disclose
     // what it excluded here too (parity with `loom next`). Empty for `all`/
@@ -871,7 +872,7 @@ fn run_unexplored_with_sqlite(
             )
         }
     };
-    let next = "Verdict each pair. Signal-bearing pairs (suspected-coupling): read the code, `ground` if coupled, `independent` if not. Centrality-only pairs (impact-map): `independent` is expected — but name the specific boundary that keeps them apart (shared imports? no. shared vocab? no. same domain? no). Batch the verdicts: paste these commands into `loom batch`.";
+    let next = "Verdict the required risk pairs first: `loom edge unexplored --class suspected-coupling`. Signal-bearing pairs: read the code, `ground` if coupled, `independent` if not. Centrality-only/full-survey pairs are optional; if you inspect them, name the specific boundary that keeps them apart. Batch verdicts with `loom batch`.";
     if printer.json {
         let items: Vec<_> = pairs
             .iter()

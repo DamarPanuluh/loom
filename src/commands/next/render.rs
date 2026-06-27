@@ -98,7 +98,8 @@ fn build_closeout_queues(
     let human_blocked_validations = blocked.human_validation_count();
     // Queues in dependency order (the handoff order from `loom guide`), each
     // with its count + top item. Vertical gaps slot in as builder work; the
-    // horizontal grid comes last, flagged optional.
+    // Horizontal risk comes last among required queues. The exhaustive no-signal
+    // survey is still surfaced separately as optional work.
     //
     // Every queue carries a GATE: `autonomous` (an agent drains it alone) or
     // `human` (the item needs the user — a meaning to re-affirm, a ruling to
@@ -329,12 +330,20 @@ fn push_review_and_human_queues(
             "top": "code-primary wiki prose owing: one narrative per module page + topical pages; cite source files, not intent UUIDs",
         }));
     }
-    let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;
+    let discovery_backlog = discovery_uninspected + gs.priority_unexplored_pairs;
     if discovery_backlog > 0 {
         queues.push(serde_json::json!({
-            "queue": "horizontal-grid", "role": "analyzer", "gate": "autonomous", "optional": false,
-            "count": discovery_backlog, "command": "loom edge unexplored",
-            "top": "horizontal N×N grid: not for the vertical spine, but REQUIRED for the HARDENED rung. `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones",
+            "queue": "horizontal-risk", "role": "analyzer", "gate": "autonomous", "optional": false,
+            "count": discovery_backlog, "command": "loom next --mode discovery --class suspected-coupling",
+            "top": "horizontal risk closure: signal-bearing unexplored pairs plus explicit uninspected RELATES_TO edges",
+        }));
+    }
+    let optional_survey = (gs.unexplored_pairs - gs.priority_unexplored_pairs).max(0);
+    if optional_survey > 0 {
+        queues.push(serde_json::json!({
+            "queue": "horizontal-survey", "role": "analyzer", "gate": "autonomous", "optional": true,
+            "count": optional_survey, "command": "loom edge unexplored --class all",
+            "top": "optional exhaustive no-signal pair survey; not required for HARDENED",
         }));
     }
 }
@@ -389,9 +398,14 @@ fn render_all(
             })
             .map(|q| q["count"].as_i64().unwrap_or(0))
             .sum();
-        let horizontal_grid: i64 = queues
+        let horizontal_risk: i64 = queues
             .iter()
-            .filter(|q| q["queue"].as_str() == Some("horizontal-grid"))
+            .filter(|q| q["queue"].as_str() == Some("horizontal-risk"))
+            .map(|q| q["count"].as_i64().unwrap_or(0))
+            .sum();
+        let horizontal_survey: i64 = queues
+            .iter()
+            .filter(|q| q["queue"].as_str() == Some("horizontal-survey"))
             .map(|q| q["count"].as_i64().unwrap_or(0))
             .sum();
         let mut completion = serde_json::Map::new();
@@ -404,8 +418,12 @@ fn render_all(
             serde_json::json!(human_gated),
         );
         completion.insert(
-            "horizontal_grid_required_for_complete".to_string(),
-            serde_json::json!(horizontal_grid),
+            "horizontal_risk_required_for_complete".to_string(),
+            serde_json::json!(horizontal_risk),
+        );
+        completion.insert(
+            "horizontal_survey_remaining".to_string(),
+            serde_json::json!(horizontal_survey),
         );
         completion.insert(
             "blocked_validations".to_string(),

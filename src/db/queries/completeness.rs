@@ -9,10 +9,12 @@
 //! reached by ≥1 IMPLEMENTS.
 //!
 //! That spine is **vertical** (decompose intents down, realize them in code). It
-//! is binding and a milestone on its own. The **horizontal** axis (RELATES_TO, the
-//! N×N grid) is NOT needed for the vertical spine, but IS required for full-green
-//! (`phase=complete`/`fully_proven`) — the cascade gates `complete` on
-//! `unexplored_pairs == 0`. See `stats::graph_state`.
+//! is binding and a milestone on its own. The **horizontal** axis (RELATES_TO
+//! risk closure) is NOT needed for the vertical spine, but IS required for
+//! full-green (`phase=complete`/`fully_proven`) — the cascade gates `complete`
+//! on explicit RELATES_TO edges being current plus the signal-bearing unexplored
+//! backlog being empty. The exhaustive N×N survey remains optional. See
+//! `stats::graph_state`.
 
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};

@@ -43,7 +43,7 @@ fn node_desc(label: &str) -> &'static str {
 
 fn edge_desc(etype: &str) -> &'static str {
     match etype {
-        "RELATES_TO" => "Intent ↔ Intent — any tracked relationship worth inspecting (the N×N grid).",
+        "RELATES_TO" => "Intent ↔ Intent — any tracked relationship worth inspecting (explicit couplings + signal-bearing risk backlog; full N×N remains optional survey).",
         "HIERARCHY" => "Intent → Intent — parent/child zoom (component rolls up feature). A TREE: each intent has at most one parent, no cycles (enforced).",
         "IMPLEMENTS" => "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`). STRUCTURAL: `loom explain` shows `[located]` — the locator is verified present at ground time and kept present by sync (sync flags it only when the symbol VANISHES). Whether the code FULFILS the intent is proven elsewhere — a VALIDATES proof (RE-RUN it to catch behavioral drift; sync flags it automatically when a TOP-LEVEL grounded symbol's file changes, but a nested method's body change rides only the proof you re-run) and RELATES_TO couplings — NOT by the grounding. So IMPLEMENTS `passing`/located means 'symbol present', not RELATES_TO's semantic 'criterion met'.",
         "GOVERNS" => "QualityRule → Intent — a norm that applies to an intent. A verdict at component/system altitude covers descendants ONLY when --covers-descendants is set (default: false — a direct verdict only).",

@@ -325,7 +325,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     };
 
     // ---- Rung 4: Hardened (DISCHARGE: quality) ----
-    // Measured under rules, the grid explored (duplication/coupling/layering
+    // Measured under rules, horizontal risk closed (duplication/coupling/layering
     // detectable), failure paths realized, and zero open smell findings.
     let measured = &cov.measured_pairs;
     let mut hardened_reasons = Vec::new();
@@ -340,7 +340,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
         ));
     }
     if !gs.horizontally_explored {
-        hardened_reasons.push("RELATES_TO grid not fully explored".to_string());
+        hardened_reasons.push("RELATES_TO risk backlog not closed".to_string());
     }
     if input.behavioral.enumerated > 0 && input.behavioral.discharged < input.behavioral.enumerated
     {

@@ -833,14 +833,160 @@ fn queue_nonempty_for_phase(phase: &str, snapshot: &QuerySnapshot) -> bool {
         "build" => !build_candidates_from_snapshot(snapshot).is_empty(),
         "validate" => !validate_candidates_from_snapshot(snapshot).is_empty(),
         "quality" => !quality_candidates_from_snapshot(snapshot).is_empty(),
-        "discovery" => snapshot
-            .relates
-            .iter()
-            .any(|e| e.inspection_status == "uninspected"),
+        "discovery" => {
+            snapshot
+                .relates
+                .iter()
+                .any(|e| e.inspection_status == "uninspected")
+                || !unexplored_pairs_scored_from_snapshot(
+                    snapshot,
+                    DiscoveryClassFilter::SuspectedCoupling,
+                )
+                .unwrap()
+                .is_empty()
+        }
         // seed/ground/incomplete/audit/complete are not `loom next --mode`
         // lanes — they route to other commands and have no queue to check.
         _ => true,
     }
+}
+
+#[test]
+fn no_signal_unexplored_pairs_are_optional_survey_not_green_blockers() {
+    let mut sys = intent("sys", "implemented");
+    sys.abstraction_level = "system".to_string();
+    let a = intent("a", "implemented");
+    let b = intent("b", "implemented");
+    let snapshot = QuerySnapshot::from_parts(
+        vec![sys, a, b],
+        vec![
+            ("sys".to_string(), "a".to_string()),
+            ("sys".to_string(), "b".to_string()),
+        ],
+        vec![],
+        vec![Governs {
+            id: "gov:r1:sys".to_string(),
+            rule_id: "r1".to_string(),
+            intent_id: "sys".to_string(),
+            rule_name: "r1".to_string(),
+            intent_name: "sys".to_string(),
+            inspection_status: "passing".to_string(),
+            criterion: String::new(),
+            confidence: 1.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            notes: String::new(),
+            created_at: String::new(),
+            covers_descendants: "true".to_string(),
+        }],
+        vec![QualityRule {
+            id: "r1".to_string(),
+            name: "r1".to_string(),
+            description: String::new(),
+            detection_logic: String::new(),
+            severity: "low".to_string(),
+            kind: String::new(),
+            inspection_effort: String::new(),
+            evidence_examples: String::new(),
+            signal_expectations: String::new(),
+            applies_when: String::new(),
+        }],
+        vec![
+            validates("v-a", "a", "passing"),
+            validates("v-b", "b", "passing"),
+        ],
+        vec![
+            cmd_val("v-a", "passed", "2026-06-19T00:00:00Z"),
+            cmd_val("v-b", "passed", "2026-06-19T00:00:00Z"),
+        ],
+        vec![implements("a", "src/a.rs"), implements("b", "src/b.rs")],
+        vec![codefile("src/a.rs", vec![]), codefile("src/b.rs", vec![])],
+        None,
+    );
+
+    let gs = gs_of(&snapshot);
+    assert_eq!(
+        gs.unexplored_pairs, 1,
+        "a↔b remains in the optional full survey"
+    );
+    assert_eq!(
+        gs.priority_unexplored_pairs, 0,
+        "no shared code, import, vocab, domain, or description signal means no risk backlog"
+    );
+    assert!(gs.horizontally_explored, "horizontal risk is closed");
+    assert_eq!(gs.phase, "complete", "optional survey must not block green");
+}
+
+#[test]
+fn signal_bearing_unexplored_pairs_still_gate_horizontal_risk() {
+    let mut sys = intent("sys", "implemented");
+    sys.abstraction_level = "system".to_string();
+    let a = intent("a", "implemented");
+    let b = intent("b", "implemented");
+    let snapshot = QuerySnapshot::from_parts(
+        vec![sys, a, b],
+        vec![
+            ("sys".to_string(), "a".to_string()),
+            ("sys".to_string(), "b".to_string()),
+        ],
+        vec![],
+        vec![Governs {
+            id: "gov:r1:sys".to_string(),
+            rule_id: "r1".to_string(),
+            intent_id: "sys".to_string(),
+            rule_name: "r1".to_string(),
+            intent_name: "sys".to_string(),
+            inspection_status: "passing".to_string(),
+            criterion: String::new(),
+            confidence: 1.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            notes: String::new(),
+            created_at: String::new(),
+            covers_descendants: "true".to_string(),
+        }],
+        vec![QualityRule {
+            id: "r1".to_string(),
+            name: "r1".to_string(),
+            description: String::new(),
+            detection_logic: String::new(),
+            severity: "low".to_string(),
+            kind: String::new(),
+            inspection_effort: String::new(),
+            evidence_examples: String::new(),
+            signal_expectations: String::new(),
+            applies_when: String::new(),
+        }],
+        vec![
+            validates("v-a", "a", "passing"),
+            validates("v-b", "b", "passing"),
+        ],
+        vec![
+            cmd_val("v-a", "passed", "2026-06-19T00:00:00Z"),
+            cmd_val("v-b", "passed", "2026-06-19T00:00:00Z"),
+        ],
+        vec![
+            implements("a", "src/shared.rs"),
+            implements("b", "src/shared.rs"),
+        ],
+        vec![codefile("src/shared.rs", vec![])],
+        None,
+    );
+
+    let gs = gs_of(&snapshot);
+    assert_eq!(gs.unexplored_pairs, 1);
+    assert_eq!(gs.priority_unexplored_pairs, 1);
+    assert!(!gs.horizontally_explored, "shared file is risk-bearing");
+    assert_eq!(gs.phase, "discovery");
+    assert!(
+        gs.next_action.contains("horizontal risk closure")
+            && gs.next_action.contains("--class suspected-coupling"),
+        "next action should route to risk closure, not full survey: {}",
+        gs.next_action
+    );
+    assert!(queue_nonempty_for_phase("discovery", &snapshot));
 }
 
 #[test]

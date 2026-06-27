@@ -253,8 +253,10 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     } else {
         format!("synced {}", rel_time(&s.last_synced))
     };
-    let unexplored = if s.unexplored_pairs > 0 {
-        format!(" · {} unexplored", s.unexplored_pairs)
+    let unexplored = if s.priority_unexplored_pairs > 0 {
+        format!(" · {} risk-pair(s)", s.priority_unexplored_pairs)
+    } else if s.unexplored_pairs > 0 {
+        format!(" · {} survey-pair(s)", s.unexplored_pairs)
     } else {
         String::new()
     };
@@ -315,8 +317,14 @@ pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
     o.insert("codefiles".into(), s.codefiles.into());
     o.insert("edges".into(), s.total_edges.into());
     o.insert("unresolved".into(), s.unresolved_edges.into());
+    if s.priority_unexplored_pairs > 0 {
+        o.insert(
+            "priority_unexplored".into(),
+            s.priority_unexplored_pairs.into(),
+        );
+    }
     if s.unexplored_pairs > 0 {
-        o.insert("unexplored".into(), s.unexplored_pairs.into());
+        o.insert("survey_unexplored".into(), s.unexplored_pairs.into());
     }
     o.insert(
         "synced".into(),
@@ -678,6 +686,7 @@ mod tests {
             total_edges: 0,
             unresolved_edges: 0,
             unexplored_pairs: 0,
+            priority_unexplored_pairs: 0,
             codefiles: 0,
             validations: 0,
             notes: 0,

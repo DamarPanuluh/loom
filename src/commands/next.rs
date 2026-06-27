@@ -138,8 +138,11 @@ fn lane_has_work(
         "quality" => !quality_candidates_from_snapshot(snap).is_empty(),
         "discovery" => {
             !scored_candidates_from_snapshot(snap, "discovery").is_empty()
-                || !unexplored_pairs_scored_from_snapshot(snap, DiscoveryClassFilter::All)?
-                    .is_empty()
+                || !unexplored_pairs_scored_from_snapshot(
+                    snap,
+                    DiscoveryClassFilter::SuspectedCoupling,
+                )?
+                .is_empty()
         }
         _ => false,
     })
@@ -274,7 +277,7 @@ pub fn run(
             // is empty (the honest terminus). The refactor route is EXEMPT: it
             // is either the Excellent-rung lane or the deliberate terminus once
             // every certification rung is done, so it must not be overridden by
-            // OPTIONAL discovery work (unexplored pairs).
+            // the optional full-survey discovery plane.
             let mode = if mode == "refactor" || lane_has_work(&snap, &decision_notes, &mode)? {
                 mode
             } else {

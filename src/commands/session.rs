@@ -39,7 +39,7 @@ struct SessionCounts {
     needs_change: i64,
     /// failing + needs_reverification across all inspected edge types.
     broken: i64,
-    unexplored_pairs: i64,
+    priority_unexplored_pairs: i64,
     align: i64,
     /// Supported hypotheses awaiting the adopt/reject ruling.
     rulings: i64,
@@ -170,12 +170,12 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
         },
         then: "draft the YAML chain → loom saga add <spec.yaml> [--spawn-missing] → loom saga run <name>",
     });
-    if c.broken + c.unexplored_pairs > 0 {
+    if c.broken + c.priority_unexplored_pairs > 0 {
         menu.push(Offer {
             ask: "Want me to close gaps — repair broken claims, deepen the map?".into(),
             why: format!(
-                "{} failing/stale claim(s) · {} unexplored pair(s)",
-                c.broken, c.unexplored_pairs
+                "{} failing/stale claim(s) · {} priority unexplored pair(s)",
+                c.broken, c.priority_unexplored_pairs
             ),
             then: "loom next --all  (the closeout view) → drain the served lanes",
         });
@@ -343,7 +343,7 @@ pub fn run_with_db(
             .filter(|i| i.lifecycle == "needs_change")
             .count() as i64,
         broken,
-        unexplored_pairs: gs.unexplored_pairs,
+        priority_unexplored_pairs: gs.priority_unexplored_pairs,
         align: db.align_candidate_count(&snapshot)?,
         rulings,
         blocked: outside.blocked_validations,
@@ -400,7 +400,7 @@ mod tests {
             planned: 0,
             needs_change: 0,
             broken: 0,
-            unexplored_pairs: 0,
+            priority_unexplored_pairs: 0,
             align: 0,
             rulings: 0,
             blocked: 0,
@@ -452,7 +452,7 @@ mod tests {
     fn drainable_backlog_recommends_handoff() {
         let mut c = counts();
         c.broken = 3;
-        c.unexplored_pairs = 7;
+        c.priority_unexplored_pairs = 7;
         let (menu, rec) = offers(&c);
         assert!(menu[rec].then.contains("loom next --mode <lane>"));
         assert!(menu.iter().any(|o| o.then.contains("loom next --all")));

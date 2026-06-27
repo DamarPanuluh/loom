@@ -9,7 +9,8 @@ use crate::types::{Governs, Intent, IntentCentrality, Note, RelatesTo, StatusRep
 use super::completeness::{vertical_completeness_from_snapshot, VerticalCompleteness};
 use super::meta::GraphMeta;
 use super::scoring::{
-    count_unexplored_pairs_from, normative_coverage_from_snapshot, validate_selection_from_snapshot,
+    count_unexplored_pairs_from, normative_coverage_from_snapshot,
+    unexplored_pairs_scored_from_snapshot, validate_selection_from_snapshot, DiscoveryClassFilter,
 };
 use super::snapshot::QuerySnapshot;
 
@@ -78,8 +79,10 @@ pub struct GraphState {
     pub implements_edges: i64,
     pub total_edges: i64,
     pub unresolved_edges: i64,
-    /// Intent pairs with no RELATES_TO edge yet (the remaining discovery backlog).
+    /// Intent pairs with no RELATES_TO edge yet (the full optional survey backlog).
     pub unexplored_pairs: i64,
+    /// Signal-bearing unexplored pairs that still gate horizontal risk closure.
+    pub priority_unexplored_pairs: i64,
     pub codefiles: i64,
     pub validations: i64,
     pub notes: i64,
@@ -88,10 +91,10 @@ pub struct GraphState {
     /// The binding axis: HIERARCHY is a well-formed tree, every implemented leaf
     /// is realized in code, every CodeFile is reached. `complete` requires this.
     pub vertically_complete: bool,
-    /// The horizontal axis: every intent pair has an inspected RELATES_TO edge
-    /// (none uninspected, stale, or unexplored). NOT required for the vertical
-    /// spine milestone, but REQUIRED for `phase=complete` / `fully_proven` —
-    /// the cascade gates `complete` on `unexplored_pairs == 0 && rt_uninspected == 0`.
+    /// Horizontal risk closure: every explicit RELATES_TO edge is inspected and
+    /// current, and every signal-bearing unexplored pair has been adjudicated.
+    /// The full no-signal N×N survey remains visible as `unexplored_pairs`, but
+    /// does not gate `phase=complete`.
     pub horizontally_explored: bool,
     /// seed | build | fix | incomplete | ground | validate | quality |
     /// discovery | audit | complete
@@ -387,6 +390,7 @@ struct PhaseInputs<'a> {
     rules_count: i64,
     intents_with_code: i64,
     unexplored_pairs: i64,
+    priority_unexplored_pairs: i64,
 }
 
 fn decide_phase(
@@ -475,8 +479,8 @@ fn decide_phase(
     if edge_status.rt_needs_rev > 0 {
         return Ok(("fix", "recommended", format!("{} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`.", edge_status.rt_needs_rev)));
     }
-    if edge_status.rt_uninspected > 0 || inputs.unexplored_pairs > 0 {
-        return Ok(("discovery", "recommended", format!("Vertical spine complete ✓ — but the HARDENED rung REQUIRES the N×N grid explored: {} unexplored pair(s) + {} uninspected edge(s) left. `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones. The count is per-pair — most pairs are genuinely unrelated, so batch `independent` verdicts (and `ground` the real couplings) via `loom batch`.", inputs.unexplored_pairs, edge_status.rt_uninspected)));
+    if edge_status.rt_uninspected > 0 || inputs.priority_unexplored_pairs > 0 {
+        return Ok(("discovery", "recommended", format!("Vertical spine complete ✓ — but HARDENED requires horizontal risk closure: {} signal-bearing unexplored pair(s) + {} uninspected RELATES_TO edge(s) left. Use `loom next --mode discovery` or `loom edge unexplored --class suspected-coupling`. Full no-signal survey still has {} pair(s) and is optional: `loom edge unexplored --class all`.", inputs.priority_unexplored_pairs, edge_status.rt_uninspected, inputs.unexplored_pairs)));
     }
 
     let proposed = proposed_hypotheses()?;
@@ -536,14 +540,16 @@ pub fn graph_state_from_snapshot_parts(
     let relates_to_edges = snapshot.relates.len() as i64;
     let implements_edges = snapshot.implements.len() as i64;
 
-    // The AUTHORITATIVE count: every active intent pair with no RELATES_TO edge
-    // (hierarchy pairs excluded — containment is structural). This is the full
-    // grid still owed for `phase=complete`. NOTE: `loom next --mode discovery`
-    // (default `suspected-coupling`) serves only the high-signal SUBSET, so the
-    // count can exceed what the default discovery queue surfaces — `loom edge
-    // unexplored` (or `loom next --mode discovery --class all`) retrieves them ALL.
+    // The AUTHORITATIVE full-survey count: every active intent pair with no
+    // RELATES_TO edge (hierarchy pairs excluded — containment is structural).
+    // The stricter N×N survey remains available, but the HARDENED gate uses the
+    // signal-bearing risk backlog below so no-signal pairs do not force bulk
+    // `independent` stamping.
     let hierarchy = &snapshot.hierarchy;
     let unexplored_pairs = count_unexplored_pairs_from(all_intents, all_relates, hierarchy);
+    let priority_unexplored_pairs =
+        unexplored_pairs_scored_from_snapshot(snapshot, DiscoveryClassFilter::SuspectedCoupling)?
+            .len() as i64;
 
     // Lifecycle backlog (prescriptive axis): intents that need building/changing.
     let needs_change = all_intents
@@ -555,12 +561,13 @@ pub fn graph_state_from_snapshot_parts(
         .filter(|i| i.lifecycle == "planned")
         .count() as i64;
 
-    // The two completeness axes. Vertical (binding) is the spine; horizontal
-    // (optional) is the N×N grid. The compass routes vertical gaps ahead of
-    // optional discovery, and only calls the graph "complete" when both hold.
+    // The two completeness axes. Vertical (binding) is the spine; horizontal is
+    // risk closure over explicit/stale RELATES_TO plus signal-bearing missing
+    // pairs. The full no-signal survey is retained as optional coverage only.
     let vc = vertical_completeness_from_snapshot(snapshot);
-    let horizontally_explored =
-        unexplored_pairs == 0 && edge_status.rt_uninspected == 0 && edge_status.rt_needs_rev == 0;
+    let horizontally_explored = priority_unexplored_pairs == 0
+        && edge_status.rt_uninspected == 0
+        && edge_status.rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------
     let nc = normative_coverage_from_snapshot(snapshot);
@@ -659,6 +666,7 @@ pub fn graph_state_from_snapshot_parts(
             rules_count,
             intents_with_code: nc.intents_with_code,
             unexplored_pairs,
+            priority_unexplored_pairs,
         },
         snapshot,
         disk_integrity_issues,
@@ -731,6 +739,7 @@ pub fn graph_state_from_snapshot_parts(
         total_edges: edge_status.total_edges,
         unresolved_edges,
         unexplored_pairs,
+        priority_unexplored_pairs,
         codefiles,
         validations,
         notes,

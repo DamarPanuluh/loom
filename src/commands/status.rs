@@ -523,7 +523,7 @@ fn advisory_counts(
 
 /// Format the "other open lanes" footer: the autonomous work lanes that have
 /// items AND aren't the lane the compass already pointed at. `discovery` (the
-/// optional N×N grid, already signalled by `horizontal ○`) and the human-gated
+/// horizontal risk/survey plane, already signalled by the horizontal line) and the human-gated
 /// align/adopt items (already on the `⚑` line) are intentionally omitted — this
 /// is peripheral vision over the *autonomous closable* queues, so the single
 /// pointer can't hide that other lanes have work. Empty when nothing qualifies.
@@ -705,8 +705,10 @@ fn completion_json(
         "horizontal_grid".to_string(),
         serde_json::json!({
             "unexplored_relationship_pairs": gs.unexplored_pairs,
-            "required_for_complete": true,
+            "priority_unexplored_relationship_pairs": gs.priority_unexplored_pairs,
+            "required_for_complete": !gs.horizontally_explored,
             "horizontally_explored": gs.horizontally_explored,
+            "survey_required_for_complete": false,
             "note_hygiene": gs.note_hygiene,
         }),
     );
@@ -1037,8 +1039,10 @@ fn render_plain_status(
         align_count, adopt_count, totals.human_blocked
     );
     println!(
-        "  horizontal grid: {} unexplored pair(s) — not for the vertical spine, but REQUIRED for the HARDENED rung. `loom edge unexplored` lists them",
-        gs.unexplored_pairs
+        "  horizontal risk: {} priority unexplored pair(s), current={} — REQUIRED for the HARDENED rung. Full survey remaining: {} optional pair(s) via `loom edge unexplored --class all`",
+        gs.priority_unexplored_pairs,
+        gs.horizontally_explored,
+        (gs.unexplored_pairs - gs.priority_unexplored_pairs).max(0)
     );
     if intake.active() > 0 || intake.deferred > 0 {
         println!(

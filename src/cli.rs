@@ -1461,19 +1461,18 @@ pub enum EdgeCmd {
     /// Show full detail of one RELATES_TO edge including both intent nodes.
     Show { edge_id: String },
 
-    /// List the intent pairs that have NO RELATES_TO edge yet — the horizontal
-    /// grid still owed for `phase=complete`. The status compass counts them; this
-    /// RETRIEVES them, ranked, each with a pre-filled `loom edge explore` command
-    /// so they can be batched (paste into `loom batch`). `--class all` (default)
-    /// lists every unexplored pair; `suspected-coupling` only the high-signal ones
-    /// `loom next --mode discovery` would surface; `impact-map` the central-but-
-    /// signal-less ones. Mark `independent` at the highest honest altitude — a
-    /// component-level verdict covers its descendants ONLY with --covers-descendants.
+    /// List the intent pairs that have NO RELATES_TO edge yet. `--class
+    /// suspected-coupling` is the HARDENED risk backlog; `--class all` (default)
+    /// is the optional exhaustive survey. Each pair is ranked and carries a
+    /// pre-filled `loom edge explore` command so verdicts can be batched (paste
+    /// into `loom batch`). `impact-map` lists central-but-signal-less pairs.
+    /// Mark `independent` at the highest honest altitude — a component-level
+    /// verdict covers descendants ONLY with --covers-descendants.
     #[command(after_help = "EXAMPLE:\n  \
         loom edge unexplored --json\n  \
         loom edge unexplored --class suspected-coupling --limit 20")]
     Unexplored {
-        /// Which pairs: all | suspected-coupling | impact-map (default: all).
+        /// Which pairs: all | suspected-coupling | impact-map (default: all; required risk backlog: suspected-coupling).
         #[arg(long)]
         class: Option<String>,
 
