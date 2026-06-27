@@ -2107,7 +2107,9 @@ pub enum NoteCmd {
     },
 
     /// Add a note. Attach it to an intent, an edge, or a code file, or leave
-    /// it free-floating.
+    /// it free-floating. File/intent decision notes stay lightweight unless
+    /// they would buy symbol-accountability green; then loom applies the same
+    /// substantive, non-templated ruling gate used for smell adjudications.
     #[command(after_help = "EXAMPLE:\n  \
         loom note add --kind decision --intent \"request routing\" \\\n    \
           --text \"host-only routing is deliberate: path routing was descoped in the multi-tenant review\"")]

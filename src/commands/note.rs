@@ -196,20 +196,23 @@ fn prepare_add_note(
         _ => ("none".to_string(), String::new()),
     };
 
-    // The anti-rubber-stamp bar. A `decision` note scoped to a smell SUPPRESSES
-    // an audit finding — the one write surface that historically had no evidence
-    // gate, which let an agent batch-stamp every open finding with one pasted
-    // rationale. Here a smell ruling must be substantive AND not reuse the
-    // wording of a ruling already on a DIFFERENT finding: the first ruling of a
-    // template passes, the second bounces, forcing per-finding inspection.
-    if kind == "decision" && target_kind == "smell" {
+    // The anti-rubber-stamp bar. A green-affecting decision note SUPPRESSES a
+    // computed finding — either an exact smell (`--smell`) or a broad
+    // file/intent ruling over current symbol-accountability gaps. Those notes
+    // must be substantive and must not reuse another finding's rationale.
+    if kind == "decision"
+        && (target_kind == "smell" || target_has_symbol_gap(db, &target_kind, &target_id)?)
+    {
         let prior_notes = db.notes_by_kind("decision")?;
         let prior_rulings: Vec<(&str, &str)> = prior_notes
             .iter()
-            .filter(|n| n.target_kind == "smell" && n.target_id != target_id)
+            .filter(|n| {
+                matches!(n.target_kind.as_str(), "smell" | "codefile" | "intent")
+                    && n.target_id != target_id
+            })
             .map(|n| (n.target_id.as_str(), n.text.as_str()))
             .collect();
-        crate::gate::require_distinct_smell_ruling(&text, &prior_rulings)?;
+        crate::gate::require_green_adjudication_ruling(&text, &prior_rulings)?;
     }
 
     let audience = match &for_role {
@@ -238,6 +241,46 @@ fn prepare_add_note(
         audience,
         created_at: chrono::Utc::now().to_rfc3339(),
     })
+}
+
+fn target_has_symbol_gap(
+    db: &dyn GraphReadRepository,
+    target_kind: &str,
+    target_id: &str,
+) -> Result<bool> {
+    if target_kind != "codefile" && target_kind != "intent" {
+        return Ok(false);
+    }
+    let snapshot = db.query_snapshot()?;
+    let report = crate::db::queries::symbol_accountability_from_parts_with_notes(
+        &snapshot.codefiles,
+        &snapshot.intents,
+        &snapshot.implements,
+        &[],
+    );
+    match target_kind {
+        "codefile" => {
+            let target_path = snapshot
+                .codefiles
+                .iter()
+                .find(|cf| cf.id == target_id)
+                .map(|cf| cf.path.as_str())
+                .unwrap_or(target_id);
+            Ok(report
+                .raw_actionable_symbol_gaps
+                .iter()
+                .any(|gap| gap.path == target_path))
+        }
+        "intent" => {
+            let needle = format!("({target_id})");
+            Ok(report.raw_actionable_symbol_gaps.iter().any(|gap| {
+                gap.owner_intents
+                    .iter()
+                    .any(|owner| owner.contains(&needle))
+            }))
+        }
+        _ => Ok(false),
+    }
 }
 
 fn print_add_result(note: &Note, printer: &Printer) {

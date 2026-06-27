@@ -4,7 +4,7 @@
 //! accepted file-level owner, or an actionable gap.
 
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::symbol_match::{contains_identifier_word, symbol_identifier};
 use crate::types::{CodeFile, Implements, Intent, Note, SymbolFact};
@@ -64,6 +64,17 @@ pub struct AdjudicatedSymbolGap {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct IgnoredSymbolAdjudication {
+    pub path: String,
+    pub label: String,
+    pub reason: String,
+    pub ruling: String,
+    pub ruled_by: String,
+    pub ruled_at: String,
+    pub ignored_reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct SymbolTeaching {
     pub principle: String,
     pub inspect: Vec<String>,
@@ -77,6 +88,7 @@ pub struct SymbolAccountabilityReport {
     pub raw_actionable_symbol_gaps: Vec<ActionableSymbolGap>,
     pub actionable_symbol_gaps: Vec<ActionableSymbolGap>,
     pub adjudicated_symbol_gaps: Vec<AdjudicatedSymbolGap>,
+    pub ignored_symbol_adjudications: Vec<IgnoredSymbolAdjudication>,
     pub teaching: SymbolTeaching,
 }
 
@@ -146,11 +158,13 @@ pub fn symbol_accountability_from_parts_with_notes(
             *existing = note;
         }
     }
+    let valid_green_decisions = valid_green_decision_targets(&last_decision);
 
     let mut summary = SymbolAccountabilitySummary::default();
     let mut raw_gaps = Vec::new();
     let mut open_gaps = Vec::new();
     let mut adjudicated_gaps = Vec::new();
+    let mut ignored_adjudications = Vec::new();
     for cf in codefiles {
         if cf.symbol_facts.is_empty() {
             continue;
@@ -215,9 +229,21 @@ pub fn symbol_accountability_from_parts_with_notes(
                     &newest_claim,
                     &newest_grounding,
                     &last_decision,
+                    &valid_green_decisions,
                 ) {
                     adjudicated_gaps.push(adjudicated_gap(&gap, note));
                 } else {
+                    if let Some(note) = ignored_adjudicating_note(
+                        cf,
+                        &owners,
+                        &cf_id_by_path,
+                        &newest_claim,
+                        &newest_grounding,
+                        &last_decision,
+                        &valid_green_decisions,
+                    ) {
+                        ignored_adjudications.push(ignored_adjudication(&gap, note));
+                    }
                     open_gaps.push(gap);
                 }
             }
@@ -226,6 +252,12 @@ pub fn symbol_accountability_from_parts_with_notes(
     raw_gaps.sort_by(|a, b| a.path.cmp(&b.path).then_with(|| a.label.cmp(&b.label)));
     open_gaps.sort_by(|a, b| a.path.cmp(&b.path).then_with(|| a.label.cmp(&b.label)));
     adjudicated_gaps.sort_by(|a, b| {
+        a.path
+            .cmp(&b.path)
+            .then_with(|| a.label.cmp(&b.label))
+            .then_with(|| a.ruled_at.cmp(&b.ruled_at))
+    });
+    ignored_adjudications.sort_by(|a, b| {
         a.path
             .cmp(&b.path)
             .then_with(|| a.label.cmp(&b.label))
@@ -246,6 +278,7 @@ pub fn symbol_accountability_from_parts_with_notes(
         raw_actionable_symbol_gaps: raw_gaps,
         actionable_symbol_gaps: open_gaps,
         adjudicated_symbol_gaps: adjudicated_gaps,
+        ignored_symbol_adjudications: ignored_adjudications,
         teaching: symbol_teaching(),
     }
 }
@@ -304,12 +337,12 @@ fn suggested_action(path: &str, fact: &SymbolFact, owners: &[Owner]) -> String {
             );
         }
         return format!(
-            "`{}` is an unclaimed public symbol, but '{}' already grounds {} at a different symbol (`{}`) — do NOT re-`implement` it onto this one (that REPLACES the existing locator). Give `{}` its own owner: add an intent for it (`loom intent add … --parent <parent>`, then `loom edge implement <new-intent> {} --locator \"{}\"`), or record a decision note if the existing intent deliberately covers the whole file.",
+        "`{}` is an unclaimed public symbol, but '{}' already grounds {} at a different symbol (`{}`) — do NOT re-`implement` it onto this one (that REPLACES the existing locator). Give `{}` its own owner: add an intent for it (`loom intent add … --parent <parent>`, then `loom edge implement <new-intent> {} --locator \"{}\"`), or record a substantive decision note if the existing intent deliberately covers the whole file.",
             fact.label, owner.name, qpath, owner.locator.trim(), fact.label, qpath, fact.label
         );
     }
     format!(
-        "`{}` is an unclaimed public symbol and {} intents already ground {} at other symbols — do NOT re-`implement` an existing owner onto it (that REPLACES that owner's locator). Give it its OWN owner (`loom intent add … --parent <parent>`, then `loom edge implement <new-intent> {} --locator \"{}\"`), split an existing intent, or record a decision note if broad file ownership is deliberate (`loom codefile show {}` lists the owners).",
+        "`{}` is an unclaimed public symbol and {} intents already ground {} at other symbols — do NOT re-`implement` an existing owner onto it (that REPLACES that owner's locator). Give it its OWN owner (`loom intent add … --parent <parent>`, then `loom edge implement <new-intent> {} --locator \"{}\"`), split an existing intent, or record a substantive decision note if broad file ownership is deliberate (`loom codefile show {}` lists the owners).",
         fact.label,
         owners.len(),
         qpath,
@@ -342,11 +375,53 @@ fn adjudicating_note<'a>(
     newest_claim: &HashMap<&str, &str>,
     newest_grounding: &HashMap<&str, &str>,
     last_decision: &HashMap<&str, &'a Note>,
+    valid_green_decisions: &HashSet<&str>,
+) -> Option<&'a Note> {
+    let note = candidate_adjudicating_note(
+        cf,
+        owners,
+        cf_id_by_path,
+        newest_claim,
+        newest_grounding,
+        last_decision,
+    )?;
+    valid_green_decisions
+        .contains(note.target_id.as_str())
+        .then_some(note)
+}
+
+fn ignored_adjudicating_note<'a>(
+    cf: &CodeFile,
+    owners: &[Owner],
+    cf_id_by_path: &HashMap<&str, &str>,
+    newest_claim: &HashMap<&str, &str>,
+    newest_grounding: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &'a Note>,
+    valid_green_decisions: &HashSet<&str>,
+) -> Option<&'a Note> {
+    let note = candidate_adjudicating_note(
+        cf,
+        owners,
+        cf_id_by_path,
+        newest_claim,
+        newest_grounding,
+        last_decision,
+    )?;
+    (!valid_green_decisions.contains(note.target_id.as_str())).then_some(note)
+}
+
+fn candidate_adjudicating_note<'a>(
+    cf: &CodeFile,
+    owners: &[Owner],
+    cf_id_by_path: &HashMap<&str, &str>,
+    newest_claim: &HashMap<&str, &str>,
+    newest_grounding: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &'a Note>,
 ) -> Option<&'a Note> {
     let file_anchor = newest_claim.get(cf.path.as_str()).copied().unwrap_or("");
     let file_note = cf_id_by_path
         .get(cf.path.as_str())
-        .and_then(|cfid| current_decision(cfid, file_anchor, last_decision));
+        .and_then(|cfid| current_candidate_decision(cfid, file_anchor, last_decision));
     let owner_note = owners
         .iter()
         .filter_map(|owner| {
@@ -354,7 +429,7 @@ fn adjudicating_note<'a>(
                 .get(owner.id.as_str())
                 .copied()
                 .unwrap_or("");
-            current_decision(owner.id.as_str(), anchor, last_decision)
+            current_candidate_decision(owner.id.as_str(), anchor, last_decision)
         })
         .max_by_key(|note| note.created_at.as_str());
     file_note
@@ -363,7 +438,7 @@ fn adjudicating_note<'a>(
         .max_by_key(|note| note.created_at.as_str())
 }
 
-fn current_decision<'a>(
+fn current_candidate_decision<'a>(
     target: &str,
     anchor: &str,
     last_decision: &HashMap<&str, &'a Note>,
@@ -372,6 +447,26 @@ fn current_decision<'a>(
         .get(target)
         .copied()
         .filter(|note| note.created_at.as_str() > anchor)
+}
+
+fn valid_green_decision_targets<'a>(
+    last_decision: &HashMap<&'a str, &'a Note>,
+) -> HashSet<&'a str> {
+    let prior: Vec<(&str, &str)> = last_decision
+        .iter()
+        .map(|(target, note)| (*target, note.text.as_str()))
+        .collect();
+    last_decision
+        .iter()
+        .filter_map(|(target, note)| {
+            crate::gate::green_adjudication_ruling_is_valid(
+                note.text.as_str(),
+                &note.target_id,
+                &prior,
+            )
+            .then_some(*target)
+        })
+        .collect()
 }
 
 fn adjudicated_gap(gap: &ActionableSymbolGap, note: &Note) -> AdjudicatedSymbolGap {
@@ -387,6 +482,19 @@ fn adjudicated_gap(gap: &ActionableSymbolGap, note: &Note) -> AdjudicatedSymbolG
         ruled_by: note.author.clone(),
         ruled_at: note.created_at.clone(),
         reopens_when: "a newer grounding lands on the file or owning intent".into(),
+    }
+}
+
+fn ignored_adjudication(gap: &ActionableSymbolGap, note: &Note) -> IgnoredSymbolAdjudication {
+    IgnoredSymbolAdjudication {
+        path: gap.path.clone(),
+        label: gap.label.clone(),
+        reason: gap.reason.clone(),
+        ruling: note.text.clone(),
+        ruled_by: note.author.clone(),
+        ruled_at: note.created_at.clone(),
+        ignored_reason: "decision note is too weak or templated to buy symbol-accountability green"
+            .into(),
     }
 }
 
@@ -500,10 +608,26 @@ mod tests {
     }
 
     fn decision_note(id: &str, target_kind: &str, target_id: &str, created_at: &str) -> Note {
+        decision_note_with_text(
+            id,
+            target_kind,
+            target_id,
+            created_at,
+            "the owning intent covers this generated command surface as one broad file contract",
+        )
+    }
+
+    fn decision_note_with_text(
+        id: &str,
+        target_kind: &str,
+        target_id: &str,
+        created_at: &str,
+        text: &str,
+    ) -> Note {
         Note {
             id: id.into(),
             kind: "decision".into(),
-            text: "broad ownership is deliberate here".into(),
+            text: text.into(),
             author: "llm".into(),
             target_kind: target_kind.into(),
             target_id: target_id.into(),
@@ -622,5 +746,56 @@ mod tests {
         assert_eq!(reopened.summary.raw_actionable_gaps, 1);
         assert_eq!(reopened.summary.adjudicated, 0);
         assert_eq!(reopened.summary.actionable_gaps, 1);
+    }
+
+    #[test]
+    fn vague_decision_note_does_not_buy_symbol_green() {
+        let file = codefile("pkg/a.py", vec![fact("def run", "public", false)]);
+        let owner = intent("i", "run");
+        let claim = implements("i", "pkg/a.py", "def other");
+        let report = symbol_accountability_from_parts_with_notes(
+            &[file],
+            &[owner],
+            &[claim],
+            &[decision_note_with_text(
+                "n",
+                "codefile",
+                "pkg/a.py",
+                "t2",
+                "visibility ruled internal during alignment",
+            )],
+        );
+        assert_eq!(report.summary.raw_actionable_gaps, 1);
+        assert_eq!(report.summary.adjudicated, 0);
+        assert_eq!(report.summary.actionable_gaps, 1);
+        assert_eq!(report.ignored_symbol_adjudications.len(), 1);
+    }
+
+    #[test]
+    fn templated_decision_notes_do_not_buy_symbol_green() {
+        let files = [
+            codefile("pkg/a.py", vec![fact("def run", "public", false)]),
+            codefile("pkg/b.py", vec![fact("def stop", "public", false)]),
+        ];
+        let intents = [intent("i", "run"), intent("j", "stop")];
+        let claims = [
+            implements("i", "pkg/a.py", "def other"),
+            implements("j", "pkg/b.py", "def other"),
+        ];
+        let text =
+            "the owning intent covers this generated command surface as one broad file contract";
+        let report = symbol_accountability_from_parts_with_notes(
+            &files,
+            &intents,
+            &claims,
+            &[
+                decision_note_with_text("a", "codefile", "pkg/a.py", "t2", text),
+                decision_note_with_text("b", "codefile", "pkg/b.py", "t2", text),
+            ],
+        );
+        assert_eq!(report.summary.raw_actionable_gaps, 2);
+        assert_eq!(report.summary.adjudicated, 0);
+        assert_eq!(report.summary.actionable_gaps, 2);
+        assert_eq!(report.ignored_symbol_adjudications.len(), 2);
     }
 }

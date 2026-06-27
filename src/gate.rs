@@ -508,6 +508,14 @@ pub fn is_vacuous(value: &str) -> bool {
     if LEADING.iter().any(|p| v.starts_with(p)) {
         return true;
     }
+    const STOCK_SHORTCUTS: &[&str] = &[
+        "visibility ruled internal during alignment",
+        "visibility ruled internal",
+        "ruled internal during alignment",
+    ];
+    if STOCK_SHORTCUTS.iter().any(|p| v.contains(p)) {
+        return true;
+    }
     // Low information: too few distinct LETTERS (`xxxxxxxxxx`, `aaaa aaaa`).
     let distinct_letters = v
         .chars()
@@ -573,33 +581,31 @@ pub fn require_passing_locator(status: &str, locators: &[String]) -> Result<()> 
 }
 
 // ---------------------------------------------------------------------------
-// Smell-adjudication gate — the anti-rubber-stamp bar
+// Green-adjudication gate — the anti-rubber-stamp bar
 // ---------------------------------------------------------------------------
 //
-// A `loom smells` finding is suppressed by a `decision` note scoped to it
-// (`loom note add --smell "<kind>:<scope>" --kind decision`). That path is the
-// one write surface with no evidence gate — and an LLM under green-gate pressure
-// will batch-stamp every open finding with one pasted rationale ("Deliberate:
-// size reflects subcommand count") rather than inspect each. These gates make
-// that mechanically impossible: a ruling must be substantive, and it must not
-// reuse the wording of a ruling already recorded on a DIFFERENT finding. The
-// first ruling of a template passes; the second bounces — forcing the agent to
-// read THIS finding's code and rule on its actual structure.
+// A green-affecting decision note suppresses a computed finding instead of
+// fixing/re-grounding the code: smell adjudications (`--smell`) and symbol
+// accountability broad-owner rulings (`--file` / `--intent`). These gates make
+// the shortcut mechanically expensive: a ruling must be substantive, and it
+// must not reuse the wording of a ruling already recorded on a DIFFERENT
+// finding. The first ruling of a template passes; the second bounces — forcing
+// the agent to read THIS finding's code and rule on its actual structure.
 
-/// Minimum length (chars) for a smell adjudication ruling. A decision note that
-/// SUPPRESSES an audit finding must do more than fill the slot — "Deliberate:
+/// Minimum length (chars) for a green-affecting decision note. A ruling that
+/// SUPPRESSES a computed finding must do more than fill the slot — "Deliberate:
 /// cohesive" is not an audit. The bar is higher than the generic evidence floor
 /// because a finding ruled away on weak words reads as inspected without being
 /// inspected.
-pub const MIN_SMELL_RULING_LEN: usize = 40;
+pub const MIN_GREEN_RULING_LEN: usize = 40;
 
-/// Two smell rulings whose content-word overlap meets this fraction are treated
-/// as the same template — the tell of a batch rubber-stamp (one rationale pasted
-/// across many findings). Overlap = |A ∩ B| / min(|A|, |B|), so a short template
-/// embedded in a longer ruling still trips it, while two rulings that merely
-/// share a stock phrase (e.g. "size reflects … count") but are otherwise
-/// specific stay well below it.
-pub const SMELL_RULING_OVERLAP_LIMIT: f64 = 0.7;
+/// Two green-adjudication rulings whose content-word overlap meets this fraction
+/// are treated as the same template — the tell of a batch rubber-stamp (one
+/// rationale pasted across findings). Overlap = |A ∩ B| / min(|A|, |B|), so a
+/// short template embedded in a longer ruling still trips it, while two rulings
+/// that merely share a stock phrase (e.g. "size reflects … count") but are
+/// otherwise specific stay well below it.
+pub const GREEN_RULING_OVERLAP_LIMIT: f64 = 0.7;
 
 /// A ruling must carry at least this many content words before the overlap ratio
 /// means anything; shorter rulings are governed by the length floor alone.
@@ -706,15 +712,21 @@ fn ruling_overlap(a: &BTreeSet<String>, b: &BTreeSet<String>) -> f64 {
     a.intersection(b).count() as f64 / min as f64
 }
 
-/// True when two smell rulings reuse each other's wording closely enough to read
-/// as the same template rather than two independent inspections. Both must carry
-/// enough content words for the ratio to be meaningful.
-pub fn smell_rulings_are_templated(a: &str, b: &str) -> bool {
+/// True when two green-adjudication rulings reuse each other's wording closely
+/// enough to read as the same template rather than two independent inspections.
+/// Both must carry enough content words for the ratio to be meaningful.
+pub fn green_rulings_are_templated(a: &str, b: &str) -> bool {
     let (wa, wb) = (ruling_content_words(a), ruling_content_words(b));
     if wa.len() < MIN_RULING_CONTENT_WORDS || wb.len() < MIN_RULING_CONTENT_WORDS {
         return false;
     }
-    ruling_overlap(&wa, &wb) >= SMELL_RULING_OVERLAP_LIMIT
+    ruling_overlap(&wa, &wb) >= GREEN_RULING_OVERLAP_LIMIT
+}
+
+/// Back-compat wrapper for existing smell-specific tests/callers.
+#[cfg(test)]
+pub fn smell_rulings_are_templated(a: &str, b: &str) -> bool {
+    green_rulings_are_templated(a, b)
 }
 
 /// Count rulings that belong to a template cluster of at least `min_cluster`
@@ -730,7 +742,7 @@ pub fn count_templated_rulings(rulings: &[&str], min_cluster: usize) -> usize {
         }
         let members: Vec<usize> = (i..rulings.len())
             .filter(|&j| {
-                !clustered[j] && (j == i || smell_rulings_are_templated(rulings[i], rulings[j]))
+                !clustered[j] && (j == i || green_rulings_are_templated(rulings[i], rulings[j]))
             })
             .collect();
         if members.len() >= min_cluster {
@@ -743,24 +755,42 @@ pub fn count_templated_rulings(rulings: &[&str], min_cluster: usize) -> usize {
     total
 }
 
-/// Gate a smell-adjudication decision note. Rejects (1) a vacuous or too-short
+/// True when a green-affecting decision note is substantive and does not reuse
+/// another active ruling's wording. This read-side predicate mirrors
+/// `require_green_adjudication_ruling`: legacy notes that would be rejected at
+/// write time must not keep buying green.
+pub fn green_adjudication_ruling_is_valid(
+    text: &str,
+    target: &str,
+    prior: &[(&str, &str)],
+) -> bool {
+    let trimmed = text.trim();
+    if is_vacuous(trimmed) || trimmed.chars().count() < MIN_GREEN_RULING_LEN {
+        return false;
+    }
+    !prior.iter().any(|(other, prior_text)| {
+        *other != target && green_rulings_are_templated(trimmed, prior_text)
+    })
+}
+
+/// Gate a green-affecting decision note. Rejects (1) a vacuous or too-short
 /// ruling, and (2) a ruling that reuses the wording of one already recorded on
 /// ANOTHER finding — the batch-rubber-stamp pattern. `prior` is
-/// `(finding_identity, ruling_text)` for every existing smell decision note
+/// `(finding_identity, ruling_text)` for existing green-affecting decision notes
 /// EXCEPT one already on this finding (re-ruling the same finding is allowed).
-pub fn require_distinct_smell_ruling(text: &str, prior: &[(&str, &str)]) -> Result<()> {
+pub fn require_green_adjudication_ruling(text: &str, prior: &[(&str, &str)]) -> Result<()> {
     let trimmed = text.trim();
-    if is_vacuous(trimmed) || trimmed.chars().count() < MIN_SMELL_RULING_LEN {
+    if is_vacuous(trimmed) || trimmed.chars().count() < MIN_GREEN_RULING_LEN {
         anyhow::bail!(
-            "A smell ruling must be a substantive inspection (≥{MIN_SMELL_RULING_LEN} chars, not a \
-             placeholder): name the decomposition you considered and the concrete reason it is wrong \
-             for THIS finding — not a restatement of its size/shape. Got: '{got}'. A finding ruled \
-             away on weak words reads as audited without being audited.",
+            "A green-affecting decision note must be a substantive inspection (≥{MIN_GREEN_RULING_LEN} chars, not a \
+             placeholder): name the boundary or decomposition you considered and the concrete reason it is wrong \
+             for THIS code shape — not a restatement of size/visibility/shape. Got: '{got}'. A finding ruled \
+             away on weak words reads as audited without being audited; decision notes are audit trail, not a shortcut.",
             got = trimmed,
         );
     }
     for (other, prior_text) in prior {
-        if smell_rulings_are_templated(trimmed, prior_text) {
+        if green_rulings_are_templated(trimmed, prior_text) {
             anyhow::bail!(
                 "This ruling reuses the wording of your adjudication on `{other}`:\n  \"{quoted}\"\n\
                  Two findings ruled deliberate with the same rationale is rubber-stamping, not \
@@ -771,6 +801,12 @@ pub fn require_distinct_smell_ruling(text: &str, prior: &[(&str, &str)]) -> Resu
         }
     }
     Ok(())
+}
+
+/// Back-compat wrapper for existing smell-specific callers.
+#[cfg(test)]
+pub fn require_distinct_smell_ruling(text: &str, prior: &[(&str, &str)]) -> Result<()> {
+    require_green_adjudication_ruling(text, prior)
 }
 
 /// Cap a quoted prior ruling in an error message so the bounce stays bounded.

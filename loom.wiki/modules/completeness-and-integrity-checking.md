@@ -31,7 +31,7 @@ symbols:
 provenance:
   docs/maturity-ladder-proposal.md: 6b14490c69e38219
   src/commands/complete.rs: b18b50099ee49f56
-  src/commands/coverage.rs: 087c7096985d7202
+  src/commands/coverage.rs: be50cf282413bc27
   src/commands/doctor.rs: 7455e3f6b39aa8a5
   src/commands/hotspots.rs: 67cf959d9d79973e
   src/commands/impact.rs: 4da1713958fa1b7c
@@ -39,12 +39,12 @@ provenance:
   src/commands/status.rs: 7cde5db284132dbe
   src/db/queries/completeness.rs: 9b909cc69121f1e1
   src/db/queries/comprehensiveness.rs: 92ecbff1ee84ea92
-  src/db/queries/integrity.rs: c31c55865772206b
+  src/db/queries/integrity.rs: cf89f2e8809f232a
   src/db/queries/maturity.rs: 000eec873a79ff79
   src/db/queries/maturity/tests.rs: 83aebef6afd90de4
   src/db/queries/stats.rs: 476ab8622105603d
   src/db/queries/stats/tests.rs: 7c0d1fb9f3e602ae
-  src/db/queries/symbol_accountability.rs: e03ede9b683eeecc
+  src/db/queries/symbol_accountability.rs: c6c8561ae7b9e4c3
 ---
 
 # completeness and integrity checking
@@ -73,6 +73,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

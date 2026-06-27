@@ -16,13 +16,13 @@ sourceFiles:
 symbols:
   - pub fn run
 provenance:
-  src/commands/batch.rs: fdeac7cb8993fabd
+  src/commands/batch.rs: 6a6ccd926bd72787
   src/commands/codefile.rs: 0ee513864c1cef40
   src/commands/export.rs: 35756c578400e3a2
   src/commands/ignore.rs: 7997dfb337dad444
   src/commands/import.rs: 93f197ec9bd9b116
   src/commands/intent.rs: ec7ad101ea150ed2
-  src/commands/note.rs: 04649ff93c77aedd
+  src/commands/note.rs: 230f52cc758d8442
   src/commands/rule.rs: b18dabb7855b3e72
   src/commands/validation.rs: d726cbcb95e66827
 ---
@@ -53,6 +53,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

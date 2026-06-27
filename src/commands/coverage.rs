@@ -144,6 +144,7 @@ pub fn run_with_db(
                     .collect::<Vec<_>>(),
                 "actionable_symbol_gaps_total": symbol_accountability.actionable_symbol_gaps.len(),
                 "adjudicated_symbol_gaps_total": symbol_accountability.adjudicated_symbol_gaps.len(),
+                "ignored_symbol_adjudications_total": symbol_accountability.ignored_symbol_adjudications.len(),
                 "note": "Summary mode omits full file, symbol, raw-gap, and adjudication archives. Use `loom coverage --json` only when per-item evidence is needed.",
             }));
         } else {
@@ -199,6 +200,7 @@ pub fn run_with_db(
             "raw_actionable_symbol_gaps": symbol_accountability.raw_actionable_symbol_gaps,
             "actionable_symbol_gaps": symbol_accountability.actionable_symbol_gaps,
             "adjudicated_symbol_gaps": symbol_accountability.adjudicated_symbol_gaps,
+            "ignored_symbol_adjudications": symbol_accountability.ignored_symbol_adjudications,
             "symbol_teaching":       symbol_accountability.teaching,
         });
         // Parity (invariant 2): carry the human remediation into json so the
@@ -379,6 +381,15 @@ pub fn run_with_db(
                 symbol_accountability.adjudicated_symbol_gaps.len()
             );
         }
+        if !symbol_accountability
+            .ignored_symbol_adjudications
+            .is_empty()
+        {
+            println!(
+                "  ignored weak/templated decision notes: {}",
+                symbol_accountability.ignored_symbol_adjudications.len()
+            );
+        }
     }
     Ok(())
 }
@@ -404,10 +415,11 @@ fn render_adjudicated_drilldown(
             "scope": "adjudicated",
             "adjudicated_total": gaps.len(),
             "adjudicated_symbol_gaps": gaps,
+            "ignored_symbol_adjudications": symbol_accountability.ignored_symbol_adjudications,
             "note": "Decision notes carry no confidence field; staleness = ruled_at age. \
                      Challenge a ruling by re-grounding (`loom edge implement`) or by adding a \
-                     newer decision note (`loom note add --kind decision`).",
-            "next_step": "challenge a stale ruling: re-ground the symbol or record a newer decision note",
+                     newer substantive decision note. Weak or templated decision notes are listed as ignored.",
+            "next_step": "challenge a stale ruling: re-ground the symbol or record a newer substantive decision note",
         });
         printer.print_json(&payload);
         return Ok(());
@@ -425,6 +437,15 @@ fn render_adjudicated_drilldown(
         "  {} symbol(s) resolved by a decision note (bought green, not grounded).",
         gaps.len()
     );
+    if !symbol_accountability
+        .ignored_symbol_adjudications
+        .is_empty()
+    {
+        println!(
+            "  {} weak/templated decision note(s) were ignored and did not buy green.",
+            symbol_accountability.ignored_symbol_adjudications.len()
+        );
+    }
     println!("  Each is auditable: the ruling that bought it, who ruled, when");
     println!("  (staleness = ruling age), and what would re-open it. Decision notes");
     println!("  carry no confidence field — staleness + author are the challenge handles.");

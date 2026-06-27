@@ -1223,6 +1223,11 @@ fn sqlite_next_default_follows_compass_phase() {
             [],
         )
         .expect("invalidate validations to make validate the dominant focus");
+        conn.execute(
+            "UPDATE intent SET lifecycle='implemented' WHERE lifecycle IN ('planned','needs_change')",
+            [],
+        )
+        .expect("remove build-lane fixture noise so validate routing is isolated");
     }
     let st = run_json(&graph.root, &["status", "--json"]);
     let phase = st["graph_state"]["phase"]
@@ -1233,8 +1238,8 @@ fn sqlite_next_default_follows_compass_phase() {
         .as_str()
         .expect("bare `loom next` JSON carries a `mode` field");
     assert!(
-        mode == phase_default_mode_for_test(phase) || mode == "validate",
-        "bare `loom next` must follow the compass phase ({phase}) or validate (seeded planned intents create proof work). Got: {mode}"
+        mode == phase_default_mode_for_test(phase) || matches!(mode, "validate" | "build"),
+        "bare `loom next` must follow the compass phase ({phase}) or a higher-priority non-discovery work lane. Got: {mode}"
     );
     // The regression: the old binary always returned discovery. On a fixture
     // in a mapped non-discovery phase, the default must NOT be discovery.
@@ -5886,27 +5891,22 @@ fn sqlite_audit_summary_surfaces_stay_bounded() {
     );
 }
 
-// FALSE-GREEN [compass-must-not-overstate]: coverage's "✓ No open actionable
-// symbol gaps" must not ride over adjudication-bought green. loom's own graph
-// resolves most symbols by adjudication (a decision note), not by a grounding
-// locator — "no OPEN gaps" is true, but green earned by adjudication rather
-// than grounding is the shape the false-green cluster hunts. The headline ✓
-// must disclose the co-located negative (adjudicated count) next to itself.
+// FALSE-GREEN [compass-must-not-overstate]: coverage must not let weak legacy
+// decision notes buy symbol-accountability green. loom's own graph carries many
+// old broad rulings; after the green-adjudication gate, weak/templated rulings
+// reopen their symbol gaps and are disclosed as ignored.
 #[test]
-fn sqlite_coverage_qualifies_no_gaps_with_adjudicated_green() {
+fn sqlite_coverage_reopens_weak_symbol_adjudications() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("coverage-qualify");
     // Human output (not --json): the ✓ headline + its qualifier are a
     // presentation fix, so assert on the text surface an agent reads.
     let text = run_text_as(&graph.root, &["coverage"], "llm:validator");
-    // symbol_accountability is graph-derived (symbol_facts + locators), so it
-    // renders even on a tree-less scratch checkout. loom's graph carries
-    // adjudicated symbols, so the bare ✓ must be qualified.
     assert!(
-        text.contains("No open actionable symbol gaps (but")
-            && text.contains("adjudicated (bought green, not grounded)"),
-        "the ✓ 'no open gaps' headline must be bounded by the adjudicated-bought-green \
-         negative instead of riding over it: {text}"
+        text.contains("ignored weak/templated decision notes")
+            && text.contains("open gaps")
+            && !text.contains("No open actionable symbol gaps"),
+        "weak legacy decision notes must reopen symbol gaps and be disclosed as ignored: {text}"
     );
 }
 
@@ -8012,6 +8012,95 @@ fn sqlite_smell_adjudication_rejects_batch_rubber_stamp() {
     assert!(
         err.contains("substantive inspection"),
         "the vacuous bounce must teach the bar: {err}"
+    );
+}
+
+#[test]
+fn sqlite_symbol_decision_note_rejects_weak_green_shortcut() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("symbol-decision-gate");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "src/lib.rs",
+        "pub fn run() -> u8 { 1 }\npub fn stop() -> u8 { 2 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/lib.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "library public surface owner",
+            "--description",
+            "owns the public functions in the library surface",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "library public surface owner",
+            "src/lib.rs",
+            "--locator",
+            "fn run",
+            "--json",
+        ],
+        "llm:builder",
+    );
+
+    let weak = Command::new(loom_bin())
+        .args([
+            "note",
+            "add",
+            "--file",
+            "src/lib.rs",
+            "--kind",
+            "decision",
+            "--text",
+            "visibility ruled internal during alignment",
+        ])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run weak symbol note");
+    assert!(
+        !weak.status.success(),
+        "a weak file decision must not buy symbol-accountability green"
+    );
+    let weak_err = String::from_utf8_lossy(&weak.stderr);
+    assert!(
+        weak_err.contains("green-affecting decision note"),
+        "the error should explain the green-adjudication bar: {weak_err}"
+    );
+
+    run_json_as(
+        &graph.root,
+        &[
+            "note",
+            "add",
+            "--file",
+            "src/lib.rs",
+            "--kind",
+            "decision",
+            "--text",
+            "src/lib.rs exposes a tiny generated compatibility facade, so the existing owner intentionally covers both public functions as one surface",
+            "--json",
+        ],
+        "llm:quality",
     );
 }
 

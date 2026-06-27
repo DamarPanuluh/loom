@@ -403,7 +403,7 @@ fn detect_symbol_accountability(
                 report.summary.actionable_gaps,
                 examples.join(" · ")
             ),
-            remedy: "Use `loom coverage --json` → actionable_symbol_gaps. For each top gap, inspect `loom codefile show <path>`, then refine the right IMPLEMENTS locator, split/add the behavior intent, or record a current decision note on the file/owning intent accepting broad ownership.".into(),
+            remedy: "Use `loom coverage --json` → actionable_symbol_gaps. For each top gap, inspect `loom codefile show <path>`, then refine the right IMPLEMENTS locator, split/add the behavior intent, or record a current substantive decision note on the file/owning intent accepting broad ownership.".into(),
             teaching: teaching_for("symbol_accountability_gap"),
         });
     } else if let Some(gap) = report

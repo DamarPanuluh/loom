@@ -43,8 +43,8 @@ symbols:
   - resolve_intent_with_db
 provenance:
   build.rs: f4c28cfa329bcb8a
-  src/cli.rs: ba2c8d60d8a75648
-  src/commands/batch.rs: fdeac7cb8993fabd
+  src/cli.rs: 48d1656a86b32e6c
+  src/commands/batch.rs: 6a6ccd926bd72787
   src/commands/codefile.rs: 0ee513864c1cef40
   src/commands/edge.rs: db5833205f278f03
   src/commands/export.rs: 35756c578400e3a2
@@ -53,7 +53,7 @@ provenance:
   src/commands/init.rs: a1dc464a4c6cf3e3
   src/commands/intent.rs: ec7ad101ea150ed2
   src/commands/mod.rs: 260aa6729ebe4bb9
-  src/commands/note.rs: 04649ff93c77aedd
+  src/commands/note.rs: 230f52cc758d8442
   src/commands/resolve.rs: 6e16bf8f5c8ea1d0
   src/commands/rule.rs: b18dabb7855b3e72
   src/commands/validate.rs: 2a39afe499c31948
@@ -92,6 +92,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

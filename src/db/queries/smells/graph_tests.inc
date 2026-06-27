@@ -213,7 +213,7 @@ mod cycle_island_tests {
         let note = Note {
             id: "n1".into(),
             kind: "decision".into(),
-            text: "a and b are deliberate mutual peers".into(),
+            text: "a and b are deliberate mutual peers because the two grounded verdicts assert opposite contract directions".into(),
             author: "llm".into(),
             target_kind: "smell".into(),
             target_id: "dependency_cycle:a".into(), // <kind>:<smaller-id anchor>

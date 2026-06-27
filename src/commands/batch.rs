@@ -222,28 +222,6 @@ fn evidence_opt(evidence: &str) -> Option<String> {
     }
 }
 
-trait BatchNoteLookup {
-    fn list_notes_by_kind_and_target_kind(
-        &self,
-        kind: &str,
-        target_kind: &str,
-    ) -> Result<Vec<crate::types::Note>>;
-}
-
-impl BatchNoteLookup for crate::db::sqlite::SqliteGraphStore {
-    fn list_notes_by_kind_and_target_kind(
-        &self,
-        kind: &str,
-        target_kind: &str,
-    ) -> Result<Vec<crate::types::Note>> {
-        Ok(self
-            .list_notes(None, Some(kind))?
-            .into_iter()
-            .filter(|note| note.target_kind == target_kind)
-            .collect())
-    }
-}
-
 fn apply_line_sqlite(
     store: &mut crate::db::sqlite::SqliteGraphStore,
     root: &std::path::Path,
@@ -462,13 +440,16 @@ fn apply_line_sqlite(
                 text,
                 "why this smell finding is accepted for this exact code shape",
             )?;
-            let prior_notes = store.list_notes_by_kind_and_target_kind("decision", "smell")?;
+            let prior_notes = store.notes_by_kind("decision")?;
             let prior_rulings: Vec<(&str, &str)> = prior_notes
                 .iter()
-                .filter(|n| n.target_id != smell_id)
+                .filter(|n| {
+                    matches!(n.target_kind.as_str(), "smell" | "codefile" | "intent")
+                        && n.target_id != smell_id
+                })
                 .map(|n| (n.target_id.as_str(), n.text.as_str()))
                 .collect();
-            gate::require_distinct_smell_ruling(text, &prior_rulings)?;
+            gate::require_green_adjudication_ruling(text, &prior_rulings)?;
             if dry_run {
                 return Ok((format!("[dry-run] would smell_decision {smell_id}"), None));
             }

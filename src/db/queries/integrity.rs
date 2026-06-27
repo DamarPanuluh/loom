@@ -487,12 +487,12 @@ struct EdgeClaim {
 /// batch-rubber-stamp signature (one rationale pasted across findings).
 const SMELL_TEMPLATE_CLUSTER_MIN: usize = 3;
 
-/// Audit smell-adjudication decision notes for the rubber-stamp pattern. A
+/// Audit green-adjudication decision notes for the rubber-stamp pattern. A
 /// vacuous ruling that suppresses a finding without inspecting it is an ISSUE
 /// (same floor as a vacuous criterion). A CLUSTER of rulings that reuse one
 /// template across many findings is a HINT — the green gate is `loom smells`,
 /// not doctor; this is the provenance read that says "these read as stamped,
-/// not inspected." The write-time gate (`gate::require_distinct_smell_ruling`)
+/// not inspected." The write-time gate (`gate::require_green_adjudication_ruling`)
 /// blocks NEW batch-stamps; this surfaces a pre-existing backlog to re-audit.
 fn audit_smell_adjudications(notes: &[Note], issues: &mut Vec<String>, hints: &mut Vec<String>) {
     // Only the NEWEST decision note per smell target is the ACTIVE adjudication
@@ -526,7 +526,7 @@ fn audit_smell_adjudications(notes: &[Note], issues: &mut Vec<String>, hints: &m
     // A finding ruled away on placeholder/too-short text — never an inspection.
     for (target, text) in &rulings {
         if crate::gate::is_vacuous(text)
-            || text.trim().chars().count() < crate::gate::MIN_SMELL_RULING_LEN
+            || text.trim().chars().count() < crate::gate::MIN_GREEN_RULING_LEN
         {
             issues.push(format!(
                 "Smell adjudication on '{target}' is vacuous/too short ('{got}') — a finding ruled \
@@ -548,7 +548,7 @@ fn audit_smell_adjudications(notes: &[Note], issues: &mut Vec<String>, hints: &m
             .filter(|&j| {
                 !clustered[j]
                     && (j == i
-                        || crate::gate::smell_rulings_are_templated(rulings[i].1, rulings[j].1))
+                        || crate::gate::green_rulings_are_templated(rulings[i].1, rulings[j].1))
             })
             .collect();
         if members.len() >= SMELL_TEMPLATE_CLUSTER_MIN {

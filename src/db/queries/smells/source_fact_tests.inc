@@ -154,7 +154,8 @@ mod large_behavioral_symbol_tests {
         let note = Note {
             id: "n1".into(),
             kind: "decision".into(),
-            text: "large parser stays linear for now".into(),
+            text: "parse_everything stays linear because each phase consumes the previous parser cursor state"
+                .into(),
             author: "llm".into(),
             target_kind: "smell".into(),
             target_id: "large_behavioral_symbol:src/big.rs:method parse_everything".into(),
@@ -363,7 +364,8 @@ mod source_fact_smell_tests {
         Note {
             id: "n1".into(),
             kind: "decision".into(),
-            text: "deliberate".into(),
+            text: "this fixture ruling names the exact symbol shape that stays together after inspection"
+                .into(),
             author: "human".into(),
             target_kind: "smell".into(),
             target_id: target_id.into(),
@@ -477,7 +479,8 @@ mod source_fact_smell_tests {
         let note = Note {
             id: "n1".into(),
             kind: "decision".into(),
-            text: "unwraps are construction-time invariants here".into(),
+            text: "alpha unwraps only construction-time fixture state and no recoverable caller input path"
+                .into(),
             author: "llm".into(),
             target_kind: "smell".into(),
             target_id: "panic_marker_risk:src/a.rs:fn alpha".into(),
