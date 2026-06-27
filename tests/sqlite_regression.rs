@@ -495,7 +495,12 @@ SELECT
   id, raw_text, normalized_claim, kind, status, source, author, tags, links,
   route_kind, route_command, route_target_kind, route_target_id, resolution,
   created_at, updated_at
-FROM inbox_item_old;
+FROM inbox_item_old
+WHERE kind IN (
+  'observation','user_request','feature_proposal','bug_suspicion','refactor_suspicion',
+  'missing_intent','missing_validation','missing_story','terminology',
+  'rough_edge','external_blocker','question'
+);
 DROP TABLE inbox_item_old;
 CREATE INDEX IF NOT EXISTS idx_inbox_status_kind ON inbox_item(status, kind, created_at);
 "#,
@@ -540,6 +545,134 @@ fn sqlite_imported_export_read_surface() {
         let value = run_json(&graph.root, &args);
         assert!(value.is_object(), "loom {args:?} returned non-object JSON");
     }
+}
+
+fn add_search_fixture_intent(root: &Path, name: &str) -> String {
+    run_json_as(
+        root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            name,
+            "--description",
+            "search fixture intent with deliberately plain wording",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .expect("intent id")
+        .to_string()
+}
+
+#[test]
+fn find_indexes_intent_note_text() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("find-note-text");
+    let intent_id = add_search_fixture_intent(&graph.root, "note search fixture");
+
+    run_json_as(
+        &graph.root,
+        &[
+            "note",
+            "add",
+            "--intent",
+            &intent_id,
+            "--kind",
+            "decision",
+            "--text",
+            "decision rationale records auxnotequartz as the boundary word",
+            "--json",
+        ],
+        "llm:builder",
+    );
+
+    let found = run_json(&graph.root, &["find", "auxnotequartz", "--json"]);
+    let hits = found["hits"].as_array().expect("find hits");
+    assert!(
+        hits.iter()
+            .any(|hit| hit["id"].as_str() == Some(intent_id.as_str())),
+        "note-only term should surface its intent: {found}"
+    );
+}
+
+#[test]
+fn find_indexes_edge_evidence_text() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("find-edge-text");
+    let left_id = add_search_fixture_intent(&graph.root, "edge search fixture left");
+    let right_id = add_search_fixture_intent(&graph.root, "edge search fixture right");
+
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &left_id,
+            &right_id,
+            "ground",
+            "--criterion",
+            "the fixtures are intentionally related for search evidence coverage",
+            "--evidence",
+            "inspection evidence carries auxedgeopal for both endpoints",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+
+    let found = run_json(&graph.root, &["find", "auxedgeopal", "--json"]);
+    let hits = found["hits"].as_array().expect("find hits");
+    assert!(
+        hits.iter().any(|hit| {
+            let id = hit["id"].as_str();
+            id == Some(left_id.as_str()) || id == Some(right_id.as_str())
+        }),
+        "edge-only term should surface at least one endpoint: {found}"
+    );
+}
+
+#[test]
+fn door_indexes_hypothesis_claims_in_json_and_human_output() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("door-hypothesis-text");
+
+    run_json_as(
+        &graph.root,
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "door hypothesis fixture",
+            "--claim",
+            "auxhypember appears only in this hypothesis claim",
+            "--proposal",
+            "keep the fixture isolated from intent search text",
+            "--predicted-outcome",
+            "door routes the utterance to the hypothesis plane",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+
+    let door = run_json(&graph.root, &["door", "auxhypember", "--json"]);
+    let hypotheses = door["matches"]["hypotheses"]
+        .as_array()
+        .expect("hypothesis matches");
+    assert_eq!(hypotheses.len(), 1, "hypothesis plane should match: {door}");
+    assert_eq!(hypotheses[0]["name"], "door hypothesis fixture");
+
+    let human = run_text_as(&graph.root, &["door", "auxhypember"], "llm:analyzer");
+    assert!(
+        human.contains("hypothesis 'door hypothesis fixture'"),
+        "human door output should render hypotheses plane:\n{human}"
+    );
 }
 
 #[test]
@@ -8016,6 +8149,7 @@ fn sqlite_smell_adjudication_rejects_batch_rubber_stamp() {
 }
 
 #[test]
+#[cfg(feature = "treesitter")]
 fn sqlite_symbol_decision_note_rejects_weak_green_shortcut() {
     let _g = sqlite_test_lock();
     let graph = ScratchGraph::new("symbol-decision-gate");

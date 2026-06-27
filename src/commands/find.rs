@@ -1,6 +1,7 @@
-//! `loom find` — ask the map: BM25 keyword search over intent names and
-//! descriptions, each hit returned with its tree position, groundings, and
-//! freshness so the answer can be acted on without a second lookup.
+//! `loom find` — ask the map: BM25 keyword search over intent names, curated
+//! intent text, and lower-trust graph rationale, each hit returned with its
+//! tree position, groundings, and freshness so the answer can be acted on
+//! without a second lookup.
 
 use anyhow::Result;
 

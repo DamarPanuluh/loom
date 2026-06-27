@@ -184,7 +184,8 @@ fn render(
     let nothing_known = intents.is_empty()
         && planes.vocab.is_empty()
         && planes.sagas.is_empty()
-        && planes.rules.is_empty();
+        && planes.rules.is_empty()
+        && planes.hypotheses.is_empty();
     let mode = if has_source {
         "brownfield"
     } else {
@@ -220,6 +221,7 @@ fn render(
                 "vocab": planes.vocab,
                 "sagas": planes.sagas,
                 "rules": planes.rules,
+                "hypotheses": planes.hypotheses,
             },
             "nothing_known": nothing_known,
             "landings": LANDINGS.iter().map(|(when, lands, command)| serde_json::json!({
@@ -273,6 +275,9 @@ fn render(
     }
     for r in &planes.rules {
         println!("  rule   '{}' — {}", r.name, r.detail);
+    }
+    for h in &planes.hypotheses {
+        println!("  hypothesis '{}' — {}", h.name, h.detail);
     }
     println!();
     println!("THE LANDING MENU (pick ONE per utterance; each is an existing command)");
