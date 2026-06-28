@@ -1,41 +1,34 @@
 //! Composition-proof coverage — the JOURNEY corner of the intent/code/saga
 //! triangle, computed as a linear set operation (never the O(N^2) pair grid).
 //!
-//! The triangle: an Intent is realized in CODE (IMPLEMENTS), and a journey
-//! (saga / integration test) is proven by RUNNING that code end-to-end. A leaf
-//! intent is fully proven by a local/unit validation; a *participant* — code
-//! whose value is how it composes — needs a journey that exercises its assembly,
-//! because "every piece passes its unit test but they don't fit together" is the
-//! bug units miss.
+//! The triangle: an Intent is realized in CODE (IMPLEMENTS), and a journey is
+//! proven by RUNNING that code as an assembly. A leaf intent is fully proven by a
+//! local/unit validation; a *participant* — code whose value is how it composes —
+//! needs a proof that exercises its assembly, because "every piece passes its unit
+//! test but they don't fit together" is the bug units miss.
 //!
-//! This module is ADDITIVE and READ-ONLY: it classifies each active intent's
-//! proof tier (path-proven / leaf-only / unproven) so a driver can SEE what a
-//! journey covers vs what only its pieces are proven. It never gates green — the
-//! existing horizontal grid still owns the done-condition until this layer is
-//! validated to cover as well or better.
+//! REPO-AGNOSTIC by construction. A "composition proof" is recognised from the
+//! GRAPH's own topology, never from a test-runner command string (cargo `--test`,
+//! pytest, jest, `go test` — each differs per language and per repo, and baking
+//! any of them in is exactly the hardcoding that can't travel to a repo we didn't
+//! anticipate). The three signals are universal:
+//!   - DECLARED journey: `validation_type == "saga"` — loom's own journey
+//!     primitive (`loom saga`), part of the data model, not a guessed repo string.
+//!   - structural SPAN: the proof validates >= 2 intents — it exercises more than
+//!     one responsibility, so it is proving their composition.
+//!   - structural ASSEMBLY: the proof validates a NON-LEAF intent — a parent whose
+//!     criterion IS the composed behaviour of its children.
+//!
+//! A proof of exactly one LEAF intent is a leaf proof. `loom paths` discloses the
+//! per-signal breakdown so the inference is auditable.
+//!
+//! This module is ADDITIVE and READ-ONLY: it classifies each active intent's proof
+//! tier (path-proven / leaf-only / unproven) so a driver can SEE what a journey
+//! covers vs what only its pieces are proven. It never gates green.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::db::queries::snapshot::QuerySnapshot;
-use crate::types::Validation;
-
-/// A PASSING validation is a COMPOSITION proof when it exercises the assembled
-/// system end-to-end — a `saga` (consumer journey) or an integration test that
-/// runs the real binary — versus a LEAF proof (a unit test of one symbol). loom
-/// has no symbol-level "this test ran this code" facts, so the tier is INFERRED
-/// from the proof's transport; callers surface the command so the inference is
-/// auditable, not hidden. Conservative on purpose: an unrecognised `cargo test`
-/// reads as leaf, so this never over-claims a journey.
-pub fn is_composition_proof(v: &Validation) -> bool {
-    let c = v.command.as_str();
-    v.validation_type == "saga"
-        // `cargo test --test <target>` runs an integration test in tests/ (a real
-        // binary invocation), not a `--bin` unit test.
-        || c.contains("--test ")
-        // loom's own integration suites run the assembled CLI as a subprocess.
-        || c.contains("sqlite_regression")
-        || c.contains("cold_saga")
-}
 
 /// Proof-tier coverage over the composition (journey) corner. Linear in
 /// validations + validates edges + intents — no pair enumeration.
@@ -51,22 +44,56 @@ pub struct CompositionCoverage {
     pub unproven: i64,
     pub leaf_only_intents: Vec<(String, String)>,
     pub unproven_intents: Vec<(String, String)>,
+    /// Disclosure — composition proofs by the SIGNAL that recognised them, so the
+    /// graph-derived (not command-string) basis is visible and auditable.
+    pub proofs_declared_journey: i64,
+    pub proofs_multi_intent: i64,
+    pub proofs_assembly: i64,
 }
 
 pub fn composition_coverage_from_snapshot(snapshot: &QuerySnapshot) -> CompositionCoverage {
-    // Passing validations, split by tier (one pass).
+    // Non-leaf (assembly) intents = any parent in the hierarchy tree.
+    let non_leaf: HashSet<&str> = snapshot.hierarchy.iter().map(|(p, _)| p.as_str()).collect();
+
+    // query_snapshot already filters deprecated intents, so snapshot.intents is
+    // the active universe — confine VALIDATES projection to it.
+    let active: HashSet<&str> = snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+
+    // Per-validation: which active intents it covers (from VALIDATES) — one pass.
+    let mut covers: HashMap<&str, Vec<&str>> = HashMap::new();
+    for e in &snapshot.validates {
+        if active.contains(e.intent_id.as_str()) {
+            covers
+                .entry(e.validation_id.as_str())
+                .or_default()
+                .push(e.intent_id.as_str());
+        }
+    }
+
+    // Classify each PASSING validation as a composition proof (and how) or a leaf
+    // proof, from the graph-derived signals only.
     let mut comp: HashSet<&str> = HashSet::new();
     let mut leaf: HashSet<&str> = HashSet::new();
+    let mut cov = CompositionCoverage::default();
     for v in &snapshot.validations {
         if v.last_result != "passed" {
             continue;
         }
-        if is_composition_proof(v) {
+        let ints = covers.get(v.id.as_str()).map(Vec::as_slice).unwrap_or(&[]);
+        if v.validation_type == "saga" {
             comp.insert(v.id.as_str());
+            cov.proofs_declared_journey += 1;
+        } else if ints.len() >= 2 {
+            comp.insert(v.id.as_str());
+            cov.proofs_multi_intent += 1;
+        } else if ints.iter().any(|i| non_leaf.contains(i)) {
+            comp.insert(v.id.as_str());
+            cov.proofs_assembly += 1;
         } else {
             leaf.insert(v.id.as_str());
         }
     }
+
     // Project proof tiers onto intents via VALIDATES (set membership — linear).
     let mut intent_comp: HashSet<&str> = HashSet::new();
     let mut intent_leaf: HashSet<&str> = HashSet::new();
@@ -77,9 +104,7 @@ pub fn composition_coverage_from_snapshot(snapshot: &QuerySnapshot) -> Compositi
             intent_leaf.insert(e.intent_id.as_str());
         }
     }
-    // query_snapshot already filters deprecated intents, so snapshot.intents is
-    // the active universe.
-    let mut cov = CompositionCoverage::default();
+
     for i in &snapshot.intents {
         cov.total += 1;
         let id = i.id.as_str();
@@ -99,7 +124,7 @@ pub fn composition_coverage_from_snapshot(snapshot: &QuerySnapshot) -> Compositi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{Intent, ValidatesEdge};
+    use crate::types::{Intent, ValidatesEdge, Validation};
 
     fn intent(id: &str) -> Intent {
         Intent {
@@ -122,13 +147,14 @@ mod tests {
         }
     }
 
-    fn val(id: &str, vtype: &str, command: &str, result: &str) -> Validation {
+    fn val(id: &str, vtype: &str, result: &str) -> Validation {
         Validation {
             id: id.into(),
             name: id.into(),
             description: String::new(),
+            // command is deliberately IRRELEVANT now — the classifier never reads it.
             validation_type: vtype.into(),
-            command: command.into(),
+            command: "anything at all".into(),
             last_run: String::new(),
             last_result: result.into(),
             last_executed_run: String::new(),
@@ -151,12 +177,13 @@ mod tests {
 
     fn snap(
         intents: Vec<Intent>,
+        hierarchy: Vec<(String, String)>,
         validates: Vec<ValidatesEdge>,
         vals: Vec<Validation>,
     ) -> QuerySnapshot {
         QuerySnapshot::from_parts(
             intents,
-            vec![],
+            hierarchy,
             vec![],
             vec![],
             vec![],
@@ -169,73 +196,62 @@ mod tests {
     }
 
     #[test]
-    fn classifies_each_intent_into_its_proof_tier() {
-        // A: covered by a passing SAGA -> path-proven.
-        // B: covered by a passing unit test -> leaf-only.
-        // C: covered by a passing INTEGRATION test (--test) -> path-proven.
-        // D: covered only by a FAILED composition proof -> unproven (not passing).
-        // E: no validation -> unproven.
+    fn recognises_composition_proofs_from_graph_topology_not_command_strings() {
+        // par : non-leaf parent, proven by a single-intent TEST -> ASSEMBLY signal.
+        // leaf: child of par, no proof -> unproven.
+        // x   : proven by a declared SAGA -> DECLARED-journey signal.
+        // y1,y2: proven by ONE validation covering both -> SPAN signal (both path-proven).
+        // u   : proven by a single-leaf-intent test -> leaf-only.
+        // none: no proof -> unproven.
         let intents = vec![
-            intent("A"),
-            intent("B"),
-            intent("C"),
-            intent("D"),
-            intent("E"),
+            intent("par"),
+            intent("leaf"),
+            intent("x"),
+            intent("y1"),
+            intent("y2"),
+            intent("u"),
+            intent("none"),
         ];
+        let hierarchy = vec![("par".to_string(), "leaf".to_string())];
         let vals = vec![
-            val("v_saga", "saga", "loom saga run checkout", "passed"),
-            val(
-                "v_unit",
-                "test",
-                "cargo test --bin loom scoring::tests::x",
-                "passed",
-            ),
-            val(
-                "v_int",
-                "test",
-                "cargo test --test sqlite_regression some_e2e",
-                "passed",
-            ),
-            val("v_fail", "saga", "loom saga run broken", "failed"),
+            val("v_saga", "saga", "passed"),
+            val("v_par", "test", "passed"),
+            val("v_multi", "test", "passed"),
+            val("v_unit", "test", "passed"),
         ];
         let validates = vec![
-            vedge("v_saga", "A"),
-            vedge("v_unit", "B"),
-            vedge("v_int", "C"),
-            vedge("v_fail", "D"),
+            vedge("v_saga", "x"),
+            vedge("v_par", "par"),
+            vedge("v_multi", "y1"),
+            vedge("v_multi", "y2"),
+            vedge("v_unit", "u"),
         ];
-        let cov = composition_coverage_from_snapshot(&snap(intents, validates, vals));
-        assert_eq!(cov.total, 5);
+        let cov = composition_coverage_from_snapshot(&snap(intents, hierarchy, validates, vals));
+        assert_eq!(cov.total, 7);
         assert_eq!(
-            cov.path_proven, 2,
-            "A (saga) + C (integration) are path-proven"
+            cov.path_proven, 4,
+            "x (saga) + par (assembly) + y1,y2 (span) are path-proven"
         );
-        assert_eq!(cov.leaf_only, 1, "B is proven only by a unit test");
-        assert_eq!(cov.unproven, 2, "D's only proof FAILED; E has none");
-        assert!(cov.leaf_only_intents.iter().any(|(id, _)| id == "B"));
-        assert!(cov.unproven_intents.iter().any(|(id, _)| id == "D"));
-        assert!(cov.unproven_intents.iter().any(|(id, _)| id == "E"));
+        assert_eq!(
+            cov.leaf_only, 1,
+            "u is proven only by a single-leaf unit test"
+        );
+        assert_eq!(cov.unproven, 2, "leaf + none have no passing proof");
+        // disclosure: each signal recognised exactly one proof.
+        assert_eq!(cov.proofs_declared_journey, 1);
+        assert_eq!(cov.proofs_multi_intent, 1);
+        assert_eq!(cov.proofs_assembly, 1);
+        assert!(cov.leaf_only_intents.iter().any(|(id, _)| id == "u"));
+        assert!(cov.unproven_intents.iter().any(|(id, _)| id == "none"));
     }
 
     #[test]
-    fn a_passing_composition_proof_outranks_a_leaf_proof_on_the_same_intent() {
-        // An intent with BOTH a unit test and an integration test reads path-proven.
-        let intents = vec![intent("A")];
-        let vals = vec![
-            val("u", "test", "cargo test --bin loom foo", "passed"),
-            val(
-                "i",
-                "test",
-                "cargo test --test sqlite_regression foo_e2e",
-                "passed",
-            ),
-        ];
-        let cov = composition_coverage_from_snapshot(&snap(
-            intents,
-            vec![vedge("u", "A"), vedge("i", "A")],
-            vals,
-        ));
-        assert_eq!(cov.path_proven, 1);
-        assert_eq!(cov.leaf_only, 0);
+    fn a_failed_composition_proof_does_not_path_prove() {
+        let intents = vec![intent("a")];
+        let vals = vec![val("v", "saga", "failed")];
+        let cov =
+            composition_coverage_from_snapshot(&snap(intents, vec![], vec![vedge("v", "a")], vals));
+        assert_eq!(cov.path_proven, 0);
+        assert_eq!(cov.unproven, 1);
     }
 }

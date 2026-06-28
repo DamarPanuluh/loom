@@ -1,14 +1,16 @@
 //! `loom paths` — composition-proof coverage: the JOURNEY corner of the
-//! intent/code/saga triangle. Which active intents are proven by a journey that
-//! RUNS the assembled system (a saga, or an integration test) versus only by a
-//! leaf/unit proof, versus unproven.
+//! intent/code/saga triangle. Which active intents are proven by a COMPOSITION
+//! proof (one that exercises an assembly) versus only by a leaf/unit proof,
+//! versus unproven.
 //!
 //! ADDITIVE + READ-ONLY: it informs, it never gates green. The composition tier
-//! is INFERRED from proof transport (saga / `cargo test --test …` = a journey
-//! that runs the binary; an unrecognised `cargo test` reads as leaf), and the
-//! tier is surfaced so the inference is auditable, not hidden. The `leaf-only`
-//! list is the surface to JUDGE: is a real journey missing here, or is this a
-//! genuine leaf (a terminal computation a unit test fully proves)?
+//! is recognised from the GRAPH's own topology — a declared journey
+//! (`validation_type == saga`), a proof that spans >= 2 intents, or a proof of a
+//! non-leaf/assembly intent — NEVER from test-runner command strings, so it reads
+//! the same on any repo or language. `loom paths` discloses the per-signal
+//! breakdown so the inference is auditable. The `leaf-only` list is the surface to
+//! JUDGE: is a real journey missing here, or is this a genuine leaf (a terminal
+//! computation a unit test fully proves)?
 
 use anyhow::Result;
 
@@ -29,11 +31,16 @@ pub fn run_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer
     if printer.json {
         printer.print_json(&serde_json::json!({
             "kind": "composition_coverage",
-            "note": "Path-proof tier (saga/integration runs the assembly) vs leaf/unit, inferred from proof transport. Read-only; never gates.",
+            "note": "Path-proof tier recognised from graph topology (declared saga / spans >=2 intents / proves a non-leaf assembly), never from command strings — same on any repo. Read-only; never gates.",
             "total": cov.total,
             "path_proven": cov.path_proven,
             "leaf_only": cov.leaf_only,
             "unproven": cov.unproven,
+            "composition_proofs_by_signal": {
+                "declared_journey": cov.proofs_declared_journey,
+                "multi_intent_span": cov.proofs_multi_intent,
+                "non_leaf_assembly": cov.proofs_assembly,
+            },
             "leaf_only_intents": cov.leaf_only_intents.iter()
                 .map(|(id, n)| serde_json::json!({"id": id, "name": n})).collect::<Vec<_>>(),
             "unproven_intents": cov.unproven_intents.iter()
@@ -53,7 +60,7 @@ pub fn run_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer
     println!();
     println!("Of {} active intents:", cov.total);
     println!(
-        "  path-proven (a journey/integration runs the assembly) : {:>4}  ({}%)",
+        "  path-proven (a journey / assembly-spanning proof)     : {:>4}  ({}%)",
         cov.path_proven,
         pct(cov.path_proven)
     );
@@ -92,9 +99,18 @@ pub fn run_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer
     }
     println!();
     println!(
-        "ADDITIVE & read-only — never gates green. Composition tier is INFERRED from\n\
-         transport (saga / `cargo test --test …` = journey; else leaf), so leaf-only may\n\
-         include integration-style unit tests until proofs are typed by role explicitly."
+        "Composition proofs recognised by signal (graph topology, NOT command strings):\n\
+        \x20 declared journey (validation_type=saga) : {}\n\
+        \x20 spans >=2 intents                       : {}\n\
+        \x20 proves a non-leaf assembly intent       : {}",
+        cov.proofs_declared_journey, cov.proofs_multi_intent, cov.proofs_assembly
+    );
+    println!(
+        "ADDITIVE & read-only — never gates green. The tier reads the same on any repo or\n\
+         language: a proof spanning >=2 intents, proving a parent/assembly intent, or a\n\
+         declared saga is a journey; a proof of one leaf intent is a leaf. So a leaf-only\n\
+         intent here is one whose only proof is attributed to it alone — judge whether a\n\
+         real journey is missing, or it is a genuine terminal leaf."
     );
     Ok(())
 }
