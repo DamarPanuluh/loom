@@ -100,8 +100,10 @@ pub struct GraphState {
     /// noise — so `unexplored_pairs` / `priority_unexplored_pairs` are surfaced as
     /// optional discovery only, never gating `phase=complete`.
     pub horizontally_explored: bool,
-    /// seed | build | fix | incomplete | ground | validate | quality |
-    /// discovery | audit | complete
+    /// The compass RUNG, one criterion each, in cascade order:
+    /// shape | realize | complete | harden | green.
+    /// (COMPOSE is a coverage TIER, not a gating rung — see `loom paths`.)
+    /// `next_action` carries the specific work within the current rung.
     pub phase: String,
     pub next_action: String,
     /// How firmly to take `next_action`: "directive" = a failure or binding
@@ -406,12 +408,26 @@ fn decide_phase(
     let vc = inputs.vc;
     let edge_status = inputs.edge_status;
     let validation_backlog = inputs.validation_backlog;
+
+    // ───────────────────────────── SHAPE ─────────────────────────────
+    // The intent tree is well-formed: intents exist, HIERARCHY is a tree, and
+    // every declared relationship is honored. Structure before substance.
     if inputs.intents == 0 {
-        return Ok(("seed", "directive", "Empty graph — SEED the full surface, not a sketch: `loom seed --inbox` ingests every doc + source file into the inbox to triage (empty repo → a vision prompt). Then `loom inbox triage` decomposes each into intents. `loom guide --mode seed` teaches the loop.".to_string()));
+        return Ok(("shape", "directive", "Empty graph — SEED the full surface, not a sketch: `loom seed --inbox` ingests every doc + source file into the inbox to triage (empty repo → a vision prompt). Then `loom inbox triage` decomposes each into intents. `loom guide --mode seed` teaches the loop.".to_string()));
     }
+    if !vc.multi_parent.is_empty() || vc.cycle {
+        return Ok(("shape", "directive", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string()));
+    }
+    if edge_status.rt_failing > 0 {
+        return Ok(("shape", "directive", format!("{} relationship(s) FAILING — `loom next --mode fix` (resolve violations at root cause).", edge_status.rt_failing)));
+    }
+
+    // ──────────────────────────── REALIZE ────────────────────────────
+    // Every leaf is real in code and proven: nothing planned or needs-change is
+    // pending, every leaf is grounded, every CodeFile reached, validations pass.
     if inputs.needs_change > 0 {
         return Ok((
-            "build",
+            "realize",
             "directive",
             format!(
                 "{} intent(s) need changes (known issues/refactor): `loom next --mode build`.",
@@ -420,14 +436,11 @@ fn decide_phase(
         ));
     }
     if !vc.unremoved_leaves.is_empty() {
-        return Ok(("build", "directive", format!("{} intent(s) marked for removal still have code — delete it (cleanup is done by absence): `loom next --mode build`.", vc.unremoved_leaves.len())));
-    }
-    if edge_status.rt_failing > 0 {
-        return Ok(("fix", "directive", format!("{} relationship(s) FAILING — `loom next --mode fix` (resolve violations at root cause).", edge_status.rt_failing)));
+        return Ok(("realize", "directive", format!("{} intent(s) marked for removal still have code — delete it (cleanup is done by absence): `loom next --mode build`.", vc.unremoved_leaves.len())));
     }
     if inputs.planned > 0 {
         return Ok((
-            "build",
+            "realize",
             "recommended",
             format!(
                 "{} planned intent(s) to build: `loom next --mode build`.",
@@ -435,17 +448,14 @@ fn decide_phase(
             ),
         ));
     }
-    if !vc.multi_parent.is_empty() || vc.cycle {
-        return Ok(("incomplete", "directive", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string()));
-    }
     if !vc.unrealized_leaves.is_empty() {
-        return Ok(("ground", "directive", format!("{} leaf intent(s) implemented but not grounded — `loom edge implement` them, or decompose with `loom edge hierarchy` (see `loom report`).", vc.unrealized_leaves.len())));
+        return Ok(("realize", "directive", format!("{} leaf intent(s) implemented but not grounded — `loom edge implement` them, or decompose with `loom edge hierarchy` (see `loom report`).", vc.unrealized_leaves.len())));
     }
     if !vc.unreached_codefiles.is_empty() {
-        return Ok(("ground", "directive", format!("{} CodeFile(s) reached by no intent — see which with `loom coverage`, then ground them (`loom edge implement`) or `loom ignore` them.", vc.unreached_codefiles.len())));
+        return Ok(("realize", "directive", format!("{} CodeFile(s) reached by no intent — see which with `loom coverage`, then ground them (`loom edge implement`) or `loom ignore` them.", vc.unreached_codefiles.len())));
     }
     if validation_backlog.v_failing_in_backlog {
-        return Ok(("validate", "directive", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string()));
+        return Ok(("realize", "directive", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string()));
     }
     if validation_backlog.validate_backlog_len > 0 {
         let msg = if validation_backlog.v_no_proof > 0 {
@@ -453,45 +463,56 @@ fn decide_phase(
         } else {
             "Run pending validations: `loom next --mode validate`.".to_string()
         };
-        return Ok(("validate", "recommended", msg));
-    }
-    if edge_status.g_failing > 0 {
-        return Ok(("quality", "directive", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string()));
-    }
-    if edge_status.g_needs_rev > 0 {
-        return Ok(("quality", "recommended", "Quality green went stale (the code under a passing verdict changed) — `loom next --mode quality`, re-inspect, re-earn with `loom rule verdict`.".to_string()));
-    }
-    if edge_status.g_uninspected > 0 {
-        return Ok(("quality", "recommended", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string()));
-    }
-    if inputs.unmeasured_queue > 0 {
-        return Ok(("quality", "recommended", format!("{} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a component verdict covers descendants ONLY with --covers-descendants; independent = measured, doesn't apply).", inputs.unmeasured_queue)));
-    }
-    if inputs.rules_count == 0 && inputs.intents_with_code > 0 {
-        return Ok(("quality", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string()));
+        return Ok(("realize", "recommended", msg));
     }
 
+    // ──────────────────────────── COMPLETE ───────────────────────────
+    // The territory is reconciled: nothing on disk is unmapped, drifted, or
+    // missing — the map matches the code before any quality is measured on it.
     let disk_issues = disk_integrity_issues(snapshot)?;
     if disk_issues > 0 {
-        return Ok(("audit", "directive", format!("{disk_issues} file(s) on disk the graph doesn't account for (unmapped, drifted, or missing) — the map must match the territory before green: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude.")));
+        return Ok(("complete", "directive", format!("{disk_issues} file(s) on disk the graph doesn't account for (unmapped, drifted, or missing) — the map must match the territory before green: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude.")));
+    }
+
+    // ───────────────────────────── HARDEN ────────────────────────────
+    // Quality is earned and nothing smells: every GOVERNS gate measured + passing,
+    // every RELATES_TO inspected + current, 0 open findings (incl.
+    // `unjourneyed_surface`, the composition gate — `loom paths` shows the full
+    // path-proof tier).
+    if edge_status.g_failing > 0 {
+        return Ok(("harden", "directive", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string()));
+    }
+    if edge_status.g_needs_rev > 0 {
+        return Ok(("harden", "recommended", "Quality green went stale (the code under a passing verdict changed) — `loom next --mode quality`, re-inspect, re-earn with `loom rule verdict`.".to_string()));
+    }
+    if edge_status.g_uninspected > 0 {
+        return Ok(("harden", "recommended", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string()));
+    }
+    if inputs.unmeasured_queue > 0 {
+        return Ok(("harden", "recommended", format!("{} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a component verdict covers descendants ONLY with --covers-descendants; independent = measured, doesn't apply).", inputs.unmeasured_queue)));
+    }
+    if inputs.rules_count == 0 && inputs.intents_with_code > 0 {
+        return Ok(("harden", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string()));
     }
     let open_findings = open_findings(snapshot)?;
     if open_findings > 0 {
-        return Ok(("audit", "recommended", format!("{open_findings} open finding(s) — `loom smells`: resolve each via its remedy, ONE at a time after reading its code. A decision note must give a finding-specific reason (the decomposition considered + why it's wrong HERE), not a reused template — loom rejects vacuous/rubber-stamped rulings. Green requires 0 open findings.")));
+        return Ok(("harden", "recommended", format!("{open_findings} open finding(s) — `loom smells`: resolve each via its remedy, ONE at a time after reading its code. A decision note must give a finding-specific reason (the decomposition considered + why it's wrong HERE), not a reused template — loom rejects vacuous/rubber-stamped rulings. Green requires 0 open findings.")));
     }
     if edge_status.rt_needs_rev > 0 {
-        return Ok(("fix", "recommended", format!("{} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`.", edge_status.rt_needs_rev)));
+        return Ok(("harden", "recommended", format!("{} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`.", edge_status.rt_needs_rev)));
     }
     if edge_status.rt_uninspected > 0 {
-        return Ok(("discovery", "recommended", format!("Vertical spine complete ✓ — {} uninspected RELATES_TO edge(s) still need a verdict (`loom next --mode discovery`). Coupling RISK is gated by the SMELLS now (undeclared_coupling / overlapping_ownership / duplicated_responsibility / twin_intents — already 0 to be here), NOT a signal-bearing-pair quota: the N×N grid was redundant with the smell gate plus its noise, so it no longer gates. Surveying unexplored pairs is OPTIONAL discovery ({} signal-bearing: `loom edge unexplored --class suspected-coupling`); `loom paths` shows journey/composition coverage.", edge_status.rt_uninspected, inputs.priority_unexplored_pairs)));
+        return Ok(("harden", "recommended", format!("Vertical spine complete ✓ — {} uninspected RELATES_TO edge(s) still need a verdict (`loom next --mode discovery`). Coupling RISK is gated by the SMELLS now (undeclared_coupling / overlapping_ownership / duplicated_responsibility / twin_intents — already 0 to be here), NOT a signal-bearing-pair quota: the N×N grid was redundant with the smell gate plus its noise, so it no longer gates. Surveying unexplored pairs is OPTIONAL discovery ({} signal-bearing: `loom edge unexplored --class suspected-coupling`); `loom paths` shows journey/composition coverage.", edge_status.rt_uninspected, inputs.priority_unexplored_pairs)));
     }
 
+    // ───────────────────────────── GREEN ─────────────────────────────
+    // All four binding rungs clear. COMPOSE is informational (`loom paths`).
     let proposed = proposed_hypotheses()?;
     let mut msg = "Production-ready checks are clear: vertically complete ✓, horizontally explored ✓, disk reconciled ✓ (nothing on disk unmapped/drifted/missing), 0 open Production-ready findings ✓ — confirm the roll-up with `loom report`. Then make the evidence durable: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode). The stricter Excellent certificate is reported by `loom status`/`loom next --mode refactor`.".to_string();
     if proposed > 0 {
         msg.push_str(&format!(" Pre-decision plane: {proposed} proposed hypothesis(es) await proof — optional, not part of the selected certification profile: `loom next --mode prove`."));
     }
-    Ok(("complete", "recommended", msg))
+    Ok(("green", "recommended", msg))
 }
 
 pub fn graph_state_from_snapshot_parts(
@@ -1374,16 +1395,13 @@ pub fn fully_proven_from_state(
     // Name the CONCRETE blocker (the cascade's `next_action` already says exactly
     // what keeps the phase here — e.g. "N unexplored pairs", "N align confirmations")
     // so the operator doesn't have to cross-reference status/complete/smells/next.
-    if gs.phase != "complete" {
+    if gs.phase != "green" {
         let blocker = if gs.next_action.is_empty() {
             "drive the open lane (`loom next`)".to_string()
         } else {
             gs.next_action.clone()
         };
-        reasons.push(format!(
-            "phase is '{}', not 'complete' — {blocker}",
-            gs.phase
-        ));
+        reasons.push(format!("phase is '{}', not 'green' — {blocker}", gs.phase));
     }
     // G1 — EXECUTED floor with an honest denominator: every CURRENT-realized leaf
     // is proven by an EXECUTED (discriminating) proof, not merely asserted. The

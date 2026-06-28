@@ -431,7 +431,9 @@ fn intake_counts(db: &dyn GraphReadRepository) -> Result<IntakeCounts> {
 }
 
 fn should_compute_audit_pulse(gs: &GraphState) -> bool {
-    matches!(gs.phase.as_str(), "audit" | "complete")
+    // The smell pulse is computed only at the HARDEN smell gate and at GREEN (the
+    // terminal, to surface excellence debt) — the rungs where smells are in scope.
+    matches!(gs.phase.as_str(), "harden" | "green")
 }
 
 fn deferred_audit_pulse() -> AuditPulse {

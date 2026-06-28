@@ -822,14 +822,14 @@ fn map_vs_territory_blocks_green_when_disk_unaccounted() {
     // Sanity: with the map matching the territory, the graph IS complete.
     let green = gs_of_with_disk(&snap, 0);
     assert_eq!(
-        green.phase, "complete",
-        "with disk reconciled the phase should be complete: {green:?}"
+        green.phase, "green",
+        "with disk reconciled and all rungs clear, the phase is green: {green:?}"
     );
     // The false-green hole: unmapped/drifted/missing files drop it to audit.
     let red = gs_of_with_disk(&snap, 3);
     assert_eq!(
-        red.phase, "audit",
-        "disk-unaccounted files must block green (audit, not complete): {red:?}"
+        red.phase, "complete",
+        "disk-unaccounted files block at the COMPLETE rung (map≠territory), not green: {red:?}"
     );
     assert_eq!(
         red.next_kind, "directive",
@@ -972,7 +972,7 @@ fn no_signal_unexplored_pairs_are_optional_survey_not_green_blockers() {
         "no shared code, import, vocab, domain, or description signal means no risk backlog"
     );
     assert!(gs.horizontally_explored, "horizontal risk is closed");
-    assert_eq!(gs.phase, "complete", "optional survey must not block green");
+    assert_eq!(gs.phase, "green", "optional survey must not block green");
 }
 
 #[test]
@@ -1070,8 +1070,8 @@ fn a_shared_file_coupling_gates_via_the_smell_not_the_pair_grid() {
     )
     .unwrap();
     assert_eq!(
-        gs_real.phase, "audit",
-        "the shared-file coupling is gated by the overlapping_ownership smell, not the pair grid"
+        gs_real.phase, "harden",
+        "the shared-file coupling is gated by the overlapping_ownership smell (a HARDEN finding), not the pair grid"
     );
 
     // (2) The pair grid itself NO LONGER gates: with no open smell (the noise-pair
@@ -1087,7 +1087,7 @@ fn a_shared_file_coupling_gates_via_the_smell_not_the_pair_grid() {
         "the missing-pair grid no longer marks horizontal incomplete"
     );
     assert_eq!(
-        gs.phase, "complete",
+        gs.phase, "green",
         "a signal-bearing pair with no smell no longer gates the phase"
     );
 }
@@ -1104,7 +1104,11 @@ fn compass_phase_always_has_a_nonempty_queue() {
         ],
         vec![rel("a", "b", "failing")],
     );
-    assert_eq!(phase_of(&failing), "fix", "a failing edge outranks build");
+    assert_eq!(
+        phase_of(&failing),
+        "shape",
+        "a failing relationship is a SHAPE gate, above build"
+    );
     assert!(queue_nonempty_for_phase("fix", &failing));
 
     // Stale-only (needs_reverification, no failing, no planned) still routes
@@ -1114,7 +1118,7 @@ fn compass_phase_always_has_a_nonempty_queue() {
     // edges are optional. Use a snapshot that clears every binding gate so
     // stale edges are the only issue.
     let stale_only = stale_clearing_snapshot();
-    assert_eq!(phase_of(&stale_only), "fix");
+    assert_eq!(phase_of(&stale_only), "harden");
     assert!(queue_nonempty_for_phase("fix", &stale_only));
 
     // The reorder under test: stale RELATES_TO (optional horizontal grid)
@@ -1131,7 +1135,7 @@ fn compass_phase_always_has_a_nonempty_queue() {
     );
     assert_eq!(
         phase_of(&stale_plus_planned),
-        "build",
+        "realize",
         "planned build outranks optional stale re-verification"
     );
     assert!(queue_nonempty_for_phase("build", &stale_plus_planned));
@@ -1150,7 +1154,7 @@ fn compass_marks_directive_vs_recommended() {
     // sequence against other lanes: recommended (the "your call" verb).
     let planned = snap(vec![intent("p", "planned")], vec![]);
     let gs = gs_of(&planned);
-    assert_eq!(gs.phase, "build");
+    assert_eq!(gs.phase, "realize");
     assert_eq!(gs.next_kind, "recommended");
 
     // Stale-only re-verification is optional grid upkeep: recommended.
@@ -1172,15 +1176,15 @@ fn compass_marks_directive_vs_recommended() {
 #[test]
 fn audit_gate_outranks_stale_edges() {
     let snapshot = stale_clearing_snapshot();
-    // With 0 open findings: stale edges route to `fix` (recommended).
+    // With 0 open findings: stale RELATES_TO edges are a HARDEN gate (re-verify).
     assert_eq!(
         phase_of(&snapshot),
-        "fix",
-        "stale edges with a clean audit gate route to fix"
+        "harden",
+        "stale edges route to the HARDEN re-verify gate when the smell gate is clean"
     );
-    // With open findings: the audit gate intercepts — phase is `audit`,
-    // not `fix`. The stale edges are still visible in `other open lanes`
-    // but don't bury the structural findings.
+    // With open findings: the smell gate intercepts WITHIN harden — both are the
+    // HARDEN rung, but `next_action` names the findings (checked below), not the
+    // stale edges, so structural findings are never buried behind optional upkeep.
     let gs = graph_state_from_snapshot_parts(
         &snapshot,
         GraphStateContext {
@@ -1195,8 +1199,8 @@ fn audit_gate_outranks_stale_edges() {
     )
     .unwrap();
     assert_eq!(
-        gs.phase, "audit",
-        "open findings must route to audit even when stale edges exist: {gs:?}"
+        gs.phase, "harden",
+        "open findings must route to the HARDEN smell gate even when stale edges exist: {gs:?}"
     );
     assert_eq!(
         gs.next_kind, "recommended",
@@ -1522,7 +1526,7 @@ fn fully_proven_badge_gates_on_phase_and_executed_proof() {
     );
     // A complete graph with every realized leaf EXECUTED-proven, no smells.
     let complete = |exec: i64, realized: i64| GraphState {
-        phase: "complete".into(),
+        phase: "green".into(),
         coverage: Coverage360 {
             realized_leaves: CoverageAxis {
                 covered: realized,
@@ -1558,11 +1562,11 @@ fn fully_proven_badge_gates_on_phase_and_executed_proof() {
 
     // phase != complete blocks it (the base gate).
     let mut not_complete = complete(3, 3);
-    not_complete.phase = "validate".into();
+    not_complete.phase = "realize".into();
     let (ok, reasons) = fully_proven_from_state(&not_complete, &empty, &[], &full, 0);
     assert!(!ok);
     assert!(
-        reasons.iter().any(|r| r.contains("not 'complete'")),
+        reasons.iter().any(|r| r.contains("not 'green'")),
         "{reasons:?}"
     );
 

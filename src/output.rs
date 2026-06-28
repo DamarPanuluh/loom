@@ -693,7 +693,7 @@ mod tests {
             last_synced: String::new(),
             vertically_complete: true,
             horizontally_explored: true,
-            phase: "seed".to_string(),
+            phase: "shape".to_string(),
             next_action: String::new(),
             next_kind: "directive".to_string(),
             coverage: Coverage360 {

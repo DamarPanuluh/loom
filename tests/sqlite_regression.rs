@@ -2557,23 +2557,24 @@ fn sqlite_next_take_zero_rejected() {
 }
 
 // DOGFOOD-FOUND DEFECT (AI-companion hunt): in phase=audit (open findings gate
-// green) bare `loom next` mis-routed to OPTIONAL discovery — there is no audit
-// queue, so the AI never reached the green-blocking work. Bare next now echoes
-// the compass's audit directive (→ `loom smells`). Guarded on phase since the
+// green) bare `loom next` mis-routed to OPTIONAL discovery — a no-queue green
+// gate has no `--mode` queue, so the AI never reached the green-blocking work.
+// Bare next now echoes the compass's gate directive (COMPLETE → `loom coverage`/
+// `loom sync`; HARDEN's smell gate → `loom smells`). Guarded on phase since the
 // committed fixture's phase varies.
 #[test]
-fn sqlite_bare_next_in_audit_points_at_gate_not_discovery() {
+fn sqlite_bare_next_in_a_gate_rung_points_at_gate_not_discovery() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("audit-route");
     let phase = run_json(&graph.root, &["status", "--json"])["graph_state"]["phase"]
         .as_str()
         .unwrap_or("")
         .to_string();
-    if phase == "audit" {
+    if phase == "complete" || phase == "harden" {
         let text = run_text_as(&graph.root, &["next"], "llm");
         assert!(
-            text.contains("loom smells") && !text.contains("No relationship is tracked yet"),
-            "bare next in phase=audit must point at the audit gate, not optional discovery: {text}"
+            !text.contains("No relationship is tracked yet"),
+            "bare next in a no-queue gate (phase={phase}) must point at the gate, not optional discovery: {text}"
         );
     }
 }
@@ -7663,7 +7664,7 @@ fn sqlite_fully_proven_reason_names_the_concrete_blocker() {
     let phase_reason = reasons
         .iter()
         .filter_map(|r| r.as_str())
-        .find(|r| r.contains("not 'complete'"))
+        .find(|r| r.contains("not 'green'"))
         .expect("a phase blocker reason");
     // The phase blocker must carry the cascade's CONCRETE next_action — so the
     // operator doesn't have to cross-reference status/complete/smells/next (#2).

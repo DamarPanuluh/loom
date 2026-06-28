@@ -89,7 +89,7 @@ const ROLE_LANES: &[(&str, &str, &str)] = &[
 /// motto. (role, the JIT-trigger `description`, the anchor motto, discipline lines).
 const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
     ("builder",
-     "Adopt when loom routes you to the builder/build lane — seeding or decomposing intents, or REALIZING a planned intent by writing the code its criterion demands (phase=build, `loom next --mode build`).",
+     "Adopt when loom routes you to the builder/build lane — seeding or decomposing intents, or REALIZING a planned intent by writing the code its criterion demands (phase=realize, `loom next --mode build`).",
      "Build to the criterion, prove it, then mark it — a leaf marked implemented with no proof is a promise, not a fact.",
      &[
         "THE LOOP, per planned leaf: the criterion IS the spec AND the acceptance test. Write the code it demands → `loom codefile add` → `loom edge implement <intent> <file> --locator \"<symbol AS IT APPEARS>\"` (verified against the file NOW — a typo'd symbol is rejected here) → PROVE the criterion (add + run a validation) → `loom intent mark <id> --lifecycle implemented`.",
@@ -102,7 +102,7 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
         "NEVER: mark implemented before grounding · ground to a mockup or spec doc (only production code) · seed one intent for two responsibilities (split it) · delete instead of retire (delete erases history; retire preserves it).",
      ]),
     ("analyzer",
-     "Adopt when loom routes you to the analyzer/discovery lane — grounding RELATES_TO edges or proving hypotheses (phase=discovery; `loom next --mode discovery|prove|review`).",
+     "Adopt when loom routes you to the analyzer/discovery lane — grounding RELATES_TO edges or proving hypotheses (phase=harden; `loom next --mode discovery|prove|review`).",
      "0.5-and-true beats 0.9-and-guessed — honest confidence is the safety net; a faked 0.9 poisons the graph AND skips it.",
      &[
         "THE SOCRATIC LOOP is the skill; everything else is mechanical. Per edge: read both intents → form a hypothesis (\"I expect the code to show X\") → read the ACTUAL code → record exactly ONE verdict. NEVER record a verdict you didn't check — no code read, no verdict.",
@@ -673,8 +673,7 @@ fn focus_lane_role() -> Option<&'static str> {
     let snap = store.query_snapshot().ok()?;
     let gs = store.graph_state(&snap).ok()?;
     let decision_notes = store.notes_by_kind("decision").ok()?;
-    let (open_smells, excellence_debt_count) = if matches!(gs.phase.as_str(), "audit" | "complete")
-    {
+    let (open_smells, excellence_debt_count) = if matches!(gs.phase.as_str(), "harden" | "green") {
         let report = store.smell_report(&snap).ok()?;
         let excellence_debt_count = report.advisory.len() + report.debt.len();
         (report.open, excellence_debt_count)

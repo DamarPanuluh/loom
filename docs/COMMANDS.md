@@ -643,7 +643,7 @@ loom smells [--limit N] [--summary]
   covers its ancestors, unjourneyed SIBLINGS still fire; a decision note on
   the intent resolves, a redefinition re-opens).
   OPEN FINDINGS GATE GREEN: once every queue is dry, `graph_state` routes
-  phase=audit until `loom smells` returns zero OPEN — green means every
+  phase=harden (the smell gate) until `loom smells` returns zero OPEN — green means every
   suspicion was ANSWERED (structurally fixed, or refuted via its adjudication
   path above), never that the heuristics went quiet on their own.
   ADJUDICATIONS STAY VISIBLE: a finding suppressed by a decision note is not

@@ -95,12 +95,12 @@ struct NextOpts<'a> {
 /// edge implement/coverage) fall back to discovery — the honest exploration
 /// default; `loom status`'s `next_action` carries the real directive for those.
 fn phase_default_mode(phase: &str) -> &'static str {
+    // The compass RUNG falls back to its most representative drainable lane (the
+    // rung spans several lanes; the focus_lane above is the precise router, this is
+    // only the fallback). COMPLETE (disk) and GREEN have no queue → discovery.
     match phase {
-        "build" => "build",
-        "fix" => "fix",
-        "validate" => "validate",
-        "quality" => "quality",
-        "discovery" => "discovery",
+        "realize" => "build",
+        "harden" => "quality",
         _ => "discovery",
     }
 }
@@ -177,16 +177,19 @@ fn first_lane_with_work(
 /// compass's own audit directive (which points at `loom smells`) rather than
 /// mis-routing the driver to OPTIONAL discovery while green-blocking findings sit
 /// unadjudicated.
-fn emit_audit_directive(gs: &GraphState, printer: &Printer) -> Result<()> {
+fn emit_no_queue_directive(gs: &GraphState, printer: &Printer) -> Result<()> {
     if printer.json {
         printer.print_json(&serde_json::json!({
-            "phase": "audit",
+            "phase": gs.phase,
             "next_kind": gs.next_kind,
             "next_action": gs.next_action,
-            "note": "phase=audit has no `loom next` queue — `loom smells --summary` is the audit surface; every open finding gates green until resolved (fix or a finding-specific decision note).",
+            "note": "This rung gates green but has no `loom next` queue — follow next_action: the COMPLETE rung's disk directive (`loom coverage`/`loom sync`), or the HARDEN rung's smell surface (`loom smells --summary`). Every open finding gates green until resolved (fix or a finding-specific decision note).",
         }));
     } else {
-        println!("── Next: phase=audit (the green-blocking gate) ──────────────────────");
+        println!(
+            "── Next: phase={} (a green-blocking gate, no queue) ─────────────────",
+            gs.phase
+        );
         let arrow = if gs.next_kind == "directive" {
             "→ Next"
         } else {
@@ -194,7 +197,7 @@ fn emit_audit_directive(gs: &GraphState, printer: &Printer) -> Result<()> {
         };
         println!("  {arrow}: {}", gs.next_action);
         println!(
-            "  (`loom next` serves no audit queue — `loom smells --summary` is the audit surface; resolve each finding to reach green.)"
+            "  (`loom next` serves no queue for this rung — follow the directive above to reach green.)"
         );
     }
     Ok(())
@@ -245,18 +248,23 @@ pub fn run(
         None => {
             let snap = store.query_snapshot()?;
             let gs = store.graph_state(&snap)?;
-            // phase=audit gates green but has no `--mode audit` queue — echo the
-            // compass's audit directive (→ `loom smells`).
-            if gs.phase == "audit" {
-                return emit_audit_directive(&gs, printer);
+            let decision_notes = store.notes_by_kind("decision")?;
+            // No-queue green-blockers echo the compass directive instead of an empty
+            // `loom next` queue: the COMPLETE rung (disk → `loom coverage`/`loom
+            // sync`) and the HARDEN rung's SMELL gate (→ `loom smells`). HARDEN's
+            // quality lane DOES drain, so the HARDEN echo fires only when no lane has
+            // drainable work.
+            if gs.phase == "complete"
+                || (gs.phase == "harden" && first_lane_with_work(&snap, &decision_notes)?.is_none())
+            {
+                return emit_no_queue_directive(&gs, printer);
             }
             // Route by the maturity ladder's FOCUS rung — the authoritative
             // (stage, lane) signal — when its lane is a `--mode` queue; else fall
             // back to the cascade default. Fixes the cascade under-routing (e.g.
-            // phase=complete while the ladder focus is Realized · validate).
-            let decision_notes = store.notes_by_kind("decision")?;
+            // phase=green while the ladder focus is Realized · validate).
             let (open_smells, excellence_debt_count) =
-                if matches!(gs.phase.as_str(), "audit" | "complete") {
+                if matches!(gs.phase.as_str(), "harden" | "green") {
                     let report = store.smell_report(&snap)?;
                     let excellence_debt_count = report.advisory.len() + report.debt.len();
                     (report.open, excellence_debt_count)
@@ -559,7 +567,7 @@ mod tests {
 
     #[test]
     fn focus_default_mode_routes_gating_lanes_refactor_and_fallback() {
-        // A gating focus lane routes to its own queue.
+        // A gating focus lane routes to its own queue (the phase arg is unused).
         for lane in [
             "build",
             "fix",
@@ -568,32 +576,30 @@ mod tests {
             "discovery",
             "refactor",
         ] {
-            assert_eq!(focus_default_mode(Some(lane), "complete"), lane);
+            assert_eq!(focus_default_mode(Some(lane), "harden"), lane);
         }
         // Every rung cleared (focus None) → refactor as the honest empty/default
         // terminus; the refactor lane itself gates Excellent when it is focused.
-        assert_eq!(focus_default_mode(None, "complete"), "refactor");
-        assert_eq!(focus_default_mode(None, "discovery"), "refactor");
-        // A non-queue focus lane (export/triage on Production-ready) falls back
-        // to the phase default, NOT refactor (gating work still remains).
-        assert_eq!(focus_default_mode(Some("export"), "validate"), "validate");
-        assert_eq!(focus_default_mode(Some("triage"), "seed"), "discovery");
+        assert_eq!(focus_default_mode(None, "green"), "refactor");
+        assert_eq!(focus_default_mode(None, "harden"), "refactor");
+        // A non-queue focus lane (export/triage) falls back to the RUNG default,
+        // NOT refactor (gating work still remains).
+        assert_eq!(focus_default_mode(Some("export"), "realize"), "build");
+        assert_eq!(focus_default_mode(Some("triage"), "shape"), "discovery");
     }
 
     #[test]
-    fn phase_default_mode_maps_each_lane_and_falls_back_to_discovery() {
-        // loom-dx #6: the five lanes whose compass phase names a `loom next
-        // --mode` queue map to themselves; the rest (seed/incomplete/ground/
-        // audit/complete — actions that are NOT a next-mode) fall back to
-        // discovery, the honest exploration default.
-        for lane in ["build", "fix", "validate", "quality", "discovery"] {
-            assert_eq!(phase_default_mode(lane), lane);
-        }
-        for non_lane in ["seed", "incomplete", "ground", "audit", "complete", "??"] {
+    fn phase_default_mode_maps_rungs_to_their_lane_and_falls_back_to_discovery() {
+        // Each compass RUNG falls back to its most representative drainable lane;
+        // the no-queue rungs (shape / complete / green) fall back to discovery,
+        // the honest exploration default.
+        assert_eq!(phase_default_mode("realize"), "build");
+        assert_eq!(phase_default_mode("harden"), "quality");
+        for non_lane in ["shape", "complete", "green", "??"] {
             assert_eq!(
                 phase_default_mode(non_lane),
                 "discovery",
-                "{non_lane} has no next-mode lane → discovery fallback"
+                "{non_lane} has no representative queue → discovery fallback"
             );
         }
     }

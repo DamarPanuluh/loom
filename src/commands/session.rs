@@ -148,7 +148,7 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
 
     // --- The standing offers. ---------------------------------------------
     if c.planned + c.needs_change > 0 {
-        if c.phase == "build" || c.phase == "fix" {
+        if c.phase == "realize" {
             recommend_next!();
         }
         menu.push(Offer {
@@ -157,7 +157,7 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
             then: "loom next --mode build  (construct, ground, hand off for verification)",
         });
     }
-    if c.phase == "complete" {
+    if c.phase == "green" {
         // Everything green: enrichment is the best standing offer.
         recommend_next!();
     }
@@ -406,7 +406,7 @@ mod tests {
             blocked: 0,
             visual_confirm: 0,
             sagas: 0,
-            phase: "discovery".into(),
+            phase: "harden".into(),
             has_source: true,
         }
     }
@@ -417,7 +417,7 @@ mod tests {
     fn user_gated_work_outranks_build() {
         let mut c = counts();
         c.planned = 5;
-        c.phase = "build".into();
+        c.phase = "realize".into();
         c.align = 2;
         c.rulings = 1;
         c.blocked = 1;
@@ -462,7 +462,7 @@ mod tests {
     #[test]
     fn complete_graph_recommends_saga_proposal() {
         let mut c = counts();
-        c.phase = "complete".into();
+        c.phase = "green".into();
         let (menu, rec) = offers(&c);
         assert!(menu[rec].then.contains("loom saga add"));
     }
