@@ -18,7 +18,11 @@ symbols:
   - HypothesisCmd
   - detect_hypothesis_accumulation
   - flag_targets
+  - fn fmt_hypothesis
+  - fn hypothesis_not_found
+  - fn run_list_with_db
   - fn run_prove
+  - fn run_show_with_db
   - loom hypothesis add
   - prepare_mark_result
   - pub const HYPOTHESIS
@@ -29,10 +33,10 @@ symbols:
   - run_with_sqlite
   - set_targets_status_for_hypothesis
 provenance:
-  src/cli.rs: 674c22fa337705a0
+  src/cli.rs: 3a8abff5585bdd3b
   src/commands/hypothesis.rs: a8cf4a070e0b66b9
   src/commands/next/modes.rs: 3501df180644d7c4
-  src/commands/sync.rs: 8df0f2a98f22a39e
+  src/commands/sync.rs: f88a57b61311bbf2
   src/commands/validation.rs: d726cbcb95e66827
   src/db/queries/smells.rs: 9c35f78698a2c3a4
   src/db/queries/smells/lifecycle.rs: 407a6815b60abe72
@@ -67,6 +71,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

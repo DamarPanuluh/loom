@@ -993,6 +993,15 @@ fn print_sync_json(
     let Some(obj) = v.as_object_mut() else {
         anyhow::bail!("SyncReport did not serialize to a JSON object");
     };
+    cap_json_arrays(obj, REPORT_CAP);
+    printer.print_json(&crate::output::with_read_anchor(v, store, next_step)?);
+    Ok(())
+}
+
+/// Cap each listed array in a sync JSON report to `cap` entries and record
+/// the true count in a companion `_total` field. Extracted for testability
+/// so truncation behaviour is provable without an end-to-end sync run.
+fn cap_json_arrays(obj: &mut serde_json::Map<String, serde_json::Value>, cap: usize) {
     for (key, total_key) in [
         ("changes", "changes_total"),
         ("missing_files", "missing_files_total"),
@@ -1004,12 +1013,10 @@ fn print_sync_json(
             .and_then(|a| a.as_array())
             .map_or(0, |a| a.len());
         if let Some(arr) = obj.get_mut(key).and_then(|a| a.as_array_mut()) {
-            arr.truncate(REPORT_CAP);
+            arr.truncate(cap);
         }
         obj.insert(total_key.to_string(), total.into());
     }
-    printer.print_json(&crate::output::with_read_anchor(v, store, next_step)?);
-    Ok(())
 }
 
 fn print_sync_text(
@@ -1398,5 +1405,34 @@ mod tests {
             affected_intents(&base, &codefile, Some(&new.to_string()), &impls).is_none(),
             "no symbol body changed → fall back to whole-file (conservative)"
         );
+    }
+
+    #[test]
+    fn report_cap_truncates_json_arrays_at_twenty() {
+        use serde_json::{Map, Value};
+        let mut obj = Map::new();
+        obj.insert(
+            "changes".into(),
+            Value::Array(
+                (0..25)
+                    .map(|i| Value::String(format!("change-{i}")))
+                    .collect(),
+            ),
+        );
+        obj.insert(
+            "missing_files".into(),
+            Value::Array(
+                (0..3)
+                    .map(|i| Value::String(format!("missing-{i}")))
+                    .collect(),
+            ),
+        );
+        cap_json_arrays(&mut obj, 20);
+        // changes capped at 20, total recorded
+        assert_eq!(obj["changes"].as_array().unwrap().len(), 20);
+        assert_eq!(obj["changes_total"].as_u64().unwrap(), 25);
+        // missing_files under cap, unchanged
+        assert_eq!(obj["missing_files"].as_array().unwrap().len(), 3);
+        assert_eq!(obj["missing_files_total"].as_u64().unwrap(), 3);
     }
 }

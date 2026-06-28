@@ -51,7 +51,7 @@ provenance:
   src/commands/guide.rs: 86edf891a92dd567
   src/commands/import.rs: 93f197ec9bd9b116
   src/commands/migrate.rs: 904a0c11dc0e329d
-  src/commands/next.rs: a31c215e6d188b66
+  src/commands/next.rs: a940e7a1add28abc
   src/commands/note.rs: 230f52cc758d8442
   src/db/mod.rs: c0c82ec69ea7831f
   src/db/queries/meta.rs: 5cd15e776c9e445a
@@ -93,6 +93,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

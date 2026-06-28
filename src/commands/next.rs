@@ -49,11 +49,12 @@ const BATCH_TEMPLATE_TITLE: &str =
 /// driver who switches op (e.g. `ground` to `independent`) sees that
 /// `independent` takes `notes`, not `evidence`, before they fail. The dry-run
 /// guardrail is surfaced inline so a large batch can be checked before commit.
-const BATCH_TEMPLATE_HINTS: [&str; 4] = [
-    "per-op required fields: ground→a,b,confidence(+criterion unless stored; +optional evidence) · issue→a,b,evidence,confidence(+criterion unless stored) · independent→a,b,notes · rule_verdict→rule,intent,status,evidence,confidence(+criterion unless stored)",
+const BATCH_TEMPLATE_HINTS: [&str; 5] = [
+    "per-op required fields: ground→a,b,confidence(+criterion unless stored; +optional evidence/evidence_locator) · issue→a,b,evidence,confidence(+criterion unless stored; +optional evidence_locator) · independent→a,b,notes · rule_verdict→rule,intent,status,evidence,confidence(+criterion unless stored; passing/partial require fresh evidence_locator)",
     "confidence is a <placeholder> on every line below — fill a real [0,1] judgment per line; a verbatim paste is rejected (no blind re-ground).",
     "prose fields are plain text, not Markdown: do not use backticks in criterion, evidence, notes, reason, text, or why values.",
     "validate before committing: paste the same lines through `loom batch - --dry-run` (nothing written).",
+    "refresh evidence_locator per row; repeated old anchors across many rule_verdict rows are flagged during dry-run.",
 ];
 
 fn print_batch_template_header() {

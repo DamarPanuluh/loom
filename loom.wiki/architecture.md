@@ -24,15 +24,158 @@ The intent hierarchy — what the system is, decomposed top-down.
   - **CLI surface and dispatch** — clap-derive command definitions and dispatch to command handlers; bare invocation prints orientation
     - **bulk grounding via glob** — edge implement <intent> 'src/db/**' should ground every matching registered file in one call, mirroring codefile add's glob support; dogfood finding: 48 files needed 48 invocations
     - **command definitions and dispatch** — clap-derive CLI surface, dispatch to handlers, bare-invocation orientation
+      - **codefile cli subcommands** — loom codefile add/show/list/register commands for grounding source files
+        - **codefile add handler** — registers new codefiles from path or glob with language detection
+        - **codefile add path expansion** — expands glob paths and skips already-registered files during add
+        - **codefile add result printer** — prints add summary with registered paths and skip count
+        - **codefile command dispatch** — dispatches CodefileCmd variants to add/list/show/remove sqlite handlers
+        - **codefile extractor grade label** — maps extractor_grade to human-readable trust label in show output
+        - **codefile list handler** — lists registered codefiles up to limit from sqlite
+        - **codefile not found message** — shared user-facing CodeFile not found error string for lookup-by-key surfaces
+        - **codefile remove handler** — removes a codefile and its IMPLEMENTS edges from the graph
+        - **codefile show handler** — shows ownership view for one codefile with locators and governing rules
+      - **corpus cli subcommands** — loom corpus ingest/list/show commands for source document management
+      - **delegate cli subcommands** — loom delegate commands for federated subgraph ownership
+      - **domain cli subcommands** — loom domain list/show commands for intent domain vocabulary
+      - **edge cli subcommands** — loom edge implement/explore/hierarchy commands for graph relationships
+      - **explore cli subcommands** — loom explore subcommands for graph neighborhood inspection
+      - **export stale warning constant** — warns when committed loom.graph.json is stale after code changes
+      - **ignore cli subcommands** — loom ignore add/remove/list for excluding paths from sync
+      - **inbox cli subcommands** — loom inbox triage/defer commands for seed intake cards
+      - **inbox triage command constant** — canonical inbox triage next-step string for status output
+      - **intent cli subcommands** — loom intent add/show/list/confirm commands for intent lifecycle
+      - **layer cli subcommands** — loom layer list/show commands for architecture layer vocabulary
+      - **long version stamp for binary identity** — loom --version prints crate version plus git build id so local dogfood binaries are distinguishable from release builds
+      - **note cli subcommands** — loom note add/list/prune for transition and decision notes
+      - **parse-error contextual teaching** — On teachable parse failures, walk argv to the deepest matching subcommand and append its after_help block so errors teach command shape without doc-hunting.
+        - **argv subcommand walk for parse errors** — Walk argv skipping flags to find the deepest matched subcommand whose after_help should print under parse errors.
+        - **command typo edit distance** — Levenshtein distance for nearest real command suggestions
+        - **unknown command teaching handler** — teaches correct noun-verb invocation for unrecognized CLI tokens
+      - **persona cli subcommands** — loom persona commands for agent role configuration
+      - **populate cli subcommands** — loom populate commands for seeding graph gaps
+      - **populate next command constant** — canonical populate lane next-step string for status output
+      - **required human gated debt key constant** — status JSON key for human-gated debt bucket
+      - **root cli parser struct** — clap Parser root holding global --json flag and the top-level Command subcommand dispatch target
+      - **rule cli subcommands** — loom rule verdict/list commands for quality governance
       - **shared command entity resolvers** — Shared resolver helpers provide one id/name/fragment lookup contract for command modules instead of copy-pasted local resolve_intent_with_db and resolve_validation_with_db bodies.
+      - **skill cli subcommands** — loom skill commands for bundled agent skills
+      - **slice cli subcommands** — loom slice commands for subgraph extraction
+      - **sorted pair coupling key** — lexicographic min-max pair key for direction-agnostic coupling sets
+      - **source cli subcommands** — loom source commands linking intents to source documents
+      - **tag cli subcommands** — loom tag vocabulary commands
+      - **top-level cli command enum** — clap Subcommand enum listing every loom top-level verb (init, status, next, intent, edge, …) wired into the dispatch match
+      - **validation cli subcommands** — loom validation add/mark/list for proof commands
+      - **vocab cli subcommands** — loom vocab list/register for controlled terminology
     - **graph targeting pin** — Every command resolves its target graph via --graph flag > LOOM_GRAPH env > cwd, through a single resolve_root() helper; a mutating command with a pinned graph ignores cwd entirely, so the cd-fallback incident class (failed cd + mutating script hitting whatever graph cwd lands in) is dead; proven by a validation that mutates from a foreign cwd and finds the write in the pinned graph
     - **graph-write command handlers** — handlers that mutate the graph: intent/edge/codefile/validation/note/rule/ignore plus export-import restoration; all lane-gated
+      - **applies when normalization** — normalizes and validates applies_when JSON strings and apply signal records for rule recommendation
+      - **concurrency quality rule pack** — seeds concurrency and performance budget rules for sync discipline locks atomicity and backpressure
       - **confirmation stamps freshness for drift ranking** — loom intent confirm ratifies status AND appends a kind=confirm note (the freshness event); last_confirmed_at returns the newest stamp or None; events are append-only so alignment history travels in the export with no schema field
+      - **data quality rule pack** — seeds data governance rules for migrations ingest loss pii idempotency and lineage
+      - **docker applies when signals** — scopes docker packaging rules to intents mentioning containers or grounding docker artifacts
+      - **docker build applies when signals** — extends docker scoping with missing build and run validation signals
+      - **docker quality rule pack** — seeds container packaging rules for build proof multistage cache context hardening secrets and runtime contract
       - **intent meaning evolves in place with semantic ripple** — loom intent update rewrites an intent's name/description in place (same node, same history); a description change ripples one hop like sync but for meaning: passing/independent RELATES_TO and GOVERNS, passing IMPLEMENTS and TARGETS go needs_reverification and linked proofs go not_run (blocked keeps its reason); the old wording is preserved in a decision note; a name-only change ripples nothing; deprecated intents are rejected
       - **intent retirement contract** — loom intent retire marks superseded design deprecated with reason and successor recorded as notes; retired intents are INVISIBLE TO COMPUTATION (queues, coverage axes, centrality, the grid, completeness, sync ripple) and VISIBLE TO HISTORY (node, edges, notes remain); the command reports triggered fallout: orphaned children, files losing their only owner, dangling proofs; independent edges add nothing to centrality
+      - **iso5055 quality rule pack** — seeds baseline ISO 5055 reliability security performance and maintainability rules
+        - **iso5055 dead code rule id** — single source of truth for dead or duplicate code rule spelling
+        - **iso5055 hardcoded secrets rule id** — single source of truth for hardcoded secrets rule spelling
+      - **iso5055 quality rule pack** — seeds the ten CWE-grounded ISO 5055 baseline rules for reliability security performance and maintainability
+      - **mobile quality rule pack** — seeds mobile lifecycle offline permissions and battery rules
+      - **mobile quality rule pack** — seeds mobile lifecycle offline permissions threading battery and entry point rules
+        - **mobile lifecycle safe state rule id** — single source of truth for lifecycle safe state rule spelling
+      - **pack names listing** — exposes seedable pack names for help errors and loom detect
+      - **pack rule basic constructor** — builds pack rules without evidence examples or applies_when metadata
+        - **pack rule applies when builder** — attaches applies_when json to pack rules for conditional recommendation
+        - **pack rule evidence constructor** — builds pack rules with evidence examples and signal expectations metadata
+      - **pack rule constructors** — constructs PackRule values with default empty metadata or evidence-example overrides
+      - **pack rule effort classifier** — maps rule names to low mid or high inspection effort tiers for model dispatch
+      - **quality rule pack name lister** — returns the list of all seedable rule pack names for help and detect
+      - **quality rule pack registry** — the ordered map of named pack identifiers to their rule arrays powering seed and detect
+      - **rule AppliesWhen struct** — deserialized applies_when JSON with signal array
+      - **rule ApplySignal struct** — single declarative signal with source terms weight and reason
+      - **rule IntentRuleSignals struct** — assembled intent text path import and validation signals for scoring
+      - **rule PackRule impl** — constructors for PackRule with and without evidence metadata
+      - **rule PackRule struct** — data type for seedable quality rule pack entries
+      - **rule RuleRecommendation struct** — recommendation result carrying rule intent and score
+      - **rule RuleRecommendationIntent struct** — the intent facet of a rule recommendation
+      - **rule RuleRecommendationRule struct** — the rule facet of a rule recommendation
+      - **rule confidence label** — maps numeric confidence scores to high medium or low tier labels
+      - **rule legacy scoring** — legacy score_rule_for_intent scores rules against intent text and path signals
+      - **rule normalize applies when** — normalizes and validates JSON applies_when metadata strings
+      - **rule pack type alias** — the Pack type alias for named rule arrays
+      - **rule recommend from snapshot** — recommend_rules_from_snapshot cross-references rules against intent signals
+      - **rule recommend signal assembly** — assembles text path import and validation signals from intents and groundings for rule recommendation scoring
+      - **rule recommend signal assembly** — assembles intent text paths imports and validations for applies_when scoring
+        - **grounded path needle matchers** — matches intent signals for rule recommend applies_when scoring
+        - **import path needle matchers** — matches intent signals for rule recommend applies_when scoring
+        - **owned import needle matchers** — matches intent signals for rule recommend applies_when scoring
+        - **owned path needle matchers** — matches intent signals for rule recommend applies_when scoring
+        - **owned text needle matchers** — matches intent signals for rule recommend applies_when scoring
+        - **owned validation group matchers** — matches intent signals for rule recommend applies_when scoring
+        - **text path and import needle matchers** — matches intent signals for rule recommend applies_when scoring
+        - **validation group matchers** — matches intent signals for rule recommend applies_when scoring
+      - **rule recommend with db** — run_recommend_with_db drives the rule recommend CLI surface
+      - **rule recommendation pipeline** — recommend_rules_from_snapshot legacy_score_rule_for_intent run_recommend_with_db and run_check_with_db power the rule recommend and check surfaces
+      - **rule rule command entry** — CLI entry point dispatching rule add seed verdict list show check and recommend
+      - **rule run with sqlite** — run_with_sqlite dispatches rule add seed verdict list show check and recommend
+      - **rule score applies when** — score_applies_when evaluates applies_when JSON signals against an intent
+      - **rule score for intent** — score_rule_for_intent delegates to applies_when or legacy scoring
+      - **rule scoring add_if** — conditional scoring accumulator
+      - **rule scoring helpers** — add_if conditional scoring accumulator confidence_label tier mapping and group_validations_by_intent bucketing
+      - **rule show with db** — run_show_with_db resolves and renders a single quality rule by name or id
+      - **rule validate apply signal** — validates apply signal source and terms fields
+      - **security deep quality rule pack** — seeds AI-generated code security rules for dependency squatting rate limiting and upload validation
+      - **security deep quality rule pack** — seeds AI-specific security rules for dependency squatting rate limits response shape and uploads
+      - **seedable packs registry** — registers all seedable quality rule packs for detect and seed commands
+      - **service quality rule pack** — seeds service contract idempotency timeout auth and observability rules
+      - **service quality rule pack** — seeds service contract idempotency timeout compensation auth observability and evolution rules
       - **validate --all drains pending proofs** — loom validate --all runs every validation whose last_result is not_run (never run or sync-invalidated) in one verb with the same three-phase lock discipline as per-intent validate (resolve, run with DB closed, persist in one transaction); settled passed/failed verdicts are not re-run and blocked proofs keep their recorded reason
+      - **validation add handler** — creates a new validation node with type command and optional intent link
+      - **validation check proof shape** — validates that a proof command uses a real test runner not just echo
+      - **validation command entry** — CLI entry dispatching validation add list show update delete and mark subcommands
+      - **validation delete handler** — removes a validation node and its VALIDATES edges
+      - **validation mark edge status** — maps mark status to the edge inspection_status value
+      - **validation mark handler** — records a manual passed failed or not_run verdict on a validation
+      - **validation mark next step** — returns the next_step routing message after a mark operation
+      - **validation resolve from list** — resolves a validation by id name or fragment for show delete and update
+      - **validation show handler** — renders a single validation with its linked intents and last run status
+      - **validation update handler** — updates a validations name description type or command
+      - **web ui quality rule pack** — seeds web UI view states accessibility XSS and responsive breakpoint rules
+      - **web-ui quality rule pack** — seeds web UI view states accessibility XSS responsiveness and design system rules
     - **intents addressable by name, not only uuid** — every command that takes an intent id should also accept its unique name (or unambiguous prefix); dogfood finding: the driver had to maintain an external name-to-id map across the whole session
     - **proof and bootstrap handlers** — loom validate (runs proofs with the session released) and loom init (idempotent bootstrap)
+      - **validate CommandOutcome enum** — discriminating ran_inert or unknown runner outcome from validation execution
+      - **validate CoverageReport impl** — adds symbol_executed and coverage_verdict methods to CoverageReport
+      - **validate CoverageReport struct** — holds LCOV coverage data keyed by source file path
+      - **validate CoverageVerdict enum** — Confirms Irrelevant or NotProven verdict from LCOV coverage report analysis
+      - **validate Grounding struct** — pairs a validation command's test file with its grounded codefiles
+      - **validate ProofRelevance enum** — Confirmed Irrelevant or NotProven judgement of a test proof against grounded code
+      - **validate command only prints** — detects when a validation command only echoes a pass string without running a test
+      - **validate command source files** — extracts source file paths from a validate command line for import analysis
+      - **validate conftest chain** — finds the conftest.py chain for a Python test file under the src layout
+      - **validate count before** — counts lines before a given line number in LCOV report
+      - **validate count raw imports** — counts static import statements from a test file to grounded codefiles
+      - **validate coverage symbol executed** — checks whether an LCOV coverage report shows the grounded symbol was executed
+      - **validate discover coverage** — finds an LCOV coverage file for a test file by convention or env var
+      - **validate grounding by validation** — maps a validation to its intent's IMPLEMENTS grounding for proof relevance
+      - **validate is env var name** — checks whether a token looks like an environment variable name
+      - **validate leading count** — extracts the leading integer cargo-test passed count from runner output
+      - **validate manual verdict sticky** — guards hand-marked passed/failed verdicts from being overwritten by re-validation
+      - **validate parse lcov** — parses an LCOV tracefile into source-file line execution counts
+      - **validate passed count** — extracts the cargo-test passed count from the last matching line in output
+      - **validate proof discrimination** — classifies a validation run as discriminating ran_inert or unknown
+      - **validate proof relevance** — determines whether a validation proof exercises the grounded code via imports or coverage
+      - **validate remove import lines** — strips import statements from source file content for symbol-usage analysis
+      - **validate result edge status** — maps validation result to the edge inspection status
+      - **validate run validation command** — executes a validation command capturing stdout stderr exit code and timing
+      - **validate saga builtin engine** — detects whether a saga command uses the built-in loom saga run engine
+      - **validate saga missing env** — detects unresolved env var references in saga command templates
+      - **validate strip literals comments** — removes string literals and comments from source code before symbol scanning
+      - **validate symbol used in source** — checks whether a grounded symbol name appears in a test file body outside imports
+      - **validate tap pass count** — parses TAP output line to extract the pass count
+      - **validate terminate command tree** — kills a spawned command and its whole process group on timeout
+      - **validate transitive imports** — computes the transitive closure of imports from a test file
     - **whoami identity report** — loom whoami reports the acting $LOOM_AGENT identity, the resolved role, and whether lane enforcement is on (a role is set) or off (solo)
   - **SQLite graph persistence** — embedded SQLite graph store behind typed command/repository APIs; schema vocabulary in Rust, physical tables and constraints in SQLite, derived endpoint edge keys, deterministic JSON import/export, and pure snapshot analysis for graph computations
     - **endpoint-constrained edge storage** — RELATES_TO, HIERARCHY, IMPLEMENTS, GOVERNS, VALIDATES, TARGETS, SERVES, and JOURNEYS are keyed by endpoint ids with derived stable edge ids and SQLite uniqueness/foreign-key constraints, not stored edge uuids
@@ -56,6 +199,14 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **SQLite direct concurrency policy** — SQLite is the active embedded graph store: every command opens .loom/graph.sqlite directly with foreign keys, busy timeout, WAL/NORMAL pragmas, and transaction boundaries; loom serve is a retired stub rather than a correctness or performance layer.
     - **SQLite import export parity bridge** — A fresh SQLite graph can import the current deterministic loom.graph.json and export the same semantic nodes, edges, ids, criteria, notes, list fields, and layer order without adopting old backend-private state.
     - **SQLite query and search implementation** — Read-heavy commands use typed SQLite queries or a shared graph projection for status, next, report, doctor, smells, find, and door without preserving Grafeo-specific scan/filter workarounds unless parity requires them.
+      - **db ensure initialized** — creates .loom/ and initializes the SQLite store if it does not exist
+      - **db explicit graph static** — session-wide static holding the explicitly pinned graph path
+      - **db explicit pin** — reads the LOOM_GRAPH env or --graph flag for targeting a non-cwd graph
+      - **db loom dir resolver** — returns the .loom directory path for the project root
+      - **db open read handle** — opens a read-only graph handle from the cwd or --graph pin
+      - **db path resolver** — returns the .loom/graph.sqlite path for the project root
+      - **db set explicit graph** — stores the explicit graph path from --graph flag for the session
+      - **db sqlite db path** — returns the .loom/graph.sqlite path for a given root directory
     - **backend-neutral storage boundary** — Command handlers and query consumers depend on typed SQLite graph storage/repository operations and pure snapshot analysis, not backend-specific query strings or legacy storage types.
     - **migration cutover and rollback path** — Users can dogfood target/debug/loom against the live SQLite graph, keep committed loom.graph.json as rollback/export state, and promote the local binary only after tests, local graph routing, and export checks pass.
     - **storage contract regression suite** — Backend tests prove SQLite storage semantics: transactions, endpoint uniqueness, list round trips, free-text binding, constraints, search behavior, import/export shape, and snapshot reads.
@@ -78,8 +229,100 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **derived problem signals** — loom smells: twins, overlapping ownership, scatter, tangles, undeclared coupling, recurrence, normative gaps — computed from graph structure, each with a remedy
       - **advisory buckets honor decision adjudication** — Advisory smell buckets move current decision-note rulings out of open advisory counts and into adjudicated output, with reopen anchors on the relevant intent or file.
       - **bounded tag vocabulary** — loom vocab maintains a small normalized tag registry for intent tags; write-time validation inlines the registry and drift remedies merge near-duplicate keys so discovery and smells get deliberate collisions.
+      - **smells AdjudicatedSmell** — pub struct AdjudicatedSmell
+      - **smells COMPLEX_SYMBOL_COGNITIVE** — pub const COMPLEX_SYMBOL_COGNITIVE
+      - **smells COMPLEX_SYMBOL_CYCLOMATIC** — pub const COMPLEX_SYMBOL_CYCLOMATIC
+      - **smells DEBT_KINDS** — pub const DEBT_KINDS
+      - **smells DEEPLY_NESTED_SYMBOL_DEPTH** — pub const DEEPLY_NESTED_SYMBOL_DEPTH
+      - **smells DELETION_SAFETY_PREAMBLE** — pub(crate) const DELETION_SAFETY_PREAMBLE
+      - **smells DUP_TAG_WEIGHT** — pub const DUP_TAG_WEIGHT
+      - **smells DUP_UNTAGGED_SHARED_TOKENS** — pub const DUP_UNTAGGED_SHARED_TOKENS
+      - **smells DUP_UNTAGGED_SIMILARITY** — pub const DUP_UNTAGGED_SIMILARITY
+      - **smells DeletionContext_a_** — impl DeletionContext<'a>
+      - **smells DeletionContexta_classify** — pub(crate) fn DeletionContext<'a>::classify
+      - **smells DeletionContexta_clause** — pub(crate) fn DeletionContext<'a>::clause
+      - **smells DeletionContexta_new** — pub(crate) fn DeletionContext<'a>::new
+      - **smells HYPOTHESIS_BACKLOG_LIMIT** — pub const HYPOTHESIS_BACKLOG_LIMIT
+      - **smells HYPOTHESIS_STALE_DAYS** — pub const HYPOTHESIS_STALE_DAYS
+      - **smells KIND_ARCH_VERDICT_CONTRADICTS** — pub(crate) const KIND_ARCH_VERDICT_CONTRADICTS
+      - **smells LARGE_BEHAVIORAL_SYMBOL_LINES** — pub const LARGE_BEHAVIORAL_SYMBOL_LINES
+      - **smells LEXICAL_SIGNAL_TOKEN_CARRIER_FLOOR** — pub const LEXICAL_SIGNAL_TOKEN_CARRIER_FLOOR
+      - **smells MANY_ARGUMENTS** — pub const MANY_ARGUMENTS
+      - **smells MANY_AWAITS** — pub const MANY_AWAITS
+      - **smells MANY_EXIT_PATHS** — pub const MANY_EXIT_PATHS
+      - **smells MIN_CLONE_LINES** — pub const MIN_CLONE_LINES
+      - **smells MIN_STRING_CONTRACT_CHARS** — pub const MIN_STRING_CONTRACT_CHARS
+      - **smells MIN_STRING_CONTRACT_TOKENS** — pub const MIN_STRING_CONTRACT_TOKENS
+      - **smells OVERSIZED_FILE_LINES** — pub const OVERSIZED_FILE_LINES
+      - **smells SIZE_ADVISORY_KINDS** — pub const SIZE_ADVISORY_KINDS
+      - **smells STRING_CONTRACT_SAFETY_PREAMBLE** — pub(crate) const STRING_CONTRACT_SAFETY_PREAMBLE
+      - **smells Serialize_for_Smell** — impl Serialize for Smell
+      - **smells SiteIntent** — impl SiteIntent
+      - **smells SmellCtx** — struct SmellCtx
+      - **smells SmellInputs** — pub struct SmellInputs
+      - **smells SmellReport** — pub struct SmellReport
+      - **smells SmellTeaching** — pub struct SmellTeaching
+      - **smells Smell_id** — pub fn Smell::id
+      - **smells Smell_intent_ids** — pub fn Smell::intent_ids
+      - **smells StringContractLoc** — struct StringContractLoc
+      - **smells TANGLE_INTENTS** — pub const TANGLE_INTENTS
+      - **smells TWIN_SIMILARITY** — pub const TWIN_SIMILARITY
+      - **smells adjudicate** — rules a smell finding via a decision note with gate validation
+      - **smells arg after** — extracts the positional argument after a given flag in a CLI string
+      - **smells behavioral symbol kind** — classifies a symbol as structural or behavioral for accountability
+      - **smells build ctx** — fn build_smell_ctx
+      - **smells capped join** — fn capped_join
+      - **smells cochange_suggestions** — pub fn cochange_suggestions
+      - **smells command surface** — fn command_or_public_surface
+      - **smells edge explore ids** — fn edge_explore_ids_from_text
+      - **smells evidence list cap** — caps per-smell evidence lists at 20 entries
+      - **smells jaccard** — pub fn jaccard
+      - **smells lexical tokens** — fn lexical_signal_tokens
+      - **smells locate proof** — fn locate_test_proof
+      - **smells name lifecycle** — formats a lifecycle label with a colored emoji prefix
+      - **smells normalized contract** — fn normalized_contract_string
+      - **smells parent dir** — fn parent_dir
+      - **smells parse cargo test selectors** — fn parse_cargo_test_selectors
+      - **smells path matches module** — fn path_matches_module
+      - **smells phrase** — returns a human-readable phrase describing an intent site
+      - **smells proof locality from parts** — fn proof_locality_from_parts
+      - **smells proof_locality_suggestions** — pub fn proof_locality_suggestions
+      - **smells quoted arg after** — fn quoted_arg_after
+      - **smells recurrent teaching** — fn recurrent_teaching
+      - **smells rfc3339 after** — fn rfc3339_after
+      - **smells scatter_threshold** — pub fn scatter_threshold
+      - **smells serialize** — custom serializer for Smell that omits empty fields
+      - **smells shape hash eligible** — fn shape_hash_eligible
+      - **smells shellish tokens** — fn shellish_tokens
+      - **smells short_contract_excerpt** — fn short_contract_excerpt
+      - **smells shotgun_surgery_suggestions** — pub fn shotgun_surgery_suggestions
+      - **smells smell_identity** — fn smell_identity
+      - **smells smell_intent_ids** — fn smell_intent_ids
+      - **smells stable_hex** — fn stable_hex
+      - **smells string_contract_is_noise** — fn string_contract_is_noise
+      - **smells teaching table** — maps smell kinds to human-readable teaching guidance text
+      - **smells teaching_for** — fn teaching_for
+    - **report command handler** — opens the graph and renders the full health report envelope
+    - **report data struct** — holds the assembled report sections before rendering
+    - **report human renderer** — prints the prose report with centrality and edge-status sections for agents
+    - **report json renderer** — renders the structured report envelope with capped list fields for --json mode
+    - **report list cap constant** — caps per-section report lists so agents see headlines not thousands of rows
+    - **report snapshot assembler** — assembles status, gaps, and blocked-validation slices from a query snapshot
+    - **report text truncator** — truncates long evidence and criterion strings at unicode character boundaries for human report lines
     - **source corpus coverage** — enumerates structured requirement-like IDs (US-, E-, REQ-, NFR-, INV-, ADR-) in documentation files and reconciles them against the intent graph, surfacing documented-but-unmodeled requirements for inbox triage
     - **source corpus coverage sad path** — When source docs carry no structured requirement IDs, corpus coverage reports completeness as UNKNOWN and routes to loom seed --inbox for LLM triage, never silently claiming full coverage from zero IDs.
+    - **stats BlockedValidationSummary** — impl BlockedValidationSummary
+    - **stats CoverageAxis** — impl CoverageAxis
+    - **stats NoteLogStats** — impl NoteLogStats
+    - **stats classify_blocked_gate_reason** — fn classify_blocked_gate_reason
+    - **stats contains_any** — fn contains_any
+    - **stats decide_phase** — fn decide_phase
+    - **stats edge_status_summary** — fn edge_status_summary
+    - **stats explored_pairs_axis** — fn explored_pairs_axis
+    - **stats noncurrent_uninspected_validation_edges_from_snaps** — fn noncurrent_uninspected_validation_edges_from_snapshot
+    - **stats pair_key** — fn pair_key
+    - **stats proof_axes** — fn proof_axes
+    - **stats validation_backlog_summary** — fn validation_backlog_summary
     - **verifiable delegated coverage** — Coverage treats files under a declared subtree as covered by a child loom.graph.json export, and reports a missing export as an explicit delegation-target gap.
   - **dual-mode output** — every command renders human-readable text or --json including a graph_state pulse
   - **external interface surface plane** — Represent externally callable surfaces as first-class graph nodes so ownership, journey coverage, quality rules, and implementation grounding can address an interface independently of the saga YAML that calls it.
@@ -98,6 +341,10 @@ The intent hierarchy — what the system is, decomposed top-down.
   - **hypothesis plane** — The pre-decision plane: improvement hypotheses that any lane can propose, an analyzer proves against current code, and a builder adopts into planned intents. Speculation stays invisible to coverage and completeness until adoption converts it into the existing lifecycle.
     - **adoption spawns outcome proof** — Adopting a hypothesis writes its predicted_outcome as a not_run Validation attached to the spawned intents; when the validator lane passes it, the hypothesis derives confirmed. Every adopted improvement gets checked for whether it actually delivered.
     - **hypothesis lifecycle commands** — loom hypothesis add/list/show/prove/adopt/reject drives the state machine with gates: claim and predicted_outcome must be substantive and falsifiable, the prover's provenance must differ from the proposer's, only a proposed hypothesis can be proven, and only a supported one adopted. Every transition is recorded as an append-only note.
+      - **hypothesis list formatter** — formats hypothesis rows for list command output
+      - **hypothesis list handler** — lists hypotheses from sqlite with filters
+      - **hypothesis not found message** — shared error when hypothesis id or name lookup fails
+      - **hypothesis show handler** — shows one hypothesis with transitions and evidence
     - **hypothesis node and TARGETS edge** — Schema v4 adds a Hypothesis node (claim, proposal, predicted_outcome, status: proposed/supported/refuted/adopted/rejected, provenance) and a TARGETS edge (Hypothesis to Intent) carrying the standard inspectable meta. Both persist through the deterministic export/import round-trip with two-phase validation, and loom doctor audits their required properties and value vocabularies.
     - **hypothesis prove records TARGETS confidence** — When a hypothesis is proven, the TARGETS verdicts it stamps carry the prover's explicit confidence instead of leaving the uninspected 0.0 default behind.
     - **smells propose hypotheses** — Structural findings that call for redesign rather than a patch (recurrent trouble, scattered intents, twin intents) emit loom hypothesis add as their remedy command, so the graph's own signals feed the proposal plane instead of dying in notes.
@@ -120,6 +367,9 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **discovery queue ranks pairs by plausibility** — unexplored RELATES_TO pairs should be ranked beyond raw centrality (e.g. shared files, shared domain, co-change) so a driver is not pointed at 31 equally-scored pairs on a 10-intent graph
     - **scale: hot commands bounded on large graphs** — On a synthetic graph of >=500 intents and >=1000 edges, loom status / next / smells / next --all each complete in under 2 seconds; the O(N^2) paths (discovery pair enumeration, twin/overlap smells) are bounded or restructured; proven by a benchmark validation against the synthetic graph
       - **scale benchmark harness** — The run-loom benchmark scripts generate a synthetic graph and fail when status, next, smells, or next --all exceed the hot-command budget.
+        - **synthetic graph benchmark regression tests** — Regression tests prove gen_synth_graph add_hier and add_impl emit hierarchy and IMPLEMENTS edges in generated benchmark graphs; validations run the test methods, not production helpers.
+        - **synthetic graph hierarchy edge builder** — Helper that deduplicates parent-child pairs while generating synthetic benchmark graph hierarchy edges.
+        - **synthetic graph implements edge builder** — Helper that deduplicates and records IMPLEMENTS edges while generating the synthetic benchmark graph.
     - **tiered review queue** — Verdicts recorded with confidence below 0.7 surface in loom next --mode review, ranked (1-confidence) x centrality; re-recording at/above the threshold or overturning resolves the item; every work item carries effort low|mid|high about the WORK (never a model); the fix queue dispatches needs_reverification to the analyzer and failing to the fixer
   - **repo introspection** — gitignore-aware file walk, stack detection, greenfield/brownfield suggestion; runs before init
   - **role lanes and evidence gates** — a declared LOOM_AGENT role is held to its lane at the command boundary; criterion/evidence/notes must be substantive; confidence bounded to [0,1]; solo mode passes all lanes
@@ -136,10 +386,51 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **opt-in lane-skill install** — loom skill list|show|install emits the binary-served lane-skills as SKILL.md files for a harness that wants to PIN them; never required — the binary serves each lane JIT via loom guide --role X. The SKILL.md body delegates the live charge back to the binary so a pinned copy can't drift.
     - **seed guide teaches the user interview** — loom guide --mode seed is explicit-only (never auto-detected) and teaches both loops: elicit (altitude calibrated to user fluency, one question per landing, recommended answers, terminate on enumerable gaps not exhaustion) and align (drive loom next --mode align outcomes); an empty graph's compass routes phase=seed pointing at this guide
     - **session opener teaches the turn-zero ask** — loom session serves turn zero (the user invoked loom with no stated goal): a directive to ask ONE question in the user's language plus a state-aware offer menu where each offer is backed by a live queue and its count and exactly one is recommended; user-gated queues (align drift, hypothesis rulings, blocked proofs) outrank everything an agent can drain alone; works before loom init (import > map > interview) and on an empty graph (interview vs map by source on disk); synonym verbs (start/begin/hello/mode/talk/chat/interview) teach the command
+      - **door capture doctrine copy** — prints capture-first doctrine reminding agents to normalize before routing
+      - **door granularity cue copy** — orientation text distinguishing greenfield seeding from brownfield reconciliation
+      - **door greenfield orientation** — returns greenfield vs brownfield orientation label from has_source flag
+      - **door landing menu constants** — enumerates every utterance-class to graph-noun landing command shape
+      - **door routing context renderer** — renders inbox capture result with landing menu and compass context
   - **sync flag engine** — mtime-delta detection propagating one hop: RELATES_TO neighbours and passing GOVERNS go needs_reverification, linked validations go not_run; files missing on disk are reported
+    - **sync CodeRippleTarget struct** — tracks an intent plus the changed symbols that need ripple handling
+    - **sync ScannedCodeFile struct** — holds a codefile with its current content_hash detected changes and new imports
+    - **sync SyncContext struct** — borrowed snapshot of active intents and edge indexes for the sync ripple pass
+    - **sync SyncData struct** — owned loaded graph state consumed by the sync ripple pass
+    - **sync SyncState struct** — accumulated change report tracking what the sync ripple flagged
+    - **sync affected intents** — collects intent ids from implements edges affected by changed codefiles
+    - **sync backfill mechanical kinds** — backfills imports and shared_file kind tags on unkined RELATES_TO edges
+    - **sync build report** — assembles the SyncReport from ripple results and changed file counts
+    - **sync cap json arrays** — caps JSON arrays in sync report at REPORT_CAP and records true totals
+    - **sync codefile changed** — detects content-hash and mtime changes for a single codefile
+    - **sync command entry** — CLI entry point resolving root and opening the SQLite store for sync
+    - **sync compact transitions** — trims per-target transition note history to the transition cap
+    - **sync compute coupled pairs** — derives import-coupling pairs from codefiles for the import-exemption ripple path
+    - **sync flag code ripple** — flips IMPLEMENTS edges to needs_reverification when grounded code changed
+    - **sync flag governs** — flips GOVERNS verdicts to needs_reverification when the inspected code changed
+    - **sync flag relates** — flips RELATES_TO edges to needs_reverification when either side's code changed
+    - **sync flag serves** — flips SERVES edges to needs_reverification when grounded code changed
+    - **sync flush pending hashes** — writes accumulated content_hash updates for changed codefiles
+    - **sync group intents by codefile** — indexes implements edges by codefile for fast lookup
+    - **sync invalidate delegation validations** — flips delegation-tracking validations to not_run on code change
+    - **sync invalidate validations** — flips linked validations to not_run when grounded code changed
+    - **sync load sync data** — loads all graph edges and codefiles needed for the sync ripple pass
+    - **sync next sync step** — computes the next_step routing directive after sync
+    - **sync print json renderer** — renders the SyncReport as capped JSON with _total companion fields
+    - **sync print missing files** — prints registered files missing on disk in human sync output
+    - **sync print report dispatcher** — dispatches to print_sync_json or print_sync_text based on printer mode
+    - **sync print stale locators** — prints stale IMPLEMENTS locators in human sync output
+    - **sync print text renderer** — renders the full human sync report with files changed edges flagged and next step
+    - **sync report cap** — caps per-section report lists in sync output
+    - **sync ripple delegations** — flips delegation validations to not_run and re-reads child exports on sync
+    - **sync run with sqlite** — core sync loop loading data detecting changes and applying ripples
+    - **sync scan codefile** — reads a codefile from disk computes content_hash and checks for changes
+    - **sync scan files and flag changes** — iterates codefiles detecting content-hash changes and dispatching to flag helpers
+    - **sync sqlite store alias** — type alias for SqliteGraphStore used in sync functions
+    - **sync update facts and flag locators** — re-extracts symbol facts for changed codefiles and flags stale locators
 
 
 <!-- loom:prose-start -->
+
 
 
 

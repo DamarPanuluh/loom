@@ -700,6 +700,42 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
 }
 
 #[test]
+fn sqlite_batch_missing_subcommand_like_file_teaches_real_surface() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("batch-file-trap");
+    run_json(&graph.root, &["init", ".", "--json"]);
+
+    let output = Command::new(loom_bin())
+        .args(["batch", "status"])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm:analyzer")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom batch status");
+    assert!(
+        !output.status.success(),
+        "batch status should fail as a missing file trap"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    for needle in [
+        "Cannot read batch file 'status'",
+        "`loom batch` has no `status` subcommand",
+        "loom validation list --intent <intent> --json",
+        "loom next --all --json",
+        "loom batch - --dry-run",
+    ] {
+        assert!(
+            combined.contains(needle),
+            "missing-file trap should teach {needle:?}; got:\n{combined}"
+        );
+    }
+}
+
+#[test]
 fn sqlite_batch_dry_run_validates_without_writing() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-batch-dryrun");
@@ -818,6 +854,87 @@ fn sqlite_batch_flags_copied_evidence() {
         0,
         "edge-specific evidence must NOT be flagged: {clean}"
     );
+}
+
+#[test]
+fn sqlite_batch_dry_run_flags_copied_evidence_locator() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-batch-copied-locator");
+    let ids = first_n_intent_ids(&graph.root, 4);
+    assert!(
+        ids.len() >= 4,
+        "need 4 intents for the copied-locator fixture"
+    );
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    {
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "DELETE FROM relates_to WHERE (from_id = ?1 AND to_id IN (?2, ?3, ?4)) OR (to_id = ?1 AND from_id IN (?2, ?3, ?4))",
+            rusqlite::params![ids[0], ids[1], ids[2], ids[3]],
+        )
+        .expect("clear copied-locator pairs");
+    }
+    write_scratch_file(&graph.root, "scratch/proof.rs", "pub fn proof() {}\n");
+
+    let lines: Vec<String> = (1..4)
+        .map(|i| {
+            serde_json::json!({
+                "op": "ground",
+                "a": &ids[0],
+                "b": &ids[i],
+                "criterion": "these coexist cleanly without coupling",
+                "evidence": format!("edge {i}: inspected a unique substantive relationship for this exact pair"),
+                "evidence_locator": "scratch/proof.rs:1",
+                "confidence": 0.6
+            })
+            .to_string()
+        })
+        .collect();
+    write_scratch_file(
+        &graph.root,
+        "scratch/copied-locator.jsonl",
+        &lines.join("\n"),
+    );
+    let flagged = run_json_as(
+        &graph.root,
+        &[
+            "batch",
+            "scratch/copied-locator.jsonl",
+            "--dry-run",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        flagged["failed"], 0,
+        "copied locator is advisory: {flagged}"
+    );
+    assert_eq!(
+        flagged["dry_run"], true,
+        "dry_run flag must be set: {flagged}"
+    );
+    assert!(
+        flagged["warnings_total"].as_i64().unwrap_or(0) >= 1,
+        "reused locator across 3 successful lines must warn: {flagged}"
+    );
+    let warnings = flagged["warnings"].as_array().expect("warnings array");
+    assert!(
+        warnings.iter().any(|w| {
+            let w = w.as_str().unwrap_or("");
+            w.contains("copied evidence locator") && w.contains("scratch/proof.rs:1")
+        }),
+        "copied evidence locator warning must name the repeated anchor: {flagged}"
+    );
+
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let n: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM relates_to WHERE (from_id = ?1 AND to_id IN (?2, ?3, ?4)) OR (to_id = ?1 AND from_id IN (?2, ?3, ?4))",
+            rusqlite::params![ids[0], ids[1], ids[2], ids[3]],
+            |r| r.get(0),
+        )
+        .expect("count copied-locator pairs");
+    assert_eq!(n, 0, "dry-run must not write any copied-locator edge");
 }
 
 // audit #17 (lane-bypass): a bare `llm` agent (no LOOM_AGENT role) solo-passes
@@ -1225,6 +1342,14 @@ fn sqlite_take_template_confidence_placeholder_and_hints_json() {
         joined.contains("--dry-run"),
         "the dry-run guardrail must be surfaced next to the template: {joined}"
     );
+    assert!(
+        joined.contains("fresh evidence_locator"),
+        "the quality locator rule must be surfaced next to the template: {joined}"
+    );
+    assert!(
+        joined.contains("repeated old anchors"),
+        "the copied-locator dry-run warning must be advertised in hints: {joined}"
+    );
 
     // The committed graph may have all GOVERNS verdicts recorded (green),
     // leaving the quality queue empty. Sync to invalidate some verdicts
@@ -1256,6 +1381,10 @@ fn sqlite_take_template_confidence_placeholder_and_hints_json() {
         assert!(
             s.contains("\"confidence\":\"<confidence>\"") && !s.contains("\"confidence\":0.9"),
             "quality verdict template must carry a confidence placeholder, not a 0.9 default: {s}"
+        );
+        assert!(
+            s.contains("\"evidence_locator\":\"<fresh evidence_locator>\""),
+            "quality verdict template must force a fresh per-row locator: {s}"
         );
     }
 }
@@ -2772,6 +2901,45 @@ fn sqlite_report_json_caps_unbounded_lists() {
     assert!(
         v.get("completeness_gaps_total").is_some(),
         "report --json must disclose the true gaps total: {v}"
+    );
+}
+
+#[test]
+fn sqlite_report_run_returns_status_envelope() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("report-run");
+    let v = run_json(&graph.root, &["report", "--json"]);
+    let status = &v["status"];
+    assert!(
+        status["total_intents"].as_i64().unwrap_or(0) > 0,
+        "report must surface the graph status headline: {v}"
+    );
+    assert!(
+        v.get("edge_counts_by_status").is_some(),
+        "report must include per-status edge counts: {v}"
+    );
+    assert!(
+        v.get("top_intents_by_centrality").is_some(),
+        "report must include centrality ranking: {v}"
+    );
+}
+
+#[test]
+fn sqlite_report_human_includes_headline_sections() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("report-human");
+    let text = run_text_as(&graph.root, &["report"], "llm");
+    assert!(
+        text.contains("══ loom report"),
+        "human report must open with the report banner: {text}"
+    );
+    assert!(
+        text.contains("Top Intents by RELATES_TO Centrality"),
+        "human report must include centrality section: {text}"
+    );
+    assert!(
+        text.contains("Edge Counts by Inspection Status"),
+        "human report must include edge status section: {text}"
     );
 }
 
@@ -5475,6 +5643,193 @@ fn sqlite_judgment_kind_assignment() {
         kinds.contains("calls"),
         "judgment kind asserted on the edge: {kinds}"
     );
+}
+
+// Directed handoff notes: --for persists audience, list --for filters the lane
+// inbox, and validate next surfaces addressed-to-validator notes before ambient
+// ones (note_surfaces integration through the CLI).
+#[test]
+fn sqlite_directed_handoff_notes_round_trip() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-directed-handoff");
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    let intent_id = intent_id_by_name(&graph.root, "directed handoff notes");
+
+    // The committed import is otherwise proof-green; make THIS intent the sole
+    // validate candidate so next ordering is deterministic.
+    {
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute("UPDATE validation SET last_result='passed'", [])
+            .expect("baseline proofs green");
+        conn.execute(
+            "UPDATE validation SET last_result='not_run' WHERE id IN              (SELECT validation_id FROM validates WHERE intent_id=?1)",
+            rusqlite::params![intent_id],
+        )
+        .expect("invalidate only the directed-handoff intent proofs");
+    }
+
+    // Ambient notes on the same target (no --for).
+    for i in 0..12 {
+        run_json_as(
+            &graph.root,
+            &[
+                "note",
+                "add",
+                "--intent",
+                &intent_id,
+                "--kind",
+                "commentary",
+                "--text",
+                &format!("ambient note {i} for handoff ordering test"),
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+
+    // Directed handoff to the validator lane.
+    run_json_as(
+        &graph.root,
+        &[
+            "note",
+            "add",
+            "--intent",
+            &intent_id,
+            "--kind",
+            "decision",
+            "--text",
+            "directed handoff: re-run proofs after the storage ripple",
+            "--for",
+            "validator",
+            "--json",
+        ],
+        "llm:builder",
+    );
+
+    // Invalid lane is rejected at the CLI boundary.
+    let bad = run_json_failure_as(
+        &graph.root,
+        &[
+            "note",
+            "add",
+            "--text",
+            "bad audience",
+            "--for",
+            "not-a-lane",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert!(
+        bad.to_string().contains("--for must be a lane"),
+        "invalid --for must be rejected: {bad}"
+    );
+
+    // Lane inbox: builder list shows only builder-addressed notes.
+    let builder_inbox = run_json_as(
+        &graph.root,
+        &["note", "list", "--for", "builder", "--json"],
+        "llm:builder",
+    );
+    let builder_notes = builder_inbox["notes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let builder_texts: Vec<&str> = builder_notes
+        .iter()
+        .filter_map(|n| n["text"].as_str())
+        .collect();
+    assert!(
+        !builder_texts
+            .iter()
+            .any(|t| t.contains("directed handoff: re-run proofs")),
+        "builder inbox must not include validator-directed notes: {builder_texts:?}"
+    );
+
+    let validator_inbox = run_json_as(
+        &graph.root,
+        &["note", "list", "--for", "validator", "--json"],
+        "llm:builder",
+    );
+    let validator_notes = validator_inbox["notes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let validator_texts: Vec<&str> = validator_notes
+        .iter()
+        .filter_map(|n| n["text"].as_str())
+        .collect();
+    assert!(
+        validator_texts
+            .iter()
+            .any(|t| t.contains("directed handoff: re-run proofs")),
+        "validator inbox must include the directed note: {validator_texts:?}"
+    );
+
+    // Persistence: audience column stores the lane.
+    {
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        let audience: String = conn
+            .query_row(
+                "SELECT audience FROM note WHERE text LIKE 'directed handoff:%' LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .expect("directed note persisted");
+        assert_eq!(audience, "validator", "audience column round-trips");
+    }
+
+    // loom next --mode validate applies note_surfaces for the validator role.
+    let item = run_json(&graph.root, &["next", "--mode", "validate", "--json"]);
+    assert_eq!(
+        item["intent"]["id"].as_str().unwrap(),
+        intent_id.as_str(),
+        "same validate item after notes added"
+    );
+    let notes = item["notes"].as_array().expect("notes array");
+    assert!(
+        !notes.is_empty(),
+        "validate item must surface notes for the intent"
+    );
+    assert_eq!(
+        notes[0]["audience"].as_str().unwrap_or(""),
+        "validator",
+        "addressed-to-validator note must sort first: {notes:?}"
+    );
+    assert!(
+        notes[0]["text"]
+            .as_str()
+            .unwrap_or("")
+            .contains("directed handoff:"),
+        "first surfaced note must be the directed handoff: {notes:?}"
+    );
+}
+
+// Reaction-driven mockup loop: seed guide teaches HTML mockup as reaction surface,
+// graph deltas per reaction, and loop-until-structure-converges — distinct from
+// complete-record discharge semantics.
+#[test]
+fn sqlite_reaction_driven_mockup_loop_guidance() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-mockup-loop");
+    let guide = run_json(&graph.root, &["guide", "--mode", "seed", "--json"]);
+    assert_eq!(guide["mode"], "seed", "seed guide mode echoed");
+    let blob = serde_json::to_string(&guide).unwrap();
+    for phrase in [
+        "the visual register",
+        "REACTION-driven",
+        "HTML mockup",
+        "mockups/",
+        "convert EACH human reaction",
+        "LOOP until reactions stop changing",
+        "mockup is contract",
+        "regenerate the mockup",
+    ] {
+        assert!(
+            blob.contains(phrase),
+            "seed guide must teach reaction-driven mockup loop ('{phrase}'): missing"
+        );
+    }
 }
 
 #[test]
@@ -9265,6 +9620,46 @@ fn sqlite_partial_verdict_status_accepted() {
     assert_eq!(result["inspection_status"], "partial");
 }
 
+fn setup_batch_rule_verdict_fixture(prefix: &str) -> (ScratchGraph, String) {
+    let graph = ScratchGraph::new(prefix);
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/lib.rs", "pub fn alpha() {}\n");
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--level",
+            "feature",
+            "--description",
+            "does alpha with authenticated handlers",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let iid = intent["id"].as_str().unwrap().to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "rule",
+            "add",
+            "--name",
+            "r1",
+            "--description",
+            "requires handlers to enforce authentication",
+            "--severity",
+            "warning",
+            "--json",
+        ],
+        "llm:quality",
+    );
+    (graph, iid)
+}
+
 #[test]
 fn sqlite_passing_verdict_requires_evidence_locator() {
     let _guard = sqlite_test_lock();
@@ -9331,6 +9726,92 @@ fn sqlite_passing_verdict_requires_evidence_locator() {
             .unwrap_or("")
             .contains("evidence-locator"),
         "error must name the missing locator: {result}"
+    );
+}
+
+#[test]
+fn sqlite_batch_unknown_rule_shape_suggests_rule_verdict() {
+    let _guard = sqlite_test_lock();
+    let (graph, iid) = setup_batch_rule_verdict_fixture("batch-unknown-rule-shape");
+    let line = format!(
+        "{}\n",
+        serde_json::json!({
+            "op": "governs",
+            "rule": "r1",
+            "intent": iid,
+            "status": "passing",
+            "evidence": "all handlers check auth",
+            "evidence_locator": "src/lib.rs:1",
+            "confidence": 0.6
+        })
+    );
+    let result = run_with_stdin_failure_as(
+        &graph.root,
+        &["batch", "-", "--dry-run", "--json"],
+        &line,
+        "llm:quality",
+    );
+    assert_eq!(result["failed"], 1, "wrong op should be rejected: {result}");
+    let error = result["results"][0]["error"].as_str().unwrap_or("");
+    assert!(
+        error.contains("use op 'rule_verdict'"),
+        "rule/intent-shaped unknown op should teach rule_verdict: {result}"
+    );
+}
+
+#[test]
+fn sqlite_batch_missing_passing_locator_error_lists_conditional_requirement() {
+    let _guard = sqlite_test_lock();
+    let (graph, iid) = setup_batch_rule_verdict_fixture("batch-missing-passing-locator");
+    let passing_line = format!(
+        "{}\n",
+        serde_json::json!({
+            "op": "rule_verdict",
+            "rule": "r1",
+            "intent": &iid,
+            "status": "passing",
+            "criterion": "complies with the rule",
+            "evidence": "all handlers check auth",
+            "confidence": 0.6
+        })
+    );
+    let passing = run_with_stdin_failure_as(
+        &graph.root,
+        &["batch", "-", "--dry-run", "--json"],
+        &passing_line,
+        "llm:quality",
+    );
+    let passing_error = passing["results"][0]["error"].as_str().unwrap_or("");
+    assert!(
+        passing_error.contains("passing GOVERNS verdict requires"),
+        "runtime gate should still reject passing verdicts without locators: {passing}"
+    );
+
+    let missing_field_line = format!(
+        "{}\n",
+        serde_json::json!({
+            "op": "rule_verdict",
+            "rule": "r1",
+            "intent": &iid,
+            "status": "passing",
+            "criterion": "complies with the rule",
+            "confidence": 0.6
+        })
+    );
+    let missing = run_with_stdin_failure_as(
+        &graph.root,
+        &["batch", "-", "--dry-run", "--json"],
+        &missing_field_line,
+        "llm:quality",
+    );
+    let missing_error = missing["results"][0]["error"].as_str().unwrap_or("");
+    assert!(
+        missing_error.contains("missing or non-string field 'evidence'"),
+        "missing evidence should report the missing field: {missing}"
+    );
+    assert!(
+        missing_error.contains("passing/partial require evidence_locator"),
+        "missing-field legend should advertise the conditional locator rule: {missing}"
     );
 }
 
@@ -13470,5 +13951,664 @@ fn sqlite_validate_keeps_hand_marked_verdict_until_cleared() {
     assert_eq!(
         rerun["results"][0]["result"], "failed",
         "after `mark --result not_run`, validate must run the command (now failing): {rerun}"
+    );
+}
+
+/// LONG_VERSION must surface both the crate semver and a non-empty git build id
+/// so local dogfood binaries are distinguishable from release builds.
+#[test]
+fn sqlite_version_includes_semver_and_build_stamp() {
+    let _guard = sqlite_test_lock();
+    let output = Command::new(loom_bin())
+        .arg("--version")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("failed to run loom --version");
+    assert!(
+        output.status.success(),
+        "loom --version failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        text.contains(env!("CARGO_PKG_VERSION")),
+        "version output missing semver: {text:?}"
+    );
+    let build = env!("LOOM_BUILD");
+    assert!(!build.is_empty(), "LOOM_BUILD must be non-empty");
+    assert!(
+        text.contains(build),
+        "version output missing git build stamp {build:?}: {text:?}"
+    );
+    assert!(
+        text.contains("(build "),
+        "version output missing build parenthetical: {text:?}"
+    );
+}
+
+/// pub enum Command must register every shipped top-level verb with clap.
+#[test]
+fn sqlite_top_level_commands_surface_in_help() {
+    let _guard = sqlite_test_lock();
+    let output = Command::new(loom_bin())
+        .arg("--help")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("failed to run loom --help");
+    assert!(
+        output.status.success(),
+        "loom --help failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let help = String::from_utf8_lossy(&output.stdout);
+    for verb in [
+        "init", "status", "next", "intent", "edge", "validate", "sync", "guide",
+    ] {
+        assert!(help.contains(verb), "top-level help missing command {verb}");
+    }
+}
+
+fn assert_cli_help_contains(args: &[&str], needles: &[&str]) {
+    let output = Command::new(loom_bin())
+        .args(args)
+        .arg("--help")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .unwrap_or_else(|err| panic!("failed to run loom {args:?}: {err}"));
+    assert!(
+        output.status.success(),
+        "loom {args:?} --help failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let help = String::from_utf8_lossy(&output.stdout);
+    for needle in needles {
+        assert!(
+            help.contains(needle),
+            "loom {args:?} --help missing {needle}"
+        );
+    }
+}
+
+macro_rules! cli_help_test {
+    ($name:ident, $args:expr, $needles:expr) => {
+        #[test]
+        fn $name() {
+            let _guard = sqlite_test_lock();
+            assert_cli_help_contains($args, $needles);
+        }
+    };
+}
+
+cli_help_test!(
+    sqlite_codefile_subcommands_surface_in_help,
+    &["codefile"],
+    &["add", "list", "show"]
+);
+cli_help_test!(
+    sqlite_corpus_subcommands_surface_in_help,
+    &["corpus"],
+    &["coverage", "resolve"]
+);
+cli_help_test!(
+    sqlite_delegate_subcommands_surface_in_help,
+    &["delegate"],
+    &["add"]
+);
+cli_help_test!(
+    sqlite_domain_subcommands_surface_in_help,
+    &["domain"],
+    &["list"]
+);
+cli_help_test!(
+    sqlite_edge_subcommands_surface_in_help,
+    &["edge"],
+    &["implement", "explore"]
+);
+cli_help_test!(
+    sqlite_ignore_subcommands_surface_in_help,
+    &["ignore"],
+    &["add", "list"]
+);
+cli_help_test!(
+    sqlite_inbox_subcommands_surface_in_help,
+    &["inbox"],
+    &["add", "triage"]
+);
+cli_help_test!(
+    sqlite_explore_subcommands_surface_in_help,
+    &["edge", "explore"],
+    &["ground", "independent"]
+);
+cli_help_test!(
+    sqlite_intent_subcommands_surface_in_help,
+    &["intent"],
+    &["add", "list"]
+);
+cli_help_test!(
+    sqlite_layer_subcommands_surface_in_help,
+    &["layer"],
+    &["list"]
+);
+cli_help_test!(
+    sqlite_note_subcommands_surface_in_help,
+    &["note"],
+    &["add", "list"]
+);
+cli_help_test!(
+    sqlite_persona_subcommands_surface_in_help,
+    &["persona"],
+    &["add", "serve"]
+);
+cli_help_test!(
+    sqlite_populate_subcommands_surface_in_help,
+    &["populate"],
+    &["plan", "interfaces"]
+);
+cli_help_test!(
+    sqlite_rule_subcommands_surface_in_help,
+    &["rule"],
+    &["verdict", "list"]
+);
+cli_help_test!(
+    sqlite_skill_subcommands_surface_in_help,
+    &["skill"],
+    &["list", "show"]
+);
+cli_help_test!(
+    sqlite_slice_subcommands_surface_in_help,
+    &["slice"],
+    &["plan"]
+);
+cli_help_test!(
+    sqlite_source_subcommands_surface_in_help,
+    &["intent", "source"],
+    &["add", "remove"]
+);
+cli_help_test!(
+    sqlite_tag_subcommands_surface_in_help,
+    &["intent", "tag"],
+    &["add", "remove"]
+);
+cli_help_test!(
+    sqlite_vocab_subcommands_surface_in_help,
+    &["vocab"],
+    &["list"]
+);
+cli_help_test!(
+    sqlite_validation_subcommands_surface_in_help,
+    &["validation"],
+    &["add", "list"]
+);
+
+/// Global --json flag on the root Cli parser must work on any subcommand.
+#[test]
+fn sqlite_root_cli_json_flag_on_status() {
+    let _guard = sqlite_test_lock();
+    let output = Command::new(loom_bin())
+        .args(["--json", "status"])
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("loom --json status");
+    assert!(output.status.success());
+    let _: Value = serde_json::from_slice(&output.stdout).expect("status --json must emit JSON");
+}
+
+/// `run_add_with_sqlite` must register a concrete path, detect language from
+/// extension, and stamp content_hash — not merely surface the subcommand in help.
+#[test]
+fn sqlite_codefile_add_registers_path_with_language_detection() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-codefile-add-handler");
+    write_scratch_file(
+        &graph.root,
+        "scratch/handler_probe.py",
+        "def handler_probe() -> int:\n    return 42\n",
+    );
+    let added = run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/handler_probe.py", "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        added["added_count"], 1,
+        "codefile add must register one file: {added}"
+    );
+    let paths: Vec<String> = added["added"]
+        .as_array()
+        .expect("added array")
+        .iter()
+        .map(|entry| {
+            entry["path"]
+                .as_str()
+                .expect("added entry path")
+                .to_string()
+        })
+        .collect();
+    assert!(
+        paths.contains(&"scratch/handler_probe.py".to_string()),
+        "run_add_with_sqlite must persist the requested path: {added}"
+    );
+    let shown = run_json(
+        &graph.root,
+        &["codefile", "show", "scratch/handler_probe.py", "--json"],
+    );
+    assert_eq!(
+        shown["codefile"]["language"], "python",
+        "language must be detected from .py extension: {shown}"
+    );
+    assert!(
+        !shown["codefile"]["content_hash"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty(),
+        "run_add_with_sqlite must stamp content_hash on insert: {shown}"
+    );
+}
+
+/// `prepare_additions` must expand globs and skip paths already registered.
+#[test]
+fn sqlite_codefile_add_glob_expands_and_skips_existing() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-codefile-add-expansion");
+    write_scratch_file(
+        &graph.root,
+        "scratch/expansion_a.py",
+        "def expansion_a() -> int:\n    return 1\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "scratch/expansion_b.py",
+        "def expansion_b() -> int:\n    return 2\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/expansion_a.py", "--json"],
+        "llm:builder",
+    );
+    let globbed = run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/expansion_*.py", "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        globbed["added_count"], 1,
+        "glob must register only the not-yet-registered match: {globbed}"
+    );
+    assert_eq!(
+        globbed["skipped"], 1,
+        "prepare_additions must skip already-registered paths: {globbed}"
+    );
+    let paths: Vec<String> = globbed["added"]
+        .as_array()
+        .expect("added array")
+        .iter()
+        .map(|entry| entry["path"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(paths, vec!["scratch/expansion_b.py".to_string()]);
+}
+
+/// `print_add_result` must emit the human summary with path and skip count.
+#[test]
+fn sqlite_codefile_add_prints_human_summary_with_skip_count() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-codefile-add-printer");
+    write_scratch_file(
+        &graph.root,
+        "scratch/printer_a.rs",
+        "fn printer_a() -> u8 { 1 }\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "scratch/printer_b.rs",
+        "fn printer_b() -> u8 { 2 }\n",
+    );
+    run_text_as(
+        &graph.root,
+        &["codefile", "add", "scratch/printer_a.rs"],
+        "llm:builder",
+    );
+    let summary = run_text_as(
+        &graph.root,
+        &["codefile", "add", "scratch/printer_*.rs"],
+        "llm:builder",
+    );
+    assert!(
+        summary.contains("Registered 1 code file(s) (1 already present, skipped)."),
+        "print_add_result must report added and skipped counts: {summary:?}"
+    );
+    assert!(
+        summary.contains("scratch/printer_b.rs"),
+        "print_add_result must list each newly registered path: {summary:?}"
+    );
+}
+
+/// `teach_unknown` must redirect noun-less verbs to the correct noun command.
+#[test]
+fn sqlite_teach_unknown_redirects_verb_to_noun() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-teach-unknown-verb");
+    let err = run_json_failure_as(
+        &graph.root,
+        &["--json", "update", "some-id", "--description", "x"],
+        "llm:builder",
+    );
+    let msg = err["error"]
+        .as_str()
+        .or_else(|| err["message"].as_str())
+        .unwrap_or("");
+    assert!(
+        msg.contains("loom intent update"),
+        "teach_unknown must redirect update to intent update: {err}"
+    );
+}
+
+/// `edit_distance` must surface the nearest real command for typos.
+#[test]
+fn sqlite_teach_unknown_suggests_nearest_command_for_typo() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-teach-unknown-typo");
+    let err = run_json_failure_as(&graph.root, &["--json", "statsu"], "llm:builder");
+    let msg = err["error"]
+        .as_str()
+        .or_else(|| err["message"].as_str())
+        .unwrap_or("");
+    assert!(
+        msg.contains("status"),
+        "edit_distance path must suggest status for statsu typo: {err}"
+    );
+}
+
+/// `REQUIRED_HUMAN_GATED_DEBT_KEY` must appear in status completion JSON.
+#[test]
+fn sqlite_status_completion_exposes_required_human_gated_debt() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-human-gated-key");
+    let status = run_json(&graph.root, &["status", "--json"]);
+    assert!(
+        status["completion"]["required_human_gated_debt"]["total"].is_number(),
+        "status completion must expose required_human_gated_debt bucket: {status}"
+    );
+}
+
+/// `EXPORT_STALE_WARNING` text must surface when committed export is stale.
+#[test]
+fn sqlite_status_alarm_includes_export_stale_warning_after_code_change() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("sqlite-export-stale-warning");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/lib.rs", "pub fn x() {}\n");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/lib.rs", "--json"],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json(&graph.root, &["export", "--json"]);
+    write_scratch_file(&graph.root, "src/lib.rs", "pub fn x() {}\npub fn y() {}\n");
+    run_json(&graph.root, &["sync", "--json"]);
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let alarms = status["alarms"].as_array().expect("alarms array");
+    let joined = alarms
+        .iter()
+        .filter_map(|a| a.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        joined.contains("loom.graph.json is STALE"),
+        "EXPORT_STALE_WARNING must surface after code change without re-export: {joined}"
+    );
+}
+
+/// `run` must dispatch every CodefileCmd variant to the sqlite handler, not just expose help.
+#[test]
+fn sqlite_codefile_run_dispatches_add_list_show_and_remove_variants() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-codefile-dispatch");
+    write_scratch_file(
+        &graph.root,
+        "scratch/dispatch_probe.rs",
+        "pub fn dispatch_probe() -> u8 { 7 }\n",
+    );
+
+    let added = run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/dispatch_probe.rs", "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        added["added_count"], 1,
+        "CodefileCmd::Add must route through run_add_with_sqlite: {added}"
+    );
+
+    let listed = run_json(&graph.root, &["codefile", "list", "--limit", "0", "--json"]);
+    let listed_paths: Vec<String> = listed["codefiles"]
+        .as_array()
+        .expect("codefiles array")
+        .iter()
+        .map(|entry| entry["path"].as_str().unwrap_or_default().to_string())
+        .collect();
+    assert!(
+        listed_paths.contains(&"scratch/dispatch_probe.rs".to_string()),
+        "CodefileCmd::List must route through run_list_with_db and include the added file: {listed}"
+    );
+
+    let shown = run_json(
+        &graph.root,
+        &["codefile", "show", "scratch/dispatch_probe.rs", "--json"],
+    );
+    assert_eq!(
+        shown["codefile"]["path"], "scratch/dispatch_probe.rs",
+        "CodefileCmd::Show must route through run_show_with_db for the requested path: {shown}"
+    );
+
+    let removed = run_json_as(
+        &graph.root,
+        &["codefile", "remove", "scratch/dispatch_probe.rs", "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        removed["removed"]["path"], "scratch/dispatch_probe.rs",
+        "CodefileCmd::Remove must route through run_remove_with_sqlite and remove the requested path: {removed}"
+    );
+
+    let missing = run_json_failure_as(
+        &graph.root,
+        &["codefile", "show", "scratch/dispatch_probe.rs", "--json"],
+        "llm:validator",
+    );
+    assert!(
+        missing["error"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("not found"),
+        "removed file must no longer be visible through the show dispatch path: {missing}"
+    );
+}
+
+/// `INBOX_TRIAGE_COMMAND` must surface in next --all queue recommendations.
+#[test]
+fn sqlite_next_queues_expose_inbox_triage_command() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-inbox-triage-command");
+    clear_inbox(&graph.root);
+    seed_unexplored_signal_pair(&graph.root, "inbox-triage-cmd");
+    run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "add",
+            "candidate intake card",
+            "--source",
+            "chat",
+            "--json",
+        ],
+    );
+    let next = run_json(&graph.root, &["next", "--all", "--json"]);
+    let inbox_queue = next["queues"]
+        .as_array()
+        .expect("queues array")
+        .iter()
+        .find(|q| q["queue"] == "inbox")
+        .expect("inbox queue entry");
+    assert_eq!(
+        inbox_queue["command"], "loom inbox triage --take 20",
+        "INBOX_TRIAGE_COMMAND must be the recommended inbox queue command: {inbox_queue}"
+    );
+}
+
+/// `grade_label` must translate stored extractor grades in human `codefile show` output.
+#[test]
+fn sqlite_codefile_show_labels_extractor_grades_in_human_output() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-grade-label");
+    write_scratch_file(
+        &graph.root,
+        "scratch/grade_probe.rs",
+        "pub fn grade_probe() -> u8 { 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/grade_probe.rs", "--json"],
+        "llm:builder",
+    );
+
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    for (grade, label) in [
+        ("high", "tree-sitter (high-fidelity)"),
+        ("low", "heuristic (low-fidelity)"),
+        ("none", "no extractor for this language"),
+        ("mystery", "ungraded — run `loom sync` to refresh"),
+    ] {
+        conn.execute(
+            "UPDATE codefile SET extractor_grade = ?1 WHERE path = 'scratch/grade_probe.rs'",
+            [grade],
+        )
+        .expect("set extractor grade");
+        let shown = run_text_as(
+            &graph.root,
+            &["codefile", "show", "scratch/grade_probe.rs"],
+            "llm:validator",
+        );
+        assert!(
+            shown.contains(label),
+            "grade_label must map extractor_grade={grade:?} to {label:?}: {shown}"
+        );
+    }
+}
+
+/// `codefile_not_found` must be the shared lookup failure text for codefile surfaces.
+#[test]
+fn sqlite_codefile_lookup_failures_share_not_found_message() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-codefile-not-found");
+    let missing_path = "scratch/missing_codefile.rs";
+    let expected = format!(
+        "CodeFile '{missing_path}' not found (by id or path).\nRun `loom codefile list` to see what is registered."
+    );
+
+    let shown = run_json_failure_as(
+        &graph.root,
+        &["codefile", "show", missing_path, "--json"],
+        "llm:validator",
+    );
+    assert_eq!(
+        shown["error"].as_str().unwrap_or_default(),
+        expected,
+        "codefile show must use the shared codefile_not_found wording: {shown}"
+    );
+
+    let removed = run_json_failure_as(
+        &graph.root,
+        &["codefile", "remove", missing_path, "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        removed["error"].as_str().unwrap_or_default(),
+        expected,
+        "codefile remove must use the same codefile_not_found wording: {removed}"
+    );
+}
+/// Door JSON must expose routing context fields backed by door.rs constants/helpers.
+#[test]
+fn sqlite_door_json_exposes_routing_context() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-door-routing-context");
+    let door = run_json(
+        &graph.root,
+        &["door", "routing context probe", "--limit", "1", "--json"],
+    );
+    let doctrine = door["doctrine"]
+        .as_str()
+        .expect("door json must include doctrine field");
+    assert!(
+        doctrine.contains("The door captures first, then advises"),
+        "door output must include DOCTRINE copy: {doctrine}"
+    );
+    let granularity = door["granularity_cue"]
+        .as_str()
+        .expect("door json must include granularity_cue");
+    assert!(
+        granularity.contains("GRANULARITY"),
+        "granularity cue must surface in door json: {granularity}"
+    );
+    let orientation = door["orientation"]
+        .as_str()
+        .expect("door json must include orientation");
+    assert!(
+        orientation.contains("BROWNFIELD") || orientation.contains("GREENFIELD"),
+        "orientation helper must choose a mode-specific string: {orientation}"
+    );
+    let landings = door["landings"]
+        .as_array()
+        .expect("door json must include landings menu");
+    assert!(
+        landings.iter().any(|entry| {
+            entry["command"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("loom intent add")
+        }),
+        "LANDINGS must enumerate at least the intent-add landing: {landings:?}"
+    );
+}
+
+/// `run_list_with_db` must return hypotheses added to the scratch graph.
+#[test]
+fn sqlite_hypothesis_list_returns_added_hypothesis() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("hypothesis-list-handler");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let added = run_json_as(
+        &graph.root,
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "list handler probe",
+            "--claim",
+            "hypothesis list shows registered cards",
+            "--proposal",
+            "run hypothesis list after add",
+            "--predicted-outcome",
+            "listed card includes the new id",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let hid = added["id"].as_str().expect("hypothesis id");
+    let listed = run_json(
+        &graph.root,
+        &["hypothesis", "list", "--status", "proposed", "--json"],
+    );
+    let names: Vec<String> = listed["hypotheses"]
+        .as_array()
+        .expect("hypotheses array")
+        .iter()
+        .map(|h| h["id"].as_str().unwrap_or_default().to_string())
+        .collect();
+    assert!(
+        names.iter().any(|id| id == hid),
+        "hypothesis list must include the card added via hypothesis add: {listed}"
     );
 }

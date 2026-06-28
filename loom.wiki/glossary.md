@@ -15,20 +15,46 @@ The bounded `loom vocab` registry. Each term lists the intents that carry it.
 - **UI state coverage via aspect**
 - **UI/UX visual-register seed flow**
 - **align queue ranks user-intent drift suspicion**
+- **argv subcommand walk for parse errors**
 - **ask-the-map keyword search**
 - **auto-stub the acceptance validation at the contract stage**
 - **bounded tag vocabulary**
 - **bulk grounding via glob**
 - **bulk quality read grouped by intent**
+- **codefile add handler**
+- **codefile add path expansion**
+- **codefile add result printer**
+- **codefile cli subcommands**
+- **codefile command dispatch**
+- **codefile extractor grade label**
+- **codefile list handler**
+- **codefile not found message**
+- **codefile remove handler**
+- **codefile show handler**
 - **command definitions and dispatch**
 - **computed graph population lane**
+- **concurrency quality rule pack**
 - **confirmation stamps freshness for drift ranking**
+- **corpus cli subcommands**
+- **data quality rule pack**
+- **delegate cli subcommands**
 - **design-system standards via QualityRule packs**
 - **directed handoff notes**
+- **docker applies when signals**
+- **docker build applies when signals**
+- **docker quality rule pack**
+- **domain cli subcommands**
 - **dual-mode output**
+- **edge cli subcommands**
+- **explore cli subcommands**
 - **graph targeting pin**
 - **graph-write command handlers**
+- **grounded path needle matchers**
 - **hypothesis lifecycle commands**
+- **ignore cli subcommands**
+- **import path needle matchers**
+- **inbox cli subcommands**
+- **intent cli subcommands**
 - **intent meaning evolves in place with semantic ripple**
 - **intent retirement contract**
 - **intent-spectrum seed-flow guidance**
@@ -36,29 +62,66 @@ The bounded `loom vocab` registry. Each term lists the intents that carry it.
 - **interface plane gap detection**
 - **interface surface inspection commands**
 - **interface surface schema vocabulary**
+- **iso5055 dead code rule id**
+- **iso5055 hardcoded secrets rule id**
+- **iso5055 quality rule pack**
+- **layer cli subcommands**
+- **long version stamp for binary identity**
 - **loom: living intent graph CLI**
+- **mobile lifecycle safe state rule id**
+- **mobile quality rule pack**
 - **mockup is contract not realization**
+- **note cli subcommands**
 - **opt-in lane-skill install**
+- **owned import needle matchers**
+- **owned path needle matchers**
+- **owned text needle matchers**
+- **owned validation group matchers**
+- **pack names listing**
+- **pack rule applies when builder**
+- **pack rule basic constructor**
+- **pack rule evidence constructor**
+- **parse-error contextual teaching**
+- **persona cli subcommands**
+- **populate cli subcommands**
 - **porting mode: import --as-planned**
 - **proof and bootstrap handlers**
 - **reaction-driven mockup loop**
 - **role lanes and evidence gates**
+- **root cli parser struct**
+- **rule cli subcommands**
+- **rule recommend signal assembly**
 - **saga failure diagnosis**
 - **saga run stamps the graph**
 - **scale benchmark harness**
 - **scale: hot commands bounded on large graphs**
+- **security deep quality rule pack**
 - **seed guide teaches the user interview**
+- **seedable packs registry**
+- **service quality rule pack**
 - **session opener teaches the turn-zero ask**
 - **shared command entity resolvers**
+- **skill cli subcommands**
+- **slice cli subcommands**
 - **smells propose hypotheses**
+- **source cli subcommands**
 - **source corpus coverage sad path**
 - **staged want-to-physical seed ladder**
 - **status surfaces populate gaps**
+- **synthetic graph hierarchy edge builder**
+- **synthetic graph implements edge builder**
+- **tag cli subcommands**
+- **text path and import needle matchers**
 - **tiered review queue**
+- **top-level cli command enum**
 - **validate --all drains pending proofs**
+- **validation cli subcommands**
+- **validation group matchers**
 - **verifiable delegated coverage**
 - **visibility captured at seed time**
 - **visual-confirm user-gated queue**
+- **vocab cli subcommands**
+- **web-ui quality rule pack**
 
 ### `corpus`
 
@@ -149,6 +212,7 @@ The bounded `loom vocab` registry. Each term lists the intents that carry it.
 
 - **graph targeting pin**
 - **intent-spectrum seed-flow guidance**
+- **parse-error contextual teaching**
 - **seed guide teaches the user interview**
 - **self-teaching surface**
 - **shared command entity resolvers**
@@ -159,8 +223,12 @@ The bounded `loom vocab` registry. Each term lists the intents that carry it.
 - **adoption spawns outcome proof**
 - **auto-stub the acceptance validation at the contract stage**
 - **hypothesis lifecycle commands**
+- **hypothesis list formatter**
+- **hypothesis list handler**
+- **hypothesis not found message**
 - **hypothesis plane**
 - **hypothesis prove records TARGETS confidence**
+- **hypothesis show handler**
 - **smells propose hypotheses**
 - **stale hypothesis evidence ripples on sync**
 
@@ -255,6 +323,13 @@ The bounded `loom vocab` registry. Each term lists the intents that carry it.
 - **intent meaning evolves in place with semantic ripple**
 - **intent retirement contract**
 - **interface surface schema vocabulary**
+- **report command handler**
+- **report data struct**
+- **report human renderer**
+- **report json renderer**
+- **report list cap constant**
+- **report snapshot assembler**
+- **report text truncator**
 - **schema vocabulary and repository boundary**
 - **self-teaching surface**
 - **storage responsibility vocabulary coverage**
@@ -385,6 +460,7 @@ The bounded `loom vocab` registry. Each term lists the intents that carry it.
 
 
 <!-- loom:prose-start -->
+
 
 
 

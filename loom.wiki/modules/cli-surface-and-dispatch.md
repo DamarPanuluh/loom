@@ -27,24 +27,151 @@ sourceFiles:
   - src/db/sqlite/writes.rs
   - src/main.rs
 symbols:
+  - const CONCURRENCY_PACK
+  - const DATA_PACK
+  - const DOCKER_APPLIES
+  - const DOCKER_BUILD_APPLIES
+  - const DOCKER_PACK
+  - const ISO5055_MAIN_NO_DEAD_OR_DUPLICATE
+  - const ISO5055_PACK
+  - const ISO5055_SEC_NO_HARDCODED_SECRETS
+  - const MOBILE_LIFECYCLE_SAFE_STATE
+  - const MOBILE_PACK
+  - const PACKS
+  - const SECURITY_DEEP_PACK
+  - const SERVICE_PACK
+  - const WEBUI_PACK
+  - enum CommandOutcome
+  - enum CoverageVerdict
+  - enum ProofRelevance
+  - fn add_if
+  - fn command_only_prints
+  - fn command_source_files
+  - fn confidence_label
+  - fn conftest_chain
+  - fn count_before
+  - fn count_raw_imports
+  - fn deepest_subcommand
+  - fn discover_coverage
   - fn dispatch
+  - fn edit_distance
   - fn git_build_id
+  - fn grade_label
+  - fn grounding_by_validation
+  - fn group_validations_by_intent
+  - fn is_env_var_name
+  - fn leading_count
+  - fn legacy_score_rule_for_intent
+  - fn manual_verdict_is_sticky
+  - fn normalize_applies_when
+  - fn normalize_apply_signal
+  - fn pack_rule_effort
+  - fn parse_lcov
+  - fn passed_count
+  - fn prepare_additions
+  - fn print_add_result
+  - fn proof_relevance
+  - fn recommend_rules_from_snapshot
+  - fn remove_import_lines
   - fn resolve_codefiles_with_db
   - fn resolve_intent_from_snapshot
+  - fn resolve_validation_from_list
   - fn run
+  - fn run_add_with_sqlite
+  - fn run_check_with_db
+  - fn run_delete_with_sqlite
+  - fn run_list_with_db
+  - fn run_mark_with_sqlite
+  - fn run_recommend_with_db
+  - fn run_remove_with_sqlite
+  - fn run_show_with_db
+  - fn run_update_with_sqlite
+  - fn run_validation_command
+  - fn run_with_sqlite
+  - fn saga_command_uses_builtin_engine
+  - fn saga_missing_env
+  - fn score_applies_when
+  - fn score_rule_for_intent
+  - fn strip_literals_and_comments
+  - fn symbol_used_in_source_file
+  - fn tap_pass_count
+  - fn teach_unknown
+  - fn terminate_command_tree
+  - fn transitive_imports
+  - fn validation_mark_edge_status
+  - fn validation_mark_next_step
+  - fn validation_result_edge_status
   - handle_confirm
   - handle_retire
   - handle_update
+  - impl CoverageReport
+  - impl PackRule
+  - import_has_any
+  - import_has_any_owned
+  - new
+  - path_has_any
+  - path_has_any_owned
+  - pub const LONG_VERSION
+  - pub enum CodefileCmd
+  - pub enum Command
+  - pub enum CorpusCmd
+  - pub enum DelegateCmd
+  - pub enum DomainCmd
+  - pub enum EdgeCmd
+  - pub enum ExploreSubCmd
+  - pub enum IgnoreCmd
+  - pub enum InboxCmd
+  - pub enum IntentCmd
+  - pub enum LayerCmd
+  - pub enum NoteCmd
+  - pub enum PersonaCmd
+  - pub enum PopulateCmd
+  - pub enum RuleCmd
+  - pub enum SkillCmd
+  - pub enum SliceCmd
+  - pub enum SourceCmd
+  - pub enum TagCmd
+  - pub enum ValidationCmd
+  - pub enum VocabCmd
   - pub fn align_candidates_from_snapshot_notes
+  - pub fn pack_names
+  - pub fn parse_or_teach
   - pub fn resolve_root
   - pub fn ripple_intent_redefinition
   - pub fn run
   - pub fn run_all
+  - pub struct Cli
+  - pub struct PackRule
+  - pub(crate) const EXPORT_STALE_WARNING
+  - pub(crate) const INBOX_TRIAGE_COMMAND
+  - pub(crate) const POPULATE_NEXT_COMMAND
+  - pub(crate) const REQUIRED_HUMAN_GATED_DEBT_KEY
+  - pub(crate) fn check_proof_command_shape
+  - pub(crate) fn codefile_not_found
+  - pub(crate) fn proof_discrimination
+  - pub(crate) fn sorted_pair
   - resolve_intent_with_db
+  - struct AppliesWhen
+  - struct ApplySignal
+  - struct CoverageReport
+  - struct Grounding
+  - struct IntentRuleSignals
+  - struct RuleRecommendation
+  - struct RuleRecommendationIntent
+  - struct RuleRecommendationRule
+  - symbol_executed
+  - text_has_any
+  - text_has_any_owned
+  - type Pack
+  - validate_apply_signal
+  - validation_has_all
+  - validation_has_all_owned
+  - with_applies_when
+  - with_evidence
 provenance:
   build.rs: f4c28cfa329bcb8a
-  src/cli.rs: 674c22fa337705a0
-  src/commands/batch.rs: 6a6ccd926bd72787
+  src/cli.rs: 3a8abff5585bdd3b
+  src/commands/batch.rs: 17cdf3733f4e8674
   src/commands/codefile.rs: 0ee513864c1cef40
   src/commands/edge.rs: db5833205f278f03
   src/commands/export.rs: 35756c578400e3a2
@@ -55,7 +182,7 @@ provenance:
   src/commands/mod.rs: 43c1e9b8bf460ee3
   src/commands/note.rs: 230f52cc758d8442
   src/commands/resolve.rs: 6e16bf8f5c8ea1d0
-  src/commands/rule.rs: 6d024c96ac04f22f
+  src/commands/rule.rs: 918e29a1632f2dbb
   src/commands/validate.rs: 2a39afe499c31948
   src/commands/validation.rs: d726cbcb95e66827
   src/commands/whoami.rs: 2a7a1af42cbd7f32
@@ -92,6 +219,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

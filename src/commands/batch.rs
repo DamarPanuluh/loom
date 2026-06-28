@@ -54,17 +54,53 @@ pub fn run(file: &str, dry_run: bool, printer: &Printer) -> Result<()> {
         std::io::stdin().read_to_string(&mut s)?;
         s
     } else {
-        std::fs::read_to_string(file)
-            .map_err(|e| anyhow::anyhow!(
-                "Cannot read batch file '{file}': {e} — no scratch file is needed: pipe the lines \
-                 via heredoc instead: loom batch - <<'EOF' … EOF (a file path is for very large batches)."
-            ))?
+        match std::fs::read_to_string(file) {
+            Ok(s) => s,
+            Err(e) => return Err(batch_file_read_error(file, &e)),
+        }
     };
 
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
     run_with_sqlite(&mut store, &cwd, &input, dry_run, printer)
+}
+
+fn batch_file_read_error(file: &str, err: &std::io::Error) -> anyhow::Error {
+    if err.kind() == std::io::ErrorKind::NotFound && suspicious_batch_file_token(file) {
+        anyhow::anyhow!(
+            "Cannot read batch file '{file}': {err}.\n\n\
+             `loom batch` has no `{file}` subcommand; `{file}` was parsed as the JSONL FILE argument.\n\n\
+             For validation clusters by intent:\n  \
+               loom validation list --intent <intent> --json\n\n\
+             For graph and queue status:\n  \
+               loom status --json\n  \
+               loom next --all --json\n\n\
+             For batch validation before applying:\n  \
+               loom batch - --dry-run"
+        )
+    } else {
+        anyhow::anyhow!(
+            "Cannot read batch file '{file}': {err} — no scratch file is needed: pipe the lines \
+             via heredoc instead: loom batch - <<'EOF' … EOF (a file path is for very large batches)."
+        )
+    }
+}
+
+fn suspicious_batch_file_token(file: &str) -> bool {
+    matches!(
+        file,
+        "status"
+            | "list"
+            | "show"
+            | "next"
+            | "quality"
+            | "validation"
+            | "validations"
+            | "rule"
+            | "rules"
+            | "governs"
+    )
 }
 
 fn run_with_sqlite(
@@ -78,6 +114,7 @@ fn run_with_sqlite(
     let mut ok = 0usize;
     let mut failed = 0usize;
     let mut evidences: Vec<String> = Vec::new();
+    let mut evidence_locators: Vec<String> = Vec::new();
 
     for (lineno, line) in input.lines().enumerate() {
         let line = line.trim();
@@ -91,6 +128,7 @@ fn run_with_sqlite(
                 if let Some(e) = evidence {
                     evidences.push(e);
                 }
+                evidence_locators.extend(locators_from_batch_line_for_warning(line));
                 results.push(serde_json::json!({"line": n, "status": "ok", "applied": desc}));
             }
             Err(e) => {
@@ -111,16 +149,7 @@ fn run_with_sqlite(
     // can route the cluster to review; `loom doctor` carries the durable,
     // graph-wide version.
     const REUSE_FLAG: usize = 3;
-    let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
-    for e in &evidences {
-        *counts.entry(e.as_str()).or_default() += 1;
-    }
-    let mut reused: Vec<(&str, usize)> = counts
-        .into_iter()
-        .filter(|(_, c)| *c >= REUSE_FLAG)
-        .collect();
-    reused.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
-    let mut warnings: Vec<String> = reused
+    let mut warnings: Vec<String> = reused_values(&evidences, REUSE_FLAG)
         .iter()
         .map(|(evidence, c)| {
             let preview: String = evidence.chars().take(60).collect();
@@ -130,6 +159,12 @@ fn run_with_sqlite(
             )
         })
         .collect();
+    for (locator, c) in reused_values(&evidence_locators, REUSE_FLAG) {
+        warnings.push(format!(
+            "copied evidence locator: locator '{locator}' appears on {c} successful batch line(s) — \
+             confirm each verdict inspected that exact anchor; if this came from an old template, refresh evidence_locator per row before applying."
+        ));
+    }
 
     // Lane-bypass honesty (audit card 76223551): a bare `llm`/`human` agent
     // (no LOOM_AGENT role) solo-passes every lane, so a multi-agent batch run
@@ -208,6 +243,25 @@ fn run_with_sqlite(
         );
     }
     Ok(())
+}
+
+fn locators_from_batch_line_for_warning(line: &str) -> Vec<String> {
+    serde_json::from_str::<serde_json::Value>(line)
+        .map(|value| locators_field(&value))
+        .unwrap_or_default()
+}
+
+fn reused_values<'a>(values: &'a [String], min_count: usize) -> Vec<(&'a str, usize)> {
+    let mut counts: std::collections::HashMap<&'a str, usize> = std::collections::HashMap::new();
+    for value in values {
+        *counts.entry(value.as_str()).or_default() += 1;
+    }
+    let mut reused: Vec<(&str, usize)> = counts
+        .into_iter()
+        .filter(|(_, count)| *count >= min_count)
+        .collect();
+    reused.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+    reused
 }
 
 /// `Some(evidence)` when the op recorded a non-empty evidence body (ground may
@@ -466,9 +520,20 @@ fn apply_line_sqlite(
             })?;
             Ok((format!("smell_decision {smell_id}"), None))
         }
-        other => {
-            anyhow::bail!("unknown op '{other}' (ground | issue | independent | rule_verdict | smell_decision)")
-        }
+        other => return Err(unknown_op_error(other, &v)),
+    }
+}
+
+fn unknown_op_error(other: &str, v: &serde_json::Value) -> anyhow::Error {
+    if v.get("rule").is_some() && v.get("intent").is_some() {
+        anyhow::anyhow!(
+            "unknown op '{other}' for a rule/intent row — use op 'rule_verdict' with fields: {}",
+            required_fields("rule_verdict")
+        )
+    } else {
+        anyhow::anyhow!(
+            "unknown op '{other}' (ground | issue | independent | rule_verdict | smell_decision)"
+        )
     }
 }
 
@@ -479,7 +544,7 @@ fn required_fields(op: &str) -> &'static str {
         "ground" => "a, b, confidence (+ criterion unless the edge already has one; optional: evidence, evidence_locator)",
         "issue" => "a, b, evidence, confidence (+ criterion unless the edge already has one; optional: evidence_locator)",
         "independent" => "a, b, notes",
-        "rule_verdict" => "rule, intent, status, evidence, confidence (+ criterion unless the pair was measured before; optional: evidence_locator)",
+        "rule_verdict" => "rule, intent, status, evidence, confidence (+ criterion unless the pair was measured before; passing/partial require evidence_locator; failing/independent may include evidence_locator)",
         "smell_decision" => "smell, text",
         _ => "op",
     }

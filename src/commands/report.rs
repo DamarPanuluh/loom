@@ -409,3 +409,15 @@ fn truncate_chars(s: &str, max_chars: usize) -> &str {
         None => s,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_chars;
+
+    #[test]
+    fn truncate_chars_respects_unicode_boundaries() {
+        assert_eq!(truncate_chars("hello world", 5), "hello");
+        assert_eq!(truncate_chars("short", 80), "short");
+        assert_eq!(truncate_chars("café au lait", 4), "café");
+    }
+}

@@ -9,6 +9,48 @@ tags:
 
 Rationale recorded via `loom note add --kind decision`. Newest first.
 
+### (floating)
+
+**Date:** 2026-06-28T06:52:39.998077+00:00
+
+retired: symbol TANGLE_THRESHOLD does not exist in smells.rs — TANGLE_INTENTS is the actual const
+
+### (floating)
+
+**Date:** 2026-06-28T06:50:48.177079+00:00
+
+retired: duplicate from batch naming collision — 8e6eff8e is the active intent
+
+### (floating)
+
+**Date:** 2026-06-28T06:45:17.938199+00:00
+
+retired: duplicate of 8e6eff8e — created by naming collision in batch
+
+### (floating)
+
+**Date:** 2026-06-28T06:05:46.858364+00:00
+
+retired: needs non-empty list fixture for discriminating proof
+
+### (floating)
+
+**Date:** 2026-06-28T06:05:46.776296+00:00
+
+retired: needs dedicated escaped-file fixture for discriminating proof
+
+### (floating)
+
+**Date:** 2026-06-28T06:02:04.546285+00:00
+
+retired: needs stdout-capture refactoring for discriminating proof
+
+### (floating)
+
+**Date:** 2026-06-28T06:02:04.471425+00:00
+
+retired: needs stdout-capture refactoring for discriminating proof
+
 ### model-neutral strength tier on work packets
 
 **Date:** 2026-06-27T14:50:56.760703+00:00
@@ -5564,6 +5606,7 @@ lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-liv
 
 
 <!-- loom:prose-start -->
+
 
 
 

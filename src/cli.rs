@@ -353,16 +353,30 @@ pub enum Command {
     /// dozens of single calls otherwise). One JSON object per line:
     /// {"op":"ground","a":"<intent>","b":"<intent>","criterion":"…","confidence":0.9} ·
     /// {"op":"issue",…,"evidence":"…"} · {"op":"independent",…,"notes":"…"} ·
-    /// {"op":"rule_verdict","rule":"<rule>","intent":"<intent>","status":"passing|failing|independent","criterion":"…","evidence":"…","confidence":0.9}.
+    /// {"op":"rule_verdict","rule":"<rule>","intent":"<intent>","status":"passing|failing|independent|partial","criterion":"…","evidence":"…","evidence_locator":"src/file.rs:10-20","confidence":0.9}.
     /// Every gate (lanes, substantive evidence, confidence) applies per line;
-    /// continues past failures, exits non-zero if any line failed.
+    /// passing and partial rule_verdict rows require evidence_locator. Continues
+    /// past failures, exits non-zero if any line failed.
     #[command(
         after_help = "EXAMPLE (heredoc — no scratch file, nothing to clean up):\n  \
         loom batch - <<'EOF'\n  \
         {\"op\":\"ground\",\"a\":\"request routing\",\"b\":\"session auth\",\"confidence\":0.9}\n  \
         {\"op\":\"issue\",\"a\":\"request routing\",\"b\":\"rate limiting\",\"evidence\":\"limiter runs after dispatch\",\"confidence\":0.9}\n  \
         EOF\n  \
-        (a file path instead of '-' works for very large batches)"
+        (a file path instead of '-' works for very large batches)\n\
+\n\
+        NOTE:\n  \
+          `loom batch` has no subcommands. The optional argument is always a JSONL file path;\n  \
+          for example, `loom batch status` means “read JSONL from a file named status”.\n\
+\n  \
+          To inspect validations by intent:\n  \
+            loom validation list --intent <intent> --json\n\
+\n  \
+          To inspect graph or queue status:\n  \
+            loom status --json\n  \
+            loom next --all --json\n\
+\n  \
+          For rule_verdict rows, passing and partial statuses require evidence_locator."
     )]
     Batch {
         /// JSONL file path, or "-" to read stdin.

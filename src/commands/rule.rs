@@ -1679,6 +1679,91 @@ mod tests {
         assert_eq!(pack_rule_effort("docker-no-secrets-in-image"), "low");
     }
 
+    #[test]
+    fn iso5055_pack_carries_baseline_rules() {
+        let iso = pack("iso5055");
+        for r in [
+            "iso5055-rel-no-unchecked-failure",
+            "iso5055-rel-resource-release",
+            "iso5055-rel-boundary-validation",
+            "iso5055-sec-no-injection",
+            ISO5055_SEC_NO_HARDCODED_SECRETS,
+            "iso5055-sec-least-surface",
+            "iso5055-perf-bounded-work",
+            "iso5055-perf-no-redundant-work",
+            "iso5055-main-single-responsibility",
+            ISO5055_MAIN_NO_DEAD_OR_DUPLICATE,
+        ] {
+            assert!(has_rule(iso, r), "iso5055 pack missing rule '{r}'");
+        }
+        assert_eq!(pack_rule_effort(ISO5055_SEC_NO_HARDCODED_SECRETS), "low");
+    }
+
+    #[test]
+    fn mobile_pack_carries_lifecycle_rules() {
+        let mobile = pack("mobile");
+        for r in [
+            MOBILE_LIFECYCLE_SAFE_STATE,
+            "mobile-offline-behavior-defined",
+            "mobile-permission-in-context",
+            "mobile-main-thread-clear",
+            "mobile-battery-respect",
+            "mobile-platform-divergence-explicit",
+            "mobile-external-entry-validated",
+            "mobile-touch-target-size",
+        ] {
+            assert!(has_rule(mobile, r), "mobile pack missing rule '{r}'");
+        }
+    }
+
+    #[test]
+    fn service_pack_carries_integration_rules() {
+        let service = pack("service");
+        for r in [
+            "service-contract-artifact",
+            "service-idempotent-handlers",
+            "service-timeout-retry-explicit",
+            "service-compensation-defined",
+            "service-auth-at-boundary",
+            "service-observable-failures",
+            "service-graceful-degradation",
+            "service-compatible-evolution",
+        ] {
+            assert!(has_rule(service, r), "service pack missing rule '{r}'");
+        }
+    }
+
+    #[test]
+    fn security_deep_pack_carries_ai_security_rules() {
+        let deep = pack("security-deep");
+        for r in [
+            "sec-dependency-squatting",
+            "sec-rate-limiting",
+            "sec-minimal-response",
+            "sec-upload-validated",
+        ] {
+            assert!(has_rule(deep, r), "security-deep pack missing rule '{r}'");
+        }
+    }
+
+    #[test]
+    fn packs_registry_lists_all_seedable_packs() {
+        let names = pack_names();
+        for n in [
+            "iso5055",
+            "security-deep",
+            "mobile",
+            "web-ui",
+            "service",
+            "data",
+            "concurrency",
+            "docker",
+        ] {
+            assert!(names.contains(&n), "pack_names missing '{n}'");
+        }
+        assert_eq!(names.len(), PACKS.len());
+    }
+
     /// Design-system standards (`design-system standards via QualityRule packs`):
     /// contrast and touch-target sticks ship in the web-ui/mobile packs so
     /// screens GOVERN against them instead of inventing the bar per screen.
@@ -1704,6 +1789,145 @@ mod tests {
     /// New design-system rules default to mid inspection effort (no special-case
     /// entry needed) and are advisory `warning` severity.
     #[test]
+    fn data_pack_carries_data_governance_rules() {
+        let data = pack("data");
+        for r in [
+            "data-migration-reversible",
+            "data-validated-at-ingest",
+            "data-no-silent-loss",
+            "data-pii-handled",
+            "data-idempotent-reruns",
+            "data-lineage-traceable",
+        ] {
+            assert!(has_rule(data, r), "data pack missing rule '{r}'");
+        }
+    }
+
+    #[test]
+    fn concurrency_pack_carries_concurrency_rules() {
+        let conc = pack("concurrency");
+        for r in [
+            "conc-sync-discipline",
+            "conc-no-lock-across-io",
+            "conc-atomic-multi-step",
+            "conc-deadlock-ordering",
+            "conc-cancellation-safe",
+            "conc-bounded-concurrency",
+            "perf-budget-proven",
+        ] {
+            assert!(has_rule(conc, r), "concurrency pack missing rule '{r}'");
+        }
+    }
+
+    #[test]
+    fn docker_applies_signals_are_valid_json() {
+        let applies: serde_json::Value =
+            serde_json::from_str(DOCKER_APPLIES).expect("docker applies json");
+        assert!(applies["signals"].is_array());
+        let build: serde_json::Value =
+            serde_json::from_str(DOCKER_BUILD_APPLIES).expect("docker build applies json");
+        assert!(build["signals"].is_array());
+    }
+
+    fn sample_signals() -> IntentRuleSignals {
+        let intent = crate::types::Intent {
+            id: "i1".into(),
+            name: "Docker Startup Latency".into(),
+            description: "warm docker image startup".into(),
+            criterion: String::new(),
+            abstraction_level: "feature".into(),
+            domain: "cli".into(),
+            layer: String::new(),
+            source_refs: vec![],
+            status: "proposed".into(),
+            aspect: String::new(),
+            tags: vec![],
+            visibility: String::new(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: String::new(),
+            updated_at: String::new(),
+        };
+        let grounding = crate::types::Implements {
+            id: "g1".into(),
+            intent_id: "i1".into(),
+            codefile_id: "c1".into(),
+            intent_name: intent.name.clone(),
+            codefile_path: "src/dockerfile.rs".into(),
+            inspection_status: String::new(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            locator: "warm_cache".into(),
+            notes: "startup notes".into(),
+            created_at: String::new(),
+        };
+        let codefile = crate::types::CodeFile {
+            id: "c1".into(),
+            path: "src/Dockerfile".into(),
+            language: "dockerfile".into(),
+            last_modified: String::new(),
+            imports: vec!["src/registry/auth.rs".into()],
+            symbols: vec![],
+            symbol_facts: vec![],
+            content_hash: String::new(),
+            extractor_grade: String::new(),
+        };
+        let validation = crate::types::Validation {
+            id: "v1".into(),
+            name: "docker smoke".into(),
+            description: String::new(),
+            validation_type: "test".into(),
+            command: "docker build && docker run".into(),
+            last_run: String::new(),
+            last_result: "passed".into(),
+            last_executed_run: String::new(),
+            discrimination_status: String::new(),
+        };
+        IntentRuleSignals::new(&intent, &[&grounding], &[&codefile], &[&validation])
+    }
+
+    #[test]
+    fn intent_rule_signals_match_text_path_imports_and_validations() {
+        let signals = sample_signals();
+        assert!(signals.text_has_any(&["docker", "latency"]));
+        assert!(!signals.text_has_any(&["missing-term"]));
+        assert!(signals.path_has_any(&["dockerfile"]));
+        assert!(!signals.path_has_any(&["missing-path"]));
+        assert!(signals.import_has_any(&["registry"]));
+        assert!(!signals.import_has_any(&["missing-import"]));
+        assert!(signals.validation_has_all(&[&["docker build"], &["docker run"]]));
+        assert!(!signals.validation_has_all(&[&["docker build"], &["podman run"]]));
+        assert!(signals.text_has_any_owned(&["startup".into()]));
+        assert!(signals.path_has_any_owned(&["dockerfile".into()]));
+        assert!(signals.import_has_any_owned(&["auth".into()]));
+        assert!(signals
+            .validation_has_all_owned(&[vec!["docker build".into()], vec!["docker run".into()],]));
+    }
+
+    #[test]
+    fn pack_rule_constructors_set_metadata_defaults() {
+        let basic = PackRule::new("demo-rule", "error", "desc", "det", "security");
+        assert_eq!(basic.name, "demo-rule");
+        assert_eq!(basic.evidence_examples, "");
+        assert_eq!(basic.applies_when, "");
+        let rich = PackRule::with_evidence(
+            "rich-rule",
+            "warning",
+            "desc",
+            "det",
+            "architecture",
+            r#"{"pass":"ok"}"#,
+            r#"[["openapi"]]"#,
+        );
+        assert!(!rich.evidence_examples.is_empty());
+        let scoped = rich.with_applies_when(DOCKER_APPLIES);
+        assert_eq!(scoped.applies_when, DOCKER_APPLIES);
+    }
+
+    #[test]
     fn new_design_system_rules_are_mid_effort_warnings() {
         for name in [
             "webui-color-contrast",
@@ -1718,5 +1942,83 @@ mod tests {
                 assert_eq!(r.severity, "warning", "{} severity", r.name);
             }
         }
+    }
+    #[test]
+    fn add_if_conditional_scoring_accumulator() {
+        let mut score = 0.0;
+        let mut reasons: Vec<String> = Vec::new();
+        add_if(&mut score, &mut reasons, 0.5, true, "matched text");
+        add_if(&mut score, &mut reasons, 0.3, false, "no match");
+        assert!(
+            (score - 0.5).abs() < f64::EPSILON,
+            "only true condition increments"
+        );
+        assert_eq!(reasons, vec!["matched text"]);
+    }
+
+    #[test]
+    fn confidence_label_maps_score_to_tiers() {
+        assert_eq!(confidence_label(0.9), "high");
+        assert_eq!(confidence_label(0.8), "high");
+        assert_eq!(confidence_label(0.75), "medium");
+        assert_eq!(confidence_label(0.6), "medium");
+        assert_eq!(confidence_label(0.5), "low");
+        assert_eq!(confidence_label(0.0), "low");
+    }
+
+    #[test]
+    fn group_validations_by_intent_buckets_by_intent_id() {
+        let v1 = crate::types::Validation {
+            id: "v1".into(),
+            name: "smoke".into(),
+            description: "".into(),
+            validation_type: "test".into(),
+            command: "cargo test".into(),
+            last_run: "".into(),
+            last_result: "not_run".into(),
+            last_executed_run: "".into(),
+            discrimination_status: "".into(),
+        };
+        let ve = crate::types::ValidatesEdge {
+            id: "vv1".into(),
+            validation_id: "v1".into(),
+            intent_id: "i1".into(),
+            validation_name: "smoke".into(),
+            intent_name: "i1".into(),
+            created_at: "t".into(),
+            inspection_status: "current".into(),
+            notes: "".into(),
+        };
+        let snap = crate::db::queries::QuerySnapshot::from_parts(
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![ve],
+            vec![v1.clone()],
+            vec![],
+            vec![],
+            None,
+        );
+        let grouped = group_validations_by_intent(&snap);
+        assert_eq!(grouped.get("i1").unwrap().len(), 1);
+        assert_eq!(grouped.get("i1").unwrap()[0].id, "v1");
+    }
+
+    #[test]
+    fn normalize_applies_when_rejects_invalid_json() {
+        assert!(normalize_applies_when(Some("{bad")).is_err());
+        assert!(normalize_applies_when(Some(r#"{"signals":[]}"#)).is_ok());
+        assert!(normalize_applies_when(None).is_ok());
+    }
+
+    #[test]
+    fn normalize_apply_signal_lowercases_source_and_terms() {
+        let json = r#"{"source":"INTENT_TEXT","terms":["Docker","Latency"],"weight":0.72,"reason":"custom rule"}"#;
+        let mut signal: ApplySignal = serde_json::from_str(json).unwrap();
+        normalize_apply_signal(&mut signal);
+        assert_eq!(signal.source, "intent_text");
+        assert_eq!(signal.terms, vec!["docker", "latency"]);
     }
 }

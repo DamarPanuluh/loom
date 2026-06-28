@@ -56,6 +56,7 @@ pub(super) fn run_take_quality(
             "intent": g.intent_id,
             "status": "passing",
             "evidence": "<evidence>",
+            "evidence_locator": "<fresh evidence_locator>",
             "confidence": "<confidence>",
         });
         if g.criterion.is_empty() {
