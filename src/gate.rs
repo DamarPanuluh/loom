@@ -687,12 +687,39 @@ const RULING_STOPWORDS: &[&str] = &[
     "code",
 ];
 
+thread_local! {
+    // Per-ruling content-word sets, memoized for the process lifetime. The smell
+    // adjudication predicate re-checks every candidate ruling against every prior
+    // ruling — O(findings × decisions) — and each comparison tokenizes both texts;
+    // on loom's own graph that made `ruling_content_words` the single hottest
+    // function in `loom status`/`smells`. Tokenization is a pure function of the
+    // text, so caching by exact text collapses the K×D re-tokenizations to one per
+    // DISTINCT ruling. loom runs one command per process, so the cache never
+    // outlives a single invocation (and being pure, a stale read is impossible).
+    static RULING_WORDS: std::cell::RefCell<std::collections::HashMap<String, std::rc::Rc<BTreeSet<String>>>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+fn ruling_content_words(text: &str) -> std::rc::Rc<BTreeSet<String>> {
+    RULING_WORDS.with(|cache| {
+        if let Some(words) = cache.borrow().get(text) {
+            return std::rc::Rc::clone(words);
+        }
+        let words = std::rc::Rc::new(ruling_content_words_compute(text));
+        cache
+            .borrow_mut()
+            .insert(text.to_string(), std::rc::Rc::clone(&words));
+        words
+    })
+}
+
 /// Reduce a ruling to the set of content words that carry its REASONING. Drops
 /// parenthetical subject lists (`(add, update, list)`), splits on every
 /// non-alphabetic char (so paths/digits/punctuation fall apart into fragments),
 /// then filters stopwords and < 3-char fragments. Two rulings that differ only
-/// in their subject normalize to near-identical sets.
-fn ruling_content_words(text: &str) -> BTreeSet<String> {
+/// in their subject normalize to near-identical sets. Memoized by
+/// `ruling_content_words` — call that, not this, on any hot path.
+fn ruling_content_words_compute(text: &str) -> BTreeSet<String> {
     let lower = text.to_lowercase();
     // Remove bracketed subject lists before tokenizing.
     let mut flat = String::with_capacity(lower.len());
@@ -777,8 +804,23 @@ pub fn green_adjudication_ruling_is_valid(
     if is_vacuous(trimmed) || trimmed.chars().count() < MIN_GREEN_RULING_LEN {
         return false;
     }
+    // Tokenize the CANDIDATE once, not once per prior ruling. This predicate runs
+    // for every adjudicatable finding against every prior ruling — O(findings ×
+    // decisions) — so re-tokenizing the candidate inside the loop (the old
+    // `green_rulings_are_templated(trimmed, prior_text)` call) was the dominant cost
+    // of `loom smells`/`status` on a graph with many adjudications. Behaviour is
+    // identical: a ruling with too few content words can never read as a template.
+    let wc = ruling_content_words(trimmed);
+    if wc.len() < MIN_RULING_CONTENT_WORDS {
+        return true;
+    }
     !prior.iter().any(|(other, prior_text)| {
-        *other != target && green_rulings_are_templated(trimmed, prior_text)
+        if *other == target {
+            return false;
+        }
+        let wp = ruling_content_words(prior_text);
+        wp.len() >= MIN_RULING_CONTENT_WORDS
+            && ruling_overlap(&wc, &wp) >= GREEN_RULING_OVERLAP_LIMIT
     })
 }
 
