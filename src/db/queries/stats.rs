@@ -9,7 +9,7 @@ use crate::types::{Governs, Intent, IntentCentrality, Note, RelatesTo, StatusRep
 use super::completeness::{vertical_completeness_from_snapshot, VerticalCompleteness};
 use super::meta::GraphMeta;
 use super::scoring::{
-    count_unexplored_pairs_from, normative_coverage_from_snapshot,
+    count_unexplored_pairs_from, normative_coverage_counts_from_snapshot,
     unexplored_pairs_scored_from_snapshot, validate_selection_from_snapshot, DiscoveryClassFilter,
 };
 use super::snapshot::QuerySnapshot;
@@ -570,7 +570,9 @@ pub fn graph_state_from_snapshot_parts(
         && edge_status.rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------
-    let nc = normative_coverage_from_snapshot(snapshot);
+    // Counts-only: status needs the coverage numbers + quality-lane depth, not the
+    // (rule, intent) work items, so this skips materializing the cloned queue.
+    let nc = normative_coverage_counts_from_snapshot(snapshot);
     let rules_count = snapshot.rules.len() as i64;
 
     let is_parent: std::collections::HashSet<&str> =
@@ -648,7 +650,7 @@ pub fn graph_state_from_snapshot_parts(
         proven_executed_leaves,
         proven_asserted_leaves,
     };
-    let unmeasured_queue = nc.queue.len();
+    let unmeasured_queue = nc.unmeasured_unshadowed as usize;
 
     // Each arm declares its `next_kind`: "directive" when the phase is a failure
     // or a binding vertical gap the agent should just act on; "recommended" when

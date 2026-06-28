@@ -390,15 +390,11 @@ pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCand
 /// a verdict on a component covers its descendants ONLY with --covers-descendants
 /// (measuring at the highest honest altitude is the encouraged strategy, never punished).
 pub struct NormativeCoverage {
-    /// Non-deprecated intents that have real code (≥1 IMPLEMENTS).
-    pub intents_with_code: i64,
-    /// rules × intents_with_code — the full measuring grid.
-    pub total_pairs: i64,
-    /// Pairs considered: a GOVERNS edge with an inspected status (passing|failing|independent|partial), directly or on an ancestor (ancestor covers descendants only when covers_descendants=true).
-    pub measured_pairs: i64,
-    /// Unmeasured pairs at the HIGHEST altitude only — the actual work queue.
-    /// (An unmeasured intent whose ancestor is also unmeasured is omitted: one
-    /// verdict up there covers it. Bounded by #rules × #top-level branches.)
+    /// Unmeasured pairs at the HIGHEST altitude only — the actual work queue
+    /// `loom next --mode quality` serves. (An unmeasured intent whose ancestor is
+    /// also unmeasured is omitted: one verdict up there covers it. Bounded by
+    /// #rules × #top-level branches.) The coverage COUNTS that status reads live on
+    /// `NormativeCoverageCounts` — computed without cloning this queue.
     pub queue: Vec<(QualityRule, Intent)>,
 }
 
@@ -509,7 +505,27 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
     scored
 }
 
-pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCoverage {
+/// Counts-only view of normative coverage for callers that need the NUMBERS but
+/// not the (rule, intent) work items — `loom status`'s quality-lane depth and 360°
+/// coverage vector. Building the full `queue` clones a QualityRule+Intent per
+/// unmeasured pair; at thousands of intents that is tens of thousands of clones
+/// produced only to read `.len()`, and it showed up as a status hot path at scale.
+pub struct NormativeCoverageCounts {
+    pub intents_with_code: i64,
+    pub total_pairs: i64,
+    pub measured_pairs: i64,
+    pub unmeasured_unshadowed: i64,
+}
+
+/// The shared coverage walk behind both `normative_coverage_from_snapshot` (which
+/// COLLECTS the unmeasured pairs) and `normative_coverage_counts_from_snapshot`
+/// (which only COUNTS them) — one body so the queue and its length can never drift.
+/// Returns (intents_with_code, total_pairs, measured_pairs); the callback fires once
+/// per unmeasured-and-unshadowed (rule, intent) pair.
+fn normative_coverage_walk(
+    snapshot: &QuerySnapshot,
+    mut on_unmeasured_unshadowed: impl FnMut(&QualityRule, &Intent),
+) -> (i64, i64, i64) {
     let candidates: Vec<&Intent> = snapshot
         .intents
         .iter()
@@ -541,7 +557,6 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
 
     let total_pairs = snapshot.rules.len() as i64 * candidates.len() as i64;
     let mut measured_pairs = 0i64;
-    let mut queue: Vec<(QualityRule, Intent)> = Vec::new();
     for rule in &snapshot.rules {
         let unmeasured: std::collections::HashSet<&str> = candidates
             .iter()
@@ -549,7 +564,7 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
             .map(|i| i.id.as_str())
             .collect();
         measured_pairs += candidates.len() as i64 - unmeasured.len() as i64;
-        for intent in &candidates {
+        for &intent in &candidates {
             if !unmeasured.contains(intent.id.as_str()) {
                 continue;
             }
@@ -567,16 +582,53 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
                 cur = parent_of.get(id).copied();
             }
             if !shadowed {
-                queue.push((rule.clone(), (*intent).clone()));
+                on_unmeasured_unshadowed(rule, intent);
             }
         }
     }
-    NormativeCoverage {
-        intents_with_code: candidates.len() as i64,
+    (candidates.len() as i64, total_pairs, measured_pairs)
+}
+
+pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCoverage {
+    let mut queue: Vec<(QualityRule, Intent)> = Vec::new();
+    normative_coverage_walk(snapshot, |rule, intent| {
+        queue.push((rule.clone(), intent.clone()))
+    });
+    NormativeCoverage { queue }
+}
+
+pub fn normative_coverage_counts_from_snapshot(
+    snapshot: &QuerySnapshot,
+) -> NormativeCoverageCounts {
+    let mut unmeasured_unshadowed = 0i64;
+    let (intents_with_code, total_pairs, measured_pairs) =
+        normative_coverage_walk(snapshot, |_, _| unmeasured_unshadowed += 1);
+    NormativeCoverageCounts {
+        intents_with_code,
         total_pairs,
         measured_pairs,
-        queue,
+        unmeasured_unshadowed,
     }
+}
+
+/// Count-only sibling of `quality_candidates_from_snapshot().len()` for the status
+/// lane-depth pulse: the number of open GOVERNS verdicts plus unmeasured-unshadowed
+/// (rule, intent) pairs, WITHOUT materializing either scored list.
+pub fn quality_candidate_count_from_snapshot(snapshot: &QuerySnapshot) -> i64 {
+    let active: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let open_governs = snapshot
+        .governs
+        .iter()
+        .filter(|e| {
+            active.contains(e.intent_id.as_str())
+                && matches!(
+                    e.inspection_status.as_str(),
+                    "failing" | "needs_reverification" | "uninspected"
+                )
+        })
+        .count() as i64;
+    open_governs + normative_coverage_counts_from_snapshot(snapshot).unmeasured_unshadowed
 }
 
 /// A GOVERNS edge "covers" an intent when either:
@@ -1537,7 +1589,9 @@ pub fn lane_depths_from_snapshot(snapshot: &QuerySnapshot) -> LaneDepths {
         // Count-only: the depth, not the ranking — skips Brandes betweenness.
         fix: relates_candidate_count_from_snapshot(snapshot, "fix") as i64,
         validate: validate_candidates_from_snapshot(snapshot).len() as i64,
-        quality: quality_candidates_from_snapshot(snapshot).len() as i64,
+        // Count-only: the depth, not the ranking — skips cloning the unmeasured
+        // (rule, intent) queue and the scored Governs Vec just to read `.len()`.
+        quality: quality_candidate_count_from_snapshot(snapshot),
     }
 }
 
