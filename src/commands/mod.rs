@@ -31,6 +31,7 @@ pub mod layer;
 pub mod migrate;
 pub mod next;
 pub mod note;
+pub mod paths;
 pub mod persona;
 pub mod populate;
 pub mod report;
@@ -137,6 +138,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Door        { utterance, why, limit } => door::run(&utterance, &why, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
+        Command::Paths       { limit }      => paths::run(limit, &printer),
         Command::Smells      { limit, take, kind, summary, stale } => smells::run(limit, if take == 0 { None } else { Some(take) }, kind.as_deref(), summary, stale, &printer),
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),

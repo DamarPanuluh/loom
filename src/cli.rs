@@ -528,6 +528,18 @@ pub enum Command {
         limit: usize,
     },
 
+    /// Composition-proof coverage — the JOURNEY corner of the intent/code/saga
+    /// triangle. Classifies each active intent as path-proven (a saga or
+    /// integration test runs its assembly), leaf-only (only unit proofs — judge
+    /// whether a real journey is missing), or unproven. ADDITIVE + read-only — it
+    /// informs, it never gates. The composition tier is inferred from proof
+    /// transport (saga / `cargo test --test …` = a journey; else leaf).
+    Paths {
+        /// How many intents to list per tier.
+        #[arg(long, default_value_t = 15)]
+        limit: usize,
+    },
+
     /// Derived problem signals computed from the graph — split-brain twins,
     /// overlapping ownership, scattered intents, tangled files, and quality
     /// rules never held against intents that have code. Each finding carries

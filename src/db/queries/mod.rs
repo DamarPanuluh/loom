@@ -5,6 +5,7 @@
 //! ranking, smells, reports, and vocabulary helpers.
 
 pub mod completeness;
+pub mod composition;
 pub mod comprehensiveness;
 pub mod corpus;
 pub mod find;
@@ -23,6 +24,7 @@ pub mod symbol_match;
 pub mod vocab;
 
 pub use completeness::*;
+pub use composition::*;
 pub use corpus::*;
 pub use find::*;
 pub use integrity::*;
