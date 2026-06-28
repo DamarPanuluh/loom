@@ -2065,7 +2065,11 @@ fn sqlite_smells_take_kind_returns_finding_ids_and_batch_template() {
         (imported, importer)
     };
 
-    let json = run_json(
+    // --take + --kind: limit and filter the result set. We do NOT assume the
+    // fixture's coupling ranks #1 — loom's own imported graph has higher-scored
+    // undeclared_coupling findings (a hub module with many import links), and
+    // depending on that rank made this test stale + flaky as the graph grew.
+    let one = run_json(
         &graph.root,
         &[
             "smells",
@@ -2077,47 +2081,67 @@ fn sqlite_smells_take_kind_returns_finding_ids_and_batch_template() {
         ],
     );
     assert_eq!(
-        json["shown"], 1,
-        "--take 1 limits the filtered result: {json}"
+        one["shown"], 1,
+        "--take 1 limits the filtered result: {one}"
     );
     assert_eq!(
-        json["smells"][0]["kind"], "undeclared_coupling",
-        "--kind returns only the requested smell kind: {json}"
+        one["smells"][0]["kind"], "undeclared_coupling",
+        "--kind returns only the requested smell kind: {one}"
+    );
+    let one_templates = one["batch_template"].as_array().expect("batch_template");
+    assert_eq!(
+        one_templates.len(),
+        1,
+        "one template line per shown finding: {one}"
+    );
+    let one_op: Value = serde_json::from_str(one_templates[0].as_str().expect("template line"))
+        .expect("template line is JSONL");
+    assert_eq!(
+        one_op["op"], "ground",
+        "undeclared_coupling templates use op=ground: {one}"
     );
     assert_eq!(
-        json["smells"][0]["id"],
-        format!("undeclared_coupling:{a}:{b}"),
-        "finding id matches the smell-decision identity: {json}"
-    );
-    assert_eq!(
-        json["smells"][0]["intent_ids"],
-        serde_json::json!([a, b]),
-        "undeclared coupling carries both endpoint intents: {json}"
+        one_op["confidence"], "<confidence>",
+        "the ground template carries a confidence placeholder: {one}"
     );
     assert!(
-        json["smells"][0]["evidence"]
+        one["batch_template_hints"]
+            .as_array()
+            .is_some_and(|hints| !hints.is_empty()),
+        "JSON includes batch template hints: {one}"
+    );
+
+    // The FIXTURE's specific coupling, located by its STABLE identity (not by
+    // rank): its id, both endpoints, and the exact detector evidence are correct.
+    let all = run_json(
+        &graph.root,
+        &[
+            "smells",
+            "--json",
+            "--kind",
+            "undeclared_coupling",
+            "--take",
+            "0",
+        ],
+    );
+    let fixture_id = format!("undeclared_coupling:{a}:{b}");
+    let fixture = all["smells"]
+        .as_array()
+        .expect("smells array")
+        .iter()
+        .find(|s| s["id"] == serde_json::json!(fixture_id))
+        .unwrap_or_else(|| panic!("fixture undeclared_coupling ({fixture_id}) not found: {all}"));
+    assert_eq!(
+        fixture["intent_ids"],
+        serde_json::json!([a, b]),
+        "undeclared coupling carries both endpoint intents: {fixture}"
+    );
+    assert!(
+        fixture["evidence"]
             .as_str()
             .expect("evidence")
             .contains("scratch/take_kind_a.rs → scratch/take_kind_b.rs"),
-        "exact detector evidence is preserved: {json}"
-    );
-    let templates = json["batch_template"].as_array().expect("batch_template");
-    assert_eq!(
-        templates.len(),
-        1,
-        "one template line per shown finding: {json}"
-    );
-    let line = templates[0].as_str().expect("template line");
-    let op: Value = serde_json::from_str(line).expect("template line is JSONL");
-    assert_eq!(op["op"], "ground");
-    assert_eq!(op["a"], a);
-    assert_eq!(op["b"], b);
-    assert_eq!(op["confidence"], "<confidence>");
-    assert!(
-        json["batch_template_hints"]
-            .as_array()
-            .is_some_and(|hints| !hints.is_empty()),
-        "JSON includes batch template hints: {json}"
+        "exact detector evidence is preserved: {fixture}"
     );
 }
 
