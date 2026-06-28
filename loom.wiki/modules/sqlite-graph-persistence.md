@@ -107,6 +107,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 
+
 ## What this module does
 
 The persistence core is an embedded SQLite store behind typed command and

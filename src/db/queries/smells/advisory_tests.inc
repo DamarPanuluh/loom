@@ -978,3 +978,265 @@ mod clone_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod deletion_safety_tests {
+    use super::*;
+    use crate::types::{CodeFile, Implements, Intent, SymbolFact};
+
+    fn intent(id: &str, name: &str, lifecycle: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: name.into(),
+            description: String::new(),
+            criterion: String::new(),
+            abstraction_level: "feature".into(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "active".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: lifecycle.into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+
+    fn fact(name: &str) -> SymbolFact {
+        SymbolFact {
+            label: format!("fn {name}"),
+            name: name.into(),
+            kind: "fn".into(),
+            visibility: "private".into(),
+            line_start: 1,
+            line_end: 20,
+            is_test: false,
+            string_literals: Vec::new(),
+            panic_marker_count: 0,
+            panic_markers: Vec::new(),
+            body_hash: "B".into(),
+            shape_hash: "S".into(),
+            metrics: crate::types::SymbolMetrics::default(),
+        }
+    }
+
+    fn cf(path: &str, imports: Vec<&str>, facts: Vec<SymbolFact>) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: imports.into_iter().map(String::from).collect(),
+            symbols: facts.iter().map(|f| f.label.clone()).collect(),
+            symbol_facts: facts,
+            content_hash: String::new(),
+            extractor_grade: String::new(),
+        }
+    }
+
+    fn imp(intent_id: &str, path: &str, locator: &str) -> Implements {
+        Implements {
+            id: format!("{intent_id}:{path}:{locator}"),
+            intent_id: intent_id.into(),
+            codefile_id: path.into(),
+            intent_name: intent_id.into(),
+            codefile_path: path.into(),
+            locator: locator.into(),
+            created_at: "t".into(),
+            inspection_status: "passing".into(),
+            last_inspected: "t".into(),
+            inspected_by: String::new(),
+            criterion: String::new(),
+            evidence: String::new(),
+            notes: String::new(),
+            confidence: 1.0,
+        }
+    }
+
+    fn snap(
+        intents: Vec<Intent>,
+        implements: Vec<Implements>,
+        codefiles: Vec<CodeFile>,
+    ) -> QuerySnapshot {
+        QuerySnapshot::from_parts(
+            intents,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            implements,
+            codefiles,
+            Some(Vec::new()),
+        )
+    }
+
+    #[test]
+    fn precise_locator_grounding_is_live() {
+        let s = snap(
+            vec![intent("req", "request parsing", "implemented")],
+            vec![imp("req", "src/a.rs", "fn parse")],
+            vec![cf("src/a.rs", vec![], vec![fact("parse")])],
+        );
+        let ctx = DeletionContext::new(&s);
+        match ctx.classify("src/a.rs", "fn parse", "parse") {
+            SiteIntent::Live(names) => {
+                assert_eq!(names, vec!["\"request parsing\" (implemented)".to_string()]);
+            }
+            other => panic!("expected Live, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn whole_file_grounding_covers_every_symbol() {
+        // An empty-locator IMPLEMENTS owns the whole file → every symbol is live.
+        let s = snap(
+            vec![intent("owner", "file owner", "implemented")],
+            vec![imp("owner", "src/a.rs", "")],
+            vec![cf("src/a.rs", vec![], vec![fact("parse")])],
+        );
+        let ctx = DeletionContext::new(&s);
+        assert!(matches!(
+            ctx.classify("src/a.rs", "fn parse", "parse"),
+            SiteIntent::Live(_)
+        ));
+    }
+
+    #[test]
+    fn ungrounded_symbol_in_owned_file_is_a_coverage_gap() {
+        // The file is owned, but at a DIFFERENT symbol. The ungrounded sibling is
+        // a missing grounding, not dead code — the surrounding intent is the hint.
+        let s = snap(
+            vec![intent("cfg", "config loading", "implemented")],
+            vec![imp("cfg", "src/a.rs", "fn load")],
+            vec![cf("src/a.rs", vec![], vec![fact("load"), fact("parse")])],
+        );
+        let ctx = DeletionContext::new(&s);
+        match ctx.classify("src/a.rs", "fn parse", "parse") {
+            SiteIntent::CoverageGap(names) => {
+                assert_eq!(names, vec!["\"config loading\" (implemented)".to_string()]);
+            }
+            other => panic!("expected CoverageGap, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn ungrounded_symbol_with_owned_importer_is_a_coverage_gap() {
+        // b.rs has no grounding, but a.rs (owned) imports it → surrounding intent.
+        let s = snap(
+            vec![intent("alpha", "alpha feature", "implemented")],
+            vec![imp("alpha", "src/a.rs", "fn alpha")],
+            vec![
+                cf("src/a.rs", vec!["src/b.rs"], vec![fact("alpha")]),
+                cf("src/b.rs", vec![], vec![fact("parse")]),
+            ],
+        );
+        let ctx = DeletionContext::new(&s);
+        match ctx.classify("src/b.rs", "fn parse", "parse") {
+            SiteIntent::CoverageGap(names) => {
+                assert_eq!(names, vec!["\"alpha feature\" (implemented)".to_string()]);
+            }
+            other => panic!("expected CoverageGap, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn isolated_symbol_has_no_intent() {
+        let s = snap(
+            vec![],
+            vec![],
+            vec![cf("src/c.rs", vec![], vec![fact("parse")])],
+        );
+        let ctx = DeletionContext::new(&s);
+        assert!(matches!(
+            ctx.classify("src/c.rs", "fn parse", "parse"),
+            SiteIntent::Isolated
+        ));
+    }
+
+    #[test]
+    fn grounding_to_a_non_active_intent_is_flagged_not_greenlit() {
+        // The only covering grounding points at an intent absent from the active
+        // set (retired or dangling). Not Isolated, not a delete green-light.
+        let s = snap(
+            vec![], // "ghost" is NOT active
+            vec![imp("ghost", "src/x.rs", "fn parse")],
+            vec![cf("src/x.rs", vec![], vec![fact("parse")])],
+        );
+        let ctx = DeletionContext::new(&s);
+        assert!(matches!(
+            ctx.classify("src/x.rs", "fn parse", "parse"),
+            SiteIntent::NonActiveGrounding
+        ));
+    }
+
+    #[test]
+    fn word_boundary_locator_does_not_overmatch() {
+        // Parity with `fact_is_grounded`: locator `fn add_tax` must NOT ground
+        // symbol `add`. Otherwise the gate would call a real gap "live".
+        let s = snap(
+            vec![intent("tax", "tax math", "implemented")],
+            vec![imp("tax", "src/a.rs", "fn add_tax")],
+            vec![cf("src/a.rs", vec![], vec![fact("add"), fact("add_tax")])],
+        );
+        let ctx = DeletionContext::new(&s);
+        // add_tax is live; add is only a coverage gap under the same file owner.
+        assert!(matches!(
+            ctx.classify("src/a.rs", "fn add_tax", "add_tax"),
+            SiteIntent::Live(_)
+        ));
+        assert!(matches!(
+            ctx.classify("src/a.rs", "fn add", "add"),
+            SiteIntent::CoverageGap(_)
+        ));
+    }
+
+    #[test]
+    fn clone_finding_carries_intent_context_and_deletion_preamble() {
+        // a.rs::alpha is live-grounded; b.rs::beta is isolated; same shape_hash.
+        let s = snap(
+            vec![intent("req", "request parsing", "implemented")],
+            vec![imp("req", "src/a.rs", "fn alpha")],
+            vec![
+                cf("src/a.rs", vec![], vec![fact("alpha")]),
+                cf("src/b.rs", vec![], vec![fact("beta")]),
+            ],
+        );
+        let out = clone_suggestions(&s, &[]);
+        assert_eq!(out.len(), 1, "one cross-file clone group: {out:?}");
+        let f = &out[0];
+        assert!(
+            f.evidence.contains("intent context"),
+            "evidence must carry per-site intent context: {}",
+            f.evidence
+        );
+        assert!(
+            f.evidence.contains("serves \"request parsing\""),
+            "the grounded copy must name its live intent: {}",
+            f.evidence
+        );
+        assert!(
+            f.evidence.contains("no live grounding and no surrounding intent"),
+            "the isolated copy must be marked as such: {}",
+            f.evidence
+        );
+        assert!(
+            f.remedy.starts_with("DELETION SAFETY"),
+            "remedy must lead with the deletion-safety gate: {}",
+            f.remedy
+        );
+        // Identity parsing is unaffected: the remedy's `--smell` key resolves
+        // to the same id the finding exposes.
+        let remedy_key = f
+            .remedy
+            .split("--smell \"")
+            .nth(1)
+            .and_then(|tail| tail.split('"').next())
+            .expect("remedy should contain a --smell key");
+        assert_eq!(remedy_key, f.id());
+    }
+}

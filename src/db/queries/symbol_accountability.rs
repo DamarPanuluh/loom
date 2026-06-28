@@ -352,20 +352,30 @@ fn suggested_action(path: &str, fact: &SymbolFact, owners: &[Owner]) -> String {
     )
 }
 
+/// Does ONE IMPLEMENTS locator anchor the symbol named `label` (canonical
+/// identifier `name`)? The word-boundary primitive shared by symbol
+/// accountability and deletion safety (`smells::DeletionContext`) so the two
+/// never disagree on what "grounded" means. An empty locator is file-level — it
+/// anchors no SPECIFIC symbol and returns false here; callers that treat
+/// whole-file ownership as covering handle that case separately.
+pub fn locator_covers_symbol(locator: &str, label: &str, name: &str) -> bool {
+    let l = locator.trim();
+    if l.is_empty() {
+        return false;
+    }
+    l == label
+        // Word-boundary, not raw substring: a label `get` must not count as
+        // grounded by a locator `widget`, nor `Note` by `Notebook`. Siblings
+        // below are already boundary-aware; this branch was the over-matcher.
+        || contains_identifier_word(l, label)
+        || contains_identifier_word(l, name)
+        || contains_identifier_word(l, symbol_identifier(label))
+}
+
 pub fn fact_is_grounded(fact: &SymbolFact, locators: &[String]) -> bool {
-    locators.iter().any(|locator| {
-        let l = locator.trim();
-        if l.is_empty() {
-            return false;
-        }
-        l == fact.label
-            // Word-boundary, not raw substring: a label `get` must not count as
-            // grounded by a locator `widget`, nor `Note` by `Notebook`. Siblings
-            // below are already boundary-aware; this branch was the over-matcher.
-            || contains_identifier_word(l, &fact.label)
-            || contains_identifier_word(l, &fact.name)
-            || contains_identifier_word(l, symbol_identifier(&fact.label))
-    })
+    locators
+        .iter()
+        .any(|locator| locator_covers_symbol(locator, &fact.label, &fact.name))
 }
 
 fn adjudicating_note<'a>(

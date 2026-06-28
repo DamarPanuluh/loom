@@ -66,7 +66,7 @@ const ISO5055_PACK: &[PackRule] = &[
      "architecture"),
     PackRule::new(ISO5055_MAIN_NO_DEAD_OR_DUPLICATE, "warning",
      "ISO 5055 Maintainability (CWE-561/1041): no unreachable or unused code; no copy-pasted logic where one definition should exist.",
-     "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files.",
+     "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files. Before deleting, resolve what each candidate SERVES via the intent graph (`loom explain <file>` / `loom codefile show <path>`): absence of an IMPLEMENTS grounding is a COVERAGE GAP, not proof of death — loom's map is known-incomplete; an ungrounded symbol whose file or importers are owned by a live intent should be GROUNDED, not removed. Delete only code grounded solely to a retired/superseded intent, or genuinely unreachable code that should never have existed. Cross-check `loom smells` (code_clone / string_contract_duplicate) for the same evidence.",
      "architecture"),
 ];
 

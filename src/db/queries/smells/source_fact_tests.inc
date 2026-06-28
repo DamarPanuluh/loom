@@ -259,7 +259,7 @@ mod lexical_signal_tests {
 #[cfg(test)]
 mod source_fact_smell_tests {
     use super::*;
-    use crate::types::{CodeFile, Note, StringLiteralFact, SymbolFact};
+    use crate::types::{CodeFile, Implements, Intent, Note, StringLiteralFact, SymbolFact};
 
     fn sym(label: &str) -> SymbolFact {
         SymbolFact {
@@ -326,16 +326,65 @@ mod source_fact_smell_tests {
         }
     }
 
+    fn intent(id: &str, name: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: name.into(),
+            description: String::new(),
+            criterion: String::new(),
+            abstraction_level: "feature".into(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "active".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+
+    fn imp(intent_id: &str, path: &str, locator: &str) -> Implements {
+        Implements {
+            id: format!("{intent_id}:{path}:{locator}"),
+            intent_id: intent_id.into(),
+            codefile_id: path.into(),
+            intent_name: intent_id.into(),
+            codefile_path: path.into(),
+            locator: locator.into(),
+            created_at: "t".into(),
+            inspection_status: "passing".into(),
+            last_inspected: "t".into(),
+            inspected_by: String::new(),
+            criterion: String::new(),
+            evidence: String::new(),
+            notes: String::new(),
+            confidence: 1.0,
+        }
+    }
+
     fn report(codefiles: Vec<CodeFile>, notes: &[Note]) -> SmellReport {
+        report_with_graph(codefiles, Vec::new(), Vec::new(), notes)
+    }
+
+    fn report_with_graph(
+        codefiles: Vec<CodeFile>,
+        intents: Vec<Intent>,
+        implements: Vec<Implements>,
+        notes: &[Note],
+    ) -> SmellReport {
         let snapshot = QuerySnapshot::from_parts(
+            intents,
             Vec::new(),
             Vec::new(),
             Vec::new(),
             Vec::new(),
             Vec::new(),
             Vec::new(),
-            Vec::new(),
-            Vec::new(),
+            implements,
             codefiles,
             Some(Vec::new()),
         );
@@ -418,11 +467,13 @@ mod source_fact_smell_tests {
     #[test]
     fn repeated_long_string_contract_flags_once() {
         let text = "Run loom sync before reading the status output again";
-        let r = report(
+        let r = report_with_graph(
             vec![
                 cf("src/a.rs", vec![with_string(sym("fn alpha"), text, 4)]),
                 cf("src/b.rs", vec![with_string(sym("fn beta"), text, 9)]),
             ],
+            vec![intent("status", "status output")],
+            vec![imp("status", "src/a.rs", "fn alpha")],
             &[],
         );
         let found = of_kind(&r, "string_contract_duplicate");
@@ -430,6 +481,35 @@ mod source_fact_smell_tests {
         assert!(found[0].summary.contains("string contract repeated"));
         assert!(found[0].evidence.contains("src/a.rs:4"));
         assert!(found[0].evidence.contains("src/b.rs:9"));
+        // Deletion-safety enrichment: per-copy intent context in the evidence and
+        // the consolidation-safety gate leading the remedy. The fixture grounds
+        // one copy so this verifies real classification, not just clause wiring.
+        assert!(
+            found[0]
+                .evidence
+                .contains("src/a.rs 'fn alpha': serves \"status output\" (implemented)"),
+            "evidence must name the grounded copy's live intent: {}",
+            found[0].evidence
+        );
+        assert!(
+            found[0]
+                .evidence
+                .contains("src/b.rs 'fn beta': no live grounding and no surrounding intent"),
+            "evidence must classify the ungrounded copy: {}",
+            found[0].evidence
+        );
+        assert!(
+            found[0].remedy.starts_with("DELETION SAFETY"),
+            "remedy must lead with the consolidation-safety gate: {}",
+            found[0].remedy
+        );
+        assert!(
+            found[0]
+                .remedy
+                .contains("--smell \"string_contract_duplicate:"),
+            "the adjudication key must survive the preamble: {}",
+            found[0].remedy
+        );
     }
 
     #[test]

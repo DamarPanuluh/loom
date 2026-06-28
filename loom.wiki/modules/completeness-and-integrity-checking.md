@@ -44,7 +44,7 @@ provenance:
   src/db/queries/maturity/tests.rs: 83aebef6afd90de4
   src/db/queries/stats.rs: 476ab8622105603d
   src/db/queries/stats/tests.rs: 7c0d1fb9f3e602ae
-  src/db/queries/symbol_accountability.rs: c6c8561ae7b9e4c3
+  src/db/queries/symbol_accountability.rs: ae181b9815b0b820
 ---
 
 # completeness and integrity checking
@@ -73,6 +73,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

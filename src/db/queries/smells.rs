@@ -1294,6 +1294,221 @@ fn parent_dir(path: &str) -> &str {
 }
 
 // ---------------------------------------------------------------------------
+// deletion safety — resolve what a delete candidate SERVES before removing it
+// ---------------------------------------------------------------------------
+
+/// Prepended to the remedy of every finding that suggests REMOVING code. The
+/// deletion-class remedies operate at the physical plane (a duplicated shape, a
+/// repeated string); without this an LLM can delete a copy on shape alone,
+/// bypassing the intent graph that is loom's whole reason to exist — and worse,
+/// can read ABSENCE of a grounding as "dead" when loom's own coverage is
+/// known-incomplete (`symbol_accountability_gap`). The per-site intent context
+/// this points at is computed by `DeletionContext` and folded into the
+/// finding's evidence.
+pub(crate) const DELETION_SAFETY_PREAMBLE: &str = "DELETION SAFETY — removing a copy is irreversible, so resolve what each copy SERVES first (per-copy intent context is in this finding's evidence): KEEP the copy grounded to a live intent; an UNGROUNDED copy whose file or importers are owned is a COVERAGE GAP, not dead code (loom's map is known-incomplete) — ground it (`loom edge implement <intent> <file> --locator \"<symbol>\"`), do NOT delete it; a copy grounded only to a non-active intent, or with no surrounding intent at all, is a removal candidate ONLY if it should never have existed. Then ";
+
+/// Lighter sibling for `string_contract_duplicate`, where the move is
+/// CONSOLIDATION rather than deletion, but the same trap applies: fold copies
+/// into one source only after you know which intent each copy serves.
+pub(crate) const STRING_CONTRACT_SAFETY_PREAMBLE: &str = "DELETION SAFETY — before folding copies into one source, know which intent each copy SERVES (per-copy intent context is in this finding's evidence): a copy living in an UNGROUNDED-but-owned symbol is a coverage gap, not dead text — centralizing must not silently drop a surface it serves. Then ";
+
+/// What the intent graph knows about ONE deletion candidate — a clone copy or a
+/// repeated-string site. Absence of a grounding is NEVER evidence the code is
+/// dead: loom's own coverage is known-incomplete, so an ungrounded symbol whose
+/// file/importers are owned is a gap to fill, not a removal candidate.
+#[derive(Debug, Clone)]
+pub(crate) enum SiteIntent {
+    /// A current IMPLEMENTS edge on a LIVE intent anchors this symbol (precise
+    /// locator) or its whole file (file-level grounding). Entries are
+    /// `"name" (lifecycle)`. Keep the copy whose grounding is live.
+    Live(Vec<String>),
+    /// The only groundings covering this symbol point at intent ids NOT in the
+    /// active set — a retired/superseded intent OR a dangling edge. NOT a delete
+    /// green-light: confirm which before removing.
+    NonActiveGrounding,
+    /// Nothing live grounds the symbol, but the file (or a file importing it) is
+    /// owned by live intent(s): the grounding is MISSING, not absent — fill it.
+    CoverageGap(Vec<String>),
+    /// No live grounding and no surrounding intent. A removal candidate only if
+    /// it should never have existed — and loom's coverage is incomplete.
+    Isolated,
+}
+
+impl SiteIntent {
+    /// One compact phrase for the evidence line.
+    fn phrase(&self) -> String {
+        match self {
+            SiteIntent::Live(names) => format!("serves {}", names.join(", ")),
+            SiteIntent::NonActiveGrounding => {
+                "grounded only to a non-active intent (retired or dangling) — verify before removing"
+                    .into()
+            }
+            SiteIntent::CoverageGap(surrounding) => format!(
+                "no live grounding; file/importers owned by {} — coverage gap, ground it (don't delete)",
+                surrounding.join(", ")
+            ),
+            SiteIntent::Isolated => "no live grounding and no surrounding intent".into(),
+        }
+    }
+}
+
+/// Per-(path, symbol) intent context for the deletion-class detectors, built
+/// once per run. Whole-file (empty-locator) groundings cover every symbol in the
+/// file; precise locators are matched with
+/// `symbol_accountability::locator_covers_symbol`, the SAME word-boundary
+/// primitive the accountability detector uses, so the two never disagree on what
+/// "grounded" means. `snapshot.intents` is active-only, so a grounding whose
+/// intent id is absent is retired-or-dangling (see `NonActiveGrounding`).
+pub(crate) struct DeletionContext<'a> {
+    active_by_id: HashMap<&'a str, &'a crate::types::Intent>,
+    grounds_on_path: HashMap<&'a str, Vec<&'a crate::types::Implements>>,
+    owners_of_path: HashMap<&'a str, Vec<&'a str>>,
+    importer_owners: HashMap<&'a str, HashSet<&'a str>>,
+}
+
+impl<'a> DeletionContext<'a> {
+    pub(crate) fn new(snapshot: &'a QuerySnapshot) -> Self {
+        let active_by_id: HashMap<&str, &crate::types::Intent> = snapshot
+            .intents
+            .iter()
+            .filter(|i| i.status != "deprecated")
+            .map(|i| (i.id.as_str(), i))
+            .collect();
+        let mut grounds_on_path: HashMap<&str, Vec<&crate::types::Implements>> = HashMap::new();
+        let mut owners_of_path: HashMap<&str, Vec<&str>> = HashMap::new();
+        for im in &snapshot.implements {
+            grounds_on_path
+                .entry(im.codefile_path.as_str())
+                .or_default()
+                .push(im);
+            if active_by_id.contains_key(im.intent_id.as_str()) {
+                let owners = owners_of_path.entry(im.codefile_path.as_str()).or_default();
+                if !owners.contains(&im.intent_id.as_str()) {
+                    owners.push(im.intent_id.as_str());
+                }
+            }
+        }
+        // imported-path -> active intents owning a file that imports it. Imports
+        // are stored as repo-relative paths matching codefile paths (the same key
+        // `undeclared_coupling` resolves against).
+        let mut importer_owners: HashMap<&str, HashSet<&str>> = HashMap::new();
+        for cf in &snapshot.codefiles {
+            let Some(owners) = owners_of_path.get(cf.path.as_str()).cloned() else {
+                continue;
+            };
+            for target in &cf.imports {
+                let entry = importer_owners.entry(target.as_str()).or_default();
+                for o in &owners {
+                    entry.insert(*o);
+                }
+            }
+        }
+        Self {
+            active_by_id,
+            grounds_on_path,
+            owners_of_path,
+            importer_owners,
+        }
+    }
+
+    fn name_lifecycle(&self, id: &str) -> Option<String> {
+        self.active_by_id.get(id).map(|i| {
+            let lc = if i.lifecycle.is_empty() {
+                "implemented"
+            } else {
+                i.lifecycle.as_str()
+            };
+            format!("\"{}\" ({lc})", i.name)
+        })
+    }
+
+    /// Resolve the intent context for one symbol (`label`, canonical `name`) at
+    /// `path`. A live direct grounding wins; otherwise surrounding intent (file
+    /// owners + importer owners) makes it a coverage gap; a covering grounding to
+    /// a non-active intent with no live surrounding is `NonActiveGrounding`; only
+    /// the truly isolated symbol is a clean removal candidate.
+    pub(crate) fn classify(&self, path: &str, label: &str, name: &str) -> SiteIntent {
+        let mut live: Vec<String> = Vec::new();
+        let mut non_active_cover = false;
+        if let Some(grounds) = self.grounds_on_path.get(path) {
+            for im in grounds {
+                let covers = im.locator.trim().is_empty()
+                    || crate::db::queries::symbol_accountability::locator_covers_symbol(
+                        &im.locator,
+                        label,
+                        name,
+                    );
+                if !covers {
+                    continue;
+                }
+                match self.name_lifecycle(im.intent_id.as_str()) {
+                    Some(lbl) => {
+                        if !live.contains(&lbl) {
+                            live.push(lbl);
+                        }
+                    }
+                    None => non_active_cover = true,
+                }
+            }
+        }
+        if !live.is_empty() {
+            live.sort();
+            return SiteIntent::Live(live);
+        }
+        let mut surrounding: Vec<String> = Vec::new();
+        if let Some(owners) = self.owners_of_path.get(path) {
+            for &id in owners {
+                if let Some(lbl) = self.name_lifecycle(id) {
+                    if !surrounding.contains(&lbl) {
+                        surrounding.push(lbl);
+                    }
+                }
+            }
+        }
+        if let Some(importers) = self.importer_owners.get(path) {
+            for &id in importers {
+                if let Some(lbl) = self.name_lifecycle(id) {
+                    if !surrounding.contains(&lbl) {
+                        surrounding.push(lbl);
+                    }
+                }
+            }
+        }
+        if !surrounding.is_empty() {
+            surrounding.sort();
+            return SiteIntent::CoverageGap(surrounding);
+        }
+        if non_active_cover {
+            return SiteIntent::NonActiveGrounding;
+        }
+        SiteIntent::Isolated
+    }
+
+    /// The `intent context — …` clause folded into a finding's evidence, one
+    /// entry per deletion candidate. `sites` yields `(path, label, name)`.
+    ///
+    /// Deliberately not capped: unlike ordinary location evidence, each entry is
+    /// a safety classification (`serves`, `coverage gap`, `isolated`, ...). If a
+    /// high-copy clone hides a live/coverage-gap entry in an `… and N more` tail,
+    /// the deletion gate has lost the exact signal it exists to preserve.
+    pub(crate) fn clause<'b, I>(&self, sites: I) -> String
+    where
+        I: IntoIterator<Item = (&'b str, &'b str, &'b str)>,
+    {
+        let parts: Vec<String> = sites
+            .into_iter()
+            .map(|(path, label, name)| {
+                format!(
+                    "{path} '{label}': {}",
+                    self.classify(path, label, name).phrase()
+                )
+            })
+            .collect();
+        format!("intent context — {}", parts.join(" · "))
+    }
+}
+
+// ---------------------------------------------------------------------------
 // code-clone advisory — structural duplication the intent graph can't see
 // ---------------------------------------------------------------------------
 
@@ -1354,6 +1569,7 @@ pub fn clone_suggestions(
         }
     }
 
+    let deletion_ctx = DeletionContext::new(snapshot);
     let mut out: Vec<Smell> = Vec::new();
     for ((hash_kind, hash), members) in by_hash {
         let distinct_files: HashSet<&str> = members.iter().map(|(p, _)| *p).collect();
@@ -1402,13 +1618,18 @@ pub fn clone_suggestions(
             span,
             capped_join(&sites, " · ")
         );
+        let intent_clause = deletion_ctx.clause(
+            locs.iter()
+                .map(|(p, f)| (*p, f.label.as_str(), f.name.as_str())),
+        );
+        let evidence = format!("{evidence} | {intent_clause}");
         out.push(Smell {
             kind: "code_clone".into(),
             score: span as f64 * count as f64,
             summary,
             evidence,
             remedy: format!(
-                "read each copy and decide which of three it is: (1) coincidental shape (e.g. dispatch shims that match by accident) — leave it; (2) one responsibility copied — dedupe now, or if both copies are owned `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); (3) a real dup you are DEFERRING — file it as tracked work, not a dead note: `loom hypothesis add` with the clone as the claim and the shape group collapsing to one definition as the predicted outcome, so `loom hypothesis adopt --spawned` turns it into a planned refactor the build/validate machinery owns. If the copies must stay deliberately independent, record that ruling with `loom note add --smell \"code_clone:{hash}\" --kind decision --text \"<why these copies must stay independent>\"`; the advisory moves to adjudicated until the clone's normalized shape changes"
+                "{DELETION_SAFETY_PREAMBLE}read each copy and decide which of three it is: (1) coincidental shape (e.g. dispatch shims that match by accident) — leave it; (2) one responsibility copied — dedupe now, or if both copies are owned `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); (3) a real dup you are DEFERRING — file it as tracked work, not a dead note: `loom hypothesis add` with the clone as the claim and the shape group collapsing to one definition as the predicted outcome, so `loom hypothesis adopt --spawned` turns it into a planned refactor the build/validate machinery owns. If the copies must stay deliberately independent, record that ruling with `loom note add --smell \"code_clone:{hash}\" --kind decision --text \"<why these copies must stay independent>\"`; the advisory moves to adjudicated until the clone's normalized shape changes"
             ),
             teaching: teaching_for("code_clone"),
         });

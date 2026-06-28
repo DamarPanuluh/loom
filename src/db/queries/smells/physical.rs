@@ -3,9 +3,10 @@ use std::collections::{HashMap, HashSet};
 use super::{
     adjudicate, behavioral_symbol_kind, capped_join, command_or_public_surface,
     normalized_contract_string, scatter_threshold, short_contract_excerpt, teaching_for,
-    AdjudicatedSmell, Smell, SmellCtx, StringContractLoc, COMPLEX_SYMBOL_COGNITIVE,
-    COMPLEX_SYMBOL_CYCLOMATIC, DEEPLY_NESTED_SYMBOL_DEPTH, LARGE_BEHAVIORAL_SYMBOL_LINES,
-    MANY_ARGUMENTS, MANY_AWAITS, MANY_EXIT_PATHS, OVERSIZED_FILE_LINES, TANGLE_INTENTS,
+    AdjudicatedSmell, DeletionContext, Smell, SmellCtx, StringContractLoc,
+    COMPLEX_SYMBOL_COGNITIVE, COMPLEX_SYMBOL_CYCLOMATIC, DEEPLY_NESTED_SYMBOL_DEPTH,
+    LARGE_BEHAVIORAL_SYMBOL_LINES, MANY_ARGUMENTS, MANY_AWAITS, MANY_EXIT_PATHS,
+    OVERSIZED_FILE_LINES, STRING_CONTRACT_SAFETY_PREAMBLE, TANGLE_INTENTS,
 };
 use crate::db::queries::snapshot::QuerySnapshot;
 
@@ -646,6 +647,7 @@ fn detect_string_contract_duplicate(
             }
         }
     }
+    let deletion_ctx = DeletionContext::new(snapshot);
     for (_key, mut locs) in strings {
         locs.sort_by(|a, b| {
             a.path
@@ -698,16 +700,23 @@ fn detect_string_contract_duplicate(
             .map(|l| format!("{}:{} '{}'", l.path, l.line, l.label))
             .collect::<Vec<_>>()
             .join(" · ");
+        let intent_clause = deletion_ctx.clause(locs.iter().map(|l| {
+            (
+                l.path,
+                l.label,
+                crate::db::queries::symbol_match::symbol_identifier(l.label),
+            )
+        }));
         smells.push(Smell {
             kind: "string_contract_duplicate".into(),
             score: locs.len() as f64 * (anchor.value.len() as f64 / 40.0).max(1.0),
             summary,
             evidence: format!(
-                "normalized repeated text appears in {} symbol(s) across {} file(s): {}",
-                distinct_symbols, distinct_files, evidence
+                "normalized repeated text appears in {} symbol(s) across {} file(s): {} | {}",
+                distinct_symbols, distinct_files, evidence, intent_clause
             ),
             remedy: format!(
-                "inspect the repeated text; extract one source of truth if the wording must change together, or rule the copies independent ONLY after reading both: `loom note add --smell \"string_contract_duplicate:{}\" --kind decision --text \"<the contract each copy serves and why they must evolve apart — NOT 'intentional', which restates the finding>\"` resolves this finding (editing any carrying file re-opens it). loom rejects a vacuous or templated ruling — audit each pair on its own text",
+                "{STRING_CONTRACT_SAFETY_PREAMBLE}inspect the repeated text; extract one source of truth if the wording must change together, or rule the copies independent ONLY after reading both: `loom note add --smell \"string_contract_duplicate:{}\" --kind decision --text \"<the contract each copy serves and why they must evolve apart — NOT 'intentional', which restates the finding>\"` resolves this finding (editing any carrying file re-opens it). loom rejects a vacuous or templated ruling — audit each pair on its own text",
                 anchor.path
             ),
             teaching: teaching_for("string_contract_duplicate"),
