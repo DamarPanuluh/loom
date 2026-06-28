@@ -31,9 +31,9 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
     let gs = store.graph_state(&snapshot)?;
     let decision_notes = store.notes_by_kind("decision")?;
 
-    // Open smells are meaningful only at the audit gate (same rule as status).
-    let (open_smells, excellence_debt_count) = if matches!(gs.phase.as_str(), "audit" | "complete")
-    {
+    // Open smells are meaningful only at the HARDEN smell gate + GREEN terminal
+    // (same rule as status's should_compute_audit_pulse).
+    let (open_smells, excellence_debt_count) = if matches!(gs.phase.as_str(), "harden" | "green") {
         let report = store.smell_report(&snapshot)?;
         let excellence_debt_count = report.advisory.len() + report.debt.len();
         (report.open, excellence_debt_count)

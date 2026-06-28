@@ -100,10 +100,15 @@ pub struct GraphState {
     /// noise — so `unexplored_pairs` / `priority_unexplored_pairs` are surfaced as
     /// optional discovery only, never gating `phase=complete`.
     pub horizontally_explored: bool,
-    /// The compass RUNG, one criterion each, in cascade order:
-    /// shape | realize | complete | harden | green.
-    /// (COMPOSE is a coverage TIER, not a gating rung — see `loom paths`.)
-    /// `next_action` carries the specific work within the current rung.
+    /// The compass PHASE — the single most-urgent next move: the first unmet
+    /// structural gate in cascade order: shape | realize | complete | harden | green
+    /// (COMPOSE is a coverage TIER, not a gate — see `loom paths`).
+    ///
+    /// DISTINCT from the maturity LADDER's RUNGS (Seeded / Realized / Proven /
+    /// Hardened / Production-ready / Excellent, in `maturity.rs`): the PHASE says
+    /// what to DO right now; the LADDER's rungs say where you STAND (and route the
+    /// substantive climb via the ladder's focus + lane). Two views of one journey —
+    /// never use "rung" for a phase. `next_action` carries the specific work.
     pub phase: String,
     pub next_action: String,
     /// How firmly to take `next_action`: "directive" = a failure or binding
@@ -543,7 +548,7 @@ pub fn graph_state_from_snapshot_parts(
     // validator queue's OWN selection (`validate_selection` — shared verbatim
     // with `loom next --mode validate`), never on raw edge-state counts: the
     // two once disagreed (a multi-intent validation's passed run left sibling
-    // edges uninspected → phase=validate with an empty queue). Edge counts
+    // edges uninspected → phase=realize with an empty validate queue). Edge counts
     // below feed only the `unresolved` tally.
     let validation_backlog = validation_backlog_summary(snapshot);
 

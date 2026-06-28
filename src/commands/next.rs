@@ -173,9 +173,10 @@ fn first_lane_with_work(
     Ok(None)
 }
 
-/// Bare `loom next` in phase=audit: there is no `--mode audit` queue, so echo the
-/// compass's own audit directive (which points at `loom smells`) rather than
-/// mis-routing the driver to OPTIONAL discovery while green-blocking findings sit
+/// Bare `loom next` at a no-queue gate (phase=complete → `loom coverage`/`loom
+/// sync`; phase=harden's smell gate → `loom smells`): there is no `--mode` queue,
+/// so echo the compass directive rather than mis-routing the driver to OPTIONAL
+/// discovery while green-blocking findings sit
 /// unadjudicated.
 fn emit_no_queue_directive(gs: &GraphState, printer: &Printer) -> Result<()> {
     if printer.json {

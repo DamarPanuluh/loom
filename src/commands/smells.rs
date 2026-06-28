@@ -2,7 +2,7 @@
 //! remedy. Pure graph computation (see `db::queries::smells`); read-only, so
 //! any role may run it. The findings route INTO the normal loop: every smell's
 //! remedy is an existing loom command sequence — and OPEN findings gate green
-//! (`graph_state` routes phase=audit until zero remain).
+//! (open findings route phase=harden to `loom smells` until zero; then phase=green).
 //!
 //! Adjudicated findings are NOT hidden: a suppressed suspicion prints with
 //! its ruling (who, when, why, and what re-opens it). "No findings" and

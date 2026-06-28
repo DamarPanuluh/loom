@@ -543,8 +543,8 @@ pub enum Command {
     /// Derived problem signals computed from the graph — split-brain twins,
     /// overlapping ownership, scattered intents, tangled files, and quality
     /// rules never held against intents that have code. Each finding carries
-    /// the exact remedy command; OPEN findings gate green (phase=audit until
-    /// each is resolved or refuted via its remedy).
+    /// the exact remedy command; OPEN findings gate green (phase=harden routes to `loom smells`
+    /// until each is resolved or refuted via its remedy; then phase=green).
     Smells {
         /// How many findings to show.
         #[arg(long, default_value_t = 15)]

@@ -9,8 +9,8 @@
 //! measure). Pure graph computation — no LLM judgment in the *flagging*.
 //!
 //! `loom smells` returns suspicions, but they are not free-floating advice:
-//! OPEN findings gate green (`graph_state` routes phase=audit until zero
-//! remain). The escape from a false positive is never gaming a threshold —
+//! OPEN findings gate green (when any are open, `graph_state` routes phase=harden
+//! to `loom smells` until zero remain; then phase=green). The escape from a false positive is never gaming a threshold —
 //! each kind has an explicit adjudication path (an `independent` verdict, a
 //! merge, a decision note newer than the structure it judges), so the verdict
 //! on each finding stays with the inspecting agent, via the exact remedy

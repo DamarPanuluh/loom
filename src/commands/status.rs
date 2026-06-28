@@ -85,7 +85,7 @@ struct OneTurnPlan {
 }
 
 /// `honesty-next #2`: map-vs-territory, surfaced ALWAYS — not only at the
-/// audit gate. On a red graph (e.g. phase=fix) the compass used to hide that
+/// HARDEN smell gate. On a red graph (e.g. phase=realize) the compass used to hide that
 /// real files on disk weren't in the graph; the information existed (loom
 /// coverage) but the one screen every driver reads buried it behind near-green.
 /// This is the always-on disclosure: counts of files the graph doesn't account
@@ -708,9 +708,9 @@ fn completion_json(
         serde_json::json!({
             "unexplored_relationship_pairs": gs.unexplored_pairs,
             "priority_unexplored_relationship_pairs": gs.priority_unexplored_pairs,
-            "required_for_complete": !gs.horizontally_explored,
+            "grid_gates": false,
+            "grid_note": "The N×N missing-pair grid is OPTIONAL discovery (ranked by centrality) — it no longer gates. The Hardened-rung horizontal gate is explicit RELATES_TO inspection (`horizontally_explored`: every recorded relationship verified + current) plus zero open coupling smells.",
             "horizontally_explored": gs.horizontally_explored,
-            "survey_required_for_complete": false,
             "note_hygiene": gs.note_hygiene,
         }),
     );
@@ -968,7 +968,7 @@ fn render_plain_status(
         println!();
     }
     println!(
-        "certification: overall {} (profile: {}) — {}",
+        "certification: overall {} (default policy: {} — loom certifies for codebase-health, not just deploy-fitness) — {}",
         certification.overall, certification.default_profile, certification.note
     );
     println!(
@@ -994,7 +994,18 @@ fn render_plain_status(
     } else {
         "→ Next"
     };
-    println!("  {anchor}: {}", gs.next_action);
+    // Two views of ONE climb, labelled so a driver never conflates them: the LADDER
+    // (above) is the maturity RUNGS — where you STAND. The COMPASS PHASE (below) is
+    // the single most-urgent gate — what to DO now. When they point differently,
+    // the compass surfaces the most-urgent structural gate; the ladder shows the
+    // fuller certification climb.
+    println!(
+        "  {anchor} [compass · phase={}]: {}",
+        gs.phase, gs.next_action
+    );
+    println!(
+        "  (the ladder = your maturity STANDING (rungs cleared); the compass line above = the single step to DO now — two views of one climb)"
+    );
     let turn = one_turn_plan(gs, ladder);
     println!("  one turn:");
     println!("    1. {}", turn.agent_export);
@@ -1041,9 +1052,8 @@ fn render_plain_status(
         align_count, adopt_count, totals.human_blocked
     );
     println!(
-        "  horizontal risk: {} priority unexplored pair(s), current={} — REQUIRED for the HARDENED rung. Full survey remaining: {} optional pair(s) via `loom edge unexplored --class all`",
+        "  horizontal grid: {} signal-bearing unexplored pair(s) — OPTIONAL discovery (ranked by centrality; `loom edge unexplored --class suspected-coupling`), NOT a gate: the N×N grid was superseded by the coupling smells. The Hardened-rung horizontal gate is explicit RELATES_TO inspection. Full survey: {} more optional pair(s) via `--class all`.",
         gs.priority_unexplored_pairs,
-        gs.horizontally_explored,
         (gs.unexplored_pairs - gs.priority_unexplored_pairs).max(0)
     );
     if intake.active() > 0 || intake.deferred > 0 {

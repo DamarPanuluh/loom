@@ -14,7 +14,7 @@ pub(super) fn run_all(
     let snapshot = store.query_snapshot()?;
     let gs = store.graph_state(&snapshot)?;
     let doctor = store.doctor_report(&snapshot)?;
-    let all_smells = if matches!(gs.phase.as_str(), "audit" | "complete") {
+    let all_smells = if matches!(gs.phase.as_str(), "harden" | "green") {
         Some(store.smell_report(&snapshot)?.open)
     } else {
         None
@@ -418,7 +418,9 @@ fn render_all(
             serde_json::json!(human_gated),
         );
         completion.insert(
-            "horizontal_risk_required_for_complete".to_string(),
+            // The N×N grid no longer gates (superseded by the coupling smells) —
+            // signal-bearing pairs are OPTIONAL discovery, ranked by centrality.
+            "horizontal_grid_signal_pairs_optional".to_string(),
             serde_json::json!(horizontal_risk),
         );
         completion.insert(

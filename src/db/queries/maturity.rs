@@ -1,10 +1,12 @@
-//! The maturity ladder — loom's SINGLE ordinal "done".
+//! The maturity ladder — loom's certification VECTOR: where the codebase STANDS.
 //!
 //! A rung-vector rolled up from gates loom already computes (the vertical spine,
-//! the comprehensiveness ledgers, `fully_proven_from_state`). It REPLACES the
-//! scattered reads (`phase=complete` / `fully_proven` / standalone
-//! `loom complete`) as the user-facing completion vocabulary; their math
-//! survives here as rung INPUTS — no new schema, no new queries.
+//! the comprehensiveness ledgers, `fully_proven_from_state`). This is the
+//! ACHIEVEMENT view ("how mature is this codebase") — DISTINCT from the compass
+//! PHASE (`graph_state.phase`: shape/realize/complete/harden/green), which is the
+//! NEXT-ACTION view ("what to do right now"). Two views of ONE journey: the phase
+//! says what to DO, the ladder says where you STAND; never call a phase a "rung".
+//! No new schema, no new queries — the gate math survives here as rung INPUTS.
 //!
 //! Ordered by loom's honesty law `RECORD ≠ DISCHARGE`: **Seeded** is
 //! RECORD-complete; **Realized → Production-ready** are progressive DISCHARGE,
@@ -356,7 +358,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
         ));
     }
     let hardened_lane = if !input.open_smells.is_empty() {
-        "audit"
+        "smells"
     } else if measured.total == 0 || measured.covered < measured.total {
         "quality"
     } else if !gs.horizontally_explored {
