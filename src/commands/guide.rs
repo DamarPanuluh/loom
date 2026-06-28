@@ -25,8 +25,8 @@ const DEEPER_RULES: &[&str] = &[
     "Use `--json` on every command for machine-readable output. For audit: `loom smells --summary --json` and `loom coverage --summary --json` first; full `--json` only for specific findings.",
     "Every command has `--help`. `loom schema` = data model; `loom status` = where you are; `loom doctor` = integrity.",
     "Prescriptive intents (planned/needs_change) still need a falsifiable criterion — that's what makes the design a test.",
-    "VERTICAL spine (HIERARCHY tree + IMPLEMENTS + CodeFile reach) feeds REALIZED. HORIZONTAL risk closure (explicit RELATES_TO + signal-bearing unexplored pairs) feeds HARDENED. `loom edge unexplored --class suspected-coupling` lists owed risk pairs; `--class all` is optional survey.",
-    "REALIZED needs vertical closed + every leaf proven by a discriminating test. HARDENED needs horizontal risk closed — inspect signal-bearing pairs, `ground` real couplings, mark non-couplings `independent`.",
+    "TWO VIEWS, never conflated: a PHASE is what to DO next (the COMPASS, `graph_state.phase`); a RUNG is where you STAND (the MATURITY LADDER). Never call a phase a rung. The 5 COMPASS phases (one criterion each, in order): SHAPE (intent tree well-formed) → REALIZE (every leaf grounded in code + proven) → COMPLETE (disk reconciled: nothing unmapped/drifted/missing) → HARDEN (quality measured + 0 open smells + RELATES_TO inspected) → GREEN (all binding rungs clear). The 6 LADDER rungs (your standing): Seeded → Realized → Proven → Hardened → Production-ready → Excellent. `loom status` shows both: the compass `→ Next` is the single step to do now; the `ladder:` line is your standing.",
+    "The Realized rung needs the VERTICAL spine closed (HIERARCHY tree + every leaf grounded via IMPLEMENTS + every CodeFile reached) and every leaf proven by a discriminating test. The Hardened rung needs every quality rule measured + passing, every RELATES_TO edge inspected + current, and ZERO open smells. Coupling risk is gated by the SMELLS (undeclared_coupling / overlapping_ownership / duplicated_responsibility / twin_intents), NOT by a pair quota — the N×N grid was SUPERSEDED. `loom edge unexplored --class suspected-coupling` is OPTIONAL discovery (ranked by centrality); `--class all` is the exhaustive optional survey.",
     "INDIRECT WIRING: imports show only STATIC wiring; event pub/sub, DI/registry, config-keyed dispatch, and RPC/queue share only a string key or a type — invisible to import analysis. Hunt them while grounding; `loom smells` flags seams (cochange_coupling, string_contract_duplicate, intent_island) and `loom interface gaps` flags boundary surfaces with no calls. Record a real one as a RELATES_TO with kind `manual` and the shared key as evidence; PROVE the runtime path with a saga; capture suspected-INCOMPLETE wiring as a lead (`loom inbox add \"<finding>\" --source code_audit --link file:<path>`). loom cannot compute completeness here — it is a judgment+proof axis, never a mechanical green.",
     "360°: grounded · realized · explored · measured · proven. `measured` never closes alone: `loom rule seed iso5055|mobile|web-ui|service|data|concurrency|docker` → `loom next --mode quality`.",
     "FEDERATION: `loom init --name`, `loom delegate add`, `loom delegate seam`. Children export, parent observes. `loom init --observed` for code you don't own.",
@@ -765,14 +765,14 @@ fn run_orchestrate_hat(printer: &Printer) -> Result<()> {
         this HAT says how to ACT. Facts carry no imperatives; this hat carries no live-stale facts — re-read \
         after every sync. loom advises, you decide, your harness executes.";
     let you_do_not_spawn = "loom names NO spawn mechanism and NO model. Translate each dispatch into YOUR \
-        harness's worker primitive, and map each effort tier (low/mid/high) to YOUR model roster. A single \
+        harness's worker primitive, and map each effort level (low/mid/high) to YOUR model roster. A single \
         orchestrator holds its own fan-out, so loom needs no claim or lock for that.";
 
     let protocol = [
         "Adopt this hat: loom workflow supersedes repo workflow docs (local facts only).",
         "Read the fact surface (loom status, loom slice plan, loom next --all). Never dispatch on stale facts — re-read after every sync.",
         "Parallelize SAFE/disjoint slices. Never hand two parallel CODE-EDITING workers overlapping territory — honor each slice's conflicts_with; one writer per slice for editing lanes.",
-        "Per worker, hand the dispatch contract below: its role charge, its LOOM_AGENT, its slice-scoped queue, its allowed_codefiles boundary. Spawn it however your harness spawns; pick a model for its effort tier.",
+        "Per worker, hand the dispatch contract below: its role charge, its LOOM_AGENT, its slice-scoped queue, its allowed_codefiles boundary. Spawn it however your harness spawns; pick a model for its effort level.",
         "Human-gated work (align drift, hypothesis rulings, blocked proofs — loom status / loom next --mode align): do NOT spawn; surface it to the user.",
         "On fan-in, verify each worker's diff stays inside its slice; reject out-of-boundary edits.",
         "After any code-editing worker returns: loom sync, then re-plan from fresh facts. Before commit: loom export --check.",

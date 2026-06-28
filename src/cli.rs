@@ -545,6 +545,11 @@ pub enum Command {
     /// rules never held against intents that have code. Each finding carries
     /// the exact remedy command; OPEN findings gate green (phase=harden routes to `loom smells`
     /// until each is resolved or refuted via its remedy; then phase=green).
+    /// SELF-CALIBRATING: `tangled_file` (owner-count outlier) and `hub_file`
+    /// (reverse-import outlier) use NO hardcoded limit — a Tukey fence on THIS
+    /// repo's own distribution, so they adapt to any codebase's scale; the
+    /// `undeclared_coupling` cap defers owner-count far-outlier hub files to
+    /// `tangled_file` (disclosed). The derived thresholds are shown in the output.
     Smells {
         /// How many findings to show.
         #[arg(long, default_value_t = 15)]
@@ -1519,18 +1524,21 @@ pub enum EdgeCmd {
     /// Show full detail of one RELATES_TO edge including both intent nodes.
     Show { edge_id: String },
 
-    /// List the intent pairs that have NO RELATES_TO edge yet. `--class
-    /// suspected-coupling` is the HARDENED risk backlog; `--class all` (default)
-    /// is the optional exhaustive survey. Each pair is ranked and carries a
-    /// pre-filled `loom edge explore` command so verdicts can be batched (paste
-    /// into `loom batch`). `impact-map` lists central-but-signal-less pairs.
+    /// List the intent pairs that have NO RELATES_TO edge yet — all OPTIONAL
+    /// discovery: the N×N grid was SUPERSEDED, so this never gates. Coupling risk
+    /// is gated by the SMELLS (undeclared_coupling / overlapping_ownership /
+    /// duplicated_responsibility / twin_intents), not by surveying pairs. `--class
+    /// suspected-coupling` is the curated high-signal backlog (ranked by centrality);
+    /// `--class all` (default) is the exhaustive survey. Each pair is ranked and
+    /// carries a pre-filled `loom edge explore` command so verdicts can be batched
+    /// (paste into `loom batch`). `impact-map` lists central-but-signal-less pairs.
     /// Mark `independent` at the highest honest altitude — a component-level
     /// verdict covers descendants ONLY with --covers-descendants.
     #[command(after_help = "EXAMPLE:\n  \
         loom edge unexplored --json\n  \
         loom edge unexplored --class suspected-coupling --limit 20")]
     Unexplored {
-        /// Which pairs: all | suspected-coupling | impact-map (default: all; required risk backlog: suspected-coupling).
+        /// Which pairs: all | suspected-coupling | impact-map (default: all). OPTIONAL discovery — coupling risk is gated by the smells, not a pair quota.
         #[arg(long)]
         class: Option<String>,
 

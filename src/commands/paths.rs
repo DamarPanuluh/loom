@@ -104,7 +104,7 @@ pub fn run_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer
         cov.proofs_declared_journey, cov.proofs_multi_intent
     );
     println!(
-        "ADDITIVE & read-only — never gates green. The tier reads the same on any repo or\n\
+        "ADDITIVE & read-only — never gates green. The proof tier reads the same on any repo or\n\
          language: a proof that spans >=2 intents or is a declared saga is a journey; a proof\n\
          attributed to ONE intent (even a parent) is a leaf, since validating a parent alone\n\
          does not prove its children compose. So a leaf-only intent here is one whose only\n\

@@ -852,7 +852,7 @@ mod tests {
         ] {
             assert!(
                 p.get(k).is_none(),
-                "'{k}' is tier-2 — dig via `loom status --json`: {p}"
+                "'{k}' is a deep-view detail — dig via `loom status --json`: {p}"
             );
         }
         // Never synced reads as prose, not as an empty string.
