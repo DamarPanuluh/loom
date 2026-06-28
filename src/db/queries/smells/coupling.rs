@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use super::{adjudicate, teaching_for, AdjudicatedSmell, Smell, SmellCtx};
+use super::{adjudicate, teaching_for, AdjudicatedSmell, CouplingDeferral, Smell, SmellCtx};
 use crate::db::queries::snapshot::QuerySnapshot;
 
 /// Shared reopen-trigger disclosure for the coupling-plane detectors, which
@@ -12,8 +12,8 @@ pub(super) fn detect_coupling_plane(
     ctx: &SmellCtx,
     smells: &mut Vec<Smell>,
     adj: &mut Vec<AdjudicatedSmell>,
-) {
-    detect_undeclared_coupling(
+) -> CouplingDeferral {
+    let deferral = detect_undeclared_coupling(
         ctx.snapshot,
         &ctx.intents_on_file,
         &ctx.linked,
@@ -46,6 +46,7 @@ pub(super) fn detect_coupling_plane(
         smells,
         adj,
     );
+    deferral
 }
 /// 6. Undeclared coupling — the physical plane contradicts the semantic: file A
 /// statically imports file B, but the intents owning A and B have no recorded
@@ -56,20 +57,50 @@ fn detect_undeclared_coupling(
     linked: &HashSet<(&str, &str)>,
     name_of: &HashMap<&str, &str>,
     smells: &mut Vec<Smell>,
-) {
+) -> CouplingDeferral {
+    // SELF-CALIBRATING cap. The owners_a × owners_b fan-out explodes on HUB files
+    // (one file owned by many intents): a file with 50 owners turns a single import
+    // into 50×k candidate pairs, none of them attributable to a specific
+    // responsibility — and that over-ownership is already the `tangled_file`
+    // finding's job. So defer the couplings of owner-count OUTLIER files to
+    // `tangled_file`, where the cutoff is a Tukey far-outlier fence on THIS repo's
+    // OWN owner-count distribution (never a hardcoded number). It adapts to any
+    // repo: a flat repo (no skew) defers nothing; a hub-heavy repo defers its hubs.
+    let owner_counts: Vec<usize> = intents_on_file.values().map(Vec::len).collect();
+    let fence = crate::db::queries::calibrate::tukey_upper_fence(&owner_counts, 3.0);
+    let is_hub = |path: &str| -> bool {
+        match fence {
+            Some(t) => intents_on_file
+                .get(path)
+                .is_some_and(|o| o.len() as f64 > t),
+            None => false, // too small/flat to calibrate -> defer nothing
+        }
+    };
+
     // Key on the id-sorted pair for DEDUP, but remember the actual import
     // DIRECTION (importer, imported) so the summary matches the evidence line —
     // ordering by intent id reported the coupling backwards ("Low imports High"
     // while the evidence said High → Low).
     let mut pair_files: HashMap<(String, String), (String, String, Vec<String>)> = HashMap::new();
+    let mut deferred_hubs: HashSet<&str> = HashSet::new();
+    let mut deferred_pairs: HashSet<(String, String)> = HashSet::new();
     for cf in &snapshot.codefiles {
         let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
             continue;
         };
+        let a_hub = is_hub(cf.path.as_str());
         for target in &cf.imports {
             let Some(owners_b) = intents_on_file.get(target.as_str()) else {
                 continue;
             };
+            let b_hub = is_hub(target.as_str());
+            let via_hub = a_hub || b_hub;
+            if a_hub {
+                deferred_hubs.insert(cf.path.as_str());
+            }
+            if b_hub {
+                deferred_hubs.insert(target.as_str());
+            }
             let example = format!("{} → {}", cf.path, target);
             let mut seen_pairs: HashSet<(String, String)> = HashSet::new();
             for a in owners_a {
@@ -83,6 +114,11 @@ fn detect_undeclared_coupling(
                     } else {
                         (b.to_string(), a.to_string())
                     };
+                    if via_hub {
+                        // Deferred to `tangled_file`; record it so the cap discloses.
+                        deferred_pairs.insert(key);
+                        continue;
+                    }
                     if seen_pairs.insert(key.clone()) {
                         pair_files
                             .entry(key)
@@ -94,6 +130,13 @@ fn detect_undeclared_coupling(
             }
         }
     }
+    // A pair that ALSO arose through a clean (non-hub) import is not really
+    // suppressed — count only those that exist ONLY via a hub file.
+    let suppressed = deferred_pairs
+        .iter()
+        .filter(|k| !pair_files.contains_key(*k))
+        .count();
+
     for ((key_a, key_b), (importer, imported, examples)) in pair_files {
         let (n_importer, n_imported) = (
             name_of
@@ -124,6 +167,12 @@ fn detect_undeclared_coupling(
             ),
             teaching: teaching_for("undeclared_coupling"),
         });
+    }
+
+    CouplingDeferral {
+        owner_outlier_threshold: fence,
+        deferred_hub_files: deferred_hubs.len(),
+        deferred_pairs: suppressed,
     }
 }
 

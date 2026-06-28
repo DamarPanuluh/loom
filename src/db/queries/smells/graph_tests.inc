@@ -733,4 +733,56 @@ mod transitive_layering_tests {
             "the stale ruling no longer adjudicates it"
         );
     }
+
+    // The self-calibrating cap defers an owner-count OUTLIER (hub) file's couplings
+    // to tangled_file, keeps clean single-owner couplings, and DISCLOSES the cutoff
+    // it derived from THIS graph's own owner-count distribution.
+    #[test]
+    fn undeclared_coupling_defers_hub_outliers_and_discloses_the_self_calibrated_cutoff() {
+        let mut intents = vec![intent("t", "")];
+        let mut implements = vec![imp("t", "target.rs")];
+        let mut codefiles = vec![cf("target.rs", &[])];
+        // 6 CLEAN single-owner importers -> their (ci, t) couplings are kept.
+        for i in 0..6 {
+            let c = format!("c{i}");
+            let path = format!("clean{i}.rs");
+            intents.push(intent(&c, ""));
+            codefiles.push(cf(&path, &["target.rs"]));
+            implements.push(imp(&c, &path));
+        }
+        // 1 HUB file owned by 6 intents -> an owner-count outlier against a
+        // single-owner body, so the Tukey fence sits at 1 and the hub exceeds it;
+        // its 6 (hi, t) couplings are deferred to tangled_file.
+        codefiles.push(cf("hub.rs", &["target.rs"]));
+        for i in 0..6 {
+            let h = format!("h{i}");
+            intents.push(intent(&h, ""));
+            implements.push(imp(&h, "hub.rs"));
+        }
+        let r = report(intents, codefiles, implements, &[]);
+
+        let d = &r.coupling_deferral;
+        assert_eq!(
+            d.owner_outlier_threshold,
+            Some(1.0),
+            "fence self-calibrated from the single-owner body"
+        );
+        assert_eq!(d.deferred_hub_files, 1, "the hub file is the lone outlier");
+        assert_eq!(
+            d.deferred_pairs, 6,
+            "its 6 (hub-owner, target) couplings are deferred"
+        );
+
+        let open = of_kind(&r, "undeclared_coupling");
+        assert_eq!(open.len(), 6, "only the 6 clean single-owner couplings remain");
+        for s in &open {
+            for hub_owner in ["h0", "h1", "h2", "h3", "h4", "h5"] {
+                assert!(
+                    !s.remedy.contains(hub_owner),
+                    "no deferred hub-owner coupling survives: {}",
+                    s.remedy
+                );
+            }
+        }
+    }
 }

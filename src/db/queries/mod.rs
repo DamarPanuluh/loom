@@ -4,6 +4,7 @@
 //! that runs over typed snapshots: queue scoring, doctor checks, search
 //! ranking, smells, reports, and vocabulary helpers.
 
+pub mod calibrate;
 pub mod completeness;
 pub mod composition;
 pub mod comprehensiveness;

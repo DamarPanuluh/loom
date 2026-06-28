@@ -553,6 +553,22 @@ fn render(
 
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
     let (coded_layers, declared_layers) = (report.coded_layers, report.declared_layers);
+    let cd_threshold = report.coupling_deferral.owner_outlier_threshold;
+    let cd_hubs = report.coupling_deferral.deferred_hub_files;
+    let cd_pairs = report.coupling_deferral.deferred_pairs;
+    let coupling_deferral_json = serde_json::json!({
+        "owner_outlier_threshold": cd_threshold,
+        "deferred_hub_files": cd_hubs,
+        "deferred_pairs": cd_pairs,
+    });
+    // A human disclosure line, only when the self-calibrated cap actually fired.
+    let coupling_deferral_line = cd_threshold.filter(|_| cd_hubs > 0).map(|t| {
+        format!(
+            "  undeclared_coupling cap (self-calibrated): {cd_hubs} hub file(s) / {cd_pairs} \
+             coupling(s) deferred to tangled_file — files with >{t:.0} owners, the Tukey \
+             far-outlier of THIS repo's owner-count distribution (untangle them to surface the couplings)"
+        )
+    });
     let mut smells = report.open;
     if let Some(kind) = kind {
         smells.retain(|s| s.kind == kind);
@@ -615,6 +631,7 @@ fn render(
                 "code_clones_tracked": clone_tracked,
                 "code_clones_open": clone_open,
                 "size_advisories_total": advisory.len(),
+                "coupling_deferral": coupling_deferral_json.clone(),
                 "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Advisory totals count open advisories after current decision-note adjudication; code_clones_total counts physical clone groups and code_clones_* reports their dispositions.",
             }));
         } else {
@@ -647,6 +664,9 @@ fn render(
                 println!(
                     "  layering detector unarmed: {coded_layers} coded layer(s), no declared order"
                 );
+            }
+            if let Some(line) = &coupling_deferral_line {
+                println!("{line}");
             }
             for s in &smells {
                 println!("  - [{}] {}", s.kind, s.summary);
@@ -685,6 +705,7 @@ fn render(
             "code_clones_tracked": clone_tracked,
             "code_clones_open": clone_open,
             "size_advisories": advisory,
+            "coupling_deferral": coupling_deferral_json.clone(),
             "note": "Findings are suspicions computed from graph structure — resolve each via its remedy, ONE at a time after reading ITS code. A decision note is audit trail, not a fix: it must name the decomposition you considered and the concrete reason it is wrong for THIS finding, in terms true only of it — a ruling that restates the size/shape, or repeats one you used elsewhere, is rubber-stamping and loom rejects it (`loom note add --smell` bounces a vacuous/templated ruling; `loom doctor` flags templated clusters). OPEN findings gate the HARDENED rung: it requires zero. `adjudicated` lists suppressed findings and advisories WITH their rulings — review them; each names what re-opens it. `cochange_suggestions`, `shotgun_surgery`, `proof_locality_suggestions`, and `code_clones` are ADVISORY — they never gate green, and current decision notes move them out of the open advisory buckets into `adjudicated`.",
         }));
         return Ok(());
@@ -739,6 +760,10 @@ fn render(
             total - smells.len(),
             total
         );
+    }
+    if let Some(line) = &coupling_deferral_line {
+        println!();
+        println!("{line}");
     }
     if !suggestions_shown.is_empty() {
         println!();
@@ -1360,6 +1385,7 @@ mod tests {
             tagged_coded_intents: 0,
             coded_layers: 0,
             declared_layers: 0,
+            coupling_deferral: Default::default(),
         }
     }
 

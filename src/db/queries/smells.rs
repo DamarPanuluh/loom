@@ -383,6 +383,26 @@ pub struct SmellReport {
     /// = the layering instrument is unarmed, and the report must say so.
     pub coded_layers: usize,
     pub declared_layers: usize,
+    /// Self-calibration disclosure for `undeclared_coupling`: the import→pair
+    /// fan-out is capped at owner-count OUTLIER files (a self-calibrating Tukey
+    /// fence on THIS repo's own owner distribution, never a hardcoded number),
+    /// deferring their tangled couplings to `tangled_file`. A `None` threshold
+    /// means the repo was too small/flat to calibrate, so nothing was deferred.
+    /// Disclosed so the cap is auditable, never a hidden cutoff.
+    pub coupling_deferral: CouplingDeferral,
+}
+
+/// Disclosure of the self-calibrated `undeclared_coupling` cap — see the
+/// `SmellReport::coupling_deferral` field doc.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct CouplingDeferral {
+    /// The derived owner-count cutoff (Tukey far-outlier fence); `None` when the
+    /// repo was too small/flat to calibrate (nothing deferred).
+    pub owner_outlier_threshold: Option<f64>,
+    /// Grounded files whose owner-count exceeded the cutoff (deferred hub files).
+    pub deferred_hub_files: usize,
+    /// Distinct couplings suppressed because they arose ONLY through a hub file.
+    pub deferred_pairs: usize,
 }
 
 /// The per-smell teaching corpus — a flat kind→(principle, inspect, avoid,
@@ -715,7 +735,8 @@ pub fn compute_smells_from_parts(
     // Run each plane's detectors. Order is cosmetic — `smells` is sorted below.
     semantic::detect_semantic_plane(&ctx, &mut smells, &mut adjudicated_out);
     physical::detect_physical_plane(&ctx, &mut smells, &mut adjudicated_out);
-    coupling::detect_coupling_plane(&ctx, &mut smells, &mut adjudicated_out);
+    let coupling_deferral =
+        coupling::detect_coupling_plane(&ctx, &mut smells, &mut adjudicated_out);
     normative::detect_normative_plane(&ctx, &mut smells)?;
     lifecycle::detect_lifecycle_plane(&ctx, &mut smells, &mut adjudicated_out);
     consumer::detect_consumer_plane(&ctx, &mut smells, &mut adjudicated_out);
@@ -791,6 +812,7 @@ pub fn compute_smells_from_parts(
         tagged_coded_intents,
         coded_layers,
         declared_layers,
+        coupling_deferral,
     })
 }
 
