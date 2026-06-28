@@ -581,6 +581,220 @@ fn sqlite_retire_stales_implements_and_filters_them_from_active_snapshot() {
         );
 }
 
+// Companion to the IMPLEMENTS-staling fix: VALIDATES was the one inspectable edge
+// retire_intent left green, so a raw (unfiltered) read of validates/validation
+// could still show a passing proof for now-dead code. retire_intent now resets the
+// proof AND flips the edge, matching the belt-and-suspenders honesty the other five
+// edge types already get.
+#[test]
+fn sqlite_retire_stales_validates_and_resets_the_proof() {
+    let now = "2026-01-01T00:00:00Z";
+    let mut store = SqliteGraphStore::in_memory().unwrap();
+    store
+        .initialize(
+            crate::db::schema::SCHEMA_VERSION,
+            "graph-a",
+            "test",
+            "owned",
+            now,
+        )
+        .unwrap();
+    store
+        .insert_intent(&Intent {
+            id: "intent-a".into(),
+            name: "to be retired".into(),
+            description: "A proof must not stay green after retire.".into(),
+            criterion: String::new(),
+            abstraction_level: "feature".into(),
+            domain: "".into(),
+            layer: "".into(),
+            source_refs: Vec::new(),
+            status: "proposed".into(),
+            aspect: "".into(),
+            lifecycle: "implemented".into(),
+            created_at: now.into(),
+            updated_at: now.into(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: "".into(),
+        })
+        .unwrap();
+    store
+        .insert_validation(&Validation {
+            id: "validation-a".into(),
+            name: "proves-a".into(),
+            description: String::new(),
+            validation_type: "test".into(),
+            command: "cargo test".into(),
+            last_run: "".into(),
+            last_result: "not_run".into(),
+            last_executed_run: "".into(),
+            discrimination_status: "".into(),
+        })
+        .unwrap();
+    store
+        .insert_validates("validation-a", "intent-a", "", now)
+        .unwrap();
+    // Record a PASSING proof: the validation passed AND the validates edge is passing.
+    store
+        .mark_validation_result(
+            "validation-a",
+            "passed",
+            "passing",
+            "proven",
+            "loom",
+            now,
+            None,
+            None,
+        )
+        .unwrap();
+
+    // Pre-retire: the proof is green on both the validation and the edge.
+    assert_eq!(
+        store.list_validations().unwrap()[0].last_result,
+        "passed",
+        "the validation is recorded as passed"
+    );
+    assert_eq!(
+        store
+            .list_all_validates()
+            .unwrap()
+            .iter()
+            .find(|e| e.intent_id == "intent-a")
+            .unwrap()
+            .inspection_status,
+        "passing",
+        "the validates edge is passing"
+    );
+
+    store
+        .retire_intent("intent-a", "superseded", None, "2026-01-02T00:00:00Z")
+        .unwrap();
+
+    // Post-retire: the proof result is reset and the edge is flagged — neither a
+    // raw `validation.last_result` read nor a `validates.inspection_status` read
+    // keeps a green proof on the retired intent.
+    assert_eq!(
+        store.list_validations().unwrap()[0].last_result,
+        "not_run",
+        "retire resets the proof result so it cannot read as passed for dead code"
+    );
+    assert_eq!(
+        store
+            .list_all_validates()
+            .unwrap()
+            .iter()
+            .find(|e| e.intent_id == "intent-a")
+            .unwrap()
+            .inspection_status,
+        "needs_reverification",
+        "retire flips the validates edge, matching the other five edge types"
+    );
+}
+
+// A validation can prove MANY intents (a saga, an integration test). Retiring ONE
+// of them must flip only that intent's validates edge and must NOT reset the shared
+// validation's result — doing so would wrongly invalidate a still-active intent's
+// green proof. (Regression guard for the shared-validation over-invalidation found
+// in adversarial review of the retire-validates fix.)
+#[test]
+fn sqlite_retire_keeps_a_shared_validations_proof_for_the_active_intent() {
+    let now = "2026-01-01T00:00:00Z";
+    let mut store = SqliteGraphStore::in_memory().unwrap();
+    store
+        .initialize(
+            crate::db::schema::SCHEMA_VERSION,
+            "graph-a",
+            "test",
+            "owned",
+            now,
+        )
+        .unwrap();
+    for id in ["intent-a", "intent-b"] {
+        store
+            .insert_intent(&Intent {
+                id: id.into(),
+                name: id.into(),
+                description: "Shares one validation with its sibling.".into(),
+                criterion: String::new(),
+                abstraction_level: "feature".into(),
+                domain: "".into(),
+                layer: "".into(),
+                source_refs: Vec::new(),
+                status: "proposed".into(),
+                aspect: "".into(),
+                lifecycle: "implemented".into(),
+                created_at: now.into(),
+                updated_at: now.into(),
+                tags: Vec::new(),
+                visibility: "internal".into(),
+                boundary: "".into(),
+            })
+            .unwrap();
+    }
+    store
+        .insert_validation(&Validation {
+            id: "validation-a".into(),
+            name: "proves-both".into(),
+            description: String::new(),
+            validation_type: "saga".into(),
+            command: "loom saga run both".into(),
+            last_run: "".into(),
+            last_result: "not_run".into(),
+            last_executed_run: "".into(),
+            discrimination_status: "".into(),
+        })
+        .unwrap();
+    store
+        .insert_validates("validation-a", "intent-a", "", now)
+        .unwrap();
+    store
+        .insert_validates("validation-a", "intent-b", "", now)
+        .unwrap();
+    // One passing proof covering BOTH intents (saga-style).
+    store
+        .mark_validation_result(
+            "validation-a",
+            "passed",
+            "passing",
+            "proven",
+            "loom",
+            now,
+            None,
+            None,
+        )
+        .unwrap();
+
+    store
+        .retire_intent("intent-a", "superseded", None, "2026-01-02T00:00:00Z")
+        .unwrap();
+
+    let validates = store.list_all_validates().unwrap();
+    assert_eq!(
+        validates
+            .iter()
+            .find(|e| e.intent_id == "intent-a")
+            .unwrap()
+            .inspection_status,
+        "needs_reverification",
+        "the retired intent's proof link is flipped"
+    );
+    assert_eq!(
+        validates
+            .iter()
+            .find(|e| e.intent_id == "intent-b")
+            .unwrap()
+            .inspection_status,
+        "passing",
+        "the still-active sibling's proof link is untouched"
+    );
+    assert_eq!(
+        store.list_validations().unwrap()[0].last_result,
+        "passed",
+        "the shared validation result is preserved — retiring a sibling must not invalidate intent-b's green proof"
+    );
+}
+
 #[test]
 fn sqlite_schema_contract() {
     let data = current_export();

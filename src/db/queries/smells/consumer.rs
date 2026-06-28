@@ -108,9 +108,15 @@ fn detect_happy_path_only(
                 .or_default()
                 .insert(child.aspect.as_str());
         }
+        // Anchor on the LATER of the child's creation and last metadata change:
+        // re-tagging an EXISTING child's aspect (`loom intent update --aspect`)
+        // bumps updated_at but not created_at, so without this a prior
+        // happy_path_only ruling would keep suppressing the finding after the very
+        // aspect mix it adjudicated changed underneath it.
+        let child_anchor = std::cmp::max(child.created_at.as_str(), child.updated_at.as_str());
         let e = newest_aspect_child.entry(p.as_str()).or_default();
-        if rfc3339_after(child.created_at.as_str(), e) {
-            *e = &child.created_at;
+        if rfc3339_after(child_anchor, e) {
+            *e = child_anchor;
         }
     }
     for (parent_id, aspects) in &child_aspects {

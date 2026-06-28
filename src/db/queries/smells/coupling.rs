@@ -27,6 +27,7 @@ pub(super) fn detect_coupling_plane(
         ctx.layer_order,
         &ctx.name_of,
         &ctx.newest_grounding,
+        &ctx.updated_at_of,
         ctx.governs,
         &ctx.rule_kind,
         &ctx.last_decision,
@@ -40,6 +41,7 @@ pub(super) fn detect_coupling_plane(
         ctx.layer_order,
         &ctx.name_of,
         &ctx.newest_grounding,
+        &ctx.updated_at_of,
         &ctx.last_decision,
         smells,
         adj,
@@ -128,6 +130,7 @@ fn detect_undeclared_coupling(
 /// 6b. Layering violation — the declared order judging the import graph: code
 /// owned by a LOWER layer imports code owned by a HIGHER layer. A decision note
 /// on the importing intent accepts the up-dependency; a new grounding re-opens.
+#[allow(clippy::too_many_arguments)]
 fn detect_layering_violation(
     snapshot: &QuerySnapshot,
     intents: &[crate::types::Intent],
@@ -135,6 +138,7 @@ fn detect_layering_violation(
     layer_order: &[String],
     name_of: &HashMap<&str, &str>,
     newest_grounding: &HashMap<&str, &str>,
+    updated_at_of: &HashMap<&str, &str>,
     governs: &[crate::types::Governs],
     rule_kind: &HashMap<&str, &str>,
     last_decision: &HashMap<&str, &crate::types::Note>,
@@ -194,11 +198,19 @@ fn detect_layering_violation(
             layer_of.get(a.as_str()).copied().unwrap_or(""),
             layer_of.get(b.as_str()).copied().unwrap_or(""),
         );
+        // Anchor on the LATER of the newest grounding and the intent's last
+        // metadata change: a layer/boundary edit moves no grounding, so without
+        // updated_at a prior ruling would keep suppressing the smell after the very
+        // layer it adjudicated changed underneath it.
+        let layer_anchor = std::cmp::max(
+            newest_grounding.get(a.as_str()).copied().unwrap_or(""),
+            updated_at_of.get(a.as_str()).copied().unwrap_or(""),
+        );
         if let Some(note) = adjudicate(
             last_decision,
             "layering_violation",
             a.as_str(),
-            newest_grounding.get(a.as_str()).copied().unwrap_or(""),
+            layer_anchor,
         ) {
             adjudicated_out.push(AdjudicatedSmell {
                 kind: "layering_violation".into(),
@@ -256,6 +268,7 @@ fn detect_layering_violation(
 /// 6c. Transitive layering violation — an up-the-order dependency CLEAN at every
 /// single hop (6b never fires) but illegal across the whole path, routed through
 /// UNLAYERED intermediates.
+#[allow(clippy::too_many_arguments)]
 fn detect_transitive_layering_violation(
     snapshot: &QuerySnapshot,
     intents: &[crate::types::Intent],
@@ -263,6 +276,7 @@ fn detect_transitive_layering_violation(
     layer_order: &[String],
     name_of: &HashMap<&str, &str>,
     newest_grounding: &HashMap<&str, &str>,
+    updated_at_of: &HashMap<&str, &str>,
     last_decision: &HashMap<&str, &crate::types::Note>,
     smells: &mut Vec<Smell>,
     adjudicated_out: &mut Vec<AdjudicatedSmell>,
@@ -379,11 +393,15 @@ fn detect_transitive_layering_violation(
             let summary = format!(
                 "'{na}' ({la}) transitively depends on '{nc}' ({lc}) against the declared layer order — clean at every hop"
             );
+            let chain_anchor = std::cmp::max(
+                newest_grounding.get(a).copied().unwrap_or(""),
+                updated_at_of.get(a).copied().unwrap_or(""),
+            );
             if let Some(note) = adjudicate(
                 last_decision,
                 "transitive_layering_violation",
                 a,
-                newest_grounding.get(a).copied().unwrap_or(""),
+                chain_anchor,
             ) {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "transitive_layering_violation".into(),

@@ -344,6 +344,61 @@ mod cycle_island_tests {
             "loading alone is not a triggering aspect"
         );
     }
+
+    // happy_path_only is anchored on the newest aspect-tagged child. Re-tagging an
+    // EXISTING child's aspect (`loom intent update --aspect`) bumps updated_at but
+    // not created_at, so folding updated_at into the anchor is what re-opens a
+    // ruling made under the old aspect mix.
+    #[test]
+    fn a_child_aspect_change_reopens_a_previously_adjudicated_happy_path_only() {
+        let ground = "2026-06-15T00:00:00+00:00";
+        let ruling = "2026-06-20T00:00:00+00:00";
+        let report_at = |child_updated: &str| {
+            let mut child = with_aspect("sunny", "happy");
+            child.created_at = ground.into();
+            child.updated_at = child_updated.into();
+            let intents = vec![intent("sys", "system"), intent("feat", "component"), child];
+            let hierarchy = vec![
+                ("sys".to_string(), "feat".to_string()),
+                ("feat".to_string(), "sunny".to_string()),
+            ];
+            let note = Note {
+                id: "n1".into(),
+                kind: "decision".into(),
+                text: "accepted: the sad/fallback path is intentionally out of scope here".into(),
+                author: "llm".into(),
+                target_kind: "smell".into(),
+                target_id: "happy_path_only:feat".into(),
+                resolution: String::new(),
+                created_at: ruling.into(),
+                audience: String::new(),
+            };
+            report_with_notes(intents, hierarchy, vec![], &[note])
+        };
+
+        // Ruling newer than the newest aspect child's last change → suppressed.
+        let settled = report_at("2026-06-19T00:00:00+00:00");
+        assert!(
+            of_kind(&settled, "happy_path_only").is_empty(),
+            "a ruling newer than the aspect mix suppresses the finding"
+        );
+        assert!(
+            settled
+                .adjudicated
+                .iter()
+                .any(|a| a.kind == "happy_path_only"),
+            "and it surfaces as adjudicated"
+        );
+
+        // Re-tagging the child's aspect after the ruling bumps updated_at past it
+        // → the stale ruling no longer holds → the finding re-opens.
+        let changed = report_at("2026-06-21T00:00:00+00:00");
+        assert_eq!(
+            of_kind(&changed, "happy_path_only").len(),
+            1,
+            "an aspect change after the ruling re-opens the finding (the gap this fix closes)"
+        );
+    }
 }
 
 #[cfg(test)]
@@ -587,6 +642,95 @@ mod transitive_layering_tests {
             of_kind(&r, "architecture_verdict_contradicts_layering").len(),
             1,
             "a passing architecture verdict over a layering violation is the contradiction"
+        );
+    }
+
+    // A layer/boundary edit moves no grounding, so anchoring an adjudication on
+    // newest_grounding alone let a ruling keep suppressing a layering smell after
+    // the very layer it adjudicated changed. The anchor now folds in the intent's
+    // updated_at (bumped by every metadata edit), so re-declaring a layer re-opens
+    // a stale ruling for re-adjudication.
+    #[test]
+    fn a_metadata_change_reopens_a_previously_adjudicated_layering_violation() {
+        let ground = "2026-06-15T00:00:00+00:00";
+        let ruling = "2026-06-20T00:00:00+00:00";
+        let report_at = |a_updated: &str| {
+            let mut a = intent("a", "storage");
+            a.updated_at = a_updated.into();
+            let c = intent("c", "presentation");
+            let codefiles = vec![cf("a.rs", &["c.rs"]), cf("c.rs", &[])];
+            let mut ia = imp("a", "a.rs");
+            ia.created_at = ground.into();
+            let mut ic = imp("c", "c.rs");
+            ic.created_at = ground.into();
+            let note = crate::types::Note {
+                id: "n1".into(),
+                kind: "decision".into(),
+                text: "deliberate: this storage module legitimately reaches the presentation surface"
+                    .into(),
+                author: "llm:architecture".into(),
+                target_kind: "smell".into(),
+                target_id: "layering_violation:a".into(),
+                resolution: String::new(),
+                created_at: ruling.into(),
+                audience: String::new(),
+            };
+            let snapshot = QuerySnapshot::from_parts(
+                vec![a, c],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![ia, ic],
+                codefiles,
+                None,
+            );
+            let order: Vec<String> = ["presentation", "application", "storage"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+            compute_smells_from_parts(
+                &snapshot,
+                SmellInputs {
+                    notes: &[note],
+                    vocab_terms: &[],
+                    layer_order: &order,
+                    proposed_hypotheses: &[],
+                    targets: &[],
+                },
+            )
+            .unwrap()
+        };
+
+        // Ruling NEWER than the last metadata change → still valid → suppressed.
+        let settled = report_at("2026-06-19T00:00:00+00:00");
+        assert!(
+            !settled.open.iter().any(|s| s.kind == "layering_violation"),
+            "a ruling that post-dates the last metadata change suppresses the violation"
+        );
+        assert!(
+            settled
+                .adjudicated
+                .iter()
+                .any(|a| a.kind == "layering_violation"),
+            "and it surfaces as adjudicated, not silently gone"
+        );
+
+        // A layer re-declaration AFTER the ruling bumps updated_at past it → the
+        // ruling no longer holds → the violation re-opens for re-adjudication.
+        let changed = report_at("2026-06-21T00:00:00+00:00");
+        assert!(
+            changed.open.iter().any(|s| s.kind == "layering_violation"),
+            "a metadata change after the ruling re-opens the violation (the gap this fix closes)"
+        );
+        assert!(
+            !changed
+                .adjudicated
+                .iter()
+                .any(|a| a.kind == "layering_violation"),
+            "the stale ruling no longer adjudicates it"
         );
     }
 }

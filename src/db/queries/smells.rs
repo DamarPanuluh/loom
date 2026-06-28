@@ -562,6 +562,11 @@ struct SmellCtx<'a> {
     signal_toks: HashMap<&'a str, HashSet<String>>,
     last_decision: HashMap<&'a str, &'a crate::types::Note>,
     newest_grounding: HashMap<&'a str, &'a str>,
+    /// Per-intent `updated_at` — bumps on EVERY metadata change (layer, boundary,
+    /// aspect, domain, criterion, meaning). Folded into the layering-adjudication
+    /// anchor so a layer/boundary edit re-opens a previously-ruled layering smell
+    /// (newest_grounding alone misses it: a metadata edit moves no grounding).
+    updated_at_of: HashMap<&'a str, &'a str>,
     newest_claim: HashMap<&'a str, &'a str>,
     roots: Vec<&'a crate::types::Intent>,
     intents_by_level: HashMap<&'a str, Vec<&'a crate::types::Intent>>,
@@ -636,6 +641,10 @@ fn build_smell_ctx<'a>(
         }
     }
     let mut newest_grounding: HashMap<&str, &str> = HashMap::new();
+    let updated_at_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.updated_at.as_str()))
+        .collect();
     let mut newest_claim: HashMap<&str, &str> = HashMap::new();
     for im in implements {
         let g = newest_grounding.entry(im.intent_id.as_str()).or_default();
@@ -685,6 +694,7 @@ fn build_smell_ctx<'a>(
         signal_toks,
         last_decision,
         newest_grounding,
+        updated_at_of,
         newest_claim,
         roots,
         intents_by_level,

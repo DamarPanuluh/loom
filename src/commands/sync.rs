@@ -95,6 +95,13 @@ fn run_with_sqlite(
     // stamp it when something moved; any real graph change also moves graph
     // CONTENT, which drives export staleness on its own, so skipping the
     // timestamp on a genuine no-op is safe and makes sync idempotent.
+    //
+    // Transition-note compaction is DELIBERATELY excluded: `transition` notes are
+    // dropped at export time (see export_json), so pruning them never changes the
+    // committed artifact — yet last_synced IS exported, so counting a
+    // compaction-only sync as a change would bump last_synced and flip
+    // `export --check` STALE with nothing exportable having moved. Compaction is
+    // still reported in the sync output for visibility.
     let anything_changed = state.files_changed > 0
         || state.facts_rewritten > 0
         || state.kinds_backfilled > 0
@@ -105,8 +112,7 @@ fn run_with_sqlite(
         || state.serves_flagged > 0
         || state.validations_invalidated > 0
         || !state.pending_hash_updates.is_empty()
-        || !state.locators_stale.is_empty()
-        || transitions_compacted > 0;
+        || !state.locators_stale.is_empty();
     if anything_changed {
         store.set_last_synced(&now)?;
     }
@@ -493,6 +499,14 @@ fn flag_relates(
         // federation/meaning ripple (require_code_stale_kind == false) is not a
         // code change, so it keeps the status-only flip for every status.
         .filter(|edge| {
+            // The DB-layer flip (`flag_relates_to_needs_reverification`) only acts
+            // on passing/independent edges and is a guaranteed no-op for any other
+            // status. Reject non-passing/non-independent edges up front so neither
+            // ripple path wastes an iteration + transaction attempt on an edge the
+            // store will refuse — behavior-identical, just less churn.
+            if edge.inspection_status != "passing" && edge.inspection_status != "independent" {
+                return false;
+            }
             if !require_code_stale_kind {
                 return true;
             }
@@ -704,6 +718,13 @@ fn backfill_mechanical_kinds(store: &mut SqliteStore, state: &mut SyncState) -> 
         .map(|i| (i.id.as_str(), i))
         .collect();
     for e in &snapshot.relates {
+        // NOTE: this re-derives kinds for EVERY RELATES_TO edge, not just edges
+        // touching a changed file. A narrowing to changed-file pairs was tried and
+        // reverted: `flag_relates` reads STORED kinds (the meaning-only and
+        // import-only exemptions), and a metadata-only `--domain` change leaves a
+        // stale `same_domain` kind that a scoped backfill would not refresh before a
+        // later code-change sync reads it — a stale-green the full backfill avoids by
+        // refreshing the whole grid each code-changing sync.
         let (Some(a), Some(b)) = (by_id.get(e.from_id.as_str()), by_id.get(e.to_id.as_str()))
         else {
             continue;

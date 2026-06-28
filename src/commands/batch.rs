@@ -520,7 +520,7 @@ fn apply_line_sqlite(
             })?;
             Ok((format!("smell_decision {smell_id}"), None))
         }
-        other => return Err(unknown_op_error(other, &v)),
+        other => Err(unknown_op_error(other, &v)),
     }
 }
 

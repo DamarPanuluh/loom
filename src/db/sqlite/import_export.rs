@@ -264,6 +264,40 @@ impl SqliteGraphStore {
         if !path.exists() {
             return Ok(None);
         }
+        // mtime fast-path: every read command (status/guide/doctor/next/complete/…)
+        // calls this, and the full serialize-the-whole-graph + byte-compare below
+        // is the dominant cost on a large graph. The committed JSON is written FROM
+        // the live DB, so it can only be STALE if the DB was written after the last
+        // export. Compare mtimes: if the newest DB file (WAL is on, so writes land
+        // in -wal/-shm before checkpoint) is no newer than the committed JSON, the
+        // export already captured the last write → fresh, skip the rebuild. A DB
+        // newer than the JSON (the active-editing case) falls through to the
+        // authoritative byte-exact compare below, which still tells a real change
+        // apart from a no-op write. `loom export --check` runs its OWN byte compare
+        // and never reaches this method, so the strict freshness gate is intact.
+        // Worst case (e.g. a read handle that touches the WAL on open) is a missed
+        // skip, never a wrong answer: the fast-path only returns fresh when the DB
+        // is provably older than the export.
+        if let Some(json_mtime) = std::fs::metadata(&path)
+            .ok()
+            .and_then(|m| m.modified().ok())
+        {
+            let db_dir = root.join(".loom");
+            let newest_db = ["graph.sqlite", "graph.sqlite-wal", "graph.sqlite-shm"]
+                .iter()
+                .filter_map(|name| std::fs::metadata(db_dir.join(name)).ok())
+                .filter_map(|m| m.modified().ok())
+                .max();
+            if let Some(db_mtime) = newest_db {
+                // STRICTLY older: an equal mtime is ambiguous (a write can land in
+                // the same coarse-grained mtime tick as the export finishes), so it
+                // falls through to the byte-exact compare rather than risk a
+                // false-fresh. Only a DB provably older than the export is fresh.
+                if db_mtime < json_mtime {
+                    return Ok(Some(false));
+                }
+            }
+        }
         let live = serde_json::to_string_pretty(&self.export_json()?)?;
         Ok(Some(
             std::fs::read_to_string(&path).ok().as_deref() != Some(live.as_str()),

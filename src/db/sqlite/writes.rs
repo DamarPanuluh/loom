@@ -483,6 +483,18 @@ impl SqliteGraphStore {
                     && (e.inspection_status == "passing" || e.inspection_status == "independent")
             })
             .collect();
+        // VALIDATES was the one inspectable edge left un-staled on retirement, so a
+        // raw (unfiltered) read of `validates`/`validation` could still show a green
+        // proof for now-dead code while the other five edge types are honestly
+        // marked. Gather the passing/independent proofs to flip below.
+        let validates_edges = self
+            .list_all_validates()?
+            .into_iter()
+            .filter(|e| {
+                e.intent_id == id
+                    && (e.inspection_status == "passing" || e.inspection_status == "independent")
+            })
+            .collect::<Vec<_>>();
         let tx = self.write_tx()?;
         tx.execute(
             "UPDATE intent SET status = 'deprecated', updated_at = ?1 WHERE id = ?2",
@@ -554,6 +566,44 @@ impl SqliteGraphStore {
                 &cause,
                 now,
             )?;
+        }
+        for edge in &validates_edges {
+            // Flip THIS intent's proof link: a passing validates edge on now-dead
+            // code must not stay green (the snapshot.validates honesty gap).
+            tx.execute(
+                "UPDATE validates SET inspection_status = 'needs_reverification'
+                 WHERE validation_id = ?1 AND intent_id = ?2",
+                params![edge.validation_id, edge.intent_id],
+            )?;
+            insert_sync_flip_note_tx(
+                &tx,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
+            )?;
+            // The validation's RESULT is shared (one validation can prove many
+            // intents — a saga, an integration test). Reset last_result ONLY when no
+            // OTHER still-active intent relies on it; otherwise resetting would
+            // wrongly invalidate a live intent's green proof. The retiring intent is
+            // already 'deprecated' in this tx, so it is excluded by both clauses.
+            let shared_with_active: bool = tx.query_row(
+                "SELECT EXISTS(
+                    SELECT 1 FROM validates v JOIN intent i ON v.intent_id = i.id
+                    WHERE v.validation_id = ?1 AND v.intent_id != ?2 AND i.status != 'deprecated'
+                 )",
+                params![edge.validation_id, id],
+                |r| r.get(0),
+            )?;
+            if !shared_with_active {
+                tx.execute(
+                    "UPDATE validation SET last_result = 'not_run'
+                     WHERE id = ?1 AND last_result NOT IN ('not_run', 'blocked', '')",
+                    params![edge.validation_id],
+                )?;
+            }
         }
         let text = match replaced_by {
             Some(successor) => format!("retired: {reason} - replaced by intent {successor}"),
