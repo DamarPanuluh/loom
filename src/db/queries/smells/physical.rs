@@ -59,84 +59,110 @@ fn detect_overlapping_ownership(
     files_of: &HashMap<&str, HashSet<&str>>,
     smells: &mut Vec<Smell>,
 ) {
-    let mut claims_by_intent: HashMap<&str, Vec<&crate::types::Implements>> = HashMap::new();
+    // Two intents can overlap ONLY on a file they both ground — so walk each FILE's
+    // owners instead of the O(N^2) intent grid. Cost is Σ(owners_per_file^2), bounded
+    // by how many intents share a file rather than the total intent count: at
+    // thousands of intents this stays linear in claims instead of quadratic in
+    // intents. (A near-universal hub file shows up as `tangled_file`; this detector
+    // does not re-explode it.) Behaviour is identical to the prior all-pairs scan —
+    // same overlap test, same pair order (lower slice-index first), same output.
+    let index_of: HashMap<&str, usize> = intents
+        .iter()
+        .enumerate()
+        .map(|(i, it)| (it.id.as_str(), i))
+        .collect();
+    let name_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|it| (it.id.as_str(), it.name.as_str()))
+        .collect();
+    let mut claims_by_file: HashMap<&str, Vec<&crate::types::Implements>> = HashMap::new();
     for im in implements {
         // Match the active-owner filter already used by every physical-plane
         // detector. Retired/deprecated intents can keep historical IMPLEMENTS
         // rows, but they no longer own living code.
         if files_of.contains_key(im.intent_id.as_str()) {
-            claims_by_intent
-                .entry(im.intent_id.as_str())
+            claims_by_file
+                .entry(im.codefile_path.as_str())
                 .or_default()
                 .push(im);
         }
     }
 
-    for i in 0..intents.len() {
-        for j in (i + 1)..intents.len() {
-            let (a, b) = (&intents[i], &intents[j]);
-            if linked.contains(&(a.id.as_str(), b.id.as_str())) {
-                continue;
-            }
-            let (Some(a_claims), Some(b_claims)) = (
-                claims_by_intent.get(a.id.as_str()),
-                claims_by_intent.get(b.id.as_str()),
-            ) else {
-                continue;
-            };
-            let shared = overlapping_claims(a_claims, b_claims);
-            if !shared.is_empty() {
-                let mut names: Vec<String> = shared;
-                names.sort();
-                smells.push(Smell {
-                    kind: "overlapping_ownership".into(),
-                    score: 3.0 * names.len() as f64,
-                    summary: format!(
-                        "'{}' and '{}' both claim {} code ownership target(s) but no relationship is recorded",
-                        a.name,
-                        b.name,
-                        names.len()
-                    ),
-                    evidence: format!("shared: {}", capped_join(&names, ", ")),
-                    remedy: format!(
-                        "loom edge explore {} {}  → who owns what? ground the contract or mark independent with why",
-                        a.id, b.id
-                    ),
-                    teaching: teaching_for("overlapping_ownership"),
-                });
+    // (lower-index intent, higher-index intent) -> the set of shared ownership
+    // targets across every file the pair co-owns.
+    let mut pair_shared: HashMap<(&str, &str), HashSet<String>> = HashMap::new();
+    for claims in claims_by_file.values() {
+        for x in 0..claims.len() {
+            for y in (x + 1)..claims.len() {
+                let (cx, cy) = (claims[x], claims[y]);
+                if cx.intent_id == cy.intent_id {
+                    continue;
+                }
+                // Order the pair by slice index so the emitted (a, b) matches the
+                // prior i<j outer loop exactly.
+                let (ca, cb) =
+                    if index_of.get(cx.intent_id.as_str()) <= index_of.get(cy.intent_id.as_str()) {
+                        (cx, cy)
+                    } else {
+                        (cy, cx)
+                    };
+                let (aid, bid) = (ca.intent_id.as_str(), cb.intent_id.as_str());
+                if linked.contains(&(aid, bid)) {
+                    continue;
+                }
+                let a_loc = ca.locator.trim();
+                let b_loc = cb.locator.trim();
+                let target = match (a_loc.is_empty(), b_loc.is_empty()) {
+                    // Whole-file ownership overlaps every claim inside the file.
+                    (true, _) | (_, true) => Some(format!("{} (whole file)", ca.codefile_path)),
+                    // Precise symbol ownership only overlaps when both intents claim
+                    // the same located region. Different symbols in the same module
+                    // are co-location/tangle evidence, not overlapping ownership.
+                    (false, false) if a_loc == b_loc => {
+                        Some(format!("{} @ {}", ca.codefile_path, a_loc))
+                    }
+                    (false, false) => None,
+                };
+                if let Some(t) = target {
+                    pair_shared.entry((aid, bid)).or_default().insert(t);
+                }
             }
         }
     }
-}
 
-fn overlapping_claims(
-    a_claims: &[&crate::types::Implements],
-    b_claims: &[&crate::types::Implements],
-) -> Vec<String> {
-    let mut shared: HashSet<String> = HashSet::new();
-    for a in a_claims {
-        for b in b_claims {
-            if a.codefile_path != b.codefile_path {
-                continue;
-            }
-            let a_locator = a.locator.trim();
-            let b_locator = b.locator.trim();
-            match (a_locator.is_empty(), b_locator.is_empty()) {
-                // Whole-file ownership overlaps every claim inside the file.
-                (true, _) | (_, true) => {
-                    shared.insert(format!("{} (whole file)", a.codefile_path));
-                }
-                // Precise symbol ownership only overlaps when both intents claim
-                // the same located region. Different symbols in the same module
-                // are co-location/tangle evidence, not overlapping ownership.
-                (false, false) if a_locator == b_locator => {
-                    shared.insert(format!("{} @ {}", a.codefile_path, a_locator));
-                }
-                (false, false) => {}
-            }
-        }
+    // Emit one smell per overlapping pair, in the same (a-index, b-index) order the
+    // all-pairs loop produced.
+    let mut pairs: Vec<((&str, &str), Vec<String>)> = pair_shared
+        .into_iter()
+        .map(|(p, s)| {
+            let mut names: Vec<String> = s.into_iter().collect();
+            names.sort();
+            (p, names)
+        })
+        .collect();
+    pairs.sort_by_key(|((a, b), _)| {
+        (
+            index_of.get(a).copied().unwrap_or(usize::MAX),
+            index_of.get(b).copied().unwrap_or(usize::MAX),
+        )
+    });
+    for ((aid, bid), names) in pairs {
+        smells.push(Smell {
+            kind: "overlapping_ownership".into(),
+            score: 3.0 * names.len() as f64,
+            summary: format!(
+                "'{}' and '{}' both claim {} code ownership target(s) but no relationship is recorded",
+                name_of.get(aid).copied().unwrap_or(aid),
+                name_of.get(bid).copied().unwrap_or(bid),
+                names.len()
+            ),
+            evidence: format!("shared: {}", capped_join(&names, ", ")),
+            remedy: format!(
+                "loom edge explore {aid} {bid}  → who owns what? ground the contract or mark independent with why"
+            ),
+            teaching: teaching_for("overlapping_ownership"),
+        });
     }
-    shared.into_iter().collect()
 }
 
 /// 3. Scattered intent — one responsibility smeared across many files (threshold
