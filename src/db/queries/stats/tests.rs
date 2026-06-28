@@ -976,7 +976,7 @@ fn no_signal_unexplored_pairs_are_optional_survey_not_green_blockers() {
 }
 
 #[test]
-fn signal_bearing_unexplored_pairs_still_gate_horizontal_risk() {
+fn a_shared_file_coupling_gates_via_the_smell_not_the_pair_grid() {
     let mut sys = intent("sys", "implemented");
     sys.abstraction_level = "system".to_string();
     let a = intent("a", "implemented");
@@ -1032,18 +1032,64 @@ fn signal_bearing_unexplored_pairs_still_gate_horizontal_risk() {
         None,
     );
 
-    let gs = gs_of(&snapshot);
-    assert_eq!(gs.unexplored_pairs, 1);
-    assert_eq!(gs.priority_unexplored_pairs, 1);
-    assert!(!gs.horizontally_explored, "shared file is risk-bearing");
-    assert_eq!(gs.phase, "discovery");
-    assert!(
-        gs.next_action.contains("horizontal risk closure")
-            && gs.next_action.contains("--class suspected-coupling"),
-        "next action should route to risk closure, not full survey: {}",
-        gs.next_action
+    // a and b both ground src/shared.rs with NO RELATES_TO between them. The old
+    // N×N grid forced phase=discovery on this one signal-bearing pair. After the
+    // supersede the missing-pair grid no longer gates: the REAL coupling is an
+    // overlapping_ownership SMELL (an open gating finding), so it gates via AUDIT;
+    // a no-signal / noise pair (which produces no smell) no longer gates at all.
+
+    // (1) With REAL smells, the shared-file coupling gates via overlapping_ownership.
+    let real_overlap_findings = |s: &QuerySnapshot| -> anyhow::Result<usize> {
+        let report = crate::db::queries::smells::compute_smells_from_parts(
+            s,
+            crate::db::queries::smells::SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )?;
+        Ok(report
+            .open
+            .iter()
+            .filter(|x| x.kind == "overlapping_ownership")
+            .count())
+    };
+    let gs_real = graph_state_from_snapshot_parts(
+        &snapshot,
+        GraphStateContext {
+            meta: None,
+            notes: 0,
+            transition_cap: 0,
+            note_log: NoteLogStats::default(),
+        },
+        real_overlap_findings,
+        || Ok(0),
+        |_| Ok(0),
+    )
+    .unwrap();
+    assert_eq!(
+        gs_real.phase, "audit",
+        "the shared-file coupling is gated by the overlapping_ownership smell, not the pair grid"
     );
-    assert!(queue_nonempty_for_phase("discovery", &snapshot));
+
+    // (2) The pair grid itself NO LONGER gates: with no open smell (the noise-pair
+    //     case), the same signal-bearing pair does not force discovery — it is
+    //     surfaced (priority_unexplored_pairs) but never blocks the phase.
+    let gs = gs_of(&snapshot); // open_findings stubbed to 0
+    assert_eq!(
+        gs.priority_unexplored_pairs, 1,
+        "the pair is still SURFACED (informational), not a gate"
+    );
+    assert!(
+        gs.horizontally_explored,
+        "the missing-pair grid no longer marks horizontal incomplete"
+    );
+    assert_eq!(
+        gs.phase, "complete",
+        "a signal-bearing pair with no smell no longer gates the phase"
+    );
 }
 
 #[test]

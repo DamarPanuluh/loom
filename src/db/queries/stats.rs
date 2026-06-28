@@ -81,7 +81,10 @@ pub struct GraphState {
     pub unresolved_edges: i64,
     /// Intent pairs with no RELATES_TO edge yet (the full optional survey backlog).
     pub unexplored_pairs: i64,
-    /// Signal-bearing unexplored pairs that still gate horizontal risk closure.
+    /// Signal-bearing unexplored pairs — an OPTIONAL discovery signal surfaced for
+    /// the driver. No longer a gate: coupling risk is gated by the smells
+    /// (undeclared_coupling / overlapping_ownership / duplicated_responsibility /
+    /// twin_intents), which the missing-pair grid was redundant with.
     pub priority_unexplored_pairs: i64,
     pub codefiles: i64,
     pub validations: i64,
@@ -91,10 +94,11 @@ pub struct GraphState {
     /// The binding axis: HIERARCHY is a well-formed tree, every implemented leaf
     /// is realized in code, every CodeFile is reached. `complete` requires this.
     pub vertically_complete: bool,
-    /// Horizontal risk closure: every explicit RELATES_TO edge is inspected and
-    /// current, and every signal-bearing unexplored pair has been adjudicated.
-    /// The full no-signal N×N survey remains visible as `unexplored_pairs`, but
-    /// does not gate `phase=complete`.
+    /// Horizontal backlog cleared: every explicit RELATES_TO edge is inspected and
+    /// current (no uninspected / stale edges). The MISSING-pair grid no longer
+    /// factors in — its real couplings are gated by the smells, its remainder is
+    /// noise — so `unexplored_pairs` / `priority_unexplored_pairs` are surfaced as
+    /// optional discovery only, never gating `phase=complete`.
     pub horizontally_explored: bool,
     /// seed | build | fix | incomplete | ground | validate | quality |
     /// discovery | audit | complete
@@ -389,7 +393,6 @@ struct PhaseInputs<'a> {
     unmeasured_queue: usize,
     rules_count: i64,
     intents_with_code: i64,
-    unexplored_pairs: i64,
     priority_unexplored_pairs: i64,
 }
 
@@ -479,8 +482,8 @@ fn decide_phase(
     if edge_status.rt_needs_rev > 0 {
         return Ok(("fix", "recommended", format!("{} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`.", edge_status.rt_needs_rev)));
     }
-    if edge_status.rt_uninspected > 0 || inputs.priority_unexplored_pairs > 0 {
-        return Ok(("discovery", "recommended", format!("Vertical spine complete ✓ — but HARDENED requires horizontal risk closure: {} signal-bearing unexplored pair(s) + {} uninspected RELATES_TO edge(s) left. Use `loom next --mode discovery` or `loom edge unexplored --class suspected-coupling`. Full no-signal survey still has {} pair(s) and is optional: `loom edge unexplored --class all`.", inputs.priority_unexplored_pairs, edge_status.rt_uninspected, inputs.unexplored_pairs)));
+    if edge_status.rt_uninspected > 0 {
+        return Ok(("discovery", "recommended", format!("Vertical spine complete ✓ — {} uninspected RELATES_TO edge(s) still need a verdict (`loom next --mode discovery`). Coupling RISK is gated by the SMELLS now (undeclared_coupling / overlapping_ownership / duplicated_responsibility / twin_intents — already 0 to be here), NOT a signal-bearing-pair quota: the N×N grid was redundant with the smell gate plus its noise, so it no longer gates. Surveying unexplored pairs is OPTIONAL discovery ({} signal-bearing: `loom edge unexplored --class suspected-coupling`); `loom paths` shows journey/composition coverage.", edge_status.rt_uninspected, inputs.priority_unexplored_pairs)));
     }
 
     let proposed = proposed_hypotheses()?;
@@ -540,11 +543,11 @@ pub fn graph_state_from_snapshot_parts(
     let relates_to_edges = snapshot.relates.len() as i64;
     let implements_edges = snapshot.implements.len() as i64;
 
-    // The AUTHORITATIVE full-survey count: every active intent pair with no
-    // RELATES_TO edge (hierarchy pairs excluded — containment is structural).
-    // The stricter N×N survey remains available, but the HARDENED gate uses the
-    // signal-bearing risk backlog below so no-signal pairs do not force bulk
-    // `independent` stamping.
+    // Full-survey count: every active intent pair with no RELATES_TO edge
+    // (hierarchy pairs excluded — containment is structural). Both this and the
+    // signal-bearing `priority_unexplored_pairs` below are now OPTIONAL discovery
+    // signals (surfaced by status/session), not gates: coupling risk is gated by
+    // the smells, which the missing-pair grid was redundant with.
     let hierarchy = &snapshot.hierarchy;
     let unexplored_pairs = count_unexplored_pairs_from(all_intents, all_relates, hierarchy);
     let priority_unexplored_pairs =
@@ -561,13 +564,16 @@ pub fn graph_state_from_snapshot_parts(
         .filter(|i| i.lifecycle == "planned")
         .count() as i64;
 
-    // The two completeness axes. Vertical (binding) is the spine; horizontal is
-    // risk closure over explicit/stale RELATES_TO plus signal-bearing missing
-    // pairs. The full no-signal survey is retained as optional coverage only.
+    // The two completeness axes. Vertical (binding) is the spine. Horizontal is
+    // now just the explicit RELATES_TO backlog (uninspected/stale edges): the
+    // signal-bearing MISSING-pair grid no longer gates — its real couplings are
+    // gated by the smells (undeclared_coupling / overlapping_ownership /
+    // duplicated_responsibility / twin_intents, all in the `open` set), which the
+    // grid was redundant with, and its remainder (same-domain / co-location /
+    // weak-tag) is non-discriminating noise. `priority_unexplored_pairs` is kept
+    // as an OPTIONAL discovery signal (surfaced by status/session), not a gate.
     let vc = vertical_completeness_from_snapshot(snapshot);
-    let horizontally_explored = priority_unexplored_pairs == 0
-        && edge_status.rt_uninspected == 0
-        && edge_status.rt_needs_rev == 0;
+    let horizontally_explored = edge_status.rt_uninspected == 0 && edge_status.rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------
     // Counts-only: status needs the coverage numbers + quality-lane depth, not the
@@ -667,7 +673,6 @@ pub fn graph_state_from_snapshot_parts(
             unmeasured_queue,
             rules_count,
             intents_with_code: nc.intents_with_code,
-            unexplored_pairs,
             priority_unexplored_pairs,
         },
         snapshot,
