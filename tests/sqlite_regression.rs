@@ -4126,24 +4126,29 @@ fn sqlite_sync_grades_files_and_codefile_show_exposes_it() {
     );
 }
 
-// SWEEP #3 (scale): the default discovery class (suspected-coupling) no longer
-// scores every O(N²) pair — it generates candidates from inverted indices, an
-// EXACT superset of the signal-bearing pairs. On a graph whose facet buckets are
-// all under the dense-facet cap (loom's own), the candidate path must therefore
-// produce EXACTLY the same suspected_coupling set the full scan does. The full
-// scan's suspected count is `all - impact_map` (every pair is one class or the
-// other), so candidate-path `suspected-coupling` total must equal that. (If this
-// ever diverges, the DF-cap has started firing on loom's graph — raise it or
-// accept the drop; it can only ever drop weakest-signal pairs, never add wrong ones.)
+// SWEEP #3 (scale): the default discovery class (suspected-coupling) does not
+// score every O(N²) pair — it generates candidates from inverted indices, an
+// inverted-index SUBSET of the full scan. It keeps every pair carrying a SPARSE
+// signal (shared file / import / tag, or a discriminating domain/token) and drops
+// only pairs whose ONLY signal is an over-BUCKET_CAP DENSE facet: a near-universal
+// domain (loom's own `cli` is ~296 of ~407 intents) or a common description token
+// (`loom`, `smells`) — non-discriminating noise that never reaches the served top
+// of a large queue.
+//
+// This used to assert candidate == full, which only held while loom's graph was
+// small enough that NO facet bucket exceeded the cap. loom's graph has since grown
+// past that, so the cap fires and the relationship is now a STRICT, DISCLOSED
+// subset — the scale-correct behavior, not a regression. The per-pair guarantee
+// (a dense-bucket pair that also shares a sparse facet still surfaces; only
+// weakest-signal pairs drop) is proven by the unit test
+// `capped_dense_bucket_still_surfaces_a_pair_that_shares_a_sparse_facet`; here we
+// assert the live invariant on loom's OWN (now cap-firing) graph.
 #[test]
-fn sqlite_discovery_candidate_path_matches_full_scan() {
+fn sqlite_discovery_candidate_path_is_a_disclosed_subset_of_the_full_scan() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("disc-candidates");
-    // The fixture is horizontally complete; seed one unexplored pair that shares
-    // an implemented file so there IS a signal-bearing (suspected-coupling)
-    // candidate. The shared file is owned by exactly 2 intents — far below the
-    // dense-facet BUCKET_CAP — so the candidate path stays an exact superset and
-    // the suspected==all-impact invariant this test asserts still holds.
+    // Seed one unexplored pair sharing an implemented file so there IS a
+    // signal-bearing (sparse-facet) candidate the cap must keep.
     seed_unexplored_signal_pair(&graph.root, "disc-candidates");
     let total = |class: &str| -> i64 {
         // `--take` yields the bulk envelope whose `queue_total` is the FULL queue
@@ -4167,13 +4172,44 @@ fn sqlite_discovery_candidate_path_matches_full_scan() {
     let suspected = total("suspected-coupling");
     let impact = total("impact-map");
     let all = total("all");
-    assert!(suspected > 0, "loom's graph has signal-bearing pairs");
-    assert_eq!(
-        suspected,
-        all - impact,
-        "candidate-path suspected-coupling ({suspected}) must equal the full scan's \
-         suspected count (all {all} - impact_map {impact} = {})",
-        all - impact
+    let full_suspected = all - impact; // every pair is one class or the other
+    assert!(suspected > 0, "loom's graph still has signal-bearing pairs");
+    // SAFETY direction: the candidate path is a SUBSET — it must never invent a
+    // suspected pair the O(N²) full scan didn't have.
+    assert!(
+        suspected <= full_suspected,
+        "candidate-path suspected-coupling ({suspected}) must not EXCEED the full \
+         scan's suspected count (all {all} - impact_map {impact} = {full_suspected}) \
+         — the candidate set is a subset, never a superset"
+    );
+    // loom's own graph has grown past BUCKET_CAP (the near-universal `cli` domain),
+    // so the dense-facet cap fires and the subset is STRICT, with every elided
+    // bucket DISCLOSED — the analyst is never silently shown less.
+    let capped = run_json(
+        &graph.root,
+        &[
+            "next",
+            "--mode",
+            "discovery",
+            "--class",
+            "suspected-coupling",
+            "--take",
+            "1",
+            "--json",
+        ],
+    )["capped_buckets"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        !capped.is_empty(),
+        "loom's graph is expected to exercise the dense-facet cap (e.g. the `cli` \
+         domain); the elision must be disclosed, not silent"
+    );
+    assert!(
+        suspected < full_suspected,
+        "with a dense bucket capped, the candidate path drops its dense-facet-only \
+         (non-discriminating) pairs, so it is a STRICT subset ({suspected} < {full_suspected})"
     );
 }
 

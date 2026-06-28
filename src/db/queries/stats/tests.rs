@@ -632,6 +632,63 @@ fn oversized_same_domain_bucket_is_capped_but_disclosed() {
     assert_eq!(all.len(), n * (n - 1) / 2);
 }
 
+#[test]
+fn capped_dense_bucket_still_surfaces_a_pair_that_shares_a_sparse_facet() {
+    // The SCALE-SAFETY guarantee that makes dropping a dense bucket sound: a facet
+    // shared by more than BUCKET_CAP intents (here a near-universal domain, like
+    // loom's own "cli" at 296/407) is skipped, but a pair INSIDE that dense bucket
+    // that ALSO shares a SPARSE, discriminating facet (a file) MUST still surface.
+    // The cap drops only weakest-signal (dense-facet-ONLY) pairs, never a pair that
+    // carries real structural signal — so coverage of meaningful coupling does not
+    // erode as the graph grows past the cap; only noise does.
+    let n = BUCKET_CAP + 1;
+    let intents: Vec<Intent> = (0..n)
+        .map(|i| {
+            let mut it = intent(&format!("i{i}"), "implemented");
+            it.domain = "db".to_string();
+            it
+        })
+        .collect();
+    // i0 and i1 also co-own one file — a sparse, discriminating signal that the
+    // dense-domain cap must not suppress.
+    let implements = vec![
+        implements("i0", "src/shared.rs"),
+        implements("i1", "src/shared.rs"),
+    ];
+    let codefiles = vec![codefile("src/shared.rs", vec![])];
+    let snapshot = snap_with_code(intents, vec![], implements, codefiles);
+
+    let scored =
+        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::SuspectedCoupling)
+            .unwrap();
+    // EXACTLY one pair survives the cap: the file-sharing (i0, i1). Every other
+    // pair's only signal is the over-cap "db" domain, so it is correctly dropped.
+    assert_eq!(
+        scored.len(),
+        1,
+        "only the sparse-facet (file-sharing) pair survives the dense-domain cap, got {}",
+        scored.len()
+    );
+    let edge = &scored[0].0;
+    let ends = [edge.from_id.as_str(), edge.to_id.as_str()];
+    assert!(
+        ends.contains(&"i0") && ends.contains(&"i1"),
+        "the surviving pair is the file-sharing one (i0,i1), got {ends:?}"
+    );
+
+    // The dense bucket is still DISCLOSED, and the full scan still sees every pair.
+    let capped = capped_discovery_buckets(&snapshot).unwrap();
+    assert_eq!(capped.len(), 1);
+    assert_eq!(capped[0].key, "db");
+    assert_eq!(capped[0].members, n);
+    let all = unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::All).unwrap();
+    assert_eq!(
+        all.len(),
+        n * (n - 1) / 2,
+        "the --class all escape hatch still enumerates every pair"
+    );
+}
+
 fn phase_of(snapshot: &QuerySnapshot) -> String {
     gs_of(snapshot).phase
 }
