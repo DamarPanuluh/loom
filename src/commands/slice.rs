@@ -378,7 +378,16 @@ fn run_plan_with_db(db: &dyn GraphReadRepository, printer: &Printer) -> Result<(
                 "slices": slices.len(),
             },
             "note": PLAN_NOTE,
-            "slices": slices,
+            "readiness_note": "Each slice's readiness_rung is SLICE-LOCAL (its binding spine on the restricted subtree); global COMPLETE (disk) and HARDEN (quality/smells) are repo-wide — see `loom status`.",
+            "slices": slices.iter().map(|s| {
+                let (rung, detail) = slice_readiness(&snap, s);
+                let mut v = serde_json::to_value(s).unwrap_or(serde_json::Value::Null);
+                if let Some(o) = v.as_object_mut() {
+                    o.insert("readiness_rung".into(), rung.into());
+                    o.insert("readiness_detail".into(), detail.into());
+                }
+                v
+            }).collect::<Vec<_>>(),
         }));
         return Ok(());
     }
@@ -397,6 +406,8 @@ fn run_plan_with_db(db: &dyn GraphReadRepository, printer: &Printer) -> Result<(
             "    anchor: {}  ({} intent(s) · effort {} · risk {})",
             s.anchor, s.intent_count, s.effort, s.risk
         );
+        let (rung, detail) = slice_readiness(&snap, s);
+        println!("    rung:   {rung} — {detail}");
         if !s.codefiles.is_empty() {
             println!("    codefiles: {}", s.codefiles.join(", "));
         }
@@ -409,7 +420,76 @@ fn run_plan_with_db(db: &dyn GraphReadRepository, printer: &Printer) -> Result<(
         println!();
     }
     println!("  {PLAN_NOTE}");
+    println!(
+        "  readiness is SLICE-LOCAL (its binding spine: SHAPE/REALIZE on the restricted\n\
+        \x20 subtree) — the global COMPLETE (disk) and HARDEN (quality/smells) rungs are\n\
+        \x20 repo-wide and not shown per slice; `loom status` is the global compass."
+    );
     Ok(())
+}
+
+/// A slice's per-territory READINESS — its highest unmet BINDING rung (SHAPE /
+/// REALIZE), computed on the slice-RESTRICTED snapshot so parallel drivers can see
+/// which territories can move independently. The global rungs (COMPLETE disk, HARDEN
+/// quality/smells) are repo-wide, so their gate-closures are stubbed to 0 here and
+/// the result is the slice's VERTICAL-spine progress only — slice-local, never the
+/// global compass (which `loom status` owns).
+fn slice_readiness(snap: &QuerySnapshot, slice: &Slice) -> (String, String) {
+    let ids: std::collections::HashSet<String> =
+        slice.intents.iter().map(|si| si.id.clone()).collect();
+    let restricted = snap.restricted_to(&ids);
+    // Read the slice's binding SPINE directly — tree well-formed, leaves grounded,
+    // leaves PROVEN — not the full compass. decide_phase also gates on the
+    // validation BACKLOG (a leaf already proven but carrying an extra unrun
+    // validation), which would show a vertically-complete slice as REALIZE; the
+    // grounded+proven spine is the honest per-slice readiness. (restricted_to keeps
+    // only the slice's own intents, groundings, and the codefiles they reach, so all
+    // three spine signals are slice-local + sound.)
+    let vc = crate::db::queries::vertical_completeness_from_snapshot(&restricted);
+    if !vc.multi_parent.is_empty() || vc.cycle {
+        return (
+            "SHAPE".into(),
+            "hierarchy not yet a well-formed tree".into(),
+        );
+    }
+    if !vc.unrealized_leaves.is_empty() {
+        return (
+            "REALIZE".into(),
+            format!(
+                "{} leaf/leaves not yet grounded in code",
+                vc.unrealized_leaves.len()
+            ),
+        );
+    }
+    let pl = crate::db::queries::graph_state_from_snapshot_parts(
+        &restricted,
+        crate::db::queries::GraphStateContext {
+            meta: None,
+            notes: 0,
+            transition_cap: 0,
+            note_log: crate::db::queries::NoteLogStats::default(),
+        },
+        |_| Ok(0), // open findings (smells) are repo-wide HARDEN, not per-slice
+        || Ok(0),
+        |_| Ok(0), // disk reconciliation is repo-wide COMPLETE, not per-slice
+    )
+    .map(|gs| gs.coverage.proven_leaves)
+    .unwrap_or_default();
+    if pl.covered < pl.total {
+        return (
+            "REALIZE".into(),
+            format!("realized ✓ · {}/{} leaves proven", pl.covered, pl.total),
+        );
+    }
+    // Every per-slice BINDING rung clear; the global COMPLETE/HARDEN rungs still
+    // apply repo-wide (not shown per slice — `loom status` is the global compass).
+    (
+        "spine-ready".into(),
+        format!(
+            "vertically complete · {}/{} leaves proven",
+            pl.covered, pl.total
+        ),
+    )
 }
 
 #[cfg(test)]
@@ -616,6 +696,95 @@ mod tests {
                 .iter()
                 .all(|im| auth.contains(&im.intent_id)),
             "groundings restricted to the slice"
+        );
+    }
+
+    #[test]
+    fn slice_readiness_is_the_binding_spine_per_slice() {
+        use crate::types::{CodeFile, ValidatesEdge, Validation};
+        fn cf(path: &str) -> CodeFile {
+            CodeFile {
+                id: path.into(),
+                path: path.into(),
+                language: "rust".into(),
+                last_modified: String::new(),
+                imports: vec![],
+                symbols: vec![],
+                symbol_facts: vec![],
+                content_hash: String::new(),
+                extractor_grade: String::new(),
+            }
+        }
+        // Anchors are top-level subtrees (each direct child of a root). With root R:
+        //   slice "A node" = {A, a1}  — leaf a1 grounded AND proven  -> spine-ready
+        //   slice "B node" = {B, b1, b2} — b2 UNGROUNDED              -> REALIZE
+        let intents = vec![
+            intent("R", "Root", "system"),
+            intent("A", "A node", "feature"),
+            intent("a1", "A leaf", "component"),
+            intent("B", "B node", "feature"),
+            intent("b1", "B leaf one", "component"),
+            intent("b2", "B leaf two", "component"),
+        ];
+        let hierarchy = vec![
+            ("R".to_string(), "A".to_string()),
+            ("R".to_string(), "B".to_string()),
+            ("A".to_string(), "a1".to_string()),
+            ("B".to_string(), "b1".to_string()),
+            ("B".to_string(), "b2".to_string()),
+        ];
+        let implements = vec![grounding("a1", "a.rs"), grounding("b1", "b.rs")]; // b2 ungrounded
+        let validates = vec![ValidatesEdge {
+            id: "ve".into(),
+            validation_id: "vA".into(),
+            intent_id: "a1".into(),
+            validation_name: "vA".into(),
+            intent_name: "a1".into(),
+            created_at: String::new(),
+            inspection_status: "passing".into(),
+            notes: String::new(),
+        }];
+        let validations = vec![Validation {
+            id: "vA".into(),
+            name: "vA".into(),
+            description: String::new(),
+            validation_type: "test".into(),
+            command: "cargo test".into(),
+            last_run: "t".into(),
+            last_result: "passed".into(),
+            last_executed_run: "t".into(),
+            discrimination_status: "discriminating".into(),
+        }];
+        let snap = QuerySnapshot::from_parts(
+            intents,
+            hierarchy,
+            vec![],
+            vec![],
+            vec![],
+            validates,
+            validations,
+            implements,
+            vec![cf("a.rs"), cf("b.rs")],
+            None,
+        );
+        let slices = compute_slices(&snap);
+        let a = slices
+            .iter()
+            .find(|s| s.anchor == "A node")
+            .expect("slice A");
+        let b = slices
+            .iter()
+            .find(|s| s.anchor == "B node")
+            .expect("slice B");
+        let (a_rung, a_detail) = slice_readiness(&snap, a);
+        assert_eq!(
+            a_rung, "spine-ready",
+            "A's leaf is grounded + proven; detail: {a_detail}"
+        );
+        assert_eq!(
+            slice_readiness(&snap, b).0,
+            "REALIZE",
+            "B has an ungrounded leaf (b2)"
         );
     }
 }
