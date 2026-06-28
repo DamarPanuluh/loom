@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use super::{adjudicate, teaching_for, AdjudicatedSmell, CouplingDeferral, Smell, SmellCtx};
+use super::{
+    adjudicate, teaching_for, AdjudicatedSmell, CouplingDeferral, Smell, SmellCtx, TANGLE_INTENTS,
+};
 use crate::db::queries::snapshot::QuerySnapshot;
 
 /// Shared reopen-trigger disclosure for the coupling-plane detectors, which
@@ -70,9 +72,15 @@ fn detect_undeclared_coupling(
     let fence = crate::db::queries::calibrate::tukey_upper_fence(&owner_counts, 3.0);
     let is_hub = |path: &str| -> bool {
         match fence {
+            // Defer ONLY when the file is BOTH an owner-count outlier AND tangled
+            // (>= TANGLE_INTENTS owners). The second clause guarantees every deferred
+            // file is still covered by `tangled_file`: on a very flat repo the fence
+            // can fall below TANGLE_INTENTS, and without this a 2-owner file would be
+            // deferred here yet never reach tangled_file's >= 3 trigger — a coupling
+            // gated by NEITHER smell (a silent gate-escape).
             Some(t) => intents_on_file
                 .get(path)
-                .is_some_and(|o| o.len() as f64 > t),
+                .is_some_and(|o| o.len() as f64 > t && o.len() >= TANGLE_INTENTS),
             None => false, // too small/flat to calibrate -> defer nothing
         }
     };

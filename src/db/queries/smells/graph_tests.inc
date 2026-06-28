@@ -785,4 +785,43 @@ mod transitive_layering_tests {
             }
         }
     }
+
+    // A flat repo where the Tukey fence falls BELOW TANGLE_INTENTS: a file just
+    // above the fence but below the tangle trigger must NOT be deferred, or its
+    // coupling escapes BOTH smells (silent gate-escape). The cap defers only files
+    // that tangled_file will also catch (owners >= TANGLE_INTENTS).
+    #[test]
+    fn undeclared_coupling_never_defers_a_file_below_the_tangle_trigger() {
+        let mut intents = vec![intent("t", "")];
+        let mut implements = vec![imp("t", "target.rs")];
+        let mut codefiles = vec![cf("target.rs", &[])];
+        // Single-owner body -> the fence calibrates to 1.0 (Q3 == 1, IQR == 0).
+        for i in 0..6 {
+            let c = format!("c{i}");
+            let path = format!("solo{i}.rs");
+            intents.push(intent(&c, ""));
+            codefiles.push(cf(&path, &["target.rs"]));
+            implements.push(imp(&c, &path));
+        }
+        // One 2-owner file: 2 > fence(1.0) but 2 < TANGLE_INTENTS(3) -> NOT deferred.
+        codefiles.push(cf("pair.rs", &["target.rs"]));
+        intents.push(intent("p1", ""));
+        intents.push(intent("p2", ""));
+        implements.push(imp("p1", "pair.rs"));
+        implements.push(imp("p2", "pair.rs"));
+        let r = report(intents, codefiles, implements, &[]);
+
+        assert_eq!(r.coupling_deferral.owner_outlier_threshold, Some(1.0));
+        assert_eq!(
+            r.coupling_deferral.deferred_hub_files, 0,
+            "a sub-tangle (2-owner) file is never deferred -> no silent gate-escape"
+        );
+        let open = of_kind(&r, "undeclared_coupling");
+        assert!(
+            open.iter().any(|s| s.remedy.contains("p1"))
+                && open.iter().any(|s| s.remedy.contains("p2")),
+            "the sub-tangle file's couplings stay flagged: {:?}",
+            open.iter().map(|s| &s.remedy).collect::<Vec<_>>()
+        );
+    }
 }

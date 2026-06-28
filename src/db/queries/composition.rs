@@ -11,16 +11,18 @@
 //! GRAPH's own topology, never from a test-runner command string (cargo `--test`,
 //! pytest, jest, `go test` — each differs per language and per repo, and baking
 //! any of them in is exactly the hardcoding that can't travel to a repo we didn't
-//! anticipate). The three signals are universal:
+//! anticipate). The two signals are universal:
 //!   - DECLARED journey: `validation_type == "saga"` — loom's own journey
 //!     primitive (`loom saga`), part of the data model, not a guessed repo string.
 //!   - structural SPAN: the proof validates >= 2 intents — it exercises more than
 //!     one responsibility, so it is proving their composition.
-//!   - structural ASSEMBLY: the proof validates a NON-LEAF intent — a parent whose
-//!     criterion IS the composed behaviour of its children.
 //!
-//! A proof of exactly one LEAF intent is a leaf proof. `loom paths` discloses the
-//! per-signal breakdown so the inference is auditable.
+//! A proof of exactly ONE intent is a leaf proof — even when that intent is a
+//! non-leaf PARENT. Validating a parent alone does NOT prove its children compose
+//! (the proof may just exercise the parent's own code), so a genuine assembly proof
+//! must SPAN >= 2 intents or be a declared saga to count — anything else would
+//! claim a journey that may not exist. `loom paths` discloses the per-signal
+//! breakdown so the inference is auditable.
 //!
 //! This module is ADDITIVE and READ-ONLY: it classifies each active intent's proof
 //! tier (path-proven / leaf-only / unproven) so a driver can SEE what a journey
@@ -48,13 +50,9 @@ pub struct CompositionCoverage {
     /// graph-derived (not command-string) basis is visible and auditable.
     pub proofs_declared_journey: i64,
     pub proofs_multi_intent: i64,
-    pub proofs_assembly: i64,
 }
 
 pub fn composition_coverage_from_snapshot(snapshot: &QuerySnapshot) -> CompositionCoverage {
-    // Non-leaf (assembly) intents = any parent in the hierarchy tree.
-    let non_leaf: HashSet<&str> = snapshot.hierarchy.iter().map(|(p, _)| p.as_str()).collect();
-
     // query_snapshot already filters deprecated intents, so snapshot.intents is
     // the active universe — confine VALIDATES projection to it.
     let active: HashSet<&str> = snapshot.intents.iter().map(|i| i.id.as_str()).collect();
@@ -86,9 +84,6 @@ pub fn composition_coverage_from_snapshot(snapshot: &QuerySnapshot) -> Compositi
         } else if ints.len() >= 2 {
             comp.insert(v.id.as_str());
             cov.proofs_multi_intent += 1;
-        } else if ints.iter().any(|i| non_leaf.contains(i)) {
-            comp.insert(v.id.as_str());
-            cov.proofs_assembly += 1;
         } else {
             leaf.insert(v.id.as_str());
         }
@@ -197,7 +192,8 @@ mod tests {
 
     #[test]
     fn recognises_composition_proofs_from_graph_topology_not_command_strings() {
-        // par : non-leaf parent, proven by a single-intent TEST -> ASSEMBLY signal.
+        // par : non-leaf PARENT proven by a single-intent test -> LEAF-only. A proof
+        //       attributed to a parent alone does NOT prove its children compose.
         // leaf: child of par, no proof -> unproven.
         // x   : proven by a declared SAGA -> DECLARED-journey signal.
         // y1,y2: proven by ONE validation covering both -> SPAN signal (both path-proven).
@@ -229,19 +225,22 @@ mod tests {
         let cov = composition_coverage_from_snapshot(&snap(intents, hierarchy, validates, vals));
         assert_eq!(cov.total, 7);
         assert_eq!(
-            cov.path_proven, 4,
-            "x (saga) + par (assembly) + y1,y2 (span) are path-proven"
+            cov.path_proven, 3,
+            "only x (saga) + y1,y2 (span) are path-proven"
         );
         assert_eq!(
-            cov.leaf_only, 1,
-            "u is proven only by a single-leaf unit test"
+            cov.leaf_only, 2,
+            "u (single leaf) AND par (single parent — no proof its children compose) are leaf-only"
         );
         assert_eq!(cov.unproven, 2, "leaf + none have no passing proof");
-        // disclosure: each signal recognised exactly one proof.
+        // disclosure: the two universal signals; no single-intent-parent assembly claim.
         assert_eq!(cov.proofs_declared_journey, 1);
         assert_eq!(cov.proofs_multi_intent, 1);
-        assert_eq!(cov.proofs_assembly, 1);
         assert!(cov.leaf_only_intents.iter().any(|(id, _)| id == "u"));
+        assert!(
+            cov.leaf_only_intents.iter().any(|(id, _)| id == "par"),
+            "a single-intent proof of a parent is leaf-only, not a false assembly claim"
+        );
         assert!(cov.unproven_intents.iter().any(|(id, _)| id == "none"));
     }
 

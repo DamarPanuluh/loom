@@ -39,7 +39,6 @@ pub fn run_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer
             "composition_proofs_by_signal": {
                 "declared_journey": cov.proofs_declared_journey,
                 "multi_intent_span": cov.proofs_multi_intent,
-                "non_leaf_assembly": cov.proofs_assembly,
             },
             "leaf_only_intents": cov.leaf_only_intents.iter()
                 .map(|(id, n)| serde_json::json!({"id": id, "name": n})).collect::<Vec<_>>(),
@@ -101,16 +100,16 @@ pub fn run_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer
     println!(
         "Composition proofs recognised by signal (graph topology, NOT command strings):\n\
         \x20 declared journey (validation_type=saga) : {}\n\
-        \x20 spans >=2 intents                       : {}\n\
-        \x20 proves a non-leaf assembly intent       : {}",
-        cov.proofs_declared_journey, cov.proofs_multi_intent, cov.proofs_assembly
+        \x20 spans >=2 intents                       : {}",
+        cov.proofs_declared_journey, cov.proofs_multi_intent
     );
     println!(
         "ADDITIVE & read-only — never gates green. The tier reads the same on any repo or\n\
-         language: a proof spanning >=2 intents, proving a parent/assembly intent, or a\n\
-         declared saga is a journey; a proof of one leaf intent is a leaf. So a leaf-only\n\
-         intent here is one whose only proof is attributed to it alone — judge whether a\n\
-         real journey is missing, or it is a genuine terminal leaf."
+         language: a proof that spans >=2 intents or is a declared saga is a journey; a proof\n\
+         attributed to ONE intent (even a parent) is a leaf, since validating a parent alone\n\
+         does not prove its children compose. So a leaf-only intent here is one whose only\n\
+         proof is attributed to it alone — judge whether a real journey is missing, or it is\n\
+         a genuine terminal leaf."
     );
     Ok(())
 }
