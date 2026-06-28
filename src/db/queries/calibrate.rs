@@ -10,6 +10,16 @@
 //! the genuine outliers are — and the derived threshold is DISCLOSED so it stays
 //! auditable and overridable, never a hidden magic number.
 
+/// Tukey multipliers as statistical STANCES — universal definitions, NOT
+/// repo-specific magnitudes (the legitimate kind of constant). `OUTLIER_K = 1.5` is
+/// the textbook outlier fence (used to FLAG a smell — "this file is an ownership /
+/// import outlier for this repo"); `FAR_OUTLIER_K = 3.0` is the extreme-outlier
+/// fence (used to SUPPRESS — the coupling cap defers only egregious hubs). Because
+/// `FAR_OUTLIER_K > OUTLIER_K` over the same distribution, anything the cap defers is
+/// always an outlier the flagging smell also catches — the deferral can never escape.
+pub const OUTLIER_K: f64 = 1.5;
+pub const FAR_OUTLIER_K: f64 = 3.0;
+
 /// Tukey's upper fence — the textbook outlier bound for a distribution: `Q3 + k·IQR`.
 /// `k = 1.5` flags outliers; `k = 3.0` flags FAR (extreme) outliers. Self-calibrating
 /// and robust to skew: it is quartile-based, so a heavy tail (a few enormous values)

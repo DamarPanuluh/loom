@@ -1095,6 +1095,54 @@ fn sqlite_batch_smell_decision_adjudicates_finding() {
         );
     }
 
+    // A single-owner BODY so an owner-count distribution exists and src/tangled.rs
+    // (3 owners) reads as a genuine OUTLIER under the self-calibrating tangled_file
+    // (with no distribution, the smell cannot tell an outlier from the norm).
+    for i in 0..4 {
+        let path = format!("src/solo_{i}.rs");
+        write_scratch_file(
+            &graph.root,
+            &path,
+            &format!("pub fn solo_{i}() -> u8 {{ {i} }}\n"),
+        );
+        run_json_as(
+            &graph.root,
+            &["codefile", "add", &path, "--json"],
+            "llm:builder",
+        );
+        let name = format!("batch smell solo owner {i}");
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                &name,
+                "--description",
+                "a single-owner body file for the tangle distribution",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+        run_json_as(
+            &graph.root,
+            &[
+                "edge",
+                "implement",
+                &name,
+                &path,
+                "--locator",
+                &format!("fn solo_{i}"),
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+
     let before = run_json(&graph.root, &["smells", "--limit", "100", "--json"]);
     let smell_id = before["smells"]
         .as_array()

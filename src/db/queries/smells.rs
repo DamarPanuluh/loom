@@ -87,8 +87,6 @@ pub fn scatter_threshold(level: &str) -> Option<usize> {
         _ => None, // system
     }
 }
-/// A file implemented by this many intents or more is tangled.
-pub const TANGLE_INTENTS: usize = 3;
 /// A clone group must span symbols at least this many lines long — below this,
 /// identical bodies are boilerplate (trivial getters, single match arms), not
 /// a copy-paste worth flagging.

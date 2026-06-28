@@ -357,7 +357,27 @@ fn run_show_with_db(
         }
     }
     let imports = cf.imports.clone();
-    let tangled = claims.len() >= crate::db::queries::smells::TANGLE_INTENTS;
+    // Self-calibrating tangle hint: this file is "tangled" if its distinct ACTIVE
+    // owner count is an OUTLIER for THIS repo — the SAME Tukey fence `tangled_file`
+    // uses, not a fixed >= N — so the command and the smell never disagree.
+    let active: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let mut owners_by_file: HashMap<&str, std::collections::HashSet<&str>> = HashMap::new();
+    for im in &snapshot.implements {
+        if active.contains(im.intent_id.as_str()) {
+            owners_by_file
+                .entry(im.codefile_id.as_str())
+                .or_default()
+                .insert(im.intent_id.as_str());
+        }
+    }
+    let owner_counts: Vec<usize> = owners_by_file.values().map(|s| s.len()).collect();
+    let tangle_fence = crate::db::queries::calibrate::tukey_upper_fence(
+        &owner_counts,
+        crate::db::queries::calibrate::OUTLIER_K,
+    );
+    let this_owners = owners_by_file.get(cf.id.as_str()).map_or(0, |s| s.len());
+    let tangled = tangle_fence.is_some_and(|f| this_owners as f64 > f);
     // Notes targeting the file itself — where a tangled_file adjudication
     // (`loom note add --file … --kind decision`) lives.
     let notes = db.notes_for_target(&cf.id)?;
@@ -439,8 +459,8 @@ fn run_show_with_db(
             }
         }
         if tangled {
-            println!("  ⚠ {} intents in one file (threshold {}) — split along intent lines, or record why the",
-                claims.len(), crate::db::queries::smells::TANGLE_INTENTS);
+            println!("  ⚠ {} intents in one file — outlier ownership for this repo (> {:.0}); split along intent lines, or record why the",
+                this_owners, tangle_fence.unwrap_or_default());
             println!("    cohabitation is deliberate: `loom note add --file {} --kind decision --text \"…\"`", cf.path);
         }
         println!();

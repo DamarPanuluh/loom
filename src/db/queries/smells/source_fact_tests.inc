@@ -613,17 +613,27 @@ mod source_fact_smell_tests {
 
     #[test]
     fn hub_file_reverse_imports_flag_as_advisory() {
+        // A BODY of low-reverse-import modules so the hub is a genuine OUTLIER —
+        // self-calibration needs a DISTRIBUTION, not a single data point.
+        let mods = ["src/mod_a.rs", "src/mod_b.rs", "src/mod_c.rs", "src/mod_d.rs"];
         let mut files = vec![cf("src/hub.rs", Vec::new())];
+        for m in mods {
+            files.push(cf(m, Vec::new()));
+        }
+        // 12 files import the hub; four of them ALSO import one body module each, so
+        // the body has reverse-import 1 and the hub's 12 stands out as the outlier.
         for i in 0..12 {
-            files.push(cf_importing(
-                &format!("src/user_{i}.rs"),
-                vec!["src/hub.rs".into()],
-            ));
+            let mut imports = vec!["src/hub.rs".to_string()];
+            if let Some(m) = mods.get(i) {
+                imports.push((*m).to_string());
+            }
+            files.push(cf_importing(&format!("src/user_{i}.rs"), imports));
         }
         let r = report(files, &[]);
 
         let found = of_kind(&r, "hub_file");
-        assert_eq!(found.len(), 1, "hub file should flag: {found:?}");
+        assert_eq!(found.len(), 1, "only the reverse-import outlier flags: {found:?}");
+        assert!(found[0].summary.contains("src/hub.rs"));
         assert!(found[0].summary.contains("imported by 12 file"));
         assert!(found[0].evidence.contains("src/user_0.rs"));
         assert!(

@@ -1,8 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use super::{
-    adjudicate, teaching_for, AdjudicatedSmell, CouplingDeferral, Smell, SmellCtx, TANGLE_INTENTS,
-};
+use super::{adjudicate, teaching_for, AdjudicatedSmell, CouplingDeferral, Smell, SmellCtx};
 use crate::db::queries::snapshot::QuerySnapshot;
 
 /// Shared reopen-trigger disclosure for the coupling-plane detectors, which
@@ -68,19 +66,25 @@ fn detect_undeclared_coupling(
     // `tangled_file`, where the cutoff is a Tukey far-outlier fence on THIS repo's
     // OWN owner-count distribution (never a hardcoded number). It adapts to any
     // repo: a flat repo (no skew) defers nothing; a hub-heavy repo defers its hubs.
-    let owner_counts: Vec<usize> = intents_on_file.values().map(Vec::len).collect();
-    let fence = crate::db::queries::calibrate::tukey_upper_fence(&owner_counts, 3.0);
+    // Distinct owner count per file — the SAME measure tangled_file uses, so the two
+    // share one owner-count distribution and the coverage invariant below holds.
+    let distinct_owners: HashMap<&str, usize> = intents_on_file
+        .iter()
+        .map(|(p, v)| (*p, v.iter().collect::<HashSet<_>>().len()))
+        .collect();
+    let owner_counts: Vec<usize> = distinct_owners.values().copied().collect();
+    // FAR-outlier fence: defer only EGREGIOUS hubs. Coverage is STRUCTURAL — anything
+    // past the far-outlier fence is also past tangled_file's OUTLIER fence on the same
+    // distribution (FAR_OUTLIER_K > OUTLIER_K), so every deferred file is flagged by
+    // tangled_file. No constant, no silent gate-escape (even on a flat repo: both
+    // fences collapse to Q3 together).
+    let fence = crate::db::queries::calibrate::tukey_upper_fence(
+        &owner_counts,
+        crate::db::queries::calibrate::FAR_OUTLIER_K,
+    );
     let is_hub = |path: &str| -> bool {
         match fence {
-            // Defer ONLY when the file is BOTH an owner-count outlier AND tangled
-            // (>= TANGLE_INTENTS owners). The second clause guarantees every deferred
-            // file is still covered by `tangled_file`: on a very flat repo the fence
-            // can fall below TANGLE_INTENTS, and without this a 2-owner file would be
-            // deferred here yet never reach tangled_file's >= 3 trigger — a coupling
-            // gated by NEITHER smell (a silent gate-escape).
-            Some(t) => intents_on_file
-                .get(path)
-                .is_some_and(|o| o.len() as f64 > t && o.len() >= TANGLE_INTENTS),
+            Some(t) => distinct_owners.get(path).is_some_and(|&n| n as f64 > t),
             None => false, // too small/flat to calibrate -> defer nothing
         }
     };

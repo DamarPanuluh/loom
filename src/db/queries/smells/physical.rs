@@ -6,7 +6,7 @@ use super::{
     AdjudicatedSmell, DeletionContext, Smell, SmellCtx, StringContractLoc,
     COMPLEX_SYMBOL_COGNITIVE, COMPLEX_SYMBOL_CYCLOMATIC, DEEPLY_NESTED_SYMBOL_DEPTH,
     LARGE_BEHAVIORAL_SYMBOL_LINES, MANY_ARGUMENTS, MANY_AWAITS, MANY_EXIT_PATHS,
-    OVERSIZED_FILE_LINES, STRING_CONTRACT_SAFETY_PREAMBLE, TANGLE_INTENTS,
+    OVERSIZED_FILE_LINES, STRING_CONTRACT_SAFETY_PREAMBLE,
 };
 use crate::db::queries::snapshot::QuerySnapshot;
 
@@ -248,9 +248,24 @@ fn detect_tangled_file(
     smells: &mut Vec<Smell>,
     adjudicated_out: &mut Vec<AdjudicatedSmell>,
 ) {
+    // Self-calibrating: a "tangle" is an ownership OUTLIER for THIS repo, not a fixed
+    // count — what reads as too-many-owners depends on how the repo carves intents.
+    // The Tukey outlier fence over the distinct-owner-count distribution. It shares
+    // this distribution with the coupling cap (which uses the FAR-outlier fence), so
+    // anything the cap defers is always caught here (FAR_OUTLIER_K > OUTLIER_K).
+    let owner_counts: Vec<usize> = intents_on_file
+        .values()
+        .map(|v| v.iter().collect::<HashSet<_>>().len())
+        .collect();
+    let Some(fence) = crate::db::queries::calibrate::tukey_upper_fence(
+        &owner_counts,
+        crate::db::queries::calibrate::OUTLIER_K,
+    ) else {
+        return; // too few grounded files to define a distribution -> flag nothing
+    };
     for (path, iids) in intents_on_file {
         let distinct: HashSet<&&str> = iids.iter().collect();
-        if distinct.len() >= TANGLE_INTENTS {
+        if (distinct.len() as f64) > fence {
             if let Some(note) = adjudicate(
                 last_decision,
                 "tangled_file",
@@ -458,7 +473,6 @@ fn detect_hub_file(
     smells: &mut Vec<Smell>,
     adjudicated_out: &mut Vec<AdjudicatedSmell>,
 ) {
-    const HUB_IMPORTERS: usize = 12;
     let mut importers: HashMap<&str, Vec<&str>> = HashMap::new();
     for cf in &snapshot.codefiles {
         for imported in &cf.imports {
@@ -470,13 +484,31 @@ fn detect_hub_file(
             }
         }
     }
+    // Self-calibrating: a hub is a reverse-import OUTLIER for THIS repo, not a fixed
+    // count — what reads as "heavily imported" depends on the import topology. Take
+    // the Tukey outlier fence over the distinct reverse-import distribution.
+    let rev_counts: Vec<usize> = importers
+        .values()
+        .map(|v| {
+            let mut u = v.clone();
+            u.sort();
+            u.dedup();
+            u.len()
+        })
+        .collect();
+    let Some(fence) = crate::db::queries::calibrate::tukey_upper_fence(
+        &rev_counts,
+        crate::db::queries::calibrate::OUTLIER_K,
+    ) else {
+        return; // too few imported files to define a distribution -> flag nothing
+    };
     for cf in &snapshot.codefiles {
         let Some(mut incoming) = importers.remove(cf.path.as_str()) else {
             continue;
         };
         incoming.sort();
         incoming.dedup();
-        if incoming.len() < HUB_IMPORTERS {
+        if (incoming.len() as f64) <= fence {
             continue;
         }
         let summary = format!("{} is imported by {} file(s)", cf.path, incoming.len());
