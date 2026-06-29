@@ -2,7 +2,13 @@
 //! to be committed to git (diffable in PRs) and rebuilt with `loom import`.
 
 use anyhow::Result;
-use std::fs;
+#[cfg(unix)]
+use std::fs::File;
+use std::fs::{self, OpenOptions};
+#[cfg(unix)]
+use std::io::ErrorKind;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
@@ -78,11 +84,7 @@ fn run_graph(
     let confined_out = crate::repo::confine(root, std::path::Path::new(out))
         .ok_or_else(|| anyhow::anyhow!("export path escapes graph root: {out}"))?;
     let target = root.join(confined_out);
-    let mut tmp = target.as_os_str().to_os_string();
-    tmp.push(".tmp");
-    let tmp = std::path::PathBuf::from(tmp);
-    fs::write(&tmp, &pretty)?;
-    fs::rename(&tmp, &target)?;
+    durable_replace(&target, pretty.as_bytes())?;
 
     let nodes: usize = graph["nodes"]
         .as_object()
@@ -113,4 +115,99 @@ fn run_graph(
         println!("  loom init . && loom import {out}");
     }
     Ok(())
+}
+
+/// Atomically and crash-durably replace `target` with `bytes`.
+///
+/// `rename` alone gives atomic visibility but not crash durability: after a
+/// sudden power loss the directory entry can be lost even though the process saw
+/// a successful rename. The export is the graph's committed travel format, so
+/// write and fsync the temp file, rename it into place, then fsync the parent
+/// directory where the platform supports directory fsync.
+fn durable_replace(target: &Path, bytes: &[u8]) -> Result<()> {
+    let parent = target
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    fs::create_dir_all(parent)?;
+    let tmp = temp_path_for(target);
+    let write_result = (|| -> Result<()> {
+        let mut file = OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        drop(file);
+        fs::rename(&tmp, target)?;
+        sync_directory(parent)?;
+        Ok(())
+    })();
+    if write_result.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    write_result
+}
+
+fn temp_path_for(target: &Path) -> PathBuf {
+    let mut tmp = target.as_os_str().to_os_string();
+    tmp.push(format!(
+        ".tmp.{}.{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    PathBuf::from(tmp)
+}
+
+#[cfg(unix)]
+fn sync_directory(path: &Path) -> Result<()> {
+    match File::open(path).and_then(|dir| dir.sync_all()) {
+        Ok(()) => Ok(()),
+        Err(err) if matches!(err.kind(), ErrorKind::InvalidInput | ErrorKind::Unsupported) => {
+            Ok(())
+        }
+        Err(err) => Err(err.into()),
+    }
+}
+
+#[cfg(not(unix))]
+fn sync_directory(_path: &Path) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn durable_replace_persists_final_bytes_and_cleans_temp() {
+        let dir = std::env::temp_dir().join(format!(
+            "loom-export-durable-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("loom.graph.json");
+
+        durable_replace(&target, b"{\"version\":1}\n").unwrap();
+        durable_replace(&target, b"{\"version\":2}\n").unwrap();
+
+        assert_eq!(fs::read_to_string(&target).unwrap(), "{\"version\":2}\n");
+        let leftovers: Vec<_> = fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .contains("loom.graph.json.tmp")
+            })
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "durable export should not leave temp files behind on success: {leftovers:?}"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

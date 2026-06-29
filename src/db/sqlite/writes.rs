@@ -1404,8 +1404,7 @@ impl SqliteGraphStore {
 
 impl SqliteGraphStore {
     pub fn delete_note_by_id(&self, note_id: &str) -> Result<()> {
-        self.conn
-            .execute("DELETE FROM note WHERE id = ?1", params![note_id])?;
+        self.write_one("DELETE FROM note WHERE id = ?1", params![note_id])?;
         Ok(())
     }
 }

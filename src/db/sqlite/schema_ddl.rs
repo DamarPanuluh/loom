@@ -314,6 +314,15 @@ CREATE VIRTUAL TABLE IF NOT EXISTS intent_fts USING fts5(
 
 impl SqliteGraphStore {
     pub(super) fn create_schema(&self) -> Result<()> {
+        // Schema setup/migration is a write path, so it must serialize with the
+        // same graph flock. Keep this lock TEMPORARY: `open()` is used by many
+        // read-mostly commands, and holding the persistent `write_lock` for the
+        // store lifetime would needlessly block unrelated sessions after setup.
+        let _schema_lock = self
+            .lock_path
+            .as_ref()
+            .map(|path| acquire_write_lock(path, lock_deadline_ms()))
+            .transpose()?;
         let inbox_kind_values = inbox_kind_sql_values();
         self.conn.execute_batch(
             &create_table_batch().replace("__INBOX_KIND_SQL_VALUES__", &inbox_kind_values),

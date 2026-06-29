@@ -180,6 +180,25 @@ fn write_lock_serializes_writers_with_a_named_error() {
     let _ = std::fs::remove_file(&path);
 }
 
+#[test]
+fn open_runs_schema_setup_without_holding_the_write_lock() {
+    let dir = std::env::temp_dir().join(format!(
+        "loom-open-no-lock-{}-{}",
+        std::process::id(),
+        line!()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("graph.sqlite");
+    let lock_path = path.with_extension("lock");
+    let store = SqliteGraphStore::open(&path).unwrap();
+    let held = acquire_write_lock(&lock_path, 100)
+        .expect("opening the store must not hold the persistent writer flock");
+    drop(held);
+    drop(store);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 // SWEEP #1: single-statement writers (UPDATE/INSERT/DELETE via `self.conn.execute`)
 // bypassed `write_tx` and so NEVER took the cross-process flock — most writes
 // could race into a raw "database is locked" the named-error contract promised
@@ -206,6 +225,49 @@ fn single_statement_write_takes_the_cross_process_lock() {
     }
     // Released when the store dropped.
     acquire_write_lock(&lock_path, 100).expect("lock released on store drop");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn delete_note_takes_the_cross_process_lock() {
+    let dir = std::env::temp_dir().join(format!(
+        "loom-wl-delete-note-{}-{}",
+        std::process::id(),
+        line!()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("graph.sqlite");
+    let lock_path = path.with_extension("lock");
+    {
+        let store = SqliteGraphStore::open(&path).unwrap();
+        store
+            .insert_note(&crate::types::Note {
+                id: "n1".into(),
+                kind: "commentary".into(),
+                text: "delete me".into(),
+                author: "llm".into(),
+                target_kind: "none".into(),
+                target_id: "".into(),
+                audience: "".into(),
+                created_at: "t".into(),
+                resolution: "".into(),
+            })
+            .unwrap();
+    }
+    {
+        let store = SqliteGraphStore::open(&path).unwrap();
+        store.delete_note_by_id("n1").unwrap();
+        let err = acquire_write_lock(&lock_path, 100)
+            .expect_err("delete_note_by_id must hold the write lock after deleting");
+        assert!(
+            err.to_string()
+                .contains("write lock is held by another loom session"),
+            "delete_note_by_id must serialize like every other write: {err}"
+        );
+    }
+    let store = SqliteGraphStore::open(&path).unwrap();
+    assert!(store.resolve_note("n1", "closed").unwrap().is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
