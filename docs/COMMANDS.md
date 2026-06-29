@@ -54,8 +54,8 @@ loom next --all
   (`human_gated` total in json; ⚑ lines in human mode; `loom status` carries
   the same summary plus blocked proofs).
 
-loom next [--mode discovery|fix|build|validate|quality|review|prove|align|refactor] [--take N] [--compact]
-  One queue per agent role:
+loom next [--mode discovery|fix|build|populate|validate|quality|review|prove|align|refactor|wiki] [--take N] [--compact]
+  One queue per agent role / closeout surface:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
   validate = failing/unrun/missing proofs (validator) · quality = uninspected/
@@ -105,6 +105,10 @@ loom next [--mode discovery|fix|build|validate|quality|review|prove|align|refact
   `adopt --spawned`), or rule it false-positive/deliberate-design
   (`loom note add --smell`). It gates Excellent, not Production-ready: accepted
   or deferred real debt keeps overall/excellence yellow.
+  populate = deterministic builder backfill for derived graph structure (for
+  example RELATES_TO kind tags). wiki = builder lane for teaching-surface/docs
+  drift items; it refreshes command help, docs, and handoff text after behavior
+  changes.
   --take N (discovery/fix/quality/align/review/refactor, capped 50) = the bulk
   READ half of the batch loop: N COMPACT items in ONE call instead of one rich
   item + anchor per call (refactor serves a ranked advisory list, no batch op).
@@ -354,8 +358,8 @@ loom rule verdict <rule-id> <intent-id> --status passing|failing|independent \
   THE quality write path — how GOVERNS green is earned. The verdict IS the
   measurement: if no GOVERNS edge exists yet, it is CREATED with the verdict
   (no separate `apply` needed — `apply` remains for pre-declaring "this rule
-  applies" without a verdict). independent = measured, rule doesn't apply.
-  Quality lane; criterion/evidence must be substantive.
+  applies" without a verdict). Passing/partial verdicts require at least one
+  evidence locator; independent = measured, rule doesn't apply.
 
 loom report [--format json|text]
   Full coverage: edge counts by status across all types, intents without validations,

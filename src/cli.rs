@@ -140,14 +140,15 @@ pub enum Command {
         /// meaning against the user) | quality (quality: earn GOVERNS green)
         /// | review (re-inspect uncertain or high-risk verdicts) | prove
         /// (analyzer: prove proposed hypotheses — the pre-decision plane, optional)
-        /// | refactor (builder: excellence-debt findings — size, metadata debt,
-        /// proof-locality, and open code clones — blocks Excellent, not Production-ready).
+        /// | wiki (builder: refresh teaching surfaces/docs) | refactor (builder:
+        /// excellence-debt findings — size, metadata debt, proof-locality, and
+        /// open code clones — blocks Excellent, not Production-ready).
         /// OMIT --mode to follow the compass phase (`loom status` shows it):
         /// bare `loom next` serves the phase's lane — fix when there are
         /// failures/staleness, build when intents need realizing, validate
         /// when proofs are pending, quality when gates are unchecked, discovery
-        /// once the vertical spine is green, and refactor when the Excellent rung
-        /// is blocked by codebase-health debt.
+        /// once the vertical spine is green, and refactor/wiki when the
+        /// Excellent rung is blocked by codebase-health or teaching-surface debt.
         #[arg(long)]
         mode: Option<String>,
 
@@ -161,9 +162,9 @@ pub enum Command {
         /// call. For discovery/fix this groups by the file that staled them
         /// with a prefilled `loom batch` template; for quality it groups rule
         /// verdicts by intent; for align it serves a user-interview agenda.
-        /// Supported for discovery, fix, quality, align, and review (capped at
-        /// 50). On the one-command-per-item modes (build, populate, validate,
-        /// prove) --take is accepted but caps to 1 (those queues aren't
+        /// Supported for discovery, fix, quality, align, review, and refactor
+        /// (capped at 50). On the one-command-per-item modes (build, populate,
+        /// prove, wiki) --take is accepted but caps to 1 (those queues aren't
         /// bulkable); use `loom next --all` for a full queue overview. Omit for
         /// the single top item; pass N≥1 for a bulk read (`--take 0` is rejected,
         /// so a computed zero-size chunk fails loudly instead of silently
@@ -1778,7 +1779,8 @@ pub enum RuleCmd {
     #[command(after_help = "EXAMPLE:\n  \
         loom rule verdict <rule-id> <intent-id> --status passing \\\n    \
           --criterion \"no query matches a relationship by its own property\" \\\n    \
-          --evidence \"grep over src/db/queries: all updates are endpoint-matched\"")]
+          --evidence \"grep over src/db/queries: all updates are endpoint-matched\" \\\n    \
+          --evidence-locator src/db/queries/stats.rs:299-340")]
     Verdict {
         rule_id: String,
         intent_id: String,

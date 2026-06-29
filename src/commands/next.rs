@@ -320,7 +320,7 @@ pub fn run(
         (
             1,
             Some(
-                "--take is a bulk read of the discovery/fix/quality/align/review queues; \
+                "--take is a bulk read of the discovery/fix/quality/align/review/refactor queues; \
                  {mode} resolves one command per item, so serving the top 1. For the full \
                  queue overview: `loom next --all`."
                     .replace("{mode}", &mode),

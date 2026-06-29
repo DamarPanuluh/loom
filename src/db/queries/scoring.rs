@@ -404,12 +404,12 @@ pub struct NormativeCoverage {
 /// verdict must meet to leave uncertainty-driven review.
 pub const REVIEW_CONFIDENCE: f64 = 0.7;
 
-/// One claim for the reviewer: low-confidence or empty-evidence passing/failing
-/// verdicts always queue, and high-risk GOVERNS pass/partial verdicts queue until
-/// the edge has been re-recorded after creation. That makes review a finite
-/// double-check: the first high-risk green claim asks for review, the
-/// re-inspection updates `last_inspected`, and the item deterministically leaves
-/// the optional queue.
+/// One claim for the reviewer: low-confidence, empty-evidence, or content-free
+/// passing/failing verdicts always queue, and high-risk GOVERNS pass/partial
+/// verdicts queue until the edge has been re-recorded after creation. That makes
+/// review a finite double-check: the first high-risk green claim asks for review,
+/// the re-inspection updates `last_inspected`, and the item deterministically
+/// leaves the optional queue.
 #[derive(Debug, Clone)]
 pub enum ReviewCandidate {
     RelatesTo(RelatesTo),
@@ -419,12 +419,17 @@ pub enum ReviewCandidate {
 pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewCandidate, f64)> {
     let active: std::collections::HashSet<&str> =
         snapshot.intents.iter().map(|i| i.id.as_str()).collect();
-    let needs_review = |status: &str, confidence: f64, evidence: &str| {
+    let needs_review = |status: &str, confidence: f64, criterion: &str, evidence: &str| {
         if !matches!(status, "passing" | "failing") || confidence == 0.0 {
             return false;
         }
         // Low-confidence verdicts always need a second look.
         if confidence < REVIEW_CONFIDENCE {
+            return true;
+        }
+        // High-confidence but content-free criteria are exactly the "confident
+        // slop" gap the review lane promises to catch.
+        if crate::gate::criterion_needs_review(criterion) {
             return true;
         }
         // A passing/failing verdict with NO evidence is a laundered claim —
@@ -441,8 +446,12 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
     };
     let mut scored: Vec<(ReviewCandidate, f64)> = Vec::new();
     for edge in &snapshot.relates {
-        if !needs_review(&edge.inspection_status, edge.confidence, &edge.evidence)
-            || !active.contains(edge.from_id.as_str())
+        if !needs_review(
+            &edge.inspection_status,
+            edge.confidence,
+            &edge.criterion,
+            &edge.evidence,
+        ) || !active.contains(edge.from_id.as_str())
             || !active.contains(edge.to_id.as_str())
         {
             continue;
@@ -468,8 +477,13 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
         if !active.contains(edge.intent_id.as_str()) {
             continue;
         }
-        // The base needs_review check (low confidence or empty evidence).
-        let base_review = needs_review(&edge.inspection_status, edge.confidence, &edge.evidence);
+        // The base needs_review check (low confidence, weak criterion, or empty evidence).
+        let base_review = needs_review(
+            &edge.inspection_status,
+            edge.confidence,
+            &edge.criterion,
+            &edge.evidence,
+        );
         // Additional GOVERNS-specific triggers route risky green claims to review
         // once. A high-confidence re-record updates last_inspected while preserving
         // created_at, so the same edge does not re-queue forever. `partial`
@@ -1643,7 +1657,7 @@ mod tests {
             from_name: "a".to_string(),
             to_name: "b".to_string(),
             inspection_status: status.to_string(),
-            criterion: String::new(),
+            criterion: "caller path imports the dependency through src/a.rs".to_string(),
             confidence,
             evidence: String::new(),
             last_inspected: String::new(),
@@ -1674,7 +1688,7 @@ mod tests {
             rule_name: "rule".to_string(),
             intent_name: "a".to_string(),
             inspection_status: status.to_string(),
-            criterion: String::new(),
+            criterion: "intent rejects invalid input before persistence".to_string(),
             confidence,
             evidence: String::new(),
             last_inspected: String::new(),

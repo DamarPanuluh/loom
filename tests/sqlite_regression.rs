@@ -5085,6 +5085,62 @@ fn sqlite_review_take_drains_low_confidence_in_bulk() {
     );
 }
 
+#[test]
+fn sqlite_review_routes_confident_content_free_criteria() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-review-weak-criterion");
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "UPDATE relates_to SET confidence=0.9, evidence='prior inspection recorded this coupling' WHERE confidence < 0.7 OR (confidence >= 0.7 AND evidence = '')",
+            [],
+        )
+        .expect("bump relates confidence and fill empty evidence");
+        conn.execute(
+            "UPDATE governs SET confidence=0.9, evidence='prior inspection recorded this compliance' WHERE confidence < 0.7 OR (confidence >= 0.7 AND evidence = '')",
+            [],
+        )
+        .expect("bump governs confidence and fill empty evidence");
+        conn.execute(
+            "UPDATE quality_rule SET severity='warning' WHERE severity='error'",
+            [],
+        )
+        .expect("avoid high-severity review noise");
+        conn.execute(
+            "UPDATE intent SET abstraction_level='feature' WHERE abstraction_level IN ('system','cross_cutting')",
+            [],
+        )
+        .expect("avoid high-altitude review noise");
+        conn.execute(
+            "UPDATE governs SET inspection_status='passing' WHERE inspection_status='partial'",
+            [],
+        )
+        .expect("avoid partial review noise");
+    }
+    let (a, b) = first_two_intent_ids(&graph.root);
+    let line = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"they are related yes indeed\",\"evidence\":\"manual reviewer saw a shared runtime path\",\"confidence\":0.95}}"
+    );
+    write_scratch_file(&graph.root, "scratch/weak-criterion.jsonl", &line);
+    run_json_as(
+        &graph.root,
+        &["batch", "scratch/weak-criterion.jsonl", "--json"],
+        "llm:analyzer",
+    );
+
+    let review = run_json(
+        &graph.root,
+        &["next", "--mode", "review", "--take", "50", "--json"],
+    );
+    let rendered = review.to_string();
+    assert!(
+        rendered.contains("they are related yes indeed"),
+        "high-confidence but content-free criteria must still route to review: {review}"
+    );
+}
+
 fn intent_id_by_name(root: &Path, name: &str) -> String {
     let db = root.join(".loom").join("graph.sqlite");
     let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
@@ -9228,6 +9284,41 @@ fn sqlite_independent_edge_restales_on_new_import_coupling() {
         relates_status(&graph.root, &a, &b),
         "needs_reverification",
         "a NEW import coupling between the pair must re-open the independent verdict (the safety net)"
+    );
+}
+
+#[test]
+fn sqlite_independent_edge_survives_body_edit_when_import_was_preexisting() {
+    let _guard = sqlite_test_lock();
+    let (graph, a, b) = setup_two_uncoupled_grounded_intents(
+        "independent-preexisting-import",
+        "use crate::b::b_thing;\npub fn a_thing() -> u8 { b_thing() }\n",
+        "pub fn b_thing() -> u8 { 2 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "independent",
+            "--notes",
+            "the import was inspected and judged incidental before this body edit",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    write_scratch_file(
+        &graph.root,
+        "src/a.rs",
+        "use crate::b::b_thing;\npub fn a_thing() -> u8 { b_thing() + 1 }\n",
+    );
+    let sync = run_json_as(&graph.root, &["sync", "--json"], "llm:analyzer");
+    assert_eq!(
+        relates_status(&graph.root, &a, &b),
+        "independent",
+        "a pre-existing import coupling is not NEW, so a body-only edit must not re-open independence: {sync}"
     );
 }
 

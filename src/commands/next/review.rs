@@ -99,7 +99,7 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             let action = format!(
                 "{protocol}
 
-  loom rule verdict {r} {i} --status passing|failing|independent --criterion \"…\" --evidence \"…\" --confidence 0.9",
+  loom rule verdict {r} {i} --status passing|failing|independent --criterion \"…\" --evidence \"…\" --evidence-locator <file:line> --confidence 0.9",
                 r = g.rule_id, i = g.intent_id,
             );
             if printer.json {

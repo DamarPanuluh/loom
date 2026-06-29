@@ -927,7 +927,7 @@ fn run_check_with_db(
         .filter(|g| g.inspection_status == "uninspected")
         .collect();
     let measure_hint = format!(
-        "loom rule verdict <rule-id> {} --status passing|failing|independent --criterion … --evidence …",
+        "loom rule verdict <rule-id> {} --status passing|failing|independent --criterion … --evidence … --evidence-locator <file:line>",
         intent_id
     );
     if printer.json {
@@ -1166,7 +1166,7 @@ fn recommend_rules_from_snapshot(
                 reasons,
                 existing_governs_status: existing.map(|g| g.inspection_status.clone()),
                 suggested_command: format!(
-                    "loom rule verdict {} {} --status passing|failing|independent --criterion \"<criterion>\" --evidence \"<evidence>\"",
+                    "loom rule verdict {} {} --status passing|failing|independent --criterion \"<criterion>\" --evidence \"<evidence>\" --evidence-locator <file:line>",
                     rule.name, intent.id
                 ),
             });

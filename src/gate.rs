@@ -544,6 +544,83 @@ pub fn is_vacuous(value: &str) -> bool {
             == 1
 }
 
+/// Heuristic review trigger for grammatical but content-free criteria that pass
+/// the write-time syntactic gate. This is deliberately NOT a hard rejection:
+/// reviewers can confirm a terse project-specific criterion, while confident
+/// generic claims like "they are related yes indeed" get the promised second look.
+pub fn criterion_needs_review(value: &str) -> bool {
+    if is_vacuous(value) {
+        return true;
+    }
+    let v = value.trim().to_lowercase();
+    let tokens: Vec<String> = v
+        .split_whitespace()
+        .map(|t| {
+            t.trim_matches(|c: char| !c.is_ascii_alphanumeric())
+                .to_string()
+        })
+        .filter(|t| !t.is_empty())
+        .collect();
+    let has_generic_claim = tokens.iter().any(|word| {
+        matches!(
+            word.as_str(),
+            "related"
+                | "relationship"
+                | "coexist"
+                | "coupling"
+                | "applies"
+                | "complies"
+                | "valid"
+                | "correct"
+                | "appropriate"
+                | "works"
+                | "covered"
+                | "checked"
+        )
+    });
+    let all_words_are_filler = tokens.iter().all(|word| {
+        matches!(
+            word.as_str(),
+            "a" | "an"
+                | "the"
+                | "this"
+                | "that"
+                | "these"
+                | "those"
+                | "it"
+                | "they"
+                | "is"
+                | "are"
+                | "be"
+                | "being"
+                | "was"
+                | "were"
+                | "yes"
+                | "indeed"
+                | "very"
+                | "really"
+                | "basically"
+                | "related"
+                | "relationship"
+                | "valid"
+                | "correct"
+                | "appropriate"
+                | "works"
+                | "covered"
+                | "checked"
+                | "good"
+                | "ok"
+                | "okay"
+                | "coexist"
+                | "coupling"
+                | "coupled"
+                | "applies"
+                | "complies"
+        )
+    });
+    has_generic_claim && all_words_are_filler && tokens.len() < 8
+}
+
 /// Reject an empty/placeholder/too-short value for a required evidence field.
 /// `field` is the flag name (e.g. "criterion"); `purpose` finishes the sentence
 /// "it must state …" so the error teaches what a good value looks like.
@@ -948,14 +1025,29 @@ pub fn require_locators_resolve(root: &Path, locators: &[String]) -> Result<()> 
                 // LINE anchor — e.g. `src/x.rs:99999999999999999999` used to slip
                 // through (None was treated as "no range") and launder into a
                 // verdict as green evidence. Reject it like an out-of-bounds one.
-                // A non-numeric suffix (`real.rs:funcname`) is an existence-only
-                // SYMBOL anchor and stays accepted.
                 None if range_is_numeric_intended(range) => anyhow::bail!(
                     "--evidence-locator '{l}': '{range}' is not a valid line number or N-M range \
                      (malformed or out of usize bounds) — a fabricated anchor cannot ground a verdict. \
                      Cite a real file:line."
                 ),
-                None => {}
+                // A non-numeric suffix (`real.rs:funcname`) is a SYMBOL anchor.
+                // It must resolve to an extracted symbol in the file; otherwise
+                // `real.rs:no_such_symbol` is just as fabricated as a bad line.
+                None => {
+                    let wanted = crate::repo::last_identifier(range);
+                    let facts = crate::repo::extract_physical_facts(root, &rel, &content);
+                    if wanted.is_empty()
+                        || !facts
+                            .symbol_facts
+                            .iter()
+                            .any(|s| s.name == wanted || s.label == range)
+                    {
+                        anyhow::bail!(
+                            "--evidence-locator '{l}': symbol suffix '{range}' does not resolve in '{path}' — \
+                             cite an extracted symbol name or a real file:line."
+                        );
+                    }
+                }
             }
         }
     }
@@ -1234,11 +1326,11 @@ mod tests {
         let mut f = std::fs::File::create(dir.join("real.rs")).unwrap();
         writeln!(f, "fn a() {{}}\nfn b() {{}}\nfn c() {{}}").unwrap(); // 3 lines
 
-        // A real file resolves — bare, in-range, and (existence-only) symbol suffix.
+        // A real file resolves — bare, in-range, and with a real extracted symbol suffix.
         assert!(require_locators_resolve(&dir, &["real.rs".into()]).is_ok());
         assert!(require_locators_resolve(&dir, &["real.rs:1-3".into()]).is_ok());
         assert!(require_locators_resolve(&dir, &["real.rs:2".into()]).is_ok());
-        assert!(require_locators_resolve(&dir, &["real.rs:funcname".into()]).is_ok());
+        assert!(require_locators_resolve(&dir, &["real.rs:a".into()]).is_ok());
         // No locators → passthrough.
         assert!(require_locators_resolve(&dir, &[]).is_ok());
 
@@ -1262,8 +1354,8 @@ mod tests {
             "an overflowing numeric line must be rejected, not treated as 'no range'"
         );
         assert!(require_locators_resolve(&dir, &["real.rs:-5".into()]).is_err());
-        // A genuine symbol suffix (non-numeric) stays accepted (existence-only).
-        assert!(require_locators_resolve(&dir, &["real.rs:funcname".into()]).is_ok());
+        // A fabricated symbol suffix is rejected, not laundered as a precise anchor.
+        assert!(require_locators_resolve(&dir, &["real.rs:funcname".into()]).is_err());
 
         let _ = std::fs::remove_dir_all(&dir);
     }

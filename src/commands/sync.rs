@@ -53,15 +53,24 @@ fn run_with_sqlite(
     };
     let mut state = SyncState::default();
 
-    // Detect changes and re-extract physical facts FIRST, then ripple. The
-    // independent-edge coupling gate must judge against CURRENT imports (a NEW
-    // import in this sync must re-open an independent edge THIS sync, not never),
-    // so `coupled_intent_pairs` is built from the codefiles AFTER re-extraction.
+    // Detect changes and re-extract physical facts FIRST, then ripple. Keep a
+    // before/after import-coupling set: independence is falsified only by a NEW
+    // import coupling, while import-only passing edges stale only when that
+    // mechanical coupling disappears.
+    let previous_coupled_intent_pairs =
+        compute_coupled_intent_pairs(&codefiles, &sync_data.all_implements);
     let code_ripple_targets = scan_files_and_flag_changes(base, &codefiles, &ctx, &mut state)?;
     update_physical_facts_and_flag_locators(store, base, &codefiles, &ctx, &mut state)?;
     let codefiles_after = store.list_codefiles()?;
     let coupled_intent_pairs =
         compute_coupled_intent_pairs(&codefiles_after, &sync_data.all_implements);
+    apply_import_delta_ripples(
+        store,
+        &ctx,
+        &mut state,
+        &previous_coupled_intent_pairs,
+        &coupled_intent_pairs,
+    )?;
     apply_code_ripples(
         store,
         &ctx,
@@ -356,6 +365,51 @@ fn scan_files_and_flag_changes(
     Ok(targets)
 }
 
+/// Stale RELATES_TO edges whose truth is defined by import-coupling DELTAS, not
+/// by arbitrary body edits in a grounded file. This is separate from
+/// `affected_intents` narrowing: top-level imports can be added/removed while an
+/// unrelated sibling symbol body is the only changed symbol.
+fn apply_import_delta_ripples(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    previous: &HashSet<(String, String)>,
+    current: &HashSet<(String, String)>,
+) -> Result<()> {
+    if previous == current {
+        return Ok(());
+    }
+    for edge in ctx.all_relates.iter().filter(|edge| {
+        ctx.active.contains(edge.from_id.as_str())
+            && ctx.active.contains(edge.to_id.as_str())
+            && !edge.stable
+            && (edge.inspection_status == "independent" || edge.inspection_status == "passing")
+    }) {
+        let pair = super::sorted_pair(&edge.from_id, &edge.to_id);
+        let was_coupled = previous.contains(&pair);
+        let is_coupled = current.contains(&pair);
+        let cause = if edge.inspection_status == "independent" && !was_coupled && is_coupled {
+            Some("static import coupling appeared")
+        } else if edge.inspection_status == "passing"
+            && crate::types::relates_is_import_only_coupling(&edge.kinds)
+            && was_coupled
+            && !is_coupled
+        {
+            Some("static import coupling disappeared")
+        } else {
+            None
+        };
+        if let Some(cause) = cause {
+            if state.related_edges_flagged.insert(edge.id.clone())
+                && store.flag_relates_to_needs_reverification(edge, cause, ctx.now)?
+            {
+                state.relates_to_flagged += 1;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Apply each changed file's deferred ripple now that physical facts (imports)
 /// have been re-extracted and `coupled_intent_pairs` reflects current coupling.
 fn apply_code_ripples(
@@ -491,13 +545,12 @@ fn flag_relates(
         // Independence is durable against behavior-preserving change: an
         // `independent` verdict is the claim "these two intents do NOT
         // interact", and editing one side's code does not create an
-        // interaction. So the code-change ripple re-opens an independent edge
-        // ONLY when a structural import coupling now exists between the pair
-        // (the same physical-plane signal `detect_undeclared_coupling` uses) —
-        // never on every unrelated edit. This is what stops a few central
-        // files from re-staling the whole N×N grid every sync. The
-        // federation/meaning ripple (require_code_stale_kind == false) is not a
-        // code change, so it keeps the status-only flip for every status.
+        // interaction. New structural import couplings are handled by the
+        // before/after delta pass in `apply_import_delta_ripples`; this
+        // body-change path must not re-open an already-coupled independent edge
+        // forever. The federation/meaning ripple (require_code_stale_kind ==
+        // false) is not a code change, so it keeps the status-only flip for
+        // every status.
         .filter(|edge| {
             // The DB-layer flip (`flag_relates_to_needs_reverification`) only acts
             // on passing/independent edges and is a guaranteed no-op for any other
@@ -514,7 +567,7 @@ fn flag_relates(
                 return false;
             }
             if edge.inspection_status == "independent" {
-                return coupled.contains(&super::sorted_pair(&edge.from_id, &edge.to_id));
+                return false;
             }
             // A meaning-only edge (every kind is shares_vocab/same_domain/
             // doc_reference) tracks concept overlap, not code — never re-open it.
