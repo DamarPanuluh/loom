@@ -392,6 +392,7 @@ fn gs_of(snapshot: &QuerySnapshot) -> GraphState {
             notes: 0,
             transition_cap: 0,
             note_log: NoteLogStats::default(),
+            inbox_pending: 0,
         },
         |_| Ok(0),
         || Ok(0),
@@ -413,6 +414,7 @@ fn note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy() {
             notes: 6000,
             transition_cap: 20,
             note_log: NoteLogStats::default(),
+            inbox_pending: 0,
         },
         |_| Ok(0),
         || Ok(0),
@@ -451,6 +453,7 @@ fn note_hygiene_names_broad_capped_transition_history_as_not_pruneable() {
             notes: notes.len() as i64,
             transition_cap: 20,
             note_log: NoteLogStats::from_notes(&notes, 20),
+            inbox_pending: 0,
         },
         |_| Ok(0),
         || Ok(0),
@@ -484,6 +487,7 @@ fn note_hygiene_uncapped_log_keeps_set_cap_remedy() {
             notes: 6000,
             transition_cap: 0,
             note_log: NoteLogStats::default(),
+            inbox_pending: 0,
         },
         |_| Ok(0),
         || Ok(0),
@@ -703,10 +707,28 @@ fn gs_of_with_disk(snapshot: &QuerySnapshot, disk_issues: usize) -> GraphState {
             notes: 0,
             transition_cap: 0,
             note_log: NoteLogStats::default(),
+            inbox_pending: 0,
         },
         |_| Ok(0),
         || Ok(0),
         move |_| Ok(disk_issues),
+    )
+    .unwrap()
+}
+
+fn gs_of_with_inbox_pending(snapshot: &QuerySnapshot, inbox_pending: i64) -> GraphState {
+    graph_state_from_snapshot_parts(
+        snapshot,
+        GraphStateContext {
+            meta: None,
+            notes: 0,
+            transition_cap: 0,
+            note_log: NoteLogStats::default(),
+            inbox_pending,
+        },
+        |_| Ok(0),
+        || Ok(0),
+        |_| Ok(0),
     )
     .unwrap()
 }
@@ -839,6 +861,21 @@ fn map_vs_territory_blocks_green_when_disk_unaccounted() {
         red.next_action.contains("map must match the territory"),
         "the action should name the gate: {}",
         red.next_action
+    );
+}
+
+#[test]
+fn pending_inbox_blocks_green_at_complete_phase() {
+    let snap = complete_reaching_snapshot();
+    let gs = gs_of_with_inbox_pending(&snap, 2);
+    assert_eq!(
+        gs.phase, "complete",
+        "intake cards are source territory: pending inbox triage must block green"
+    );
+    assert!(
+        gs.next_action.contains("loom inbox triage --take 20"),
+        "compass should route pending intake to the inbox drain: {}",
+        gs.next_action
     );
 }
 
@@ -1063,6 +1100,7 @@ fn a_shared_file_coupling_gates_via_the_smell_not_the_pair_grid() {
             notes: 0,
             transition_cap: 0,
             note_log: NoteLogStats::default(),
+            inbox_pending: 0,
         },
         real_overlap_findings,
         || Ok(0),
@@ -1192,6 +1230,7 @@ fn audit_gate_outranks_stale_edges() {
             notes: 0,
             transition_cap: 0,
             note_log: NoteLogStats::default(),
+            inbox_pending: 0,
         },
         |_| Ok(84), // open findings exist
         || Ok(0),

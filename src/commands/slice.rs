@@ -468,6 +468,7 @@ fn slice_readiness(snap: &QuerySnapshot, slice: &Slice) -> (String, String) {
             notes: 0,
             transition_cap: 0,
             note_log: crate::db::queries::NoteLogStats::default(),
+            inbox_pending: 0,
         },
         |_| Ok(0), // open findings (smells) are repo-wide HARDEN, not per-slice
         || Ok(0),

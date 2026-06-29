@@ -81,6 +81,11 @@ impl SqliteGraphStore {
         let layer_order = self.layer_order()?;
         let proposed_hypotheses = self.list_hypotheses(Some("proposed"))?;
         let targets = self.list_all_targets()?;
+        let inbox_pending = self
+            .list_inbox_items(None, None)?
+            .iter()
+            .filter(|item| item.status == "new" || item.status == "triaged")
+            .count() as i64;
         let transition_cap = self.transition_cap()?;
         graph_state_from_snapshot_parts(
             snapshot,
@@ -92,6 +97,7 @@ impl SqliteGraphStore {
                     notes,
                     transition_cap,
                 ),
+                inbox_pending,
             },
             |snapshot| {
                 compute_smells_from_parts(

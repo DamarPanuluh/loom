@@ -132,6 +132,7 @@ pub struct GraphStateContext {
     pub notes: i64,
     pub transition_cap: usize,
     pub note_log: NoteLogStats,
+    pub inbox_pending: i64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -401,6 +402,7 @@ struct PhaseInputs<'a> {
     rules_count: i64,
     intents_with_code: i64,
     priority_unexplored_pairs: i64,
+    inbox_pending: i64,
 }
 
 fn decide_phase(
@@ -477,6 +479,16 @@ fn decide_phase(
     let disk_issues = disk_integrity_issues(snapshot)?;
     if disk_issues > 0 {
         return Ok(("complete", "directive", format!("{disk_issues} file(s) on disk the graph doesn't account for (unmapped, drifted, or missing) — the map must match the territory before green: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude.")));
+    }
+    if inputs.inbox_pending > 0 {
+        return Ok((
+            "complete",
+            "directive",
+            format!(
+                "{} inbox item(s) pending triage/routing — the seed/intake surface is not decomposed yet: `loom inbox triage --take 20`.",
+                inputs.inbox_pending
+            ),
+        ));
     }
 
     // ───────────────────────────── HARDEN ────────────────────────────
@@ -700,6 +712,7 @@ pub fn graph_state_from_snapshot_parts(
             rules_count,
             intents_with_code: nc.intents_with_code,
             priority_unexplored_pairs,
+            inbox_pending: context.inbox_pending,
         },
         snapshot,
         disk_integrity_issues,

@@ -164,8 +164,8 @@ pub enum Command {
         /// verdicts by intent; for align it serves a user-interview agenda.
         /// Supported for discovery, fix, quality, align, review, and refactor
         /// (capped at 50). On the one-command-per-item modes (build, populate,
-        /// prove, wiki) --take is accepted but caps to 1 (those queues aren't
-        /// bulkable); use `loom next --all` for a full queue overview. Omit for
+        /// validate, prove, wiki) --take is accepted but caps to 1 (those queues
+        /// aren't bulkable); use `loom next --all` for a full queue overview. Omit for
         /// the single top item; pass N≥1 for a bulk read (`--take 0` is rejected,
         /// so a computed zero-size chunk fails loudly instead of silently
         /// switching back to the single-item shape).
