@@ -86,7 +86,14 @@ fn build_closeout_queues(
     let discovery_uninspected = snapshot
         .relates
         .iter()
-        .filter(|e| e.inspection_status == "uninspected")
+        .filter(|e| {
+            // Discovery queue = asserted-class edges that have never been
+            // inspected. needs_reverification belongs in the fix queue.
+            // Derived-class edges (imports / shares_file) are mechanically
+            // re-derived by sync and never require a judgment verdict.
+            e.inspection_status == "uninspected"
+                && crate::types::relates_truth_class(&e.kinds) == crate::types::TruthClass::Asserted
+        })
         .filter(|e| {
             active_ids.contains(e.from_id.as_str()) && active_ids.contains(e.to_id.as_str())
         })
@@ -330,12 +337,17 @@ fn push_review_and_human_queues(
             "top": "code-primary wiki prose owing: one narrative per module page + topical pages; cite source files, not intent UUIDs",
         }));
     }
-    let discovery_backlog = discovery_uninspected + gs.priority_unexplored_pairs;
-    if discovery_backlog > 0 {
+    // Asserted-stale coupling residue: stored RELATES_TO edges that are
+    // explicitly uninspected. These are judgment work (asserted truth-class) —
+    // the analyzer must inspect and verdict them. Required, not optional.
+    // `priority_unexplored_pairs` (statistical/derived coupling candidates from
+    // the N×N grid) is NOT included here: it is a ranked advisory feed, not a
+    // judgment obligation. It is surfaced in `loom smells` / `loom debt`.
+    if discovery_uninspected > 0 {
         queues.push(serde_json::json!({
-            "queue": "horizontal-risk", "role": "analyzer", "gate": "autonomous", "optional": false,
-            "count": discovery_backlog, "command": "loom next --mode discovery --class suspected-coupling",
-            "top": "horizontal risk closure: signal-bearing unexplored pairs plus explicit uninspected RELATES_TO edges",
+            "queue": "asserted-residue", "role": "analyzer", "gate": "autonomous",
+            "count": discovery_uninspected, "command": "loom next --mode discovery",
+            "top": "stored RELATES_TO edge(s) awaiting verdict (uninspected asserted coupling)",
         }));
     }
     let optional_survey = (gs.unexplored_pairs - gs.priority_unexplored_pairs).max(0);

@@ -191,8 +191,13 @@ fn fmt_axis(a: &crate::db::queries::CoverageAxis) -> String {
     }
 }
 
-/// The five axes joined as one compact line — shared by the human pulse
+/// The four axes joined as one compact line — shared by the human pulse
 /// (with the "360°: " prefix) and the JSON pulse (`coverage` field).
+/// The `explored` axis (the intent×intent grid) is omitted from the display:
+/// coupling is a derived projection, not a completable grid obligation; it no
+/// longer gates and surfacing a denominator of 83k pairs obscures the real
+/// signal. The underlying `Coverage360.explored_pairs` field is still computed
+/// for JSON consumers and back-compat.
 pub fn coverage_line(c: &crate::db::queries::Coverage360) -> String {
     // Proven discloses its quality ceiling inline: how much of the proven count
     // is EXECUTED proof (a runnable validation that passed) vs ASSERTED (hand-
@@ -201,13 +206,6 @@ pub fn coverage_line(c: &crate::db::queries::Coverage360) -> String {
     // Shown only when there is proven to inspect (covered > 0); a 0 axis stays
     // a bare "—" so the compass never renders a vacuous "0/0".
     let proven = if c.proven_leaves.total > 0 && c.proven_leaves.covered > 0 {
-        // Disclose the quality split, but label it so the POLARITY is
-        // unmistakable: `executed` is the strong tier (the executor RAN a
-        // discriminating test), `asserted-only` is the weak tier (proven without
-        // a passing executed test — hand-marked or ran-inert). The old
-        // `exec/assert` shorthand read backwards to cold drivers — "assert 0"
-        // looks like "nothing checked" when it actually means "0 leaves rest on
-        // a hand-mark; all are machine-executed." Spell both tiers out.
         format!(
             "{} (executed {} · asserted-only {})",
             fmt_axis(&c.proven_leaves),
@@ -218,10 +216,9 @@ pub fn coverage_line(c: &crate::db::queries::Coverage360) -> String {
         fmt_axis(&c.proven_leaves)
     };
     format!(
-        "grounded {} · realized {} · explored {} · measured {} · proven {}",
+        "grounded {} · realized {} · measured {} · proven {}",
         fmt_axis(&c.grounded_files),
         fmt_axis(&c.realized_leaves),
-        fmt_axis(&c.explored_pairs),
         fmt_axis(&c.measured_pairs),
         proven,
     )
@@ -873,7 +870,7 @@ mod tests {
             explored_pairs: CoverageAxis {
                 covered: 0,
                 total: 0,
-            }, // no surface → —
+            }, // explored axis is no longer displayed; field still computed for JSON
             measured_pairs: CoverageAxis {
                 covered: 1,
                 total: 3,
@@ -901,8 +898,8 @@ mod tests {
             "partial axis shows the fraction: {line}"
         );
         assert!(
-            line.contains("explored —"),
-            "an axis with no surface is —, never a vacuous 100%: {line}"
+            !line.contains("explored"),
+            "explored axis is dropped from human display (coupling is a derived projection): {line}"
         );
         assert!(
             !line.contains("0/0"),

@@ -576,6 +576,26 @@ pub enum Command {
         stale: bool,
     },
 
+    /// Ranked statistical advisory clusters — the compression layer over
+    /// co-change, shotgun-surgery, code-clone, and proof-locality signals.
+    /// Use this to find the few pressure points worth acting on rather than
+    /// drowning in raw signal counts. Statistical signals are NEVER required
+    /// debt and NEVER gate any maturity rung.
+    ///
+    /// Confirm a cluster: `loom edge explore <a> <b> ground …` or `loom hypothesis add …`
+    /// Dismiss a cluster: `loom note add --intent <id> --kind decision --text "why incidental"`
+    #[clap(
+        after_help = "Examples:\n  loom debt\n  loom debt --limit 20\n  loom debt --kind co-change\n  loom debt --json"
+    )]
+    Debt {
+        /// Filter to one kind: co-change | shotgun | clone | proof-locality
+        #[arg(long)]
+        kind: Option<String>,
+        /// Maximum clusters to show (default: 10)
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
+    },
+
     /// Reconcile files on disk against the graph: grounded / excluded /
     /// unaccounted — so nothing is silently missed (respects .gitignore).
     Coverage {

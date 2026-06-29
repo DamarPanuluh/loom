@@ -8,6 +8,7 @@ pub mod codefile;
 pub mod complete;
 pub mod corpus;
 pub mod coverage;
+pub mod debt;
 pub mod delegate;
 pub mod detect;
 pub mod doctor;
@@ -139,6 +140,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
         Command::Paths       { limit }      => paths::run(limit, &printer),
+        Command::Debt        { kind, limit }         => debt::run(kind.as_deref(), limit, &printer),
         Command::Smells      { limit, take, kind, summary, stale } => smells::run(limit, if take == 0 { None } else { Some(take) }, kind.as_deref(), summary, stale, &printer),
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),

@@ -1625,3 +1625,143 @@ fn fully_proven_badge_gates_on_phase_and_executed_proof() {
         "{reasons:?}"
     );
 }
+
+// --- Truth-class routing tests (SC-1, SC-4) --------------------------------
+// SC-1: TruthClass classification is total and disjoint over RELATES_TO edges.
+// SC-4: Derived-class and statistical signals never appear in required queues.
+
+fn rel_with_kinds(from: &str, to: &str, status: &str, kinds: &[&str]) -> RelatesTo {
+    let mut r = rel(from, to, status);
+    r.kinds = kinds.iter().map(|s| s.to_string()).collect();
+    r
+}
+
+#[test]
+fn sc1_truth_class_classification_is_total_and_correct() {
+    use crate::types::{relates_truth_class, TruthClass};
+    // Derived: only mechanical extraction kinds
+    assert_eq!(
+        relates_truth_class(&["imports".to_string()]),
+        TruthClass::Derived
+    );
+    assert_eq!(
+        relates_truth_class(&["shares_file".to_string()]),
+        TruthClass::Derived
+    );
+    assert_eq!(
+        relates_truth_class(&["imports".to_string(), "shares_file".to_string()]),
+        TruthClass::Derived,
+        "mix of two derived kinds is still derived"
+    );
+    // Asserted: judgment-required kinds
+    assert_eq!(
+        relates_truth_class(&["manual".to_string()]),
+        TruthClass::Asserted
+    );
+    assert_eq!(
+        relates_truth_class(&["calls".to_string()]),
+        TruthClass::Asserted
+    );
+    assert_eq!(
+        relates_truth_class(&["inheritance".to_string()]),
+        TruthClass::Asserted
+    );
+    assert_eq!(
+        relates_truth_class(&["shares_state".to_string()]),
+        TruthClass::Asserted
+    );
+    assert_eq!(
+        relates_truth_class(&["doc_reference".to_string()]),
+        TruthClass::Asserted
+    );
+    // Structural-but-label-assigned kinds are asserted (human set the tag/domain)
+    assert_eq!(
+        relates_truth_class(&["shares_vocab".to_string()]),
+        TruthClass::Asserted
+    );
+    assert_eq!(
+        relates_truth_class(&["same_domain".to_string()]),
+        TruthClass::Asserted
+    );
+    // Un-kinded edges require a verdict — asserted
+    assert_eq!(
+        relates_truth_class(&[]),
+        TruthClass::Asserted,
+        "un-kinded is asserted"
+    );
+    // Mixed derived + judgment = asserted (judgment dominates)
+    assert_eq!(
+        relates_truth_class(&["imports".to_string(), "manual".to_string()]),
+        TruthClass::Asserted,
+        "judgment kind in mix makes the whole edge asserted"
+    );
+}
+
+#[test]
+fn sc4_derived_class_uninspected_never_blocks_harden() {
+    // A purely import-coupled uninspected edge must NOT count toward rt_uninspected
+    // and must NOT prevent horizontally_explored from being true.
+    let intents = vec![
+        intent("a", "implemented"),
+        intent("b", "implemented"),
+        intent("c", "implemented"),
+    ];
+    // One derived-class uninspected edge (import-only) + one asserted-class
+    // uninspected edge (un-kinded). Only the asserted one should appear in rt_uninspected.
+    let relates = vec![
+        rel_with_kinds("a", "b", "uninspected", &["imports"]), // derived → excluded
+        rel_with_kinds("b", "c", "uninspected", &[]),          // asserted (un-kinded) → included
+    ];
+    let snapshot = snap(intents, relates);
+    let active_ids: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let status = edge_status_summary(&snapshot, &active_ids);
+    assert_eq!(
+        status.rt_uninspected, 1,
+        "only the asserted-class edge counts; derived import-coupling is excluded"
+    );
+    assert_ne!(
+        status.rt_uninspected, 0,
+        "the asserted edge keeps horizontally_explored false"
+    );
+}
+
+#[test]
+fn sc4_derived_class_needs_rev_never_blocks_harden() {
+    // A derived-class needs_reverification edge must NOT count toward rt_needs_rev.
+    let intents = vec![intent("a", "implemented"), intent("b", "implemented")];
+    let relates = vec![
+        rel_with_kinds("a", "b", "needs_reverification", &["imports"]), // derived → excluded
+    ];
+    let snapshot = snap(intents, relates);
+    let active_ids: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let status = edge_status_summary(&snapshot, &active_ids);
+    assert_eq!(
+        status.rt_needs_rev, 0,
+        "derived needs_rev excluded from residue"
+    );
+    // With only a derived stale edge, the graph should be considered horizontally explored.
+    let h_explored = status.rt_uninspected == 0 && status.rt_needs_rev == 0;
+    assert!(
+        h_explored,
+        "derived-only stale edges must not block horizontally_explored"
+    );
+}
+
+#[test]
+fn sc4_asserted_needs_rev_still_blocks_harden() {
+    // An asserted-class needs_reverification edge MUST count — it is real work.
+    let intents = vec![intent("a", "implemented"), intent("b", "implemented")];
+    let relates = vec![
+        rel_with_kinds("a", "b", "needs_reverification", &[]), // asserted (un-kinded)
+    ];
+    let snapshot = snap(intents, relates);
+    let active_ids: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let status = edge_status_summary(&snapshot, &active_ids);
+    assert_eq!(
+        status.rt_needs_rev, 1,
+        "asserted needs_rev counts as residue"
+    );
+}

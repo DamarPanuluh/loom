@@ -221,14 +221,23 @@ pub fn run_with_db(
         .count() as i64;
     let decision_notes = db.notes_by_kind("decision")?;
     let advisories = advisory_counts(root, &snapshot, &ignores, &decision_notes);
-    // Open smells are computed once at the audit gate (phase audit|complete) and
-    // reused for BOTH the audit pulse and the fully_proven badge's proof-locality.
+    // Open smells are computed once at the audit gate and reused for BOTH the
+    // audit pulse and the fully_proven badge's proof-locality.
+    // excellence_debt_count = adjudication-required advisory smells + metadata
+    // debt items — judgment work that actually needs an operator decision.
+    // Statistical signals (co-change, shotgun, clone, proof-locality) are
+    // tracked separately in `advisories` and surfaced as a RANKED FEED via
+    // `loom debt`; they are NOT required debt and do NOT gate the Excellent rung.
     let (open_smells, excellence_debt_count) = if should_compute_audit_pulse(&gs) {
         let report = db.smell_report(&snapshot)?;
-        let excellence_debt_count = report.advisory.len() + report.debt.len() + advisories.total;
+        // Exclude advisories.total (statistical signals: co-change, shotgun,
+        // clone, proof-locality) — these are a ranked advisory feed, not
+        // obligations. Only judgment-required advisory smells and metadata debt
+        // count as excellence debt.
+        let excellence_debt_count = report.advisory.len() + report.debt.len();
         (report.open, excellence_debt_count)
     } else {
-        (Vec::new(), advisories.total)
+        (Vec::new(), 0)
     };
     let audit = if should_compute_audit_pulse(&gs) {
         audit_pulse(open_smells.clone())

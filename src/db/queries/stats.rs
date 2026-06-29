@@ -251,10 +251,22 @@ fn edge_status_summary(snapshot: &QuerySnapshot, active_ids: &HashSet<&str>) -> 
         if !active_ids.contains(e.from_id.as_str()) || !active_ids.contains(e.to_id.as_str()) {
             continue;
         }
+        let tc = crate::types::relates_truth_class(&e.kinds);
         match e.inspection_status.as_str() {
-            "uninspected" => summary.rt_uninspected += 1,
+            // Only ASSERTED-class edges count toward the required coupling
+            // residue. DERIVED-class edges (imports / shares_file — purely
+            // mechanical couplings) are re-derived by sync and must never
+            // block harden, horizontally_explored, or the discovery queue.
+            "uninspected" | "needs_reverification" if tc == crate::types::TruthClass::Asserted => {
+                if e.inspection_status == "uninspected" {
+                    summary.rt_uninspected += 1;
+                } else {
+                    summary.rt_needs_rev += 1;
+                }
+            }
+            // An explicit failing verdict is real work regardless of truth-class:
+            // someone recorded that this coupling violates a criterion.
             "failing" => summary.rt_failing += 1,
-            "needs_reverification" => summary.rt_needs_rev += 1,
             _ => {}
         }
     }

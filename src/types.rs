@@ -793,6 +793,61 @@ pub fn relates_is_import_only_coupling(kinds: &[String]) -> bool {
     })
 }
 
+// ---------------------------------------------------------------------------
+// Truth-class: how an edge's truth is established (Phase 0 — derived in code,
+// never stored; see docs/truth-class-foundation-proposal.md).
+// ---------------------------------------------------------------------------
+
+/// Classification of *how* an edge's truth is established — orthogonal to edge
+/// kind and inspection_status. Derived in code (a pure function over existing
+/// fields); not yet a stored column (Phase 2 of the rollout, if ever earned).
+///
+/// Statistical signals (co-change, shotgun, clone, proof-locality) are never
+/// stored as edge rows; they have no TruthClass here — they are a ranked feed,
+/// not an obligation. See docs/truth-class-foundation-proposal.md Part I.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TruthClass {
+    /// Mechanically extracted from code or git — reproducible bit-for-bit from
+    /// the same source state. `loom sync` recomputes; never queued for judgment.
+    Derived,
+    /// Recorded judgment or design decision — pinned until invalidated by sync.
+    /// The only class that reaches `loom next` as required work.
+    Asserted,
+}
+
+/// Compute the truth-class for a RELATES_TO edge from its `kinds` multiset.
+///
+/// `Derived` iff every kind is a purely mechanical coupling that the extractor
+/// re-derives automatically with no judgment:
+///   - `imports`     — static import path, extracted by the language analyser
+///   - `shares_file` — co-location fact, derived from overlapping IMPLEMENTS sets
+///
+/// Everything else — including un-kinded edges — is `Asserted`: the meaning
+/// requires an operator verdict to close. See the nine-table mapping in
+/// `docs/truth-class-foundation-proposal.md` Migration / Phase 0.
+///
+/// `SharesVocab` and `SameDomain` are mechanical to *detect* but require a human
+/// to have set the tag/domain first — they are Asserted. `Calls`, `Inheritance`,
+/// `SharesState`, `DocReference`, and `Manual` are always Asserted judgments.
+/// Statistical signals (co-change, shotgun, clone) are never stored as edge rows
+/// and are therefore outside this function's scope.
+pub fn relates_truth_class(kinds: &[String]) -> TruthClass {
+    if kinds.is_empty() {
+        // Un-kinded: the meaning has not been determined — Asserted.
+        return TruthClass::Asserted;
+    }
+    let all_mechanical = kinds.iter().all(|k| {
+        k.parse::<RelationKind>()
+            .map(|rk| matches!(rk, RelationKind::Imports | RelationKind::SharesFile))
+            .unwrap_or(false)
+    });
+    if all_mechanical {
+        TruthClass::Derived
+    } else {
+        TruthClass::Asserted
+    }
+}
+
 impl std::str::FromStr for RelationKind {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> anyhow::Result<Self> {

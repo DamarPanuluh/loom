@@ -342,7 +342,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
         ));
     }
     if !gs.horizontally_explored {
-        hardened_reasons.push("RELATES_TO risk backlog not closed".to_string());
+        hardened_reasons.push("asserted coupling residue not cleared — stale or uninspected RELATES_TO verdicts outstanding".to_string());
     }
     if input.behavioral.enumerated > 0 && input.behavioral.discharged < input.behavioral.enumerated
     {
@@ -423,11 +423,12 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
 
     // ---- Rung 6: Excellent (CERTIFICATION: codebase health) ----
     // Production-ready says the system is understood, proven, and deploy-fit.
-    // Excellent is deliberately stricter: unresolved refactor/design/proof-locality
-    // debt keeps the codebase from reading as "green" even though the map is
-    // honest and production may be safe. This closes the old laundering hole
-    // where "advisory, never gates green" could make a fully documented mess look
-    // like the best possible codebase.
+    // Excellent is stricter: unresolved judgment-required advisory smells and
+    // metadata debt (duplicated_responsibility, overlapping_ownership, debt
+    // kinds) keep the codebase from reading as "green." Statistical signals
+    // (co-change, shotgun, clone, proof-locality) are a ranked advisory FEED
+    // accessible via `loom debt` — they are not excellence debt and do not gate
+    // this rung. This makes Excellent achievable and honest.
     let excellent_status = if prod_status == RungStatus::Met && input.excellence_debt_count == 0 {
         RungStatus::Met
     } else if prod_status == RungStatus::Met {
@@ -441,7 +442,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     }
     if input.excellence_debt_count > 0 {
         excellent_reasons.push(format!(
-            "{} unresolved excellence debt item(s) — refactor/adjudicate as fixed, false-positive, or deliberate design; accepted/deferred real debt does not certify Excellent",
+            "{} unresolved excellence debt item(s) (judgment-required advisory smells / metadata gaps) — adjudicate via `loom smells` or `loom next --mode refactor`; statistical advisory signals (co-change/shotgun/clone) are a separate ranked feed in `loom debt` and do not block this rung",
             input.excellence_debt_count
         ));
     }
