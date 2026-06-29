@@ -111,6 +111,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **iso5055 quality rule pack** — seeds the ten CWE-grounded ISO 5055 baseline rules for reliability security performance and maintainability  `src/commands/rule.rs`
 - **layer cli subcommands** — loom layer list/show commands for architecture layer vocabulary  `src/cli.rs`
 - **long version stamp for binary identity** — loom --version prints crate version plus git build id so local dogfood binaries are distinguishable from release builds  `src/cli.rs`
+- **loom paths composition command** — loom paths renders composition proof coverage — which intents are path-proven vs leaf-only vs unproven — as a read-only orienteering surface  `src/commands/paths.rs`
 - **mobile lifecycle safe state rule id** — single source of truth for lifecycle safe state rule spelling  `src/commands/rule.rs`
 - **mobile quality rule pack** — seeds mobile lifecycle offline permissions and battery rules  `src/commands/rule.rs`
 - **mobile quality rule pack** — seeds mobile lifecycle offline permissions threading battery and entry point rules  `src/commands/rule.rs`
@@ -207,7 +208,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **smells Smell_id** — pub fn Smell::id  `src/db/queries/smells.rs`
 - **smells Smell_intent_ids** — pub fn Smell::intent_ids  `src/db/queries/smells.rs`
 - **smells StringContractLoc** — struct StringContractLoc  `src/db/queries/smells.rs`
-- **smells TANGLE_INTENTS** — pub const TANGLE_INTENTS  `src/db/queries/smells.rs`
+- **smells TANGLE_INTENTS** — pub const TANGLE_INTENTS  `src/db/queries/smells.rs`, `src/db/queries/smells/physical.rs`
 - **smells TWIN_SIMILARITY** — pub const TWIN_SIMILARITY  `src/db/queries/smells.rs`
 - **smells adjudicate** — rules a smell finding via a decision note with gate validation  `src/db/queries/smells.rs`
 - **smells arg after** — extracts the positional argument after a given flag in a CLI string  `src/db/queries/smells.rs`
@@ -397,6 +398,7 @@ Intents grouped by domain, with where each is grounded in code.
 ### health
 
 - **completeness and integrity checking** — vertical spine (tree shape + leaf realization + file reach), coverage reconciliation against disk, doctor audit of schema conformance and provenance lanes  `docs/maturity-ladder-proposal.md`, `src/commands/complete.rs`, `src/commands/coverage.rs`, `src/commands/doctor.rs`, `src/commands/hotspots.rs`, `src/commands/impact.rs`, `src/commands/report.rs`, `src/commands/status.rs`, `src/db/queries/completeness.rs`, `src/db/queries/comprehensiveness.rs`, `src/db/queries/integrity.rs`, `src/db/queries/maturity.rs`, `src/db/queries/maturity/tests.rs`, `src/db/queries/stats.rs`, `src/db/queries/stats/tests.rs`, `src/db/queries/symbol_accountability.rs`
+- **composition proof coverage** — composition_coverage_from_snapshot classifies active intents as path-proven (assembly exercised by a saga or multi-intent spanning proof), leaf-only (unit tests only), or unproven; never gates green, always additive  `src/db/queries/composition.rs`
 - **derived problem signals** — loom smells: twins, overlapping ownership, scatter, tangles, undeclared coupling, recurrence, normative gaps — computed from graph structure, each with a remedy  `src/commands/domain.rs`, `src/commands/layer.rs`, `src/commands/smells.rs`, `src/db/queries/smells.rs`, `src/db/queries/smells/normative.rs`, `src/db/queries/smells/physical.rs`, `src/db/queries/smells/semantic.rs`, `src/db/queries/smells/source_fact_tests.inc`
 - **report command handler** — opens the graph and renders the full health report envelope  `src/commands/report.rs`
 - **report data struct** — holds the assembled report sections before rendering  `src/commands/report.rs`
@@ -405,6 +407,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **report list cap constant** — caps per-section report lists so agents see headlines not thousands of rows  `src/commands/report.rs`
 - **report snapshot assembler** — assembles status, gaps, and blocked-validation slices from a query snapshot  `src/commands/report.rs`
 - **report text truncator** — truncates long evidence and criterion strings at unicode character boundaries for human report lines  `src/commands/report.rs`
+- **self-calibrating smell thresholds** — tukey_upper_fence derives outlier/far-outlier bounds from a repo's own owner-count distribution; replaces hardcoded magnitude constants so tangle and coupling detectors adapt to any repo  `src/db/queries/calibrate.rs`
 - **verifiable delegated coverage** — Coverage treats files under a declared subtree as covered by a child loom.graph.json export, and reports a missing export as an explicit delegation-target gap.  `README.md`, `src/commands/delegate.rs`
 
 ### navigation
@@ -501,6 +504,7 @@ Intents grouped by domain, with where each is grounded in code.
 
 
 <!-- loom:prose-start -->
+
 
 
 

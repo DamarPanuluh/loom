@@ -30,20 +30,20 @@ symbols:
   - the maturity ladder
 provenance:
   docs/maturity-ladder-proposal.md: 6b14490c69e38219
-  src/commands/complete.rs: b18b50099ee49f56
+  src/commands/complete.rs: febd89cc471e1f4a
   src/commands/coverage.rs: be50cf282413bc27
   src/commands/doctor.rs: 7455e3f6b39aa8a5
   src/commands/hotspots.rs: 67cf959d9d79973e
   src/commands/impact.rs: 4da1713958fa1b7c
   src/commands/report.rs: c530fd8ab3d7c457
-  src/commands/status.rs: 7cde5db284132dbe
+  src/commands/status.rs: e646856940b1b07e
   src/db/queries/completeness.rs: 9b909cc69121f1e1
   src/db/queries/comprehensiveness.rs: 92ecbff1ee84ea92
   src/db/queries/integrity.rs: cf89f2e8809f232a
-  src/db/queries/maturity.rs: 000eec873a79ff79
+  src/db/queries/maturity.rs: 4a6a009e3a22ca0f
   src/db/queries/maturity/tests.rs: 83aebef6afd90de4
-  src/db/queries/stats.rs: 476ab8622105603d
-  src/db/queries/stats/tests.rs: 7c0d1fb9f3e602ae
+  src/db/queries/stats.rs: 3899fc76d080d39b
+  src/db/queries/stats/tests.rs: 92f3c9a1ca048524
   src/db/queries/symbol_accountability.rs: ae181b9815b0b820
 ---
 
@@ -73,6 +73,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

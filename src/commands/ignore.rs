@@ -21,6 +21,10 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
             ensure_initialized(&cwd)?;
             run_add_with_sqlite(&cwd, pattern, reason, author, printer)
         }
+        IgnoreCmd::Remove { pattern } => {
+            ensure_initialized(&cwd)?;
+            run_remove_with_sqlite(&cwd, &pattern, printer)
+        }
     }
 }
 
@@ -138,4 +142,76 @@ fn run_list_with_db(db: &dyn GraphReadRepository, printer: &Printer) -> Result<(
         }
     }
     Ok(())
+}
+
+fn run_remove_with_sqlite(root: &std::path::Path, pattern: &str, printer: &Printer) -> Result<()> {
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let removed = store.delete_ignore(pattern)?;
+    if !removed {
+        anyhow::bail!(
+            "no ignore rule with pattern '{}' — run `loom ignore list` to see exact patterns.",
+            pattern
+        );
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "removed": pattern,
+            "next_step": "`loom coverage` — files matching this pattern are no longer excluded.",
+        }));
+    } else {
+        println!("✓ Removed ignore rule for '{pattern}'.");
+        println!("  → `loom coverage` to see any files that now show as unaccounted.");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::Ignore;
+
+    #[test]
+    fn ignore_remove_deletes_existing_and_errors_on_missing() {
+        let dir = std::env::temp_dir().join(format!(
+            "loom-ignore-remove-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        // `sqlite_db_path(root)` resolves to `root/.loom/graph.sqlite`.
+        let loom_dir = dir.join(".loom");
+        std::fs::create_dir_all(&loom_dir).unwrap();
+        let db_path = loom_dir.join("graph.sqlite");
+        {
+            let store = crate::db::sqlite::SqliteGraphStore::open(&db_path).unwrap();
+            store
+                .insert_ignore(&Ignore {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    pattern: "fixtures/**".into(),
+                    reason: "test fixtures".into(),
+                    author: "llm".into(),
+                    created_at: "t".into(),
+                })
+                .unwrap();
+        }
+
+        let printer = Printer::new(false);
+        run_remove_with_sqlite(&dir, "fixtures/**", &printer).unwrap();
+
+        let db = crate::db::sqlite::SqliteGraphStore::open(&db_path).unwrap();
+        assert!(
+            db.list_ignores().unwrap().is_empty(),
+            "rule must be gone after remove"
+        );
+        drop(db);
+
+        // A missing pattern should error cleanly.
+        let err = run_remove_with_sqlite(&dir, "fixtures/**", &printer).unwrap_err();
+        assert!(
+            err.to_string().contains("no ignore rule"),
+            "missing pattern should give a named error: {err}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

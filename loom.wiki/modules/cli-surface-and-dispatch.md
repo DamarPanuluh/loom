@@ -16,6 +16,7 @@ sourceFiles:
   - src/commands/intent.rs
   - src/commands/mod.rs
   - src/commands/note.rs
+  - src/commands/paths.rs
   - src/commands/resolve.rs
   - src/commands/rule.rs
   - src/commands/validate.rs
@@ -170,26 +171,27 @@ symbols:
   - with_evidence
 provenance:
   build.rs: f4c28cfa329bcb8a
-  src/cli.rs: 3a8abff5585bdd3b
-  src/commands/batch.rs: 17cdf3733f4e8674
-  src/commands/codefile.rs: 0ee513864c1cef40
+  src/cli.rs: bc72a866825d2a2c
+  src/commands/batch.rs: 02cfa7c548c190a6
+  src/commands/codefile.rs: 6abe76cbe37a1922
   src/commands/edge.rs: db5833205f278f03
-  src/commands/export.rs: 35756c578400e3a2
-  src/commands/ignore.rs: 7997dfb337dad444
-  src/commands/import.rs: 93f197ec9bd9b116
+  src/commands/export.rs: 9ce985c5714d8937
+  src/commands/ignore.rs: b09685c5e3368319
+  src/commands/import.rs: f93dd8f99757c7ba
   src/commands/init.rs: a1dc464a4c6cf3e3
   src/commands/intent.rs: ec7ad101ea150ed2
-  src/commands/mod.rs: 43c1e9b8bf460ee3
+  src/commands/mod.rs: 29d7817c28e13323
   src/commands/note.rs: 230f52cc758d8442
+  src/commands/paths.rs: 3b0fb2aabc0889ed
   src/commands/resolve.rs: 6e16bf8f5c8ea1d0
-  src/commands/rule.rs: 918e29a1632f2dbb
-  src/commands/validate.rs: 2a39afe499c31948
+  src/commands/rule.rs: ef348f83662d37bd
+  src/commands/validate.rs: de34c26c9f567eb8
   src/commands/validation.rs: d726cbcb95e66827
   src/commands/whoami.rs: 2a7a1af42cbd7f32
   src/db/mod.rs: c0c82ec69ea7831f
   src/db/queries/intent.rs: 754f0308ba488a87
-  src/db/queries/scoring.rs: a247bbc1b605ec87
-  src/db/sqlite/writes.rs: 2612007f692f01e2
+  src/db/queries/scoring.rs: 5569894f303e54f3
+  src/db/sqlite/writes.rs: baa4f8f3186e71f9
   src/main.rs: 2545218dfc241471
 ---
 
@@ -219,6 +221,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

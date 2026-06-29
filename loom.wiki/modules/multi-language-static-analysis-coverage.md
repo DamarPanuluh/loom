@@ -18,7 +18,7 @@ symbols:
   - fn resolve_swift_spec
   - push_unique_nonempty
 provenance:
-  src/commands/codefile.rs: 0ee513864c1cef40
+  src/commands/codefile.rs: 6abe76cbe37a1922
   src/db/queries/symbol_match.rs: f2cf13a911c33537
   src/repo.rs: ad374b61242ccdb5
   src/vec_utils.rs: 94f14a1584e50bba
@@ -50,6 +50,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

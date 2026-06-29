@@ -885,6 +885,13 @@ pub enum IgnoreCmd {
         author: Option<String>,
     },
 
+    /// Remove a coverage exclusion rule by its exact glob pattern.
+    #[command(after_help = "EXAMPLE:\n  loom ignore remove 'fixtures/**'")]
+    Remove {
+        /// Exact glob pattern to remove (must match `loom ignore list` exactly).
+        pattern: String,
+    },
+
     /// List all coverage exclusion patterns and their reasons.
     List,
 }

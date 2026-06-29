@@ -8,7 +8,7 @@ sourceFiles:
   - src/gate.rs
 provenance:
   src/agent.rs: 7f5b04bb6de52377
-  src/gate.rs: 1f7e89c9bf76eab7
+  src/gate.rs: d3dc0d6bc1aec243
 ---
 
 # role lanes and evidence gates
@@ -37,6 +37,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

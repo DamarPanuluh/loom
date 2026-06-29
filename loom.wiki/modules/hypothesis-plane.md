@@ -33,14 +33,14 @@ symbols:
   - run_with_sqlite
   - set_targets_status_for_hypothesis
 provenance:
-  src/cli.rs: 3a8abff5585bdd3b
+  src/cli.rs: bc72a866825d2a2c
   src/commands/hypothesis.rs: a8cf4a070e0b66b9
   src/commands/next/modes.rs: 3501df180644d7c4
-  src/commands/sync.rs: f88a57b61311bbf2
+  src/commands/sync.rs: 8bf6f6949812bb03
   src/commands/validation.rs: d726cbcb95e66827
-  src/db/queries/smells.rs: 9c35f78698a2c3a4
+  src/db/queries/smells.rs: da3c21e32e8df7e2
   src/db/queries/smells/lifecycle.rs: 407a6815b60abe72
-  src/db/schema.rs: 429002a41cd81880
+  src/db/schema.rs: 5c317eba2c3cc095
   src/db/sqlite/edge_writes.rs: 47fc4a616ebdd55b
   src/types.rs: d61e6e7631304228
 ---
@@ -71,6 +71,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

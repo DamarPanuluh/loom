@@ -42,7 +42,7 @@ symbols:
   - struct SyncState
   - type SqliteStore
 provenance:
-  src/commands/sync.rs: f88a57b61311bbf2
+  src/commands/sync.rs: 8bf6f6949812bb03
 ---
 
 # sync flag engine
@@ -71,6 +71,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

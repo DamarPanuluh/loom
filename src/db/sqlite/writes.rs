@@ -653,6 +653,18 @@ impl SqliteGraphStore {
 }
 
 impl SqliteGraphStore {
+    /// Remove a coverage exclusion rule by its exact pattern string.
+    /// Returns `true` if a row was deleted, `false` if the pattern was not found.
+    pub fn delete_ignore(&self, pattern: &str) -> Result<bool> {
+        let n = self.write_one(
+            "DELETE FROM ignore_rule WHERE pattern = ?1",
+            params![pattern],
+        )?;
+        Ok(n > 0)
+    }
+}
+
+impl SqliteGraphStore {
     pub fn insert_delegation(&self, delegation: &Delegation) -> Result<()> {
         self.write_one(
             "INSERT INTO delegation(id, pattern, target, author, created_at, export_hash, seam_intents)

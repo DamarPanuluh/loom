@@ -144,6 +144,7 @@ The intent hierarchy — what the system is, decomposed top-down.
       - **web ui quality rule pack** — seeds web UI view states accessibility XSS and responsive breakpoint rules
       - **web-ui quality rule pack** — seeds web UI view states accessibility XSS responsiveness and design system rules
     - **intents addressable by name, not only uuid** — every command that takes an intent id should also accept its unique name (or unambiguous prefix); dogfood finding: the driver had to maintain an external name-to-id map across the whole session
+    - **loom paths composition command** — loom paths renders composition proof coverage — which intents are path-proven vs leaf-only vs unproven — as a read-only orienteering surface
     - **proof and bootstrap handlers** — loom validate (runs proofs with the session released) and loom init (idempotent bootstrap)
       - **validate CommandOutcome enum** — discriminating ran_inert or unknown runner outcome from validation execution
       - **validate CoverageReport impl** — adds symbol_executed and coverage_verdict methods to CoverageReport
@@ -226,9 +227,11 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **graph-aware manifest resolver** — the invisible manifest backbone: resolves file-paths to intents at check time so the consistency gate (the one Qoder cannot do) still falsifies relational claims against typed graph edges even though the reader never sees an intent UUID
     - **wiki lane and self-teaching authoring loop** — the work lane and self-teaching loop: loom next --mode wiki surfaces uncited salient nodes, stale provenance stamps, and fabricated links; for foreign repos loom inits the target graph then orders the LLM to author, with the graph as the invisible manifest
   - **completeness and integrity checking** — vertical spine (tree shape + leaf realization + file reach), coverage reconciliation against disk, doctor audit of schema conformance and provenance lanes
+    - **composition proof coverage** — composition_coverage_from_snapshot classifies active intents as path-proven (assembly exercised by a saga or multi-intent spanning proof), leaf-only (unit tests only), or unproven; never gates green, always additive
     - **derived problem signals** — loom smells: twins, overlapping ownership, scatter, tangles, undeclared coupling, recurrence, normative gaps — computed from graph structure, each with a remedy
       - **advisory buckets honor decision adjudication** — Advisory smell buckets move current decision-note rulings out of open advisory counts and into adjudicated output, with reopen anchors on the relevant intent or file.
       - **bounded tag vocabulary** — loom vocab maintains a small normalized tag registry for intent tags; write-time validation inlines the registry and drift remedies merge near-duplicate keys so discovery and smells get deliberate collisions.
+      - **self-calibrating smell thresholds** — tukey_upper_fence derives outlier/far-outlier bounds from a repo's own owner-count distribution; replaces hardcoded magnitude constants so tangle and coupling detectors adapt to any repo
       - **smells AdjudicatedSmell** — pub struct AdjudicatedSmell
       - **smells COMPLEX_SYMBOL_COGNITIVE** — pub const COMPLEX_SYMBOL_COGNITIVE
       - **smells COMPLEX_SYMBOL_CYCLOMATIC** — pub const COMPLEX_SYMBOL_CYCLOMATIC
@@ -430,6 +433,7 @@ The intent hierarchy — what the system is, decomposed top-down.
 
 
 <!-- loom:prose-start -->
+
 
 
 

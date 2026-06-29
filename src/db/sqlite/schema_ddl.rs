@@ -314,10 +314,16 @@ CREATE VIRTUAL TABLE IF NOT EXISTS intent_fts USING fts5(
 
 impl SqliteGraphStore {
     pub(super) fn create_schema(&self) -> Result<()> {
-        // Schema setup/migration is a write path, so it must serialize with the
-        // same graph flock. Keep this lock TEMPORARY: `open()` is used by many
-        // read-mostly commands, and holding the persistent `write_lock` for the
-        // store lifetime would needlessly block unrelated sessions after setup.
+        // Take a temporary exclusive cross-process flock before any DDL or
+        // vocabulary migration runs. The ensures are NOT safe to race:
+        //   - `table_has_column` + `ALTER TABLE ADD COLUMN` is TOCTOU: two
+        //     concurrent openers can both observe the column absent and then
+        //     race to ALTER, with one getting a "duplicate column" error.
+        //   - Vocabulary and lifecycle rebuilds are table-rename sequences that
+        //     are also not safe to interleave.
+        // The flock is TEMPORARY (dropped at the end of this function), so it
+        // does not hold open sessions hostage. `lock_path` is None for in-memory
+        // stores (tests), so no lock is acquired there.
         let _schema_lock = self
             .lock_path
             .as_ref()
@@ -332,12 +338,8 @@ impl SqliteGraphStore {
         self.ensure_inbox_kind_vocabulary()?;
         self.ensure_intent_lifecycle_vocabulary()?;
         self.ensure_governs_partial_status()?;
-        // The migrations above bring an older graph fully to the current shape;
-        // stamp the version so `doctor`/`export` agree with this binary. Opening
-        // with a newer loom IS the migration — there is no separate migrate
-        // step. The stamp MUST come after every migration so it never claims a
-        // version the on-disk schema can't honour. No-op when the meta row
-        // doesn't exist yet (a fresh `init` inserts it immediately after).
+        // Stamp the version AFTER all migrations so it never claims a version
+        // the on-disk schema can't honour.
         self.conn.execute(
             "UPDATE meta SET schema_version = ?1 WHERE id = 1",
             params![schema::SCHEMA_VERSION],
