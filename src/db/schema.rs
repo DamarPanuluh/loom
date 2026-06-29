@@ -443,6 +443,10 @@ pub mod prop {
     /// `discriminating` feeds the EXECUTED proof tier, so exit-0 alone can no
     /// longer mint EXECUTED. Set ONLY by the executor.
     pub const DISCRIMINATION_STATUS: &str = "discrimination_status";
+    /// Validation fields owned exclusively by an executor run (`loom validate` /
+    /// `loom saga run`). Port/import reset paths must blank every field here so
+    /// a source repo's machine witness cannot travel as proof in the target repo.
+    pub const EXECUTOR_OWNED_PROOF_FIELDS: &[&str] = &[LAST_EXECUTED_RUN, DISCRIMINATION_STATUS];
     // edges (state + meta)
     pub const INSPECTION_STATUS: &str = "inspection_status";
     pub const CRITERION: &str = "criterion";

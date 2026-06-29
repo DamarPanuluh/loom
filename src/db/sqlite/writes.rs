@@ -423,10 +423,7 @@ impl SqliteGraphStore {
                 .optional()?;
             if let Some(result) = result {
                 if result != "not_run" && result != "blocked" && !result.is_empty() {
-                    tx.execute(
-                        "UPDATE validation SET last_result = 'not_run' WHERE id = ?1",
-                        params![edge.validation_id],
-                    )?;
+                    tx.execute(SQL_RESET_VALIDATION, params![edge.validation_id])?;
                     ripple.validations_invalidated += 1;
                 }
             }
@@ -599,7 +596,11 @@ impl SqliteGraphStore {
             )?;
             if !shared_with_active {
                 tx.execute(
-                    "UPDATE validation SET last_result = 'not_run'
+                    "UPDATE validation
+                     SET last_result = 'not_run',
+                         last_run = '',
+                         last_executed_run = '',
+                         discrimination_status = ''
                      WHERE id = ?1 AND last_result NOT IN ('not_run', 'blocked', '')",
                     params![edge.validation_id],
                 )?;

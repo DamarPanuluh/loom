@@ -121,6 +121,9 @@ fn transform_as_planned(data: &mut serde_json::Value) -> Result<(usize, usize)> 
             if let Some(obj) = item.as_object_mut() {
                 obj.insert(prop::LAST_RESULT.to_string(), serde_json::json!("not_run"));
                 obj.insert(prop::LAST_RUN.to_string(), serde_json::json!(""));
+                for field in prop::EXECUTOR_OWNED_PROOF_FIELDS {
+                    obj.insert((*field).to_string(), serde_json::json!(""));
+                }
             }
         }
     }

@@ -76,6 +76,8 @@ fn detect_happy_path_only(
     let mut newest_aspect_child: HashMap<&str, &str> = HashMap::new();
     let by_id: HashMap<&str, &crate::types::Intent> =
         intents.iter().map(|i| (i.id.as_str(), i)).collect();
+    // ASSERTED-tier on purpose: happy_path_only asks whether the sibling has any
+    // accepted proof at all. EXECUTED/journey gates below require discriminating.
     let passed_validation_ids: HashSet<&str> = snapshot
         .validations
         .iter()
@@ -212,7 +214,11 @@ fn detect_unjourneyed_surface(
     let passed_saga_ids: HashSet<&str> = snapshot
         .validations
         .iter()
-        .filter(|v| v.validation_type == "saga" && v.last_result == "passed")
+        .filter(|v| {
+            v.validation_type == "saga"
+                && v.last_result == "passed"
+                && v.discrimination_status == "discriminating"
+        })
         .map(|v| v.id.as_str())
         .collect();
     let journeyed: HashSet<&str> = snapshot

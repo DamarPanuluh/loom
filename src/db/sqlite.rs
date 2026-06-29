@@ -62,8 +62,12 @@ pub(crate) const SQL_VOCAB_TERM_EXISTS: &str =
     "SELECT EXISTS(SELECT 1 FROM vocab_term WHERE name = ?1)";
 pub(crate) const SQL_COUNT_VALIDATES: &str =
     "SELECT count(*) FROM validates WHERE validation_id = ?1";
-pub(crate) const SQL_RESET_VALIDATION: &str =
-    "UPDATE validation SET last_result = 'not_run', last_run = '' WHERE id = ?1";
+pub(crate) const SQL_RESET_VALIDATION: &str = "UPDATE validation
+    SET last_result = 'not_run',
+        last_run = '',
+        last_executed_run = '',
+        discrimination_status = ''
+    WHERE id = ?1";
 pub(crate) const SQL_UPDATE_RELATES_PASSING: &str = "UPDATE relates_to
              SET inspection_status = 'passing',
                  criterion = ?1,

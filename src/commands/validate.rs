@@ -234,6 +234,7 @@ fn execute_and_record(
         }
 
         // Run the command via sh -c so shell features work (e.g. cargo test --test foo)
+        let run_started_at = std::time::SystemTime::now();
         let (exit_status, output) =
             match run_validation_command(&validation.command, cwd, timeout_secs) {
                 Ok(pair) => (Ok(pair.0), pair.1),
@@ -302,7 +303,7 @@ fn execute_and_record(
             && validation.validation_type == "test"
             && grounding
                 .get(&validation.id)
-                .map(|g| proof_relevance(cwd, &validation.command, g))
+                .map(|g| proof_relevance(cwd, &validation.command, g, run_started_at))
                 == Some(ProofRelevance::Irrelevant);
         let discrimination = if forged_signal || irrelevant_proof {
             "ran_inert"
@@ -608,7 +609,12 @@ enum ProofRelevance {
     Unconfirmed,
 }
 
-fn proof_relevance(root: &std::path::Path, command: &str, grounding: &Grounding) -> ProofRelevance {
+fn proof_relevance(
+    root: &std::path::Path,
+    command: &str,
+    grounding: &Grounding,
+    run_started_at: std::time::SystemTime,
+) -> ProofRelevance {
     if grounding.files.is_empty() {
         return ProofRelevance::Unconfirmed;
     }
@@ -616,12 +622,12 @@ fn proof_relevance(root: &std::path::Path, command: &str, grounding: &Grounding)
         grounding.files.iter().map(String::as_str).collect();
 
     // ── TIER 1: Coverage data (definitive) ──────────────────────────────
-    // If an LCOV/coverage report exists and is fresh (mtime after the test
-    // ran), consult it. A grounded symbol whose line range was EXECUTED is
-    // Confirmed regardless of imports/text. A symbol whose range was NOT
-    // executed is Irrelevant — the definitive answer the static gate could
-    // only approximate.
-    if let Some(cov) = discover_coverage(root) {
+    // If an LCOV/coverage report exists and is fresh for THIS validation run
+    // (mtime at/after this command started), consult it. A grounded symbol whose
+    // line range was EXECUTED is Confirmed regardless of imports/text. A symbol
+    // whose range was NOT executed is Irrelevant — the definitive answer the
+    // static gate could only approximate.
+    if let Some(cov) = discover_coverage(root, run_started_at) {
         if !grounding.symbol_ranges.is_empty() {
             let mut any_executed = false;
             let mut any_not_executed = false;
@@ -972,7 +978,10 @@ fn parse_lcov(root: &std::path::Path, content: &str) -> CoverageReport {
 ///   2. Common LCOV paths relative to root (coverage.lcov, lcov.info, etc.)
 ///
 /// Returns None if no report is found or it can't be parsed.
-fn discover_coverage(root: &std::path::Path) -> Option<CoverageReport> {
+fn discover_coverage(
+    root: &std::path::Path,
+    not_before: std::time::SystemTime,
+) -> Option<CoverageReport> {
     let candidates: Vec<std::path::PathBuf> =
         if let Some(env_path) = std::env::var_os("LOOM_COVERAGE_FILE") {
             vec![std::path::PathBuf::from(env_path)]
@@ -989,6 +998,12 @@ fn discover_coverage(root: &std::path::Path) -> Option<CoverageReport> {
             v
         };
     for path in &candidates {
+        let Some(modified) = std::fs::metadata(path).ok().and_then(|m| m.modified().ok()) else {
+            continue;
+        };
+        if modified < not_before {
+            continue;
+        }
         if let Ok(content) = std::fs::read_to_string(path) {
             // Basic sanity: must contain at least one SF: record.
             if content.contains("SF:") {

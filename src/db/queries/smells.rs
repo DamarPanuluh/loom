@@ -1133,6 +1133,8 @@ fn proof_locality_from_parts(
     }
     let val_by_id: HashMap<&str, &crate::types::Validation> =
         validations.iter().map(|v| (v.id.as_str(), v)).collect();
+    // ASSERTED-tier on purpose: nonlocal_proof audits overstatement in the broad
+    // proven axis. EXECUTED/journey views gate on discrimination_status.
     let mut passing: HashMap<&str, Vec<&crate::types::Validation>> = HashMap::new();
     for e in validates {
         if let Some(v) = val_by_id.get(e.validation_id.as_str()) {

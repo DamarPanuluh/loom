@@ -74,7 +74,7 @@ pub fn composition_coverage_from_snapshot(snapshot: &QuerySnapshot) -> Compositi
     let mut leaf: HashSet<&str> = HashSet::new();
     let mut cov = CompositionCoverage::default();
     for v in &snapshot.validations {
-        if v.last_result != "passed" {
+        if v.last_result != "passed" || v.discrimination_status != "discriminating" {
             continue;
         }
         let ints = covers.get(v.id.as_str()).map(Vec::as_slice).unwrap_or(&[]);
@@ -152,8 +152,16 @@ mod tests {
             command: "anything at all".into(),
             last_run: String::new(),
             last_result: result.into(),
-            last_executed_run: String::new(),
-            discrimination_status: String::new(),
+            last_executed_run: if result == "passed" {
+                "t".into()
+            } else {
+                String::new()
+            },
+            discrimination_status: if result == "passed" {
+                "discriminating".into()
+            } else {
+                String::new()
+            },
         }
     }
 

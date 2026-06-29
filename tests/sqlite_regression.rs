@@ -8944,6 +8944,152 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
     );
 }
 
+#[test]
+fn sqlite_sync_reset_blanks_executor_witness_before_hand_mark() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("sync-reset-executor-witness");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/proof.rs", "pub fn behavior() {}\n");
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/proof.rs", "--json"],
+        "llm:builder",
+    );
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "sync reset proof target",
+            "--description",
+            "implemented behavior whose stale proof must lose executor witnesses",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &intent,
+            "src/proof.rs",
+            "--locator",
+            "fn behavior",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "sync reset proof",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh",
+            "--intent",
+            &intent,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    let ran = run_json_as(
+        &graph.root,
+        &["validate", &intent, "--json"],
+        "llm:validator",
+    );
+    assert_eq!(
+        ran["results"][0]["discrimination"], "discriminating",
+        "fixture must first earn a real executor witness: {ran}"
+    );
+
+    write_scratch_file(
+        &graph.root,
+        "src/proof.rs",
+        "pub fn behavior() { let _changed = 1; }\n",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    let reset = run_json(&graph.root, &["validation", "list", "--json"]);
+    let reset_proof = reset["validations"]
+        .as_array()
+        .expect("validations")
+        .iter()
+        .find(|v| v["name"] == "sync reset proof")
+        .unwrap_or_else(|| panic!("reset proof not found: {reset}"));
+    assert_eq!(
+        reset_proof["last_result"], "not_run",
+        "sync must reset the stale proof result: {reset_proof}"
+    );
+    assert_eq!(
+        reset_proof["last_executed_run"]
+            .as_str()
+            .unwrap_or_default(),
+        "",
+        "sync reset must blank stale executor timestamp: {reset_proof}"
+    );
+    assert_eq!(
+        reset_proof["discrimination_status"]
+            .as_str()
+            .unwrap_or_default(),
+        "",
+        "sync reset must blank stale discrimination witness: {reset_proof}"
+    );
+
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "mark",
+            "sync reset proof",
+            "--result",
+            "passed",
+            "--evidence",
+            "typed evidence after sync without rerunning the command",
+            "--json",
+        ],
+        "llm:validator",
+    );
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let cov = coverage_proven(&status);
+    assert_eq!(
+        cov["proven_leaves"]["covered"].as_i64().expect("proven"),
+        1,
+        "the hand-mark still proves at asserted tier: {status}"
+    );
+    assert_eq!(
+        cov["proven_executed_leaves"]["covered"]
+            .as_i64()
+            .expect("executed"),
+        0,
+        "sync reset must prevent stale executor witness resurrection: {status}"
+    );
+    assert_eq!(
+        cov["proven_asserted_leaves"]["covered"]
+            .as_i64()
+            .expect("asserted"),
+        1,
+        "post-reset hand-mark must be asserted-only: {status}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Ripple: an `independent` RELATES_TO verdict ("these two intents do NOT
 // interact") is durable against behavior-preserving change. The sync
@@ -9265,6 +9411,198 @@ fn sqlite_import_as_planned_resets_lifecycle_and_proofs() {
             .iter()
             .all(|v| v["last_result"] != "passed"),
         "import --as-planned must not carry forward passed proof verdicts: {proofs}"
+    );
+}
+
+#[test]
+fn sqlite_import_as_planned_blanks_foreign_executor_witnesses() {
+    let _guard = sqlite_test_lock();
+    let source = ScratchGraph::new("import-as-planned-source");
+    run_json(&source.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &source.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    let intent = run_json_as(
+        &source.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "foreign proven behavior",
+            "--description",
+            "source repo proof that must not travel as execution",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &source.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "foreign proof",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh",
+            "--intent",
+            &intent,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    let source_run = run_json_as(
+        &source.root,
+        &["validate", &intent, "--json"],
+        "llm:validator",
+    );
+    assert_eq!(
+        source_run["results"][0]["discrimination"], "discriminating",
+        "source fixture must carry a real executor witness before export: {source_run}"
+    );
+    run_json(&source.root, &["export", "--json"]);
+
+    let target = ScratchGraph::new("import-as-planned-target");
+    run_json(&target.root, &["init", ".", "--json"]);
+    let export_path = source.root.join("loom.graph.json");
+    let export_arg = export_path.to_string_lossy().to_string();
+    run_json(
+        &target.root,
+        &["import", &export_arg, "--as-planned", "--json"],
+    );
+    let proofs = run_json(&target.root, &["validation", "list", "--json"]);
+    let imported = proofs["validations"]
+        .as_array()
+        .expect("validations")
+        .iter()
+        .find(|v| v["name"] == "foreign proof")
+        .unwrap_or_else(|| panic!("imported proof not found: {proofs}"));
+    let result = imported["last_result"].as_str().unwrap_or_default();
+    assert!(
+        matches!(result, "not_run" | "blocked"),
+        "result must not carry a source pass; imported commands may be auto-blocked: {imported}"
+    );
+    assert_eq!(
+        imported["last_run"].as_str().unwrap_or_default(),
+        "",
+        "hand/executor run timestamp reset: {imported}"
+    );
+    assert_eq!(
+        imported["last_executed_run"].as_str().unwrap_or_default(),
+        "",
+        "foreign executor timestamp must be blanked: {imported}"
+    );
+    assert_eq!(
+        imported["discrimination_status"]
+            .as_str()
+            .unwrap_or_default(),
+        "",
+        "foreign discrimination witness must be blanked: {imported}"
+    );
+
+    let imported_intents = run_json(&target.root, &["intent", "list", "--json"]);
+    let imported_intent = imported_intents["intents"]
+        .as_array()
+        .expect("intents")
+        .iter()
+        .find(|i| i["name"] == "foreign proven behavior")
+        .and_then(|i| i["id"].as_str())
+        .unwrap_or_else(|| panic!("imported intent not found: {imported_intents}"))
+        .to_string();
+    write_scratch_file(&target.root, "target.rs", "pub fn target_behavior() {}\n");
+    run_json_as(
+        &target.root,
+        &["codefile", "add", "target.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &target.root,
+        &[
+            "edge",
+            "implement",
+            &imported_intent,
+            "target.rs",
+            "--locator",
+            "fn target_behavior",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &target.root,
+        &[
+            "intent",
+            "mark",
+            &imported_intent,
+            "--lifecycle",
+            "implemented",
+            "--reason",
+            "target implementation exists for laundering regression test",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &target.root,
+        &[
+            "validation",
+            "mark",
+            "foreign proof",
+            "--result",
+            "passed",
+            "--evidence",
+            "typed evidence in target without running the source command",
+            "--json",
+        ],
+        "llm:validator",
+    );
+    let marked = run_json(&target.root, &["validation", "list", "--json"]);
+    let marked_import = marked["validations"]
+        .as_array()
+        .expect("validations")
+        .iter()
+        .find(|v| v["name"] == "foreign proof")
+        .unwrap_or_else(|| panic!("marked imported proof not found: {marked}"));
+    assert_eq!(
+        marked_import["last_executed_run"].as_str().unwrap_or_default(),
+        "",
+        "hand-marking after import must not recover the foreign executor timestamp: {marked_import}"
+    );
+    assert_eq!(
+        marked_import["discrimination_status"].as_str().unwrap_or_default(),
+        "",
+        "hand-marking after import must not recover the foreign discrimination witness: {marked_import}"
+    );
+    let status = run_json(&target.root, &["status", "--json"]);
+    let cov = coverage_proven(&status);
+    assert_eq!(
+        cov["proven_leaves"]["covered"].as_i64().expect("proven"),
+        1,
+        "the hand-mark still proves the target at ASSERTED tier: {status}"
+    );
+    assert_eq!(
+        cov["proven_executed_leaves"]["covered"]
+            .as_i64()
+            .expect("executed"),
+        0,
+        "foreign executor witness must not launder into EXECUTED-proven: {status}"
+    );
+    assert_eq!(
+        cov["proven_asserted_leaves"]["covered"]
+            .as_i64()
+            .expect("asserted"),
+        1,
+        "the imported hand-mark is asserted-only until the target executor runs: {status}"
     );
 }
 
@@ -13591,16 +13929,12 @@ fn sqlite_coverage_proves_symbol_executed() {
         "test_cov.py",
         "from mod import compute\ndef test_cov():\n    assert 1 + 1 == 2\n",
     );
+    // The runner emits LCOV during THIS validation run; stale pre-existing LCOV
+    // is ignored by the relevance gate.
     write_scratch_file(
         &graph.root,
         "runner.sh",
-        "echo 'test result: ok. 1 passed'\n",
-    );
-    // LCOV: mod.py line 2 (the return) was executed.
-    write_scratch_file(
-        &graph.root,
-        "coverage.lcov",
-        "SF:mod.py\nDA:2,1\nend_of_record\n",
+        "printf 'SF:mod.py\\nDA:2,1\\nend_of_record\\n' > coverage.lcov\necho 'test result: ok. 1 passed'\n",
     );
     run_json_as(
         &graph.root,
@@ -13679,16 +14013,12 @@ fn sqlite_coverage_proves_symbol_not_executed() {
         "test_cov.py",
         "from mod import compute\ndef test_cov():\n    assert compute(2) == 4\n",
     );
+    // The runner emits LCOV during THIS validation run; stale pre-existing LCOV
+    // is ignored by the relevance gate.
     write_scratch_file(
         &graph.root,
         "runner.sh",
-        "echo 'test result: ok. 1 passed'\n",
-    );
-    // LCOV: mod.py line 2 has 0 hits — the function was never called.
-    write_scratch_file(
-        &graph.root,
-        "coverage.lcov",
-        "SF:mod.py\nDA:2,0\nend_of_record\n",
+        "printf 'SF:mod.py\\nDA:2,0\\nend_of_record\\n' > coverage.lcov\necho 'test result: ok. 1 passed'\n",
     );
     run_json_as(
         &graph.root,
@@ -13750,6 +14080,95 @@ fn sqlite_coverage_proves_symbol_not_executed() {
     assert_eq!(
         v["results"][0]["discrimination"], "ran_inert",
         "coverage showing the grounded symbol NOT executed must demote to asserted-only: {v}"
+    );
+}
+
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_stale_coverage_is_ignored_by_relevance_gate() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("cov-stale");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    // The test imports compute but never uses it. Static relevance should demote it.
+    write_scratch_file(
+        &graph.root,
+        "test_cov.py",
+        "from mod import compute\ndef test_cov():\n    assert 1 + 1 == 2\n",
+    );
+    // Leftover LCOV claims the grounded line executed, but this validation run
+    // does not regenerate coverage. Freshness must reject the stale file.
+    write_scratch_file(
+        &graph.root,
+        "coverage.lcov",
+        "SF:mod.py\nDA:2,1\nend_of_record\n",
+    );
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    write_scratch_file(
+        &graph.root,
+        "runner.sh",
+        "echo 'test result: ok. 1 passed'\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "mod.py", "--json"],
+        "llm:builder",
+    );
+    let id = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Compute",
+            "--description",
+            "compute doubles x",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "mod.py",
+            "--locator",
+            "def compute",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "cov",
+            "--type",
+            "test",
+            "--command",
+            "sh runner.sh test_cov.py",
+            "--intent",
+            &id,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "ran_inert",
+        "stale LCOV must not confirm an irrelevant test as executed-proven: {v}"
     );
 }
 
@@ -13942,6 +14361,111 @@ steps:
     assert_eq!(
         ran["results"][0]["discrimination"], "discriminating",
         "a passing self-contained saga is a runtime proof → discriminating: {ran}"
+    );
+}
+
+#[test]
+fn sqlite_hand_marked_saga_does_not_count_as_journeyed_surface() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("hand-marked-saga-journey");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "app.py", "def do_GET(self):\n    pass\n");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "app.py", "--json"],
+        "llm:builder",
+    );
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "browse the product catalog",
+            "--description",
+            "A shopper GETs the catalog and sees the product list",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+            "--boundary",
+            "inbound",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &intent,
+            "app.py",
+            "--locator",
+            "def do_GET",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "journeys/catalog.yaml",
+        r#"
+saga: catalog-journey
+base: "{{ env.MISSING_BASE_URL }}"
+steps:
+  - name: browse catalog
+    intent: browse the product catalog
+    request: { method: GET, url: /catalog }
+    expect: { status: 200 }
+"#,
+    );
+    run_json_as(
+        &graph.root,
+        &["saga", "add", "journeys/catalog.yaml", "--json"],
+        "llm:validator",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "mark",
+            "catalog-journey",
+            "--result",
+            "passed",
+            "--evidence",
+            "typed evidence without executing the saga",
+            "--json",
+        ],
+        "llm:validator",
+    );
+
+    let smells = run_json(
+        &graph.root,
+        &["smells", "--json", "--kind", "unjourneyed_surface"],
+    );
+    assert!(
+        smells["smells"]
+            .as_array()
+            .expect("smells")
+            .iter()
+            .any(|s| s["kind"] == "unjourneyed_surface"),
+        "a hand-marked saga must not clear the unjourneyed_surface gate: {smells}"
+    );
+    let paths = run_json(&graph.root, &["paths", "--json"]);
+    assert_eq!(
+        paths["composition_proofs_by_signal"]["declared_journey"], 0,
+        "a hand-marked saga must not count as a declared journey proof: {paths}"
+    );
+    assert_eq!(
+        paths["path_proven"], 0,
+        "a hand-marked saga must not mark the surface path-proven: {paths}"
     );
 }
 
