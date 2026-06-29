@@ -134807,7 +134807,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-29T10:06:54.360628+00:00",
+  "last_synced": "2026-06-29T11:05:13.598210+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -238766,12 +238766,12 @@
         ]
       },
       {
-        "content_hash": "930bb9f81bf4cc17",
+        "content_hash": "64cdb35c4d7e865b",
         "extractor_grade": "high",
         "id": "a6e98e00-6dc0-42bb-9eae-9fa391ce108c",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-29T09:26:43.837063662+00:00",
+        "last_modified": "2026-06-29T10:49:18.737308541+00:00",
         "path": "src/db/sqlite/schema_ddl.rs",
         "symbol_facts": [
           {
@@ -238797,8 +238797,8 @@
             "body_hash": "5c55d3067a140335",
             "kind": "fn",
             "label": "fn SqliteGraphStore::ensure_governs_partial_status",
-            "line_end": 536,
-            "line_start": 488,
+            "line_end": 538,
+            "line_start": 490,
             "metrics": {
               "branch_count": 6,
               "closure_count": 1,
@@ -238811,15 +238811,15 @@
             "shape_hash": "90a2bc7083d27bb2",
             "string_literals": [
               {
-                "line": 492,
+                "line": 494,
                 "value": "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'governs'"
               },
               {
-                "line": 499,
+                "line": 501,
                 "value": "'partial'"
               },
               {
-                "line": 503,
+                "line": 505,
                 "value": "\nPRAGMA foreign_keys=OFF;\nBEGIN;\nCREATE TABLE governs_v12(\n  rule_id TEXT NOT NULL REFERENCES quality_rule(id) ON DELETE CASCADE,\n  intent_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,\n  inspection_status TEXT NOT NULL CHECK(inspection_status IN ('uninspected','passing','failing','independent','partial','needs_reverification')),\n  criterion TEXT NOT NULL DEFAULT '',\n  confidence REAL NOT NULL DEFAULT 0,\n  evidence TEXT NOT NULL DEFAULT '',\n  last_inspected TEXT NOT NULL DEFAULT '',\n  inspected_by TEXT NOT NULL DEFAULT '',\n  notes TEXT NOT NULL DEFAULT '',\n  covers_descendants TEXT NOT NULL DEFAULT '' CHECK(covers_descendants IN ('true','')),\n  created_at TEXT NOT NULL DEFAULT '',\n  PRIMARY KEY(rule_id, intent_id)\n);\nINSERT INTO governs_v12(\n  rule_id, intent_id, inspection_status, criterion, confidence, evidence,\n  last_inspected, inspected_by, notes, created_at\n)\nSELECT\n  rule_id, intent_id, inspection_status, criterion, confidence, evidence,\n  last_inspected, inspected_by, notes, created_at\nFROM governs;\nDROP TABLE governs;\nALTER TABLE governs_v12 RENAME TO governs;\nCREATE INDEX IF NOT EXISTS idx_governs_status ON governs(inspection_status);\nCOMMIT;\nPRAGMA foreign_keys=ON;\n"
               }
             ],
@@ -238829,8 +238829,8 @@
             "body_hash": "e8a3f7a2b4a2f385",
             "kind": "fn",
             "label": "fn SqliteGraphStore::ensure_inbox_kind_vocabulary",
-            "line_end": 601,
-            "line_start": 540,
+            "line_end": 603,
+            "line_start": 542,
             "metrics": {
               "branch_count": 6,
               "closure_count": 2,
@@ -238843,15 +238843,15 @@
             "shape_hash": "f34557cdc16764b7",
             "string_literals": [
               {
-                "line": 544,
+                "line": 546,
                 "value": "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'inbox_item'"
               },
               {
-                "line": 555,
+                "line": 557,
                 "value": "'resolve'"
               },
               {
-                "line": 562,
+                "line": 564,
                 "value": "\nALTER TABLE inbox_item RENAME TO inbox_item_old;\nCREATE TABLE inbox_item(\n  id TEXT PRIMARY KEY,\n  raw_text TEXT NOT NULL,\n  normalized_claim TEXT NOT NULL DEFAULT '',\n  kind TEXT NOT NULL CHECK(kind IN ({inbox_kind_values})),\n  status TEXT NOT NULL CHECK(status IN ('new','triaged','routed','rejected','deferred','duplicate')),\n  source TEXT NOT NULL CHECK(source IN ('chat','user','llm','code_audit','validation','import','unknown')),\n  author TEXT NOT NULL,\n  tags TEXT NOT NULL CHECK(json_valid(tags)),\n  links TEXT NOT NULL CHECK(json_valid(links)),\n  route_kind TEXT NOT NULL DEFAULT '' CHECK(route_kind IN (\n    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','resolve','answer','none',''\n  )),\n  route_command TEXT NOT NULL DEFAULT '',\n  route_target_kind TEXT NOT NULL DEFAULT '',\n  route_target_id TEXT NOT NULL DEFAULT '',\n  resolution TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL\n);\nINSERT INTO inbox_item(\n  id, raw_text, normalized_claim, kind, status, source, author, tags, links,\n  route_kind, route_command, route_target_kind, route_target_id, resolution,\n  created_at, updated_at\n)\nSELECT\n  id, raw_text, normalized_claim, kind, status, source, author, tags, links,\n  route_kind, route_command, route_target_kind, route_target_id, resolution,\n  created_at, updated_at\nFROM inbox_item_old;\nDROP TABLE inbox_item_old;\nCREATE INDEX IF NOT EXISTS idx_inbox_status_kind ON inbox_item(status, kind, created_at);\n"
               }
             ],
@@ -238861,8 +238861,8 @@
             "body_hash": "b6836a66cd49b7dc",
             "kind": "fn",
             "label": "fn SqliteGraphStore::ensure_intent_lifecycle_vocabulary",
-            "line_end": 477,
-            "line_start": 420,
+            "line_end": 479,
+            "line_start": 422,
             "metrics": {
               "branch_count": 6,
               "closure_count": 1,
@@ -238875,15 +238875,15 @@
             "shape_hash": "90a2bc7083d27bb2",
             "string_literals": [
               {
-                "line": 424,
+                "line": 426,
                 "value": "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'intent'"
               },
               {
-                "line": 433,
+                "line": 435,
                 "value": "to_be_removed"
               },
               {
-                "line": 439,
+                "line": 441,
                 "value": "\nPRAGMA foreign_keys=OFF;\nBEGIN;\nCREATE TABLE intent_v10(\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  description TEXT NOT NULL,\n  criterion TEXT NOT NULL DEFAULT '',\n  abstraction_level TEXT NOT NULL,\n  domain TEXT NOT NULL DEFAULT '',\n  layer TEXT NOT NULL DEFAULT '',\n  source_refs TEXT NOT NULL CHECK(json_valid(source_refs)),\n  status TEXT NOT NULL,\n  aspect TEXT NOT NULL DEFAULT '',\n  lifecycle TEXT NOT NULL CHECK(lifecycle IN ('planned','implemented','needs_change','deferred','to_be_removed')),\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL,\n  tags TEXT NOT NULL CHECK(json_valid(tags)),\n  visibility TEXT NOT NULL DEFAULT '' CHECK(visibility IN ('user_visible','internal','')),\n  boundary TEXT NOT NULL DEFAULT '' CHECK(boundary IN ('inbound','outbound',''))\n);\nINSERT INTO intent_v10(\n  id, name, description, criterion, abstraction_level, domain, layer, source_refs,\n  status, aspect, lifecycle, created_at, updated_at, tags, visibility, boundary\n)\nSELECT\n  id, name, description, criterion, abstraction_level, domain, layer, source_refs,\n  status, aspect, lifecycle, created_at, updated_at, tags, visibility, boundary\nFROM intent;\nDROP TABLE intent;\nALTER TABLE intent_v10 RENAME TO intent;\nCREATE INDEX IF NOT EXISTS idx_intent_lifecycle_status ON intent(lifecycle, status);\nCREATE INDEX IF NOT EXISTS idx_intent_name ON intent(name);\nCOMMIT;\nPRAGMA foreign_keys=ON;\n"
               }
             ],
@@ -238893,8 +238893,8 @@
             "body_hash": "f96ee4a6a4d1ba4b",
             "kind": "fn",
             "label": "fn SqliteGraphStore::ensure_meta_columns",
-            "line_end": 407,
-            "line_start": 391,
+            "line_end": 409,
+            "line_start": 393,
             "metrics": {
               "branch_count": 5,
               "cognitive": 12,
@@ -238905,31 +238905,31 @@
             "shape_hash": "7b6fbee57948422d",
             "string_literals": [
               {
-                "line": 393,
+                "line": 395,
                 "value": "created_at"
               },
               {
-                "line": 394,
+                "line": 396,
                 "value": "last_synced"
               },
               {
-                "line": 395,
+                "line": 397,
                 "value": "transition_cap"
               },
               {
-                "line": 396,
+                "line": 398,
                 "value": "autonomy"
               },
               {
-                "line": 396,
+                "line": 398,
                 "value": "TEXT NOT NULL DEFAULT 'guided'"
               },
               {
-                "line": 398,
+                "line": 400,
                 "value": "meta"
               },
               {
-                "line": 401,
+                "line": 403,
                 "value": "ALTER TABLE meta ADD COLUMN {column} {definition}"
               }
             ],
@@ -238939,8 +238939,8 @@
             "body_hash": "42e59d98f970f99c",
             "kind": "fn",
             "label": "fn SqliteGraphStore::ensure_taxonomy_columns",
-            "line_end": 387,
-            "line_start": 352,
+            "line_end": 389,
+            "line_start": 354,
             "metrics": {
               "branch_count": 6,
               "cognitive": 15,
@@ -238951,135 +238951,135 @@
             "shape_hash": "22e0ea0819d7d5a8",
             "string_literals": [
               {
-                "line": 354,
+                "line": 356,
                 "value": "relates_to"
               },
               {
-                "line": 354,
+                "line": 356,
                 "value": "kinds"
               },
               {
-                "line": 354,
+                "line": 356,
                 "value": "TEXT NOT NULL DEFAULT '[]'"
               },
               {
-                "line": 355,
+                "line": 357,
                 "value": "relates_to"
               },
               {
-                "line": 355,
+                "line": 357,
                 "value": "stable"
               },
               {
-                "line": 356,
+                "line": 358,
                 "value": "quality_rule"
               },
               {
-                "line": 356,
+                "line": 358,
                 "value": "kind"
               },
               {
-                "line": 357,
+                "line": 359,
                 "value": "intent"
               },
               {
-                "line": 357,
+                "line": 359,
                 "value": "criterion"
               },
               {
-                "line": 358,
+                "line": 360,
                 "value": "delegation"
               },
               {
-                "line": 358,
+                "line": 360,
                 "value": "export_hash"
               },
               {
-                "line": 359,
+                "line": 361,
                 "value": "delegation"
               },
               {
-                "line": 359,
+                "line": 361,
                 "value": "seam_intents"
               },
               {
-                "line": 359,
+                "line": 361,
                 "value": "TEXT NOT NULL DEFAULT '[]'"
-              },
-              {
-                "line": 360,
-                "value": "validation"
-              },
-              {
-                "line": 360,
-                "value": "last_executed_run"
               },
               {
                 "line": 362,
                 "value": "validation"
               },
               {
-                "line": 363,
+                "line": 362,
+                "value": "last_executed_run"
+              },
+              {
+                "line": 364,
+                "value": "validation"
+              },
+              {
+                "line": 365,
                 "value": "discrimination_status"
-              },
-              {
-                "line": 366,
-                "value": "quality_rule"
-              },
-              {
-                "line": 366,
-                "value": "evidence_examples"
               },
               {
                 "line": 368,
                 "value": "quality_rule"
               },
               {
-                "line": 369,
-                "value": "signal_expectations"
+                "line": 368,
+                "value": "evidence_examples"
               },
               {
                 "line": 370,
-                "value": "TEXT NOT NULL DEFAULT '[]'"
-              },
-              {
-                "line": 372,
                 "value": "quality_rule"
               },
               {
+                "line": 371,
+                "value": "signal_expectations"
+              },
+              {
                 "line": 372,
+                "value": "TEXT NOT NULL DEFAULT '[]'"
+              },
+              {
+                "line": 374,
+                "value": "quality_rule"
+              },
+              {
+                "line": 374,
                 "value": "applies_when"
               },
               {
-                "line": 372,
+                "line": 374,
                 "value": "TEXT NOT NULL DEFAULT '{}'"
               },
               {
-                "line": 373,
+                "line": 375,
                 "value": "governs"
               },
               {
-                "line": 373,
+                "line": 375,
                 "value": "covers_descendants"
               },
               {
-                "line": 374,
+                "line": 376,
                 "value": "codefile"
               },
               {
-                "line": 374,
+                "line": 376,
                 "value": "extractor_grade"
               },
               {
-                "line": 375,
+                "line": 377,
                 "value": "note"
               },
               {
-                "line": 375,
+                "line": 377,
                 "value": "resolution"
               },
               {
-                "line": 381,
+                "line": 383,
                 "value": "ALTER TABLE {table} ADD COLUMN {column} {definition}"
               }
             ],
@@ -239108,8 +239108,8 @@
             "body_hash": "82e6e18a426627a2",
             "kind": "fn",
             "label": "fn inbox_kind_sql_values",
-            "line_end": 610,
-            "line_start": 604,
+            "line_end": 612,
+            "line_start": 606,
             "metrics": {
               "closure_count": 1,
               "cyclomatic": 1
@@ -239118,17 +239118,17 @@
             "shape_hash": "49ef376057aa006d",
             "string_literals": [
               {
-                "line": 609,
+                "line": 611,
                 "value": ","
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "6d6fada9cf067ae4",
+            "body_hash": "2e7a18a8a0e909f0",
             "kind": "impl",
             "label": "impl SqliteGraphStore",
-            "line_end": 388,
+            "line_end": 390,
             "line_start": 315,
             "metrics": {
               "branch_count": 14,
@@ -239142,10 +239142,10 @@
             "visibility": "private"
           },
           {
-            "body_hash": "d958b4a0468c0b4e",
+            "body_hash": "d84edfa8ce47cbfa",
             "kind": "fn",
             "label": "pub(super) fn SqliteGraphStore::create_schema",
-            "line_end": 346,
+            "line_end": 348,
             "line_start": 316,
             "metrics": {
               "branch_count": 8,
@@ -239158,11 +239158,11 @@
             "shape_hash": "7dfe675cc3125161",
             "string_literals": [
               {
-                "line": 328,
+                "line": 334,
                 "value": "__INBOX_KIND_SQL_VALUES__"
               },
               {
-                "line": 342,
+                "line": 344,
                 "value": "UPDATE meta SET schema_version = ?1 WHERE id = 1"
               }
             ],
