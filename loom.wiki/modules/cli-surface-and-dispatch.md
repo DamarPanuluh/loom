@@ -171,7 +171,7 @@ symbols:
   - with_evidence
 provenance:
   build.rs: f4c28cfa329bcb8a
-  src/cli.rs: bc72a866825d2a2c
+  src/cli.rs: a5eb5eb0002de356
   src/commands/batch.rs: 02cfa7c548c190a6
   src/commands/codefile.rs: 6abe76cbe37a1922
   src/commands/edge.rs: db5833205f278f03
@@ -180,7 +180,7 @@ provenance:
   src/commands/import.rs: f93dd8f99757c7ba
   src/commands/init.rs: a1dc464a4c6cf3e3
   src/commands/intent.rs: ec7ad101ea150ed2
-  src/commands/mod.rs: 29d7817c28e13323
+  src/commands/mod.rs: 91cf32d3f7d5791e
   src/commands/note.rs: 230f52cc758d8442
   src/commands/paths.rs: 3b0fb2aabc0889ed
   src/commands/resolve.rs: 6e16bf8f5c8ea1d0
@@ -221,6 +221,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

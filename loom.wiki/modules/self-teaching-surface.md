@@ -12,7 +12,7 @@ symbols:
   - pub fn run
 provenance:
   docs/COMMANDS.md: 56380560b760a33f
-  src/commands/guide.rs: f14f9f2f91f9626e
+  src/commands/guide.rs: e303933d8a766adf
   src/commands/schema.rs: 8c104d80a946556b
   src/commands/tour.rs: 087ff8074208007c
 ---
@@ -43,6 +43,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

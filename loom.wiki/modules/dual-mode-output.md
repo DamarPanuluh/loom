@@ -12,7 +12,7 @@ symbols:
 provenance:
   src/commands/tour.rs: 087ff8074208007c
   src/commands/wiki.rs: 2d252a4acf19f957
-  src/output.rs: 3dabebae07cd1583
+  src/output.rs: c75f5b236ccd2d9f
 ---
 
 # dual-mode output
@@ -41,6 +41,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

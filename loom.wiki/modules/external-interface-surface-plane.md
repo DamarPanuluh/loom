@@ -35,18 +35,18 @@ symbols:
   - sqlite_status_surfaces_populate_gap_lane
   - struct InterfaceSurface
 provenance:
-  src/cli.rs: bc72a866825d2a2c
+  src/cli.rs: a5eb5eb0002de356
   src/commands/interface.rs: ad57947fed162c99
-  src/commands/mod.rs: 29d7817c28e13323
+  src/commands/mod.rs: 91cf32d3f7d5791e
   src/commands/next.rs: a62dc0d0aa244efc
-  src/commands/next/render.rs: 14f6faff646e3f45
+  src/commands/next/render.rs: 1e13489c1e318c3c
   src/commands/populate.rs: 84469207cdf39230
   src/commands/saga.rs: d6c547a8139bcf7e
-  src/commands/status.rs: e646856940b1b07e
+  src/commands/status.rs: 2d71e331f9e98d6a
   src/db/schema.rs: 5c317eba2c3cc095
   src/db/sqlite.rs: 69643931759567f5
   src/db/sqlite/edge_writes.rs: 47fc4a616ebdd55b
-  src/types.rs: d61e6e7631304228
+  src/types.rs: 8374d2bd55fe6d34
   tests/sqlite_regression.rs: d66c0323448ed627
 ---
 
@@ -76,6 +76,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

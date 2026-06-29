@@ -36,14 +36,14 @@ provenance:
   src/commands/hotspots.rs: 67cf959d9d79973e
   src/commands/impact.rs: 4da1713958fa1b7c
   src/commands/report.rs: c530fd8ab3d7c457
-  src/commands/status.rs: e646856940b1b07e
+  src/commands/status.rs: 2d71e331f9e98d6a
   src/db/queries/completeness.rs: 9b909cc69121f1e1
   src/db/queries/comprehensiveness.rs: 92ecbff1ee84ea92
   src/db/queries/integrity.rs: cf89f2e8809f232a
-  src/db/queries/maturity.rs: 4a6a009e3a22ca0f
+  src/db/queries/maturity.rs: 99f1c283a6687ba0
   src/db/queries/maturity/tests.rs: 83aebef6afd90de4
-  src/db/queries/stats.rs: 3899fc76d080d39b
-  src/db/queries/stats/tests.rs: 92f3c9a1ca048524
+  src/db/queries/stats.rs: a37f90e9144f993a
+  src/db/queries/stats/tests.rs: 2e6eb72d002549a4
   src/db/queries/symbol_accountability.rs: ae181b9815b0b820
 ---
 
@@ -73,6 +73,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

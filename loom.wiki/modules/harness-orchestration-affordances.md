@@ -15,7 +15,7 @@ symbols:
   - fn run_orchestrate_hat
   - struct SlicedRepo
 provenance:
-  src/commands/guide.rs: f14f9f2f91f9626e
+  src/commands/guide.rs: e303933d8a766adf
   src/commands/next/scoring.rs: 8de823d7fa4351fe
   src/commands/next/slice_filter.rs: 5e94c82f0f1426b0
   src/commands/slice.rs: bfd7506301787890
@@ -47,6 +47,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

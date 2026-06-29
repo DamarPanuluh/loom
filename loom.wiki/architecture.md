@@ -450,6 +450,7 @@ The intent hierarchy — what the system is, decomposed top-down.
 
 
 
+
 ## The layered shape
 
 loom is a single binary built from four concentric layers. Every request enters
