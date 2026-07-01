@@ -25,6 +25,11 @@ impl Tmp {
     fn path(&self) -> &Path {
         &self.0
     }
+    fn write(&self, rel: &str, content: &str) {
+        let p = self.0.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, content).unwrap();
+    }
 }
 impl Drop for Tmp {
     fn drop(&mut self) {
@@ -192,6 +197,69 @@ fn journey_proof_smell_silent_when_passing_l5_journey_proof_exists() {
             .iter()
             .any(|s| s.kind == "missing_journey_proof" || s.kind == "proof_too_shallow_for_intent"),
         "no journey proof smell should fire: {smells:?}"
+    );
+}
+
+// Drift gate ties sync staleness to the smell: a passing L5 journey proof
+// silences the smell, but once its artifact drifts and sync resets the proof,
+// the smell MUST re-fire — a stale artifact cannot keep an intent "proven".
+#[test]
+fn journey_proof_smell_re_fires_after_artifact_drift_resets_proof() {
+    let tmp = Tmp::new();
+    tmp.write("contracts/checkout.v1.json", r#"{"routes":[]}"#);
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent_id = visible_intent(&store, "checkout completes");
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "checkout journey",
+            "",
+            "not_run",
+            serde_json::json!({
+                "type": "saga",
+                "proof_kind": "journey",
+                "proof_level": "L5",
+                "artifact": "contracts/checkout.v1.json",
+            }),
+        )
+        .unwrap();
+    let edge = store
+        .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
+        .unwrap();
+    // Baseline sync + pass → no smell.
+    loom::sync::run(&store, tmp.path()).unwrap();
+    store.set_node_status(&validation.id, "passed").unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "journey passes end-to-end",
+            "saga run passed",
+            0.9,
+            "test",
+        )
+        .unwrap();
+    let silent = loom::signal::smells(&store).unwrap();
+    assert!(
+        !silent
+            .iter()
+            .any(|s| s.kind == "missing_journey_proof" || s.kind == "proof_too_shallow_for_intent"),
+        "passing L5 journey proof should silence the smell: {silent:?}"
+    );
+
+    // Artifact drifts + sync resets the proof → smell re-fires.
+    tmp.write(
+        "contracts/checkout.v1.json",
+        r#"{"routes":[{"path":"/x"}]}"#,
+    );
+    loom::sync::run(&store, tmp.path()).unwrap();
+    let smells = loom::signal::smells(&store).unwrap();
+    assert!(
+        smells
+            .iter()
+            .any(|s| s.kind == "proof_too_shallow_for_intent"
+                && s.message.contains("checkout completes")),
+        "a drifted artifact must re-fire the journey proof smell: {smells:?}"
     );
 }
 // ---- debt: statistical, never stored (INV-3) -------------------------------

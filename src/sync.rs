@@ -74,6 +74,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     let codefiles = store.codefiles()?;
     let changed_intents = sync_structural(store, root, &codefiles, &mut report)?;
     ripple_changed_intents(store, &changed_intents, &mut report)?;
+    ripple_artifact_drift(store, root, &mut report)?;
     rebuild_findings(store, root, &codefiles, &rules, &mut report)?;
     Ok(report)
 }
@@ -234,6 +235,63 @@ fn ripple_changed_intents(
                     report.edges_staled += 1;
                 }
             }
+        }
+    }
+    Ok(())
+}
+
+/// Pass 2b: ripple drift of a JourneyProof validation's `body.artifact` file.
+///
+/// A validation may point at a contract JSON / saga YAML / runner file via
+/// `body.artifact`. Those paths are not necessarily registered CodeFiles, so
+/// the structural pass cannot see them. Track a derived `artifact_hash` facet
+/// per such validation and, when the file changes or disappears, stale its
+/// `validates` edges and reset a proven validation to `not_run` — so a stale
+/// artifact cannot keep a user-visible intent "proven" and silence the journey
+/// smell. Mirrors the codefile content_hash convergence (INV-2).
+fn ripple_artifact_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {
+    let validations = store.list_nodes(Some(NodeType::Validation), usize::MAX)?;
+    for val in validations {
+        let Some(artifact) = val.body.get("artifact").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let path = root.join(artifact);
+        let prior = store.get_facet(&val.id, TargetKind::Node, "artifact_hash")?;
+        let current = match std::fs::read_to_string(&path) {
+            Ok(c) => Some(crate::extract::fnv1a(&c)),
+            Err(_) => None,
+        };
+        // No prior hash and no current file: never-hashed + absent → nothing to
+        // ripple (first observation of a not-yet-present artifact).
+        let drifted = match (prior.as_deref(), current.as_deref()) {
+            (Some(p), Some(c)) => p != c,
+            (Some(_), None) => true, // file disappeared
+            _ => false,
+        };
+        // Refresh the derived hash so a wipe+rebuild converges (INV-2).
+        match &current {
+            Some(h) => store.set_facet(
+                &val.id,
+                TargetKind::Node,
+                "artifact_hash",
+                h,
+                TruthClass::Derived,
+            )?,
+            None => store.clear_facet(&val.id, TargetKind::Node, "artifact_hash")?,
+        }
+        if !drifted {
+            continue;
+        }
+        for e in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
+            if store.stale_edge(&e.id)? {
+                report.edges_staled += 1;
+            }
+        }
+        // Only count/reset a validation that was actually proven; one already
+        // at `not_run` is unchanged, so it is neither reset nor counted.
+        if val.status != "not_run" {
+            store.set_node_status(&val.id, "not_run")?;
+            report.validations_reset += 1;
         }
     }
     Ok(())

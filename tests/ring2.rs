@@ -395,6 +395,211 @@ fn sync_ripples_upstream_change_to_integration_contract() {
     );
 }
 
+// A JourneyProof validation's `body.artifact` (a contract JSON / saga file) is
+// not necessarily a registered CodeFile, so the structural pass cannot see it.
+// Sync must track it directly: when the artifact changes, the validation is
+// reset and its Validates edge stales — a stale proof cannot keep an intent
+// "proven" and silence the journey smell.
+#[test]
+fn sync_stales_journey_proof_when_artifact_drifts() {
+    let tmp = Tmp::new();
+    // A contract artifact that is NOT registered as a CodeFile node.
+    tmp.write("contracts/checkout.v1.json", r#"{"routes":[]}"#);
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "checkout completes",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "checkout journey",
+            "",
+            "not_run",
+            serde_json::json!({
+                "type": "saga",
+                "proof_kind": "journey",
+                "proof_level": "L5",
+                "artifact": "contracts/checkout.v1.json",
+            }),
+        )
+        .unwrap();
+    let validates = store
+        .add_edge(
+            EdgeKind::Validates,
+            &val.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    // Baseline sync establishes the artifact hash; no prior → no ripple.
+    let base = loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(base.validations_reset, 0, "baseline must not ripple");
+
+    // The journey proof passes.
+    store.set_node_status(&val.id, "passed").unwrap();
+    store
+        .record_verdict(
+            &validates.id,
+            InspectionStatus::Passing,
+            "journey passes end-to-end",
+            "saga run passed",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    // Identical artifact again → no ripple, proof stays passed.
+    let noop = loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        noop.validations_reset, 0,
+        "unchanged artifact must not reset"
+    );
+    assert_eq!(store.get_node(&val.id).unwrap().unwrap().status, "passed");
+
+    // Artifact drifts → proof resets and Validates edge stales.
+    tmp.write(
+        "contracts/checkout.v1.json",
+        r#"{"routes":[{"path":"/x"}]}"#,
+    );
+    let report = loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        report.validations_reset, 1,
+        "a drifted journey artifact must reset its validation"
+    );
+    assert_eq!(
+        store.get_node(&val.id).unwrap().unwrap().status,
+        "not_run",
+        "a drifted artifact must reset the proof to not_run"
+    );
+    assert_eq!(
+        store.get_edge(&validates.id).unwrap().unwrap().status,
+        InspectionStatus::NeedsReverification,
+        "the Validates edge must read as unproven after artifact drift"
+    );
+}
+
+// An artifact that disappears is the same as one that drifts: a proof against a
+// vanished artifact is no longer proven.
+#[test]
+fn sync_stales_journey_proof_when_artifact_disappears() {
+    let tmp = Tmp::new();
+    tmp.write("contracts/checkout.v1.json", r#"{"routes":[]}"#);
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "checkout completes",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "checkout journey",
+            "",
+            "not_run",
+            serde_json::json!({
+                "type": "saga",
+                "proof_kind": "journey",
+                "proof_level": "L5",
+                "artifact": "contracts/checkout.v1.json",
+            }),
+        )
+        .unwrap();
+    let validates = store
+        .add_edge(
+            EdgeKind::Validates,
+            &val.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    // Baseline + pass.
+    loom::sync::run(&store, tmp.path()).unwrap();
+    store.set_node_status(&val.id, "passed").unwrap();
+    store
+        .record_verdict(
+            &validates.id,
+            InspectionStatus::Passing,
+            "journey passes",
+            "saga run passed",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    // Artifact deleted → proof resets and edge stales.
+    std::fs::remove_file(tmp.path().join("contracts/checkout.v1.json")).unwrap();
+    let report = loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        report.validations_reset, 1,
+        "vanished artifact resets proof"
+    );
+    assert_eq!(store.get_node(&val.id).unwrap().unwrap().status, "not_run");
+}
+
+// INV-2 convergence: a wipe of derived facets then sync must not re-ripple a
+// drifted-and-reset artifact (no prior hash → no second reset).
+#[test]
+fn sync_artifact_drift_is_deterministic_on_rebuild() {
+    let tmp = Tmp::new();
+    tmp.write("contracts/c.json", r#"{"v":1}"#);
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "checkout completes",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "checkout journey",
+            "",
+            "not_run",
+            serde_json::json!({
+                "type": "saga",
+                "proof_kind": "journey",
+                "proof_level": "L5",
+                "artifact": "contracts/c.json",
+            }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Validates,
+            &val.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+    store.set_node_status(&val.id, "passed").unwrap();
+    // Drift + reset.
+    tmp.write("contracts/c.json", r#"{"v":2}"#);
+    let r1 = loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(r1.validations_reset, 1);
+    // Wipe derived + rebuild must NOT re-ripple (prior hash gone).
+    store.wipe_derived().unwrap();
+    let r2 = loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        r2.validations_reset, 0,
+        "a wipe+rebuild must converge: no prior artifact_hash → no re-ripple"
+    );
+}
+
 // A never-verified contract on a changed surface is not "now unproven" — it was
 // never proven. It must not be counted, and the headline tally must match the
 // integration line (no `0 validations reset` next to a reset contract).
