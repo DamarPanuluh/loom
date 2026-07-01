@@ -19,6 +19,7 @@ mod diagnostics_cmd;
 mod domain_cmd;
 mod edge;
 mod intent;
+mod journey;
 mod misc_cmd;
 mod proof_cmd;
 mod proposal_cmd;
@@ -107,6 +108,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Ignore { cmd } => diagnostics_cmd::ignore_cmd(cli.graph.as_deref(), cmd, cli.json),
         Command::Whoami => diagnostics_cmd::whoami_cmd(cli.graph.as_deref(), cli.json),
         Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
     }
 }
 

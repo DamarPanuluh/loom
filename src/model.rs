@@ -98,6 +98,8 @@ str_enum! {
         InboxItem => "inbox_item",
         TaskRecord => "task_record",
         Proposal => "proposal",
+        JourneyCoverage => "journey_coverage",
+        JourneyInvariantPoint => "journey_invariant_point",
     }
 }
 
@@ -167,6 +169,8 @@ str_enum! {
         Exposes => "exposes",
         Calls => "calls",
         Relates => "relates",
+        Covers => "covers",
+        Asserts => "asserts",
     }
 }
 

@@ -178,4 +178,9 @@ pub enum Command {
         #[command(subcommand)]
         cmd: ProposalCmd,
     },
+    /// Journey coverage and invariant-point commands.
+    Journey {
+        #[command(subcommand)]
+        cmd: JourneyCmd,
+    },
 }

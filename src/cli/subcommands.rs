@@ -543,3 +543,60 @@ pub enum ProposalItemCmd {
         reason: String,
     },
 }
+
+#[derive(Subcommand, Debug)]
+pub enum JourneyCmd {
+    /// Journey coverage commands (mark flows needing a journey proof).
+    Coverage {
+        #[command(subcommand)]
+        cmd: JourneyCoverageCmd,
+    },
+    /// Journey invariant point commands (mark internal domain assertions).
+    Invariant {
+        #[command(subcommand)]
+        cmd: JourneyInvariantCmd,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum JourneyCoverageCmd {
+    /// Mark a flow as needing a journey proof, linked to an intent.
+    Add {
+        #[arg(long)]
+        name: String,
+        /// Flow path, e.g. "src/facade.rs::resolve -> record -> standing".
+        #[arg(long)]
+        flow: String,
+        /// The intent this coverage concerns (id, name, or unique fragment).
+        intent: String,
+        #[arg(long, default_value = "")]
+        description: String,
+    },
+    /// List journey coverage nodes with their effective coverage status.
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum JourneyInvariantCmd {
+    /// Mark an internal domain invariant point on an intent.
+    Add {
+        #[arg(long)]
+        name: String,
+        /// The intent this invariant concerns (id, name, or unique fragment).
+        intent: String,
+        #[arg(long)]
+        field: String,
+        #[arg(long)]
+        assertion: String,
+        #[arg(long, default_value = "")]
+        reason: String,
+    },
+    /// List journey invariant points.
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+}

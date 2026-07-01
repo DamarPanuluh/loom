@@ -182,6 +182,22 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         owner: OwnerRole::Analyzer,
         description: "manual relationship, kind TBD",
     },
+    EdgeKindSpec {
+        kind: EdgeKind::Covers,
+        from: JourneyCoverage,
+        to: Intent,
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Builder,
+        description: "a flow that needs a journey proof covers this intent",
+    },
+    EdgeKindSpec {
+        kind: EdgeKind::Asserts,
+        from: JourneyInvariantPoint,
+        to: Intent,
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Builder,
+        description: "an internal domain invariant point marks this intent",
+    },
 ];
 
 /// Look up the spec for an edge kind. Infallible by construction once

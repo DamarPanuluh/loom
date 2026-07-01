@@ -1906,3 +1906,314 @@ fn saga_add_http_contract_creates_validation_with_journey_metadata() {
         .unwrap();
     assert_eq!(seq.len(), 1, "consecutive routes are sequence-linked");
 }
+
+// ---- journey coverage: derived status (single truth source) ---------------
+
+/// A coverage node starts uncovered; `coverage list --json` reports
+/// effective_status derived from the linked intent's validations.
+#[test]
+fn journey_coverage_starts_uncovered_without_journey_proof() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "src/api.rs::post -> record -> standing",
+            "--description",
+            "core trust ingress",
+            "checkout completes",
+        ],
+    );
+    let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
+    let row = v
+        .as_array()
+        .expect("coverage list is an array")
+        .first()
+        .expect("one row");
+    assert_eq!(row["name"], "checkout flow");
+    assert_eq!(row["effective_status"], "uncovered");
+    assert_eq!(row["covers"], "checkout completes");
+}
+
+/// Coverage status is DERIVED from a passing L5 journey proof on the covered
+/// intent — and flips back to uncovered when the proof is staled by sync. This
+/// is the single-truth-source contract: no second asserted "covered" claim.
+#[test]
+fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    // artifact-backed journey proof
+    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
+    std::fs::write(
+        tmp.path().join("contracts/checkout.v1.json"),
+        r#"{"routes":[]}"#,
+    )
+    .unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "checkout journey",
+            "--type",
+            "saga",
+            "--command",
+            "loom saga run checkout",
+            "--intent",
+            "checkout completes",
+            "--proof-level",
+            "L5",
+            "--proof-kind",
+            "journey",
+            "--artifact",
+            "contracts/checkout.v1.json",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "f",
+            "checkout completes",
+        ],
+    );
+    // mark the validation passed via the CLI
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "mark",
+            "checkout journey",
+            "--result",
+            "passed",
+            "--evidence",
+            "saga green",
+        ],
+    );
+
+    // before sync establishes the artifact hash, the edge is still uninspected
+    // → still uncovered. Run sync to baseline, then record the verdict on the edge.
+    loom_ok(tmp.path(), &["sync"]);
+    // The validation mark set node status=passed, but the Validates edge needs a
+    // Passing verdict to count as a current proof. Use the store directly to
+    // stamp the edge (mirrors what `loom saga run` does on a green run).
+    {
+        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::store::Store;
+        let store = Store::open(tmp.path()).unwrap();
+        let val = store
+            .resolve_node("checkout journey", Some(NodeType::Validation))
+            .unwrap();
+        let intent = store
+            .resolve_node("checkout completes", Some(NodeType::Intent))
+            .unwrap();
+        let e = store
+            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        store
+            .record_verdict(
+                &e.id,
+                InspectionStatus::Passing,
+                "journey green",
+                "saga passed",
+                0.9,
+                "test",
+            )
+            .unwrap();
+    }
+
+    let covered = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
+    let row = covered.as_array().unwrap().first().unwrap();
+    assert_eq!(
+        row["effective_status"], "covered",
+        "a passing L5 journey proof must derive coverage=covered: {row}"
+    );
+
+    // Artifact drifts → sync stales the proof → coverage reads uncovered again.
+    std::fs::write(
+        tmp.path().join("contracts/checkout.v1.json"),
+        r#"{"routes":[{"path":"/x"}]}"#,
+    )
+    .unwrap();
+    loom_ok(tmp.path(), &["sync"]);
+    let drifted = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
+    let row = drifted.as_array().unwrap().first().unwrap();
+    assert_eq!(
+        row["effective_status"], "uncovered",
+        "a staled journey proof must flip coverage back to uncovered (single truth source): {row}"
+    );
+}
+
+/// A non-L5 (too shallow) proof does NOT cover, even when passing — coverage
+/// mirrors the journey smell's L5+ threshold.
+#[test]
+fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "unit checkout",
+            "--type",
+            "test",
+            "--command",
+            "cargo test checkout",
+            "--intent",
+            "checkout completes",
+            "--proof-level",
+            "L1",
+            "--proof-kind",
+            "unit",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "f",
+            "checkout completes",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "mark",
+            "unit checkout",
+            "--result",
+            "passed",
+            "--evidence",
+            "unit green",
+        ],
+    );
+    {
+        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::store::Store;
+        let store = Store::open(tmp.path()).unwrap();
+        let val = store
+            .resolve_node("unit checkout", Some(NodeType::Validation))
+            .unwrap();
+        let intent = store
+            .resolve_node("checkout completes", Some(NodeType::Intent))
+            .unwrap();
+        let e = store
+            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        store
+            .record_verdict(
+                &e.id,
+                InspectionStatus::Passing,
+                "unit green",
+                "test passed",
+                0.9,
+                "test",
+            )
+            .unwrap();
+    }
+    let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
+    let row = v.as_array().unwrap().first().unwrap();
+    assert_eq!(
+        row["effective_status"], "uncovered",
+        "an L1 unit proof must NOT cover a journey: {row}"
+    );
+}
+
+/// Journey invariant points record their asserted invariant + link to an intent.
+#[test]
+fn journey_invariant_point_links_to_intent_and_lists() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "compute standing",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "add",
+            "--name",
+            "standing threshold",
+            "compute standing",
+            "--field",
+            "headline",
+            "--assertion",
+            "headline > 1.0 when voucher_count >= 1",
+            "--reason",
+            "trust math not serialized in HTTP",
+        ],
+    );
+    let v = loom_json_out(tmp.path(), &["journey", "invariant", "list", "--json"]);
+    let row = v.as_array().unwrap().first().unwrap();
+    assert_eq!(row["name"], "standing threshold");
+    assert_eq!(row["field"], "headline");
+    assert_eq!(row["assertion"], "headline > 1.0 when voucher_count >= 1");
+    assert_eq!(row["asserts"], "compute standing");
+}
