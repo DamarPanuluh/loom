@@ -159,14 +159,26 @@ pub fn parse(path: &Path) -> Result<SagaSpec> {
 pub fn parse_with_kind(path: &Path) -> Result<(SagaSpec, SpecKind)> {
     let text =
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-    let value: serde_json::Value =
-        serde_json::from_str(&text).context("parsing saga spec (JSON)")?;
+    // Try JSON first; fall back to YAML for `.yaml`/`.yml` specs.
+    let value: serde_json::Value = match serde_json::from_str(&text) {
+        Ok(v) => v,
+        Err(json_err) => {
+            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            if ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml") {
+                serde_yaml::from_str(&text).with_context(|| {
+                    format!("parsing saga spec as YAML (JSON failed: {json_err})")
+                })?
+            } else {
+                return Err(json_err).context("parsing saga spec (JSON)");
+            }
+        }
+    };
     if value.get("routes").is_some() {
         let contract: HttpContract =
-            serde_json::from_value(value).context("parsing HTTP contract (JSON)")?;
+            serde_json::from_value(value).context("parsing HTTP contract")?;
         return Ok((http_contract_to_saga(contract), SpecKind::HttpContractJson));
     }
-    let spec: SagaSpec = serde_json::from_value(value).context("parsing saga spec (JSON)")?;
+    let spec: SagaSpec = serde_json::from_value(value).context("parsing saga spec")?;
     Ok((spec, SpecKind::SagaJson))
 }
 

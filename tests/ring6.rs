@@ -663,3 +663,159 @@ fn http_contract_missing_response_field_fails_with_detail() {
         "the failing route's edge is failing"
     );
 }
+
+// ---- journey run (graph-free HTTP contract executor) -----------------------
+//
+// These test the `loom journey run <spec>` path that was the #1 user-reported
+// gap: a consumer-facing proof that parses JSON or YAML, sends requests,
+// checks status/fields, threads captures — no graph registration, no intent
+// resolution.
+
+/// Run the compiled `loom` binary with arbitrary args (no --graph); returns
+/// stdout parsed as JSON. Panics on non-zero exit or non-JSON output.
+fn run_loom_json(args: &[&str]) -> serde_json::Value {
+    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    cmd.args(args).arg("--json");
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom {:?}: {e}", args));
+    assert!(
+        out.status.success(),
+        "loom {:?} failed: {:?}\n--stdout--\n{}\n--stderr--\n{}",
+        args,
+        out.status,
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    serde_json::from_str(&stdout).unwrap_or_else(|e| {
+        panic!(
+            "loom {:?} did not emit JSON:\n--stdout--\n{}\nparse: {e}",
+            args, stdout
+        )
+    })
+}
+
+/// Contract: `loom journey run <spec.yaml>` parses a YAML HTTP contract,
+/// sends requests against a mock server, checks status + field existence,
+/// threads captures via `{{ person_id }}` interpolation, and reports green.
+/// No graph, no intent nodes, no `saga add`.
+#[test]
+fn journey_run_yaml_contract_without_graph() {
+    let tmp = Tmp::new();
+    let (base, handle) = mock_server_handling(2, |req| {
+        // Route 1: POST /persons → 201 { person_id: "p1" }
+        // Route 2: POST /persons/p1/events → check person_id was threaded
+        if req.contains("POST /v1/persons HTTP") {
+            (201, r#"{"person_id":"p1","name":"ada"}"#.into())
+        } else if req.contains("/persons/p1/events") {
+            (200, r#"{"event_id":"e1","subject":"p1"}"#.into())
+        } else {
+            (404, r#"{"error":"unknown route"}"#.into())
+        }
+    });
+
+    let spec_path = tmp.path().join("contract.yaml");
+    std::fs::write(
+        &spec_path,
+        format!(
+            r#"name: yaml-journey
+base: "{base}"
+routes:
+  - method: POST
+    path: /v1/persons
+    intent: register a person
+    success_status: 201
+    extract:
+      - field: person_id
+        as: person_id
+    response_fields:
+      - person_id
+      - name
+  - method: POST
+    path: "/v1/persons/{{{{ person_id }}}}/events"
+    intent: emit person event
+    success_status: 200
+    example_request:
+      subject: "{{{{ person_id }}}}"
+    response_fields:
+      - event_id
+      - subject
+"#
+        ),
+    )
+    .unwrap();
+
+    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    handle.join().unwrap();
+
+    assert_eq!(out["journey"], "yaml-journey");
+    assert_eq!(out["total"], 2, "both routes ran: {out}");
+    assert_eq!(out["passed"], 2, "both routes passed: {out}");
+    let outcomes = out["outcomes"].as_array().expect("outcomes is an array");
+    assert!(
+        outcomes.iter().all(|o| o["passed"] == true),
+        "every outcome passed: {outcomes:?}"
+    );
+}
+
+// ---- saga add soft intent resolution --------------------------------------
+//
+// `saga add` must not fail when step intents don't resolve to graph nodes.
+// It should report unmatched steps and create the Validation node anyway.
+
+#[test]
+fn saga_add_tolerates_unresolved_intents() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // Only add ONE intent; leave the other unresolvable.
+    let _known = intent(&store, "register a person", "implemented");
+    drop(store);
+
+    let spec_path = tmp.path().join("soft.contract.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "name": "soft-resolution",
+            "base": "http://127.0.0.1:0",
+            "routes": [
+                {
+                    "method": "POST",
+                    "path": "/v1/persons",
+                    "intent": "register a person",
+                    "success_status": 201
+                },
+                {
+                    "method": "GET",
+                    "path": "/v1/unknown",
+                    "intent": "Consumer records a verified peer vouch through the four-method seam",
+                    "success_status": 200
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let out = run_cli_json(tmp.path(), &["saga", "add", spec_path.to_str().unwrap()]);
+    assert!(out["added"] == true, "saga add succeeded: {out}");
+    assert_eq!(out["linked_steps"], 1, "one intent resolved: {out}");
+    let unmatched = out["unmatched_steps"].as_array().unwrap();
+    assert_eq!(unmatched.len(), 1, "one step unmatched: {out}");
+    assert_eq!(
+        unmatched[0]["intent"],
+        "Consumer records a verified peer vouch through the four-method seam",
+        "the unmatched intent is reported: {unmatched:?}"
+    );
+
+    // The Validation node exists and is usable despite the unmatched step.
+    let store = Store::open(tmp.path()).unwrap();
+    let saga = store
+        .resolve_node("soft-resolution", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(saga.status, "not_run");
+    let validates = store
+        .edges_with(Some(EdgeKind::Validates), Some(&saga.id), None)
+        .unwrap();
+    assert_eq!(validates.len(), 1, "only the resolved intent is linked");
+}

@@ -565,6 +565,13 @@ pub enum JourneyCmd {
         #[command(subcommand)]
         cmd: JourneyInvariantCmd,
     },
+    /// Execute an HTTP contract spec (JSON or YAML) directly, without
+    /// requiring graph registration or intent resolution. Consumer-facing
+    /// proof executor — sends requests, checks status/fields, reports green/red.
+    Run {
+        /// Path to the contract spec file (.json or .yaml/.yml).
+        spec: std::path::PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -591,6 +598,9 @@ pub enum JourneyCoverageCmd {
         contract_artifact: Option<String>,
     },
     /// List journey coverage nodes with their effective coverage status.
+    /// effective_status is DERIVED: "covered" iff the linked intent currently
+    /// has a passing L5/L6 journey validation (proof_kind=journey). Runner/test
+    /// ref existence alone does not flip coverage; run the proof first.
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,

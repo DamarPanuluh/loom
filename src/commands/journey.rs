@@ -28,6 +28,7 @@ pub fn dispatch(graph: Option<&std::path::Path>, cmd: JourneyCmd, json: bool) ->
         JourneyCmd::Coverage { cmd } => coverage(graph, cmd, json),
         JourneyCmd::Prompt { intent } => prompt(graph, &intent, json),
         JourneyCmd::Invariant { cmd } => invariant(graph, cmd, json),
+        JourneyCmd::Run { spec } => journey_run(&spec, json),
     }
 }
 
@@ -563,7 +564,8 @@ fn prompt(graph: Option<&std::path::Path>, intent_key: &str, json: bool) -> Resu
             "Assert internal domain state, not just HTTP status codes.",
             "If a step mutates state, prove the mutation in the next step.",
             "Return a JSON success body with ok=true on success.",
-            "Return a descriptive error string on failure."
+            "Return a descriptive error string on failure.",
+            "Include a drift test that verifies the consumer artifact is in sync with the implementation."
         ],
     });
 
@@ -725,4 +727,208 @@ fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> 
         println!("{}", serde_json::to_string_pretty(&rows)?);
     }
     Ok(())
+}
+
+// ---- journey run (graph-free HTTP contract executor) -------------------------
+
+/// Execute a contract spec (JSON or YAML) directly. No graph registration,
+/// no intent resolution — consumer-facing proof that sends requests, checks
+/// status + fields, threads captures, and reports green/red.
+fn journey_run(spec: &std::path::Path, json: bool) -> Result<()> {
+    let parsed = crate::saga::parse(spec)?;
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
+    let mut vars: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    let mut outcomes: Vec<Value> = Vec::new();
+    let mut passed = 0usize;
+    let mut failed = 0usize;
+
+    for step in &parsed.steps {
+        let url = interpolate_vars(&format!("{}{}", parsed.base, step.request.url), &vars);
+        let method = step.request.method.to_uppercase();
+        let mut req = client.request(
+            reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
+            &url,
+        );
+        for (name, value) in &step.request.headers {
+            req = req.header(name, interpolate_vars(value, &vars));
+        }
+        if !step.request.query.is_empty() {
+            let query: Vec<(String, String)> = step
+                .request
+                .query
+                .iter()
+                .map(|(k, v)| (k.clone(), interpolate_vars(&value_to_string(v), &vars)))
+                .collect();
+            req = req.query(&query);
+        }
+        if let Some(body) = &step.request.json {
+            let interpolated = interpolate_json_vars(body, &vars);
+            req = req.json(&interpolated);
+        }
+        let (step_passed, detail) = match req.send() {
+            Ok(resp) => {
+                let status_code = resp.status().as_u16();
+                let expected = step.expect.status.unwrap_or(200);
+                if status_code != expected {
+                    (
+                        false,
+                        format!("expected status {expected}, got {status_code}"),
+                    )
+                } else {
+                    let body: serde_json::Value = resp.json().unwrap_or(Value::Null);
+                    let mut ok = true;
+                    let mut err_detail = String::new();
+                    for path in &step.expect.exists {
+                        if jsonpath_val(&body, path).is_none() {
+                            ok = false;
+                            err_detail = format!("missing field {path}");
+                            break;
+                        }
+                    }
+                    if ok {
+                        for (path, want) in &step.expect.body {
+                            let got = jsonpath_val(&body, path);
+                            if got.as_ref() != Some(want) {
+                                ok = false;
+                                err_detail = format!(
+                                    "body {path}: expected {want}, got {}",
+                                    got.map(|v| v.to_string()).unwrap_or_else(|| "null".into())
+                                );
+                                break;
+                            }
+                        }
+                    }
+                    if ok {
+                        // Thread captures
+                        for (var, path) in &step.capture {
+                            if let Some(v) = jsonpath_val(&body, path) {
+                                let s = match v {
+                                    Value::String(s) => s,
+                                    other => other.to_string(),
+                                };
+                                vars.insert(var.clone(), s);
+                            }
+                        }
+                        (true, format!("status {status_code} ok"))
+                    } else {
+                        (false, err_detail)
+                    }
+                }
+            }
+            Err(e) => (false, format!("request failed: {e}")),
+        };
+        if step_passed {
+            passed += 1;
+        } else {
+            failed += 1;
+        }
+        outcomes.push(json!({
+            "step": step.name,
+            "passed": step_passed,
+            "detail": detail,
+        }));
+        if !step_passed {
+            break; // stop at boundary
+        }
+    }
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "journey": parsed.saga,
+                "passed": passed,
+                "failed": failed,
+                "total": passed + failed,
+                "outcomes": outcomes,
+            }))?
+        );
+    } else {
+        for o in &outcomes {
+            println!(
+                "{} {} — {}",
+                if o["passed"].as_bool().unwrap_or(false) {
+                    "PASS"
+                } else {
+                    "FAIL"
+                },
+                o["step"].as_str().unwrap_or(""),
+                o["detail"].as_str().unwrap_or("")
+            );
+        }
+        println!(
+            "journey '{}': {}/{} step(s) passed",
+            parsed.saga,
+            passed,
+            passed + failed
+        );
+    }
+
+    if failed > 0 {
+        bail!(
+            "journey '{}' failed ({} step(s) failed)",
+            parsed.saga,
+            failed
+        )
+    } else {
+        Ok(())
+    }
+}
+
+/// Interpolate `{{ var }}` and `{{ env.NAME }}` in a string (graph-free version).
+fn interpolate_vars(s: &str, vars: &std::collections::BTreeMap<String, String>) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(start) = rest.find("{{") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        if let Some(end) = after.find("}}") {
+            let key = after[..end].trim();
+            if let Some(stripped) = key.strip_prefix("env.") {
+                out.push_str(&std::env::var(stripped).unwrap_or_default());
+            } else if let Some(val) = vars.get(key) {
+                out.push_str(val);
+            }
+            rest = &after[end + 2..];
+        } else {
+            out.push_str("{{");
+            rest = after;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+fn interpolate_json_vars(v: &Value, vars: &std::collections::BTreeMap<String, String>) -> Value {
+    match v {
+        Value::String(s) => Value::String(interpolate_vars(s, vars)),
+        Value::Array(a) => Value::Array(a.iter().map(|x| interpolate_json_vars(x, vars)).collect()),
+        Value::Object(o) => Value::Object(
+            o.iter()
+                .map(|(k, x)| (k.clone(), interpolate_json_vars(x, vars)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
+fn jsonpath_val(v: &Value, path: &str) -> Option<Value> {
+    let p = path
+        .strip_prefix("$.")
+        .or_else(|| path.strip_prefix('$'))
+        .unwrap_or(path);
+    let mut cur = v.clone();
+    for seg in p.split('.') {
+        cur = cur.get(seg)?.clone();
+    }
+    Some(cur)
+}
+
+fn value_to_string(v: &Value) -> String {
+    match v {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
 }

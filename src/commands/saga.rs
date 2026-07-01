@@ -50,13 +50,9 @@ fn saga_add(store: &Store, spec: PathBuf, json: bool) -> Result<()> {
     for step in &parsed.steps {
         let intent = match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
             Ok(intent) => intent,
-            Err(e) => {
-                if kind == crate::saga::SpecKind::SagaJson {
-                    return Err(e.context(format!(
-                        "saga step '{}' references unresolved intent '{}'",
-                        step.name, step.intent
-                    )));
-                }
+            Err(_) => {
+                // Soft resolution: report but don't fail. Consumer-facing specs
+                // use human-readable intent text, not Loom intent IDs.
                 unmatched_steps.push(serde_json::json!({
                     "step": step.name,
                     "intent": step.intent,

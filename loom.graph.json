@@ -62,7 +62,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": "2026-07-01T09:42:33.783Z"
+      "updated_at": "2026-07-01T14:15:53.496Z"
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -686,7 +686,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "633 lines (> 600)",
+      "description": "643 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1163,7 +1163,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-01T09:42:33.783Z"
+      "updated_at": "2026-07-01T14:15:53.495Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -1503,12 +1503,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "saga execution supports repo-agnostic HTTP contract routes with state extraction, substitution, query/body threading and response-field assertions",
-      "evidence": "src/saga.rs:145-224 parses HTTP contract JSON into SagaSpec routes; src/saga.rs:228-364 executes shared saga steps with headers/query/body interpolation, captures fields, and fails when expected fields are missing; ring6 http_contract tests and cargo test passed.",
-      "confidence": 0.9,
+      "evidence": "src/saga.rs http_contract_to_saga converts routes to steps with capture/interpolation; this session only added YAML fallback parsing (line 163-176), no change to the conversion or execution logic",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:39:57.217Z",
-      "updated_at": "2026-07-01T09:46:15.269Z"
+      "updated_at": "2026-07-01T14:15:13.841Z"
     },
     {
       "id": "a4948c777c6a771abc8a06c80a4e3d73",
@@ -1548,12 +1548,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "src/cli/subcommands.rs defines the typed Clap subcommand schemas consumed by CLI dispatch",
-      "evidence": "src/cli/subcommands.rs remains #[derive(Subcommand)] enums; this session only added the optional --layer arg to IntentCmd::Add, still schema not behavior",
+      "evidence": "session added JourneyCmd::Run variant (graph-free executor); file remains a centralized Clap enum schema",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:29:22.635Z",
-      "updated_at": "2026-07-01T13:42:45.487Z"
+      "updated_at": "2026-07-01T14:15:13.879Z"
     },
     {
       "id": "d034b5fc0c8852aea",
@@ -1906,7 +1906,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "88bbc1097b7886f5",
+      "value": "0dd56f5000dba9a1",
       "truth_class": "derived"
     },
     {
@@ -1927,7 +1927,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "633",
+      "value": "643",
       "truth_class": "derived"
     },
     {
@@ -2053,7 +2053,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "f551dfd168bafe48",
+      "value": "7fde691710b4aabd",
       "truth_class": "derived"
     },
     {
@@ -2074,7 +2074,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "loc",
-      "value": "509",
+      "value": "521",
       "truth_class": "derived"
     },
     {
@@ -2326,7 +2326,7 @@
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5a4a50aec329e64a",
+      "value": "cef4f1135c365c28",
       "truth_class": "derived"
     },
     {
@@ -2347,7 +2347,7 @@
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "loc",
-      "value": "174",
+      "value": "170",
       "truth_class": "derived"
     },
     {
@@ -3096,7 +3096,7 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T13:43:27.348Z\",\"hash\":\"88bbc1097b7886f5\",\"reason\":\"src/cli/subcommands.rs remains centralized typed CLI schema: only Clap Subcommand enum declarations, owns one internal schema intent; grew 2 lines for the new intent add --layer arg. Splitting by command family scatters DTOs without reducing coupling.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T14:13:40.346Z\",\"hash\":\"0dd56f5000dba9a1\",\"reason\":\"file grew from adding new features (YAML support, journey run, soft resolution); cohesion unchanged\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
