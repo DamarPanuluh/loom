@@ -866,6 +866,27 @@ fn loom_json_out(tmp: &Path, args: &[&str]) -> serde_json::Value {
         )
     })
 }
+fn loom_json_err(tmp: &Path, args: &[&str]) -> serde_json::Value {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args);
+    let out = cmd.output().unwrap_or_else(|e| panic!("spawn loom: {e}"));
+    assert!(
+        !out.status.success(),
+        "loom {:?} unexpectedly succeeded:\n--stdout--\n{}\n--stderr--\n{}",
+        args,
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    serde_json::from_str(&stdout).unwrap_or_else(|e| {
+        panic!(
+            "loom {:?} did not emit JSON on failure:\n--stdout--\n{}\n--stderr--\n{}\nparse error: {e}",
+            args,
+            stdout,
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
 /// Run `loom --graph <tmp> <args>` and assert it exits zero, discarding stdout.
 /// For setup commands (`intent add`, `validation add`) that emit human text
 /// and have no `--json` output — reserve `loom_json_out` for read-style /
@@ -2404,4 +2425,358 @@ fn journey_prompt_emits_context_from_graph() {
         .unwrap()
         .iter()
         .any(|r| { r.as_str().unwrap().contains("Assert internal domain state") }));
+}
+
+/// Drift enforcement is clean when a covered journey has an existing contract
+/// artifact and configured runner/test refs that resolve on disk.
+#[test]
+fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
+    std::fs::write(
+        tmp.path().join("contracts/checkout.v1.json"),
+        r#"{"routes":[]}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("src/journey_runner.rs"),
+        "pub fn checkout_runner() {}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("tests/journey_runner.rs"),
+        "fn checkout_runner_test() {}\n",
+    )
+    .unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "checkout journey",
+            "--type",
+            "saga",
+            "--command",
+            "cargo test checkout_runner_test",
+            "--intent",
+            "checkout completes",
+            "--proof-level",
+            "L5",
+            "--proof-kind",
+            "journey",
+            "--artifact",
+            "contracts/checkout.v1.json",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "src/journey_runner.rs::checkout_runner",
+            "--runner-ref",
+            "src/journey_runner.rs::checkout_runner",
+            "--test-ref",
+            "tests/journey_runner.rs::checkout_runner_test",
+            "--contract-artifact",
+            "contracts/checkout.v1.json",
+            "checkout completes",
+        ],
+    );
+    {
+        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::store::Store;
+        let store = Store::open(tmp.path()).unwrap();
+        let val = store
+            .resolve_node("checkout journey", Some(NodeType::Validation))
+            .unwrap();
+        let intent = store
+            .resolve_node("checkout completes", Some(NodeType::Intent))
+            .unwrap();
+        store.set_node_status(&val.id, "passed").unwrap();
+        let e = store
+            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        store
+            .record_verdict(
+                &e.id,
+                InspectionStatus::Passing,
+                "journey green",
+                "saga passed",
+                0.9,
+                "test",
+            )
+            .unwrap();
+    }
+    let findings = loom_json_out(tmp.path(), &["journey", "coverage", "drift", "--json"]);
+    assert_eq!(
+        findings.as_array().unwrap().len(),
+        0,
+        "drift clean: {findings}"
+    );
+}
+
+/// Declared typed runner/test refs are checked even when the coverage is still
+/// uncovered; ref drift is independent of proof availability.
+#[test]
+fn journey_coverage_drift_reports_declared_refs_without_current_proof() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "f",
+            "--runner-ref",
+            "src/missing_runner.rs::checkout_runner",
+            "--test-ref",
+            "tests/missing_runner.rs::checkout_runner_test",
+            "checkout completes",
+        ],
+    );
+    let findings = loom_json_err(tmp.path(), &["journey", "coverage", "drift", "--json"]);
+    let kinds: Vec<&str> = findings
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["kind"].as_str().unwrap())
+        .collect();
+    assert!(kinds.contains(&"journey_runner_ref_missing"));
+    assert!(kinds.contains(&"journey_test_ref_missing"));
+}
+
+/// A coverage node's configured contract artifact must match a current passing
+/// L5 journey proof artifact. Mismatch is a drift failure.
+#[test]
+fn journey_coverage_drift_reports_contract_artifact_mismatch() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
+    std::fs::write(
+        tmp.path().join("contracts/proof.v1.json"),
+        r#"{"routes":[]}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("contracts/expected.v1.json"),
+        r#"{"routes":[]}"#,
+    )
+    .unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "checkout journey",
+            "--type",
+            "saga",
+            "--command",
+            "loom saga run proof",
+            "--intent",
+            "checkout completes",
+            "--proof-level",
+            "L5",
+            "--proof-kind",
+            "journey",
+            "--artifact",
+            "contracts/proof.v1.json",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "f",
+            "--contract-artifact",
+            "contracts/expected.v1.json",
+            "checkout completes",
+        ],
+    );
+    {
+        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::store::Store;
+        let store = Store::open(tmp.path()).unwrap();
+        let val = store
+            .resolve_node("checkout journey", Some(NodeType::Validation))
+            .unwrap();
+        let intent = store
+            .resolve_node("checkout completes", Some(NodeType::Intent))
+            .unwrap();
+        store.set_node_status(&val.id, "passed").unwrap();
+        let e = store
+            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        store
+            .record_verdict(
+                &e.id,
+                InspectionStatus::Passing,
+                "journey green",
+                "saga passed",
+                0.9,
+                "test",
+            )
+            .unwrap();
+    }
+    let findings = loom_json_err(tmp.path(), &["journey", "coverage", "drift", "--json"]);
+    let arr = findings.as_array().unwrap();
+    assert_eq!(arr[0]["kind"], "journey_contract_artifact_mismatch");
+    assert_eq!(arr[0]["expected_artifact"], "contracts/expected.v1.json");
+}
+
+/// Multiple current L5 proofs should not cause false drift: when coverage names
+/// contract_artifact=B and one passing proof uses A while another uses B, the
+/// drift checker must select the matching proof and stay clean.
+#[test]
+fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
+    std::fs::write(tmp.path().join("contracts/a.json"), r#"{"a":1}"#).unwrap();
+    std::fs::write(tmp.path().join("contracts/b.json"), r#"{"b":1}"#).unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    for (name, artifact) in [
+        ("journey a", "contracts/a.json"),
+        ("journey b", "contracts/b.json"),
+    ] {
+        loom_ok(
+            tmp.path(),
+            &[
+                "validation",
+                "add",
+                "--name",
+                name,
+                "--type",
+                "saga",
+                "--command",
+                "loom saga run",
+                "--intent",
+                "checkout completes",
+                "--proof-level",
+                "L5",
+                "--proof-kind",
+                "journey",
+                "--artifact",
+                artifact,
+            ],
+        );
+    }
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "f",
+            "--contract-artifact",
+            "contracts/b.json",
+            "checkout completes",
+        ],
+    );
+    {
+        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::store::Store;
+        let store = Store::open(tmp.path()).unwrap();
+        let intent = store
+            .resolve_node("checkout completes", Some(NodeType::Intent))
+            .unwrap();
+        for name in ["journey a", "journey b"] {
+            let val = store
+                .resolve_node(name, Some(NodeType::Validation))
+                .unwrap();
+            store.set_node_status(&val.id, "passed").unwrap();
+            let e = store
+                .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap();
+            store
+                .record_verdict(
+                    &e.id,
+                    InspectionStatus::Passing,
+                    "journey green",
+                    "saga passed",
+                    0.9,
+                    "test",
+                )
+                .unwrap();
+        }
+    }
+    let findings = loom_json_out(tmp.path(), &["journey", "coverage", "drift", "--json"]);
+    assert_eq!(
+        findings.as_array().unwrap().len(),
+        0,
+        "matching proof must avoid false drift: {findings}"
+    );
 }

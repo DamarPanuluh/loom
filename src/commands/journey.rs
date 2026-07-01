@@ -16,9 +16,10 @@
 
 use super::open;
 use crate::cli::{JourneyCmd, JourneyCoverageCmd, JourneyInvariantCmd};
-use crate::model::{EdgeKind, InspectionStatus, NodeType};
+use crate::model::{EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
+use anyhow::bail;
 use serde_json::{json, Value};
 
 /// Dispatch entry point for the `loom journey` family.
@@ -39,31 +40,63 @@ fn coverage(graph: Option<&std::path::Path>, cmd: JourneyCoverageCmd, json: bool
             flow,
             intent,
             description,
-        } => coverage_add(graph, &name, &flow, &intent, &description, json),
+            runner_ref,
+            test_ref,
+            contract_artifact,
+        } => coverage_add(
+            graph,
+            CoverageAddArgs {
+                name: &name,
+                flow: &flow,
+                intent_key: &intent,
+                description: &description,
+                runner_ref: runner_ref.as_deref(),
+                test_ref: test_ref.as_deref(),
+                contract_artifact: contract_artifact.as_deref(),
+            },
+            json,
+        ),
         JourneyCoverageCmd::List { limit } => coverage_list(graph, limit, json),
         JourneyCoverageCmd::Discover { spawn_missing } => {
             coverage_discover(graph, spawn_missing, json)
         }
+        JourneyCoverageCmd::Drift => coverage_drift(graph, json),
     }
+}
+
+struct CoverageAddArgs<'a> {
+    name: &'a str,
+    flow: &'a str,
+    intent_key: &'a str,
+    description: &'a str,
+    runner_ref: Option<&'a str>,
+    test_ref: Option<&'a str>,
+    contract_artifact: Option<&'a str>,
 }
 
 fn coverage_add(
     graph: Option<&std::path::Path>,
-    name: &str,
-    flow: &str,
-    intent_key: &str,
-    description: &str,
+    args: CoverageAddArgs<'_>,
     json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
-    let intent = store.resolve_node(intent_key, Some(NodeType::Intent))?;
-    let body = json!({ "flow": flow });
+    let intent = store.resolve_node(args.intent_key, Some(NodeType::Intent))?;
+    let mut body = json!({ "flow": args.flow });
+    if let Some(v) = args.runner_ref {
+        body["runner_ref"] = json!(v);
+    }
+    if let Some(v) = args.test_ref {
+        body["test_ref"] = json!(v);
+    }
+    if let Some(v) = args.contract_artifact {
+        body["contract_artifact"] = json!(v);
+    }
     // `status` is the asserted planning state: a coverage node starts uncovered.
     // Effective coverage is derived at read time (coverage_list), never stored.
     let node = store.add_node(
         NodeType::JourneyCoverage,
-        name,
-        description,
+        args.name,
+        args.description,
         "uncovered",
         body,
     )?;
@@ -78,7 +111,7 @@ fn coverage_add(
             "id": node.id,
             "name": node.name,
             "status": node.status,
-            "flow": flow,
+            "flow": args.flow,
             "covers": intent.name,
             "covers_id": intent.id,
         });
@@ -252,6 +285,186 @@ fn coverage_discover(
         }
     }
     Ok(())
+}
+
+fn coverage_drift(graph: Option<&std::path::Path>, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let coverages = store.list_nodes(Some(NodeType::JourneyCoverage), usize::MAX)?;
+    let mut findings: Vec<Value> = Vec::new();
+    for cov in &coverages {
+        let Some(intent) = coverage_intent(&store, &cov.id)? else {
+            findings.push(json!({
+                "kind": "journey_coverage_unlinked",
+                "coverage": cov.name,
+                "message": "journey_coverage node has no Covers edge to an intent",
+                "remedy": "link the coverage node to the intent it covers",
+            }));
+            continue;
+        };
+        for (field, kind) in [
+            ("runner_ref", "journey_runner_ref_missing"),
+            ("test_ref", "journey_test_ref_missing"),
+        ] {
+            let Some(reference) = cov.body.get(field).and_then(|v| v.as_str()) else {
+                continue;
+            };
+            if !repo_ref_exists(store.root(), reference) {
+                findings.push(json!({
+                    "kind": kind,
+                    "coverage": cov.name,
+                    "intent": intent.name,
+                    "reference": reference,
+                    "message": format!("configured {field} does not resolve on disk"),
+                    "remedy": "update the coverage node reference or restore the runner/test code",
+                }));
+            }
+        }
+        let proofs = current_l5_journey_validations(&store, &intent.id)?;
+        if proofs.is_empty() {
+            // Not drift: uncovered coverage is a gap, reported by discover/smells.
+            continue;
+        }
+
+        let coverage_artifact = cov.body.get("contract_artifact").and_then(|v| v.as_str());
+        let proof = match coverage_artifact {
+            Some(expected) => proofs
+                .iter()
+                .find(|p| p.body.get("artifact").and_then(|v| v.as_str()) == Some(expected))
+                .unwrap_or(&proofs[0]),
+            None => &proofs[0],
+        };
+        let proof_artifact = proof.body.get("artifact").and_then(|v| v.as_str());
+        let expected_artifact = coverage_artifact.or(proof_artifact);
+        match expected_artifact {
+            Some(path) => {
+                if coverage_artifact.is_some() && proof_artifact != coverage_artifact {
+                    let actual_artifacts: Vec<&str> = proofs
+                        .iter()
+                        .filter_map(|p| p.body.get("artifact").and_then(|v| v.as_str()))
+                        .collect();
+                    findings.push(json!({
+                        "kind": "journey_contract_artifact_mismatch",
+                        "coverage": cov.name,
+                        "intent": intent.name,
+                        "expected_artifact": coverage_artifact,
+                        "actual_artifacts": actual_artifacts,
+                        "message": "coverage contract_artifact does not match any current passing L5 journey proof artifact",
+                        "remedy": "update the coverage node, validation artifact, or rerun the correct journey proof",
+                    }));
+                }
+                if !store.root().join(path).exists() {
+                    findings.push(json!({
+                        "kind": "journey_contract_artifact_missing",
+                        "coverage": cov.name,
+                        "intent": intent.name,
+                        "proof": proof.name,
+                        "artifact": path,
+                        "message": "current passing journey proof artifact is missing on disk",
+                        "remedy": "restore the artifact or rerun sync so the proof stales and coverage becomes uncovered",
+                    }));
+                }
+            }
+            None => findings.push(json!({
+                "kind": "journey_proof_missing_artifact",
+                "coverage": cov.name,
+                "intent": intent.name,
+                "proof": proof.name,
+                "message": "current passing L5 journey proof has no body.artifact, so contract drift cannot be tracked",
+                "remedy": "add/update the validation with --artifact pointing at the contract/saga/runner artifact",
+            })),
+        }
+    }
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&findings)?);
+    } else if findings.is_empty() {
+        println!("journey coverage drift: clean");
+    } else {
+        for f in &findings {
+            println!(
+                "{}: {}",
+                f["kind"].as_str().unwrap_or("journey_drift"),
+                f["message"].as_str().unwrap_or("")
+            );
+        }
+    }
+    if findings.is_empty() {
+        Ok(())
+    } else {
+        bail!("journey coverage drift found {} issue(s)", findings.len())
+    }
+}
+
+fn coverage_intent(store: &Store, coverage_id: &str) -> Result<Option<Node>> {
+    let edge = store
+        .edges_with(Some(EdgeKind::Covers), Some(coverage_id), None)?
+        .into_iter()
+        .next();
+    match edge {
+        Some(e) => store.get_node(&e.to_id),
+        None => Ok(None),
+    }
+}
+
+fn current_l5_journey_validations(store: &Store, intent_id: &str) -> Result<Vec<Node>> {
+    let mut out = Vec::new();
+    for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent_id))? {
+        if e.status != InspectionStatus::Passing {
+            continue;
+        }
+        let Some(v) = store.get_node(&e.from_id)? else {
+            continue;
+        };
+        if v.status != "passed" {
+            continue;
+        }
+        let is_journey = v.body.get("proof_kind").and_then(|x| x.as_str()) == Some("journey");
+        let is_l5_plus = matches!(
+            v.body.get("proof_level").and_then(|x| x.as_str()),
+            Some("L5") | Some("L6")
+        );
+        if is_journey && is_l5_plus {
+            out.push(v);
+        }
+    }
+    Ok(out)
+}
+
+fn repo_ref_exists(root: &std::path::Path, reference: &str) -> bool {
+    if let Some((path, symbol)) = reference.split_once("::") {
+        let p = root.join(path);
+        return std::fs::read_to_string(p)
+            .map(|content| content.contains(symbol))
+            .unwrap_or(false);
+    }
+    let p = root.join(reference);
+    if p.exists() {
+        return true;
+    }
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name();
+            if matches!(name.to_str(), Some(".git" | ".loom" | "target")) {
+                continue;
+            }
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if std::fs::read_to_string(&path)
+                .map(|content| content.contains(reference))
+                .unwrap_or(false)
+            {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// Derived coverage status: "covered" iff the intent currently has a passing

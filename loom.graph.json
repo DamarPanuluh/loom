@@ -166,6 +166,33 @@
       "updated_at": "2026-06-30T14:07:19.148Z"
     },
     {
+      "id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "type": "intent",
+      "name": "CLI subcommands parse into typed command schemas",
+      "description": "The CLI exposes command families as typed Clap subcommand enums so dispatch code receives structured command data instead of stringly parsed arguments.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "component"
+      },
+      "created_at": "2026-07-01T12:29:15.752Z",
+      "updated_at": "2026-07-01T12:29:15.752Z"
+    },
+    {
+      "id": "34fcedb77e3024acc825d76e10d871f1",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: maturity now counts JourneyProof smells separately and keeps the proven rung/validate compass unmet while user-visible implemented intents lack passing L5/L6 journey proofs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "d34d53ba061cc639bc898a5a51e0a4ca"
+      },
+      "created_at": "2026-07-01T12:28:12.336Z",
+      "updated_at": "2026-07-01T12:28:12.336Z"
+    },
+    {
       "id": "369f3a38c0f9d32a34779805cd189022",
       "type": "codefile",
       "name": "src/extract/mod.rs",
@@ -316,6 +343,20 @@
       },
       "created_at": "2026-07-01T07:49:58.762Z",
       "updated_at": "2026-07-01T07:49:58.762Z"
+    },
+    {
+      "id": "5a2d4b4aefa86a165e2832be3fdc2cb5",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: journey_proof_smells emits missing_journey_proof/proof_too_shallow_for_intent findings for implemented user-visible intents without a passing L5/L6 journey validation",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "ef76b8e10aba8fea8af3092d0c1052d3"
+      },
+      "created_at": "2026-07-01T12:23:38.859Z",
+      "updated_at": "2026-07-01T12:23:38.859Z"
     },
     {
       "id": "5a47a3fac0f28c37db75310c0829e225",
@@ -642,6 +683,20 @@
       "updated_at": "2026-07-01T04:32:22.669Z"
     },
     {
+      "id": "d01dff0e9dd4e989c",
+      "type": "finding",
+      "name": "src/cli/subcommands.rs is oversized",
+      "description": "630 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d23f5c463fb1e4861",
       "type": "quality_rule",
       "name": "iso5055-rel-resource-release",
@@ -724,7 +779,7 @@
       "type": "intent",
       "name": "proven rung can require journey proof",
       "description": "Once real-boundary proof execution is strong enough, boundary-facing implemented intents require a passing L5 JourneyProof or equivalent for proven maturity.",
-      "status": "planned",
+      "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature",
@@ -732,7 +787,7 @@
         "source_proposal": "690822022500f37c8c768fb621bdfcba"
       },
       "created_at": "2026-07-01T07:49:58.747Z",
-      "updated_at": "2026-07-01T07:49:58.747Z"
+      "updated_at": "2026-07-01T12:28:12.335Z"
     },
     {
       "id": "d4af0e020bef2b77b",
@@ -857,6 +912,25 @@
       "updated_at": "2026-07-01T07:49:58.775Z"
     },
     {
+      "id": "dd4a08efd63191d9cc2c0bb6a3c4db52",
+      "type": "validation",
+      "name": "loom graph dogfood journey",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "artifact": "tests/ring7.rs",
+        "command": "env -u LOOM_AGENT cargo test --test ring7 dogfood_",
+        "journey_id": "loom-graph-dogfood",
+        "proof_kind": "journey",
+        "proof_level": "L5",
+        "repo_native_kind": "rust_integration_test",
+        "type": "test"
+      },
+      "created_at": "2026-07-01T12:32:35.194Z",
+      "updated_at": "2026-07-01T12:34:20.390Z"
+    },
+    {
       "id": "df750d03bdf758ca85a8e5cf5172e579",
       "type": "codefile",
       "name": "src/commands/status_cmd.rs",
@@ -955,7 +1029,7 @@
       "type": "intent",
       "name": "missing journey proofs surface as quality findings",
       "description": "Loom surfaces advisory findings when boundary-facing intents lack journey proof or when a journey asserts only transport success.",
-      "status": "planned",
+      "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature",
@@ -963,7 +1037,7 @@
         "source_proposal": "690822022500f37c8c768fb621bdfcba"
       },
       "created_at": "2026-07-01T07:49:58.720Z",
-      "updated_at": "2026-07-01T07:49:58.720Z"
+      "updated_at": "2026-07-01T12:23:38.858Z"
     },
     {
       "id": "fc74e160558226eb8afd5158d6e0177b",
@@ -1009,13 +1083,13 @@
           {
             "kind": "hypothesis_candidate",
             "number": 4,
-            "status": "open",
+            "status": "adopted",
             "text": "Discover flows needing journey coverage from entry point to mutation to projection"
           },
           {
             "kind": "intent_candidate",
             "number": 5,
-            "status": "open",
+            "status": "adopted",
             "text": "Generate typed journey-runner prompt context from Loom code understanding"
           },
           {
@@ -1027,13 +1101,13 @@
           {
             "kind": "intent_candidate",
             "number": 7,
-            "status": "open",
+            "status": "adopted",
             "text": "Enforce drift between covered journey entries, runner functions, tests, and HTTP contract artifacts"
           },
           {
             "kind": "task_candidate",
             "number": 8,
-            "status": "open",
+            "status": "adopted",
             "text": "Resolve journey-orchestrator open questions: code generation ownership, coverage status derivation, and state passing semantics"
           }
         ],
@@ -1042,7 +1116,7 @@
         "source_path": "/Users/laptopdp/Developer/sabrang/grid/docs/proposals/loom-journey-orchestrator.md"
       },
       "created_at": "2026-07-01T08:19:42.838Z",
-      "updated_at": "2026-07-01T08:32:20.187Z"
+      "updated_at": "2026-07-01T12:37:35.621Z"
     }
   ],
   "edges": [
@@ -1098,13 +1172,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "implemented hierarchy parents are exempt from grounding while implemented leaf intents without IMPLEMENTS edges count as ungrounded",
-      "evidence": "src/maturity.rs:64-95 builds active/implemented intents, collects hierarchy parent ids, skips parent ids in the implemented loop, and increments ungrounded only when a non-parent implemented intent has no Implements edge; proposal NodeType additions do not alter this logic.",
-      "confidence": 0.9,
+      "criterion": "maturity only counts implemented leaf intents as ungrounded; hierarchy parents are exempt because children realize them",
+      "evidence": "src/maturity.rs:79-95 builds a parent set from hierarchy edges, skips implemented intents whose id is in that parent set, and increments ungrounded only when a non-parent implemented intent has no Implements edge",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.894Z",
-      "updated_at": "2026-07-01T07:51:53.997Z"
+      "updated_at": "2026-07-01T12:28:37.091Z"
     },
     {
       "id": "0fbd6911cd68ec8177124f6a105f6cc2",
@@ -1212,6 +1286,21 @@
       "updated_at": "2026-07-01T04:44:21.113Z"
     },
     {
+      "id": "51bf0f10f59a14fd4103c82b3f8c3a30",
+      "from_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "to_id": "0237fd131f915654e586a5d3be394b51",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the proven rung and compass require a passing validation set plus no open JourneyProof smell for implemented user-visible intents",
+      "evidence": "src/maturity.rs:113-120 counts only missing_journey_proof/proof_too_shallow_for_intent smells; src/maturity.rs:183-189 routes to validate while journey proof gaps remain; src/maturity.rs:246-274 keeps proven unmet unless all validations pass and open_journey_proof_smells is zero",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T12:28:05.398Z",
+      "updated_at": "2026-07-01T12:28:48.554Z"
+    },
+    {
       "id": "539b900a082c1702daa2f6cbe81b0766",
       "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
       "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
@@ -1225,6 +1314,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.607Z",
       "updated_at": "2026-06-30T14:07:19.620Z"
+    },
+    {
+      "id": "556c898ac58485532b903b406509ea93",
+      "from_id": "b883d587c0992593e75dc398fb5ebe22",
+      "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "kind": "relates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "both intents are read-only signal-plane detectors over Store snapshots and intentionally share detector helpers",
+      "evidence": "src/signal.rs:1-7 defines one read-only signal plane; src/signal.rs:323-389 implements JourneyProof smell detection, while src/signal.rs:460-502 computes DebtCluster output from the same snapshot/facet helper vocabulary without Store mutation",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T12:31:13.592Z",
+      "updated_at": "2026-07-01T12:31:31.501Z"
     },
     {
       "id": "5dfd43d6f1c7499e65f64ad666846ae3",
@@ -1255,6 +1359,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.757Z",
       "updated_at": "2026-06-30T14:07:19.765Z"
+    },
+    {
+      "id": "6e552692a663cf30ad4bbb526e0a4456",
+      "from_id": "dd4a08efd63191d9cc2c0bb6a3c4db52",
+      "to_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`env -u LOOM_AGENT cargo test --test ring7 dogfood_` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T12:32:35.195Z",
+      "updated_at": "2026-07-01T12:34:20.389Z"
     },
     {
       "id": "73333a47c1b87ec0a1f68362a1907fe3",
@@ -1367,14 +1486,14 @@
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "loom debt emits clusters but writes no nodes or edges to the graph",
-      "evidence": "src/signal.rs debt_clusters still builds DebtCluster values from a Store snapshot and performs no Store write calls; cargo test passed.",
-      "confidence": 0.93,
+      "status": "passing",
+      "criterion": "debt clusters are computed on demand from the current snapshot and are not persisted as graph edges or required work",
+      "evidence": "src/signal.rs:1-7 documents debt as computed on demand and never stored; src/signal.rs:460-502 builds Vec<DebtCluster> from store.snapshot() facets and returns it without store mutation",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.813Z",
-      "updated_at": "2026-07-01T10:15:58.024Z"
+      "updated_at": "2026-07-01T12:21:53.894Z"
     },
     {
       "id": "9d5fb771799f9adde33700eed6c98d56",
@@ -1397,14 +1516,14 @@
       "to_id": "a56055709634988945f76e980fcf0480",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "editing a grounded file's content moves its settled verdicts to needs_reverification; unchanged does not; never-seen does not",
-      "evidence": "sync.rs refactored into ripple_codefile but semantics preserved: skip on equal hash, ripple only when prior hash existed and differs; sync_ripples_only_on_real_change green",
-      "confidence": 0.9,
+      "status": "passing",
+      "criterion": "when a codefile content hash changes, sync re-opens asserted edges grounded in that file and dependent proof/relationship edges",
+      "evidence": "src/sync.rs:1-8 states sync ripples staleness only for real changed prior hashes; src/sync.rs:155-160 stales IMPLEMENTS edges for changed codefiles and records changed intents; src/sync.rs:206-239 stales governs, validates, and relationship edges for those intents and resets linked validations",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.730Z",
-      "updated_at": "2026-07-01T11:08:27.278Z"
+      "updated_at": "2026-07-01T12:22:42.634Z"
     },
     {
       "id": "c54711608652dda6602d831b1bb4195b",
@@ -1420,6 +1539,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.839Z",
       "updated_at": "2026-06-30T14:07:19.847Z"
+    },
+    {
+      "id": "cdada8de2bf0de498d3e90d11dd2689b",
+      "from_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "to_id": "062105e11d1b02b813d44b68670a8575",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "src/cli/subcommands.rs defines the typed Clap subcommand schemas consumed by CLI dispatch",
+      "evidence": "src/cli/subcommands.rs:4-630 is a sequence of #[derive(Subcommand, Debug)] enums for IntentCmd, EdgeCmd, ValidationCmd, ProposalCmd, JourneyCmd, JourneyCoverageCmd, and related command families; it contains schema definitions rather than behavior",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T12:29:22.635Z",
+      "updated_at": "2026-07-01T12:29:32.586Z"
     },
     {
       "id": "d034b5fc0c8852aea",
@@ -1512,6 +1646,36 @@
       "updated_at": ""
     },
     {
+      "id": "db687f100ec9313ce",
+      "from_id": "d01dff0e9dd4e989c",
+      "to_id": "062105e11d1b02b813d44b68670a8575",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dca17251191af1d0e",
+      "from_id": "d01dff0e9dd4e989c",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "de23c905ffcc86601",
       "from_id": "d4af0e020bef2b77b",
       "to_id": "eafb29133e985bbc463f651878d9a3e2",
@@ -1587,6 +1751,21 @@
       "updated_at": ""
     },
     {
+      "id": "ed13a2250fc1c9b0045290994502fa5a",
+      "from_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "kind": "relates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "both intents are coordinated maturity-ladder computations over the same implemented-intent proof/readiness model",
+      "evidence": "src/maturity.rs:79-95 computes implemented leaf grounding; src/maturity.rs:113-120,183-189,246-274 uses journey-proof smells and validation counts in the same ladder/compass path, so both behaviors intentionally share build_rungs/compass",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T12:31:05.121Z",
+      "updated_at": "2026-07-01T12:31:23.311Z"
+    },
+    {
       "id": "f80a302a1d6b1dd4db64c3a58f6bcb33",
       "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
       "to_id": "039368426b41bf0383ed40ad0044a374",
@@ -1600,6 +1779,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.679Z",
       "updated_at": "2026-06-30T14:07:19.686Z"
+    },
+    {
+      "id": "ff2631f31f970ccebea4f2a683e6175d",
+      "from_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "implemented user-visible intents lacking a current passing L5/L6 journey proof produce quality/smell findings",
+      "evidence": "src/signal.rs:323-389 builds validations_by_intent, filters implemented user_visible intents, detects passing proof_kind=journey with proof_level L5/L6, and emits missing_journey_proof or proof_too_shallow_for_intent smells with JourneyProof remediation",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T12:23:31.971Z",
+      "updated_at": "2026-07-01T12:30:00.981Z"
     }
   ],
   "facets": [
@@ -1607,7 +1801,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e9c1cce4362c4407",
+      "value": "8ace5c2e093a0f42",
       "truth_class": "derived"
     },
     {
@@ -1628,7 +1822,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "loc",
-      "value": "287",
+      "value": "306",
       "truth_class": "derived"
     },
     {
@@ -1712,7 +1906,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c906bb647b0d4cd6",
+      "value": "b0f9b9ea722b0071",
       "truth_class": "derived"
     },
     {
@@ -1733,7 +1927,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "545",
+      "value": "630",
       "truth_class": "derived"
     },
     {
@@ -1747,7 +1941,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "17",
+      "value": "20",
       "truth_class": "derived"
     },
     {
@@ -1810,7 +2004,7 @@
       "target_id": "279357bb8daf851ae25b759c274fff36",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "fadfa626229734c3",
+      "value": "ad78069dade60f6a",
       "truth_class": "derived"
     },
     {
@@ -1831,7 +2025,7 @@
       "target_id": "279357bb8daf851ae25b759c274fff36",
       "target_kind": "node",
       "key": "loc",
-      "value": "240",
+      "value": "256",
       "truth_class": "derived"
     },
     {
@@ -1944,6 +2138,20 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "fn item_adopt and item_dispose",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "target_kind": "node",
+      "key": "level",
+      "value": "component",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -2178,6 +2386,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "51bf0f10f59a14fd4103c82b3f8c3a30",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn build_rungs: proven + fn compass: validate route",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "content_hash",
@@ -2237,7 +2452,7 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "6f74c88e4b96406c",
+      "value": "79068ae480f2e440",
       "truth_class": "derived"
     },
     {
@@ -2258,7 +2473,7 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "loc",
-      "value": "278",
+      "value": "280",
       "truth_class": "derived"
     },
     {
@@ -2629,7 +2844,7 @@
       "target_id": "ab2b8d59f555c85569866fd178d9bb05",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "a7582030827385a6",
+      "value": "16d29f72e8396dcf",
       "truth_class": "derived"
     },
     {
@@ -2650,7 +2865,7 @@
       "target_id": "ab2b8d59f555c85569866fd178d9bb05",
       "target_kind": "node",
       "key": "loc",
-      "value": "286",
+      "value": "290",
       "truth_class": "derived"
     },
     {
@@ -2864,10 +3079,24 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "cdada8de2bf0de498d3e90d11dd2689b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "Clap Subcommand enums",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d0002c88c80599944",
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-06-30T18:50:27.001Z\",\"hash\":\"27971e95fbc516b3\",\"reason\":\"src/extract.rs is the extraction plane: language/role detection + shared Symbol/Extraction types + one extractor per language (tree-sitter) + complexity, all pure derived structural facts; the four non-Rust extractors share one generic walker, so length is the cost of multi-language support in a cohesive module, not tangle\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d01dff0e9dd4e989c",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-01T12:30:09.865Z\",\"hash\":\"b0f9b9ea722b0071\",\"reason\":\"src/cli/subcommands.rs is intentionally centralized typed CLI schema: it owns one internal intent, contains only Clap Subcommand enum declarations, and splitting by command family would scatter schema DTOs without reducing behavioral coupling.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -2902,8 +3131,15 @@
       "target_id": "d76631ff740131229",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T04:33:13.574Z\",\"hash\":\"c62ce6a6ec4b68cd\",\"reason\":\"src/signal.rs remains a cohesive read-only signal projection: debt clusters, smells, doctor state and finding views share the same Store snapshot traversal and detector vocabulary; splitting would duplicate detector state rather than remove coupling.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T12:22:09.871Z\",\"hash\":\"8613d3d3f5ea40c1\",\"reason\":\"src/signal.rs remains a cohesive pure read-plane module: lines 1-7 define one signal boundary, and the outline groups smells, findings, debt, doctor, and shared snapshot helpers without Store mutation; splitting now would move cohesive detectors rather than reduce coupling.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "dd4a08efd63191d9cc2c0bb6a3c4db52",
+      "target_kind": "node",
+      "key": "artifact_hash",
+      "value": "cf961e405bf58901",
+      "truth_class": "derived"
     },
     {
       "target_id": "df750d03bdf758ca85a8e5cf5172e579",
@@ -3098,7 +3334,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c6cabfef4646d839",
+      "value": "ce8a52c479564fce",
       "truth_class": "derived"
     },
     {
@@ -3119,7 +3355,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "loc",
-      "value": "181",
+      "value": "186",
       "truth_class": "derived"
     },
     {
@@ -3141,6 +3377,13 @@
       "target_kind": "node",
       "key": "level",
       "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ff2631f31f970ccebea4f2a683e6175d",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn journey_proof_smells",
       "truth_class": "asserted"
     }
   ],

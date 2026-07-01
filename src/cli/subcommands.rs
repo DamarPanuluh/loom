@@ -577,6 +577,15 @@ pub enum JourneyCoverageCmd {
         intent: String,
         #[arg(long, default_value = "")]
         description: String,
+        /// Optional typed runner reference (path or path::symbol) that must exist.
+        #[arg(long)]
+        runner_ref: Option<String>,
+        /// Optional test reference (path or path::symbol) that must exist.
+        #[arg(long)]
+        test_ref: Option<String>,
+        /// Optional contract/saga artifact path expected to back the proof.
+        #[arg(long)]
+        contract_artifact: Option<String>,
     },
     /// List journey coverage nodes with their effective coverage status.
     List {
@@ -592,6 +601,10 @@ pub enum JourneyCoverageCmd {
         #[arg(long)]
         spawn_missing: bool,
     },
+    /// Enforce drift metadata around covered journey entries: configured
+    /// runner/test refs must still exist, and configured contract artifacts must
+    /// match the current passing L5 journey proof.
+    Drift,
 }
 
 #[derive(Subcommand, Debug)]

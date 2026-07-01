@@ -110,7 +110,12 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     // proofs (ring 5): registered validations are not proof until they pass.
     let validations = validation_summary(store)?;
 
-    let open_smells = crate::signal::smells(store)?.len();
+    let smells = crate::signal::smells(store)?;
+    let open_smells = smells.len();
+    let open_journey_proof_smells = smells
+        .iter()
+        .filter(|s| s.kind == "missing_journey_proof" || s.kind == "proof_too_shallow_for_intent")
+        .count();
     let untriaged = crate::signal::untriaged_findings(store)?.len();
     let stale_findings = crate::signal::stale_findings(store)?.len();
     let rungs = build_rungs(&RungInputs {
@@ -122,6 +127,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         stale,
         uninspected,
         open_smells,
+        open_journey_proof_smells,
         untriaged,
         stale_findings,
     });
@@ -136,6 +142,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         stale,
         uninspected,
         open_smells,
+        open_journey_proof_smells,
         untriaged,
         stale_findings,
     );
@@ -157,6 +164,7 @@ fn compass(
     stale: usize,
     uninspected: usize,
     open_smells: usize,
+    open_journey_proof_smells: usize,
     untriaged: usize,
     stale_findings: usize,
 ) -> (String, String) {
@@ -173,7 +181,9 @@ fn compass(
         return ("build".into(), "loom next --mode build".into());
     }
     if implemented > 0
-        && (validations.registered == 0 || validations.passed < validations.registered)
+        && (validations.registered == 0
+            || validations.passed < validations.registered
+            || open_journey_proof_smells > 0)
     {
         return ("validate".into(), "loom next --mode validate".into());
     }
@@ -202,6 +212,7 @@ struct RungInputs {
     stale: usize,
     uninspected: usize,
     open_smells: usize,
+    open_journey_proof_smells: usize,
     untriaged: usize,
     stale_findings: usize,
 }
@@ -235,13 +246,16 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         name: "proven".into(),
         state: if c.implemented == 0 {
             RungState::NotApplicable
-        } else if c.validations.registered > 0 && c.validations.passed == c.validations.registered {
+        } else if c.validations.registered > 0
+            && c.validations.passed == c.validations.registered
+            && c.open_journey_proof_smells == 0
+        {
             RungState::Met
         } else {
             RungState::Unmet
         },
         detail: format!(
-            "{} registered: {} passed, {} failed, {} blocked, {} not_run{}",
+            "{} registered: {} passed, {} failed, {} blocked, {} not_run{}{}",
             c.validations.registered,
             c.validations.passed,
             c.validations.failed,
@@ -249,6 +263,11 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             c.validations.not_run,
             if c.validations.other > 0 {
                 format!(", {} other", c.validations.other)
+            } else {
+                String::new()
+            },
+            if c.open_journey_proof_smells > 0 {
+                format!(", {} journey proof gap(s)", c.open_journey_proof_smells)
             } else {
                 String::new()
             }

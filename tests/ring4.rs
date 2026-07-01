@@ -1,7 +1,7 @@
 //! Ring 4 tests — maturity ladder + compass routing.
 
 use loom::maturity::{ladder, RungState};
-use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
+use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -170,6 +170,137 @@ fn fully_grounded_no_residue_routes_complete() {
         .unwrap();
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "complete");
+}
+
+#[test]
+fn proven_rung_requires_journey_proof_for_user_visible_intents() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "checkout completes",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let file = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/checkout.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let impl_edge = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &impl_edge.id,
+            InspectionStatus::Passing,
+            "checkout is grounded",
+            "src/checkout.rs",
+            0.9,
+            "test",
+        )
+        .unwrap();
+
+    let unit = store
+        .add_node(
+            NodeType::Validation,
+            "unit proof",
+            "",
+            "passed",
+            serde_json::json!({
+                "type": "test",
+                "command": "cargo test unit",
+                "proof_kind": "unit",
+                "proof_level": "L2",
+            }),
+        )
+        .unwrap();
+    let unit_edge = store
+        .add_edge(
+            EdgeKind::Validates,
+            &unit.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &unit_edge.id,
+            InspectionStatus::Passing,
+            "unit proof passed",
+            "unit exit 0",
+            0.9,
+            "test",
+        )
+        .unwrap();
+
+    let before = ladder(&store).unwrap();
+    let proven_before = before.rungs.iter().find(|r| r.name == "proven").unwrap();
+    assert_eq!(before.phase, "validate");
+    assert_eq!(proven_before.state, RungState::Unmet);
+    assert!(
+        proven_before.detail.contains("1 journey proof gap"),
+        "detail should name the journey-proof gap: {}",
+        proven_before.detail
+    );
+
+    let journey = store
+        .add_node(
+            NodeType::Validation,
+            "journey proof",
+            "",
+            "passed",
+            serde_json::json!({
+                "type": "test",
+                "command": "cargo test journey",
+                "proof_kind": "journey",
+                "proof_level": "L5",
+            }),
+        )
+        .unwrap();
+    let journey_edge = store
+        .add_edge(
+            EdgeKind::Validates,
+            &journey.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &journey_edge.id,
+            InspectionStatus::Passing,
+            "journey proof passed",
+            "journey exit 0",
+            0.9,
+            "test",
+        )
+        .unwrap();
+
+    let after = ladder(&store).unwrap();
+    let proven_after = after.rungs.iter().find(|r| r.name == "proven").unwrap();
+    assert_eq!(proven_after.state, RungState::Met);
 }
 
 // ---- compass: findings route through durable triage --------------------------
