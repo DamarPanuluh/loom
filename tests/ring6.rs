@@ -1006,3 +1006,111 @@ fn saga_run_interpolates_captured_vars_in_expect_body() {
         .unwrap();
     assert_eq!(saga.status, "passed", "both steps passed, saga is passed");
 }
+
+// ---- contract format: single-brace path params + verified-field detail -----
+//
+// The HTTP contract format uses OpenAPI/REST-style `{person_id}` in path
+// templates (not loom's canonical `{{ person_id }}`). A route's `extract`
+// captures a value from one route; a later route's path references it via
+// the single-brace form. This must thread through exactly like the saga
+// format's `{{ var }}`, and a passing step's detail should name which
+// response fields were actually verified — not just "status 200 ok".
+
+/// Contract: `loom journey run <contract.json>` normalizes `{person_id}` in
+/// a later route's path to the value captured by an earlier route's
+/// `extract`, and the passing detail names the verified response fields.
+#[test]
+fn journey_run_contract_format_substitutes_single_brace_path_params() {
+    let tmp = Tmp::new();
+    let (base, handle) = mock_server_handling(2, |req| {
+        if req.starts_with("POST") {
+            (200, r#"{"person_id":"p-1"}"#.into())
+        } else {
+            // Fails the test (via detail) if the path param wasn't substituted:
+            // the literal, URL-encoded "{person_id}" would appear in the path.
+            assert!(
+                req.contains("GET /v1/grid/standing/p-1?context=research"),
+                "path param must be substituted with the captured value, got: {req}"
+            );
+            (200, r#"{"subject_person_id":"p-1","headline":"ok"}"#.into())
+        }
+    });
+
+    let spec_path = tmp.path().join("contract-path-param.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "name": "contract-path-param",
+            "base": base,
+            "routes": [
+                {
+                    "method": "POST",
+                    "path": "/v1/grid/resolve",
+                    "success_status": 200,
+                    "extract": [{ "field": "person_id", "as": "person_id" }],
+                    "response_fields": ["person_id"]
+                },
+                {
+                    "method": "GET",
+                    "path": "/v1/grid/standing/{person_id}",
+                    "success_status": 200,
+                    "query": { "context": "research" },
+                    "response_fields": ["subject_person_id", "headline"]
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    handle.join().unwrap();
+
+    assert_eq!(out["total"], 2, "{out}");
+    assert_eq!(out["passed"], 2, "{out}");
+    let outcomes = out["outcomes"].as_array().unwrap();
+    let first_detail = outcomes[0]["detail"].as_str().unwrap();
+    let second_detail = outcomes[1]["detail"].as_str().unwrap();
+    assert!(
+        first_detail.contains("verified: $.person_id"),
+        "success detail names verified fields: {first_detail}"
+    );
+    assert!(
+        second_detail.contains("verified:")
+            && second_detail.contains("$.subject_person_id")
+            && second_detail.contains("$.headline"),
+        "success detail names verified fields: {second_detail}"
+    );
+}
+
+/// Contract: a saga-format spec with no `expect.exists`/`expect.body` keeps
+/// the plain "status N" detail — the verified-fields addition must not
+/// clutter a step that asserted nothing about the body.
+#[test]
+fn journey_run_detail_stays_plain_when_no_body_expectations() {
+    let tmp = Tmp::new();
+    let (base, handle) = mock_server_handling(1, |_req| (200, r#"{"ok":true}"#.into()));
+
+    let spec_path = tmp.path().join("plain.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "saga": "plain-journey",
+            "base": base,
+            "steps": [
+                { "name": "ping", "intent": "ping", "request": { "method": "GET", "url": "/ping" } }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    handle.join().unwrap();
+
+    let detail = out["outcomes"][0]["detail"].as_str().unwrap();
+    assert_eq!(
+        detail, "status 200 ok",
+        "no expectations: plain detail, got: {detail}"
+    );
+}

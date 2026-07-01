@@ -62,7 +62,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": "2026-07-01T14:56:55.329Z"
+      "updated_at": "2026-07-01T15:31:56.082Z"
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -804,6 +804,20 @@
       "updated_at": ""
     },
     {
+      "id": "d501830b3a0c93f39",
+      "type": "finding",
+      "name": "src/saga.rs is oversized",
+      "description": "605 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d59d6bf023b8f7d14",
       "type": "finding",
       "name": "src/store.rs is oversized",
@@ -1163,7 +1177,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-01T14:56:55.328Z"
+      "updated_at": "2026-07-01T15:31:56.081Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -1503,12 +1517,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "saga execution supports repo-agnostic HTTP contract routes with state extraction, substitution, query/body threading and response-field assertions",
-      "evidence": "src/saga.rs check_response now interpolates expect.body values via interpolate_json before comparison (fixes echo-back assertion bug); execution/conversion path otherwise unchanged; ring6 saga_run_interpolates_captured_vars_in_expect_body passes",
+      "evidence": "src/saga.rs http_contract_to_saga now normalizes OpenAPI-style {param} path segments to {{ param }} via normalize_path_params before threading captures; check_response reports which fields were verified in the passing detail; conversion/execution semantics otherwise unchanged; 3 new unit tests + ring6 journey_run_contract_format_substitutes_single_brace_path_params pass",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:39:57.217Z",
-      "updated_at": "2026-07-01T14:56:41.860Z"
+      "updated_at": "2026-07-01T15:28:18.225Z"
     },
     {
       "id": "a4948c777c6a771abc8a06c80a4e3d73",
@@ -1558,6 +1572,21 @@
     {
       "id": "d034b5fc0c8852aea",
       "from_id": "d59d6bf023b8f7d14",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d154785c3690939f5",
+      "from_id": "d501830b3a0c93f39",
       "to_id": "d2fcf6c1e25f78a67",
       "kind": "assesses",
       "truth_class": "derived",
@@ -1634,6 +1663,21 @@
       "id": "d6d1d7f406277a0a7",
       "from_id": "d76631ff740131229",
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "da3dbf9139ca0363b",
+      "from_id": "d501830b3a0c93f39",
+      "to_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "kind": "flags",
       "truth_class": "derived",
       "status": "current",
@@ -2053,7 +2097,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c7e78eb31c75838a",
+      "value": "3a72859779ab053a",
       "truth_class": "derived"
     },
     {
@@ -2074,7 +2118,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "loc",
-      "value": "522",
+      "value": "605",
       "truth_class": "derived"
     },
     {
@@ -2088,7 +2132,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "26",
+      "value": "27",
       "truth_class": "derived"
     },
     {
@@ -3118,6 +3162,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-01T13:44:18.989Z\",\"hash\":\"d66c5318181cf188\",\"reason\":\"src/workitem.rs remains a cohesive queue planner: Mode parsing, GraphState counts, work-item selection and prompt-contract rendering are one scheduling surface. This change only added open_findings/resolved_findings to the existing GraphState — same responsibility, no new concern to split out.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d501830b3a0c93f39",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-01T15:31:19.210Z\",\"hash\":\"3a72859779ab053a\",\"reason\":\"src/saga.rs remains one cohesive consumer-plane proof executor: spec parsing (JSON/YAML), HTTP-contract-to-saga conversion (incl. path-param normalization), execution, response checking, and interpolation helpers all serve the single saga-runner responsibility. ~53 of 605 lines are the #[cfg(test)] module (unit tests for interpolation/jsonpath/path-normalization), not production surface. Growth this session (normalize_path_params + 3 unit tests) added no new concern to split out.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {

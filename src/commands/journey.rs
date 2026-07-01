@@ -824,7 +824,16 @@ fn journey_run(spec: &std::path::Path, base_url: Option<&str>, json: bool) -> Re
                                 vars.insert(var.clone(), s);
                             }
                         }
-                        (true, format!("status {status_code} ok"))
+                        let success_detail =
+                            if step.expect.exists.is_empty() && step.expect.body.is_empty() {
+                                format!("status {status_code} ok")
+                            } else {
+                                let mut checked: Vec<&str> =
+                                    step.expect.body.keys().map(String::as_str).collect();
+                                checked.extend(step.expect.exists.iter().map(String::as_str));
+                                format!("status {status_code} ok, verified: {}", checked.join(", "))
+                            };
+                        (true, success_detail)
                     } else {
                         (false, err_detail)
                     }

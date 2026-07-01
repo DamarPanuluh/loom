@@ -216,7 +216,7 @@ fn http_contract_to_saga(contract: HttpContract) -> SagaSpec {
                 intent,
                 request: Request {
                     method,
-                    url: route.path,
+                    url: normalize_path_params(&route.path),
                     headers,
                     query: route.query,
                     json: route.example_request,
@@ -244,6 +244,55 @@ fn http_contract_to_saga(contract: HttpContract) -> SagaSpec {
         base,
         steps,
     }
+}
+
+/// Normalize OpenAPI/REST-style single-brace path params (`{person_id}`) to
+/// loom's canonical `{{ person_id }}` interpolation syntax, so a contract's
+/// path template threads a prior step's `extract`/`capture` without the
+/// author having to hand-rewrite braces. A path that already uses `{{ }}` is
+/// left untouched (its inner text starts with `{`, which this skips).
+fn normalize_path_params(path: &str) -> String {
+    let mut out = String::with_capacity(path.len());
+    let mut rest = path;
+    while let Some(brace_pos) = rest.find('{') {
+        out.push_str(&rest[..brace_pos]);
+        let after_brace = &rest[brace_pos + 1..];
+        // Already double-braced (`{{ ... }}`) — copy through and continue past it.
+        if let Some(stripped) = after_brace.strip_prefix('{') {
+            out.push_str("{{");
+            rest = stripped;
+            continue;
+        }
+        match after_brace.find('}') {
+            Some(rel_end) => {
+                let ident = &after_brace[..rel_end];
+                let is_bare_ident = !ident.is_empty()
+                    && ident
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.');
+                if is_bare_ident {
+                    out.push_str("{{ ");
+                    out.push_str(ident);
+                    out.push_str(" }}");
+                } else {
+                    // Not a bare identifier — leave the original braces as-is.
+                    out.push('{');
+                    out.push_str(ident);
+                    out.push('}');
+                }
+                rest = &after_brace[rel_end + 1..];
+            }
+            None => {
+                // Unterminated brace — copy the rest verbatim and stop.
+                out.push('{');
+                out.push_str(after_brace);
+                rest = "";
+                break;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 fn field_path(field: &str) -> String {
@@ -394,11 +443,18 @@ fn check_response(
             vars.insert(var.clone(), s);
         }
     }
+    let detail = if step.expect.exists.is_empty() && step.expect.body.is_empty() {
+        format!("status {status}")
+    } else {
+        let mut checked: Vec<&str> = step.expect.body.keys().map(String::as_str).collect();
+        checked.extend(step.expect.exists.iter().map(String::as_str));
+        format!("status {status}, verified: {}", checked.join(", "))
+    };
     StepOutcome {
         name: step.name.clone(),
         intent: step.intent.clone(),
         passed: true,
-        detail: format!("status {status}"),
+        detail,
     }
 }
 
@@ -518,5 +574,32 @@ mod tests {
         assert_eq!(jsonpath(&v, "$.id"), Some(serde_json::json!("c1")));
         assert_eq!(jsonpath(&v, "$.state.paid"), Some(serde_json::json!(true)));
         assert_eq!(jsonpath(&v, "$.missing"), None);
+    }
+
+    #[test]
+    fn normalize_path_params_converts_single_brace_idents() {
+        assert_eq!(
+            normalize_path_params("/v1/grid/standing/{person_id}"),
+            "/v1/grid/standing/{{ person_id }}"
+        );
+        assert_eq!(
+            normalize_path_params("/a/{x}/b/{y}/c"),
+            "/a/{{ x }}/b/{{ y }}/c"
+        );
+    }
+
+    #[test]
+    fn normalize_path_params_leaves_already_double_braced_alone() {
+        assert_eq!(
+            normalize_path_params("/v1/persons/{{ person_id }}"),
+            "/v1/persons/{{ person_id }}"
+        );
+    }
+
+    #[test]
+    fn normalize_path_params_ignores_non_identifier_braces() {
+        // Not a bare identifier (contains a space/symbol not in the allowed
+        // set) — left untouched rather than guessed at.
+        assert_eq!(normalize_path_params("/x/{a b}/y"), "/x/{a b}/y");
     }
 }
