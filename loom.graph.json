@@ -686,7 +686,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "630 lines (> 600)",
+      "description": "633 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -793,7 +793,7 @@
       "id": "d4af0e020bef2b77b",
       "type": "finding",
       "name": "src/workitem.rs is oversized",
-      "description": "679 lines (> 600)",
+      "description": "692 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1233,12 +1233,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "these are cohesive command-surface behaviors sharing the CLI dispatch/handler layer",
-      "evidence": "src/commands.rs dispatch routes intent and find command surfaces; implementations now live in src/commands/intent.rs and src/commands/misc_cmd.rs after the split, with tests passing.",
+      "evidence": "src/commands.rs still routes intent and find command surfaces to src/commands/intent.rs and src/commands/misc_cmd.rs; the intent_add args-struct refactor did not move the dispatch boundary",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.946Z",
-      "updated_at": "2026-07-01T04:46:11.897Z"
+      "updated_at": "2026-07-01T13:42:56.384Z"
     },
     {
       "id": "33b58ebeebc1efcab48be4e741e18245",
@@ -1278,12 +1278,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "with a failing and an uninspected edge present, next returns the failing one first, with its contract",
-      "evidence": "src/workitem.rs still orders fix before validate/build/quality/analyze/triage and emits PromptContract fields; cargo test passed after command split.",
-      "confidence": 0.91,
+      "evidence": "src/workitem.rs next()/validate_item ordering (fix>validate>build>quality>analyze>triage) is unchanged; this session only added open_findings/resolved_findings fields to GraphState, not the router priority",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.854Z",
-      "updated_at": "2026-07-01T04:44:21.113Z"
+      "updated_at": "2026-07-01T13:42:45.419Z"
     },
     {
       "id": "51bf0f10f59a14fd4103c82b3f8c3a30",
@@ -1473,12 +1473,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "loom intent add rejects symbol-pattern names unless explicitly allowed",
-      "evidence": "src/commands/intent.rs:11-19 defines looks_like_symbol; src/commands/intent.rs add handler calls it before add_node; cargo test passed.",
-      "confidence": 0.92,
+      "evidence": "src/commands/intent.rs intent_add still calls looks_like_symbol before add_node and bails without --allow-symbol-name; the args-struct refactor + --layer facet preserved that guard verbatim",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T04:39:31.837Z",
-      "updated_at": "2026-07-01T04:39:40.602Z"
+      "updated_at": "2026-07-01T13:42:45.457Z"
     },
     {
       "id": "995e32fcd5c208ea8d15b1c9b4c0fea6",
@@ -1548,12 +1548,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "src/cli/subcommands.rs defines the typed Clap subcommand schemas consumed by CLI dispatch",
-      "evidence": "src/cli/subcommands.rs:4-630 is a sequence of #[derive(Subcommand, Debug)] enums for IntentCmd, EdgeCmd, ValidationCmd, ProposalCmd, JourneyCmd, JourneyCoverageCmd, and related command families; it contains schema definitions rather than behavior",
+      "evidence": "src/cli/subcommands.rs remains #[derive(Subcommand)] enums; this session only added the optional --layer arg to IntentCmd::Add, still schema not behavior",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:29:22.635Z",
-      "updated_at": "2026-07-01T12:29:32.586Z"
+      "updated_at": "2026-07-01T13:42:45.487Z"
     },
     {
       "id": "d034b5fc0c8852aea",
@@ -1843,7 +1843,7 @@
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ac71e61dc052927b",
+      "value": "6e24ba3c56173ee7",
       "truth_class": "derived"
     },
     {
@@ -1864,7 +1864,7 @@
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "loc",
-      "value": "334",
+      "value": "361",
       "truth_class": "derived"
     },
     {
@@ -1878,7 +1878,7 @@
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "13",
+      "value": "14",
       "truth_class": "derived"
     },
     {
@@ -1906,7 +1906,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "b0f9b9ea722b0071",
+      "value": "88bbc1097b7886f5",
       "truth_class": "derived"
     },
     {
@@ -1927,7 +1927,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "630",
+      "value": "633",
       "truth_class": "derived"
     },
     {
@@ -3096,7 +3096,7 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T12:30:09.865Z\",\"hash\":\"b0f9b9ea722b0071\",\"reason\":\"src/cli/subcommands.rs is intentionally centralized typed CLI schema: it owns one internal intent, contains only Clap Subcommand enum declarations, and splitting by command family would scatter schema DTOs without reducing behavioral coupling.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T13:43:27.348Z\",\"hash\":\"88bbc1097b7886f5\",\"reason\":\"src/cli/subcommands.rs remains centralized typed CLI schema: only Clap Subcommand enum declarations, owns one internal schema intent; grew 2 lines for the new intent add --layer arg. Splitting by command family scatters DTOs without reducing coupling.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -3117,7 +3117,7 @@
       "target_id": "d4af0e020bef2b77b",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T04:34:34.780Z\",\"hash\":\"82c46bb08307cb8b\",\"reason\":\"src/workitem.rs remains a cohesive queue planner: Mode parsing, GraphState counts, work-item selection and prompt-contract rendering are one scheduling surface; the file owns the next-work contract rather than unrelated behavior.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T13:44:18.989Z\",\"hash\":\"d66c5318181cf188\",\"reason\":\"src/workitem.rs remains a cohesive queue planner: Mode parsing, GraphState counts, work-item selection and prompt-contract rendering are one scheduling surface. This change only added open_findings/resolved_findings to the existing GraphState — same responsibility, no new concern to split out.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -3145,7 +3145,7 @@
       "target_id": "df750d03bdf758ca85a8e5cf5172e579",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "4af033a1afbba366",
+      "value": "6db52e051148a605",
       "truth_class": "derived"
     },
     {
@@ -3166,7 +3166,7 @@
       "target_id": "df750d03bdf758ca85a8e5cf5172e579",
       "target_kind": "node",
       "key": "loc",
-      "value": "334",
+      "value": "340",
       "truth_class": "derived"
     },
     {
@@ -3250,7 +3250,7 @@
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "82c46bb08307cb8b",
+      "value": "d66c5318181cf188",
       "truth_class": "derived"
     },
     {
@@ -3271,7 +3271,7 @@
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "loc",
-      "value": "679",
+      "value": "692",
       "truth_class": "derived"
     },
     {

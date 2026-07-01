@@ -634,6 +634,10 @@ pub struct GraphState {
     pub untriaged: usize,
     pub stale_findings: usize,
     pub needed: usize,
+    /// Findings still demanding attention: untriaged OR stale OR verdict=needed.
+    pub open_findings: usize,
+    /// Findings adjudicated and current (justified/blocked, not stale).
+    pub resolved_findings: usize,
     pub inbox: usize,
 }
 
@@ -650,6 +654,13 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
     let untriaged = findings.iter().filter(|fv| fv.state == "untriaged").count();
     let stale_findings = findings.iter().filter(|fv| fv.stale).count();
     let needed = findings.iter().filter(|fv| fv.state == "needed").count();
+    // One finding can satisfy several open predicates (e.g. needed AND stale);
+    // count it once so open + resolved == total with no double-count.
+    let open_findings = findings
+        .iter()
+        .filter(|fv| fv.state == "untriaged" || fv.stale || fv.state == "needed")
+        .count();
+    let resolved_findings = findings.len() - open_findings;
     Ok(GraphState {
         planned: store
             .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
@@ -670,6 +681,8 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
         untriaged,
         stale_findings,
         needed,
+        open_findings,
+        resolved_findings,
         inbox: store
             .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
             .into_iter()

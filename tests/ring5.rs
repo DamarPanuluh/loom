@@ -131,6 +131,7 @@ fn validate_runs_command_and_records_result() {
                 level: "feature".into(),
                 lifecycle: "implemented".into(),
                 visibility: None,
+                layer: None,
                 allow_symbol_name: false,
             },
         },
@@ -191,6 +192,7 @@ fn validate_failing_command_records_failure() {
                 level: "feature".into(),
                 lifecycle: "implemented".into(),
                 visibility: None,
+                layer: None,
                 allow_symbol_name: false,
             },
         },
@@ -762,6 +764,46 @@ fn intent_set_corrects_facets() {
             .unwrap()
             .as_deref(),
         Some("internal")
+    );
+}
+// ---- `intent add --layer` writes the node-scoped `layer` facet -------------
+//
+// The `--layer` flag is the user-facing surface for stamping an architecture
+// layer label onto an intent node. It must write a Node-scoped Asserted facet
+// under the exact key `layer` (the same key the layering detector reads), not a
+// body field or an edge. A regression that drops the flag, mis-scopes it, or
+// writes the wrong key reddens this. Drives the compiled binary end-to-end,
+// then reads the stored facet back through the Store API for precision.
+
+#[test]
+fn intent_add_layer_writes_node_layer_facet() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout places order",
+            "--lifecycle",
+            "implemented",
+            "--layer",
+            "domain",
+        ],
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let node = store
+        .resolve_node("checkout places order", Some(NodeType::Intent))
+        .unwrap();
+    assert_eq!(
+        store
+            .get_facet(&node.id, TargetKind::Node, "layer")
+            .unwrap()
+            .as_deref(),
+        Some("domain"),
+        "--layer must stamp a Node-scoped Asserted `layer` facet with the label"
     );
 }
 

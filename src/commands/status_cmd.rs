@@ -200,12 +200,14 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         ladder.phase, ladder.next_command
     );
     println!(
-        "  queues: build={} fix={} analyze={} inbox={}  (advisory: findings={} untriaged={} stale_findings={} needed={})",
+        "  queues: build={} fix={} analyze={} inbox={}  (advisory: findings={} open={} resolved={}; untriaged={} stale_findings={} needed={})",
         pulse.planned,
         pulse.stale,
         pulse.uninspected,
         pulse.inbox,
         pulse.findings,
+        pulse.open_findings,
+        pulse.resolved_findings,
         pulse.untriaged,
         pulse.stale_findings,
         pulse.needed
@@ -249,11 +251,13 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
             }
         }
         println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} untriaged={} stale_findings={} needed={} inbox={}",
+            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={}",
             pulse.planned,
             pulse.stale,
             pulse.uninspected,
             pulse.findings,
+            pulse.open_findings,
+            pulse.resolved_findings,
             pulse.untriaged,
             pulse.stale_findings,
             pulse.needed,
@@ -295,11 +299,13 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
             ),
         }
         println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} untriaged={} stale_findings={} needed={} inbox={}",
+            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={}",
             pulse.planned,
             pulse.stale,
             pulse.uninspected,
             pulse.findings,
+            pulse.open_findings,
+            pulse.resolved_findings,
             pulse.untriaged,
             pulse.stale_findings,
             pulse.needed,

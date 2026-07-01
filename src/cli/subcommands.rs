@@ -18,6 +18,9 @@ pub enum IntentCmd {
         /// user_visible | internal
         #[arg(long)]
         visibility: Option<String>,
+        /// Architecture layer label (arms the layering detector once an order is declared).
+        #[arg(long)]
+        layer: Option<String>,
         /// Permit a symbol-looking name (requires a behavioral description).
         #[arg(long)]
         allow_symbol_name: bool,

@@ -245,3 +245,91 @@ fn graph_state_counts_needed_findings() {
     assert_eq!(pulse.untriaged, 0);
     assert_eq!(pulse.stale_findings, 0);
 }
+
+#[test]
+fn graph_state_splits_findings_into_open_and_resolved() {
+    // Fresh untriaged finding is open; adjudicating it as justified flips it
+    // to resolved. The invariant open + resolved == total holds throughout,
+    // and a finding that is both `needed` and stale counts once in open.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let finding = derived_finding(&store);
+
+    // (1) Untriaged: open, nothing resolved.
+    let pulse = workitem::graph_state(&store).unwrap();
+    assert_eq!(pulse.findings, 1);
+    assert_eq!(pulse.open_findings, 1);
+    assert_eq!(pulse.resolved_findings, 0);
+    assert_eq!(
+        pulse.open_findings + pulse.resolved_findings,
+        pulse.findings
+    );
+
+    // (2) Justified verdict resolves it: open decrements, resolved increments.
+    store
+        .record_finding_verdict(&finding.id, "justified", "cohesive")
+        .unwrap();
+    let pulse = workitem::graph_state(&store).unwrap();
+    assert_eq!(pulse.findings, 1);
+    assert_eq!(pulse.open_findings, 0);
+    assert_eq!(pulse.resolved_findings, 1);
+    assert_eq!(
+        pulse.open_findings + pulse.resolved_findings,
+        pulse.findings
+    );
+
+    // (3) A `needed` finding whose codefile hash later diverges is both needed
+    // and stale. Naive untriaged+stale+needed addition would count it twice
+    // (as 2), but the contract counts the finding once in open and zero in
+    // resolved, preserving open + resolved == total.
+    let tmp2 = Tmp::new();
+    let store = Store::init(tmp2.path(), Some("t"), false).unwrap();
+    let codefile = mature_graph_with_codefile(&store);
+    store
+        .set_facet(
+            &codefile.id,
+            TargetKind::Node,
+            "content_hash",
+            "h1",
+            TruthClass::Derived,
+        )
+        .unwrap();
+    let finding = derived_finding(&store);
+    store
+        .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
+        .unwrap();
+    // Stamp `needed` while the hash is h1, so the verdict records hash=h1.
+    store
+        .record_finding_verdict(&finding.id, "needed", "split it")
+        .unwrap();
+    let current = workitem::graph_state(&store).unwrap();
+    assert_eq!(current.findings, 1);
+    assert_eq!(current.open_findings, 1);
+    assert_eq!(current.resolved_findings, 0);
+    assert_eq!(
+        current.open_findings + current.resolved_findings,
+        current.findings
+    );
+
+    // Diverge the codefile hash: the finding is now needed AND stale.
+    store
+        .set_facet(
+            &codefile.id,
+            TargetKind::Node,
+            "content_hash",
+            "h2",
+            TruthClass::Derived,
+        )
+        .unwrap();
+    let stale = workitem::graph_state(&store).unwrap();
+    assert_eq!(stale.findings, 1);
+    assert_eq!(stale.needed, 1);
+    assert_eq!(stale.stale_findings, 1);
+    // Counted once, not twice — the regression this defends against.
+    assert_eq!(stale.open_findings, 1);
+    assert_eq!(stale.resolved_findings, 0);
+    assert_eq!(
+        stale.open_findings + stale.resolved_findings,
+        stale.findings
+    );
+}

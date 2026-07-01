@@ -15,15 +15,19 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             level,
             lifecycle,
             visibility,
+            layer,
             allow_symbol_name,
         } => intent_add(
             graph,
-            name,
-            description,
-            level,
-            lifecycle,
-            visibility,
-            allow_symbol_name,
+            IntentAddArgs {
+                name,
+                description,
+                level,
+                lifecycle,
+                visibility,
+                layer,
+                allow_symbol_name,
+            },
         ),
         IntentCmd::Show { key } => intent_show(graph, key),
         IntentCmd::Set {
@@ -54,15 +58,26 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
     }
 }
 
-fn intent_add(
-    graph: Option<&Path>,
+struct IntentAddArgs {
     name: String,
     description: String,
     level: String,
     lifecycle: String,
     visibility: Option<String>,
+    layer: Option<String>,
     allow_symbol_name: bool,
-) -> Result<()> {
+}
+
+fn intent_add(graph: Option<&Path>, args: IntentAddArgs) -> Result<()> {
+    let IntentAddArgs {
+        name,
+        description,
+        level,
+        lifecycle,
+        visibility,
+        layer,
+        allow_symbol_name,
+    } = args;
     // INV-ATOM: symbols are locators, not intents.
     if looks_like_symbol(&name) {
         if !allow_symbol_name {
@@ -112,6 +127,15 @@ fn intent_add(
             TruthClass::Asserted,
         )?;
     }
+    if let Some(l) = layer {
+        store.set_facet(
+            &node.id,
+            TargetKind::Node,
+            "layer",
+            &l,
+            TruthClass::Asserted,
+        )?;
+    }
     println!("added intent '{}' [{}]", node.name, &node.id[..8]);
     Ok(())
 }
@@ -129,6 +153,9 @@ fn intent_show(graph: Option<&Path>, key: String) -> Result<()> {
     }
     if let Some(vis) = store.get_facet(&n.id, TargetKind::Node, "visibility")? {
         println!("  visibility: {vis}");
+    }
+    if let Some(layer) = store.get_facet(&n.id, TargetKind::Node, "layer")? {
+        println!("  layer: {layer}");
     }
     let tags = store.tags_of(&n.id, TargetKind::Node)?;
     if !tags.is_empty() {
