@@ -113,15 +113,45 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             r#type,
             command,
             intent,
+            proof_level,
+            proof_kind,
+            journey_id,
+            repo_native_kind,
+            artifact,
         } => {
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
-            let val = store.add_node(
-                NodeType::Validation,
-                &name,
-                "",
-                "not_run",
-                serde_json::json!({ "type": r#type, "command": command }),
-            )?;
+            if let Some(level) = &proof_level {
+                if !matches!(
+                    level.as_str(),
+                    "L0" | "L1" | "L2" | "L3" | "L4" | "L5" | "L6"
+                ) {
+                    bail!("unknown proof level '{level}' (use L0..L6)");
+                }
+            }
+            let has_journey_metadata =
+                journey_id.is_some() || repo_native_kind.is_some() || artifact.is_some();
+            if has_journey_metadata && proof_kind.as_deref() != Some("journey") {
+                bail!(
+                    "--journey-id, --repo-native-kind, and --artifact require --proof-kind journey"
+                );
+            }
+            let mut body = serde_json::json!({ "type": r#type, "command": command });
+            if let Some(v) = proof_level {
+                body["proof_level"] = serde_json::json!(v);
+            }
+            if let Some(v) = proof_kind {
+                body["proof_kind"] = serde_json::json!(v);
+            }
+            if let Some(v) = journey_id {
+                body["journey_id"] = serde_json::json!(v);
+            }
+            if let Some(v) = repo_native_kind {
+                body["repo_native_kind"] = serde_json::json!(v);
+            }
+            if let Some(v) = artifact {
+                body["artifact"] = serde_json::json!(v);
+            }
+            let val = store.add_node(NodeType::Validation, &name, "", "not_run", body)?;
             store.ensure_edge(EdgeKind::Validates, &val.id, &i.id)?;
             println!("added validation '{}' → '{}'", val.name, i.name);
             Ok(())

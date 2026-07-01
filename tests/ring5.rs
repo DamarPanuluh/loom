@@ -143,6 +143,11 @@ fn validate_runs_command_and_records_result() {
                 r#type: "test".into(),
                 command: "true".into(),
                 intent: "always passes".into(),
+                proof_level: None,
+                proof_kind: None,
+                journey_id: None,
+                repo_native_kind: None,
+                artifact: None,
             },
         },
     );
@@ -198,6 +203,11 @@ fn validate_failing_command_records_failure() {
                 r#type: "test".into(),
                 command: "false".into(),
                 intent: "always fails".into(),
+                proof_level: None,
+                proof_kind: None,
+                journey_id: None,
+                repo_native_kind: None,
+                artifact: None,
             },
         },
     );
@@ -855,6 +865,24 @@ fn loom_json_out(tmp: &Path, args: &[&str]) -> serde_json::Value {
             args, out.status, stdout
         )
     })
+}
+/// Run `loom --graph <tmp> <args>` and assert it exits zero, discarding stdout.
+/// For setup commands (`intent add`, `validation add`) that emit human text
+/// and have no `--json` output — reserve `loom_json_out` for read-style /
+/// `--json`-emitting commands.
+fn loom_ok(tmp: &Path, args: &[&str]) {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args);
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom {:?}: {e}", args));
+    assert!(
+        out.status.success(),
+        "loom {:?} failed: {:?}\n--stderr--\n{}",
+        args,
+        out.status,
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 #[test]
@@ -1600,4 +1628,281 @@ fn proposal_item_reject_marks_item_and_defer_records_reason() {
     assert_eq!(items.len(), 2);
     assert_eq!(items[0]["status"], "deferred");
     assert_eq!(items[1]["status"], "rejected");
+}
+
+// ---- JourneyProof metadata: validation add round-trips through show --json ----
+//
+// `loom validation add` accepts optional JourneyProof metadata flags
+// (--proof-level, --proof-kind, --journey-id, --repo-native-kind, --artifact)
+// and stores them in the Validation body JSON. `loom validation show --json`
+// must echo them back — a regression that drops a flag or misnames a key
+// reddens this. Drives the compiled binary end-to-end.
+
+#[test]
+fn validation_add_journey_metadata_round_trips_in_show_json() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "register a person",
+            "--description",
+            "demo",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "journey-proof-http",
+            "--type",
+            "contract",
+            "--command",
+            "loom saga run sample-service-http.contract.json",
+            "--intent",
+            "register a person",
+            "--proof-level",
+            "L5",
+            "--proof-kind",
+            "journey",
+            "--journey-id",
+            "sample-service-http",
+            "--repo-native-kind",
+            "http_contract_json",
+            "--artifact",
+            "sample-service-http.contract.json",
+        ],
+    );
+
+    let v = loom_json_out(
+        tmp.path(),
+        &["validation", "show", "journey-proof-http", "--json"],
+    );
+    assert_eq!(v["name"], "journey-proof-http");
+    let body = &v["body"];
+    // Every metadata flag lands in the stored body with the exact value passed.
+    assert_eq!(body["proof_level"], "L5", "proof_level stored: {body}");
+    assert_eq!(body["proof_kind"], "journey", "proof_kind stored: {body}");
+    assert_eq!(
+        body["journey_id"], "sample-service-http",
+        "journey_id stored: {body}"
+    );
+    assert_eq!(
+        body["repo_native_kind"], "http_contract_json",
+        "repo_native_kind stored: {body}"
+    );
+    assert_eq!(
+        body["artifact"], "sample-service-http.contract.json",
+        "artifact stored: {body}"
+    );
+    // the baseline command/type are preserved alongside the metadata
+    assert_eq!(body["type"], "contract");
+    assert_eq!(
+        body["command"],
+        "loom saga run sample-service-http.contract.json"
+    );
+}
+
+/// Contract: a validation added WITHOUT journey metadata must not synthesize
+/// JourneyProof keys — the metadata is opt-in, not defaulted. A regression that
+/// always stamps `proof_level` would redden this.
+#[test]
+fn validation_add_without_metadata_has_no_journey_keys() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "plain intent",
+            "--description",
+            "demo",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "plain-proof",
+            "--type",
+            "test",
+            "--command",
+            "true",
+            "--intent",
+            "plain intent",
+        ],
+    );
+    let v = loom_json_out(tmp.path(), &["validation", "show", "plain-proof", "--json"]);
+    let body = &v["body"];
+    for key in [
+        "proof_level",
+        "proof_kind",
+        "journey_id",
+        "repo_native_kind",
+        "artifact",
+    ] {
+        assert!(
+            body.get(key).map(|x| x.is_null()).unwrap_or(true),
+            "no journey metadata key `{key}` should be present: {body}"
+        );
+    }
+}
+
+// ---- saga add on an HTTP contract writes JourneyProof metadata -----------
+//
+// `loom saga add <contract.json>` must create a saga Validation whose body
+// carries repo-agnostic JourneyProof metadata (proof_level L5, proof_kind
+// journey, a journey_id, repo_native_kind, artifact) — and must link the
+// route intents it can resolve. No grid-specific names appear anywhere.
+// Drives the compiled binary end-to-end and reads the stored node back.
+
+#[test]
+fn saga_add_http_contract_creates_validation_with_journey_metadata() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    // the route intents the contract declares
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "register a person",
+            "--description",
+            "demo",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "fetch the person record",
+            "--description",
+            "demo",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+
+    let spec = tmp.path().join("sample-service-http.contract.json");
+    std::fs::write(
+        &spec,
+        serde_json::json!({
+            "name": "sample-service-http",
+            "base": "http://127.0.0.1:0",
+            "routes": [
+                {
+                    "method": "POST",
+                    "path": "/v1/example/persons",
+                    "intent": "register a person",
+                    "success_status": 201,
+                    "extract": [{ "field": "person_id", "as": "person_id" }],
+                    "response_fields": ["person_id"]
+                },
+                {
+                    "method": "GET",
+                    "path": "/v1/example/persons/{{ person_id }}",
+                    "intent": "fetch the person record",
+                    "success_status": 200,
+                    "response_fields": ["person_id"]
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let added = loom_json_out(
+        tmp.path(),
+        &["saga", "add", spec.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(added["added"], true);
+    assert_eq!(
+        added["linked_steps"], 2,
+        "both resolvable route intents linked: {added}"
+    );
+
+    // The saga Validation node carries the JourneyProof metadata contract.
+    let store = Store::open(tmp.path()).unwrap();
+    let saga = store
+        .resolve_node("sample-service-http", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(
+        saga.body.get("type").and_then(|t| t.as_str()),
+        Some("saga"),
+        "saga node body type is `saga`: {}",
+        saga.body
+    );
+    assert_eq!(
+        saga.body.get("proof_level").and_then(|v| v.as_str()),
+        Some("L5"),
+        "proof_level L5 stamped: {}",
+        saga.body
+    );
+    assert_eq!(
+        saga.body.get("proof_kind").and_then(|v| v.as_str()),
+        Some("journey"),
+        "proof_kind journey stamped: {}",
+        saga.body
+    );
+    assert_eq!(
+        saga.body.get("journey_id").and_then(|v| v.as_str()),
+        Some("sample-service-http"),
+        "journey_id is the contract name: {}",
+        saga.body
+    );
+    assert_eq!(
+        saga.body.get("repo_native_kind").and_then(|v| v.as_str()),
+        Some("http_contract_json"),
+        "repo_native_kind marks the HTTP contract: {}",
+        saga.body
+    );
+    let artifact = saga
+        .body
+        .get("artifact")
+        .and_then(|v| v.as_str())
+        .expect("artifact present");
+    assert!(
+        artifact.ends_with("sample-service-http.contract.json"),
+        "artifact points at the spec path: {artifact}"
+    );
+
+    // both route intents are validates-linked
+    let validates = store
+        .edges_with(Some(EdgeKind::Validates), Some(&saga.id), None)
+        .unwrap();
+    assert_eq!(validates.len(), 2, "both routes linked: {validates:?}");
+    // a sequence edge orders the two steps
+    let first = store
+        .resolve_node("register a person", Some(NodeType::Intent))
+        .unwrap();
+    let seq = store
+        .edges_with(Some(EdgeKind::Sequence), Some(&first.id), None)
+        .unwrap();
+    assert_eq!(seq.len(), 1, "consecutive routes are sequence-linked");
 }

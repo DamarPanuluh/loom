@@ -5,7 +5,6 @@ use crate::cli::SagaCmd;
 use crate::model::{EdgeKind, NodeType};
 use crate::store::Store;
 use crate::Result;
-use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 
 pub fn dispatch(graph: Option<&Path>, cmd: SagaCmd, json: bool) -> Result<()> {
@@ -28,33 +27,43 @@ fn outcome_json(o: &crate::saga::StepOutcome) -> serde_json::Value {
 }
 
 fn saga_add(store: &Store, spec: PathBuf, json: bool) -> Result<()> {
-    let text =
-        std::fs::read_to_string(&spec).map_err(|e| anyhow!("reading {}: {e}", spec.display()))?;
-    let parsed: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| anyhow!("saga spec must be JSON: {e}"))?;
-    let name = parsed
-        .get("saga")
-        .and_then(|v| v.as_str())
-        .unwrap_or("saga");
-    let steps = parsed
-        .get("steps")
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_default();
+    let (parsed, kind) = crate::saga::parse_with_kind(&spec)?;
+    let artifact = spec.display().to_string();
     let val = store.add_node(
         NodeType::Validation,
-        name,
+        &parsed.saga,
         "",
         "not_run",
-        serde_json::json!({ "type": "saga", "command": format!("loom saga run {name}") }),
+        serde_json::json!({
+            "type": "saga",
+            "command": format!("loom saga run {artifact}"),
+            "proof_level": "L5",
+            "proof_kind": "journey",
+            "journey_id": parsed.saga,
+            "repo_native_kind": kind.as_str(),
+            "artifact": artifact,
+        }),
     )?;
     let mut prev: Option<String> = None;
     let mut linked = 0usize;
-    for step in &steps {
-        let Some(intent_key) = step.get("intent").and_then(|v| v.as_str()) else {
-            continue;
+    let mut unmatched_steps = Vec::new();
+    for step in &parsed.steps {
+        let intent = match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
+            Ok(intent) => intent,
+            Err(e) => {
+                if kind == crate::saga::SpecKind::SagaJson {
+                    return Err(e.context(format!(
+                        "saga step '{}' references unresolved intent '{}'",
+                        step.name, step.intent
+                    )));
+                }
+                unmatched_steps.push(serde_json::json!({
+                    "step": step.name,
+                    "intent": step.intent,
+                }));
+                continue;
+            }
         };
-        let intent = store.resolve_node(intent_key, Some(NodeType::Intent))?;
         store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
         linked += 1;
         if let Some(p) = &prev {
@@ -63,6 +72,7 @@ fn saga_add(store: &Store, spec: PathBuf, json: bool) -> Result<()> {
         }
         prev = Some(intent.id);
     }
+    let unmatched_count = unmatched_steps.len();
     if json {
         println!(
             "{}",
@@ -70,10 +80,14 @@ fn saga_add(store: &Store, spec: PathBuf, json: bool) -> Result<()> {
                 "added": true,
                 "validation": val,
                 "linked_steps": linked,
+                "unmatched_steps": unmatched_steps,
             }))?
         );
     } else {
-        println!("added saga '{}' ({linked} step intent(s))", name);
+        println!("added saga '{}' ({linked} step intent(s))", val.name);
+        if unmatched_count > 0 {
+            println!("  warning: {unmatched_count} route/step intent(s) were not linked");
+        }
     }
     Ok(())
 }

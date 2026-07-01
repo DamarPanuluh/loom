@@ -292,6 +292,21 @@ pub enum ValidationCmd {
         command: String,
         #[arg(long)]
         intent: String,
+        /// Optional proof-strength label, e.g. L0..L6.
+        #[arg(long)]
+        proof_level: Option<String>,
+        /// Optional normalized proof kind, e.g. journey.
+        #[arg(long)]
+        proof_kind: Option<String>,
+        /// Optional stable journey id/name when this validation is a journey proof.
+        #[arg(long)]
+        journey_id: Option<String>,
+        /// Optional repo-native proof artifact kind, e.g. http_contract_json.
+        #[arg(long)]
+        repo_native_kind: Option<String>,
+        /// Optional proof artifact path or reference.
+        #[arg(long)]
+        artifact: Option<String>,
     },
     /// Mark a result by hand (passed|failed|blocked).
     Mark {

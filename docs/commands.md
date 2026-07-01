@@ -251,10 +251,13 @@ Coverage exclusions live in the graph with a recorded reason. `loom coverage` ho
 ```
 loom validation add --name "<name>" --type test|assertion|benchmark|manual_check|saga|scenario|contract
   --command "<cmd>"
-  [--intent <intent>]
-  [--description "<desc>"]
+  --intent <intent>
+  [--proof-level L0|L1|L2|L3|L4|L5|L6]
+  [--proof-kind journey]
+  [--journey-id <id>]
+  [--repo-native-kind <kind>]
+  [--artifact <path-or-ref>]
 ```
-
 ```
 loom validation mark <validation> --result passed|failed|blocked
   --evidence "<observed proof>"   (passed/failed)
@@ -286,21 +289,21 @@ loom finding verdict <id> justified|needed|blocked --reason "<why>"
 
 `--state untriaged` lists findings with no adjudication. `--state stale` lists previously adjudicated findings whose flagged file hash changed; these are served by `loom next --mode triage` with "prior verdict is stale" in the work item. Status reports these as separate `untriaged` and `stale_findings` counts because first-triage and re-triage are different operator tasks.
 
-### Saga commands (MVP — spec ring 5, runner ring 6)
+### Saga commands (MVP — JSON saga + HTTP contract runner)
 
 ```
-loom saga add <spec.yaml> [--spawn-missing [--under <intent>]]
+loom saga add <spec.json|http-contract.json>
 loom saga list
 ```
 
-`loom saga add` creates a `Validation(type=saga)` + `validates` edges to step intents + `sequence` edges between steps + `calls` edges to `InterfaceSurface` nodes. Graph write-back; no HTTP call.
+`loom saga add` accepts either the native saga JSON shape (`saga`, `base`, `steps`) or a repo-agnostic HTTP contract JSON shape (`name`, optional `base`/`auth`, `routes`). It creates a `Validation(type=saga)` with JourneyProof metadata (`proof_level=L5`, `proof_kind=journey`, `journey_id`, `repo_native_kind`, `artifact`) and links `validates`/`sequence` edges for route or step intents it can resolve. HTTP contract routes without matching intents are reported as `unmatched_steps` under `--json`; normal saga specs fail on unresolved step intents.
 
 ```
-loom saga run <spec.yaml|name>
-loom saga diagnose <spec.yaml|name>
+loom saga run <spec.json|http-contract.json>
+loom saga diagnose <spec.json|http-contract.json>
 ```
 
-`loom saga run` executes the HTTP journey (reqwest/rustls + RFC 9535 JSONPath capture); stamps passing/failing evidence on `validates` edges; records exact broken expectation at the failing boundary step. `loom saga diagnose` dry-runs without graph writes — explains failure roots (missing env, auth failures, 404s, template mismatches) and decodes bearer JWT scopes for auth diagnosis.
+`loom saga run` executes the normalized HTTP journey with reqwest. HTTP contract routes support method/path, `query`, JSON `example_request`, response-field existence checks, and `extract` state threaded into later path/query/body templates. `BASE_URL` is used when an HTTP contract omits `base`; bearer auth contracts use `LOOM_SAGA_AUTH_TOKEN`. Passing/failing route evidence stamps linked `validates` edges. `loom saga diagnose` dry-runs without graph writes and prints runner hints.
 
 ---
 

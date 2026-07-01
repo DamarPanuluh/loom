@@ -18,6 +18,21 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpecKind {
+    SagaJson,
+    HttpContractJson,
+}
+
+impl SpecKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SpecKind::SagaJson => "saga_json",
+            SpecKind::HttpContractJson => "http_contract_json",
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct SagaSpec {
     pub saga: String,
@@ -28,8 +43,10 @@ pub struct SagaSpec {
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct Step {
+    #[serde(default)]
     pub name: String,
     pub intent: String,
+    #[serde(default)]
     pub request: Request,
     #[serde(default)]
     pub expect: Expect,
@@ -43,7 +60,23 @@ pub struct Request {
     pub method: String,
     pub url: String,
     #[serde(default)]
+    pub headers: BTreeMap<String, String>,
+    #[serde(default)]
+    pub query: BTreeMap<String, serde_json::Value>,
+    #[serde(default)]
     pub json: Option<serde_json::Value>,
+}
+
+impl Default for Request {
+    fn default() -> Self {
+        Self {
+            method: get(),
+            url: String::new(),
+            headers: BTreeMap::new(),
+            query: BTreeMap::new(),
+            json: None,
+        }
+    }
 }
 
 fn get() -> String {
@@ -55,6 +88,59 @@ pub struct Expect {
     pub status: Option<u16>,
     #[serde(default)]
     pub body: BTreeMap<String, serde_json::Value>,
+    #[serde(default)]
+    pub exists: Vec<String>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct HttpContract {
+    pub name: String,
+    #[serde(default)]
+    pub base: String,
+    #[serde(default)]
+    pub auth: Option<HttpAuth>,
+    #[serde(default)]
+    pub routes: Vec<HttpRoute>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct HttpAuth {
+    #[serde(default)]
+    pub scheme: String,
+    #[serde(default = "authorization")]
+    pub header: String,
+}
+
+fn authorization() -> String {
+    "Authorization".into()
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct HttpRoute {
+    #[serde(default = "get")]
+    pub method: String,
+    pub path: String,
+    #[serde(default)]
+    pub intent: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub success_status: Option<u16>,
+    #[serde(default)]
+    pub query: BTreeMap<String, serde_json::Value>,
+    #[serde(default)]
+    pub example_request: Option<serde_json::Value>,
+    #[serde(default)]
+    pub extract: Vec<HttpExtract>,
+    #[serde(default)]
+    pub response_fields: Vec<String>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct HttpExtract {
+    pub field: String,
+    #[serde(rename = "as")]
+    pub as_name: String,
 }
 
 /// The outcome of one executed step.
@@ -67,9 +153,93 @@ pub struct StepOutcome {
 }
 
 pub fn parse(path: &Path) -> Result<SagaSpec> {
+    Ok(parse_with_kind(path)?.0)
+}
+
+pub fn parse_with_kind(path: &Path) -> Result<(SagaSpec, SpecKind)> {
     let text =
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-    serde_json::from_str(&text).context("parsing saga spec (JSON)")
+    let value: serde_json::Value =
+        serde_json::from_str(&text).context("parsing saga spec (JSON)")?;
+    if value.get("routes").is_some() {
+        let contract: HttpContract =
+            serde_json::from_value(value).context("parsing HTTP contract (JSON)")?;
+        return Ok((http_contract_to_saga(contract), SpecKind::HttpContractJson));
+    }
+    let spec: SagaSpec = serde_json::from_value(value).context("parsing saga spec (JSON)")?;
+    Ok((spec, SpecKind::SagaJson))
+}
+
+fn http_contract_to_saga(contract: HttpContract) -> SagaSpec {
+    let auth_header = contract.auth.as_ref().and_then(|auth| {
+        if auth.scheme.eq_ignore_ascii_case("bearer") {
+            Some((
+                auth.header.clone(),
+                "Bearer {{ env.LOOM_SAGA_AUTH_TOKEN }}".to_string(),
+            ))
+        } else {
+            None
+        }
+    });
+    let steps = contract
+        .routes
+        .into_iter()
+        .map(|route| {
+            let method = route.method.to_uppercase();
+            let name = route
+                .name
+                .unwrap_or_else(|| format!("{method} {}", route.path));
+            let intent = route.intent.unwrap_or_else(|| name.clone());
+            let mut headers = BTreeMap::new();
+            if let Some((header, value)) = &auth_header {
+                headers.insert(header.clone(), value.clone());
+            }
+            let capture = route
+                .extract
+                .into_iter()
+                .map(|e| (e.as_name, field_path(&e.field)))
+                .collect();
+            Step {
+                name,
+                intent,
+                request: Request {
+                    method,
+                    url: route.path,
+                    headers,
+                    query: route.query,
+                    json: route.example_request,
+                },
+                expect: Expect {
+                    status: route.success_status,
+                    body: BTreeMap::new(),
+                    exists: route
+                        .response_fields
+                        .into_iter()
+                        .map(|field| field_path(&field))
+                        .collect(),
+                },
+                capture,
+            }
+        })
+        .collect();
+    let base = if contract.base.trim().is_empty() {
+        "{{ env.BASE_URL }}".to_string()
+    } else {
+        contract.base
+    };
+    SagaSpec {
+        saga: contract.name,
+        base,
+        steps,
+    }
+}
+
+fn field_path(field: &str) -> String {
+    if field.starts_with('$') {
+        field.to_string()
+    } else {
+        format!("$.{field}")
+    }
 }
 
 /// Execute a saga. When `stamp` is true, write verdicts onto the saga's
@@ -98,6 +268,18 @@ pub fn execute(store: &Store, spec: &SagaSpec, stamp: bool) -> Result<Vec<StepOu
             reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
             &url,
         );
+        for (name, value) in &step.request.headers {
+            req = req.header(name, interpolate(value, &vars));
+        }
+        if !step.request.query.is_empty() {
+            let query: Vec<(String, String)> = step
+                .request
+                .query
+                .iter()
+                .map(|(key, value)| (key.clone(), interpolate(&value_to_string(value), &vars)))
+                .collect();
+            req = req.query(&query);
+        }
         if let Some(body) = &step.request.json {
             let interpolated = interpolate_json(body, &vars);
             req = req.json(&interpolated);
@@ -179,6 +361,16 @@ fn check_response(
             };
         }
     }
+    for path in &step.expect.exists {
+        if jsonpath(&body, path).is_none() {
+            return StepOutcome {
+                name: step.name.clone(),
+                intent: step.intent.clone(),
+                passed: false,
+                detail: format!("expected field {path} to exist"),
+            };
+        }
+    }
     // captures
     for (var, path) in &step.capture {
         if let Some(v) = jsonpath(&body, path) {
@@ -220,6 +412,14 @@ fn interpolate(s: &str, vars: &BTreeMap<String, String>) -> String {
     }
     out.push_str(rest);
     out
+}
+
+fn value_to_string(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Null => String::new(),
+        other => other.to_string(),
+    }
 }
 
 fn interpolate_json(v: &serde_json::Value, vars: &BTreeMap<String, String>) -> serde_json::Value {

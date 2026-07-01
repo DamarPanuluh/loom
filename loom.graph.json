@@ -51,6 +51,20 @@
       "updated_at": "2026-07-01T04:32:35.325Z"
     },
     {
+      "id": "11b346b2c67f50b6766366ab013ddb14",
+      "type": "validation",
+      "name": "http contract saga runner regression tests",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring6 http_contract",
+        "type": "test"
+      },
+      "created_at": "2026-07-01T09:41:54.166Z",
+      "updated_at": "2026-07-01T09:42:33.783Z"
+    },
+    {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
       "type": "codefile",
       "name": "src/signal.rs",
@@ -60,6 +74,20 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.149Z",
       "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "1b71b69cb3c034386308fe858d32707e",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: JourneyProof metadata flags now write validated proof_level/proof_kind/journey_id/repo_native_kind/artifact fields to validation bodies",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "4ed61da79b031f63bf40ac1cea5ab21c"
+      },
+      "created_at": "2026-07-01T09:39:21.772Z",
+      "updated_at": "2026-07-01T09:39:21.772Z"
     },
     {
       "id": "1c709486a94ead8fec01c9ff843903b1",
@@ -91,7 +119,7 @@
       "type": "intent",
       "name": "saga runner supports real boundary journey assertions",
       "description": "The saga runner supports headers, auth, non-JSON bodies, full JSONPath, assertion modes, env pre-flight, redaction, SSRF/redirect hardening, caps, and diagnosis.",
-      "status": "planned",
+      "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature",
@@ -99,7 +127,7 @@
         "source_proposal": "690822022500f37c8c768fb621bdfcba"
       },
       "created_at": "2026-07-01T07:49:58.734Z",
-      "updated_at": "2026-07-01T07:49:58.734Z"
+      "updated_at": "2026-07-01T09:40:35.272Z"
     },
     {
       "id": "2d399115811af3266c47b4640082e9f7",
@@ -162,6 +190,20 @@
       "updated_at": "2026-06-30T14:07:19.148Z"
     },
     {
+      "id": "4192d14d2cb9af4236e286007efb6c31",
+      "type": "validation",
+      "name": "journey proof metadata regression tests",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring5 metadata",
+        "type": "test"
+      },
+      "created_at": "2026-07-01T09:41:14.835Z",
+      "updated_at": "2026-07-01T09:42:34.591Z"
+    },
+    {
       "id": "41c5912224804d3bd404707f811a8507",
       "type": "intent",
       "name": "the next router serves the highest-priority asserted residue with a prompt contract",
@@ -173,6 +215,20 @@
       },
       "created_at": "2026-06-30T14:07:19.827Z",
       "updated_at": "2026-06-30T14:07:19.827Z"
+    },
+    {
+      "id": "432945ad7f928ba0aad7327b13bfba04",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: Saga runner now normalizes repo-agnostic HTTP contract JSON, threads extracted state through path/query/body, checks response fields, and stamps validation outcomes",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "27efc536c465612b1ba4d8b7584fd53d"
+      },
+      "created_at": "2026-07-01T09:40:35.273Z",
+      "updated_at": "2026-07-01T09:40:35.273Z"
     },
     {
       "id": "47fd245a84b8b500b59668dc1f6dc003",
@@ -214,7 +270,7 @@
       "type": "intent",
       "name": "validations classify journey proof strength",
       "description": "Validation records can distinguish proof level and carry repo-native JourneyProof metadata for linked intents.",
-      "status": "planned",
+      "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature",
@@ -222,7 +278,7 @@
         "source_proposal": "690822022500f37c8c768fb621bdfcba"
       },
       "created_at": "2026-07-01T07:49:58.705Z",
-      "updated_at": "2026-07-01T07:49:58.705Z"
+      "updated_at": "2026-07-01T09:39:21.771Z"
     },
     {
       "id": "51dcde353291f8bc7d98db9fcfa5288b",
@@ -913,19 +969,19 @@
           {
             "kind": "design_decision",
             "number": 1,
-            "status": "open",
+            "status": "adopted",
             "text": "Treat built-in HTTP runner as saga runner extension, not a second proof surface"
           },
           {
             "kind": "model_decision",
             "number": 2,
-            "status": "open",
+            "status": "adopted",
             "text": "Model journey coverage requirements without prematurely adding new graph node types"
           },
           {
             "kind": "model_decision",
             "number": 3,
-            "status": "open",
+            "status": "adopted",
             "text": "Model journey invariant points as proposal/hypothesis candidates until the graph model decision is proven"
           },
           {
@@ -943,7 +999,7 @@
           {
             "kind": "intent_candidate",
             "number": 6,
-            "status": "open",
+            "status": "adopted",
             "text": "Extend the HTTP/saga runner to support contract JSON, state extraction, query params, auth setup, status checks, and response-field assertions"
           },
           {
@@ -964,7 +1020,7 @@
         "source_path": "/Users/laptopdp/Developer/sabrang/grid/docs/proposals/loom-journey-orchestrator.md"
       },
       "created_at": "2026-07-01T08:19:42.838Z",
-      "updated_at": "2026-07-01T08:19:42.898Z"
+      "updated_at": "2026-07-01T08:32:20.187Z"
     }
   ],
   "edges": [
@@ -997,6 +1053,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.692Z",
       "updated_at": "2026-06-30T14:07:19.699Z"
+    },
+    {
+      "id": "06f2e13c8fc73193a4f82880e5ea982f",
+      "from_id": "11b346b2c67f50b6766366ab013ddb14",
+      "to_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring6 http_contract` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T09:41:54.167Z",
+      "updated_at": "2026-07-01T09:42:33.783Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -1224,6 +1295,21 @@
       "updated_at": "2026-07-01T08:27:09.049Z"
     },
     {
+      "id": "8648aa7c91ee04014241d726544a3d54",
+      "from_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "to_id": "aed762bc48f943d03e0be4871126697a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "validation add records normalized JourneyProof metadata only when supplied and validates proof-level/kind invariants",
+      "evidence": "src/commands/proof_cmd.rs:111-155 handles proof_level/proof_kind/journey_id/repo_native_kind/artifact flags, rejects levels outside L0..L6 and journey metadata without proof_kind=journey, stores valid metadata in Validation body; ring5 metadata tests and cargo test passed.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T09:38:45.016Z",
+      "updated_at": "2026-07-01T09:44:32.050Z"
+    },
+    {
       "id": "8a7cbf02b5babeb8389366afa028c14c",
       "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
       "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
@@ -1267,6 +1353,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.813Z",
       "updated_at": "2026-07-01T04:44:56.686Z"
+    },
+    {
+      "id": "9d5fb771799f9adde33700eed6c98d56",
+      "from_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "to_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "saga execution supports repo-agnostic HTTP contract routes with state extraction, substitution, query/body threading and response-field assertions",
+      "evidence": "src/saga.rs:145-224 parses HTTP contract JSON into SagaSpec routes; src/saga.rs:228-364 executes shared saga steps with headers/query/body interpolation, captures fields, and fails when expected fields are missing; ring6 http_contract tests and cargo test passed.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T09:39:57.217Z",
+      "updated_at": "2026-07-01T09:46:15.269Z"
     },
     {
       "id": "a4948c777c6a771abc8a06c80a4e3d73",
@@ -1402,6 +1503,21 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "de5014d98266ef78e7cec8e2fc055aa8",
+      "from_id": "4192d14d2cb9af4236e286007efb6c31",
+      "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring5 metadata` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T09:41:14.836Z",
+      "updated_at": "2026-07-01T09:42:34.591Z"
     },
     {
       "id": "deda4a837adbef254",
@@ -1574,7 +1690,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "bb0bb2533e42bf32",
+      "value": "c906bb647b0d4cd6",
       "truth_class": "derived"
     },
     {
@@ -1595,7 +1711,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "530",
+      "value": "545",
       "truth_class": "derived"
     },
     {
@@ -1721,7 +1837,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "31fc23fcdd83d652",
+      "value": "f551dfd168bafe48",
       "truth_class": "derived"
     },
     {
@@ -1742,7 +1858,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "loc",
-      "value": "309",
+      "value": "509",
       "truth_class": "derived"
     },
     {
@@ -1756,7 +1872,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "14",
+      "value": "26",
       "truth_class": "derived"
     },
     {
@@ -1938,14 +2054,14 @@
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ad94315aa9b99364",
+      "value": "5a4a50aec329e64a",
       "truth_class": "derived"
     },
     {
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::anyhow\",\"crate::Result\",\"crate::cli::SagaCmd\",\"crate::model::{EdgeKind, NodeType}\",\"crate::store::Store\",\"std::path::{Path, PathBuf}\",\"super::open\"]",
+      "value": "[\"crate::Result\",\"crate::cli::SagaCmd\",\"crate::model::{EdgeKind, NodeType}\",\"crate::store::Store\",\"std::path::{Path, PathBuf}\",\"super::open\"]",
       "truth_class": "derived"
     },
     {
@@ -1959,7 +2075,7 @@
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "loc",
-      "value": "160",
+      "value": "174",
       "truth_class": "derived"
     },
     {
@@ -2278,6 +2394,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "8648aa7c91ee04014241d726544a3d54",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "ValidationCmd::Add JourneyProof metadata fields",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "88fcbe77fcd11a370842b523da58c7fb",
       "target_kind": "node",
       "key": "level",
@@ -2331,6 +2454,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "debt:235",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "9d5fb771799f9adde33700eed6c98d56",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "parse_with_kind/http_contract_to_saga/execute response field checks",
       "truth_class": "asserted"
     },
     {
@@ -2470,7 +2600,7 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "48e390f71d7b8d0b",
+      "value": "bc837e2aa5150ad4",
       "truth_class": "derived"
     },
     {
@@ -2491,7 +2621,7 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "loc",
-      "value": "411",
+      "value": "441",
       "truth_class": "derived"
     },
     {
