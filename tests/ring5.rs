@@ -2217,3 +2217,109 @@ fn journey_invariant_point_links_to_intent_and_lists() {
     assert_eq!(row["assertion"], "headline > 1.0 when voucher_count >= 1");
     assert_eq!(row["asserts"], "compute standing");
 }
+
+/// `journey coverage discover` surfaces user-visible implemented intents with
+/// no passing L5 journey proof and no coverage node; --spawn-missing creates
+/// one per gap. Graph-derived, not static call-graph analysis.
+#[test]
+fn journey_coverage_discover_finds_and_spawns_gaps() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    // two user-visible implemented intents; one internal; one planned.
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "search returns results",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "index rebuild",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "internal",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "future feature",
+            "--lifecycle",
+            "planned",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+
+    let gaps = loom_json_out(tmp.path(), &["journey", "coverage", "discover", "--json"]);
+    let gap_names = gaps["gaps"].as_array().unwrap();
+    assert_eq!(
+        gaps["gap_count"], 2,
+        "two user-visible implemented gaps: {gaps}"
+    );
+    let names: Vec<String> = gap_names
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(names.contains(&"checkout completes".to_string()));
+    assert!(names.contains(&"search returns results".to_string()));
+    assert!(
+        !names.contains(&"index rebuild".to_string()),
+        "internal intents are not gaps"
+    );
+    assert!(
+        !names.contains(&"future feature".to_string()),
+        "planned intents are not gaps"
+    );
+
+    // spawn-missing creates coverage nodes for each gap.
+    let spawned = loom_json_out(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "discover",
+            "--spawn-missing",
+            "--json",
+        ],
+    );
+    assert_eq!(
+        spawned["spawned_count"], 2,
+        "two coverage nodes spawned: {spawned}"
+    );
+
+    // re-discover: the spawned intents are now covered by a node → no gaps.
+    let again = loom_json_out(tmp.path(), &["journey", "coverage", "discover", "--json"]);
+    assert_eq!(
+        again["gap_count"], 0,
+        "spawned coverage nodes remove the gaps: {again}"
+    );
+}

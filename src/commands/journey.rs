@@ -40,6 +40,9 @@ fn coverage(graph: Option<&std::path::Path>, cmd: JourneyCoverageCmd, json: bool
             description,
         } => coverage_add(graph, &name, &flow, &intent, &description, json),
         JourneyCoverageCmd::List { limit } => coverage_list(graph, limit, json),
+        JourneyCoverageCmd::Discover { spawn_missing } => {
+            coverage_discover(graph, spawn_missing, json)
+        }
     }
 }
 
@@ -134,6 +137,118 @@ fn coverage_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> R
     }
     if json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
+    }
+    Ok(())
+}
+
+/// Discover coverage gaps: user-visible implemented intents with no passing L5
+/// journey proof and no existing journey_coverage node. This is graph-derived
+/// discovery (from visibility + lifecycle + validations), not static call-graph
+/// flow analysis — loom's extraction has symbols/imports but no inter-symbol
+/// call edges, so an honest entry→mutation→projection matcher is not feasible
+/// here. The gap set is exactly what the journey_proof smell flags, minus
+/// intents already explicitly marked with a coverage node.
+fn coverage_discover(
+    graph: Option<&std::path::Path>,
+    spawn_missing: bool,
+    json: bool,
+) -> Result<()> {
+    let store = open(graph)?;
+    let snap = store.snapshot()?;
+    // visibility facet per node
+    let mut visibility: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+    for f in &snap.facets {
+        if f.key == "visibility" && f.target_kind == crate::model::TargetKind::Node {
+            visibility.insert(f.target_id.as_str(), f.value.as_str());
+        }
+    }
+    // intent ids already covered by a Covers edge
+    let mut already_covered: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for e in &snap.edges {
+        if e.kind == EdgeKind::Covers {
+            already_covered.insert(e.to_id.as_str());
+        }
+    }
+    // validation bodies by intent (to_id of Validates)
+    use std::collections::BTreeMap;
+    let nodes_by_id: BTreeMap<&str, &crate::model::Node> =
+        snap.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    let mut has_l5_journey: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for e in &snap.edges {
+        if e.kind != EdgeKind::Validates {
+            continue;
+        }
+        let Some(v) = nodes_by_id.get(e.from_id.as_str()) else {
+            continue;
+        };
+        if e.status != InspectionStatus::Passing || v.status != "passed" {
+            continue;
+        }
+        let is_journey = v.body.get("proof_kind").and_then(|x| x.as_str()) == Some("journey");
+        let is_l5 = matches!(
+            v.body.get("proof_level").and_then(|x| x.as_str()),
+            Some("L5") | Some("L6")
+        );
+        if is_journey && is_l5 {
+            has_l5_journey.insert(e.to_id.as_str());
+        }
+    }
+
+    let mut gaps: Vec<&crate::model::Node> = Vec::new();
+    for n in &snap.nodes {
+        if n.node_type != NodeType::Intent || n.status != "implemented" {
+            continue;
+        }
+        if visibility.get(n.id.as_str()).copied() != Some("user_visible") {
+            continue;
+        }
+        if has_l5_journey.contains(n.id.as_str()) {
+            continue;
+        }
+        if already_covered.contains(n.id.as_str()) {
+            continue;
+        }
+        gaps.push(n);
+    }
+
+    let mut spawned: Vec<Value> = Vec::new();
+    if spawn_missing {
+        for n in &gaps {
+            let flow = format!("(discovered) {}", n.name);
+            let body = json!({ "flow": flow });
+            let node = store.add_node(
+                NodeType::JourneyCoverage,
+                &format!("{} flow", n.name),
+                "auto-discovered coverage gap",
+                "uncovered",
+                body,
+            )?;
+            store.add_edge(
+                EdgeKind::Covers,
+                &node.id,
+                &n.id,
+                crate::model::TruthClass::Asserted,
+            )?;
+            spawned.push(json!({ "id": node.id, "covers": n.name }));
+        }
+    }
+
+    if json {
+        let out = json!({
+            "gaps": gaps.iter().map(|n| n.name.clone()).collect::<Vec<_>>(),
+            "gap_count": gaps.len(),
+            "spawned": spawned,
+            "spawned_count": spawned.len(),
+        });
+        println!("{}", serde_json::to_string_pretty(&out)?);
+    } else {
+        println!("{} coverage gap(s):", gaps.len());
+        for n in &gaps {
+            println!("  — {} [{}]", n.name, &n.id[..8]);
+        }
+        if spawn_missing {
+            println!("spawned {} journey_coverage node(s)", spawned.len());
+        }
     }
     Ok(())
 }

@@ -577,6 +577,15 @@ pub enum JourneyCoverageCmd {
         #[arg(long, default_value_t = 50)]
         limit: usize,
     },
+    /// Discover coverage gaps: user-visible implemented intents with no passing
+    /// L5 journey proof and no journey_coverage node. Graph-derived (from
+    /// visibility + lifecycle + validations), not static call-graph analysis.
+    /// With --spawn-missing, auto-create a journey_coverage node for each gap.
+    Discover {
+        /// Auto-create a journey_coverage node for each discovered gap.
+        #[arg(long)]
+        spawn_missing: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
