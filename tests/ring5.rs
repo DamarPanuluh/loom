@@ -1248,3 +1248,337 @@ fn advertised_global_json_read_commands_parse_as_json() {
     let _ = loom_json_out(tmp.path(), &["export", "--check", "--json"]);
     let _ = loom_json_out(tmp.path(), &["door", "raw matrix note", "--json"]);
 }
+// ---- proposal MVP: a durable plan artifact, decomposable into adopted work ----
+//
+// These drive the compiled binary end-to-end (std::process::Command +
+// CARGO_BIN_EXE_loom), placing `--json` after each subcommand so Clap's
+// global-flag propagation from a subcommand is the surface under test. Each
+// asserts stdout parses as JSON with a contract-specific shape that human
+// output cannot satisfy. They assert the MVP contract only — proposal JSON
+// carries `id`, `name`, `status`, `description`, `body`; `body` carries
+// `raw`, `source`, and `items`; an adopted item is reflected in `show` and
+// emits a `spawned` intent carrying source proposal/item metadata.
+
+#[test]
+fn proposal_add_text_emits_full_raw_and_empty_items() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("prop"));
+
+    let raw = "Journey Catalog: a browsable index of every user-facing journey";
+    let v = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "add",
+            "--title",
+            "Journey Catalog",
+            "--text",
+            raw,
+            "--json",
+        ],
+    );
+
+    // Contract: a proposal is one asserted node whose `name` is the title,
+    // `status` starts as `captured`, `description` is a short summary, and
+    // `body` stores structured JSON.
+    let obj = v.as_object().expect("proposal add --json is a JSON object");
+    assert!(obj["id"].is_string(), "proposal add --json has `id`");
+    assert_eq!(obj["name"], "Journey Catalog");
+    assert_eq!(obj["status"], "captured");
+    assert!(
+        obj["description"].is_string(),
+        "has a `description` summary"
+    );
+
+    // Contract: body includes `raw`, `source`, and `items`.
+    let body = obj
+        .get("body")
+        .and_then(|b| b.as_object())
+        .expect("proposal add --json has a `body` object");
+    assert_eq!(body["raw"], raw, "`body.raw` holds the full source text");
+    assert!(body["source"].is_string(), "`body.source` is present");
+    assert!(
+        body["items"].is_array() && body["items"].as_array().unwrap().is_empty(),
+        "`body.items` is an empty array on add"
+    );
+}
+
+#[test]
+fn proposal_item_adopt_spawns_intent_and_show_reflects_it() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("prop-adopt"));
+
+    let raw = "Add a journey catalog so planners can browse user journeys.";
+    let added = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "add",
+            "--title",
+            "Journey Catalog",
+            "--text",
+            raw,
+            "--json",
+        ],
+    );
+    let proposal_id = added["id"]
+        .as_str()
+        .expect("proposal add --json emits an `id`")
+        .to_string();
+
+    // Contract: `item add` appends an item; the first is number 1.
+    let item = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "item",
+            "add",
+            &proposal_id,
+            "--text",
+            "Index every user-facing journey in a browsable catalog",
+            "--kind",
+            "intent_candidate",
+            "--json",
+        ],
+    );
+    let item_obj = item.as_object().expect("item add --json is a JSON object");
+    assert_eq!(item_obj["number"], 1, "first item is number 1");
+    assert_eq!(
+        item_obj["kind"], "intent_candidate",
+        "item kind round-trips"
+    );
+
+    // Contract: `item adopt ... 1 --as intent` marks the item adopted and
+    // spawns a planned Intent node using --name/--description, carrying source
+    // proposal/item metadata in its body.
+    let adopt = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "item",
+            "adopt",
+            &proposal_id,
+            "1",
+            "--as",
+            "intent",
+            "--name",
+            "journey-catalog",
+            "--description",
+            "Browse every user-facing journey",
+            "--json",
+        ],
+    );
+    let adopt_obj = adopt
+        .as_object()
+        .expect("item adopt --json is a JSON object");
+    assert!(
+        adopt_obj.contains_key("proposal"),
+        "adopt --json includes the updated `proposal`"
+    );
+    let updated_item = adopt_obj
+        .get("item")
+        .and_then(|i| i.as_object())
+        .expect("adopt --json includes the updated `item`");
+    assert_eq!(updated_item["number"], 1);
+    assert_eq!(
+        updated_item["status"], "adopted",
+        "adopt sets the item status to `adopted`"
+    );
+
+    let spawned = adopt_obj
+        .get("spawned")
+        .and_then(|s| s.as_object())
+        .expect("adopt --as intent emits a `spawned` object");
+    assert!(spawned["id"].is_string(), "spawned intent has a node `id`");
+    let spawned_id = spawned["id"]
+        .as_str()
+        .expect("spawned id is a string")
+        .to_string();
+    assert_eq!(spawned["name"], "journey-catalog");
+    assert_eq!(spawned["status"], "planned", "spawned intent is `planned`");
+
+    // Contract: the spawned node carries source proposal/item metadata in body.
+    let spawned_body = spawned
+        .get("body")
+        .and_then(|b| b.as_object())
+        .expect("spawned intent has a `body` object");
+    // Field-name-agnostic: the contract only requires the spawned body record
+    // source proposal/item metadata. The proposal id is the most stable
+    // identifier, so check it surfaces anywhere in the serialized body rather
+    // than under a fixed key — an implementation may store the item number as
+    // a number (`1`) or string (`"1"`), so relying on the id alone avoids that.
+    let body_str = serde_json::to_string(&spawned_body).unwrap_or_default();
+    assert!(
+        body_str.contains(&proposal_id),
+        "spawned body records the source proposal id (found: {body_str})"
+    );
+
+    // Contract: `show` returns the adopted item and the spawned ref.
+    let show = loom_json_out(tmp.path(), &["proposal", "show", &proposal_id, "--json"]);
+    let show_obj = show.as_object().expect("show --json is a JSON object");
+    assert_eq!(show_obj["id"], proposal_id);
+    let items = show_obj["body"]["items"]
+        .as_array()
+        .expect("show --json lists `body.items`");
+    assert_eq!(items.len(), 1, "show lists the one item");
+    assert_eq!(items[0]["number"], 1);
+    assert_eq!(
+        items[0]["status"], "adopted",
+        "show reflects the adopted item"
+    );
+    // Contract: show returns the adopted item and the spawned ref — verify the
+    // spawned node id actually surfaces on the item, not merely that some
+    // `spawned`-like key exists (which could be empty or wrong).
+    let item_str = serde_json::to_string(&items[0]).unwrap_or_default();
+    assert!(
+        item_str.contains(&spawned_id),
+        "show --json item references the spawned node id `{spawned_id}` (found: {item_str})"
+    );
+    let duplicate = std::process::Command::new(loom_bin())
+        .arg("--graph")
+        .arg(tmp.path())
+        .args([
+            "proposal",
+            "item",
+            "adopt",
+            &proposal_id,
+            "1",
+            "--as",
+            "intent",
+            "--name",
+            "duplicate-journey-catalog",
+            "--json",
+        ])
+        .output()
+        .expect("spawn duplicate proposal adopt");
+    assert!(
+        !duplicate.status.success(),
+        "re-adopting an already adopted proposal item must fail instead of spawning duplicate work"
+    );
+}
+
+#[test]
+fn proposal_item_reject_marks_item_and_defer_records_reason() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("prop-reject"));
+
+    let added = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "add",
+            "--title",
+            "Catalog Rejected",
+            "--text",
+            "A proposal whose items get rejected and deferred.",
+            "--json",
+        ],
+    );
+    let proposal_id = added["id"]
+        .as_str()
+        .expect("proposal add --json emits an `id`")
+        .to_string();
+
+    // Two items: one to defer, one to reject.
+    loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "item",
+            "add",
+            &proposal_id,
+            "--text",
+            "deferred candidate",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "item",
+            "add",
+            &proposal_id,
+            "--text",
+            "rejected candidate",
+            "--json",
+        ],
+    );
+
+    // Contract: defer records a reason and updates item status.
+    let defer = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "item",
+            "defer",
+            &proposal_id,
+            "1",
+            "--reason",
+            "needs design before it can be adopted",
+            "--json",
+        ],
+    );
+    let defer_item = defer
+        .get("item")
+        .and_then(|i| i.as_object())
+        .expect("defer --json includes the updated `item`");
+    assert_eq!(defer_item["number"], 1);
+    assert_eq!(
+        defer_item["status"], "deferred",
+        "defer sets the item status to `deferred`"
+    );
+
+    let overwrite_deferred = std::process::Command::new(loom_bin())
+        .arg("--graph")
+        .arg(tmp.path())
+        .args([
+            "proposal",
+            "item",
+            "reject",
+            &proposal_id,
+            "1",
+            "--reason",
+            "should not overwrite a deferred decision",
+            "--json",
+        ])
+        .output()
+        .expect("spawn overwrite deferred proposal item");
+    assert!(
+        !overwrite_deferred.status.success(),
+        "terminal proposal item decisions must be one-way in the MVP"
+    );
+
+    // Contract: reject records a reason and updates item status.
+    let reject = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "item",
+            "reject",
+            &proposal_id,
+            "2",
+            "--reason",
+            "out of scope for this milestone",
+            "--json",
+        ],
+    );
+    let reject_item = reject
+        .get("item")
+        .and_then(|i| i.as_object())
+        .expect("reject --json includes the updated `item`");
+    assert_eq!(reject_item["number"], 2);
+    assert_eq!(
+        reject_item["status"], "rejected",
+        "reject sets the item status to `rejected`"
+    );
+
+    // Contract: show reflects both terminal items.
+    let show = loom_json_out(tmp.path(), &["proposal", "show", &proposal_id, "--json"]);
+    let items = show["body"]["items"]
+        .as_array()
+        .expect("show --json lists `body.items`");
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0]["status"], "deferred");
+    assert_eq!(items[1]["status"], "rejected");
+}

@@ -458,6 +458,26 @@ TaskRecords guide work but do not certify truth. Durable outcomes must be promot
 
 ---
 
+## Proposal commands
+
+```
+loom proposal add --title "<title>" (--file <path> | --text "<raw proposal>")
+loom proposal list [--limit N]
+loom proposal show <proposal>
+
+loom proposal item add <proposal> --text "<item>" [--kind <kind>]
+loom proposal item adopt <proposal> <number>
+  [--as intent|task] [--name "<spawned name>"] [--description "<spawned description>"]
+loom proposal item defer <proposal> <number> --reason "<why>"
+loom proposal item reject <proposal> <number> --reason "<why>"
+```
+
+Proposals are durable plan/RFC artifacts. Use them when a human or LLM gives a structured plan that is too rich for an InboxItem but not yet graph truth. A proposal is one `proposal` node; numbered items live in `body.items`, not as graph nodes. Adoption is a one-way MVP transition from `open` to `adopted` and can optionally spawn a planned Intent or proposed TaskRecord with source proposal/item metadata.
+
+Proposals do not certify behavior. Adopted items must still become ordinary Loom facts: intents get implemented and grounded, tasks get closed or abandoned, and validations prove behavior.
+
+---
+
 ## InterfaceSurface commands
 
 ```

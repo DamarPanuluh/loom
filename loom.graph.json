@@ -87,6 +87,35 @@
       "updated_at": "2026-06-30T14:07:19.149Z"
     },
     {
+      "id": "27efc536c465612b1ba4d8b7584fd53d",
+      "type": "intent",
+      "name": "saga runner supports real boundary journey assertions",
+      "description": "The saga runner supports headers, auth, non-JSON bodies, full JSONPath, assertion modes, env pre-flight, redaction, SSRF/redirect hardening, caps, and diagnosis.",
+      "status": "planned",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature",
+        "source_item_number": 3,
+        "source_proposal": "690822022500f37c8c768fb621bdfcba"
+      },
+      "created_at": "2026-07-01T07:49:58.734Z",
+      "updated_at": "2026-07-01T07:49:58.734Z"
+    },
+    {
+      "id": "2d399115811af3266c47b4640082e9f7",
+      "type": "validation",
+      "name": "proposal item adoption regression tests",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring5 proposal_",
+        "type": "test"
+      },
+      "created_at": "2026-07-01T07:49:58.681Z",
+      "updated_at": "2026-07-01T07:50:14.347Z"
+    },
+    {
       "id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "type": "codefile",
       "name": "src/saga.rs",
@@ -168,6 +197,34 @@
       "updated_at": "2026-06-30T14:07:19.147Z"
     },
     {
+      "id": "4a30357f4be00c5f97da73c7f122c188",
+      "type": "intent",
+      "name": "proposal items can spawn adopted planned work",
+      "description": "A proposal item can be adopted once and optionally spawn a planned intent or proposed task while preserving source proposal/item metadata.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-01T07:49:58.648Z",
+      "updated_at": "2026-07-01T07:49:58.648Z"
+    },
+    {
+      "id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "type": "intent",
+      "name": "validations classify journey proof strength",
+      "description": "Validation records can distinguish proof level and carry repo-native JourneyProof metadata for linked intents.",
+      "status": "planned",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature",
+        "source_item_number": 1,
+        "source_proposal": "690822022500f37c8c768fb621bdfcba"
+      },
+      "created_at": "2026-07-01T07:49:58.705Z",
+      "updated_at": "2026-07-01T07:49:58.705Z"
+    },
+    {
       "id": "51dcde353291f8bc7d98db9fcfa5288b",
       "type": "codefile",
       "name": "src/commands/edge.rs",
@@ -177,6 +234,21 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.147Z",
       "updated_at": "2026-06-30T14:07:19.147Z"
+    },
+    {
+      "id": "522d14427bc5d3dbfe92c38e3709bece",
+      "type": "task_record",
+      "name": "Evaluate microsandbox as optional proof executor",
+      "description": "Assess microsandbox as an optional sandboxed execution backend for untrusted or side-effecting validation commands.",
+      "status": "proposed",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "proposal",
+        "source_item_number": 5,
+        "source_proposal": "690822022500f37c8c768fb621bdfcba"
+      },
+      "created_at": "2026-07-01T07:49:58.762Z",
+      "updated_at": "2026-07-01T07:49:58.762Z"
     },
     {
       "id": "5a47a3fac0f28c37db75310c0829e225",
@@ -223,6 +295,65 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.150Z",
       "updated_at": "2026-06-30T14:07:19.150Z"
+    },
+    {
+      "id": "690822022500f37c8c768fb621bdfcba",
+      "type": "proposal",
+      "name": "Journey Catalog as Loom Rung Gate",
+      "description": "# Proposal: Journey Catalog as a Loom Rung Gate",
+      "status": "captured",
+      "truth_class": "asserted",
+      "body": {
+        "items": [
+          {
+            "kind": "intent_candidate",
+            "number": 1,
+            "spawned": "4ed61da79b031f63bf40ac1cea5ab21c",
+            "status": "adopted",
+            "text": "Add proof-strength and JourneyProof metadata to validations"
+          },
+          {
+            "kind": "intent_candidate",
+            "number": 2,
+            "spawned": "ef76b8e10aba8fea8af3092d0c1052d3",
+            "status": "adopted",
+            "text": "Add advisory findings for missing or shallow journey proofs"
+          },
+          {
+            "kind": "intent_candidate",
+            "number": 3,
+            "spawned": "27efc536c465612b1ba4d8b7584fd53d",
+            "status": "adopted",
+            "text": "Restore saga runner parity for real boundary journey assertions"
+          },
+          {
+            "kind": "intent_candidate",
+            "number": 4,
+            "spawned": "d34d53ba061cc639bc898a5a51e0a4ca",
+            "status": "adopted",
+            "text": "Promote JourneyProof into proven rung after runner parity"
+          },
+          {
+            "kind": "task_candidate",
+            "number": 5,
+            "spawned": "522d14427bc5d3dbfe92c38e3709bece",
+            "status": "adopted",
+            "text": "Evaluate microsandbox as optional proof executor"
+          },
+          {
+            "kind": "task_candidate",
+            "number": 6,
+            "spawned": "dad98cf1b2259304034ea250f523aa5c",
+            "status": "adopted",
+            "text": "Evaluate Lix as future graph provenance backend"
+          }
+        ],
+        "raw": "# Proposal: Journey Catalog as a Loom Rung Gate\n\nA journey is a production-facing end-to-end behavior proof: a named product/system story exposed through a stable proof interface and backed by a runner that exercises real behavior. Journey proof is stronger than a unit, handler, or endpoint test because it proves a named story and verifies system outcome.\n\nLoom should treat a repo-native JourneyProof catalog as the behavior proof surface. Repos may satisfy it through route-backed journey catalogs, saga YAML hitting real endpoints through BASE_URL, or equivalent repo-native E2E/integration harnesses. The required semantic contract is runnable and falsifiable proof at the real boundary, not a prescribed storage format.\n\nFor boundary-facing intents, the proven rung should eventually require an L5 journey/saga proof. The proof must show the real endpoint/interface is reachable, actual state/result is verified, failure cases are asserted when relevant, and no fake success marker/handler-exists/no-op proof is accepted.\n\nMVP sequence: add proof-strength/JourneyProof metadata, add advisory quality findings for missing/shallow journey proofs, restore saga runner parity for real boundary assertions, then promote the journey requirement into the proven/hardened rung. Treat microsandbox as an optional sandboxed proof executor and Lix as future provenance inspiration, not prerequisites.",
+        "source": "file",
+        "source_path": "/var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/loom-journey-catalog-proposal.md"
+      },
+      "created_at": "2026-07-01T07:49:58.691Z",
+      "updated_at": "2026-07-01T07:49:58.776Z"
     },
     {
       "id": "71df360f44635e96e91fc6767bc93ea3",
@@ -384,6 +515,20 @@
       "updated_at": "2026-07-01T04:39:22.536Z"
     },
     {
+      "id": "bb72c6fe8f0e76f59d2a7ba084a3a39a",
+      "type": "validation",
+      "name": "proposal capture regression tests",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring5 proposal_",
+        "type": "test"
+      },
+      "created_at": "2026-07-01T07:49:58.674Z",
+      "updated_at": "2026-07-01T07:50:13.480Z"
+    },
+    {
       "id": "bc0de0c4d44411d1dd1d8f91d77635b8",
       "type": "codefile",
       "name": "src/fsglob.rs",
@@ -508,6 +653,21 @@
       "updated_at": ""
     },
     {
+      "id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "type": "intent",
+      "name": "proven rung can require journey proof",
+      "description": "Once real-boundary proof execution is strong enough, boundary-facing implemented intents require a passing L5 JourneyProof or equivalent for proven maturity.",
+      "status": "planned",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature",
+        "source_item_number": 4,
+        "source_proposal": "690822022500f37c8c768fb621bdfcba"
+      },
+      "created_at": "2026-07-01T07:49:58.747Z",
+      "updated_at": "2026-07-01T07:49:58.747Z"
+    },
+    {
       "id": "d4af0e020bef2b77b",
       "type": "finding",
       "name": "src/workitem.rs is oversized",
@@ -615,6 +775,21 @@
       "updated_at": ""
     },
     {
+      "id": "dad98cf1b2259304034ea250f523aa5c",
+      "type": "task_record",
+      "name": "Evaluate Lix as future graph provenance backend",
+      "description": "Assess Lix as inspiration or future backend for semantic Loom graph change history, branches, review, and rollback.",
+      "status": "proposed",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "proposal",
+        "source_item_number": 6,
+        "source_proposal": "690822022500f37c8c768fb621bdfcba"
+      },
+      "created_at": "2026-07-01T07:49:58.775Z",
+      "updated_at": "2026-07-01T07:49:58.775Z"
+    },
+    {
       "id": "df750d03bdf758ca85a8e5cf5172e579",
       "type": "codefile",
       "name": "src/commands/status_cmd.rs",
@@ -652,6 +827,30 @@
       "updated_at": ""
     },
     {
+      "id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "type": "codefile",
+      "name": "src/commands/proposal_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T07:48:54.085Z",
+      "updated_at": "2026-07-01T07:48:54.085Z"
+    },
+    {
+      "id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "type": "intent",
+      "name": "structured proposals can be captured as durable graph artifacts",
+      "description": "A raw product or design proposal can be captured as a Proposal node with file/text provenance, raw body, and numbered items stored in its body JSON.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-01T07:49:58.639Z",
+      "updated_at": "2026-07-01T07:49:58.639Z"
+    },
+    {
       "id": "eafb29133e985bbc463f651878d9a3e2",
       "type": "codefile",
       "name": "src/workitem.rs",
@@ -672,6 +871,21 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.147Z",
       "updated_at": "2026-06-30T14:07:19.147Z"
+    },
+    {
+      "id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "type": "intent",
+      "name": "missing journey proofs surface as quality findings",
+      "description": "Loom surfaces advisory findings when boundary-facing intents lack journey proof or when a journey asserts only transport success.",
+      "status": "planned",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature",
+        "source_item_number": 2,
+        "source_proposal": "690822022500f37c8c768fb621bdfcba"
+      },
+      "created_at": "2026-07-01T07:49:58.720Z",
+      "updated_at": "2026-07-01T07:49:58.720Z"
     },
     {
       "id": "fc74e160558226eb8afd5158d6e0177b",
@@ -726,13 +940,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "an implemented parent intent with grounded children is not reported ungrounded",
-      "evidence": "src/maturity.rs ladder still builds parent_ids from hierarchy edges and excludes roll-up parents when counting ungrounded leaves; cargo test passed after refactor.",
-      "confidence": 0.93,
+      "criterion": "implemented hierarchy parents are exempt from grounding while implemented leaf intents without IMPLEMENTS edges count as ungrounded",
+      "evidence": "src/maturity.rs:64-95 builds active/implemented intents, collects hierarchy parent ids, skips parent ids in the implemented loop, and increments ungrounded only when a non-parent implemented intent has no Implements edge; proposal NodeType additions do not alter this logic.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.894Z",
-      "updated_at": "2026-07-01T04:43:04.185Z"
+      "updated_at": "2026-07-01T07:51:53.997Z"
     },
     {
       "id": "0fbd6911cd68ec8177124f6a105f6cc2",
@@ -748,6 +962,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.717Z",
       "updated_at": "2026-06-30T14:07:19.724Z"
+    },
+    {
+      "id": "172035a2410f3f05196fd5e386137522",
+      "from_id": "bb72c6fe8f0e76f59d2a7ba084a3a39a",
+      "to_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring5 proposal_` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T07:49:58.674Z",
+      "updated_at": "2026-07-01T07:50:13.480Z"
     },
     {
       "id": "1b5a0122cee466e68b9c98bd2ee292a6",
@@ -778,6 +1007,36 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.946Z",
       "updated_at": "2026-07-01T04:46:11.897Z"
+    },
+    {
+      "id": "33b58ebeebc1efcab48be4e741e18245",
+      "from_id": "4a30357f4be00c5f97da73c7f122c188",
+      "to_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proposal item adoption updates the numbered item exactly once and optionally spawns planned work with source proposal metadata",
+      "evidence": "src/commands/proposal_cmd.rs:227-383 resolves Proposal nodes, rejects terminal item status transitions, marks open items adopted, spawns planned Intent nodes with level facet/source metadata or proposed TaskRecord nodes, records spawned id on the item, and proposal regression tests passed.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T07:49:58.666Z",
+      "updated_at": "2026-07-01T07:52:14.262Z"
+    },
+    {
+      "id": "3462d1739752260a485e0c1dd63fd479",
+      "from_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "to_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proposal commands can capture text/file proposals as durable graph nodes and show/list their structured body",
+      "evidence": "src/commands/proposal_cmd.rs:32-157 implements proposal add/list/show: add enforces exactly one of --file/--text, reads raw text, stores body.raw/body.source/body.source_path/body.items, creates a Proposal node with status captured, and JSON show/list return the stored body; proposal regression tests passed.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T07:49:58.658Z",
+      "updated_at": "2026-07-01T07:52:31.043Z"
     },
     {
       "id": "4048cde8936e8610b87a0cccff330f77",
@@ -868,6 +1127,36 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.562Z",
       "updated_at": "2026-06-30T14:07:19.569Z"
+    },
+    {
+      "id": "7531cd6d85be3790e53ef3fb6c0ec049",
+      "from_id": "2d399115811af3266c47b4640082e9f7",
+      "to_id": "4a30357f4be00c5f97da73c7f122c188",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring5 proposal_` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T07:49:58.682Z",
+      "updated_at": "2026-07-01T07:50:14.347Z"
+    },
+    {
+      "id": "7e4d38f75e4c40982db3124f253b4967",
+      "from_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "to_id": "4a30357f4be00c5f97da73c7f122c188",
+      "kind": "relates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proposal item adoption depends on the same Proposal node body contract created and displayed by proposal capture commands",
+      "evidence": "src/commands/proposal_cmd.rs:32-157 creates/shows Proposal nodes with body.items; src/commands/proposal_cmd.rs:192-455 appends/adopts/defer/rejects numbered entries in that same body.items array and records spawned work metadata.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T07:53:00.759Z",
+      "updated_at": "2026-07-01T07:53:00.760Z"
     },
     {
       "id": "8a7cbf02b5babeb8389366afa028c14c",
@@ -1115,7 +1404,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "b962739e5f78db5a",
+      "value": "e9c1cce4362c4407",
       "truth_class": "derived"
     },
     {
@@ -1136,7 +1425,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "loc",
-      "value": "286",
+      "value": "287",
       "truth_class": "derived"
     },
     {
@@ -1220,7 +1509,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "8c9be3927c0034eb",
+      "value": "bb0bb2533e42bf32",
       "truth_class": "derived"
     },
     {
@@ -1241,7 +1530,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "464",
+      "value": "530",
       "truth_class": "derived"
     },
     {
@@ -1255,7 +1544,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "15",
+      "value": "17",
       "truth_class": "derived"
     },
     {
@@ -1357,6 +1646,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "content_hash",
@@ -1439,6 +1735,20 @@
       "key": "symbol_count",
       "value": "1",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "33b58ebeebc1efcab48be4e741e18245",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn item_adopt and item_dispose",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3462d1739752260a485e0c1dd63fd479",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "proposal add/list/show commands",
+      "truth_class": "asserted"
     },
     {
       "target_id": "3873edb7e2385ad991bb19eb7cb4a39c",
@@ -1602,10 +1912,31 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "4a30357f4be00c5f97da73c7f122c188",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "4a30357f4be00c5f97da73c7f122c188",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "fd442aaf76d7e25b",
+      "value": "ce2b7944a46e6cba",
       "truth_class": "derived"
     },
     {
@@ -1626,7 +1957,7 @@
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "loc",
-      "value": "252",
+      "value": "253",
       "truth_class": "derived"
     },
     {
@@ -1661,7 +1992,7 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "69015cf814c6ace8",
+      "value": "6f74c88e4b96406c",
       "truth_class": "derived"
     },
     {
@@ -1682,7 +2013,7 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "loc",
-      "value": "276",
+      "value": "278",
       "truth_class": "derived"
     },
     {
@@ -2032,7 +2363,7 @@
       "target_id": "ab2b8d59f555c85569866fd178d9bb05",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "906f97ad35362305",
+      "value": "a7582030827385a6",
       "truth_class": "derived"
     },
     {
@@ -2053,7 +2384,7 @@
       "target_id": "ab2b8d59f555c85569866fd178d9bb05",
       "target_kind": "node",
       "key": "loc",
-      "value": "285",
+      "value": "286",
       "truth_class": "derived"
     },
     {
@@ -2281,6 +2612,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d4af0e020bef2b77b",
       "target_kind": "node",
       "key": "adjudication",
@@ -2351,6 +2689,62 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "18d0be1337aef3ce",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::cli::{ProposalCmd, ProposalItemCmd}\",\"crate::model::{NodeType, TargetKind, TruthClass}\",\"serde_json::{json, Value}\",\"std::path::Path\",\"super::{looks_like_symbol, node_json, open}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "471",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "11",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "content_hash",
@@ -2396,7 +2790,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "98f585e9a232f863",
+      "value": "c6cabfef4646d839",
       "truth_class": "derived"
     },
     {
@@ -2417,7 +2811,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "loc",
-      "value": "176",
+      "value": "181",
       "truth_class": "derived"
     },
     {
@@ -2433,6 +2827,13 @@
       "key": "symbol_count",
       "value": "2",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
     }
   ],
   "tags": [

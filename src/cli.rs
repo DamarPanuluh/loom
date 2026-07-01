@@ -173,4 +173,9 @@ pub enum Command {
     },
     /// Report the acting agent identity and lane enforcement.
     Whoami,
+    /// Capture a structured proposal and decompose it into adopted work.
+    Proposal {
+        #[command(subcommand)]
+        cmd: ProposalCmd,
+    },
 }

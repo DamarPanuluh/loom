@@ -21,6 +21,7 @@ mod edge;
 mod intent;
 mod misc_cmd;
 mod proof_cmd;
+mod proposal_cmd;
 mod saga;
 mod status_cmd;
 pub use intent::looks_like_symbol;
@@ -105,6 +106,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Coverage => diagnostics_cmd::coverage_cmd(cli.graph.as_deref(), cli.json),
         Command::Ignore { cmd } => diagnostics_cmd::ignore_cmd(cli.graph.as_deref(), cmd, cli.json),
         Command::Whoami => diagnostics_cmd::whoami_cmd(cli.graph.as_deref(), cli.json),
+        Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
     }
 }
 

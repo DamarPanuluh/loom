@@ -97,6 +97,7 @@ str_enum! {
         Note => "note",
         InboxItem => "inbox_item",
         TaskRecord => "task_record",
+        Proposal => "proposal",
     }
 }
 

@@ -462,3 +462,69 @@ pub enum IgnoreCmd {
     /// List ignore rules.
     List,
 }
+
+#[derive(Subcommand, Debug)]
+pub enum ProposalCmd {
+    /// Capture a structured proposal from text or a file.
+    Add {
+        #[arg(long)]
+        title: String,
+        /// Read the proposal body from a file (use --file or --text, not both).
+        #[arg(long)]
+        file: Option<PathBuf>,
+        /// Inline proposal body text (use --file or --text, not both).
+        #[arg(long)]
+        text: Option<String>,
+    },
+    /// List captured proposals.
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+    /// Show a proposal by id, name, or unique fragment.
+    Show { key: String },
+    /// Proposal item subcommands.
+    Item {
+        #[command(subcommand)]
+        cmd: ProposalItemCmd,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ProposalItemCmd {
+    /// Add a numbered item to a proposal.
+    Add {
+        proposal: String,
+        #[arg(long)]
+        text: String,
+        /// Optional kind label (e.g. intent, task, observation).
+        #[arg(long)]
+        kind: Option<String>,
+    },
+    /// Adopt an item, optionally spawning an intent or task.
+    Adopt {
+        proposal: String,
+        number: usize,
+        /// Spawn a planned Intent or a proposed TaskRecord.
+        #[arg(long)]
+        r#as: Option<String>,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        description: Option<String>,
+    },
+    /// Defer an item with a reason.
+    Defer {
+        proposal: String,
+        number: usize,
+        #[arg(long)]
+        reason: String,
+    },
+    /// Reject an item with a reason.
+    Reject {
+        proposal: String,
+        number: usize,
+        #[arg(long)]
+        reason: String,
+    },
+}
