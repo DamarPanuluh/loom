@@ -177,6 +177,8 @@ loom export
 loom export --check
 ```
 
+If you wire this into a user-created pre-commit hook, keep the hook defensive: prefer `loom export --check`, and feature-detect any optional command before invoking it (for example `loom wiki ...` surfaces are not part of the implemented CLI listed above).
+
 ## Documentation map
 
 Start with:

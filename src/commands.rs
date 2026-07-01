@@ -465,13 +465,14 @@ fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         ladder.phase, ladder.next_command
     );
     println!(
-        "  queues: build={} fix={} analyze={} inbox={}  (advisory: findings={} untriaged={} needed={})",
+        "  queues: build={} fix={} analyze={} inbox={}  (advisory: findings={} untriaged={} stale_findings={} needed={})",
         pulse.planned,
         pulse.stale,
         pulse.uninspected,
         pulse.inbox,
         pulse.findings,
         pulse.untriaged,
+        pulse.stale_findings,
         pulse.needed
     );
     Ok(())
@@ -514,12 +515,13 @@ fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
             }
         }
         println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} untriaged={} needed={} inbox={}",
+            "  graph_state: planned={} stale={} uninspected={} findings={} untriaged={} stale_findings={} needed={} inbox={}",
             pulse.planned,
             pulse.stale,
             pulse.uninspected,
             pulse.findings,
             pulse.untriaged,
+            pulse.stale_findings,
             pulse.needed,
             pulse.inbox
         );
@@ -561,12 +563,13 @@ fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> Result<()> 
             ),
         }
         println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} untriaged={} needed={} inbox={}",
+            "  graph_state: planned={} stale={} uninspected={} findings={} untriaged={} stale_findings={} needed={} inbox={}",
             pulse.planned,
             pulse.stale,
             pulse.uninspected,
             pulse.findings,
             pulse.untriaged,
+            pulse.stale_findings,
             pulse.needed,
             pulse.inbox
         );
@@ -1675,12 +1678,17 @@ fn finding_list(
     }
     let store = open(graph)?;
     let untriaged = crate::signal::untriaged_findings(&store)?.len();
+    let stale_findings = crate::signal::stale_findings(&store)?.len();
     let mut findings = crate::signal::findings_view(&store)?;
     if let Some(k) = &kind {
         findings.retain(|fv| &fv.node.status == k);
     }
     if let Some(s) = &state {
-        findings.retain(|fv| &fv.state == s);
+        if s == "stale" {
+            findings.retain(|fv| fv.stale);
+        } else {
+            findings.retain(|fv| &fv.state == s);
+        }
     }
     if json {
         println!("{}", serde_json::to_string_pretty(&findings)?);
@@ -1703,9 +1711,10 @@ fn finding_list(
         match &state {
             Some(s) => println!("{} finding(s) in state '{}'", findings.len(), s),
             None => println!(
-                "{} finding(s); {} untriaged — judge with `loom finding verdict <id> …`",
+                "{} finding(s); {} untriaged, {} stale — judge with `loom finding verdict <id> …`",
                 findings.len(),
-                untriaged
+                untriaged,
+                stale_findings
             ),
         }
     }
@@ -1727,8 +1736,10 @@ fn finding_verdict(graph: Option<&Path>, id: &str, verdict: &str, reason: &str) 
 
 fn validate_finding_filter_state(state: &str) -> Result<()> {
     match state {
-        "untriaged" | "justified" | "needed" | "blocked" => Ok(()),
-        other => bail!("unknown finding state '{other}' (use untriaged|justified|needed|blocked)"),
+        "untriaged" | "stale" | "justified" | "needed" | "blocked" => Ok(()),
+        other => {
+            bail!("unknown finding state '{other}' (use untriaged|stale|justified|needed|blocked)")
+        }
     }
 }
 

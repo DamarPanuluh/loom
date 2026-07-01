@@ -588,7 +588,7 @@ The graph shape exposes gaps without cognitive judgment. The LLM confirms whethe
 | `Validation.last_result = not_run`; linked `validates` edge `needs_reverification` | Unrun proof |
 | `implements` locator stale | Grounding mismatch after code change |
 | Many unrelated intents implementing one CodeFile | Tangle |
-| Two intents sharing tags in disjoint code with no edge | Duplicated responsibility |
+| Two intents sharing tags in disjoint code with no edge | Duplicated responsibility; often appears after removing shared groundings that previously masked an undocumented relationship gap |
 
 ---
 

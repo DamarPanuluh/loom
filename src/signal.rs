@@ -365,6 +365,20 @@ pub fn findings_view(store: &Store) -> Result<Vec<FindingView>> {
 pub fn untriaged_findings(store: &Store) -> Result<Vec<FindingView>> {
     Ok(findings_view(store)?
         .into_iter()
+        .filter(|fv| fv.state == "untriaged")
+        .collect())
+}
+
+pub fn stale_findings(store: &Store) -> Result<Vec<FindingView>> {
+    Ok(findings_view(store)?
+        .into_iter()
+        .filter(|fv| fv.stale)
+        .collect())
+}
+
+pub fn triage_findings(store: &Store) -> Result<Vec<FindingView>> {
+    Ok(findings_view(store)?
+        .into_iter()
         .filter(|fv| fv.state == "untriaged" || fv.stale)
         .collect())
 }

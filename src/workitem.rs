@@ -274,7 +274,7 @@ fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
 }
 
 fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
-    let Some(fv) = crate::signal::untriaged_findings(store)?.into_iter().next() else {
+    let Some(fv) = crate::signal::triage_findings(store)?.into_iter().next() else {
         return Ok(None);
     };
     let short = &fv.node.id[..8.min(fv.node.id.len())];
@@ -590,6 +590,7 @@ pub struct GraphState {
     pub uninspected: usize,
     pub findings: usize,
     pub untriaged: usize,
+    pub stale_findings: usize,
     pub needed: usize,
     pub inbox: usize,
 }
@@ -604,10 +605,8 @@ pub struct NextOutput {
 pub fn graph_state(store: &Store) -> Result<GraphState> {
     use crate::model::TruthClass;
     let findings = crate::signal::findings_view(store)?;
-    let untriaged = findings
-        .iter()
-        .filter(|fv| fv.state == "untriaged" || fv.stale)
-        .count();
+    let untriaged = findings.iter().filter(|fv| fv.state == "untriaged").count();
+    let stale_findings = findings.iter().filter(|fv| fv.stale).count();
     let needed = findings.iter().filter(|fv| fv.state == "needed").count();
     Ok(GraphState {
         planned: store
@@ -627,6 +626,7 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
             .len(),
         findings: findings.len(),
         untriaged,
+        stale_findings,
         needed,
         inbox: store
             .list_nodes(Some(NodeType::InboxItem), usize::MAX)?

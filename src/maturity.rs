@@ -89,6 +89,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
 
     let open_smells = crate::signal::smells(store)?.len();
     let untriaged = crate::signal::untriaged_findings(store)?.len();
+    let stale_findings = crate::signal::stale_findings(store)?.len();
     let rungs = build_rungs(&RungInputs {
         active: active.len(),
         planned,
@@ -99,6 +100,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         uninspected,
         open_smells,
         untriaged,
+        stale_findings,
     });
 
     // Compass: lowest unmet rung → phase + next command.
@@ -110,6 +112,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         uninspected,
         open_smells,
         untriaged,
+        stale_findings,
     );
 
     Ok(Ladder {
@@ -127,6 +130,7 @@ fn compass(
     uninspected: usize,
     open_smells: usize,
     untriaged: usize,
+    stale_findings: usize,
 ) -> (String, String) {
     if active == 0 {
         return (
@@ -146,7 +150,7 @@ fn compass(
     if open_smells > 0 {
         return ("audit".into(), "loom smells".into());
     }
-    if untriaged > 0 {
+    if untriaged > 0 || stale_findings > 0 {
         return ("triage".into(), "loom next --mode triage".into());
     }
     (
@@ -166,6 +170,7 @@ struct RungInputs {
     uninspected: usize,
     open_smells: usize,
     untriaged: usize,
+    stale_findings: usize,
 }
 
 /// Build the five maturity rungs from the gathered counts.
@@ -219,7 +224,7 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         name: "excellent".into(),
         state: if c.active == 0 {
             RungState::NotApplicable
-        } else if c.open_smells == 0 && c.untriaged == 0 {
+        } else if c.open_smells == 0 && c.untriaged == 0 && c.stale_findings == 0 {
             RungState::Met
         } else {
             RungState::Unmet
@@ -228,8 +233,8 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             "no active intents yet".into()
         } else {
             format!(
-                "{} open smell(s), {} untriaged finding(s)",
-                c.open_smells, c.untriaged
+                "{} open smell(s), {} untriaged finding(s), {} stale finding(s)",
+                c.open_smells, c.untriaged, c.stale_findings
             )
         },
     });

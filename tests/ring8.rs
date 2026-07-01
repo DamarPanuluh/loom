@@ -145,7 +145,9 @@ fn finding_adjudication_goes_stale_when_codefile_hash_changes() {
         .unwrap();
     let stale = loom::signal::findings_view(&store).unwrap();
     assert!(stale[0].stale);
-    assert_eq!(loom::signal::untriaged_findings(&store).unwrap().len(), 1);
+    assert_eq!(loom::signal::untriaged_findings(&store).unwrap().len(), 0);
+    assert_eq!(loom::signal::stale_findings(&store).unwrap().len(), 1);
+    assert_eq!(loom::signal::triage_findings(&store).unwrap().len(), 1);
 }
 
 #[test]
@@ -212,6 +214,7 @@ fn graph_state_counts_needed_findings() {
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.needed, 1);
-    // A `needed` verdict is a judgment, so it leaves the triage queue.
+    // A `needed` verdict is a judgment, so it leaves raw untriaged.
     assert_eq!(pulse.untriaged, 0);
+    assert_eq!(pulse.stale_findings, 0);
 }

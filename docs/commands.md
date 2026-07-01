@@ -21,6 +21,8 @@ one_turn_plan:      lane, role, guide command, next queue for this session
 alarms:             integrity violations that override normal routing
 ```
 
+`graph_state.stale` is the stale/failing asserted-edge bucket for fix/build work. Finding triage is split separately: `untriaged` means no recorded finding verdict; `stale_findings` means a previously recorded finding verdict must be re-triaged because the flagged file changed.
+
 ```
 loom session
 ```
@@ -187,6 +189,14 @@ loom edge unimplement <intent> <codefile>
 ```
 
 ```
+loom edge remove <edge-id> [--reason "<why>"]
+loom edge show <edge-id>
+loom edge list [--kind <kind>] [--status <status>] [--limit N]
+```
+
+`edge remove` refuses derived edges. When removing an `implements` edge leaves its source intent with zero remaining groundings, the command still completes for script compatibility but prints a warning so the operator can immediately re-ground or intentionally accept the realized-rung drop.
+
+```
 loom edge hierarchy <parent> <child>
 ```
 
@@ -199,6 +209,11 @@ loom edge sequence <before> <after>
 ```
 
 ```
+loom edge verdict <edge-id> <ground|issue|independent>
+  --criterion "<falsifiable claim>"
+  --evidence "<what was found>"
+  --confidence <0-1>
+
 loom edge explore <intent-a> <intent-b> <ground|issue|independent>
   --criterion "<falsifiable claim>"
   --evidence "<what was found>"
@@ -207,11 +222,6 @@ loom edge explore <intent-a> <intent-b> <ground|issue|independent>
 ```
 
 Verdict commands for relationship inspection. `independent` requires non-empty evidence ("verified no relationship" — not the default).
-
-```
-loom edge show <edge-id>
-loom edge list [--kind <kind>] [--status <status>] [--limit N]
-```
 
 ---
 
@@ -266,6 +276,15 @@ loom validate <intent> | --all
 ```
 
 `--all` runs every pending proof (last_result = not_run) in one call. Settled verdicts are not re-run; blocked proofs keep their recorded reason.
+
+### Finding triage commands
+
+```
+loom finding list [--kind <kind>] [--state untriaged|stale|justified|needed|blocked]
+loom finding verdict <id> justified|needed|blocked --reason "<why>"
+```
+
+`--state untriaged` lists findings with no adjudication. `--state stale` lists previously adjudicated findings whose flagged file hash changed; these are served by `loom next --mode triage` with "prior verdict is stale" in the work item. Status reports these as separate `untriaged` and `stale_findings` counts because first-triage and re-triage are different operator tasks.
 
 ### Saga commands (MVP — spec ring 5, runner ring 6)
 
@@ -355,6 +374,18 @@ loom rule verdict "<rule>" "<intent>"
 ```
 
 A verdict at component altitude covers descendants unless a leaf needs a specific verdict. `independent` = measured, does not apply — requires evidence.
+
+### Verdict flag matrix
+
+| Command | Outcome selector | Evidence flags | Confidence |
+|---|---|---|---|
+| `loom edge verdict <edge-id> <ground|issue|independent>` | positional outcome | `--criterion`, `--evidence` | `--confidence` |
+| `loom edge explore <a> <b> <ground|issue|independent>` | positional outcome | `--criterion`, `--evidence` | `--confidence` |
+| `loom rule verdict <rule> <intent>` | `--status passing|failing|independent` | `--criterion`, `--evidence`, optional `--evidence-locator` | `--confidence` |
+| `loom finding verdict <id> <justified|needed|blocked>` | positional verdict | `--reason` | not accepted |
+| `loom validation mark <validation>` | `--result passed|failed|blocked` | `--evidence` for passed/failed, `--reason` for blocked | not accepted |
+
+Do not transfer flags between families: finding and validation verdicts intentionally reject `--criterion`, `--evidence`, and `--confidence` forms that belong to edge/rule inspection.
 
 ### Inspecting rules
 
@@ -465,7 +496,7 @@ Schema conformance, provenance, evidence vacuity, role gate audit. Exits non-zer
 loom smells [--limit N] [--summary]
 ```
 
-Structural signals: twin intents, overlapping ownership, tangle, undeclared coupling, layering violations, complex symbols, duplicated responsibility, unjourneyed surfaces, vocab drift, etc. Each finding carries an exact remedy command. Open findings gate the `excellent` maturity rung.
+Structural signals: twin intents, overlapping ownership, tangle, undeclared coupling, layering violations, complex symbols, duplicated responsibility, unjourneyed surfaces, vocab drift, etc. Each finding carries an exact remedy command. Open findings gate the `excellent` maturity rung. Removing shared `implements` groundings from a tangled file can expose `duplicated_responsibility` smells for intent pairs that share vocabulary but no explicit relationship; that is expected fallout, not a failed fix. Resolve it by recording real `relates` edges or retagging/splitting intents whose shared vocabulary was misleading.
 
 ```
 loom debt [--limit N]

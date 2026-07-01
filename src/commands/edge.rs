@@ -92,6 +92,16 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>) -> Result
             e.kind
         );
     }
+    let ungrounded_intent = if e.kind == EdgeKind::Implements {
+        Some(
+            store
+                .get_node(&e.from_id)?
+                .map(|n| n.name)
+                .unwrap_or_else(|| e.from_id.clone()),
+        )
+    } else {
+        None
+    };
     // Journal the prune on the source node before the edge id is gone.
     if let Some(r) = &reason {
         store.add_note(
@@ -108,6 +118,16 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>) -> Result
         e.from_id,
         e.to_id
     );
+    if let Some(intent_name) = ungrounded_intent {
+        if store
+            .edges_with(Some(EdgeKind::Implements), Some(&e.from_id), None)?
+            .is_empty()
+        {
+            eprintln!(
+                "warning: intent '{intent_name}' now has zero implements edges; run `loom status` or re-ground it"
+            );
+        }
+    }
     Ok(())
 }
 
