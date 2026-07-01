@@ -58,7 +58,7 @@ pub fn run(cli: Cli) -> Result<()> {
         }
         Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd),
         Command::Door { utterance } => door(cli.graph.as_deref(), &utterance),
-        Command::Inbox { cmd } => inbox(cli.graph.as_deref(), cmd),
+        Command::Inbox { cmd } => inbox(cli.graph.as_deref(), cmd, cli.json),
         Command::Task { cmd } => task(cli.graph.as_deref(), cmd),
         Command::Session => session(cli.graph.as_deref()),
         Command::Guide { role } => guide(role.as_deref()),
@@ -66,19 +66,19 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Detect => detect_cmd(cli.graph.as_deref()),
         Command::Schema => schema_cmd(),
         Command::Rule { cmd } => rule(cli.graph.as_deref(), cmd),
-        Command::Validation { cmd } => validation(cli.graph.as_deref(), cmd),
+        Command::Validation { cmd } => validation(cli.graph.as_deref(), cmd, cli.json),
         Command::Validate { intent, all } => validate_cmd(cli.graph.as_deref(), &intent, all),
         Command::Hypothesis { cmd } => hypothesis(cli.graph.as_deref(), cmd),
         Command::Surface { cmd } => surface(cli.graph.as_deref(), cmd),
         Command::Saga { cmd } => saga::dispatch(cli.graph.as_deref(), cmd),
         Command::Vocab { cmd } => vocab(cli.graph.as_deref(), cmd),
-        Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd),
-        Command::Interface { cmd } => interface(cli.graph.as_deref(), cmd),
+        Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd, cli.json),
+        Command::Interface { cmd } => interface(cli.graph.as_deref(), cmd, cli.json),
         Command::Smells => smells_cmd(cli.graph.as_deref(), cli.json),
         Command::Debt => debt_cmd(cli.graph.as_deref(), cli.json),
         Command::Finding { cmd } => finding(cli.graph.as_deref(), cmd, cli.json),
         Command::Doctor => doctor_cmd(cli.graph.as_deref(), cli.json),
-        Command::Coverage => coverage_cmd(cli.graph.as_deref()),
+        Command::Coverage => coverage_cmd(cli.graph.as_deref(), cli.json),
         Command::Ignore { cmd } => ignore_cmd(cli.graph.as_deref(), cmd),
         Command::Whoami => whoami_cmd(cli.graph.as_deref()),
     }
@@ -411,6 +411,62 @@ fn sync_cmd(graph: Option<&Path>) -> Result<()> {
     Ok(())
 }
 
+fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec<String>)> {
+    let codefiles = store.codefiles()?;
+    let mut owned = 0usize;
+    let mut unowned = Vec::new();
+    for cf in &codefiles {
+        if store
+            .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
+            .is_empty()
+        {
+            unowned.push(cf.name.clone());
+        } else {
+            owned += 1;
+        }
+    }
+    Ok((codefiles.len(), owned, unowned))
+}
+
+fn layer_detector_state(store: &Store) -> Result<serde_json::Value> {
+    let snap = store.snapshot()?;
+    let active_intent_ids: std::collections::HashSet<&str> = snap
+        .nodes
+        .iter()
+        .filter(|n| n.node_type == NodeType::Intent && n.status != "deprecated")
+        .map(|n| n.id.as_str())
+        .collect();
+    let layers: std::collections::BTreeSet<String> = snap
+        .facets
+        .iter()
+        .filter(|f| {
+            active_intent_ids.contains(f.target_id.as_str())
+                && f.target_kind == TargetKind::Node
+                && f.key == "layer"
+        })
+        .map(|f| f.value.clone())
+        .collect();
+    let order: Vec<String> = store
+        .get_meta("layer_order")?
+        .and_then(|v| serde_json::from_str(&v).ok())
+        .unwrap_or_default();
+    let armed = !order.is_empty();
+    let warning = if !armed && layers.len() >= 2 {
+        Some("no layer order declared")
+    } else if !armed {
+        Some("fewer than two layers declared")
+    } else {
+        None
+    };
+    Ok(serde_json::json!({
+        "armed": armed,
+        "layer_count": layers.len(),
+        "layers": layers.into_iter().collect::<Vec<_>>(),
+        "order": order,
+        "warning": warning,
+    }))
+}
+
 fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     let id = store.identity()?;
@@ -421,6 +477,10 @@ fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let edges = store.list_edges(None, usize::MAX)?.len();
     let ladder = crate::maturity::ladder(&store)?;
     let pulse = workitem::graph_state(&store)?;
+    let validation_summary = crate::maturity::validation_summary(&store)?;
+    let (registered_codefiles, owned_codefiles, unowned_codefiles) =
+        code_ownership_summary(&store)?;
+    let layering = layer_detector_state(&store)?;
     if json {
         let out = serde_json::json!({
             "graph": {
@@ -436,6 +496,17 @@ fn status(graph: Option<&Path>, json: bool) -> Result<()> {
             },
             "maturity": ladder,
             "graph_state": pulse,
+            "validation_summary": validation_summary,
+            "code_ownership": {
+                "registered": registered_codefiles,
+                "owned": owned_codefiles,
+                "unowned": unowned_codefiles.len(),
+                "unowned_files": unowned_codefiles,
+                "blocking": false,
+            },
+            "detectors": {
+                "layering": layering,
+            },
         });
         println!("{}", serde_json::to_string_pretty(&out)?);
         return Ok(());
@@ -451,6 +522,25 @@ fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         }
     );
     println!("  intents: {intents}  codefiles: {files}  edges: {edges}");
+    println!(
+        "  code ownership: {owned_codefiles}/{registered_codefiles} owned, {} unowned (advisory)",
+        unowned_codefiles.len()
+    );
+    if layering.get("armed").and_then(|v| v.as_bool()) == Some(false)
+        && layering
+            .get("layer_count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0)
+            >= 2
+    {
+        println!(
+            "  layering: unarmed — {}",
+            layering
+                .get("warning")
+                .and_then(|v| v.as_str())
+                .unwrap_or("no layer order declared")
+        );
+    }
     println!("  maturity:");
     for r in &ladder.rungs {
         let mark = match r.state {
@@ -625,7 +715,7 @@ fn door(graph: Option<&Path>, utterance: &str) -> Result<()> {
     Ok(())
 }
 
-fn inbox(graph: Option<&Path>, cmd: InboxCmd) -> Result<()> {
+fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         InboxCmd::Add { text, source } => {
@@ -641,11 +731,31 @@ fn inbox(graph: Option<&Path>, cmd: InboxCmd) -> Result<()> {
         }
         InboxCmd::List { limit } => {
             let items = store.list_nodes(Some(NodeType::InboxItem), limit)?;
-            if items.is_empty() {
-                println!("inbox empty");
-            }
-            for n in &items {
-                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+            if json {
+                let rows: Vec<_> = items
+                    .iter()
+                    .map(|n| {
+                        serde_json::json!({
+                            "id": n.id,
+                            "status": n.status,
+                            "title": n.name,
+                            "text": n.description,
+                            "source": n.body.get("source").and_then(|v| v.as_str()),
+                            "link": n.body.get("link").and_then(|v| v.as_str()),
+                            "body": n.body,
+                            "created_at": n.created_at,
+                            "updated_at": n.updated_at,
+                        })
+                    })
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                if items.is_empty() {
+                    println!("inbox empty");
+                }
+                for n in &items {
+                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
             }
             Ok(())
         }
@@ -1195,7 +1305,7 @@ fn verdict_status_quality(s: &str) -> Result<InspectionStatus> {
     }
 }
 
-fn validation(graph: Option<&Path>, cmd: ValidationCmd) -> Result<()> {
+fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         ValidationCmd::Add {
@@ -1230,15 +1340,25 @@ fn validation(graph: Option<&Path>, cmd: ValidationCmd) -> Result<()> {
         }
         ValidationCmd::Show { key } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
-            println!("{} [{}]", val.name, val.id);
-            println!("  status: {}", val.status);
-            println!("  {}", val.body);
-            for e in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
-                let i = store
-                    .get_node(&e.to_id)?
-                    .map(|n| n.name)
-                    .unwrap_or_else(|| e.to_id.clone());
-                println!("  validates: {i}");
+            let validates = validation_targets(&store, &val.id)?;
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "id": val.id,
+                        "name": val.name,
+                        "status": val.status,
+                        "body": val.body,
+                        "validates": validates,
+                    }))?
+                );
+            } else {
+                println!("{} [{}]", val.name, val.id);
+                println!("  status: {}", val.status);
+                println!("  {}", val.body);
+                for i in validates {
+                    println!("  validates: {}", i["name"].as_str().unwrap_or(""));
+                }
             }
             Ok(())
         }
@@ -1282,12 +1402,44 @@ fn validation(graph: Option<&Path>, cmd: ValidationCmd) -> Result<()> {
             Ok(())
         }
         ValidationCmd::List { limit } => {
-            for n in store.list_nodes(Some(NodeType::Validation), limit)? {
-                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+            let vals = store.list_nodes(Some(NodeType::Validation), limit)?;
+            if json {
+                let rows: Vec<_> = vals
+                    .iter()
+                    .map(|n| {
+                        serde_json::json!({
+                            "id": n.id,
+                            "name": n.name,
+                            "status": n.status,
+                            "body": n.body,
+                            "created_at": n.created_at,
+                            "updated_at": n.updated_at,
+                        })
+                    })
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                for n in vals {
+                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
             }
             Ok(())
         }
     }
+}
+
+fn validation_targets(store: &Store, val_id: &str) -> Result<Vec<serde_json::Value>> {
+    let mut out = Vec::new();
+    for e in store.edges_with(Some(EdgeKind::Validates), Some(val_id), None)? {
+        let target = store.get_node(&e.to_id)?;
+        out.push(serde_json::json!({
+            "id": e.to_id,
+            "name": target.as_ref().map(|n| n.name.as_str()).unwrap_or(e.to_id.as_str()),
+            "edge_id": e.id,
+            "edge_status": e.status,
+        }));
+    }
+    Ok(out)
 }
 
 fn mark_validation(
@@ -1566,7 +1718,7 @@ fn vocab(graph: Option<&Path>, cmd: VocabCmd) -> Result<()> {
     }
 }
 
-fn layer(graph: Option<&Path>, cmd: LayerCmd) -> Result<()> {
+fn layer(graph: Option<&Path>, cmd: LayerCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         LayerCmd::Order { layers } => {
@@ -1578,12 +1730,16 @@ fn layer(graph: Option<&Path>, cmd: LayerCmd) -> Result<()> {
             Ok(())
         }
         LayerCmd::List => {
-            match store.get_meta("layer_order")? {
-                Some(v) => {
-                    let layers: Vec<String> = serde_json::from_str(&v).unwrap_or_default();
-                    println!("{}", layers.join(" > "));
+            let state = layer_detector_state(&store)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&state)?);
+            } else if let Some(order) = state.get("order").and_then(|v| v.as_array()) {
+                if order.is_empty() {
+                    println!("no layer order declared");
+                } else {
+                    let labels: Vec<&str> = order.iter().filter_map(|v| v.as_str()).collect();
+                    println!("{}", labels.join(" > "));
                 }
-                None => println!("no layer order declared"),
             }
             Ok(())
         }
@@ -1595,28 +1751,60 @@ fn layer(graph: Option<&Path>, cmd: LayerCmd) -> Result<()> {
     }
 }
 
-fn interface(graph: Option<&Path>, cmd: InterfaceCmd) -> Result<()> {
+fn interface(graph: Option<&Path>, cmd: InterfaceCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         InterfaceCmd::Gaps => {
             let surfaces = store.list_nodes(Some(NodeType::InterfaceSurface), usize::MAX)?;
-            let mut gaps = 0usize;
+            let mut gaps = Vec::new();
             for s in &surfaces {
                 let exposes = store.edges_with(Some(EdgeKind::Exposes), Some(&s.id), None)?;
                 let calls = store.edges_with(Some(EdgeKind::Calls), None, Some(&s.id))?;
                 if exposes.is_empty() {
-                    println!("surface '{}' exposes no codefile", s.name);
-                    gaps += 1;
+                    gaps.push(serde_json::json!({
+                        "surface_id": s.id,
+                        "surface": s.name,
+                        "kind": "unexposed_surface",
+                        "message": format!("surface '{}' exposes no codefile", s.name),
+                    }));
                 }
                 if calls.is_empty() {
-                    println!("surface '{}' is never called by a validation/saga", s.name);
-                    gaps += 1;
+                    gaps.push(serde_json::json!({
+                        "surface_id": s.id,
+                        "surface": s.name,
+                        "kind": "uncalled_surface",
+                        "message": format!("surface '{}' is never called by a validation/saga", s.name),
+                    }));
                 }
             }
-            println!(
-                "{gaps} interface gap(s) across {} surface(s)",
-                surfaces.len()
-            );
+            let armed = !surfaces.is_empty();
+            let warning = if armed {
+                None
+            } else {
+                Some("no surfaces declared")
+            };
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "armed": armed,
+                        "surface_count": surfaces.len(),
+                        "gaps": gaps,
+                        "warning": warning,
+                    }))?
+                );
+            } else if !armed {
+                println!("interface plane unmodeled: 0 surfaces declared; no interface-gap analysis possible");
+            } else {
+                for gap in &gaps {
+                    println!("{}", gap["message"].as_str().unwrap_or(""));
+                }
+                println!(
+                    "{} interface gap(s) across {} surface(s)",
+                    gaps.len(),
+                    surfaces.len()
+                );
+            }
             Ok(())
         }
     }
@@ -1770,7 +1958,7 @@ fn doctor_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     }
 }
 
-fn coverage_cmd(graph: Option<&Path>) -> Result<()> {
+fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
     let active: Vec<_> = intents
@@ -1798,18 +1986,30 @@ fn coverage_cmd(graph: Option<&Path>) -> Result<()> {
             ungrounded.push(n.name.clone());
         }
     }
-    let codefiles = store.codefiles()?;
-    let mut owned = 0usize;
-    let mut unowned = Vec::new();
-    for cf in &codefiles {
-        if store
-            .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
-            .is_empty()
-        {
-            unowned.push(cf.name.clone());
-        } else {
-            owned += 1;
-        }
+    let (registered_codefiles, owned, unowned) = code_ownership_summary(&store)?;
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "intents": {
+                    "active": active.len(),
+                    "implemented": implemented.len(),
+                    "planned_or_needs_change": active.len() - implemented.len(),
+                },
+                "grounding": {
+                    "grounded": implemented.len() - ungrounded.len(),
+                    "ungrounded": ungrounded.len(),
+                    "ungrounded_intents": ungrounded,
+                },
+                "codefiles": {
+                    "registered": registered_codefiles,
+                    "owned": owned,
+                    "unowned": unowned.len(),
+                    "unowned_files": unowned,
+                }
+            }))?
+        );
+        return Ok(());
     }
     println!("coverage (vertical spine):");
     println!(
@@ -1827,8 +2027,7 @@ fn coverage_cmd(graph: Option<&Path>) -> Result<()> {
         println!("    ungrounded: {u}");
     }
     println!(
-        "  codefiles: {} registered, {owned} owned, {} unowned",
-        codefiles.len(),
+        "  codefiles: {registered_codefiles} registered, {owned} owned, {} unowned",
         unowned.len()
     );
     for u in unowned.iter().take(10) {

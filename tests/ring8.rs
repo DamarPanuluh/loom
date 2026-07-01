@@ -82,6 +82,33 @@ fn mature_graph_with_codefile(store: &Store) -> loom::model::Node {
             "llm",
         )
         .unwrap();
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "proof",
+            "",
+            "passed",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let ve = store
+        .add_edge(
+            EdgeKind::Validates,
+            &validation.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &ve.id,
+            InspectionStatus::Passing,
+            "proof",
+            "cargo test proof",
+            1.0,
+            "llm",
+        )
+        .unwrap();
     codefile
 }
 

@@ -27,7 +27,7 @@ impl Mode {
         match s {
             "build" => Some(Mode::Build),
             "fix" => Some(Mode::Fix),
-            "analyze" => Some(Mode::Analyze),
+            "analyze" | "discovery" => Some(Mode::Analyze),
             "quality" => Some(Mode::Quality),
             "validate" => Some(Mode::Validate),
             "prove" => Some(Mode::Prove),
@@ -274,8 +274,9 @@ fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
 }
 
 fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
-    let Some(fv) = crate::signal::triage_findings(store)?.into_iter().next() else {
-        return Ok(None);
+    let findings = crate::signal::triage_findings(store)?;
+    let Some(fv) = findings.into_iter().next() else {
+        return inbox_triage_item(store);
     };
     let short = &fv.node.id[..8.min(fv.node.id.len())];
     // Cohesion evidence from the graph: which intents own the flagged file. One
@@ -312,6 +313,26 @@ fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
         target: node_target(&fv.node),
         prompt_contract: triage_contract(short),
         next_step: "after recording the verdict, run `loom status`".into(),
+    }))
+}
+
+fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(item) = store
+        .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
+        .into_iter()
+        .find(|n| n.status == "new")
+    else {
+        return Ok(None);
+    };
+    let short = &item.id[..8.min(item.id.len())];
+    Ok(Some(WorkItem {
+        mode: "triage".into(),
+        owner_role: "analyzer".into(),
+        effort: "low".into(),
+        reason: format!("inbox item '{}' is new and needs routing", item.description),
+        target: node_target(&item),
+        prompt_contract: inbox_triage_contract(short),
+        next_step: "after marking or routing the inbox item, run `loom status`".into(),
     }))
 }
 
@@ -567,6 +588,27 @@ fn triage_contract(id: &str) -> PromptContract {
     }
 }
 
+fn inbox_triage_contract(id: &str) -> PromptContract {
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "Normalize the raw lead. Route it to durable graph work or reject it with a reason; do not let it sit as free text.".into(),
+        why_now: "a raw inbox item is still new".into(),
+        allowed_actions: vec![
+            format!("loom inbox mark {id} triaged --reason <where it was routed>"),
+            format!("loom inbox mark {id} rejected --reason <why it is not actionable>"),
+            "implemented routing commands: loom intent add / loom hypothesis add / loom rule seed / loom task add".into(),
+        ],
+        forbidden_actions: vec![
+            "leave the item new after using it".into(),
+            "drop context without recording the disposition".into(),
+        ],
+        required_evidence: "the durable destination or concrete rejection reason".into(),
+        write_back: format!("loom inbox mark {id} <triaged|rejected|deferred> --reason '…'"),
+        stop_condition: "after disposition, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
 /// Resolve a relationship edge kind from a CLI verb (for `loom edge <kind>`).
 pub fn relationship_kind(verb: &str) -> Option<EdgeKind> {
     match verb {
@@ -630,6 +672,8 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
         needed,
         inbox: store
             .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
-            .len(),
+            .into_iter()
+            .filter(|n| n.status == "new")
+            .count(),
     })
 }

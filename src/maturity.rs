@@ -35,6 +35,31 @@ pub struct Ladder {
     pub next_command: String,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+pub struct ValidationSummary {
+    pub registered: usize,
+    pub passed: usize,
+    pub failed: usize,
+    pub blocked: usize,
+    pub not_run: usize,
+    pub other: usize,
+}
+
+pub fn validation_summary(store: &Store) -> Result<ValidationSummary> {
+    let mut summary = ValidationSummary::default();
+    for v in store.list_nodes(Some(NodeType::Validation), usize::MAX)? {
+        summary.registered += 1;
+        match v.status.as_str() {
+            "passed" => summary.passed += 1,
+            "failed" => summary.failed += 1,
+            "blocked" => summary.blocked += 1,
+            "not_run" => summary.not_run += 1,
+            _ => summary.other += 1,
+        }
+    }
+    Ok(summary)
+}
+
 /// Compute the maturity ladder and compass for the current graph.
 pub fn ladder(store: &Store) -> Result<Ladder> {
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
@@ -82,10 +107,8 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         .edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
         .len();
 
-    // proofs (ring 5): validations linked to implemented intents.
-    let validations = store
-        .list_nodes(Some(NodeType::Validation), usize::MAX)?
-        .len();
+    // proofs (ring 5): registered validations are not proof until they pass.
+    let validations = validation_summary(store)?;
 
     let open_smells = crate::signal::smells(store)?.len();
     let untriaged = crate::signal::untriaged_findings(store)?.len();
@@ -108,6 +131,8 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         active.len(),
         planned,
         ungrounded,
+        implemented.len(),
+        &validations,
         stale,
         uninspected,
         open_smells,
@@ -126,6 +151,8 @@ fn compass(
     active: usize,
     planned: usize,
     ungrounded: usize,
+    implemented: usize,
+    validations: &ValidationSummary,
     stale: usize,
     uninspected: usize,
     open_smells: usize,
@@ -143,6 +170,11 @@ fn compass(
     }
     if planned > 0 || ungrounded > 0 {
         return ("build".into(), "loom next --mode build".into());
+    }
+    if implemented > 0
+        && (validations.registered == 0 || validations.passed < validations.registered)
+    {
+        return ("validate".into(), "loom next --mode validate".into());
     }
     if uninspected > 0 {
         return ("analyze".into(), "loom next --mode analyze".into());
@@ -165,7 +197,7 @@ struct RungInputs {
     planned: usize,
     ungrounded: usize,
     implemented: usize,
-    validations: usize,
+    validations: ValidationSummary,
     stale: usize,
     uninspected: usize,
     open_smells: usize,
@@ -202,12 +234,24 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         name: "proven".into(),
         state: if c.implemented == 0 {
             RungState::NotApplicable
-        } else if c.validations == 0 {
-            RungState::Unmet
-        } else {
+        } else if c.validations.registered > 0 && c.validations.passed == c.validations.registered {
             RungState::Met
+        } else {
+            RungState::Unmet
         },
-        detail: format!("{} validation(s)", c.validations),
+        detail: format!(
+            "{} registered: {} passed, {} failed, {} blocked, {} not_run{}",
+            c.validations.registered,
+            c.validations.passed,
+            c.validations.failed,
+            c.validations.blocked,
+            c.validations.not_run,
+            if c.validations.other > 0 {
+                format!(", {} other", c.validations.other)
+            } else {
+                String::new()
+            }
+        ),
     });
     rungs.push(Rung {
         name: "hardened".into(),

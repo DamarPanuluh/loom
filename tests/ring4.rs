@@ -146,6 +146,28 @@ fn fully_grounded_no_residue_routes_complete() {
             "llm",
         )
         .unwrap();
+    let v = store
+        .add_node(
+            NodeType::Validation,
+            "proof",
+            "",
+            "passed",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let ve = store
+        .add_edge(EdgeKind::Validates, &v.id, &a.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &ve.id,
+            InspectionStatus::Passing,
+            "proof",
+            "cargo test proof",
+            1.0,
+            "llm",
+        )
+        .unwrap();
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "complete");
 }
@@ -185,6 +207,28 @@ fn findings_route_to_triage_until_judged() {
             "grounded",
             "x",
             0.9,
+            "llm",
+        )
+        .unwrap();
+    let v = store
+        .add_node(
+            NodeType::Validation,
+            "proof",
+            "",
+            "passed",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let ve = store
+        .add_edge(EdgeKind::Validates, &v.id, &i.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &ve.id,
+            InspectionStatus::Passing,
+            "proof",
+            "cargo test proof",
+            1.0,
             "llm",
         )
         .unwrap();

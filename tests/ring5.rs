@@ -1,7 +1,7 @@
 //! Ring 5 tests — quality, validation, hypothesis, saga model, vocab/layer.
 
 use loom::cli::{Cli, CodefileCmd, Command, EdgeCmd, IntentCmd, SagaCmd, ValidationCmd};
-use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
+use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::workitem::{self, Mode};
 use std::path::{Path, PathBuf};
@@ -917,4 +917,164 @@ fn global_json_next_all_emits_per_mode_queues() {
     ] {
         assert!(queues.contains_key(mode), "queues has `{mode}`");
     }
+}
+
+#[test]
+fn json_read_commands_emit_json_and_full_fields() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("json-read"));
+    let long = "Rhai op-count determinism and replay: intent 6520b0e7 currently has a long audit note that must not be truncated in JSON";
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let a = store
+            .add_node(
+                NodeType::Intent,
+                "layered behavior a",
+                "",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let b = store
+            .add_node(
+                NodeType::Intent,
+                "layered behavior b",
+                "",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &a.id,
+                TargetKind::Node,
+                "layer",
+                "api",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &b.id,
+                TargetKind::Node,
+                "layer",
+                "storage",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        let cf = store
+            .add_node(
+                NodeType::CodeFile,
+                "src/a.rs",
+                "",
+                "",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        store
+            .add_node(
+                NodeType::CodeFile,
+                "src/orphan.rs",
+                "",
+                "",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        store
+            .add_edge(EdgeKind::Implements, &a.id, &cf.id, TruthClass::Asserted)
+            .unwrap();
+        let validation = store
+            .add_node(
+                NodeType::Validation,
+                "proof-a",
+                "",
+                "not_run",
+                serde_json::json!({"type":"test","command":"true"}),
+            )
+            .unwrap();
+        store
+            .add_edge(
+                EdgeKind::Validates,
+                &validation.id,
+                &a.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .add_node(
+                NodeType::InboxItem,
+                "truncated human title",
+                long,
+                "new",
+                serde_json::json!({"source":"test","link":"file:notes.md"}),
+            )
+            .unwrap();
+    }
+
+    let status = loom_json_out(tmp.path(), &["status", "--json"]);
+    assert_eq!(status["validation_summary"]["registered"], 1);
+    assert_eq!(status["validation_summary"]["not_run"], 1);
+    let proven = status["maturity"]["rungs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["name"] == "proven")
+        .unwrap();
+    assert_eq!(proven["state"], "unmet");
+    assert!(proven["detail"].as_str().unwrap().contains("0 passed"));
+    assert_eq!(status["code_ownership"]["registered"], 2);
+    assert_eq!(status["code_ownership"]["owned"], 1);
+    assert_eq!(status["code_ownership"]["unowned"], 1);
+    assert_eq!(status["detectors"]["layering"]["armed"], false);
+    assert_eq!(
+        status["detectors"]["layering"]["warning"],
+        "no layer order declared"
+    );
+
+    let coverage = loom_json_out(tmp.path(), &["coverage", "--json"]);
+    assert_eq!(coverage["codefiles"]["registered"], 2);
+    assert_eq!(coverage["codefiles"]["unowned"], 1);
+
+    let inbox = loom_json_out(tmp.path(), &["inbox", "list", "--json"]);
+    assert_eq!(inbox[0]["text"], long);
+    assert_eq!(inbox[0]["source"], "test");
+    assert_eq!(inbox[0]["link"], "file:notes.md");
+
+    let validation = loom_json_out(tmp.path(), &["validation", "show", "proof-a", "--json"]);
+    assert_eq!(validation["status"], "not_run");
+    assert_eq!(validation["validates"][0]["name"], "layered behavior a");
+
+    let gaps = loom_json_out(tmp.path(), &["interface", "gaps", "--json"]);
+    assert_eq!(gaps["armed"], false);
+    assert_eq!(gaps["surface_count"], 0);
+    assert_eq!(gaps["warning"], "no surfaces declared");
+
+    let layer = loom_json_out(tmp.path(), &["layer", "list", "--json"]);
+    assert_eq!(layer["armed"], false);
+    assert_eq!(layer["warning"], "no layer order declared");
+}
+
+#[test]
+fn next_all_routes_new_inbox_items_and_discovery_alias_parses() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("inbox-json"));
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        store
+            .add_node(
+                NodeType::InboxItem,
+                "raw lead",
+                "raw lead full text",
+                "new",
+                serde_json::json!({"source":"test"}),
+            )
+            .unwrap();
+    }
+
+    let next = loom_json_out(tmp.path(), &["next", "--all", "--json"]);
+    assert_eq!(next["graph_state"]["inbox"], 1);
+    assert_eq!(next["queues"]["triage"]["target"]["kind"], "inbox_item");
+
+    let discovery = loom_json_out(tmp.path(), &["next", "--mode", "discovery", "--json"]);
+    assert!(discovery.get("work_item").is_some());
 }
