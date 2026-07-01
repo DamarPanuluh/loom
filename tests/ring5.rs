@@ -1301,6 +1301,25 @@ fn proposal_add_text_emits_full_raw_and_empty_items() {
         body["items"].is_array() && body["items"].as_array().unwrap().is_empty(),
         "`body.items` is an empty array on add"
     );
+
+    let frontmatter_raw =
+        "---\ntitle: \"With Frontmatter\"\ntype: proposal\n---\n\n# With Frontmatter\n\nBody";
+    let frontmatter_text_arg = format!("--text={frontmatter_raw}");
+    let frontmatter = loom_json_out(
+        tmp.path(),
+        &[
+            "proposal",
+            "add",
+            "--title",
+            "With Frontmatter",
+            &frontmatter_text_arg,
+            "--json",
+        ],
+    );
+    assert_eq!(
+        frontmatter["description"], "# With Frontmatter",
+        "proposal summary skips YAML frontmatter"
+    );
 }
 
 #[test]

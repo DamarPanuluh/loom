@@ -113,7 +113,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T07:49:58.681Z",
-      "updated_at": "2026-07-01T07:50:14.347Z"
+      "updated_at": "2026-07-01T08:26:14.942Z"
     },
     {
       "id": "321fdfdbb8b61e2e9f977f8d93339cc5",
@@ -526,7 +526,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T07:49:58.674Z",
-      "updated_at": "2026-07-01T07:50:13.480Z"
+      "updated_at": "2026-07-01T08:26:14.112Z"
     },
     {
       "id": "bc0de0c4d44411d1dd1d8f91d77635b8",
@@ -900,6 +900,71 @@
       },
       "created_at": "2026-06-30T14:07:19.973Z",
       "updated_at": "2026-07-01T04:37:31.695Z"
+    },
+    {
+      "id": "ffc35278eff02828a5db18551f63d820",
+      "type": "proposal",
+      "name": "Loom Journey Orchestrator",
+      "description": "---",
+      "status": "captured",
+      "truth_class": "asserted",
+      "body": {
+        "items": [
+          {
+            "kind": "design_decision",
+            "number": 1,
+            "status": "open",
+            "text": "Treat built-in HTTP runner as saga runner extension, not a second proof surface"
+          },
+          {
+            "kind": "model_decision",
+            "number": 2,
+            "status": "open",
+            "text": "Model journey coverage requirements without prematurely adding new graph node types"
+          },
+          {
+            "kind": "model_decision",
+            "number": 3,
+            "status": "open",
+            "text": "Model journey invariant points as proposal/hypothesis candidates until the graph model decision is proven"
+          },
+          {
+            "kind": "hypothesis_candidate",
+            "number": 4,
+            "status": "open",
+            "text": "Discover flows needing journey coverage from entry point to mutation to projection"
+          },
+          {
+            "kind": "intent_candidate",
+            "number": 5,
+            "status": "open",
+            "text": "Generate typed journey-runner prompt context from Loom code understanding"
+          },
+          {
+            "kind": "intent_candidate",
+            "number": 6,
+            "status": "open",
+            "text": "Extend the HTTP/saga runner to support contract JSON, state extraction, query params, auth setup, status checks, and response-field assertions"
+          },
+          {
+            "kind": "intent_candidate",
+            "number": 7,
+            "status": "open",
+            "text": "Enforce drift between covered journey entries, runner functions, tests, and HTTP contract artifacts"
+          },
+          {
+            "kind": "task_candidate",
+            "number": 8,
+            "status": "open",
+            "text": "Resolve journey-orchestrator open questions: code generation ownership, coverage status derivation, and state passing semantics"
+          }
+        ],
+        "raw": "---\ntitle: \"Loom Journey Orchestrator Proposal\"\ntype: proposal\nstatus: draft\n---\n\n# Loom Journey Orchestrator\n\n## Problem\n\nJourneys (end-to-end acceptance scenarios) are currently hand-written in each\nrepo's language using repo-specific types. This means:\n\n1. Every repo reinvents the journey runner pattern from scratch.\n2. Coverage gaps are invisible — nobody knows which flows lack a journey.\n3. Consumer-facing proof (HTTP-level) drifts from the typed runners.\n4. No tool discovers \"this code flow needs a journey\" automatically.\n\n## Proposal\n\nLoom adds a **journey orchestration layer** that is:\n- **Generic** in orchestration (sequencing, state passing, coverage tracking)\n- **Repo-specific** in typed execution (assertions stay in the repo's language)\n- **LLM-driven** in generation (Loom instructs an on-site LLM to write the runner)\n\nLoom has two execution surfaces:\n\n1. **Built-in HTTP runner** (generic, consumer-facing) — reads the HTTP\n   contract JSON, sends requests, checks status codes and response fields.\n   Guided setup prompts for base URL and auth. Shows green/red results.\n   This is for non-technical users who just want to see \"does it work?\"\n\n2. **Typed runner generation** (repo-specific, developer-facing) — Loom\n   instructs an on-site LLM to generate typed journey code in the repo's\n   language. Compile-time invariants, internal state assertions. This is\n   for developers who need proof that domain logic is correct.\n\n## Architecture\n\n```text\nLoom (codebase understanding)\n  ↓ analyzes call graph, data flow, module boundaries\n  ↓ discovers untested flows and invariant points\n\n  ├─→ Built-in HTTP runner (generic)\n  │     reads contract JSON\n  │     guided setup: base URL, auth token\n  │     sends requests, checks status + fields\n  │     shows green/red results\n  │\n  └─→ Typed runner generation (repo-specific)\n        feeds flow context to LLM prompt template\n        LLM generates journey_runner.rs / .py / .ts\n        compiles, runs, proves domain invariants\n```\n\n## HTTP Runner Input Schema\n\nThe built-in HTTP runner reads a contract JSON file from the repo. Each route\nincludes an `example_request` (domain-valid values the LLM generated), an\n`extract` list (session state to pull from responses and carry forward), and\n`response_fields` to verify.\n\n```json\n{\n  \"name\": \"grid-service-http\",\n  \"version\": \"v1\",\n  \"auth\": {\n    \"scheme\": \"bearer\",\n    \"header\": \"Authorization\",\n    \"required\": true\n  },\n  \"routes\": [\n    {\n      \"method\": \"POST\",\n      \"path\": \"/v1/grid/resolve\",\n      \"success_status\": 200,\n      \"example_request\": {\n        \"app_id\": \"app:example\",\n        \"app_user\": \"user-1\",\n        \"proof\": null\n      },\n      \"extract\": [\n        { \"field\": \"person_id\", \"as\": \"person_id\" }\n      ],\n      \"response_fields\": [\"person_id\", \"tenant_id\", \"app_id\", \"app_user\", \"verified_unique\"]\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/v1/grid/record\",\n      \"success_status\": 201,\n      \"example_request\": {\n        \"kind\": \"ExpertVoucher\",\n        \"subject_person_id\": \"{{person_id}}\",\n        \"domain\": \"research\",\n        \"claim\": \"publishes careful work\",\n        \"capacity_units\": 1,\n        \"rationale\": \"worked together\",\n        \"evidence_refs\": [\"ticket:GRID-42\"],\n        \"modifier\": \"standard\",\n        \"idempotency_key\": \"loom-voucher-1\",\n        \"payload_fingerprint\": \"sha256:loom-voucher-1\"\n      },\n      \"extract\": [\n        { \"field\": \"event_id\", \"as\": \"event_id\" }\n      ],\n      \"response_fields\": [\"kind\", \"tenant_id\", \"subject_person_id\", \"event_id\", \"accepted\"]\n    },\n    {\n      \"method\": \"GET\",\n      \"path\": \"/v1/grid/standing/{{person_id}}\",\n      \"success_status\": 200,\n      \"query\": { \"context\": \"research\" },\n      \"example_request\": null,\n      \"extract\": [],\n      \"response_fields\": [\"subject_person_id\", \"headline\", \"voucher_count\", \"safety_signal_count\", \"basis\"]\n    }\n  ]\n}\n```\n\n### Field reference\n\n| Field | Purpose |\n|---|---|\n| `example_request` | Domain-valid request body. `{{variable}}` placeholders are substituted from session state. `null` for GET requests. |\n| `extract` | Values to pull from the JSON response and store in session state for use in later requests. |\n| `query` | Query string parameters. |\n| `response_fields` | Fields the runner verifies exist in the response. |\n\n### Runner execution\n\nFor each route, Loom's HTTP runner:\n\n1. **Guided setup** — prompts user for base URL and auth token (once, stored in session)\n2. **Substitutes variables** — replaces `{{person_id}}` etc. with values extracted from prior responses\n3. **Sends request** — uses `example_request` as the body, `query` as query params\n4. **Checks status** — asserts response status matches `success_status`\n5. **Checks fields** — asserts each `response_fields` entry exists in the JSON response\n6. **Extracts state** — pulls `extract` fields from the response into session state\n7. **Reports** — green/red per route, with the failure reason if red\n\n### Result format\n\n```json\n{\n  \"summary\": \"3/4 routes passed\",\n  \"routes\": [\n    {\n      \"method\": \"POST\",\n      \"path\": \"/v1/grid/resolve\",\n      \"status\": \"passed\",\n      \"response_status\": 200,\n      \"fields_checked\": [\"person_id\", \"tenant_id\", \"app_id\", \"app_user\", \"verified_unique\"]\n    },\n    {\n      \"method\": \"GET\",\n      \"path\": \"/v1/grid/standing/{person_id}\",\n      \"status\": \"failed\",\n      \"response_status\": 404,\n      \"error\": \"expected 200, got 404\"\n    }\n  ]\n}\n```\n\n## New Loom Node Types\n\n### `journey_coverage`\nMarks a code path or module flow as requiring a journey.\n\n```yaml\nnode: journey_coverage\npath: \"src/facade.rs::resolve → record → standing\"\ndescription: \"Core trust ingress flow — resolve a person, record a signal,\n  read standing. Must prove all three basis types appear in projection.\"\nstatus: covered | uncovered | partial\nrunner_ref: \"src/journey_runner.rs::signals_know_kind\"\n```\n\n### `journey_invariant_point`\nMarks where an internal domain assertion should go — a check\nthe journey must verify that may not be visible via HTTP alone.\n\n```yaml\nnode: journey_invariant_point\npath: \"src/standing.rs::StandingView\"\nfield: \"headline\"\nassertion: \"headline > 1.0 when voucher_count >= 1 and safety_signal_count >= 1\"\nreason: \"Trust math threshold — not fully serialized in HTTP response\"\n```\n\n## LLM Prompt Template\n\nLoom generates this prompt for the on-site LLM:\n\n```text\nYou are generating a typed journey runner for this repo.\n\nFlow to cover: {loom_discovered_flow}\nModules involved: {loom_module_list}\nEntry points: {loom_entry_signatures}\nInvariant points: {loom_invariant_markers}\n\nRules:\n1. Use the repo's actual domain types — no generic JSON.\n2. Call the same methods the production handlers call.\n3. Assert internal domain state, not just HTTP status codes.\n4. If a step mutates state, prove the mutation in the next step.\n5. Return a JSON success body with \"ok\": true on success.\n6. Return a descriptive error string on failure.\n\nOutput: a single file in the repo's primary language implementing the runner.\n```\n\n## Plugin Interface (repo-side)\n\nEach repo provides typed hooks that Loom calls during orchestration.\nThese are small, language-specific, and compiled:\n\n```rust\n// Repo provides these — Loom discovers and calls them\npub trait JourneyPlugin {\n    fn flow_name(&self) -> &str;\n    fn setup(&mut self) -> Result<(), String>;\n    fn act(&mut self) -> Result<(), String>;\n    fn assert_internal(&self) -> Result<(), String>;\n    fn assert_external(&self) -> Result<(), String>;\n    fn teardown(&mut self) -> Result<(), String>;\n}\n```\n\nOr simpler — just free functions, no trait required:\n\n```rust\npub fn signals_know_kind(grid: &dyn GridServiceBackend, tenant: &TenantId)\n    -> Result<String, String>;\n```\n\nLoom doesn't care about the shape. It cares that:\n- The function exists\n- It exercises a real flow\n- It returns Ok with proof or Err with reason\n- A test invokes it\n\n## What Loom Owns\n\n| Responsibility | Loom | Repo |\n|---|---|---|\n| Discovering flows needing coverage | ✅ | |\n| Marking invariant points | ✅ | |\n| Generating LLM prompt with codebase context | ✅ | |\n| Modeling/planning multi-step journey sequences | ✅ | |\n| Tracking coverage (covered/uncovered/partial) | ✅ | |\n| Built-in HTTP runner (consumer-facing proof) | ✅ | |\n| Typed domain assertions | | ✅ |\n| Actual typed execution (calling real domain code) | | ✅ |\n| HTTP contract definition | | ✅ |\n\n## Why This Works For Any Repo / Any Language\n\n- Loom's understanding layer is language-agnostic (it reads call graphs).\n- The built-in HTTP runner reads standard JSON contracts — no language dependency.\n- The LLM generates typed runners in the repo's language using the repo's actual types.\n- The plugin interface is minimal — just \"run this flow, return proof.\"\n\n## Existing Reference Implementation\n\nThis repo (`grid`) has a working proof-of-pattern:\n\n- `src/journey_catalog.rs` — 59-route catalog (shared, feature-gated)\n- `src/journey_runner.rs` — typed runner calling real `Grid` trait methods\n- `src/bin/grid-saga-server.rs` — harness dispatching to the runner\n- `docs/reference/grid-service-http-contract.v1.json` — HTTP contract (input for Loom's runner)\n- `crates/grid-service/src/tests.rs::service_http_contract_artifact_matches_public_routes_and_error_shape` — contract drift test\n\nThe signals family (3 of 59 routes) is fully ported. The pattern is established.\n\n## What To Build\n\n1. **Loom node types**: `journey_coverage`, `journey_invariant_point`\n2. **Coverage discovery**: Loom scans for flows matching a pattern (entry point → mutation → projection) and auto-creates `journey_coverage` nodes with `status: uncovered`\n3. **Prompt template**: Loom generates the LLM prompt from its understanding of the discovered flow\n4. **Built-in HTTP runner**: Loom reads the repo's HTTP contract JSON, sends requests, checks status + fields, reports green/red\n5. **Drift enforcement**: Loom checks that every `journey_coverage` node with `status: covered` has a matching runner function and test\n\n## Non-Goals\n\n- Loom does not execute typed journeys (that's the repo's responsibility)\n- Loom does not own domain types or assertions\n- Loom does not require a specific language or framework\n\n## Open Questions\n\n1. Should Loom auto-generate the typed runner code, or just generate the prompt for a human/LLM to execute?\n2. Should coverage status be derived from test results (CI integration) or manually marked?\n3. Should the built-in HTTP runner support state passing between requests (e.g. extract `person_id` from response A and use it in request B)?\n",
+        "source": "file",
+        "source_path": "/Users/laptopdp/Developer/sabrang/grid/docs/proposals/loom-journey-orchestrator.md"
+      },
+      "created_at": "2026-07-01T08:19:42.838Z",
+      "updated_at": "2026-07-01T08:19:42.898Z"
     }
   ],
   "edges": [
@@ -976,7 +1041,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:49:58.674Z",
-      "updated_at": "2026-07-01T07:50:13.480Z"
+      "updated_at": "2026-07-01T08:26:14.111Z"
     },
     {
       "id": "1b5a0122cee466e68b9c98bd2ee292a6",
@@ -1016,12 +1081,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proposal item adoption updates the numbered item exactly once and optionally spawns planned work with source proposal metadata",
-      "evidence": "src/commands/proposal_cmd.rs:227-383 resolves Proposal nodes, rejects terminal item status transitions, marks open items adopted, spawns planned Intent nodes with level facet/source metadata or proposed TaskRecord nodes, records spawned id on the item, and proposal regression tests passed.",
+      "evidence": "src/commands/proposal_cmd.rs:227-383 resolves Proposal nodes, rejects non-open item status transitions, marks open items adopted, spawns planned Intent nodes with level facet/source metadata or proposed TaskRecord nodes, records spawned id on the item, and proposal regression tests passed.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:49:58.666Z",
-      "updated_at": "2026-07-01T07:52:14.262Z"
+      "updated_at": "2026-07-01T08:27:00.096Z"
     },
     {
       "id": "3462d1739752260a485e0c1dd63fd479",
@@ -1031,12 +1096,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proposal commands can capture text/file proposals as durable graph nodes and show/list their structured body",
-      "evidence": "src/commands/proposal_cmd.rs:32-157 implements proposal add/list/show: add enforces exactly one of --file/--text, reads raw text, stores body.raw/body.source/body.source_path/body.items, creates a Proposal node with status captured, and JSON show/list return the stored body; proposal regression tests passed.",
+      "evidence": "src/commands/proposal_cmd.rs:32-157 implements proposal add/list/show: add enforces exactly one of --file/--text, reads raw text, stores body.raw/body.source/body.source_path/body.items, creates a Proposal node with status captured, and JSON show/list return the stored body; src/commands/proposal_cmd.rs:461-493 skips YAML frontmatter when deriving the summary; proposal regression tests passed.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:49:58.658Z",
-      "updated_at": "2026-07-01T07:52:31.043Z"
+      "updated_at": "2026-07-01T08:26:49.852Z"
     },
     {
       "id": "4048cde8936e8610b87a0cccff330f77",
@@ -1141,7 +1206,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:49:58.682Z",
-      "updated_at": "2026-07-01T07:50:14.347Z"
+      "updated_at": "2026-07-01T08:26:14.941Z"
     },
     {
       "id": "7e4d38f75e4c40982db3124f253b4967",
@@ -1151,12 +1216,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proposal item adoption depends on the same Proposal node body contract created and displayed by proposal capture commands",
-      "evidence": "src/commands/proposal_cmd.rs:32-157 creates/shows Proposal nodes with body.items; src/commands/proposal_cmd.rs:192-455 appends/adopts/defer/rejects numbered entries in that same body.items array and records spawned work metadata.",
+      "evidence": "src/commands/proposal_cmd.rs:32-157 creates/shows Proposal nodes with body.items; src/commands/proposal_cmd.rs:192-455 appends/adopts/defer/rejects numbered entries in that same body.items array and records spawned work metadata; proposal regression tests passed.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:53:00.759Z",
-      "updated_at": "2026-07-01T07:53:00.760Z"
+      "updated_at": "2026-07-01T08:27:09.049Z"
     },
     {
       "id": "8a7cbf02b5babeb8389366afa028c14c",
@@ -2692,7 +2757,7 @@
       "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "18d0be1337aef3ce",
+      "value": "5b980f393d333e52",
       "truth_class": "derived"
     },
     {
@@ -2713,7 +2778,7 @@
       "target_id": "e62bb4de1eff205e6ff8abf4f4702f98",
       "target_kind": "node",
       "key": "loc",
-      "value": "471",
+      "value": "493",
       "truth_class": "derived"
     },
     {

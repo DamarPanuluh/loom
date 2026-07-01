@@ -458,9 +458,31 @@ fn item_dispose(
 // helpers
 // ---------------------------------------------------------------------------
 
-/// First non-empty line of raw, truncated to ~100 chars — a short summary.
+/// First meaningful non-empty line of raw, truncated to ~100 chars. Markdown
+/// proposals often start with YAML frontmatter; skip it so `description` carries
+/// the proposal title instead of `---`.
 fn summary(raw: &str) -> String {
-    let first = raw.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
+    let mut lines = raw.lines();
+    let mut in_frontmatter = false;
+    let mut first_seen = false;
+    let first = lines
+        .find(|line| {
+            let trimmed = line.trim();
+            if !first_seen && trimmed == "---" {
+                first_seen = true;
+                in_frontmatter = true;
+                return false;
+            }
+            first_seen = true;
+            if in_frontmatter {
+                if trimmed == "---" {
+                    in_frontmatter = false;
+                }
+                return false;
+            }
+            !trimmed.is_empty()
+        })
+        .unwrap_or("");
     if first.chars().count() > 100 {
         let mut s: String = first.chars().take(97).collect();
         s.push_str("...");
