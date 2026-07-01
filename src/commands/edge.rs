@@ -9,28 +9,32 @@ use crate::Result;
 use anyhow::anyhow;
 use std::path::Path;
 
-pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd) -> Result<()> {
+pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         EdgeCmd::Implement {
             intent,
             codefile,
             locator,
-        } => edge_implement(&store, intent, codefile, locator),
+        } => edge_implement(&store, intent, codefile, locator, json),
         EdgeCmd::Call {
             validation,
             surface,
-        } => edge_call(&store, validation, surface),
-        EdgeCmd::Remove { edge_id, reason } => edge_remove(&store, edge_id, reason),
-        EdgeCmd::SetLocator { edge_id, locator } => edge_set_locator(&store, edge_id, locator),
-        EdgeCmd::Relate { kind, from, to } => edge_relate(&store, kind, from, to),
+        } => edge_call(&store, validation, surface, json),
+        EdgeCmd::Remove { edge_id, reason } => edge_remove(&store, edge_id, reason, json),
+        EdgeCmd::SetLocator { edge_id, locator } => {
+            edge_set_locator(&store, edge_id, locator, json)
+        }
+        EdgeCmd::Relate { kind, from, to } => edge_relate(&store, kind, from, to, json),
         EdgeCmd::Verdict {
             edge_id,
             verdict,
             criterion,
             evidence,
             confidence,
-        } => edge_verdict(&store, edge_id, verdict, criterion, evidence, confidence),
+        } => edge_verdict(
+            &store, edge_id, verdict, criterion, evidence, confidence, json,
+        ),
         EdgeCmd::Explore {
             a,
             b,
@@ -38,9 +42,9 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd) -> Result<()> {
             criterion,
             evidence,
             confidence,
-        } => edge_explore(&store, a, b, verdict, criterion, evidence, confidence),
-        EdgeCmd::Show { edge_id } => edge_show(&store, edge_id),
-        EdgeCmd::List { limit } => edge_list(&store, limit),
+        } => edge_explore(&store, a, b, verdict, criterion, evidence, confidence, json),
+        EdgeCmd::Show { edge_id } => edge_show(&store, edge_id, json),
+        EdgeCmd::List { limit } => edge_list(&store, limit, json),
     }
 }
 
@@ -49,6 +53,7 @@ fn edge_implement(
     intent: String,
     codefile: String,
     locator: Option<String>,
+    _json: bool,
 ) -> Result<()> {
     let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
     let cf = store.resolve_node(&codefile, Some(NodeType::CodeFile))?;
@@ -68,7 +73,7 @@ fn edge_implement(
 
 /// Bind a validation to an interface surface it exercises (a `calls` edge).
 /// Idempotent: re-calling the same pair returns the existing edge.
-fn edge_call(store: &Store, validation: String, surface: String) -> Result<()> {
+fn edge_call(store: &Store, validation: String, surface: String, _json: bool) -> Result<()> {
     let v = store.resolve_node(&validation, Some(NodeType::Validation))?;
     let s = store.resolve_node(&surface, Some(NodeType::InterfaceSurface))?;
     let existing = store.edges_with(Some(EdgeKind::Calls), Some(&v.id), Some(&s.id))?;
@@ -83,7 +88,7 @@ fn edge_call(store: &Store, validation: String, surface: String) -> Result<()> {
 /// Prune an edge. Refuses derived edges — those are recomputed by `loom sync`,
 /// so deleting one is pointless (it returns on the next sync); the fix is to
 /// remove its source. Asserted edges (a redundant grounding/relationship) go.
-fn edge_remove(store: &Store, edge_id: String, reason: Option<String>) -> Result<()> {
+fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, _json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
@@ -133,7 +138,7 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>) -> Result
 
 /// Correct the `locator` (symbol) facet on an asserted edge — e.g. a grounding
 /// whose target symbol moved or was misnamed. Upserts; refuses derived edges.
-fn edge_set_locator(store: &Store, edge_id: String, locator: String) -> Result<()> {
+fn edge_set_locator(store: &Store, edge_id: String, locator: String, _json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
@@ -156,7 +161,7 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String) -> Result<(
     Ok(())
 }
 
-fn edge_relate(store: &Store, kind: String, from: String, to: String) -> Result<()> {
+fn edge_relate(store: &Store, kind: String, from: String, to: String, _json: bool) -> Result<()> {
     let k = workitem::relationship_kind(&kind)
         .ok_or_else(|| anyhow!("unknown relationship kind '{kind}'"))?;
     let a = store.resolve_node(&from, Some(NodeType::Intent))?;
@@ -173,6 +178,7 @@ fn edge_verdict(
     criterion: String,
     evidence: String,
     confidence: f64,
+    _json: bool,
 ) -> Result<()> {
     let status = verdict_status(&verdict)?;
     let target = store.resolve_edge(&edge_id)?;
@@ -190,6 +196,7 @@ fn edge_explore(
     criterion: String,
     evidence: String,
     confidence: f64,
+    _json: bool,
 ) -> Result<()> {
     let ia = store.resolve_node(&a, Some(NodeType::Intent))?;
     let ib = store.resolve_node(&b, Some(NodeType::Intent))?;
@@ -205,33 +212,41 @@ fn edge_explore(
     Ok(())
 }
 
-fn edge_show(store: &Store, edge_id: String) -> Result<()> {
+fn edge_show(store: &Store, edge_id: String, json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
-    println!("{} [{}]", e.kind, e.id);
-    println!("  {} → {}", e.from_id, e.to_id);
-    println!("  truth_class: {}  status: {}", e.truth_class, e.status);
-    if !e.criterion.is_empty() {
-        println!("  criterion: {}", e.criterion);
-    }
-    if !e.evidence.is_empty() {
-        println!("  evidence: {}", e.evidence);
+    if json {
+        println!("{}", serde_json::to_string_pretty(&e)?);
+    } else {
+        println!("{} [{}]", e.kind, e.id);
+        println!("  {} → {}", e.from_id, e.to_id);
+        println!("  truth_class: {}  status: {}", e.truth_class, e.status);
+        if !e.criterion.is_empty() {
+            println!("  criterion: {}", e.criterion);
+        }
+        if !e.evidence.is_empty() {
+            println!("  evidence: {}", e.evidence);
+        }
     }
     Ok(())
 }
 
-fn edge_list(store: &Store, limit: usize) -> Result<()> {
+fn edge_list(store: &Store, limit: usize, json: bool) -> Result<()> {
     let edges = store.list_edges(None, limit)?;
-    if edges.is_empty() {
-        println!("no edges");
-    }
-    for e in &edges {
-        println!(
-            "{:<10} {:<18} {} [{}]",
-            e.truth_class,
-            e.kind,
-            e.status,
-            &e.id[..8]
-        );
+    if json {
+        println!("{}", serde_json::to_string_pretty(&edges)?);
+    } else {
+        if edges.is_empty() {
+            println!("no edges");
+        }
+        for e in &edges {
+            println!(
+                "{:<10} {:<18} {} [{}]",
+                e.truth_class,
+                e.kind,
+                e.status,
+                &e.id[..8]
+            );
+        }
     }
     Ok(())
 }

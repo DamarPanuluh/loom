@@ -1078,3 +1078,173 @@ fn next_all_routes_new_inbox_items_and_discovery_alias_parses() {
     let discovery = loom_json_out(tmp.path(), &["next", "--mode", "discovery", "--json"]);
     assert!(discovery.get("work_item").is_some());
 }
+
+#[test]
+fn advertised_global_json_read_commands_parse_as_json() {
+    let tmp = Tmp::new();
+
+    let init_out = std::process::Command::new(loom_bin())
+        .arg("init")
+        .arg(tmp.path())
+        .arg("--json")
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom init --json: {e}"));
+    assert!(
+        init_out.status.success(),
+        "loom init --json failed: {:?}\n{}",
+        init_out.status,
+        String::from_utf8_lossy(&init_out.stderr)
+    );
+    serde_json::from_slice::<serde_json::Value>(&init_out.stdout)
+        .expect("loom init --json emits JSON");
+
+    let edge_id: String;
+
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "behavior matrix",
+                "matrix behavior",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let codefile = store
+            .add_node(
+                NodeType::CodeFile,
+                "src/matrix.rs",
+                "",
+                "",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let edge = store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &codefile.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        edge_id = edge.id.clone();
+        store
+            .add_node(
+                NodeType::Validation,
+                "matrix proof",
+                "",
+                "not_run",
+                serde_json::json!({"type":"test","command":"true"}),
+            )
+            .unwrap();
+        store
+            .add_node(
+                NodeType::QualityRule,
+                "matrix rule",
+                "matrix rule description",
+                "",
+                serde_json::json!({"category":"test"}),
+            )
+            .unwrap();
+        store
+            .add_node(
+                NodeType::Hypothesis,
+                "matrix hypothesis",
+                "claim",
+                "proposed",
+                serde_json::json!({"proposal":"try it","predicted_outcome":"works"}),
+            )
+            .unwrap();
+        store
+            .add_node(
+                NodeType::InterfaceSurface,
+                "matrix surface",
+                "",
+                "",
+                serde_json::json!({"kind":"api","identity":"matrix"}),
+            )
+            .unwrap();
+        store
+            .add_node(
+                NodeType::InboxItem,
+                "matrix inbox",
+                "matrix inbox full text",
+                "new",
+                serde_json::json!({"source":"test"}),
+            )
+            .unwrap();
+        store.add_vocab_term("matrix", "test vocabulary").unwrap();
+        store
+            .set_meta(
+                "ignores",
+                &serde_json::to_string(&serde_json::json!([
+                    {"glob":"target/**","reason":"generated"}
+                ]))
+                .unwrap(),
+            )
+            .unwrap();
+        store
+            .add_node(
+                NodeType::TaskRecord,
+                "matrix task",
+                "",
+                "proposed",
+                serde_json::json!({"kind":"test"}),
+            )
+            .unwrap();
+    }
+
+    let commands: &[&[&str]] = &[
+        &["status", "--json"],
+        &["next", "--all", "--json"],
+        &["coverage", "--json"],
+        &["inbox", "list", "--json"],
+        &["validation", "list", "--json"],
+        &["interface", "gaps", "--json"],
+        &["layer", "list", "--json"],
+        &["finding", "list", "--json"],
+        &["doctor", "--json"],
+        &["smells", "--json"],
+        &["debt", "--json"],
+        &["codefile", "list", "--json"],
+        &["intent", "list", "--json"],
+        &["rule", "list", "--json"],
+        &["hypothesis", "list", "--json"],
+        &["surface", "list", "--json"],
+        &["saga", "list", "--json"],
+        &["vocab", "list", "--json"],
+        &["ignore", "list", "--json"],
+        &["task", "list", "--json"],
+        &["whoami", "--json"],
+        &["session", "--json"],
+        &["detect", "--json"],
+        &["schema", "--json"],
+        &["find", "behavior", "--json"],
+        &["edge", "list", "--json"],
+        &["guide", "--json"],
+        &["sync", "--json"],
+        &["validate", "--all", "--json"],
+    ];
+
+    for args in commands {
+        let _ = loom_json_out(tmp.path(), args);
+    }
+
+    let _ = loom_json_out(
+        tmp.path(),
+        &["validation", "show", "matrix proof", "--json"],
+    );
+    let _ = loom_json_out(tmp.path(), &["codefile", "show", "src/matrix.rs", "--json"]);
+    let _ = loom_json_out(tmp.path(), &["rule", "show", "matrix rule", "--json"]);
+    let _ = loom_json_out(
+        tmp.path(),
+        &["hypothesis", "show", "matrix hypothesis", "--json"],
+    );
+    let _ = loom_json_out(tmp.path(), &["surface", "show", "matrix surface", "--json"]);
+    let _ = loom_json_out(tmp.path(), &["task", "show", "matrix task", "--json"]);
+    let _ = loom_json_out(tmp.path(), &["edge", "show", edge_id.as_str(), "--json"]);
+    let _ = loom_json_out(tmp.path(), &["export", "--json"]);
+    let _ = loom_json_out(tmp.path(), &["export", "--check", "--json"]);
+    let _ = loom_json_out(tmp.path(), &["door", "raw matrix note", "--json"]);
+}

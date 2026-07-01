@@ -8,17 +8,26 @@ use crate::Result;
 use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 
-pub fn dispatch(graph: Option<&Path>, cmd: SagaCmd) -> Result<()> {
+pub fn dispatch(graph: Option<&Path>, cmd: SagaCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
-        SagaCmd::Add { spec } => saga_add(&store, spec),
-        SagaCmd::List { limit } => saga_list(&store, limit),
-        SagaCmd::Run { spec } => saga_run(&store, spec),
-        SagaCmd::Diagnose { spec } => saga_diagnose(&store, spec),
+        SagaCmd::Add { spec } => saga_add(&store, spec, json),
+        SagaCmd::List { limit } => saga_list(&store, limit, json),
+        SagaCmd::Run { spec } => saga_run(&store, spec, json),
+        SagaCmd::Diagnose { spec } => saga_diagnose(&store, spec, json),
     }
 }
 
-fn saga_add(store: &Store, spec: PathBuf) -> Result<()> {
+fn outcome_json(o: &crate::saga::StepOutcome) -> serde_json::Value {
+    serde_json::json!({
+        "name": o.name,
+        "intent": o.intent,
+        "passed": o.passed,
+        "detail": o.detail,
+    })
+}
+
+fn saga_add(store: &Store, spec: PathBuf, json: bool) -> Result<()> {
     let text =
         std::fs::read_to_string(&spec).map_err(|e| anyhow!("reading {}: {e}", spec.display()))?;
     let parsed: serde_json::Value =
@@ -54,24 +63,55 @@ fn saga_add(store: &Store, spec: PathBuf) -> Result<()> {
         }
         prev = Some(intent.id);
     }
-    println!("added saga '{}' ({linked} step intent(s))", name);
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "added": true,
+                "validation": val,
+                "linked_steps": linked,
+            }))?
+        );
+    } else {
+        println!("added saga '{}' ({linked} step intent(s))", name);
+    }
     Ok(())
 }
 
-fn saga_list(store: &Store, limit: usize) -> Result<()> {
-    for n in store.list_nodes(Some(NodeType::Validation), limit)? {
-        if n.body.get("type").and_then(|t| t.as_str()) == Some("saga") {
+fn saga_list(store: &Store, limit: usize, json: bool) -> Result<()> {
+    let sagas: Vec<_> = store
+        .list_nodes(Some(NodeType::Validation), limit)?
+        .into_iter()
+        .filter(|n| n.body.get("type").and_then(|t| t.as_str()) == Some("saga"))
+        .collect();
+    if json {
+        println!("{}", serde_json::to_string_pretty(&sagas)?);
+    } else {
+        for n in &sagas {
             println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
         }
     }
     Ok(())
 }
 
-fn saga_run(store: &Store, spec: PathBuf) -> Result<()> {
+fn saga_run(store: &Store, spec: PathBuf, json: bool) -> Result<()> {
     let parsed = crate::saga::parse(&spec)?;
     crate::saga::require(store, &parsed.saga)?;
     let outcomes = crate::saga::execute(store, &parsed, true)?;
     let passed = outcomes.iter().filter(|o| o.passed).count();
+    if json {
+        let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "saga": parsed.saga,
+                "passed": passed,
+                "total": rows.len(),
+                "outcomes": rows,
+            }))?
+        );
+        return Ok(());
+    }
     for o in &outcomes {
         println!(
             "{} {} — {}",
@@ -89,12 +129,25 @@ fn saga_run(store: &Store, spec: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn saga_diagnose(store: &Store, spec: PathBuf) -> Result<()> {
+fn saga_diagnose(store: &Store, spec: PathBuf, json: bool) -> Result<()> {
     let parsed = crate::saga::parse(&spec)?;
-    for h in crate::saga::diagnose_hints(&parsed) {
+    let hints = crate::saga::diagnose_hints(&parsed);
+    let outcomes = crate::saga::execute(store, &parsed, false)?;
+    if json {
+        let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "saga": parsed.saga,
+                "hints": hints,
+                "outcomes": rows,
+            }))?
+        );
+        return Ok(());
+    }
+    for h in hints {
         println!("hint: {h}");
     }
-    let outcomes = crate::saga::execute(store, &parsed, false)?;
     for o in &outcomes {
         println!(
             "{} {} — {}",

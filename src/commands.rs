@@ -7,7 +7,7 @@ use crate::cli::{
     Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,
     LayerCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
 };
-use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
 use crate::{travel, workitem};
@@ -30,24 +30,37 @@ pub fn run(cli: Cli) -> Result<()> {
             let root = path.unwrap_or_else(|| PathBuf::from("."));
             let store = Store::init(&root, name.as_deref(), observed)?;
             let id = store.identity()?;
-            println!(
-                "initialized graph '{}' ({}) at {}",
-                id.name,
-                &id.graph_id[..8.min(id.graph_id.len())],
-                root.join(crate::LOOM_DIR).display()
-            );
-            if observed {
+            if cli.json {
                 println!(
-                    "  observed graph — discovery/quality/validation only; build/fix lanes disabled"
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "initialized": true,
+                        "name": id.name,
+                        "graph_id": id.graph_id,
+                        "path": root.join(crate::LOOM_DIR),
+                        "observed": observed,
+                    }))?
                 );
+            } else {
+                println!(
+                    "initialized graph '{}' ({}) at {}",
+                    id.name,
+                    &id.graph_id[..8.min(id.graph_id.len())],
+                    root.join(crate::LOOM_DIR).display()
+                );
+                if observed {
+                    println!(
+                        "  observed graph — discovery/quality/validation only; build/fix lanes disabled"
+                    );
+                }
             }
             Ok(())
         }
         Command::Intent { cmd } => intent::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Codefile { cmd } => codefile(cli.graph.as_deref(), cmd, cli.json),
-        Command::Export { check } => export(cli.graph.as_deref(), check),
-        Command::Import { file } => import(cli.graph.as_deref(), &file),
-        Command::Sync => sync_cmd(cli.graph.as_deref()),
+        Command::Export { check } => export(cli.graph.as_deref(), check, cli.json),
+        Command::Import { file } => import(cli.graph.as_deref(), &file, cli.json),
+        Command::Sync => sync_cmd(cli.graph.as_deref(), cli.json),
         Command::Status => status(cli.graph.as_deref(), cli.json),
         Command::Next { mode, all } => {
             if all {
@@ -56,22 +69,24 @@ pub fn run(cli: Cli) -> Result<()> {
                 next_cmd(cli.graph.as_deref(), mode.as_deref(), cli.json)
             }
         }
-        Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd),
-        Command::Door { utterance } => door(cli.graph.as_deref(), &utterance),
+        Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Door { utterance } => door(cli.graph.as_deref(), &utterance, cli.json),
         Command::Inbox { cmd } => inbox(cli.graph.as_deref(), cmd, cli.json),
-        Command::Task { cmd } => task(cli.graph.as_deref(), cmd),
-        Command::Session => session(cli.graph.as_deref()),
-        Command::Guide { role } => guide(role.as_deref()),
-        Command::Find { query, limit } => find_cmd(cli.graph.as_deref(), &query, limit),
-        Command::Detect => detect_cmd(cli.graph.as_deref()),
-        Command::Schema => schema_cmd(),
-        Command::Rule { cmd } => rule(cli.graph.as_deref(), cmd),
+        Command::Task { cmd } => task(cli.graph.as_deref(), cmd, cli.json),
+        Command::Session => session(cli.graph.as_deref(), cli.json),
+        Command::Guide { role } => guide(role.as_deref(), cli.json),
+        Command::Find { query, limit } => find_cmd(cli.graph.as_deref(), &query, limit, cli.json),
+        Command::Detect => detect_cmd(cli.graph.as_deref(), cli.json),
+        Command::Schema => schema_cmd(cli.json),
+        Command::Rule { cmd } => rule(cli.graph.as_deref(), cmd, cli.json),
         Command::Validation { cmd } => validation(cli.graph.as_deref(), cmd, cli.json),
-        Command::Validate { intent, all } => validate_cmd(cli.graph.as_deref(), &intent, all),
-        Command::Hypothesis { cmd } => hypothesis(cli.graph.as_deref(), cmd),
-        Command::Surface { cmd } => surface(cli.graph.as_deref(), cmd),
-        Command::Saga { cmd } => saga::dispatch(cli.graph.as_deref(), cmd),
-        Command::Vocab { cmd } => vocab(cli.graph.as_deref(), cmd),
+        Command::Validate { intent, all } => {
+            validate_cmd(cli.graph.as_deref(), &intent, all, cli.json)
+        }
+        Command::Hypothesis { cmd } => hypothesis(cli.graph.as_deref(), cmd, cli.json),
+        Command::Surface { cmd } => surface(cli.graph.as_deref(), cmd, cli.json),
+        Command::Saga { cmd } => saga::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Vocab { cmd } => vocab(cli.graph.as_deref(), cmd, cli.json),
         Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd, cli.json),
         Command::Interface { cmd } => interface(cli.graph.as_deref(), cmd, cli.json),
         Command::Smells => smells_cmd(cli.graph.as_deref(), cli.json),
@@ -79,8 +94,8 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Finding { cmd } => finding(cli.graph.as_deref(), cmd, cli.json),
         Command::Doctor => doctor_cmd(cli.graph.as_deref(), cli.json),
         Command::Coverage => coverage_cmd(cli.graph.as_deref(), cli.json),
-        Command::Ignore { cmd } => ignore_cmd(cli.graph.as_deref(), cmd),
-        Command::Whoami => whoami_cmd(cli.graph.as_deref()),
+        Command::Ignore { cmd } => ignore_cmd(cli.graph.as_deref(), cmd, cli.json),
+        Command::Whoami => whoami_cmd(cli.graph.as_deref(), cli.json),
     }
 }
 
@@ -102,6 +117,20 @@ fn resolve_root(graph: Option<&Path>) -> Result<PathBuf> {
 fn open(graph: Option<&Path>) -> Result<Store> {
     let root = resolve_root(graph)?;
     Store::open(&root)
+}
+
+fn node_json(n: &Node) -> serde_json::Value {
+    serde_json::json!({
+        "id": n.id,
+        "type": n.node_type.as_str(),
+        "name": n.name,
+        "description": n.description,
+        "status": n.status,
+        "truth_class": n.truth_class.as_str(),
+        "body": n.body,
+        "created_at": n.created_at,
+        "updated_at": n.updated_at,
+    })
 }
 
 /// After a judgment (a verdict / mark), echo loom's recommended next move so the
@@ -154,18 +183,44 @@ fn codefile(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Result<()> {
             let store = open(graph)?;
             let n = store.resolve_node(&key, Some(NodeType::CodeFile))?;
             store.delete_node(&n.id)?;
-            println!("removed codefile '{}' (and its groundings)", n.name);
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "removed": true,
+                        "codefile": node_json(&n),
+                    }))?
+                );
+            } else {
+                println!("removed codefile '{}' (and its groundings)", n.name);
+            }
             Ok(())
         }
         CodefileCmd::Show { key } => codefile_show(graph, &key, json),
         CodefileCmd::List { limit } => {
             let store = open(graph)?;
             let files = store.list_nodes(Some(NodeType::CodeFile), limit)?;
-            if files.is_empty() {
-                println!("no codefiles");
-            }
-            for n in &files {
-                println!("{} [{}]", n.name, &n.id[..8]);
+            if json {
+                let rows: Vec<_> = files
+                    .iter()
+                    .map(|n| {
+                        serde_json::json!({
+                            "id": n.id,
+                            "path": n.name,
+                            "status": n.status,
+                            "created_at": n.created_at,
+                            "updated_at": n.updated_at,
+                        })
+                    })
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                if files.is_empty() {
+                    println!("no codefiles");
+                }
+                for n in &files {
+                    println!("{} [{}]", n.name, &n.id[..8]);
+                }
             }
             Ok(())
         }
@@ -340,11 +395,18 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn export(graph: Option<&Path>, check: bool) -> Result<()> {
+fn export(graph: Option<&Path>, check: bool, json: bool) -> Result<()> {
     let store = open(graph)?;
     if check {
         if travel::export_is_fresh(&store)? {
-            println!("export is fresh");
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({ "fresh": true }))?
+                );
+            } else {
+                println!("export is fresh");
+            }
             Ok(())
         } else {
             bail!(
@@ -354,31 +416,68 @@ fn export(graph: Option<&Path>, check: bool) -> Result<()> {
         }
     } else {
         let path = travel::export_to_file(&store)?;
-        println!("wrote {}", path.display());
+        if json {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "written": true,
+                    "path": path,
+                }))?
+            );
+        } else {
+            println!("wrote {}", path.display());
+        }
         Ok(())
     }
 }
 
-fn import(graph: Option<&Path>, file: &Path) -> Result<()> {
+fn import(graph: Option<&Path>, file: &Path, json: bool) -> Result<()> {
     let root = if let Some(g) = graph {
         g.to_path_buf()
     } else {
         std::env::current_dir()?
     };
-    // Phase 1: parse the export fully before touching the store.
     let export = travel::read_export(file)?;
-    // Initialize a fresh store and restore.
     let mut store = Store::init(&root, None, false)?;
     store.restore(&export.into_snapshot())?;
     let id = store.identity()?;
-    println!("imported graph '{}' from {}", id.name, file.display());
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "imported": true,
+                "name": id.name,
+                "graph_id": id.graph_id,
+                "file": file,
+            }))?
+        );
+    } else {
+        println!("imported graph '{}' from {}", id.name, file.display());
+    }
     Ok(())
 }
 
-fn sync_cmd(graph: Option<&Path>) -> Result<()> {
+fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let root = resolve_root(graph)?;
     let store = Store::open(&root)?;
     let report = crate::sync::run(&store, &root)?;
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "files_scanned": report.files_scanned,
+                "files_changed": report.files_changed,
+                "edges_staled": report.edges_staled,
+                "validations_reset": report.validations_reset,
+                "findings": report.findings,
+                "contracts_reset": report.contracts_reset,
+                "surfaces_affected": report.surfaces_affected,
+                "files_deleted": report.files_deleted,
+                "missing": report.missing,
+            }))?
+        );
+        return Ok(());
+    }
     println!(
         "sync: {} scanned, {} changed, {} edges staled, {} validations reset, {} findings",
         report.files_scanned,
@@ -701,7 +800,7 @@ fn verdict_status(verdict: &str) -> Result<InspectionStatus> {
     }
 }
 
-fn door(graph: Option<&Path>, utterance: &str) -> Result<()> {
+fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<()> {
     let store = open(graph)?;
     let item = store.add_node(
         NodeType::InboxItem,
@@ -710,8 +809,12 @@ fn door(graph: Option<&Path>, utterance: &str) -> Result<()> {
         "new",
         serde_json::json!({ "source": "human" }),
     )?;
-    println!("captured inbox item [{}]", &item.id[..8]);
-    println!("  normalize it, then route via loom intent/edge/rule, then `loom inbox mark`");
+    if json {
+        println!("{}", serde_json::to_string_pretty(&node_json(&item))?);
+    } else {
+        println!("captured inbox item [{}]", &item.id[..8]);
+        println!("  normalize it, then route via loom intent/edge/rule, then `loom inbox mark`");
+    }
     Ok(())
 }
 
@@ -781,7 +884,7 @@ fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<()> {
     }
 }
 
-fn task(graph: Option<&Path>, cmd: TaskCmd) -> Result<()> {
+fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         TaskCmd::Add { title, kind } => {
@@ -815,25 +918,34 @@ fn task(graph: Option<&Path>, cmd: TaskCmd) -> Result<()> {
         }
         TaskCmd::Show { key } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
-            println!("{} [{}]", t.name, t.id);
-            println!("  status: {}", t.status);
-            println!("  {}", t.body);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&node_json(&t))?);
+            } else {
+                println!("{} [{}]", t.name, t.id);
+                println!("  status: {}", t.status);
+                println!("  {}", t.body);
+            }
             Ok(())
         }
         TaskCmd::List { limit } => {
             let tasks = store.list_nodes(Some(NodeType::TaskRecord), limit)?;
-            if tasks.is_empty() {
-                println!("no tasks");
-            }
-            for n in &tasks {
-                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+            if json {
+                let rows: Vec<_> = tasks.iter().map(node_json).collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                if tasks.is_empty() {
+                    println!("no tasks");
+                }
+                for n in &tasks {
+                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
             }
             Ok(())
         }
     }
 }
 
-fn session(graph: Option<&Path>) -> Result<()> {
+fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     let planned = store
         .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
@@ -853,6 +965,34 @@ fn session(graph: Option<&Path>) -> Result<()> {
     let inbox = store
         .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
         .len();
+    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
+    let codefiles = store
+        .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
+        .len();
+    if json {
+        let recommended = if stale > 0 {
+            "loom next --mode fix"
+        } else if planned > 0 {
+            "loom next --mode build"
+        } else if uninspected > 0 {
+            "loom next --mode analyze"
+        } else {
+            "loom status"
+        };
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "planned": planned,
+                "stale": stale,
+                "uninspected": uninspected,
+                "inbox": inbox,
+                "intents": intents,
+                "codefiles": codefiles,
+                "recommended": recommended,
+            }))?
+        );
+        return Ok(());
+    }
     println!("what do you want from this session? offers:");
     if stale > 0 {
         println!(
@@ -864,19 +1004,13 @@ fn session(graph: Option<&Path>) -> Result<()> {
         );
     } else if uninspected > 0 {
         println!("  - inspect {uninspected} claim(s)           [loom next --mode analyze]  (recommended)");
+    } else if intents == 0 && codefiles == 0 {
+        println!("  - fresh graph — nothing mapped yet. Start here:");
+        println!("      loom guide                  the driving loop + roles");
+        println!("      loom guide --role monitor   watch an upstream you depend on");
+        println!("      loom intent add --name <pillar>   seed what this codebase should do");
     } else {
-        let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
-        let files = store
-            .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
-            .len();
-        if intents == 0 && files == 0 {
-            println!("  - fresh graph — nothing mapped yet. Start here:");
-            println!("      loom guide                  the driving loop + roles");
-            println!("      loom guide --role monitor   watch an upstream you depend on");
-            println!("      loom intent add --name <pillar>   seed what this codebase should do");
-        } else {
-            println!("  - graph is settled; map more, or just get to work");
-        }
+        println!("  - graph is settled; map more, or just get to work");
     }
     if inbox > 0 {
         println!("  - {inbox} inbox item(s) to triage          [loom inbox list]");
@@ -884,7 +1018,18 @@ fn session(graph: Option<&Path>) -> Result<()> {
     Ok(())
 }
 
-fn guide(role: Option<&str>) -> Result<()> {
+fn guide(role: Option<&str>, json: bool) -> Result<()> {
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "role": role,
+                "commands": ["loom sync", "loom next", "loom status", "loom door"],
+                "roles": ["builder", "analyzer", "fixer", "validator", "quality", "monitor"],
+            }))?
+        );
+        return Ok(());
+    }
     match role {
         None => {
             println!("loom — driving protocol (the loop):");
@@ -1032,7 +1177,7 @@ fn query_terms(query: &str) -> Vec<String> {
     q
 }
 
-fn find_cmd(graph: Option<&Path>, query: &str, limit: usize) -> Result<()> {
+fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
     let q = query_terms(query);
     let score = |hay: &str| -> usize {
@@ -1052,45 +1197,78 @@ fn find_cmd(graph: Option<&Path>, query: &str, limit: usize) -> Result<()> {
         }
     }
     hits.sort_by(|a, b| b.0.cmp(&a.0).then(a.2.cmp(&b.2)));
-    if hits.is_empty() {
-        println!("no match for '{query}' — try `loom status` to see coverage, or it may not exist");
-    }
-    for (s, kind, name, id) in hits.into_iter().take(limit) {
-        println!("{:<10} {} [{}] (score {s})", kind, name, &id[..8]);
-        // An intent's worth is *where its behavior lives* and *whether that is
-        // confirmed* — not merely that a node exists. Surface the grounding so
-        // `find` answers "where + proven?", the edge a plain text search lacks.
-        if kind == "intent" {
-            let grounds = store.edges_with(Some(EdgeKind::Implements), Some(&id), None)?;
-            if grounds.is_empty() {
-                println!("             ↳ (ungrounded — no implements edge yet)");
+    let limited: Vec<_> = hits.into_iter().take(limit).collect();
+    if json {
+        let mut rows = Vec::new();
+        for (s, kind, name, id) in &limited {
+            let mut groundings = Vec::new();
+            if kind == "intent" {
+                for e in store.edges_with(Some(EdgeKind::Implements), Some(id), None)? {
+                    let path = store
+                        .get_node(&e.to_id)?
+                        .map(|n| n.name)
+                        .unwrap_or_else(|| e.to_id.clone());
+                    let locator = store
+                        .get_facet(&e.id, TargetKind::Edge, "locator")?
+                        .unwrap_or_default();
+                    groundings.push(serde_json::json!({
+                        "edge_id": e.id,
+                        "path": path,
+                        "locator": locator,
+                        "status": e.status.as_str(),
+                        "evidence": e.evidence,
+                    }));
+                }
             }
-            for e in grounds {
-                let path = store
-                    .get_node(&e.to_id)?
-                    .map(|n| n.name)
-                    .unwrap_or_else(|| e.to_id.clone());
-                let loc = store
-                    .get_facet(&e.id, TargetKind::Edge, "locator")?
-                    .unwrap_or_default();
-                let at = if loc.is_empty() {
-                    String::new()
-                } else {
-                    format!(" @ {loc}")
-                };
-                let ev = if e.evidence.is_empty() {
-                    String::new()
-                } else {
-                    format!(" — {}", e.evidence)
-                };
-                println!("             ↳ {path}{at} [{}]{ev}", e.status.as_str());
+            rows.push(serde_json::json!({
+                "score": s,
+                "kind": kind,
+                "name": name,
+                "id": id,
+                "groundings": groundings,
+            }));
+        }
+        println!("{}", serde_json::to_string_pretty(&rows)?);
+    } else {
+        if limited.is_empty() {
+            println!(
+                "no match for '{query}' — try `loom status` to see coverage, or it may not exist"
+            );
+        }
+        for (s, kind, name, id) in limited {
+            println!("{:<10} {} [{}] (score {s})", kind, name, &id[..8]);
+            if kind == "intent" {
+                let grounds = store.edges_with(Some(EdgeKind::Implements), Some(&id), None)?;
+                if grounds.is_empty() {
+                    println!("             ↳ (ungrounded — no implements edge yet)");
+                }
+                for e in grounds {
+                    let path = store
+                        .get_node(&e.to_id)?
+                        .map(|n| n.name)
+                        .unwrap_or_else(|| e.to_id.clone());
+                    let loc = store
+                        .get_facet(&e.id, TargetKind::Edge, "locator")?
+                        .unwrap_or_default();
+                    let at = if loc.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" @ {loc}")
+                    };
+                    let ev = if e.evidence.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" — {}", e.evidence)
+                    };
+                    println!("             ↳ {path}{at} [{}]{ev}", e.status.as_str());
+                }
             }
         }
     }
     Ok(())
 }
 
-fn detect_cmd(graph: Option<&Path>) -> Result<()> {
+fn detect_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let root = resolve_root(graph).or_else(|_| std::env::current_dir())?;
     let mut langs: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     let mut markers: Vec<&str> = Vec::new();
@@ -1106,6 +1284,25 @@ fn detect_cmd(graph: Option<&Path>) -> Result<()> {
         }
     }
     count_exts(&root, &mut langs, 0);
+    if json {
+        let mut recommended_packs = vec!["iso5055"];
+        if markers.contains(&"docker") {
+            recommended_packs.push("docker");
+        }
+        if markers.contains(&"node") {
+            recommended_packs.push("web-ui");
+            recommended_packs.push("service");
+        }
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "languages": langs,
+                "project_markers": markers,
+                "recommended_quality_packs": recommended_packs,
+            }))?
+        );
+        return Ok(());
+    }
     println!("detected languages:");
     for (ext, n) in &langs {
         println!("  {ext}: {n} file(s)");
@@ -1162,8 +1359,34 @@ fn count_exts(
     }
 }
 
-fn schema_cmd() -> Result<()> {
+fn schema_cmd(json: bool) -> Result<()> {
     use crate::model::*;
+    if json {
+        let edge_kinds: Vec<_> = crate::registry::REGISTRY
+            .iter()
+            .map(|s| {
+                serde_json::json!({
+                    "kind": s.kind.as_str(),
+                    "from": s.from.as_str(),
+                    "to": s.to.as_str(),
+                    "truth_classes": s.truth_classes.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
+                    "owner": s.owner.as_str(),
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "node_types": NodeType::ALL.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
+                "edge_kinds": edge_kinds,
+                "inspection_statuses": InspectionStatus::ALL.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+                "intent_lifecycle": IntentLifecycle::ALL.iter().map(|l| l.as_str()).collect::<Vec<_>>(),
+                "truth_classes": TruthClass::ALL.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
+                "finding_verdicts": ["justified", "needed", "blocked"],
+            }))?
+        );
+        return Ok(());
+    }
     println!("node types:");
     for t in NodeType::ALL {
         println!("  {}", t.as_str());
@@ -1208,7 +1431,7 @@ fn schema_cmd() -> Result<()> {
     Ok(())
 }
 
-fn rule(graph: Option<&Path>, cmd: RuleCmd) -> Result<()> {
+fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         RuleCmd::Seed { pack } => {
@@ -1234,25 +1457,35 @@ fn rule(graph: Option<&Path>, cmd: RuleCmd) -> Result<()> {
             Ok(())
         }
         RuleCmd::List { limit } => {
-            for n in store.list_nodes(Some(NodeType::QualityRule), limit)? {
-                let cat = n
-                    .body
-                    .get("category")
-                    .and_then(|c| c.as_str())
-                    .unwrap_or("");
-                println!("{:<14} {} [{}]", cat, n.name, &n.id[..8]);
+            let rules = store.list_nodes(Some(NodeType::QualityRule), limit)?;
+            if json {
+                let rows: Vec<_> = rules.iter().map(node_json).collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                for n in rules {
+                    let cat = n
+                        .body
+                        .get("category")
+                        .and_then(|c| c.as_str())
+                        .unwrap_or("");
+                    println!("{:<14} {} [{}]", cat, n.name, &n.id[..8]);
+                }
             }
             Ok(())
         }
         RuleCmd::Show { key } => {
             let n = store.resolve_node(&key, Some(NodeType::QualityRule))?;
-            println!("{} [{}]", n.name, n.id);
-            println!("  {}", n.description);
-            if let Some(g) = n.body.get("inspection_guide").and_then(|v| v.as_str()) {
-                println!("  inspection_guide: {g}");
-            }
-            if let Some(t) = n.body.get("evidence_template") {
-                println!("  evidence_template: {t}");
+            if json {
+                println!("{}", serde_json::to_string_pretty(&node_json(&n))?);
+            } else {
+                println!("{} [{}]", n.name, n.id);
+                println!("  {}", n.description);
+                if let Some(g) = n.body.get("inspection_guide").and_then(|v| v.as_str()) {
+                    println!("  inspection_guide: {g}");
+                }
+                if let Some(t) = n.body.get("evidence_template") {
+                    println!("  evidence_template: {t}");
+                }
             }
             Ok(())
         }
@@ -1467,9 +1700,8 @@ fn mark_validation(
     Ok(())
 }
 
-fn validate_cmd(graph: Option<&Path>, intent: &str, all: bool) -> Result<()> {
+fn validate_cmd(graph: Option<&Path>, intent: &str, all: bool, json: bool) -> Result<()> {
     let store = open(graph)?;
-    // collect validations to run
     let vals: Vec<_> = if all {
         store
             .list_nodes(Some(NodeType::Validation), usize::MAX)?
@@ -1487,17 +1719,37 @@ fn validate_cmd(graph: Option<&Path>, intent: &str, all: bool) -> Result<()> {
         out
     };
     if vals.is_empty() {
-        println!("no validations to run");
+        if json {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "ran": [],
+                    "summary": { "passed": 0, "failed": 0, "blocked": 0, "skipped": 0 },
+                }))?
+            );
+        } else {
+            println!("no validations to run");
+        }
         return Ok(());
     }
     let root = store.root().to_path_buf();
+    let mut results = Vec::new();
     for v in &vals {
         let command = v.body.get("command").and_then(|c| c.as_str()).unwrap_or("");
         if command.is_empty() {
-            println!(
-                "skip '{}' (manual_check — use loom validation mark)",
-                v.name
-            );
+            if json {
+                results.push(serde_json::json!({
+                    "id": v.id,
+                    "name": v.name,
+                    "status": "skipped",
+                    "reason": "manual_check",
+                }));
+            } else {
+                println!(
+                    "skip '{}' (manual_check — use loom validation mark)",
+                    v.name
+                );
+            }
             continue;
         }
         let out = std::process::Command::new("sh")
@@ -1508,7 +1760,16 @@ fn validate_cmd(graph: Option<&Path>, intent: &str, all: bool) -> Result<()> {
         match out {
             Ok(o) if o.status.success() => {
                 mark_validation(&store, &v.id, "passed", &format!("`{command}` exit 0"), "")?;
-                println!("PASS {}", v.name);
+                if json {
+                    results.push(serde_json::json!({
+                        "id": v.id,
+                        "name": v.name,
+                        "status": "passed",
+                        "command": command,
+                    }));
+                } else {
+                    println!("PASS {}", v.name);
+                }
             }
             Ok(o) => {
                 let code = o.status.code().unwrap_or(-1);
@@ -1519,18 +1780,68 @@ fn validate_cmd(graph: Option<&Path>, intent: &str, all: bool) -> Result<()> {
                     &format!("`{command}` exit {code}"),
                     "",
                 )?;
-                println!("FAIL {} (exit {code})", v.name);
+                if json {
+                    results.push(serde_json::json!({
+                        "id": v.id,
+                        "name": v.name,
+                        "status": "failed",
+                        "command": command,
+                        "exit_code": code,
+                    }));
+                } else {
+                    println!("FAIL {} (exit {code})", v.name);
+                }
             }
             Err(e) => {
                 mark_validation(&store, &v.id, "blocked", "", &format!("could not run: {e}"))?;
-                println!("BLOCKED {} ({e})", v.name);
+                if json {
+                    results.push(serde_json::json!({
+                        "id": v.id,
+                        "name": v.name,
+                        "status": "blocked",
+                        "command": command,
+                        "reason": e.to_string(),
+                    }));
+                } else {
+                    println!("BLOCKED {} ({e})", v.name);
+                }
             }
         }
+    }
+    if json {
+        let passed = results
+            .iter()
+            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("passed"))
+            .count();
+        let failed = results
+            .iter()
+            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("failed"))
+            .count();
+        let blocked = results
+            .iter()
+            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("blocked"))
+            .count();
+        let skipped = results
+            .iter()
+            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("skipped"))
+            .count();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "ran": results,
+                "summary": {
+                    "passed": passed,
+                    "failed": failed,
+                    "blocked": blocked,
+                    "skipped": skipped,
+                }
+            }))?
+        );
     }
     Ok(())
 }
 
-fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd) -> Result<()> {
+fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         HypothesisCmd::Add {
@@ -1602,31 +1913,56 @@ fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd) -> Result<()> {
         }
         HypothesisCmd::Show { key } => {
             let h = store.resolve_node(&key, Some(NodeType::Hypothesis))?;
-            println!("{} [{}]", h.name, h.id);
-            println!("  status: {}", h.status);
-            if !h.description.is_empty() {
-                println!("  claim: {}", h.description);
-            }
-            println!("  {}", h.body);
-            for e in store.edges_with(Some(EdgeKind::Targets), Some(&h.id), None)? {
-                let t = store
-                    .get_node(&e.to_id)?
-                    .map(|n| n.name)
-                    .unwrap_or_else(|| e.to_id.clone());
-                println!("  targets: {t}");
+            let targets: Vec<_> = store
+                .edges_with(Some(EdgeKind::Targets), Some(&h.id), None)?
+                .into_iter()
+                .map(|e| {
+                    let name = store
+                        .get_node(&e.to_id)?
+                        .map(|n| n.name)
+                        .unwrap_or_else(|| e.to_id.clone());
+                    Ok(serde_json::json!({
+                        "id": e.to_id,
+                        "name": name,
+                        "edge_id": e.id,
+                    }))
+                })
+                .collect::<Result<Vec<_>>>()?;
+            if json {
+                let mut row = node_json(&h);
+                row["targets"] = serde_json::json!(targets);
+                println!("{}", serde_json::to_string_pretty(&row)?);
+            } else {
+                println!("{} [{}]", h.name, h.id);
+                println!("  status: {}", h.status);
+                if !h.description.is_empty() {
+                    println!("  claim: {}", h.description);
+                }
+                println!("  {}", h.body);
+                for t in targets {
+                    if let Some(name) = t.get("name").and_then(|v| v.as_str()) {
+                        println!("  targets: {name}");
+                    }
+                }
             }
             Ok(())
         }
         HypothesisCmd::List { limit } => {
-            for n in store.list_nodes(Some(NodeType::Hypothesis), limit)? {
-                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+            let hypotheses = store.list_nodes(Some(NodeType::Hypothesis), limit)?;
+            if json {
+                let rows: Vec<_> = hypotheses.iter().map(node_json).collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                for n in hypotheses {
+                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
             }
             Ok(())
         }
     }
 }
 
-fn surface(graph: Option<&Path>, cmd: SurfaceCmd) -> Result<()> {
+fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         SurfaceCmd::Add {
@@ -1651,8 +1987,12 @@ fn surface(graph: Option<&Path>, cmd: SurfaceCmd) -> Result<()> {
         }
         SurfaceCmd::Show { key } => {
             let n = store.resolve_node(&key, Some(NodeType::InterfaceSurface))?;
-            println!("{} [{}]", n.name, n.id);
-            println!("  {}", n.body);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&node_json(&n))?);
+            } else {
+                println!("{} [{}]", n.name, n.id);
+                println!("  {}", n.body);
+            }
             Ok(())
         }
         SurfaceCmd::Update {
@@ -1688,15 +2028,21 @@ fn surface(graph: Option<&Path>, cmd: SurfaceCmd) -> Result<()> {
             Ok(())
         }
         SurfaceCmd::List { limit } => {
-            for n in store.list_nodes(Some(NodeType::InterfaceSurface), limit)? {
-                println!("{} [{}]", n.name, &n.id[..8]);
+            let surfaces = store.list_nodes(Some(NodeType::InterfaceSurface), limit)?;
+            if json {
+                let rows: Vec<_> = surfaces.iter().map(node_json).collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                for n in surfaces {
+                    println!("{} [{}]", n.name, &n.id[..8]);
+                }
             }
             Ok(())
         }
     }
 }
 
-fn vocab(graph: Option<&Path>, cmd: VocabCmd) -> Result<()> {
+fn vocab(graph: Option<&Path>, cmd: VocabCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         VocabCmd::Add { term, why } => {
@@ -1710,8 +2056,17 @@ fn vocab(graph: Option<&Path>, cmd: VocabCmd) -> Result<()> {
             Ok(())
         }
         VocabCmd::List => {
-            for (term, why) in store.list_vocab()? {
-                println!("{term}  — {why}");
+            let terms = store.list_vocab()?;
+            if json {
+                let rows: Vec<_> = terms
+                    .iter()
+                    .map(|(term, why)| serde_json::json!({ "term": term, "why": why }))
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                for (term, why) in terms {
+                    println!("{term}  — {why}");
+                }
             }
             Ok(())
         }
@@ -2036,7 +2391,7 @@ fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd) -> Result<()> {
+fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         IgnoreCmd::Add { glob, reason } => {
@@ -2068,24 +2423,51 @@ fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd) -> Result<()> {
                 .get_meta("ignores")?
                 .and_then(|v| serde_json::from_str(&v).ok())
                 .unwrap_or_default();
-            if list.is_empty() {
-                println!("no ignore rules");
-            }
-            for r in &list {
-                println!(
-                    "{}  — {}",
-                    r.get("glob").and_then(|g| g.as_str()).unwrap_or(""),
-                    r.get("reason").and_then(|g| g.as_str()).unwrap_or("")
-                );
+            if json {
+                println!("{}", serde_json::to_string_pretty(&list)?);
+            } else {
+                if list.is_empty() {
+                    println!("no ignore rules");
+                }
+                for r in &list {
+                    println!(
+                        "{}  — {}",
+                        r.get("glob").and_then(|g| g.as_str()).unwrap_or(""),
+                        r.get("reason").and_then(|g| g.as_str()).unwrap_or("")
+                    );
+                }
             }
             Ok(())
         }
     }
 }
 
-fn whoami_cmd(graph: Option<&Path>) -> Result<()> {
+fn whoami_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
-    match store.agent() {
+    let agent = store.agent();
+    let identity = store.identity()?;
+    if json {
+        let (mode, lane) = match agent {
+            crate::store::Agent::Solo => ("solo", None),
+            crate::store::Agent::Lane(r) => ("lane", Some(r.as_str())),
+        };
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "agent": {
+                    "mode": mode,
+                    "lane": lane,
+                    "lane_gate": lane.is_some(),
+                },
+                "graph": {
+                    "observed": identity.observed,
+                    "mode": if identity.observed { "observed" } else { "owned" },
+                }
+            }))?
+        );
+        return Ok(());
+    }
+    match agent {
         crate::store::Agent::Solo => {
             println!("agent: solo (LOOM_AGENT unset/llm) — drives every lane; lane gate OFF");
         }
@@ -2097,7 +2479,7 @@ fn whoami_cmd(graph: Option<&Path>) -> Result<()> {
             );
         }
     }
-    if store.identity()?.observed {
+    if identity.observed {
         println!(
             "graph: observed — maps code you do not own; discovery/quality/validation only (build/fix disabled)"
         );
