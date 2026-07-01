@@ -147,6 +147,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compass(
     active: usize,
     planned: usize,

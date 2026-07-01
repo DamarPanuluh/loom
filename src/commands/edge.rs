@@ -188,6 +188,7 @@ fn edge_verdict(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn edge_explore(
     store: &Store,
     a: String,
