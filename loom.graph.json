@@ -1,0 +1,2167 @@
+{
+  "format": 1,
+  "graph_id": "332d7887546233be9a9952fac1ee2b99",
+  "name": "loom",
+  "observed": false,
+  "nodes": [
+    {
+      "id": "0237fd131f915654e586a5d3be394b51",
+      "type": "codefile",
+      "name": "src/maturity.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.148Z",
+      "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "type": "codefile",
+      "name": "src/commands/intent.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.147Z",
+      "updated_at": "2026-06-30T14:07:19.147Z"
+    },
+    {
+      "id": "039368426b41bf0383ed40ad0044a374",
+      "type": "intent",
+      "name": "the derived plane rebuilds byte-identically",
+      "description": "INV-2: export orders nodes/edges/facets canonically and derived rows are content-addressed with a sentinel timestamp, so wipe+sync+export reproduces identical bytes",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.667Z",
+      "updated_at": "2026-06-30T14:07:19.667Z"
+    },
+    {
+      "id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "type": "codefile",
+      "name": "src/signal.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.149Z",
+      "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "279357bb8daf851ae25b759c274fff36",
+      "type": "codefile",
+      "name": "src/registry.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.149Z",
+      "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "type": "codefile",
+      "name": "src/saga.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.149Z",
+      "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "32a7aa1df018fb181b571a578e1054a6",
+      "type": "codefile",
+      "name": "src/main.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.148Z",
+      "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "type": "intent",
+      "name": "find surfaces each matched intent's grounding",
+      "description": "loom find prints the file, locator and verdict of every implements edge under a matched intent, not just the node name — the edge a plain text search lacks",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.907Z",
+      "updated_at": "2026-06-30T14:07:19.907Z"
+    },
+    {
+      "id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "type": "codefile",
+      "name": "src/packs.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.148Z",
+      "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "41c5912224804d3bd404707f811a8507",
+      "type": "intent",
+      "name": "the next router serves the highest-priority asserted residue with a prompt contract",
+      "description": "loom next returns failing, then stale, then uninspected asserted edges as a work item carrying allowed/forbidden actions and the evidence it expects",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.827Z",
+      "updated_at": "2026-06-30T14:07:19.827Z"
+    },
+    {
+      "id": "47fd245a84b8b500b59668dc1f6dc003",
+      "type": "codefile",
+      "name": "src/lib.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.148Z",
+      "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "48c727a143864846e3f069646dcdb1d6",
+      "type": "codefile",
+      "name": "src/commands/saga.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.147Z",
+      "updated_at": "2026-06-30T14:07:19.147Z"
+    },
+    {
+      "id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "type": "codefile",
+      "name": "src/commands/edge.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.147Z",
+      "updated_at": "2026-06-30T14:07:19.147Z"
+    },
+    {
+      "id": "5a47a3fac0f28c37db75310c0829e225",
+      "type": "intent",
+      "name": "a symbol-pattern name is refused as an intent",
+      "description": "INV-ATOM: functions/symbols are locators on implements edges, not intents; intent add rejects a symbol-shaped name unless --allow-symbol-name is given with a behavioral description",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.744Z",
+      "updated_at": "2026-06-30T14:07:19.744Z"
+    },
+    {
+      "id": "5d8f8250e698c08b3c016ae320640c3a",
+      "type": "codefile",
+      "name": "src/commands.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.147Z",
+      "updated_at": "2026-06-30T14:07:19.147Z"
+    },
+    {
+      "id": "6312dfde0229497f5e8b78d2fa835d83",
+      "type": "codefile",
+      "name": "src/store.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.149Z",
+      "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "654882936617a51dedbe18bcd6518e5a",
+      "type": "codefile",
+      "name": "src/travel.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.150Z",
+      "updated_at": "2026-06-30T14:07:19.150Z"
+    },
+    {
+      "id": "76420be0f990250c74e3cae5c91c0537",
+      "type": "codefile",
+      "name": "src/extract.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.148Z",
+      "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "type": "intent",
+      "name": "import loads every node before any edge",
+      "description": "two-phase restore: parse-and-validate the whole export, then in one transaction insert all nodes before any edge, so an edge endpoint always resolves",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.591Z",
+      "updated_at": "2026-06-30T14:07:19.591Z"
+    },
+    {
+      "id": "88fcbe77fcd11a370842b523da58c7fb",
+      "type": "intent",
+      "name": "maturity counts only leaf intents as needing grounding",
+      "description": "an intent with hierarchy children is realized via its children; only leaves must ground to code, so a roll-up parent is not reported ungrounded",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.868Z",
+      "updated_at": "2026-06-30T14:07:19.868Z"
+    },
+    {
+      "id": "9046885650a069dbc63004ea95ef2f5e",
+      "type": "intent",
+      "name": "the verdict write boundary enforces the evidence, truth-class and lane gates",
+      "description": "INV-4/5/6/7: record_verdict is the sole writer of asserted edge status; the verdict/show commands resolve the displayed 8-char id first, then it demands criterion+evidence for passing/failing, evidence for independent, refuses derived edges, and checks the agent's lane",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.549Z",
+      "updated_at": "2026-06-30T14:07:19.549Z"
+    },
+    {
+      "id": "97c38f63874377a0bc55ae47854f44a3",
+      "type": "intent",
+      "name": "changing a file re-opens the asserted edges grounded in it",
+      "description": "content-hash ripple: sync stales the asserted edges depending on a changed codefile; an unchanged hash (or a first-ever observation) triggers no ripple, so there is no false churn",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.705Z",
+      "updated_at": "2026-06-30T14:07:19.705Z"
+    },
+    {
+      "id": "a56055709634988945f76e980fcf0480",
+      "type": "codefile",
+      "name": "src/sync.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.149Z",
+      "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "ab2b8d59f555c85569866fd178d9bb05",
+      "type": "codefile",
+      "name": "src/model.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.148Z",
+      "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "b883d587c0992593e75dc398fb5ebe22",
+      "type": "intent",
+      "name": "debt clusters are computed on read and never stored",
+      "description": "INV-3: statistical signal (debt) is a projection derived from a snapshot; it is never written back as a node or edge",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "behavior"
+      },
+      "created_at": "2026-06-30T14:07:19.786Z",
+      "updated_at": "2026-06-30T14:07:19.786Z"
+    },
+    {
+      "id": "bc0de0c4d44411d1dd1d8f91d77635b8",
+      "type": "codefile",
+      "name": "src/fsglob.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.148Z",
+      "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "type": "intent",
+      "name": "loom maintains a falsifiable graph for LLM-driven codebase work",
+      "description": "durable, falsifiable memory an LLM drives: what the code should do, where it lives, how it is proven",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "system"
+      },
+      "created_at": "2026-06-30T14:07:19.543Z",
+      "updated_at": "2026-06-30T14:07:19.543Z"
+    },
+    {
+      "id": "d0002c88c80599944",
+      "type": "finding",
+      "name": "src/extract.rs is oversized",
+      "description": "691 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d23f5c463fb1e4861",
+      "type": "quality_rule",
+      "name": "iso5055-rel-resource-release",
+      "description": "every acquired resource is released on all paths, including errors",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "robustness",
+        "detection_hints": [
+          "grep: open(, lock(, connect(, acquire(",
+          "in Rust, prefer RAII guards; a manual release missing on an early return is a leak"
+        ],
+        "detection_kind": "llm_judgment",
+        "effort": "mid",
+        "evidence_template": {
+          "failing": "src/<file>:<line> — resource not released on the error path",
+          "passing": "src/<file>:<lines> — resources held by RAII guards, released on all paths"
+        },
+        "inspection_guide": "1. Find resource acquisition (files, locks, connections, handles). 2. Confirm release on all paths (RAII/Drop, defer, finally). 3. A leak on the error path is a violation.",
+        "pack": "iso5055",
+        "severity": "error"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d2990f4fd445e6482",
+      "type": "code_rule",
+      "name": "no-panic-marker",
+      "description": "production source should not panic at a boundary (unwrap/panic!)",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "safety"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d2e01de8af8327d1b",
+      "type": "quality_rule",
+      "name": "iso5055-main-no-dead-or-duplicate-code",
+      "description": "no unreachable or unused code; no copy-pasted logic where one definition belongs",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "defect",
+        "detection_hints": [
+          "grep: #[allow(dead_code)], duplicated blocks",
+          "red flag: the same logic copy-pasted in two places"
+        ],
+        "detection_kind": "llm_judgment",
+        "effort": "low",
+        "evidence_template": {
+          "failing": "src/<file> — dead/duplicated code at <lines>",
+          "passing": "src/<file> — no dead code; shared logic factored"
+        },
+        "inspection_guide": "1. Look for unreachable/unused functions. 2. Look for duplicated logic across files. 3. Significant duplication or dead code is a violation.",
+        "pack": "iso5055",
+        "severity": "warning"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d2fcf6c1e25f78a67",
+      "type": "code_rule",
+      "name": "max-file-size",
+      "description": "a file should not exceed a maintainable line count",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "size"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d341e70e0f590bb8b",
+      "type": "finding",
+      "name": "src/commands.rs is oversized",
+      "description": "1707 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4af0e020bef2b77b",
+      "type": "finding",
+      "name": "src/workitem.rs is oversized",
+      "description": "635 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d59d6bf023b8f7d14",
+      "type": "finding",
+      "name": "src/store.rs is oversized",
+      "description": "1510 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d76631ff740131229",
+      "type": "finding",
+      "name": "src/signal.rs is oversized",
+      "description": "616 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d9697ad2cc3ba5d0c",
+      "type": "quality_rule",
+      "name": "iso5055-rel-no-unchecked-failure",
+      "description": "every fallible operation's failure path is handled or explicitly propagated",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "defect",
+        "detection_hints": [
+          "grep: unwrap(), expect(, let _ =, .ok();",
+          "red flag: a Result discarded without handling"
+        ],
+        "detection_kind": "llm_judgment",
+        "effort": "mid",
+        "evidence_template": {
+          "failing": "src/<file>:<line> — <call> discards its failure path",
+          "passing": "src/<file>:<lines> — failures propagated via ? or handled explicitly"
+        },
+        "inspection_guide": "1. Find fallible calls (Result/Option, IO, parsing). 2. Confirm each failure is handled or propagated with `?`. 3. A swallowed error (unwrap_or_default on a real failure, ignored Result) is a violation.",
+        "pack": "iso5055",
+        "severity": "error"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d9b35a203478bd583",
+      "type": "code_rule",
+      "name": "complex-symbol",
+      "description": "a function should stay below a cognitive complexity threshold",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "complexity"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "da0094e3c821d6b7d",
+      "type": "quality_rule",
+      "name": "iso5055-sec-no-hardcoded-secrets",
+      "description": "no credentials, tokens, or keys in source or committed config",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "security",
+        "detection_hints": [
+          "grep: api_key, secret, password, BEGIN PRIVATE KEY, token =",
+          "red flag: a long high-entropy string literal assigned to a secret-like name"
+        ],
+        "detection_kind": "llm_judgment",
+        "effort": "low",
+        "evidence_template": {
+          "failing": "src/<file>:<line> — literal secret in source",
+          "passing": "src/<file> — secrets read from env/secret store, none in source"
+        },
+        "inspection_guide": "1. Scan for literal secrets (API keys, passwords, private keys, connection strings). 2. Confirm secrets come from env or a secret store. 3. A literal credential in source is a violation.",
+        "pack": "iso5055",
+        "severity": "error"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dfe31470815685fd8",
+      "type": "quality_rule",
+      "name": "iso5055-sec-no-injection",
+      "description": "untrusted data is never concatenated into SQL/shell/HTML/query strings",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "security",
+        "detection_hints": [
+          "grep: format!(\"SELECT, Command::new, innerHTML, exec(",
+          "red flag: user input interpolated into a query/command string"
+        ],
+        "detection_kind": "llm_judgment",
+        "effort": "mid",
+        "evidence_template": {
+          "failing": "src/<file>:<line> — untrusted input concatenated into a query",
+          "passing": "src/<file>:<lines> — parameterized queries / escaped boundaries"
+        },
+        "inspection_guide": "1. Find SQL/shell/HTML construction. 2. Confirm parameterization or escaping at the boundary. 3. String-concatenated untrusted input is a violation.",
+        "pack": "iso5055",
+        "severity": "error"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "eafb29133e985bbc463f651878d9a3e2",
+      "type": "codefile",
+      "name": "src/workitem.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.150Z",
+      "updated_at": "2026-06-30T14:07:19.150Z"
+    },
+    {
+      "id": "ef6b66e4221155ce0d869190370a7210",
+      "type": "codefile",
+      "name": "src/cli.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-06-30T14:07:19.147Z",
+      "updated_at": "2026-06-30T14:07:19.147Z"
+    },
+    {
+      "id": "fc74e160558226eb8afd5158d6e0177b",
+      "type": "validation",
+      "name": "cargo test suite",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test -q",
+        "type": "test"
+      },
+      "created_at": "2026-06-30T14:07:19.973Z",
+      "updated_at": "2026-06-30T18:50:01.163Z"
+    }
+  ],
+  "edges": [
+    {
+      "id": "03c47358a516a61186a41dacbe7ebb7a",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "9046885650a069dbc63004ea95ef2f5e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no literal credentials in the persistence layer",
+      "evidence": "store.rs still uses only parameterized SQL (params!), incl. the new clear_facet DELETE and resolve_node id-prefix SELECT; no literal secrets",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.966Z",
+      "updated_at": "2026-06-30T18:50:01.109Z"
+    },
+    {
+      "id": "0551070005bc2986246f8af1a37b4573",
+      "from_id": "039368426b41bf0383ed40ad0044a374",
+      "to_id": "654882936617a51dedbe18bcd6518e5a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "exporting, wiping derived data, re-syncing and re-exporting yields identical bytes",
+      "evidence": "travel.rs canonicalizes ordering; store.rs DERIVED_TS empty + FNV-1a derived_id; covered by inv2_derived_plane_rebuildable",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.692Z",
+      "updated_at": "2026-06-30T14:07:19.699Z"
+    },
+    {
+      "id": "0d3fd6576f6b6bbb5822813cb1737b86",
+      "from_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "to_id": "0237fd131f915654e586a5d3be394b51",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "an implemented parent intent with grounded children is not reported ungrounded",
+      "evidence": "maturity.rs ladder collects parent ids from hierarchy edges and continues past them when counting ungrounded leaves",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.894Z",
+      "updated_at": "2026-06-30T14:07:19.901Z"
+    },
+    {
+      "id": "0fbd6911cd68ec8177124f6a105f6cc2",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "97c38f63874377a0bc55ae47854f44a3",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'changing a file re-opens the asserted edges grounded in it' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.717Z",
+      "updated_at": "2026-06-30T14:07:19.724Z"
+    },
+    {
+      "id": "1b5a0122cee466e68b9c98bd2ee292a6",
+      "from_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "to_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "importing a graph never inserts an edge before its endpoint nodes exist",
+      "evidence": "restore path untouched this session: validates fully, then inserts nodes before edges in one txn",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.635Z",
+      "updated_at": "2026-06-30T18:50:01.114Z"
+    },
+    {
+      "id": "1ef3a68168e561f416475f4d582b7540",
+      "from_id": "5a47a3fac0f28c37db75310c0829e225",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "relates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "these behaviors are cohesive",
+      "evidence": "both remain command-surface behaviors in commands.rs",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.946Z",
+      "updated_at": "2026-06-30T18:50:01.120Z"
+    },
+    {
+      "id": "32f78f1df1204f9c27fa248a02934f34",
+      "from_id": "5a47a3fac0f28c37db75310c0829e225",
+      "to_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "loom intent add --name capture_payment (no --allow-symbol-name) is rejected",
+      "evidence": "add-path looks_like_symbol guard unchanged; inv_atom_rejects_symbol_named_intent green",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.772Z",
+      "updated_at": "2026-06-30T18:50:01.126Z"
+    },
+    {
+      "id": "4048cde8936e8610b87a0cccff330f77",
+      "from_id": "41c5912224804d3bd404707f811a8507",
+      "to_id": "eafb29133e985bbc463f651878d9a3e2",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "with a failing and an uninspected edge present, next returns the failing one first, with its contract",
+      "evidence": "workitem.rs next still orders fix→validate→build→quality→analyze→triage; observed gating only skips build/fix on observed graphs, owned ordering unchanged; each item carries a PromptContract",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.854Z",
+      "updated_at": "2026-06-30T18:50:01.131Z"
+    },
+    {
+      "id": "539b900a082c1702daa2f6cbe81b0766",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'import loads every node before any edge' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.607Z",
+      "updated_at": "2026-06-30T14:07:19.620Z"
+    },
+    {
+      "id": "6421f644db703f88aba4c729acd2dc81",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "5a47a3fac0f28c37db75310c0829e225",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'a symbol-pattern name is refused as an intent' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.757Z",
+      "updated_at": "2026-06-30T14:07:19.765Z"
+    },
+    {
+      "id": "73333a47c1b87ec0a1f68362a1907fe3",
+      "from_id": "fc74e160558226eb8afd5158d6e0177b",
+      "to_id": "9046885650a069dbc63004ea95ef2f5e",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "cargo test: 85 passed, 0 failed (re-run this session)",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.973Z",
+      "updated_at": "2026-06-30T18:50:01.162Z"
+    },
+    {
+      "id": "73758763c1fcf5a6dcbc337a451f8349",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "9046885650a069dbc63004ea95ef2f5e",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'the verdict write boundary enforces the evidence, truth-class and lane gates' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.562Z",
+      "updated_at": "2026-06-30T14:07:19.569Z"
+    },
+    {
+      "id": "8a7cbf02b5babeb8389366afa028c14c",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'find surfaces each matched intent's grounding' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.920Z",
+      "updated_at": "2026-06-30T14:07:19.927Z"
+    },
+    {
+      "id": "995e32fcd5c208ea8d15b1c9b4c0fea6",
+      "from_id": "b883d587c0992593e75dc398fb5ebe22",
+      "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "loom debt emits clusters but writes no nodes or edges to the graph",
+      "evidence": "signal.rs debt builds DebtCluster from a read-only snapshot; no INSERT; the statistical truth-class is computed-only",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.813Z",
+      "updated_at": "2026-06-30T14:07:19.820Z"
+    },
+    {
+      "id": "a4948c777c6a771abc8a06c80a4e3d73",
+      "from_id": "97c38f63874377a0bc55ae47854f44a3",
+      "to_id": "a56055709634988945f76e980fcf0480",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "editing a grounded file's content moves its settled verdicts to needs_reverification; unchanged does not; never-seen does not",
+      "evidence": "sync.rs refactored into ripple_codefile but semantics preserved: skip on equal hash, ripple only when prior hash existed and differs; sync_ripples_only_on_real_change green",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.730Z",
+      "updated_at": "2026-06-30T18:50:01.137Z"
+    },
+    {
+      "id": "c54711608652dda6602d831b1bb4195b",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "41c5912224804d3bd404707f811a8507",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'the next router serves the highest-priority asserted residue with a prompt contract' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.839Z",
+      "updated_at": "2026-06-30T14:07:19.847Z"
+    },
+    {
+      "id": "d0302fd7efdd4a678",
+      "from_id": "d341e70e0f590bb8b",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d034b5fc0c8852aea",
+      "from_id": "d59d6bf023b8f7d14",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d1cd6b9b979f12f961155137fa98912b",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "b883d587c0992593e75dc398fb5ebe22",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'debt clusters are computed on read and never stored' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.799Z",
+      "updated_at": "2026-06-30T14:07:19.806Z"
+    },
+    {
+      "id": "d34f09ea6aeba056810be34caeedce8d",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'maturity counts only leaf intents as needing grounding' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.880Z",
+      "updated_at": "2026-06-30T14:07:19.887Z"
+    },
+    {
+      "id": "d374aa9b71c9591961e9a5c0886015bd",
+      "from_id": "9046885650a069dbc63004ea95ef2f5e",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "relates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "these behaviors are cohesive",
+      "evidence": "both remain store.rs persistence-correctness guarantees over the edge table",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.653Z",
+      "updated_at": "2026-06-30T18:50:01.142Z"
+    },
+    {
+      "id": "d3d43a2611d4f4064",
+      "from_id": "d4af0e020bef2b77b",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d6d1d7f406277a0a7",
+      "from_id": "d76631ff740131229",
+      "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d7f3d470069baf9b9",
+      "from_id": "d341e70e0f590bb8b",
+      "to_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "da23e07f5a0b5d6f1",
+      "from_id": "d0002c88c80599944",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db84453fe758f6784",
+      "from_id": "d0002c88c80599944",
+      "to_id": "76420be0f990250c74e3cae5c91c0537",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de23c905ffcc86601",
+      "from_id": "d4af0e020bef2b77b",
+      "to_id": "eafb29133e985bbc463f651878d9a3e2",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "deda4a837adbef254",
+      "from_id": "d59d6bf023b8f7d14",
+      "to_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dfbb04c910fb94c17eada4b1e963c420",
+      "from_id": "9046885650a069dbc63004ea95ef2f5e",
+      "to_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "passing/failing without criterion+evidence rejected; independent without evidence rejected; derived rejected; wrong-lane rejected; truth_class CHECK rejects bad values",
+      "evidence": "record_verdict gates + schema CHECK(truth_class) untouched this session; inv4/5/6/7 green; mark_validation now records verdict before status so a rejected mark cannot partial-commit",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.577Z",
+      "updated_at": "2026-06-30T18:50:01.147Z"
+    },
+    {
+      "id": "dfd470d2c863110c5",
+      "from_id": "d76631ff740131229",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "eca5fa6001b0a39e46317016626a4c43",
+      "from_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "to_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "find on an intent term prints its grounded path + locator + verdict lines beneath the match",
+      "evidence": "commands.rs find_cmd unchanged: follows implements edges and reads the locator facet",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.933Z",
+      "updated_at": "2026-06-30T18:50:01.152Z"
+    },
+    {
+      "id": "f80a302a1d6b1dd4db64c3a58f6bcb33",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "039368426b41bf0383ed40ad0044a374",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the system intent decomposes into this behavior",
+      "evidence": "child 'the derived plane rebuilds byte-identically' is independently grounded to a symbol and inspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-06-30T14:07:19.679Z",
+      "updated_at": "2026-06-30T14:07:19.686Z"
+    }
+  ],
+  "facets": [
+    {
+      "target_id": "0237fd131f915654e586a5d3be394b51",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "711918e78a3d40db",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0237fd131f915654e586a5d3be394b51",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"crate::Result\",\"crate::model::{EdgeKind, InspectionStatus, NodeType, TruthClass}\",\"crate::store::Store\",\"serde::Serialize\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0237fd131f915654e586a5d3be394b51",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0237fd131f915654e586a5d3be394b51",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "237",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0237fd131f915654e586a5d3be394b51",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0237fd131f915654e586a5d3be394b51",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "7",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "5ed60f7ada9d1707",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::IntentCmd\",\"crate::model::{NodeType, TargetKind, TruthClass}\",\"std::path::Path\",\"super::{open, require_lane}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "275",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "11",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "039368426b41bf0383ed40ad0044a374",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "039368426b41bf0383ed40ad0044a374",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0551070005bc2986246f8af1a37b4573",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "export_to_file:75 / Export::from_snapshot",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0d3fd6576f6b6bbb5822813cb1737b86",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "ladder:39 (parents from hierarchy from_id; skip in ungrounded count)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "84d99cd3cb9d7eee",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"crate::Result\",\"crate::model::{Edge, EdgeKind, Facet, Node, NodeType, TargetKind, TruthClass}\",\"crate::registry\",\"crate::store::{Snapshot, Store}\",\"serde::{Deserialize, Serialize}\",\"std::collections::{BTreeMap, BTreeSet}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "616",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "25",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "1b5a0122cee466e68b9c98bd2ee292a6",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "restore:866 (validate 879; nodes 920 before edges 930)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "279357bb8daf851ae25b759c274fff36",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "fadfa626229734c3",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "279357bb8daf851ae25b759c274fff36",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"NodeType::*\",\"TruthClass::*\",\"crate::model::{EdgeKind, NodeType, TruthClass}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "279357bb8daf851ae25b759c274fff36",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "279357bb8daf851ae25b759c274fff36",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "240",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "279357bb8daf851ae25b759c274fff36",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "279357bb8daf851ae25b759c274fff36",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "5",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "31fc23fcdd83d652",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::{anyhow, Context}\",\"crate::Result\",\"crate::model::{EdgeKind, InspectionStatus, NodeType}\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::path::Path\",\"std::time::Duration\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "309",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "14",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "32a7aa1df018fb181b571a578e1054a6",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "fd7bb4940af70acb",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "32a7aa1df018fb181b571a578e1054a6",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"clap::Parser\",\"loom::cli::Cli\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "32a7aa1df018fb181b571a578e1054a6",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "32a7aa1df018fb181b571a578e1054a6",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "10",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "32a7aa1df018fb181b571a578e1054a6",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "32a7aa1df018fb181b571a578e1054a6",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "1",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "32f78f1df1204f9c27fa248a02934f34",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "intent-add gate:107 -> looks_like_symbol:1627",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "b8571f06045f39b7",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"crate::Result\",\"crate::model::NodeType\",\"crate::store::Store\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "143",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "3",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "4048cde8936e8610b87a0cccff330f77",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "next:77 (analyze orders Failing > NeedsReverification > Uninspected)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "41c5912224804d3bd404707f811a8507",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "41c5912224804d3bd404707f811a8507",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "47fd245a84b8b500b59668dc1f6dc003",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "5a6b811f853a9673",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "47fd245a84b8b500b59668dc1f6dc003",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "47fd245a84b8b500b59668dc1f6dc003",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "47fd245a84b8b500b59668dc1f6dc003",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "43",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "47fd245a84b8b500b59668dc1f6dc003",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "47fd245a84b8b500b59668dc1f6dc003",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "1",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "48c727a143864846e3f069646dcdb1d6",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "60509f7ae53c0696",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "48c727a143864846e3f069646dcdb1d6",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::anyhow\",\"crate::Result\",\"crate::cli::SagaCmd\",\"crate::model::{EdgeKind, NodeType}\",\"crate::store::Store\",\"std::path::{Path, PathBuf}\",\"super::open\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "48c727a143864846e3f069646dcdb1d6",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "48c727a143864846e3f069646dcdb1d6",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "107",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "48c727a143864846e3f069646dcdb1d6",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "48c727a143864846e3f069646dcdb1d6",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "5",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "c1c6149cf061343b",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::anyhow\",\"crate::Result\",\"crate::cli::EdgeCmd\",\"crate::model::{EdgeKind, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::workitem\",\"std::path::Path\",\"super::{open, verdict_status}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "157",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "8",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5a47a3fac0f28c37db75310c0829e225",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5a47a3fac0f28c37db75310c0829e225",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "922840ab994e0643",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::cli::{\\n    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,\\n    LayerCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,\\n}\",\"crate::model::*\",\"crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{travel, workitem}\",\"pub use intent::looks_like_symbol\",\"std::path::{Path, PathBuf}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "1707",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "51",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "36d5f0fff333a817",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::{anyhow, bail, Context}\",\"crate::model::*\",\"crate::registry\",\"crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION}\",\"fs2::FileExt\",\"rusqlite::{params, Connection, OptionalExtension}\",\"std::fs::{File, OpenOptions}\",\"std::path::{Path, PathBuf}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "1510",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "6312dfde0229497f5e8b78d2fa835d83",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "73",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "654882936617a51dedbe18bcd6518e5a",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "83b2029864bc7a46",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "654882936617a51dedbe18bcd6518e5a",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::Context\",\"crate::Result\",\"crate::model::{Edge, Facet, Node, Tag}\",\"crate::store::{Identity, Snapshot, Store}\",\"serde::{Deserialize, Serialize}\",\"std::path::Path\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "654882936617a51dedbe18bcd6518e5a",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "654882936617a51dedbe18bcd6518e5a",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "125",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "654882936617a51dedbe18bcd6518e5a",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "654882936617a51dedbe18bcd6518e5a",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "8",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "76420be0f990250c74e3cae5c91c0537",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "27971e95fbc516b3",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "76420be0f990250c74e3cae5c91c0537",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"std::path::Path\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "76420be0f990250c74e3cae5c91c0537",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "76420be0f990250c74e3cae5c91c0537",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "691",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "76420be0f990250c74e3cae5c91c0537",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "76420be0f990250c74e3cae5c91c0537",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "17",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "9046885650a069dbc63004ea95ef2f5e",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "9046885650a069dbc63004ea95ef2f5e",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "97c38f63874377a0bc55ae47854f44a3",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "97c38f63874377a0bc55ae47854f44a3",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "995e32fcd5c208ea8d15b1c9b4c0fea6",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "debt:235",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a4948c777c6a771abc8a06c80a4e3d73",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "run:65 (compare 85; ripple only when prior.is_some 90-98)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a56055709634988945f76e980fcf0480",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "a2c0ca5cc5298066",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a56055709634988945f76e980fcf0480",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"crate::Result\",\"crate::extract::{extract, Extraction, Role}\",\"crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"std::collections::BTreeSet\",\"std::path::Path\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a56055709634988945f76e980fcf0480",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a56055709634988945f76e980fcf0480",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "361",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a56055709634988945f76e980fcf0480",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a56055709634988945f76e980fcf0480",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "11",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ab2b8d59f555c85569866fd178d9bb05",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "906f97ad35362305",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ab2b8d59f555c85569866fd178d9bb05",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"serde::{Deserialize, Serialize}\",\"std::fmt\",\"std::str::FromStr\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ab2b8d59f555c85569866fd178d9bb05",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ab2b8d59f555c85569866fd178d9bb05",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "285",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ab2b8d59f555c85569866fd178d9bb05",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ab2b8d59f555c85569866fd178d9bb05",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "9",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "b883d587c0992593e75dc398fb5ebe22",
+      "target_kind": "node",
+      "key": "level",
+      "value": "behavior",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b883d587c0992593e75dc398fb5ebe22",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "ba6818e2c2a58283",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"crate::Result\",\"std::path::Path\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "132",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "5",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "target_kind": "node",
+      "key": "level",
+      "value": "system",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d0002c88c80599944",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-06-30T18:50:27.001Z\",\"hash\":\"27971e95fbc516b3\",\"reason\":\"src/extract.rs is the extraction plane: language/role detection + shared Symbol/Extraction types + one extractor per language (tree-sitter) + complexity, all pure derived structural facts; the four non-Rust extractors share one generic walker, so length is the cost of multi-language support in a cohesive module, not tangle\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d341e70e0f590bb8b",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-06-30T18:50:26.984Z\",\"hash\":\"922840ab994e0643\",\"reason\":\"src/commands.rs is the CLI command surface: one dispatch arm per subcommand; the new edge call / codefile rescan / observed reporting are more arms on the same table — splitting would scatter the command table, not reduce tangle\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d4af0e020bef2b77b",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-06-30T18:50:26.996Z\",\"hash\":\"69db6c7fc7393955\",\"reason\":\"src/workitem.rs is the 'loom next' surface: one work-item builder + prompt contract per Mode; the observed-graph lane gate is a few lines on the same cohesive dispatch\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d59d6bf023b8f7d14",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-06-30T18:50:26.991Z\",\"hash\":\"36d5f0fff333a817\",\"reason\":\"src/store.rs is the persistence layer: INV-5 funnels every write through this one SQL boundary; clear_facet and the id-prefix resolver are more of the same single-boundary surface\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d76631ff740131229",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-06-30T14:07:19.524Z\",\"hash\":\"84d99cd3cb9d7eee\",\"reason\":\"src/signal.rs is the computed-signal plane: smells, debt, doctor and finding views are one read-only projection surface; length is intentional, not tangled\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "dfbb04c910fb94c17eada4b1e963c420",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "schema CHECK(truth_class):96,109,130 + record_verdict gate:600-657 (resolve_edge:603)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "eafb29133e985bbc463f651878d9a3e2",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "69db6c7fc7393955",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "eafb29133e985bbc463f651878d9a3e2",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"crate::Result\",\"crate::model::TruthClass\",\"crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType}\",\"crate::store::Store\",\"serde::Serialize\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "eafb29133e985bbc463f651878d9a3e2",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "eafb29133e985bbc463f651878d9a3e2",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "635",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "eafb29133e985bbc463f651878d9a3e2",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "eafb29133e985bbc463f651878d9a3e2",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "28",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "eca5fa6001b0a39e46317016626a4c43",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "find_cmd:842 (walks edges_with Implements; prints path @ locator [verdict])",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ef6b66e4221155ce0d869190370a7210",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "e1087eba16800539",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ef6b66e4221155ce0d869190370a7210",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"clap::{Parser, Subcommand}\",\"std::path::PathBuf\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ef6b66e4221155ce0d869190370a7210",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ef6b66e4221155ce0d869190370a7210",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "557",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ef6b66e4221155ce0d869190370a7210",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ef6b66e4221155ce0d869190370a7210",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "17",
+      "truth_class": "derived"
+    }
+  ],
+  "tags": [
+    {
+      "target_id": "039368426b41bf0383ed40ad0044a374",
+      "target_kind": "node",
+      "term": "determinism"
+    },
+    {
+      "target_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "target_kind": "node",
+      "term": "find-surface"
+    },
+    {
+      "target_id": "41c5912224804d3bd404707f811a8507",
+      "target_kind": "node",
+      "term": "residue-router"
+    },
+    {
+      "target_id": "5a47a3fac0f28c37db75310c0829e225",
+      "target_kind": "node",
+      "term": "atom-rule"
+    },
+    {
+      "target_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "target_kind": "node",
+      "term": "import-order"
+    },
+    {
+      "target_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "target_kind": "node",
+      "term": "leaf-grounding"
+    },
+    {
+      "target_id": "9046885650a069dbc63004ea95ef2f5e",
+      "target_kind": "node",
+      "term": "evidence-gate"
+    },
+    {
+      "target_id": "97c38f63874377a0bc55ae47854f44a3",
+      "target_kind": "node",
+      "term": "hash-ripple"
+    },
+    {
+      "target_id": "b883d587c0992593e75dc398fb5ebe22",
+      "target_kind": "node",
+      "term": "debt-projection"
+    }
+  ]
+}

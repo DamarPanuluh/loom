@@ -1,0 +1,217 @@
+//! `loom edge` command family.
+
+use super::{open, verdict_status};
+use crate::cli::EdgeCmd;
+use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
+use crate::store::Store;
+use crate::workitem;
+use crate::Result;
+use anyhow::anyhow;
+use std::path::Path;
+
+pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd) -> Result<()> {
+    let store = open(graph)?;
+    match cmd {
+        EdgeCmd::Implement {
+            intent,
+            codefile,
+            locator,
+        } => edge_implement(&store, intent, codefile, locator),
+        EdgeCmd::Call {
+            validation,
+            surface,
+        } => edge_call(&store, validation, surface),
+        EdgeCmd::Remove { edge_id, reason } => edge_remove(&store, edge_id, reason),
+        EdgeCmd::SetLocator { edge_id, locator } => edge_set_locator(&store, edge_id, locator),
+        EdgeCmd::Relate { kind, from, to } => edge_relate(&store, kind, from, to),
+        EdgeCmd::Verdict {
+            edge_id,
+            verdict,
+            criterion,
+            evidence,
+            confidence,
+        } => edge_verdict(&store, edge_id, verdict, criterion, evidence, confidence),
+        EdgeCmd::Explore {
+            a,
+            b,
+            verdict,
+            criterion,
+            evidence,
+            confidence,
+        } => edge_explore(&store, a, b, verdict, criterion, evidence, confidence),
+        EdgeCmd::Show { edge_id } => edge_show(&store, edge_id),
+        EdgeCmd::List { limit } => edge_list(&store, limit),
+    }
+}
+
+fn edge_implement(
+    store: &Store,
+    intent: String,
+    codefile: String,
+    locator: Option<String>,
+) -> Result<()> {
+    let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
+    let cf = store.resolve_node(&codefile, Some(NodeType::CodeFile))?;
+    let e = store.add_edge(EdgeKind::Implements, &i.id, &cf.id, TruthClass::Asserted)?;
+    if let Some(loc) = locator {
+        store.set_facet(
+            &e.id,
+            TargetKind::Edge,
+            "locator",
+            &loc,
+            TruthClass::Asserted,
+        )?;
+    }
+    println!("grounded '{}' in '{}' [{}]", i.name, cf.name, &e.id[..8]);
+    Ok(())
+}
+
+/// Bind a validation to an interface surface it exercises (a `calls` edge).
+/// Idempotent: re-calling the same pair returns the existing edge.
+fn edge_call(store: &Store, validation: String, surface: String) -> Result<()> {
+    let v = store.resolve_node(&validation, Some(NodeType::Validation))?;
+    let s = store.resolve_node(&surface, Some(NodeType::InterfaceSurface))?;
+    let existing = store.edges_with(Some(EdgeKind::Calls), Some(&v.id), Some(&s.id))?;
+    let e = match existing.into_iter().next() {
+        Some(e) => e,
+        None => store.add_edge(EdgeKind::Calls, &v.id, &s.id, TruthClass::Asserted)?,
+    };
+    println!("'{}' calls surface '{}' [{}]", v.name, s.name, &e.id[..8]);
+    Ok(())
+}
+
+/// Prune an edge. Refuses derived edges — those are recomputed by `loom sync`,
+/// so deleting one is pointless (it returns on the next sync); the fix is to
+/// remove its source. Asserted edges (a redundant grounding/relationship) go.
+fn edge_remove(store: &Store, edge_id: String, reason: Option<String>) -> Result<()> {
+    let e = store.resolve_edge(&edge_id)?;
+    if e.truth_class == TruthClass::Derived {
+        anyhow::bail!(
+            "edge [{}] is a derived {} edge — it is rebuilt by `loom sync`; remove its source, not the edge",
+            &e.id[..8],
+            e.kind
+        );
+    }
+    // Journal the prune on the source node before the edge id is gone.
+    if let Some(r) = &reason {
+        store.add_note(
+            &e.from_id,
+            "decision",
+            &format!("removed {} edge: {r}", e.kind),
+        )?;
+    }
+    store.delete_edge(&e.id)?;
+    println!(
+        "removed {} edge [{}]  ({} → {})",
+        e.kind,
+        &e.id[..8],
+        e.from_id,
+        e.to_id
+    );
+    Ok(())
+}
+
+/// Correct the `locator` (symbol) facet on an asserted edge — e.g. a grounding
+/// whose target symbol moved or was misnamed. Upserts; refuses derived edges.
+fn edge_set_locator(store: &Store, edge_id: String, locator: String) -> Result<()> {
+    let e = store.resolve_edge(&edge_id)?;
+    if e.truth_class == TruthClass::Derived {
+        anyhow::bail!(
+            "edge [{}] is derived — its facets are sync-owned",
+            &e.id[..8]
+        );
+    }
+    store.set_facet(
+        &e.id,
+        TargetKind::Edge,
+        "locator",
+        &locator,
+        TruthClass::Asserted,
+    )?;
+    println!(
+        "set locator on {} edge [{}] → {locator}",
+        e.kind,
+        &e.id[..8]
+    );
+    Ok(())
+}
+
+fn edge_relate(store: &Store, kind: String, from: String, to: String) -> Result<()> {
+    let k = workitem::relationship_kind(&kind)
+        .ok_or_else(|| anyhow!("unknown relationship kind '{kind}'"))?;
+    let a = store.resolve_node(&from, Some(NodeType::Intent))?;
+    let b = store.resolve_node(&to, Some(NodeType::Intent))?;
+    let e = store.add_edge(k, &a.id, &b.id, TruthClass::Asserted)?;
+    println!("{} '{}' → '{}' [{}]", kind, a.name, b.name, &e.id[..8]);
+    Ok(())
+}
+
+fn edge_verdict(
+    store: &Store,
+    edge_id: String,
+    verdict: String,
+    criterion: String,
+    evidence: String,
+    confidence: f64,
+) -> Result<()> {
+    let status = verdict_status(&verdict)?;
+    let target = store.resolve_edge(&edge_id)?;
+    let e = store.record_verdict(&target.id, status, &criterion, &evidence, confidence, "llm")?;
+    println!("recorded {} on edge [{}]", e.status, &e.id[..8]);
+    super::print_next_move(store)?;
+    Ok(())
+}
+
+fn edge_explore(
+    store: &Store,
+    a: String,
+    b: String,
+    verdict: String,
+    criterion: String,
+    evidence: String,
+    confidence: f64,
+) -> Result<()> {
+    let ia = store.resolve_node(&a, Some(NodeType::Intent))?;
+    let ib = store.resolve_node(&b, Some(NodeType::Intent))?;
+    let existing = store.edges_with(Some(EdgeKind::Relates), Some(&ia.id), Some(&ib.id))?;
+    let edge = match existing.into_iter().next() {
+        Some(e) => e,
+        None => store.add_edge(EdgeKind::Relates, &ia.id, &ib.id, TruthClass::Asserted)?,
+    };
+    let status = verdict_status(&verdict)?;
+    store.record_verdict(&edge.id, status, &criterion, &evidence, confidence, "llm")?;
+    println!("explored '{}' ~ '{}': {}", ia.name, ib.name, status);
+    super::print_next_move(store)?;
+    Ok(())
+}
+
+fn edge_show(store: &Store, edge_id: String) -> Result<()> {
+    let e = store.resolve_edge(&edge_id)?;
+    println!("{} [{}]", e.kind, e.id);
+    println!("  {} → {}", e.from_id, e.to_id);
+    println!("  truth_class: {}  status: {}", e.truth_class, e.status);
+    if !e.criterion.is_empty() {
+        println!("  criterion: {}", e.criterion);
+    }
+    if !e.evidence.is_empty() {
+        println!("  evidence: {}", e.evidence);
+    }
+    Ok(())
+}
+
+fn edge_list(store: &Store, limit: usize) -> Result<()> {
+    let edges = store.list_edges(None, limit)?;
+    if edges.is_empty() {
+        println!("no edges");
+    }
+    for e in &edges {
+        println!(
+            "{:<10} {:<18} {} [{}]",
+            e.truth_class,
+            e.kind,
+            e.status,
+            &e.id[..8]
+        );
+    }
+    Ok(())
+}
