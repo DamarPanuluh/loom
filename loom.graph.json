@@ -40,6 +40,17 @@
       "updated_at": "2026-06-30T14:07:19.667Z"
     },
     {
+      "id": "062105e11d1b02b813d44b68670a8575",
+      "type": "codefile",
+      "name": "src/cli/subcommands.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T04:32:35.325Z",
+      "updated_at": "2026-07-01T04:32:35.325Z"
+    },
+    {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
       "type": "codefile",
       "name": "src/signal.rs",
@@ -49,6 +60,20 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.149Z",
       "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "1c709486a94ead8fec01c9ff843903b1",
+      "type": "note",
+      "name": "note:decision",
+      "description": "removed implements edge: find_cmd moved from commands.rs to src/commands/misc_cmd.rs during command split",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "3873edb7e2385ad991bb19eb7cb4a39c"
+      },
+      "created_at": "2026-07-01T04:40:20.045Z",
+      "updated_at": "2026-07-01T04:40:20.045Z"
     },
     {
       "id": "279357bb8daf851ae25b759c274fff36",
@@ -200,6 +225,17 @@
       "updated_at": "2026-06-30T14:07:19.150Z"
     },
     {
+      "id": "71df360f44635e96e91fc6767bc93ea3",
+      "type": "codefile",
+      "name": "src/commands/misc_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T04:32:22.669Z",
+      "updated_at": "2026-07-01T04:32:22.669Z"
+    },
+    {
       "id": "76420be0f990250c74e3cae5c91c0537",
       "type": "codefile",
       "name": "src/extract.rs",
@@ -274,6 +310,17 @@
       "updated_at": "2026-06-30T14:07:19.149Z"
     },
     {
+      "id": "a7ccca5b5ae90723f0366637b9c00532",
+      "type": "codefile",
+      "name": "src/commands/domain_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T04:32:22.669Z",
+      "updated_at": "2026-07-01T04:32:22.669Z"
+    },
+    {
       "id": "ab2b8d59f555c85569866fd178d9bb05",
       "type": "codefile",
       "name": "src/model.rs",
@@ -283,6 +330,31 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.148Z",
       "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "aed762bc48f943d03e0be4871126697a",
+      "type": "codefile",
+      "name": "src/commands/proof_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T04:32:22.670Z",
+      "updated_at": "2026-07-01T04:32:22.670Z"
+    },
+    {
+      "id": "b871074588d0364512087c94ea306c23",
+      "type": "note",
+      "name": "note:decision",
+      "description": "removed implements edge: behavior moved from monolithic commands.rs grounding to src/commands/intent.rs during command split",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "5a47a3fac0f28c37db75310c0829e225"
+      },
+      "created_at": "2026-07-01T04:39:51.718Z",
+      "updated_at": "2026-07-01T04:39:51.718Z"
     },
     {
       "id": "b883d587c0992593e75dc398fb5ebe22",
@@ -298,6 +370,20 @@
       "updated_at": "2026-06-30T14:07:19.786Z"
     },
     {
+      "id": "bb308e8a75ac8b480e7ecda1cdeddabb",
+      "type": "note",
+      "name": "note:decision",
+      "description": "removed implements edge: wrong target while moving stale commands.rs grounding; behavior lives in intent command module",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "5a47a3fac0f28c37db75310c0829e225"
+      },
+      "created_at": "2026-07-01T04:39:22.536Z",
+      "updated_at": "2026-07-01T04:39:22.536Z"
+    },
+    {
       "id": "bc0de0c4d44411d1dd1d8f91d77635b8",
       "type": "codefile",
       "name": "src/fsglob.rs",
@@ -307,6 +393,17 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.148Z",
       "updated_at": "2026-06-30T14:07:19.148Z"
+    },
+    {
+      "id": "c029c388797de131660bfb9fa7c600e6",
+      "type": "codefile",
+      "name": "src/commands/codefile_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T04:32:22.668Z",
+      "updated_at": "2026-07-01T04:32:22.668Z"
     },
     {
       "id": "ca9db45bf812f86983765fc9bee1eb3c",
@@ -322,18 +419,15 @@
       "updated_at": "2026-06-30T14:07:19.543Z"
     },
     {
-      "id": "d0002c88c80599944",
-      "type": "finding",
-      "name": "src/extract.rs is oversized",
-      "description": "691 lines (> 600)",
-      "status": "oversized_file",
-      "truth_class": "derived",
-      "body": {
-        "kind": "oversized_file",
-        "symbol": ""
-      },
-      "created_at": "",
-      "updated_at": ""
+      "id": "cba33876a9c4047424b8c05f9fc14591",
+      "type": "codefile",
+      "name": "src/commands/diagnostics_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T04:32:22.669Z",
+      "updated_at": "2026-07-01T04:32:22.669Z"
     },
     {
       "id": "d23f5c463fb1e4861",
@@ -414,24 +508,10 @@
       "updated_at": ""
     },
     {
-      "id": "d341e70e0f590bb8b",
-      "type": "finding",
-      "name": "src/commands.rs is oversized",
-      "description": "1707 lines (> 600)",
-      "status": "oversized_file",
-      "truth_class": "derived",
-      "body": {
-        "kind": "oversized_file",
-        "symbol": ""
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d4af0e020bef2b77b",
       "type": "finding",
       "name": "src/workitem.rs is oversized",
-      "description": "635 lines (> 600)",
+      "description": "679 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -445,7 +525,7 @@
       "id": "d59d6bf023b8f7d14",
       "type": "finding",
       "name": "src/store.rs is oversized",
-      "description": "1510 lines (> 600)",
+      "description": "1592 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -459,7 +539,7 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "616 lines (> 600)",
+      "description": "630 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -535,6 +615,17 @@
       "updated_at": ""
     },
     {
+      "id": "df750d03bdf758ca85a8e5cf5172e579",
+      "type": "codefile",
+      "name": "src/commands/status_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-01T04:32:22.670Z",
+      "updated_at": "2026-07-01T04:32:22.670Z"
+    },
+    {
       "id": "dfe31470815685fd8",
       "type": "quality_rule",
       "name": "iso5055-sec-no-injection",
@@ -594,7 +685,7 @@
         "type": "test"
       },
       "created_at": "2026-06-30T14:07:19.973Z",
-      "updated_at": "2026-06-30T18:50:01.163Z"
+      "updated_at": "2026-07-01T04:37:31.695Z"
     }
   ],
   "edges": [
@@ -605,13 +696,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "no literal credentials in the persistence layer",
-      "evidence": "store.rs still uses only parameterized SQL (params!), incl. the new clear_facet DELETE and resolve_node id-prefix SELECT; no literal secrets",
-      "confidence": 0.9,
+      "criterion": "No literal credentials, tokens, private keys, passwords or connection strings are embedded in the verdict write-boundary implementation.",
+      "evidence": "grep over src for api_key|secret|password|BEGIN PRIVATE KEY|token= found only rule/help text in src/packs.rs:56-69, not credential-bearing implementation literals.",
+      "confidence": 0.92,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.966Z",
-      "updated_at": "2026-06-30T18:50:01.109Z"
+      "updated_at": "2026-07-01T04:37:54.452Z"
     },
     {
       "id": "0551070005bc2986246f8af1a37b4573",
@@ -636,12 +727,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "an implemented parent intent with grounded children is not reported ungrounded",
-      "evidence": "maturity.rs ladder collects parent ids from hierarchy edges and continues past them when counting ungrounded leaves",
-      "confidence": 0.95,
+      "evidence": "src/maturity.rs ladder still builds parent_ids from hierarchy edges and excludes roll-up parents when counting ungrounded leaves; cargo test passed after refactor.",
+      "confidence": 0.93,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.894Z",
-      "updated_at": "2026-06-30T14:07:19.901Z"
+      "updated_at": "2026-07-01T04:43:04.185Z"
     },
     {
       "id": "0fbd6911cd68ec8177124f6a105f6cc2",
@@ -666,12 +757,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "importing a graph never inserts an edge before its endpoint nodes exist",
-      "evidence": "restore path untouched this session: validates fully, then inserts nodes before edges in one txn",
-      "confidence": 0.9,
+      "evidence": "src/store.rs restore still validates the full snapshot first, inserts all nodes before the edge loop, and commits in one transaction; cargo test passed.",
+      "confidence": 0.91,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.635Z",
-      "updated_at": "2026-06-30T18:50:01.114Z"
+      "updated_at": "2026-07-01T04:43:41.251Z"
     },
     {
       "id": "1ef3a68168e561f416475f4d582b7540",
@@ -680,28 +771,13 @@
       "kind": "relates",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "these behaviors are cohesive",
-      "evidence": "both remain command-surface behaviors in commands.rs",
+      "criterion": "these are cohesive command-surface behaviors sharing the CLI dispatch/handler layer",
+      "evidence": "src/commands.rs dispatch routes intent and find command surfaces; implementations now live in src/commands/intent.rs and src/commands/misc_cmd.rs after the split, with tests passing.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.946Z",
-      "updated_at": "2026-06-30T18:50:01.120Z"
-    },
-    {
-      "id": "32f78f1df1204f9c27fa248a02934f34",
-      "from_id": "5a47a3fac0f28c37db75310c0829e225",
-      "to_id": "5d8f8250e698c08b3c016ae320640c3a",
-      "kind": "implements",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "loom intent add --name capture_payment (no --allow-symbol-name) is rejected",
-      "evidence": "add-path looks_like_symbol guard unchanged; inv_atom_rejects_symbol_named_intent green",
-      "confidence": 0.9,
-      "depends_on": [],
-      "inspected_by": "llm",
-      "created_at": "2026-06-30T14:07:19.772Z",
-      "updated_at": "2026-06-30T18:50:01.126Z"
+      "updated_at": "2026-07-01T04:46:11.897Z"
     },
     {
       "id": "4048cde8936e8610b87a0cccff330f77",
@@ -711,12 +787,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "with a failing and an uninspected edge present, next returns the failing one first, with its contract",
-      "evidence": "workitem.rs next still orders fix→validate→build→quality→analyze→triage; observed gating only skips build/fix on observed graphs, owned ordering unchanged; each item carries a PromptContract",
-      "confidence": 0.9,
+      "evidence": "src/workitem.rs still orders fix before validate/build/quality/analyze/triage and emits PromptContract fields; cargo test passed after command split.",
+      "confidence": 0.91,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.854Z",
-      "updated_at": "2026-06-30T18:50:01.131Z"
+      "updated_at": "2026-07-01T04:44:21.113Z"
     },
     {
       "id": "539b900a082c1702daa2f6cbe81b0766",
@@ -732,6 +808,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.607Z",
       "updated_at": "2026-06-30T14:07:19.620Z"
+    },
+    {
+      "id": "5dfd43d6f1c7499e65f64ad666846ae3",
+      "from_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "to_id": "71df360f44635e96e91fc6767bc93ea3",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "find on an intent term emits matching intent rows with grounding path, locator and verdict details",
+      "evidence": "src/commands/misc_cmd.rs:197-249 builds JSON/human hits and follows implements edges with locator facets; ring5 JSON matrix and cargo test passed.",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T04:40:00.654Z",
+      "updated_at": "2026-07-01T04:40:10.779Z"
     },
     {
       "id": "6421f644db703f88aba4c729acd2dc81",
@@ -756,12 +847,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proof",
-      "evidence": "cargo test: 85 passed, 0 failed (re-run this session)",
+      "evidence": "`cargo test -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.973Z",
-      "updated_at": "2026-06-30T18:50:01.162Z"
+      "updated_at": "2026-07-01T04:37:31.695Z"
     },
     {
       "id": "73758763c1fcf5a6dcbc337a451f8349",
@@ -794,6 +885,21 @@
       "updated_at": "2026-06-30T14:07:19.927Z"
     },
     {
+      "id": "8e3d87eb0dfc3f8f4336e6de28f00d90",
+      "from_id": "5a47a3fac0f28c37db75310c0829e225",
+      "to_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "loom intent add rejects symbol-pattern names unless explicitly allowed",
+      "evidence": "src/commands/intent.rs:11-19 defines looks_like_symbol; src/commands/intent.rs add handler calls it before add_node; cargo test passed.",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-01T04:39:31.837Z",
+      "updated_at": "2026-07-01T04:39:40.602Z"
+    },
+    {
       "id": "995e32fcd5c208ea8d15b1c9b4c0fea6",
       "from_id": "b883d587c0992593e75dc398fb5ebe22",
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -801,12 +907,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "loom debt emits clusters but writes no nodes or edges to the graph",
-      "evidence": "signal.rs debt builds DebtCluster from a read-only snapshot; no INSERT; the statistical truth-class is computed-only",
-      "confidence": 0.95,
+      "evidence": "src/signal.rs debt_clusters still builds DebtCluster values from a Store snapshot and performs no Store write calls; cargo test passed.",
+      "confidence": 0.93,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.813Z",
-      "updated_at": "2026-06-30T14:07:19.820Z"
+      "updated_at": "2026-07-01T04:44:56.686Z"
     },
     {
       "id": "a4948c777c6a771abc8a06c80a4e3d73",
@@ -837,21 +943,6 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.839Z",
       "updated_at": "2026-06-30T14:07:19.847Z"
-    },
-    {
-      "id": "d0302fd7efdd4a678",
-      "from_id": "d341e70e0f590bb8b",
-      "to_id": "d2fcf6c1e25f78a67",
-      "kind": "assesses",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
     },
     {
       "id": "d034b5fc0c8852aea",
@@ -905,13 +996,13 @@
       "kind": "relates",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "these behaviors are cohesive",
-      "evidence": "both remain store.rs persistence-correctness guarantees over the edge table",
+      "criterion": "these are cohesive persistence-correctness behaviors over the edge/node write boundary",
+      "evidence": "src/store.rs still owns restore ordering and record_verdict/schema gates in the same SQLite persistence boundary; cargo test passed.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.653Z",
-      "updated_at": "2026-06-30T18:50:01.142Z"
+      "updated_at": "2026-07-01T04:46:55.363Z"
     },
     {
       "id": "d3d43a2611d4f4064",
@@ -932,51 +1023,6 @@
       "id": "d6d1d7f406277a0a7",
       "from_id": "d76631ff740131229",
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
-      "kind": "flags",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d7f3d470069baf9b9",
-      "from_id": "d341e70e0f590bb8b",
-      "to_id": "5d8f8250e698c08b3c016ae320640c3a",
-      "kind": "flags",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "da23e07f5a0b5d6f1",
-      "from_id": "d0002c88c80599944",
-      "to_id": "d2fcf6c1e25f78a67",
-      "kind": "assesses",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "db84453fe758f6784",
-      "from_id": "d0002c88c80599944",
-      "to_id": "76420be0f990250c74e3cae5c91c0537",
       "kind": "flags",
       "truth_class": "derived",
       "status": "current",
@@ -1025,13 +1071,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "passing/failing without criterion+evidence rejected; independent without evidence rejected; derived rejected; wrong-lane rejected; truth_class CHECK rejects bad values",
-      "evidence": "record_verdict gates + schema CHECK(truth_class) untouched this session; inv4/5/6/7 green; mark_validation now records verdict before status so a rejected mark cannot partial-commit",
-      "confidence": 0.9,
+      "criterion": "passing/failing verdicts require criterion and evidence, independent requires evidence, derived writes stay separated, wrong-lane writes are rejected, and bad truth_class values are rejected",
+      "evidence": "src/store.rs record_verdict and schema CHECKs remain the write boundary; cargo test passed, including the verdict/validation regressions.",
+      "confidence": 0.91,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.577Z",
-      "updated_at": "2026-06-30T18:50:01.147Z"
+      "updated_at": "2026-07-01T04:45:32.071Z"
     },
     {
       "id": "dfd470d2c863110c5",
@@ -1047,21 +1093,6 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
-    },
-    {
-      "id": "eca5fa6001b0a39e46317016626a4c43",
-      "from_id": "3873edb7e2385ad991bb19eb7cb4a39c",
-      "to_id": "5d8f8250e698c08b3c016ae320640c3a",
-      "kind": "implements",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "find on an intent term prints its grounded path + locator + verdict lines beneath the match",
-      "evidence": "commands.rs find_cmd unchanged: follows implements edges and reads the locator facet",
-      "confidence": 0.9,
-      "depends_on": [],
-      "inspected_by": "llm",
-      "created_at": "2026-06-30T14:07:19.933Z",
-      "updated_at": "2026-06-30T18:50:01.152Z"
     },
     {
       "id": "f80a302a1d6b1dd4db64c3a58f6bcb33",
@@ -1084,7 +1115,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "711918e78a3d40db",
+      "value": "b962739e5f78db5a",
       "truth_class": "derived"
     },
     {
@@ -1105,7 +1136,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "loc",
-      "value": "237",
+      "value": "286",
       "truth_class": "derived"
     },
     {
@@ -1119,14 +1150,14 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "7",
+      "value": "9",
       "truth_class": "derived"
     },
     {
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5ed60f7ada9d1707",
+      "value": "ac71e61dc052927b",
       "truth_class": "derived"
     },
     {
@@ -1147,7 +1178,7 @@
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "loc",
-      "value": "275",
+      "value": "334",
       "truth_class": "derived"
     },
     {
@@ -1161,7 +1192,7 @@
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "11",
+      "value": "13",
       "truth_class": "derived"
     },
     {
@@ -1186,6 +1217,48 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "062105e11d1b02b813d44b68670a8575",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "8c9be3927c0034eb",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "062105e11d1b02b813d44b68670a8575",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"clap::Subcommand\",\"std::path::PathBuf\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "062105e11d1b02b813d44b68670a8575",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "062105e11d1b02b813d44b68670a8575",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "464",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "062105e11d1b02b813d44b68670a8575",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "062105e11d1b02b813d44b68670a8575",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "15",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "0d3fd6576f6b6bbb5822813cb1737b86",
       "target_kind": "edge",
       "key": "locator",
@@ -1196,7 +1269,7 @@
       "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "84d99cd3cb9d7eee",
+      "value": "c62ce6a6ec4b68cd",
       "truth_class": "derived"
     },
     {
@@ -1217,7 +1290,7 @@
       "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "target_kind": "node",
       "key": "loc",
-      "value": "616",
+      "value": "630",
       "truth_class": "derived"
     },
     {
@@ -1231,7 +1304,7 @@
       "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "25",
+      "value": "27",
       "truth_class": "derived"
     },
     {
@@ -1368,13 +1441,6 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "32f78f1df1204f9c27fa248a02934f34",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "intent-add gate:107 -> looks_like_symbol:1627",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "3873edb7e2385ad991bb19eb7cb4a39c",
       "target_kind": "node",
       "key": "level",
@@ -1497,7 +1563,7 @@
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "60509f7ae53c0696",
+      "value": "ad94315aa9b99364",
       "truth_class": "derived"
     },
     {
@@ -1518,7 +1584,7 @@
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "loc",
-      "value": "107",
+      "value": "160",
       "truth_class": "derived"
     },
     {
@@ -1532,14 +1598,14 @@
       "target_id": "48c727a143864846e3f069646dcdb1d6",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "5",
+      "value": "6",
       "truth_class": "derived"
     },
     {
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c1c6149cf061343b",
+      "value": "fd442aaf76d7e25b",
       "truth_class": "derived"
     },
     {
@@ -1560,7 +1626,7 @@
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "loc",
-      "value": "157",
+      "value": "252",
       "truth_class": "derived"
     },
     {
@@ -1574,7 +1640,7 @@
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "8",
+      "value": "10",
       "truth_class": "derived"
     },
     {
@@ -1595,14 +1661,14 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "922840ab994e0643",
+      "value": "69015cf814c6ace8",
       "truth_class": "derived"
     },
     {
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::cli::{\\n    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,\\n    LayerCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,\\n}\",\"crate::model::*\",\"crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{travel, workitem}\",\"pub use intent::looks_like_symbol\",\"std::path::{Path, PathBuf}\"]",
+      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::cli::{\\n    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,\\n    LayerCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,\\n}\",\"crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{travel, workitem}\",\"pub use intent::looks_like_symbol\",\"pub(crate) use status_cmd::require_lane\",\"std::path::{Path, PathBuf}\"]",
       "truth_class": "derived"
     },
     {
@@ -1616,7 +1682,7 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "loc",
-      "value": "1707",
+      "value": "276",
       "truth_class": "derived"
     },
     {
@@ -1630,14 +1696,21 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "51",
+      "value": "11",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "5dfd43d6f1c7499e65f64ad666846ae3",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn find_cmd",
+      "truth_class": "asserted"
     },
     {
       "target_id": "6312dfde0229497f5e8b78d2fa835d83",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "36d5f0fff333a817",
+      "value": "6c0afc6506f16fd6",
       "truth_class": "derived"
     },
     {
@@ -1658,7 +1731,7 @@
       "target_id": "6312dfde0229497f5e8b78d2fa835d83",
       "target_kind": "node",
       "key": "loc",
-      "value": "1510",
+      "value": "1592",
       "truth_class": "derived"
     },
     {
@@ -1672,7 +1745,7 @@
       "target_id": "6312dfde0229497f5e8b78d2fa835d83",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "73",
+      "value": "76",
       "truth_class": "derived"
     },
     {
@@ -1718,10 +1791,45 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "76420be0f990250c74e3cae5c91c0537",
+      "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "27971e95fbc516b3",
+      "value": "ff835f06ea449c2f",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "71df360f44635e96e91fc6767bc93ea3",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"crate::model::*\",\"super::*\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "71df360f44635e96e91fc6767bc93ea3",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "71df360f44635e96e91fc6767bc93ea3",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "575",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "71df360f44635e96e91fc6767bc93ea3",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "71df360f44635e96e91fc6767bc93ea3",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "10",
       "truth_class": "derived"
     },
     {
@@ -1785,6 +1893,13 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8e3d87eb0dfc3f8f4336e6de28f00d90",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn looks_like_symbol",
       "truth_class": "asserted"
     },
     {
@@ -1872,6 +1987,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "a7ccca5b5ae90723f0366637b9c00532",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "b5999dece6af6b86",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a7ccca5b5ae90723f0366637b9c00532",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"super::*\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a7ccca5b5ae90723f0366637b9c00532",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a7ccca5b5ae90723f0366637b9c00532",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "327",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a7ccca5b5ae90723f0366637b9c00532",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a7ccca5b5ae90723f0366637b9c00532",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "5",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "ab2b8d59f555c85569866fd178d9bb05",
       "target_kind": "node",
       "key": "content_hash",
@@ -1911,6 +2068,48 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "9",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "aed762bc48f943d03e0be4871126697a",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "48e390f71d7b8d0b",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "aed762bc48f943d03e0be4871126697a",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"super::*\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "aed762bc48f943d03e0be4871126697a",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "aed762bc48f943d03e0be4871126697a",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "411",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "aed762bc48f943d03e0be4871126697a",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "aed762bc48f943d03e0be4871126697a",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "6",
       "truth_class": "derived"
     },
     {
@@ -1970,6 +2169,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "c029c388797de131660bfb9fa7c600e6",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "481b2d858afbe295",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c029c388797de131660bfb9fa7c600e6",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"super::*\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c029c388797de131660bfb9fa7c600e6",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c029c388797de131660bfb9fa7c600e6",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "240",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c029c388797de131660bfb9fa7c600e6",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c029c388797de131660bfb9fa7c600e6",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "5",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "ca9db45bf812f86983765fc9bee1eb3c",
       "target_kind": "node",
       "key": "level",
@@ -1984,6 +2225,48 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "cba33876a9c4047424b8c05f9fc14591",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "d9b21fdb446f2807",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "cba33876a9c4047424b8c05f9fc14591",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"super::*\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "cba33876a9c4047424b8c05f9fc14591",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "cba33876a9c4047424b8c05f9fc14591",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "315",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "cba33876a9c4047424b8c05f9fc14591",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "cba33876a9c4047424b8c05f9fc14591",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "11",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "d0002c88c80599944",
       "target_kind": "node",
       "key": "adjudication",
@@ -1994,29 +2277,71 @@
       "target_id": "d341e70e0f590bb8b",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-06-30T18:50:26.984Z\",\"hash\":\"922840ab994e0643\",\"reason\":\"src/commands.rs is the CLI command surface: one dispatch arm per subcommand; the new edge call / codefile rescan / observed reporting are more arms on the same table — splitting would scatter the command table, not reduce tangle\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-06-30T19:17:18.555Z\",\"hash\":\"922840ab994e0643\",\"reason\":\"commands.rs (1707 loc) is genuine debt, not cohesion: the dispatch table must stay together, but the handler families should move to submodules exactly like edge/intent/saga already do — judging this needed and owning it, not justifying it away\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
       "target_id": "d4af0e020bef2b77b",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-06-30T18:50:26.996Z\",\"hash\":\"69db6c7fc7393955\",\"reason\":\"src/workitem.rs is the 'loom next' surface: one work-item builder + prompt contract per Mode; the observed-graph lane gate is a few lines on the same cohesive dispatch\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T04:34:34.780Z\",\"hash\":\"82c46bb08307cb8b\",\"reason\":\"src/workitem.rs remains a cohesive queue planner: Mode parsing, GraphState counts, work-item selection and prompt-contract rendering are one scheduling surface; the file owns the next-work contract rather than unrelated behavior.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
       "target_id": "d59d6bf023b8f7d14",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-06-30T18:50:26.991Z\",\"hash\":\"36d5f0fff333a817\",\"reason\":\"src/store.rs is the persistence layer: INV-5 funnels every write through this one SQL boundary; clear_facet and the id-prefix resolver are more of the same single-boundary surface\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T04:33:40.372Z\",\"hash\":\"6c0afc6506f16fd6\",\"reason\":\"src/store.rs remains the single persistence boundary: graph writes, prefix resolution, facets, notes, verdicts and meta all enforce SQLite invariants in one place; splitting would weaken INV-5 transaction and ownership locality.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
       "target_id": "d76631ff740131229",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-06-30T14:07:19.524Z\",\"hash\":\"84d99cd3cb9d7eee\",\"reason\":\"src/signal.rs is the computed-signal plane: smells, debt, doctor and finding views are one read-only projection surface; length is intentional, not tangled\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T04:33:13.574Z\",\"hash\":\"c62ce6a6ec4b68cd\",\"reason\":\"src/signal.rs remains a cohesive read-only signal projection: debt clusters, smells, doctor state and finding views share the same Store snapshot traversal and detector vocabulary; splitting would duplicate detector state rather than remove coupling.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "df750d03bdf758ca85a8e5cf5172e579",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "4af033a1afbba366",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "df750d03bdf758ca85a8e5cf5172e579",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"super::*\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "df750d03bdf758ca85a8e5cf5172e579",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "df750d03bdf758ca85a8e5cf5172e579",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "334",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "df750d03bdf758ca85a8e5cf5172e579",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "df750d03bdf758ca85a8e5cf5172e579",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "8",
+      "truth_class": "derived"
     },
     {
       "target_id": "dfbb04c910fb94c17eada4b1e963c420",
@@ -2029,7 +2354,7 @@
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "69db6c7fc7393955",
+      "value": "82c46bb08307cb8b",
       "truth_class": "derived"
     },
     {
@@ -2050,7 +2375,7 @@
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "loc",
-      "value": "635",
+      "value": "679",
       "truth_class": "derived"
     },
     {
@@ -2064,28 +2389,21 @@
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "28",
+      "value": "30",
       "truth_class": "derived"
-    },
-    {
-      "target_id": "eca5fa6001b0a39e46317016626a4c43",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "find_cmd:842 (walks edges_with Implements; prints path @ locator [verdict])",
-      "truth_class": "asserted"
     },
     {
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e1087eba16800539",
+      "value": "98f585e9a232f863",
       "truth_class": "derived"
     },
     {
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"clap::{Parser, Subcommand}\",\"std::path::PathBuf\"]",
+      "value": "[\"clap::{Parser, Subcommand}\",\"pub use subcommands::*\",\"std::path::PathBuf\"]",
       "truth_class": "derived"
     },
     {
@@ -2099,7 +2417,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "loc",
-      "value": "557",
+      "value": "176",
       "truth_class": "derived"
     },
     {
@@ -2113,7 +2431,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "17",
+      "value": "2",
       "truth_class": "derived"
     }
   ],
