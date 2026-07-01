@@ -25,6 +25,7 @@ use serde_json::{json, Value};
 pub fn dispatch(graph: Option<&std::path::Path>, cmd: JourneyCmd, json: bool) -> Result<()> {
     match cmd {
         JourneyCmd::Coverage { cmd } => coverage(graph, cmd, json),
+        JourneyCmd::Prompt { intent } => prompt(graph, &intent, json),
         JourneyCmd::Invariant { cmd } => invariant(graph, cmd, json),
     }
 }
@@ -281,6 +282,132 @@ fn effective_coverage(store: &Store, intent_id: &str) -> String {
         }
     }
     "uncovered".into()
+}
+
+// ---- typed runner prompt context ------------------------------------------
+
+fn prompt(graph: Option<&std::path::Path>, intent_key: &str, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let intent = store.resolve_node(intent_key, Some(NodeType::Intent))?;
+
+    let implements = store.edges_with(Some(EdgeKind::Implements), Some(&intent.id), None)?;
+    let mut modules: Vec<Value> = Vec::new();
+    for e in implements {
+        let Some(cf) = store.get_node(&e.to_id)? else {
+            continue;
+        };
+        let locator = store
+            .get_facet(&e.id, crate::model::TargetKind::Edge, "locator")?
+            .unwrap_or_default();
+        modules.push(json!({
+            "path": cf.name,
+            "locator": locator,
+            "evidence": e.evidence,
+            "status": e.status.as_str(),
+        }));
+    }
+
+    let coverages = store.edges_with(Some(EdgeKind::Covers), None, Some(&intent.id))?;
+    let mut flows: Vec<Value> = Vec::new();
+    for e in coverages {
+        let Some(cov) = store.get_node(&e.from_id)? else {
+            continue;
+        };
+        flows.push(json!({
+            "name": cov.name,
+            "flow": cov.body.get("flow").and_then(|v| v.as_str()).unwrap_or(""),
+            "effective_status": effective_coverage(&store, &intent.id),
+        }));
+    }
+
+    let invariants = store.edges_with(Some(EdgeKind::Asserts), None, Some(&intent.id))?;
+    let mut invariant_points: Vec<Value> = Vec::new();
+    for e in invariants {
+        let Some(inv) = store.get_node(&e.from_id)? else {
+            continue;
+        };
+        invariant_points.push(json!({
+            "name": inv.name,
+            "field": inv.body.get("field").and_then(|v| v.as_str()).unwrap_or(""),
+            "assertion": inv.body.get("assertion").and_then(|v| v.as_str()).unwrap_or(""),
+            "reason": inv.body.get("reason").and_then(|v| v.as_str()).unwrap_or(""),
+        }));
+    }
+
+    let context = json!({
+        "intent": {
+            "id": intent.id,
+            "name": intent.name,
+            "description": intent.description,
+            "lifecycle": intent.status,
+        },
+        "flows": flows,
+        "modules": modules,
+        "invariant_points": invariant_points,
+        "rules": [
+            "Use the repo's actual domain types — no generic JSON.",
+            "Call the same methods the production handlers call.",
+            "Assert internal domain state, not just HTTP status codes.",
+            "If a step mutates state, prove the mutation in the next step.",
+            "Return a JSON success body with ok=true on success.",
+            "Return a descriptive error string on failure."
+        ],
+    });
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&context)?);
+    } else {
+        println!("{}", render_prompt(&context));
+    }
+    Ok(())
+}
+
+fn render_prompt(context: &Value) -> String {
+    let intent = &context["intent"];
+    let mut out = String::new();
+    out.push_str("You are generating a typed journey runner for this repo.\n\n");
+    out.push_str(&format!(
+        "Flow to cover: {}\n",
+        intent["name"].as_str().unwrap_or("")
+    ));
+    if let Some(desc) = intent["description"].as_str() {
+        if !desc.is_empty() {
+            out.push_str(&format!("Intent description: {desc}\n"));
+        }
+    }
+    out.push_str("\nModules involved:\n");
+    for m in context["modules"].as_array().into_iter().flatten() {
+        out.push_str(&format!(
+            "- {} {}\n",
+            m["path"].as_str().unwrap_or(""),
+            m["locator"].as_str().unwrap_or("")
+        ));
+    }
+    out.push_str("\nDiscovered flows / coverage markers:\n");
+    for f in context["flows"].as_array().into_iter().flatten() {
+        out.push_str(&format!(
+            "- {} ({})\n",
+            f["flow"].as_str().unwrap_or(""),
+            f["effective_status"].as_str().unwrap_or("uncovered")
+        ));
+    }
+    out.push_str("\nInvariant points:\n");
+    for inv in context["invariant_points"].as_array().into_iter().flatten() {
+        out.push_str(&format!(
+            "- {}: {} ({})\n",
+            inv["field"].as_str().unwrap_or(""),
+            inv["assertion"].as_str().unwrap_or(""),
+            inv["reason"].as_str().unwrap_or("")
+        ));
+    }
+    out.push_str("\nRules:\n");
+    for rule in context["rules"].as_array().into_iter().flatten() {
+        out.push_str(&format!("- {}\n", rule.as_str().unwrap_or("")));
+    }
+    out.push_str(
+        "\nOutput: a single file in the repo's primary language implementing the runner.\n",
+    );
+    out
 }
 
 // ---- invariant points ------------------------------------------------------

@@ -551,6 +551,12 @@ pub enum JourneyCmd {
         #[command(subcommand)]
         cmd: JourneyCoverageCmd,
     },
+    /// Generate a typed journey-runner prompt context from loom's code
+    /// understanding of an intent. Read-time assembly, not code generation.
+    Prompt {
+        /// The intent whose flow needs a typed runner (id, name, or fragment).
+        intent: String,
+    },
     /// Journey invariant point commands (mark internal domain assertions).
     Invariant {
         #[command(subcommand)]

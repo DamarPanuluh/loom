@@ -2323,3 +2323,85 @@ fn journey_coverage_discover_finds_and_spawns_gaps() {
         "spawned coverage nodes remove the gaps: {again}"
     );
 }
+
+/// `journey prompt` emits typed-runner prompt context from graph knowledge:
+/// intent meaning, implementing modules/locators, coverage flows, and invariant
+/// markers. It does not generate code; it packages context for an on-site LLM.
+#[test]
+fn journey_prompt_emits_context_from_graph() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(tmp.path().join("src/checkout.rs"), "pub fn checkout() {}\n").unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--description",
+            "buyer can pay and see confirmation",
+            "--lifecycle",
+            "implemented",
+        ],
+    );
+    loom_ok(tmp.path(), &["codefile", "add", "src/checkout.rs"]);
+    loom_ok(
+        tmp.path(),
+        &[
+            "edge",
+            "implement",
+            "checkout completes",
+            "src/checkout.rs",
+            "--locator",
+            "fn checkout",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "src/checkout.rs::checkout",
+            "checkout completes",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "add",
+            "--name",
+            "paid order visible",
+            "checkout completes",
+            "--field",
+            "order.status",
+            "--assertion",
+            "status == paid",
+            "--reason",
+            "payment mutation must project",
+        ],
+    );
+
+    let v = loom_json_out(
+        tmp.path(),
+        &["journey", "prompt", "checkout completes", "--json"],
+    );
+    assert_eq!(v["intent"]["name"], "checkout completes");
+    assert_eq!(v["modules"][0]["path"], "src/checkout.rs");
+    assert_eq!(v["modules"][0]["locator"], "fn checkout");
+    assert_eq!(v["flows"][0]["flow"], "src/checkout.rs::checkout");
+    assert_eq!(v["invariant_points"][0]["field"], "order.status");
+    assert_eq!(v["invariant_points"][0]["assertion"], "status == paid");
+    assert!(v["rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| { r.as_str().unwrap().contains("Assert internal domain state") }));
+}
