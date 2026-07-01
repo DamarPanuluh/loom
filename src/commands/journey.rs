@@ -28,7 +28,7 @@ pub fn dispatch(graph: Option<&std::path::Path>, cmd: JourneyCmd, json: bool) ->
         JourneyCmd::Coverage { cmd } => coverage(graph, cmd, json),
         JourneyCmd::Prompt { intent } => prompt(graph, &intent, json),
         JourneyCmd::Invariant { cmd } => invariant(graph, cmd, json),
-        JourneyCmd::Run { spec } => journey_run(&spec, json),
+        JourneyCmd::Run { spec, base_url } => journey_run(&spec, base_url.as_deref(), json),
     }
 }
 
@@ -734,8 +734,11 @@ fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> 
 /// Execute a contract spec (JSON or YAML) directly. No graph registration,
 /// no intent resolution — consumer-facing proof that sends requests, checks
 /// status + fields, threads captures, and reports green/red.
-fn journey_run(spec: &std::path::Path, json: bool) -> Result<()> {
-    let parsed = crate::saga::parse(spec)?;
+fn journey_run(spec: &std::path::Path, base_url: Option<&str>, json: bool) -> Result<()> {
+    let mut parsed = crate::saga::parse(spec)?;
+    if let Some(b) = base_url {
+        parsed.base = b.to_string();
+    }
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
@@ -745,7 +748,16 @@ fn journey_run(spec: &std::path::Path, json: bool) -> Result<()> {
     let mut failed = 0usize;
 
     for step in &parsed.steps {
-        let url = interpolate_vars(&format!("{}{}", parsed.base, step.request.url), &vars);
+        let base = interpolate_vars(&parsed.base, &vars);
+        if base.is_empty() || base.contains("{{") {
+            bail!(
+                "journey '{}' has no usable base URL (spec base='{}' resolved to '{base}'). \
+                 Pass --base-url, set BASE_URL in the environment, or add a \"base\" field to the spec.",
+                parsed.saga,
+                parsed.base
+            );
+        }
+        let url = interpolate_vars(&format!("{base}{}", step.request.url), &vars);
         let method = step.request.method.to_uppercase();
         let mut req = client.request(
             reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
@@ -789,11 +801,12 @@ fn journey_run(spec: &std::path::Path, json: bool) -> Result<()> {
                     }
                     if ok {
                         for (path, want) in &step.expect.body {
+                            let want_resolved = interpolate_json_vars(want, &vars);
                             let got = jsonpath_val(&body, path);
-                            if got.as_ref() != Some(want) {
+                            if got.as_ref() != Some(&want_resolved) {
                                 ok = false;
                                 err_detail = format!(
-                                    "body {path}: expected {want}, got {}",
+                                    "body {path}: expected {want_resolved}, got {}",
                                     got.map(|v| v.to_string()).unwrap_or_else(|| "null".into())
                                 );
                                 break;

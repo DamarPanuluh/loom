@@ -363,13 +363,14 @@ fn check_response(
     }
     // body expectations
     for (path, want) in &step.expect.body {
+        let want_resolved = interpolate_json(want, vars);
         let got = jsonpath(&body, path);
-        if got.as_ref() != Some(want) {
+        if got.as_ref() != Some(&want_resolved) {
             return StepOutcome {
                 name: step.name.clone(),
                 intent: step.intent.clone(),
                 passed: false,
-                detail: format!("expected {path}={want}, got {got:?}"),
+                detail: format!("expected {path}={want_resolved}, got {got:?}"),
             };
         }
     }

@@ -424,7 +424,7 @@ pub enum SurfaceCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum SagaCmd {
-    /// Add a saga from a JSON spec (creates a saga Validation + step edges).
+    /// Add a saga from a JSON or YAML spec (creates a saga Validation + step edges).
     Add { spec: PathBuf },
     /// List saga validations.
     List {
@@ -571,6 +571,10 @@ pub enum JourneyCmd {
     Run {
         /// Path to the contract spec file (.json or .yaml/.yml).
         spec: std::path::PathBuf,
+        /// Override the base URL (takes precedence over the spec's `base` field
+        /// and `{{ env.BASE_URL }}`). Use when the contract has no base field.
+        #[arg(long)]
+        base_url: Option<String>,
     },
 }
 

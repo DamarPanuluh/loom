@@ -62,7 +62,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": "2026-07-01T14:15:53.496Z"
+      "updated_at": "2026-07-01T14:56:55.329Z"
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -686,7 +686,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "643 lines (> 600)",
+      "description": "647 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1163,7 +1163,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-01T14:15:53.495Z"
+      "updated_at": "2026-07-01T14:56:55.328Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -1503,12 +1503,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "saga execution supports repo-agnostic HTTP contract routes with state extraction, substitution, query/body threading and response-field assertions",
-      "evidence": "src/saga.rs http_contract_to_saga converts routes to steps with capture/interpolation; this session only added YAML fallback parsing (line 163-176), no change to the conversion or execution logic",
+      "evidence": "src/saga.rs check_response now interpolates expect.body values via interpolate_json before comparison (fixes echo-back assertion bug); execution/conversion path otherwise unchanged; ring6 saga_run_interpolates_captured_vars_in_expect_body passes",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:39:57.217Z",
-      "updated_at": "2026-07-01T14:15:13.841Z"
+      "updated_at": "2026-07-01T14:56:41.860Z"
     },
     {
       "id": "a4948c777c6a771abc8a06c80a4e3d73",
@@ -1548,12 +1548,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "src/cli/subcommands.rs defines the typed Clap subcommand schemas consumed by CLI dispatch",
-      "evidence": "session added JourneyCmd::Run variant (graph-free executor); file remains a centralized Clap enum schema",
+      "evidence": "session added --base-url to JourneyCmd::Run and fixed a stale JSON-only doc comment on SagaCmd::Add; file remains pure Clap schema enums",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:29:22.635Z",
-      "updated_at": "2026-07-01T14:15:13.879Z"
+      "updated_at": "2026-07-01T14:56:41.902Z"
     },
     {
       "id": "d034b5fc0c8852aea",
@@ -1906,7 +1906,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "0dd56f5000dba9a1",
+      "value": "ecf20e0fea63e480",
       "truth_class": "derived"
     },
     {
@@ -1927,7 +1927,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "643",
+      "value": "647",
       "truth_class": "derived"
     },
     {
@@ -2053,7 +2053,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "7fde691710b4aabd",
+      "value": "c7e78eb31c75838a",
       "truth_class": "derived"
     },
     {
@@ -2074,7 +2074,7 @@
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "target_kind": "node",
       "key": "loc",
-      "value": "521",
+      "value": "522",
       "truth_class": "derived"
     },
     {
@@ -3096,7 +3096,7 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T14:13:40.346Z\",\"hash\":\"0dd56f5000dba9a1\",\"reason\":\"file grew from adding new features (YAML support, journey run, soft resolution); cohesion unchanged\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-01T14:57:04.848Z\",\"hash\":\"ecf20e0fea63e480\",\"reason\":\"src/cli/subcommands.rs remains centralized typed CLI schema: only Clap Subcommand enum declarations; grew a few lines for --base-url and a doc-comment fix. Splitting by command family scatters DTOs without reducing coupling.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {

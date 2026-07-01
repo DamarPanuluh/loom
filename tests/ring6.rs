@@ -819,3 +819,190 @@ fn saga_add_tolerates_unresolved_intents() {
         .unwrap();
     assert_eq!(validates.len(), 1, "only the resolved intent is linked");
 }
+
+// ---- journey run: --base-url override + clear no-base error ----------------
+
+/// Contract: a spec whose `base` is unset (no env var, no field) fails fast
+/// with an actionable error naming the fix — not a bare "builder error".
+#[test]
+fn journey_run_reports_clear_error_when_base_unresolved() {
+    let tmp = Tmp::new();
+    let spec_path = tmp.path().join("no-base.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "saga": "no-base-journey",
+            "steps": [
+                { "name": "ping", "intent": "ping", "request": { "method": "GET", "url": "/ping" } }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    cmd.args(["journey", "run", spec_path.to_str().unwrap()]);
+    // Ensure BASE_URL is not inherited from the test environment.
+    cmd.env_remove("BASE_URL");
+    let out = cmd.output().unwrap();
+    assert!(!out.status.success(), "must fail when base cannot resolve");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("no usable base URL") && stderr.contains("--base-url"),
+        "error names the fix: {stderr}"
+    );
+}
+
+/// Contract: `--base-url` overrides an unresolved/absent `base` field and lets
+/// the journey actually run against a real server.
+#[test]
+fn journey_run_base_url_flag_overrides_spec() {
+    let tmp = Tmp::new();
+    let (base, handle) = mock_server_handling(1, |_req| (200, r#"{"ok":true}"#.into()));
+
+    let spec_path = tmp.path().join("override-base.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "saga": "override-base-journey",
+            "steps": [
+                { "name": "ping", "intent": "ping", "request": { "method": "GET", "url": "/ping" } }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let out = run_loom_json(&[
+        "journey",
+        "run",
+        spec_path.to_str().unwrap(),
+        "--base-url",
+        &base,
+    ]);
+    handle.join().unwrap();
+
+    assert_eq!(
+        out["passed"], 1,
+        "the overridden base reached the server: {out}"
+    );
+    assert_eq!(out["failed"], 0, "{out}");
+}
+
+// ---- expect-side variable interpolation -------------------------------------
+//
+// A captured value threaded into a subsequent request BODY already worked;
+// the bug was that the same `{{ var }}` inside `expect.body` (the assertion
+// side) was compared literally instead of interpolated first — so "assert the
+// response echoes back what we sent" could never pass without hardcoding.
+
+/// Contract (graph-free `journey run` path): a captured var referenced inside
+/// `expect.body` is interpolated before comparison, so an echo-back assertion
+/// against the actual captured value passes.
+#[test]
+fn journey_run_interpolates_captured_vars_in_expect_body() {
+    let tmp = Tmp::new();
+    let (base, handle) = mock_server_handling(2, |req| {
+        if req.starts_with("POST") {
+            (201, r#"{"person_id":"p-77"}"#.into())
+        } else {
+            (200, r#"{"subject_person_id":"p-77"}"#.into())
+        }
+    });
+
+    let spec_path = tmp.path().join("echo.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "saga": "echo-journey",
+            "base": base,
+            "steps": [
+                {
+                    "name": "create",
+                    "intent": "create resource",
+                    "request": { "method": "POST", "url": "/resources" },
+                    "expect": { "status": 201 },
+                    "capture": { "person_id": "$.person_id" }
+                },
+                {
+                    "name": "verify-echo",
+                    "intent": "verify echo",
+                    "request": { "method": "GET", "url": "/resources/{{ person_id }}" },
+                    "expect": { "body": { "$.subject_person_id": "{{ person_id }}" } }
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    handle.join().unwrap();
+
+    assert_eq!(out["total"], 2, "{out}");
+    assert_eq!(
+        out["passed"], 2,
+        "the echo assertion must resolve {{{{ person_id }}}} before comparing: {out}"
+    );
+}
+
+/// Contract (graph-linked `saga run` path): the same interpolation fix applies
+/// to `src/saga.rs::check_response`, exercised via `saga add` + `saga run`.
+#[test]
+fn saga_run_interpolates_captured_vars_in_expect_body() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _create = intent(&store, "create resource", "implemented");
+    let _verify = intent(&store, "verify echo", "implemented");
+    drop(store);
+
+    let (base, handle) = mock_server_handling(2, |req| {
+        if req.starts_with("POST") {
+            (201, r#"{"person_id":"p-77"}"#.into())
+        } else {
+            (200, r#"{"subject_person_id":"p-77"}"#.into())
+        }
+    });
+
+    let spec_path = tmp.path().join("echo-saga.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "saga": "echo-saga",
+            "base": base,
+            "steps": [
+                {
+                    "name": "create",
+                    "intent": "create resource",
+                    "request": { "method": "POST", "url": "/resources" },
+                    "expect": { "status": 201 },
+                    "capture": { "person_id": "$.person_id" }
+                },
+                {
+                    "name": "verify-echo",
+                    "intent": "verify echo",
+                    "request": { "method": "GET", "url": "/resources/{{ person_id }}" },
+                    "expect": { "body": { "$.subject_person_id": "{{ person_id }}" } }
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    run_cli(tmp.path(), &["saga", "add", spec_path.to_str().unwrap()]);
+    let out = run_cli_json(tmp.path(), &["saga", "run", spec_path.to_str().unwrap()]);
+    handle.join().unwrap();
+
+    assert_eq!(out["total"], 2, "{out}");
+    assert_eq!(
+        out["passed"], 2,
+        "the echo assertion must resolve {{{{ person_id }}}} before comparing: {out}"
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let saga = store
+        .resolve_node("echo-saga", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(saga.status, "passed", "both steps passed, saga is passed");
+}
