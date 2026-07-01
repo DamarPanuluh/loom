@@ -96,6 +96,104 @@ fn smells_duplicated_responsibility_via_tags() {
     assert!(smells.iter().any(|s| s.kind == "duplicated_responsibility"));
 }
 
+// ---- journey proof smells --------------------------------------------------
+
+/// helper: an implemented intent marked user_visible.
+fn visible_intent(store: &Store, name: &str) -> String {
+    let id = intent(store, name, "implemented");
+    store
+        .set_facet(
+            &id,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    id
+}
+
+#[test]
+fn journey_proof_smell_fires_when_user_visible_intent_has_no_validation() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _ = visible_intent(&store, "checkout completes");
+    let smells = loom::signal::smells(&store).unwrap();
+    assert!(smells
+        .iter()
+        .any(|s| s.kind == "missing_journey_proof" && s.message.contains("checkout completes")),);
+}
+
+#[test]
+fn journey_proof_smell_fires_when_validation_is_too_shallow() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent_id = visible_intent(&store, "checkout completes");
+    // a non-journey, non-L5 validation linked via Validates
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "unit checkout",
+            "",
+            "passed",
+            serde_json::json!({"proof_kind":"unit","proof_level":"L1"}),
+        )
+        .unwrap();
+    let edge = store
+        .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
+        .unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "unit test passes",
+            "cargo test passed",
+            0.9,
+            "test",
+        )
+        .unwrap();
+    let smells = loom::signal::smells(&store).unwrap();
+    assert!(smells
+        .iter()
+        .any(|s| s.kind == "proof_too_shallow_for_intent"
+            && s.message.contains("checkout completes")),);
+}
+
+#[test]
+fn journey_proof_smell_silent_when_passing_l5_journey_proof_exists() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent_id = visible_intent(&store, "checkout completes");
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "checkout journey",
+            "",
+            "passed",
+            serde_json::json!({"proof_kind":"journey","proof_level":"L5"}),
+        )
+        .unwrap();
+    let edge = store
+        .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
+        .unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "journey passes end-to-end",
+            "saga run passed",
+            0.9,
+            "test",
+        )
+        .unwrap();
+    let smells = loom::signal::smells(&store).unwrap();
+    assert!(
+        !smells
+            .iter()
+            .any(|s| s.kind == "missing_journey_proof" || s.kind == "proof_too_shallow_for_intent"),
+        "no journey proof smell should fire: {smells:?}"
+    );
+}
 // ---- debt: statistical, never stored (INV-3) -------------------------------
 
 #[test]

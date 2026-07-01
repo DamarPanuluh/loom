@@ -6,7 +6,9 @@
 //!
 //! All three are pure reads over a `Snapshot`. Nothing here mutates the graph.
 
-use crate::model::{Edge, EdgeKind, Facet, Node, NodeType, TargetKind, TruthClass};
+use crate::model::{
+    Edge, EdgeKind, Facet, InspectionStatus, Node, NodeType, TargetKind, TruthClass,
+};
 use crate::registry;
 use crate::store::{Snapshot, Store};
 use crate::Result;
@@ -102,6 +104,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         &path_to_id,
     )?);
     out.extend(disclosure_smells(&intents, &tags_by_intent));
+    out.extend(journey_proof_smells(&snap, &intents));
     Ok(out)
 }
 
@@ -316,6 +319,75 @@ fn disclosure_smells(
     }
     out
 }
+
+fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
+    let visibility = facet_map(snap, "visibility");
+    let nodes_by_id: BTreeMap<&str, &Node> =
+        snap.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    let mut validations_by_intent: BTreeMap<&str, Vec<(&Node, &Edge)>> = BTreeMap::new();
+    for edge in &snap.edges {
+        if edge.kind != EdgeKind::Validates {
+            continue;
+        }
+        let Some(validation) = nodes_by_id.get(edge.from_id.as_str()) else {
+            continue;
+        };
+        validations_by_intent
+            .entry(edge.to_id.as_str())
+            .or_default()
+            .push((*validation, edge));
+    }
+
+    let mut out = Vec::new();
+    for intent in intents {
+        if intent.status != "implemented"
+            || visibility.get(intent.id.as_str()).map(String::as_str) != Some("user_visible")
+        {
+            continue;
+        }
+        let validations = validations_by_intent
+            .get(intent.id.as_str())
+            .cloned()
+            .unwrap_or_default();
+        let has_journey = validations.iter().any(|(validation, edge)| {
+            edge.status == InspectionStatus::Passing
+                && validation.status == "passed"
+                && validation.body.get("proof_kind").and_then(|v| v.as_str()) == Some("journey")
+                && matches!(
+                    validation.body.get("proof_level").and_then(|v| v.as_str()),
+                    Some("L5" | "L6")
+                )
+        });
+        if has_journey {
+            continue;
+        }
+        let kind = if validations.is_empty() {
+            "missing_journey_proof"
+        } else {
+            "proof_too_shallow_for_intent"
+        };
+        let message = if validations.is_empty() {
+            format!(
+                "user-visible intent '{}' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+                intent.name
+            )
+        } else {
+            format!(
+                "user-visible intent '{}' has validations but no passing L5/L6 journey proof",
+                intent.name
+            )
+        };
+        out.push(Smell {
+            kind: kind.into(),
+            message,
+            remedy:
+                "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome"
+                    .into(),
+        });
+    }
+    out
+}
+
 // ---- findings (derived flags + durable adjudication) ------------------------
 
 pub fn findings_view(store: &Store) -> Result<Vec<FindingView>> {
