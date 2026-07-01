@@ -319,6 +319,26 @@ fn doctor_clean_on_valid_graph() {
     );
 }
 
+#[test]
+fn doctor_flags_hierarchy_cycles() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let parent = intent(&store, "parent behavior", "implemented");
+    let child = intent(&store, "child behavior", "implemented");
+    store
+        .add_edge(EdgeKind::Hierarchy, &parent, &child, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Hierarchy, &child, &parent, TruthClass::Asserted)
+        .unwrap();
+
+    let issues = loom::signal::doctor(&store).unwrap();
+    assert!(
+        issues.iter().any(|issue| issue.kind == "hierarchy_cycle"),
+        "cyclic hierarchy must be reported by doctor: {issues:?}"
+    );
+}
+
 // ---- live saga run ---------------------------------------------------------
 
 /// A tiny HTTP/1.1 server that answers `n` requests with the given (status, body).

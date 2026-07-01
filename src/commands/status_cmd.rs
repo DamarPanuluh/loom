@@ -147,7 +147,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
                 "owned": owned_codefiles,
                 "unowned": unowned_codefiles.len(),
                 "unowned_files": unowned_codefiles,
-                "blocking": false,
+                "blocking": !unowned_codefiles.is_empty(),
             },
             "detectors": {
                 "layering": layering,
@@ -167,8 +167,13 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         }
     );
     println!("  intents: {intents}  codefiles: {files}  edges: {edges}");
+    let ownership_gate = if unowned_codefiles.is_empty() {
+        "coverage gate clear"
+    } else {
+        "blocks realized rung"
+    };
     println!(
-        "  code ownership: {owned_codefiles}/{registered_codefiles} owned, {} unowned (advisory)",
+        "  code ownership: {owned_codefiles}/{registered_codefiles} owned, {} unowned ({ownership_gate})",
         unowned_codefiles.len()
     );
     if layering.get("armed").and_then(|v| v.as_bool()) == Some(false)
@@ -323,6 +328,41 @@ fn print_work_item(item: &workitem::WorkItem) {
     );
     println!("  id: {short}");
     println!("  why: {}", item.reason);
+    if !item.context.linked_entities.is_empty() {
+        println!("  linked:");
+        for entity in &item.context.linked_entities {
+            let short = &entity.id[..8.min(entity.id.len())];
+            let status = entity
+                .status
+                .as_ref()
+                .map(|s| format!(" [{s}]"))
+                .unwrap_or_default();
+            let edge = match (&entity.edge_kind, &entity.edge_status) {
+                (Some(kind), Some(edge_status)) => format!(" {kind}/{edge_status}"),
+                _ => String::new(),
+            };
+            let locator = entity
+                .locator
+                .as_ref()
+                .map(|l| format!(" @ {l}"))
+                .unwrap_or_default();
+            println!(
+                "    - {}: {} '{}' [{}]{}{}{}",
+                entity.role, entity.kind, entity.name, short, status, edge, locator
+            );
+        }
+    }
+    if !item.context.suggested_reads.is_empty() {
+        println!("  inspect first:");
+        for read in &item.context.suggested_reads {
+            println!("    - {} — {}", read.reason, read.command);
+        }
+    }
+    let g = &item.truth_gap;
+    println!("  truth axis: {} — {}", g.axis.as_str(), g.missing_form);
+    println!("    make true:  {}", g.authoritative_write);
+    println!("    never here: {}", g.forbidden_write);
+    println!("    then:       {}", g.after_write);
     println!("  role: {}", c.role);
     println!("  mindset: {}", c.mindset);
     println!("  allowed:");

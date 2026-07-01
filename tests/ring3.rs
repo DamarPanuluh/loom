@@ -136,6 +136,141 @@ fn next_build_serves_planned_intent_with_contract() {
 }
 
 #[test]
+fn next_build_context_points_to_target_and_codefile_survey() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let target_id = intent(&store, "payment can be captured");
+
+    let item = workitem::next(&store, Some(Mode::Build)).unwrap().unwrap();
+
+    assert!(item.context.linked_entities.iter().any(|entity| {
+        entity.role == "target" && entity.kind == "intent" && entity.id == target_id
+    }));
+    assert!(item
+        .context
+        .suggested_reads
+        .iter()
+        .any(|read| read.command.starts_with("loom intent show ")));
+    assert!(item
+        .context
+        .suggested_reads
+        .iter()
+        .any(|read| read.command == "loom codefile list"));
+}
+
+#[test]
+fn next_items_carry_the_right_truth_axis() {
+    use loom::truth::TruthAxis;
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = intent(&store, "intent a");
+    let b = intent(&store, "intent b");
+
+    // build → implementation truth
+    let build = workitem::next(&store, Some(Mode::Build)).unwrap().unwrap();
+    assert_eq!(build.truth_gap.axis, TruthAxis::Implementation);
+    assert!(!build.truth_gap.authoritative_write.is_empty());
+
+    // an uninspected relationship edge → analyze → verdict truth
+    store
+        .add_edge(EdgeKind::Relates, &a, &b, TruthClass::Asserted)
+        .unwrap();
+    let analyze = workitem::next(&store, Some(Mode::Analyze))
+        .unwrap()
+        .unwrap();
+    assert_eq!(analyze.truth_gap.axis, TruthAxis::Verdict);
+
+    // a not_run validation → validate → proof truth
+    let v = store
+        .add_node(
+            NodeType::Validation,
+            "proof",
+            "",
+            "not_run",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Validates, &v.id, &a, TruthClass::Asserted)
+        .unwrap();
+    let validate = workitem::next(&store, Some(Mode::Validate))
+        .unwrap()
+        .unwrap();
+    assert_eq!(validate.truth_gap.axis, TruthAxis::Proof);
+
+    // serializable for --json
+    let json = serde_json::to_string(&build).unwrap();
+    assert!(json.contains("truth_gap"));
+    assert!(json.contains("implementation"));
+}
+
+#[test]
+fn next_edge_context_points_to_endpoints_edge_and_grounded_codefile() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = intent(&store, "intent a");
+    let b = intent(&store, "intent b");
+    let file = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/a.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let grounding = store
+        .add_edge(EdgeKind::Implements, &a, &file.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &grounding.id,
+            InspectionStatus::Passing,
+            "grounded",
+            "src/a.rs",
+            0.95,
+            "llm",
+        )
+        .unwrap();
+    let relates = store
+        .add_edge(EdgeKind::Relates, &a, &b, TruthClass::Asserted)
+        .unwrap();
+
+    let item = workitem::next(&store, Some(Mode::Analyze))
+        .unwrap()
+        .unwrap();
+
+    assert!(item.context.linked_entities.iter().any(|entity| {
+        entity.role == "target_edge" && entity.kind == "edge" && entity.id == relates.id
+    }));
+    assert!(item
+        .context
+        .linked_entities
+        .iter()
+        .any(|entity| entity.role == "from" && entity.id == a));
+    assert!(item
+        .context
+        .linked_entities
+        .iter()
+        .any(|entity| entity.role == "to" && entity.id == b));
+    assert!(item
+        .context
+        .linked_entities
+        .iter()
+        .any(|entity| entity.role == "grounded_codefile" && entity.id == file.id));
+    assert!(item
+        .context
+        .suggested_reads
+        .iter()
+        .any(|read| read.command == format!("loom edge show {}", relates.id)));
+    assert!(item
+        .context
+        .suggested_reads
+        .iter()
+        .any(|read| read.command == format!("loom codefile show {}", file.id)));
+}
+
+#[test]
 fn next_analyze_serves_uninspected_then_fix_after_stale() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();

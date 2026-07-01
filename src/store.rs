@@ -17,6 +17,7 @@ use crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION};
 use anyhow::{anyhow, bail, Context};
 use fs2::FileExt;
 use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite_migration::{Migrations, M};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 
@@ -155,11 +156,11 @@ impl Store {
         let db_path = loom_dir.join(GRAPH_DB);
         let fresh = !db_path.exists();
         let lock = acquire_lock(&loom_dir)?;
-        let conn =
+        let mut conn =
             Connection::open(&db_path).with_context(|| format!("opening {}", db_path.display()))?;
         configure(&conn)?;
+        apply_schema_migrations(&mut conn)?;
         if fresh {
-            conn.execute_batch(SCHEMA).context("creating schema")?;
             let default_name = name
                 .map(str::to_string)
                 .or_else(|| {
@@ -214,8 +215,9 @@ impl Store {
             );
         }
         let lock = acquire_lock(&loom_dir)?;
-        let conn = Connection::open(&db_path)?;
+        let mut conn = Connection::open(&db_path)?;
         configure(&conn)?;
+        apply_schema_migrations(&mut conn)?;
         Ok(Store {
             conn,
             root: root.to_path_buf(),
@@ -1443,6 +1445,54 @@ impl Store {
 
 // ---- helpers -------------------------------------------------------------
 
+fn schema_migrations() -> Migrations<'static> {
+    Migrations::new(vec![M::up(SCHEMA)])
+}
+
+fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
+    adopt_legacy_schema_version(conn)?;
+    schema_migrations()
+        .to_latest(conn)
+        .context("migrating graph schema")?;
+    Ok(())
+}
+
+fn adopt_legacy_schema_version(conn: &Connection) -> Result<()> {
+    let user_version: u32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if user_version != 0 {
+        return Ok(());
+    }
+
+    let has_meta = conn
+        .query_row(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='meta'",
+            [],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
+    if !has_meta {
+        return Ok(());
+    }
+
+    let legacy_schema_version = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key='schema_version'",
+            [],
+            |r| r.get::<_, String>(0),
+        )
+        .optional()?;
+
+    if legacy_schema_version
+        .as_deref()
+        .and_then(|s| s.parse::<u32>().ok())
+        == Some(SCHEMA_VERSION)
+    {
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    }
+    Ok(())
+}
+
 fn configure(conn: &Connection) -> Result<()> {
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
@@ -1589,4 +1639,83 @@ fn row_to_edge(r: &rusqlite::Row) -> rusqlite::Result<Edge> {
         created_at: r.get("created_at")?,
         updated_at: r.get("updated_at")?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    struct TmpRoot(PathBuf);
+
+    impl TmpRoot {
+        fn new(prefix: &str) -> Self {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+            let path =
+                std::env::temp_dir().join(format!("{prefix}-{}-{nanos}-{n}", std::process::id()));
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for TmpRoot {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn sqlite_user_version(conn: &Connection) -> u32 {
+        conn.pragma_query_value(None, "user_version", |row| row.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn graph_schema_migrations_are_valid() {
+        schema_migrations().validate().unwrap();
+    }
+
+    #[test]
+    fn fresh_init_sets_sqlite_user_version() {
+        let tmp = TmpRoot::new("loom-store-fresh-migration");
+        let store = Store::init(tmp.path(), Some("fresh"), false).unwrap();
+        assert_eq!(sqlite_user_version(&store.conn), SCHEMA_VERSION);
+        assert_eq!(store.identity().unwrap().schema_version, SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn old_style_schema_is_adopted_without_rerunning_create_table() {
+        let tmp = TmpRoot::new("loom-store-legacy-migration");
+        let loom_dir = tmp.path().join(LOOM_DIR);
+        std::fs::create_dir_all(&loom_dir).unwrap();
+        let db_path = loom_dir.join(GRAPH_DB);
+        {
+            let conn = Connection::open(&db_path).unwrap();
+            conn.execute_batch(SCHEMA).unwrap();
+            conn.execute(
+                "INSERT INTO meta(key,value) VALUES
+                 ('graph_id','legacy'),
+                 ('name','legacy'),
+                 ('schema_version',?1),
+                 ('observed','0'),
+                 ('created_at','legacy')",
+                params![SCHEMA_VERSION.to_string()],
+            )
+            .unwrap();
+            assert_eq!(sqlite_user_version(&conn), 0);
+        }
+
+        let store = Store::open(tmp.path()).unwrap();
+        assert_eq!(sqlite_user_version(&store.conn), SCHEMA_VERSION);
+        assert_eq!(store.identity().unwrap().name, "legacy");
+    }
 }

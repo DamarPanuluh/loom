@@ -27,6 +27,15 @@ tree-sitter-go = "0.23"
 tree-sitter-javascript = "0.23"
 tree-sitter-typescript = "0.23"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+rusqlite_migration = "1.2.0"
+process_control = "5"
+ignore = "0.4"
+globset = "0.4"
+petgraph = "0.8"
+
+[dev-dependencies]
+insta = { version = "1", features = ["json", "redactions"] }
+proptest = "1"
 
 [profile.dev]
 # first build pulls bundled SQLite; incremental builds stay fast

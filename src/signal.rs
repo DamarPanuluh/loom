@@ -12,6 +12,8 @@ use crate::model::{
 use crate::registry;
 use crate::store::{Snapshot, Store};
 use crate::Result;
+use petgraph::algo::tarjan_scc;
+use petgraph::graph::{DiGraph, NodeIndex};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -588,7 +590,62 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
             });
         }
     }
+    issues.extend(hierarchy_cycle_issues(&snap));
     Ok(issues)
+}
+fn hierarchy_cycle_issues(snap: &Snapshot) -> Vec<DoctorIssue> {
+    let mut graph = DiGraph::<&str, ()>::new();
+    let mut indices: BTreeMap<&str, NodeIndex> = BTreeMap::new();
+    for node in snap
+        .nodes
+        .iter()
+        .filter(|n| n.node_type == NodeType::Intent)
+    {
+        let idx = graph.add_node(node.id.as_str());
+        indices.insert(node.id.as_str(), idx);
+    }
+
+    let mut self_loops = BTreeSet::new();
+    for edge in snap.edges.iter().filter(|e| e.kind == EdgeKind::Hierarchy) {
+        if edge.from_id == edge.to_id {
+            self_loops.insert(edge.from_id.as_str());
+        }
+        let (Some(&from), Some(&to)) = (
+            indices.get(edge.from_id.as_str()),
+            indices.get(edge.to_id.as_str()),
+        ) else {
+            continue;
+        };
+        graph.add_edge(from, to, ());
+    }
+
+    let mut issues = Vec::new();
+    for id in self_loops {
+        issues.push(DoctorIssue {
+            kind: "hierarchy_cycle".into(),
+            message: format!(
+                "hierarchy edge on '{}' points to itself",
+                node_name(snap, id)
+            ),
+        });
+    }
+
+    for component in tarjan_scc(&graph) {
+        if component.len() <= 1 {
+            continue;
+        }
+        let mut names: Vec<String> = component
+            .iter()
+            .map(|idx| node_name(snap, graph[*idx]))
+            .collect();
+        names.sort();
+        issues.push(DoctorIssue {
+            kind: "hierarchy_cycle".into(),
+            message: format!("hierarchy cycle among {}", names.join(" -> ")),
+        });
+    }
+    issues.sort_by(|a, b| a.message.cmp(&b.message));
+    issues
 }
 
 // ---- helpers ---------------------------------------------------------------

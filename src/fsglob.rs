@@ -1,10 +1,16 @@
-//! Minimal glob expansion — enough for codefile registration without a glob
-//! crate. Supports `**` (any depth), `*` (one path segment, no `/`), `?`, and
-//! literal segments. Patterns and paths use `/`.
+//! Glob expansion for codefile registration.
+//!
+//! Uses the same battle-tested walker/matcher family as ripgrep:
+//! - `ignore` walks the repo while respecting `.gitignore` / `.ignore` and
+//!   skipping hidden paths by default (`.git`, `.loom`, dotfiles).
+//! - `globset` compiles the user's pattern once and preserves Loom's original
+//!   segment semantics: `*` and `?` do not cross `/`; `**` is recursive.
 //!
 //! Plane: pure path logic + a filesystem walk. No graph awareness.
 
 use crate::Result;
+use globset::GlobBuilder;
+use ignore::WalkBuilder;
 use std::path::Path;
 
 /// Expand a glob (relative to `root`) into matching relative file paths, sorted.
@@ -16,117 +22,108 @@ pub fn expand(root: &Path, pattern: &str) -> Result<Vec<String>> {
         let p = root.join(&pat);
         return Ok(if p.is_file() { vec![pat] } else { vec![] });
     }
-    let pat_segs: Vec<&str> = pat.split('/').filter(|s| !s.is_empty()).collect();
+
+    let matcher = GlobBuilder::new(&pat)
+        .literal_separator(true)
+        .build()?
+        .compile_matcher();
     let mut out = Vec::new();
-    walk(root, root, &pat_segs, &mut out)?;
+
+    for entry in WalkBuilder::new(root)
+        .hidden(true)
+        .require_git(false)
+        .build()
+        .flatten()
+    {
+        if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+            continue;
+        }
+        let Ok(rel) = entry.path().strip_prefix(root) else {
+            continue;
+        };
+        let rel = rel.to_string_lossy().replace('\\', "/");
+        if matcher.is_match(&rel) {
+            out.push(rel);
+        }
+    }
+
     out.sort();
     out.dedup();
     Ok(out)
 }
 
-fn walk(root: &Path, dir: &Path, pat: &[&str], out: &mut Vec<String>) -> Result<()> {
-    let entries = match std::fs::read_dir(dir) {
-        Ok(e) => e,
-        Err(_) => return Ok(()),
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let name = entry.file_name().to_string_lossy().to_string();
-        if name.starts_with('.') {
-            continue; // skip dotfiles/dirs (.git, .loom, …)
-        }
-        let is_dir = path.is_dir();
-        match pat.first() {
-            None => {}
-            Some(&"**") => {
-                // `**` matches zero or more segments.
-                if is_dir {
-                    // consume one dir level, keep `**`
-                    walk(root, &path, pat, out)?;
-                }
-                // or skip `**` entirely and match the rest here
-                if pat.len() > 1 {
-                    if seg_matches(pat[1], &name) {
-                        descend_or_emit(root, &path, &pat[2..], is_dir, out)?;
-                    }
-                    if is_dir {
-                        walk(root, &path, &pat[1..], out)?;
-                    }
-                }
-            }
-            Some(&seg) if seg_matches(seg, &name) => {
-                descend_or_emit(root, &path, &pat[1..], is_dir, out)?;
-            }
-            Some(_) => {}
-        }
-    }
-    Ok(())
-}
-
-fn descend_or_emit(
-    root: &Path,
-    path: &Path,
-    rest: &[&str],
-    is_dir: bool,
-    out: &mut Vec<String>,
-) -> Result<()> {
-    if rest.is_empty() {
-        if !is_dir {
-            if let Ok(rel) = path.strip_prefix(root) {
-                out.push(rel.to_string_lossy().replace('\\', "/"));
-            }
-        }
-    } else if is_dir {
-        walk(root, path, rest, out)?;
-    }
-    Ok(())
-}
-
-/// Match a single path segment against a single pattern segment (`*`, `?`, literals).
-fn seg_matches(pat: &str, name: &str) -> bool {
-    glob_match(pat.as_bytes(), name.as_bytes())
-}
-
-/// Wildcard match within one segment: `*` = any run (no `/`), `?` = one char.
-fn glob_match(pat: &[u8], s: &[u8]) -> bool {
-    // Iterative backtracking matcher.
-    let (mut pi, mut si) = (0usize, 0usize);
-    let (mut star_pi, mut star_si): (Option<usize>, usize) = (None, 0);
-    while si < s.len() {
-        if pi < pat.len() && (pat[pi] == b'?' || pat[pi] == s[si]) {
-            pi += 1;
-            si += 1;
-        } else if pi < pat.len() && pat[pi] == b'*' {
-            star_pi = Some(pi);
-            star_si = si;
-            pi += 1;
-        } else if let Some(sp) = star_pi {
-            pi = sp + 1;
-            star_si += 1;
-            si = star_si;
-        } else {
-            return false;
-        }
-    }
-    while pi < pat.len() && pat[pi] == b'*' {
-        pi += 1;
-    }
-    pi == pat.len()
-}
 #[cfg(test)]
 mod tests {
-    use super::glob_match;
+    use super::expand;
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    struct TmpRoot(PathBuf);
+
+    impl TmpRoot {
+        fn new(prefix: &str) -> Self {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+            let path =
+                std::env::temp_dir().join(format!("{prefix}-{}-{nanos}-{n}", std::process::id()));
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+
+        fn write(&self, rel: &str, text: &str) {
+            let path = self.0.join(rel);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).unwrap();
+            }
+            std::fs::write(path, text).unwrap();
+        }
+    }
+
+    impl Drop for TmpRoot {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
 
     #[test]
-    fn segment_wildcards() {
-        assert!(glob_match(b"*.rs", b"main.rs"));
-        assert!(glob_match(b"*.rs", b".rs")); // edge: empty stem
-        assert!(!glob_match(b"*.rs", b"main.py"));
-        assert!(glob_match(b"foo?", b"foob"));
-        assert!(!glob_match(b"foo?", b"foobar"));
-        assert!(glob_match(b"*", b"anything"));
-        assert!(glob_match(b"a*c", b"abc"));
-        assert!(glob_match(b"a*c", b"ac"));
-        assert!(!glob_match(b"a*c", b"ab"));
+    fn expands_recursive_globs_sorted_and_deduped() {
+        let tmp = TmpRoot::new("loom-fsglob-recursive");
+        tmp.write("src/main.rs", "");
+        tmp.write("src/nested/lib.rs", "");
+        tmp.write("src/main.py", "");
+
+        let got = expand(tmp.path(), "src/**/*.rs").unwrap();
+        assert_eq!(got, vec!["src/main.rs", "src/nested/lib.rs"]);
+    }
+
+    #[test]
+    fn segment_wildcards_do_not_cross_slashes() {
+        let tmp = TmpRoot::new("loom-fsglob-segment");
+        tmp.write("foo.rs", "");
+        tmp.write("src/foo.rs", "");
+
+        let got = expand(tmp.path(), "*.rs").unwrap();
+        assert_eq!(got, vec!["foo.rs"]);
+    }
+
+    #[test]
+    fn glob_walk_respects_gitignore_and_hidden_paths() {
+        let tmp = TmpRoot::new("loom-fsglob-ignore");
+        tmp.write(".gitignore", "ignored.rs\n");
+        tmp.write("kept.rs", "");
+        tmp.write("ignored.rs", "");
+        tmp.write(".hidden.rs", "");
+
+        let got = expand(tmp.path(), "*.rs").unwrap();
+        assert_eq!(got, vec!["kept.rs"]);
     }
 }

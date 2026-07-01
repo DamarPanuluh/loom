@@ -1,4 +1,9 @@
 use super::*;
+use process_control::{ChildExt, Control};
+use std::process::Stdio;
+use std::time::Duration;
+
+const DEFAULT_VALIDATION_TIMEOUT_SECS: u64 = 300;
 
 pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
@@ -351,13 +356,10 @@ pub(crate) fn validate_cmd(
             }
             continue;
         }
-        let out = std::process::Command::new("sh")
-            .arg("-c")
-            .arg(command)
-            .current_dir(&root)
-            .output();
+        let timeout_secs = validation_timeout_secs(v);
+        let out = run_validation_command(&root, command, timeout_secs);
         match out {
-            Ok(o) if o.status.success() => {
+            Ok(Some(o)) if o.status.success() => {
                 mark_validation(&store, &v.id, "passed", &format!("`{command}` exit 0"), "")?;
                 if json {
                     results.push(serde_json::json!({
@@ -370,7 +372,7 @@ pub(crate) fn validate_cmd(
                     println!("PASS {}", v.name);
                 }
             }
-            Ok(o) => {
+            Ok(Some(o)) => {
                 let code = o.status.code().unwrap_or(-1);
                 mark_validation(
                     &store,
@@ -389,6 +391,21 @@ pub(crate) fn validate_cmd(
                     }));
                 } else {
                     println!("FAIL {} (exit {code})", v.name);
+                }
+            }
+            Ok(None) => {
+                let reason = format!("`{command}` timed out after {timeout_secs}s");
+                mark_validation(&store, &v.id, "blocked", "", &reason)?;
+                if json {
+                    results.push(serde_json::json!({
+                        "id": v.id,
+                        "name": v.name,
+                        "status": "blocked",
+                        "command": command,
+                        "reason": reason,
+                    }));
+                } else {
+                    println!("BLOCKED {} (timed out after {timeout_secs}s)", v.name);
                 }
             }
             Err(e) => {
@@ -438,4 +455,32 @@ pub(crate) fn validate_cmd(
         );
     }
     Ok(())
+}
+
+fn validation_timeout_secs(v: &crate::model::Node) -> u64 {
+    v.body
+        .get("timeout_seconds")
+        .and_then(|value| value.as_u64())
+        .filter(|secs| *secs > 0)
+        .unwrap_or(DEFAULT_VALIDATION_TIMEOUT_SECS)
+}
+
+fn run_validation_command(
+    root: &Path,
+    command: &str,
+    timeout_secs: u64,
+) -> std::io::Result<Option<process_control::Output>> {
+    let child = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .current_dir(root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    child
+        .controlled_with_output()
+        .time_limit(Duration::from_secs(timeout_secs))
+        .terminate_for_timeout()
+        .wait()
 }

@@ -231,6 +231,71 @@ fn validate_failing_command_records_failure() {
     );
 }
 
+#[test]
+fn validate_timed_out_command_records_blocked() {
+    let tmp = Tmp::new();
+    run(
+        tmp.path(),
+        Command::Init {
+            path: Some(tmp.path().to_path_buf()),
+            name: Some("t".into()),
+            observed: false,
+        },
+    );
+    run(
+        tmp.path(),
+        Command::Intent {
+            cmd: IntentCmd::Add {
+                name: "can hang".into(),
+                description: "demo".into(),
+                level: "feature".into(),
+                lifecycle: "implemented".into(),
+                visibility: None,
+                layer: None,
+                allow_symbol_name: false,
+            },
+        },
+    );
+    run(
+        tmp.path(),
+        Command::Validation {
+            cmd: ValidationCmd::Add {
+                name: "slow-proof".into(),
+                r#type: "test".into(),
+                command: "sleep 2".into(),
+                intent: "can hang".into(),
+                proof_level: None,
+                proof_kind: None,
+                journey_id: None,
+                repo_native_kind: None,
+                artifact: None,
+            },
+        },
+    );
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let mut proof = store
+            .resolve_node("slow-proof", Some(NodeType::Validation))
+            .unwrap();
+        proof.body["timeout_seconds"] = serde_json::json!(1);
+        store.set_node_body(&proof.id, &proof.body).unwrap();
+    }
+
+    run(
+        tmp.path(),
+        Command::Validate {
+            intent: "can hang".into(),
+            all: false,
+        },
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let proof = store
+        .resolve_node("slow-proof", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(proof.status, "blocked");
+}
+
 // ---- hypothesis: invisible to maturity until adopted -----------------------
 
 #[test]

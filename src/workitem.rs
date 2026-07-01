@@ -51,6 +51,38 @@ pub struct PromptContract {
     pub human_gate: Option<String>,
 }
 
+/// Compact graph context that tells an LLM where to look next. This is a map,
+/// not a verdict: coding agents use it to choose files/symbols to inspect before
+/// editing; verdict agents use it to find the evidence-bearing endpoints.
+#[derive(Debug, Clone, Serialize)]
+pub struct TraversalContext {
+    pub purpose: String,
+    pub linked_entities: Vec<LinkedEntity>,
+    pub suggested_reads: Vec<SuggestedRead>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LinkedEntity {
+    pub role: String,
+    pub kind: String,
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edge_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edge_status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locator: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuggestedRead {
+    pub reason: String,
+    pub command: String,
+}
+
 /// A promptable unit of work.
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkItem {
@@ -61,6 +93,11 @@ pub struct WorkItem {
     /// The primary target: an intent or an edge, described for the LLM.
     pub target: Target,
     pub prompt_contract: PromptContract,
+    pub context: TraversalContext,
+    /// Which form of truth this item makes true, and the authoritative write /
+    /// forbidden write / refresh for that axis. Lets the LLM self-teach whether
+    /// it should fill an intent, code, a proof, a saga, a verdict, or an export.
+    pub truth_gap: crate::truth::TruthGap,
     pub next_step: String,
 }
 
@@ -73,6 +110,217 @@ pub struct Target {
     pub from: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to: Option<String>,
+}
+
+fn node_context(store: &Store, node: &Node, purpose: &str) -> Result<TraversalContext> {
+    let mut ctx = TraversalContext {
+        purpose: purpose.into(),
+        linked_entities: Vec::new(),
+        suggested_reads: Vec::new(),
+    };
+    let mut seen_entities = std::collections::BTreeSet::new();
+    let mut seen_reads = std::collections::BTreeSet::new();
+    push_node_entity(&mut ctx, &mut seen_entities, "target", node);
+    push_node_read(&mut ctx, &mut seen_reads, "show target entity", node);
+
+    let mut edges = store.edges_with(None, Some(&node.id), None)?;
+    edges.extend(store.edges_with(None, None, Some(&node.id))?);
+    edges.sort_by(|a, b| {
+        a.kind
+            .as_str()
+            .cmp(b.kind.as_str())
+            .then(a.from_id.cmp(&b.from_id))
+            .then(a.to_id.cmp(&b.to_id))
+    });
+
+    for edge in edges.into_iter().take(12) {
+        push_edge_entity(store, &mut ctx, &mut seen_entities, "linked_edge", &edge)?;
+        push_edge_read(&mut ctx, &mut seen_reads, "inspect linked edge", &edge);
+        let other_id = if edge.from_id == node.id {
+            &edge.to_id
+        } else {
+            &edge.from_id
+        };
+        if let Some(other) = store.get_node(other_id)? {
+            let role = if edge.from_id == node.id {
+                format!("outgoing_{}", edge.kind)
+            } else {
+                format!("incoming_{}", edge.kind)
+            };
+            push_node_entity(&mut ctx, &mut seen_entities, &role, &other);
+            push_node_read(
+                &mut ctx,
+                &mut seen_reads,
+                &format!("inspect {role}"),
+                &other,
+            );
+        }
+    }
+
+    if matches!(node.node_type, NodeType::Intent)
+        && !ctx
+            .linked_entities
+            .iter()
+            .any(|e| e.kind == NodeType::CodeFile.as_str())
+    {
+        push_raw_read(
+            &mut ctx,
+            &mut seen_reads,
+            "survey registered codefiles when no grounding exists yet",
+            "loom codefile list",
+        );
+    }
+    Ok(ctx)
+}
+
+fn edge_context(store: &Store, edge: &Edge, purpose: &str) -> Result<TraversalContext> {
+    let mut ctx = TraversalContext {
+        purpose: purpose.into(),
+        linked_entities: Vec::new(),
+        suggested_reads: Vec::new(),
+    };
+    let mut seen_entities = std::collections::BTreeSet::new();
+    let mut seen_reads = std::collections::BTreeSet::new();
+    push_edge_entity(store, &mut ctx, &mut seen_entities, "target_edge", edge)?;
+    push_edge_read(&mut ctx, &mut seen_reads, "inspect target edge", edge);
+    for (role, id) in [("from", &edge.from_id), ("to", &edge.to_id)] {
+        if let Some(node) = store.get_node(id)? {
+            push_node_entity(&mut ctx, &mut seen_entities, role, &node);
+            push_node_read(
+                &mut ctx,
+                &mut seen_reads,
+                &format!("inspect {role} endpoint"),
+                &node,
+            );
+            if matches!(node.node_type, NodeType::Intent) {
+                push_grounded_codefiles(
+                    store,
+                    &mut ctx,
+                    &mut seen_entities,
+                    &mut seen_reads,
+                    &node,
+                )?;
+            }
+        }
+    }
+    Ok(ctx)
+}
+
+fn push_grounded_codefiles(
+    store: &Store,
+    ctx: &mut TraversalContext,
+    seen_entities: &mut std::collections::BTreeSet<String>,
+    seen_reads: &mut std::collections::BTreeSet<String>,
+    intent: &Node,
+) -> Result<()> {
+    for edge in store
+        .edges_with(Some(EdgeKind::Implements), Some(&intent.id), None)?
+        .into_iter()
+        .take(8)
+    {
+        push_edge_entity(store, ctx, seen_entities, "grounding_edge", &edge)?;
+        if let Some(cf) = store.get_node(&edge.to_id)? {
+            push_node_entity(ctx, seen_entities, "grounded_codefile", &cf);
+            push_node_read(ctx, seen_reads, "inspect grounded codefile", &cf);
+        }
+    }
+    Ok(())
+}
+
+fn push_node_entity(
+    ctx: &mut TraversalContext,
+    seen: &mut std::collections::BTreeSet<String>,
+    role: &str,
+    node: &Node,
+) {
+    let key = format!("node:{}:{role}", node.id);
+    if !seen.insert(key) {
+        return;
+    }
+    ctx.linked_entities.push(LinkedEntity {
+        role: role.into(),
+        kind: node.node_type.as_str().into(),
+        id: node.id.clone(),
+        name: node.name.clone(),
+        status: Some(node.status.clone()).filter(|s| !s.is_empty()),
+        edge_kind: None,
+        edge_status: None,
+        locator: None,
+    });
+}
+
+fn push_edge_entity(
+    store: &Store,
+    ctx: &mut TraversalContext,
+    seen: &mut std::collections::BTreeSet<String>,
+    role: &str,
+    edge: &Edge,
+) -> Result<()> {
+    let key = format!("edge:{}:{role}", edge.id);
+    if !seen.insert(key) {
+        return Ok(());
+    }
+    let locator = store.get_facet(&edge.id, crate::model::TargetKind::Edge, "locator")?;
+    ctx.linked_entities.push(LinkedEntity {
+        role: role.into(),
+        kind: "edge".into(),
+        id: edge.id.clone(),
+        name: format!("{} {} {}", edge.from_id, edge.kind, edge.to_id),
+        status: None,
+        edge_kind: Some(edge.kind.as_str().into()),
+        edge_status: Some(edge.status.as_str().into()),
+        locator,
+    });
+    Ok(())
+}
+
+fn push_node_read(
+    ctx: &mut TraversalContext,
+    seen: &mut std::collections::BTreeSet<String>,
+    reason: &str,
+    node: &Node,
+) {
+    let Some(command) = node_read_command(node) else {
+        return;
+    };
+    push_raw_read(ctx, seen, reason, &command);
+}
+
+fn push_edge_read(
+    ctx: &mut TraversalContext,
+    seen: &mut std::collections::BTreeSet<String>,
+    reason: &str,
+    edge: &Edge,
+) {
+    push_raw_read(ctx, seen, reason, &format!("loom edge show {}", edge.id));
+}
+
+fn push_raw_read(
+    ctx: &mut TraversalContext,
+    seen: &mut std::collections::BTreeSet<String>,
+    reason: &str,
+    command: &str,
+) {
+    if seen.insert(command.into()) {
+        ctx.suggested_reads.push(SuggestedRead {
+            reason: reason.into(),
+            command: command.into(),
+        });
+    }
+}
+
+fn node_read_command(node: &Node) -> Option<String> {
+    let cmd = match node.node_type {
+        NodeType::Intent => format!("loom intent show {}", node.id),
+        NodeType::CodeFile => format!("loom codefile show {}", node.id),
+        NodeType::QualityRule => format!("loom rule show {}", node.id),
+        NodeType::Validation => format!("loom validation show {}", node.id),
+        NodeType::Hypothesis => format!("loom hypothesis show {}", node.id),
+        NodeType::Finding => format!("loom finding list --kind {}", node.name),
+        NodeType::InboxItem => "loom inbox list".into(),
+        _ => return None,
+    };
+    Some(cmd)
 }
 
 /// Compute the next work item for a mode, or the highest-priority item overall.
@@ -138,6 +386,12 @@ fn build_item(store: &Store) -> Result<Option<WorkItem>> {
         reason,
         target: node_target(&intent),
         prompt_contract: builder_contract(&intent),
+        context: node_context(
+            store,
+            &intent,
+            "Understand the behavior and likely implementation files before coding.",
+        )?,
+        truth_gap: crate::truth::TruthAxis::Implementation.gap(),
         next_step: "after grounding + sync, run `loom status`".into(),
     }))
 }
@@ -269,6 +523,12 @@ fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
         reason: "unproven hypothesis — prove or refute the claim against the code".into(),
         target: node_target(&h),
         prompt_contract: prove_contract(&h),
+        context: node_context(
+            store,
+            &h,
+            "Inspect the hypothesis target and related evidence before proving or refuting.",
+        )?,
+        truth_gap: crate::truth::TruthAxis::Verdict.gap(),
         next_step: "after proving/refuting, run `loom status`".into(),
     }))
 }
@@ -312,6 +572,12 @@ fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
         reason,
         target: node_target(&fv.node),
         prompt_contract: triage_contract(short),
+        context: node_context(
+            store,
+            &fv.node,
+            "Inspect the flagged finding and owning codefile context before adjudicating.",
+        )?,
+        truth_gap: crate::truth::TruthAxis::Signal.gap(),
         next_step: "after recording the verdict, run `loom status`".into(),
     }))
 }
@@ -332,6 +598,12 @@ fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
         reason: format!("inbox item '{}' is new and needs routing", item.description),
         target: node_target(&item),
         prompt_contract: inbox_triage_contract(short),
+        context: node_context(
+            store,
+            &item,
+            "Inspect the inbox item before routing it into graph work.",
+        )?,
+        truth_gap: crate::truth::TruthAxis::Intent.gap(),
         next_step: "after marking or routing the inbox item, run `loom status`".into(),
     }))
 }
@@ -361,6 +633,12 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
         reason: reason.into(),
         target,
         prompt_contract: contract,
+        context: edge_context(
+            store,
+            edge,
+            "Inspect the target edge endpoints and linked code before acting.",
+        )?,
+        truth_gap: axis_for_role(role).gap(),
         next_step: "after recording the verdict, run `loom status`".into(),
     })
 }
@@ -390,16 +668,34 @@ fn effort_for(edge: &Edge) -> String {
     }
 }
 
+/// The truth axis an edge-work role is closing. `fixer` restores implementation
+/// truth (edit code at root cause); `validator` closes proof truth; everything
+/// else (`analyzer`, `quality`) closes verdict truth (judge a claim by evidence).
+fn axis_for_role(role: &str) -> crate::truth::TruthAxis {
+    match role {
+        "fixer" => crate::truth::TruthAxis::Implementation,
+        "validator" => crate::truth::TruthAxis::Proof,
+        _ => crate::truth::TruthAxis::Verdict,
+    }
+}
+
 // ---- role contracts (see docs/llm-driver.md) -------------------------------
 
 fn builder_contract(intent: &Node) -> PromptContract {
     PromptContract {
         role: "builder".into(),
-        mindset: "Realize the behavior this intent describes; ground it to the right file and \
-                  symbol. Functions/symbols are locators, not intents. Do not self-certify quality \
-                  or proofs.".into(),
+        mindset: "Use Loom first to understand why this work exists, which entities/files are \
+                  likely relevant, and what prior evidence says; then inspect the relevant code \
+                  before editing. Functions/symbols are locators, not intents. Do not self-certify \
+                  quality or proofs."
+            .into(),
         why_now: format!("intent '{}' is {} and not yet realized", intent.name, intent.status),
         allowed_actions: vec![
+            "loom status".into(),
+            "loom next --all".into(),
+            "loom intent show <intent>".into(),
+            "loom codefile list".into(),
+            "loom codefile show <file>".into(),
             "edit code".into(),
             "loom edge implement <intent> <codefile> --locator <symbol>".into(),
             "loom intent mark <intent> --lifecycle implemented".into(),
@@ -410,7 +706,7 @@ fn builder_contract(intent: &Node) -> PromptContract {
             "loom rule verdict passing (quality lane)".into(),
             "loom validation mark passed (validator lane)".into(),
         ],
-        required_evidence: "code written, locator confirmed, sync clean".into(),
+        required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
         write_back: "loom edge implement <intent> <codefile> --locator <symbol>; loom intent mark <intent> --lifecycle implemented".into(),
         stop_condition: "after grounding + sync, return to loom status".into(),
         human_gate: None,
@@ -442,11 +738,19 @@ fn analyzer_contract(edge: &Edge) -> PromptContract {
 fn fixer_contract(edge: &Edge) -> PromptContract {
     PromptContract {
         role: "fixer".into(),
-        mindset: "Repair the actual broken behavior at its root cause, not the symptom. Code moving \
+        mindset: "Use Loom first to understand the stale/failing criterion, linked entities, \
+                  likely files, and prior evidence; then inspect the relevant code before editing. \
+                  Repair the actual broken behavior at its root cause, not the symptom. Code moving \
                   is not behavior changing. If the product changed, route through intent update, not \
-                  a silent code change. Sync and re-route proofs after the fix.".into(),
+                  a silent code change. Sync and re-route proofs after the fix."
+            .into(),
         why_now: format!("{} edge is failing", edge.kind),
         allowed_actions: vec![
+            "loom status".into(),
+            "loom next --all".into(),
+            "loom edge show <edge_id>".into(),
+            "loom intent show <linked intent>".into(),
+            "loom codefile show <file>".into(),
             "edit code".into(),
             "loom sync".into(),
             "loom edge implement (re-ground after fix)".into(),
@@ -456,7 +760,7 @@ fn fixer_contract(edge: &Edge) -> PromptContract {
             "mark passing without re-verification".into(),
             "suppress the symptom without a root-cause fix".into(),
         ],
-        required_evidence: "code change, sync clean, the failing criterion now satisfied".into(),
+        required_evidence: "Loom context checked, relevant code inspected, code change, sync clean, the failing criterion now satisfied".into(),
         write_back: "fix code; loom sync; loom edge explore <a> <b> ground --criterion '…' --evidence '…' --confidence <n>".into(),
         stop_condition: "after the fix is grounded + synced, return to loom status".into(),
         human_gate: None,

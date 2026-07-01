@@ -33,6 +33,10 @@ pub struct Ladder {
     pub phase: String,
     /// The single suggested next command.
     pub next_command: String,
+    /// The truth axis this phase is about (which form of truth is stale/missing).
+    /// `None` only for the terminal `complete` phase.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub truth_axis: Option<crate::truth::TruthAxis>,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
@@ -58,6 +62,19 @@ pub fn validation_summary(store: &Store) -> Result<ValidationSummary> {
         }
     }
     Ok(summary)
+}
+
+fn unowned_registered_codefiles(store: &Store) -> Result<usize> {
+    let mut unowned = 0usize;
+    for cf in store.list_nodes(Some(NodeType::CodeFile), usize::MAX)? {
+        if store
+            .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
+            .is_empty()
+        {
+            unowned += 1;
+        }
+    }
+    Ok(unowned)
 }
 
 /// Compute the maturity ladder and compass for the current graph.
@@ -109,6 +126,16 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
 
     // proofs (ring 5): registered validations are not proof until they pass.
     let validations = validation_summary(store)?;
+    let mut unproven_implemented = 0usize;
+    for n in &implemented {
+        if parents.contains(&n.id) {
+            continue; // roll-up parent — proven through child leaves
+        }
+        let proofs = store.edges_with(Some(EdgeKind::Validates), None, Some(&n.id))?;
+        if !proofs.iter().any(|e| e.status == InspectionStatus::Passing) {
+            unproven_implemented += 1;
+        }
+    }
 
     let smells = crate::signal::smells(store)?;
     let open_smells = smells.len();
@@ -118,18 +145,25 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         .count();
     let untriaged = crate::signal::untriaged_findings(store)?.len();
     let stale_findings = crate::signal::stale_findings(store)?.len();
+    let unowned_codefiles = unowned_registered_codefiles(store)?;
+    let doctor_issues = crate::signal::doctor(store)?.len();
+    let export_fresh = crate::travel::export_is_fresh(store)?;
     let rungs = build_rungs(&RungInputs {
         active: active.len(),
         planned,
         ungrounded,
+        unowned_codefiles,
         implemented: implemented.len(),
         validations,
+        unproven_implemented,
         stale,
         uninspected,
+        doctor_issues,
         open_smells,
         open_journey_proof_smells,
         untriaged,
         stale_findings,
+        export_fresh,
     });
 
     // Compass: lowest unmet rung → phase + next command.
@@ -137,20 +171,26 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         active.len(),
         planned,
         ungrounded,
+        unowned_codefiles,
         implemented.len(),
+        unproven_implemented,
         &validations,
         stale,
         uninspected,
+        doctor_issues,
         open_smells,
         open_journey_proof_smells,
         untriaged,
         stale_findings,
+        export_fresh,
     );
 
+    let truth_axis = crate::truth::axis_for_phase(&phase, &next_command);
     Ok(Ladder {
         rungs,
         phase,
         next_command,
+        truth_axis,
     })
 }
 
@@ -159,14 +199,18 @@ fn compass(
     active: usize,
     planned: usize,
     ungrounded: usize,
+    unowned_codefiles: usize,
     implemented: usize,
+    unproven_implemented: usize,
     validations: &ValidationSummary,
     stale: usize,
     uninspected: usize,
+    doctor_issues: usize,
     open_smells: usize,
     open_journey_proof_smells: usize,
     untriaged: usize,
     stale_findings: usize,
+    export_fresh: bool,
 ) -> (String, String) {
     if active == 0 {
         return (
@@ -180,9 +224,13 @@ fn compass(
     if planned > 0 || ungrounded > 0 {
         return ("build".into(), "loom next --mode build".into());
     }
+    if unowned_codefiles > 0 {
+        return ("coverage".into(), "loom coverage".into());
+    }
     if implemented > 0
         && (validations.registered == 0
             || validations.passed < validations.registered
+            || unproven_implemented > 0
             || open_journey_proof_smells > 0)
     {
         return ("validate".into(), "loom next --mode validate".into());
@@ -190,16 +238,19 @@ fn compass(
     if uninspected > 0 {
         return ("analyze".into(), "loom next --mode analyze".into());
     }
+    if doctor_issues > 0 {
+        return ("audit".into(), "loom doctor".into());
+    }
     if open_smells > 0 {
         return ("audit".into(), "loom smells".into());
     }
     if untriaged > 0 || stale_findings > 0 {
         return ("triage".into(), "loom next --mode triage".into());
     }
-    (
-        "complete".into(),
-        "loom export && loom export --check".into(),
-    )
+    if !export_fresh {
+        return ("export".into(), "loom export && loom export --check".into());
+    }
+    ("complete".into(), "loom status".into())
 }
 
 /// The scalar counts the rung ladder is computed from.
@@ -207,14 +258,18 @@ struct RungInputs {
     active: usize,
     planned: usize,
     ungrounded: usize,
+    unowned_codefiles: usize,
     implemented: usize,
     validations: ValidationSummary,
+    unproven_implemented: usize,
     stale: usize,
     uninspected: usize,
+    doctor_issues: usize,
     open_smells: usize,
     open_journey_proof_smells: usize,
     untriaged: usize,
     stale_findings: usize,
+    export_fresh: bool,
 }
 
 /// Build the five maturity rungs from the gathered counts.
@@ -229,8 +284,9 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         },
         detail: format!("{} active intent(s)", c.active),
     });
-    // Realized: nothing planned, every implemented leaf grounded.
-    let realized = c.active > 0 && c.planned == 0 && c.ungrounded == 0;
+    // Realized: nothing planned, every implemented leaf grounded, every
+    // registered CodeFile owned by at least one intent (or removed/ignored).
+    let realized = c.active > 0 && c.planned == 0 && c.ungrounded == 0 && c.unowned_codefiles == 0;
     rungs.push(Rung {
         name: "realized".into(),
         state: if c.active == 0 {
@@ -240,7 +296,10 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         } else {
             RungState::Unmet
         },
-        detail: format!("{} unrealized, {} ungrounded", c.planned, c.ungrounded),
+        detail: format!(
+            "{} unrealized, {} ungrounded, {} unowned codefile(s)",
+            c.planned, c.ungrounded, c.unowned_codefiles
+        ),
     });
     rungs.push(Rung {
         name: "proven".into(),
@@ -248,6 +307,7 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             RungState::NotApplicable
         } else if c.validations.registered > 0
             && c.validations.passed == c.validations.registered
+            && c.unproven_implemented == 0
             && c.open_journey_proof_smells == 0
         {
             RungState::Met
@@ -255,12 +315,13 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             RungState::Unmet
         },
         detail: format!(
-            "{} registered: {} passed, {} failed, {} blocked, {} not_run{}{}",
+            "{} registered: {} passed, {} failed, {} blocked, {} not_run, {} unproven implemented intent(s){}{}",
             c.validations.registered,
             c.validations.passed,
             c.validations.failed,
             c.validations.blocked,
             c.validations.not_run,
+            c.unproven_implemented,
             if c.validations.other > 0 {
                 format!(", {} other", c.validations.other)
             } else {
@@ -277,12 +338,15 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         name: "hardened".into(),
         state: if c.active == 0 {
             RungState::NotApplicable
-        } else if c.stale == 0 && c.uninspected == 0 {
+        } else if c.stale == 0 && c.uninspected == 0 && c.doctor_issues == 0 {
             RungState::Met
         } else {
             RungState::Unmet
         },
-        detail: format!("{} stale/failing, {} uninspected", c.stale, c.uninspected),
+        detail: format!(
+            "{} stale/failing, {} uninspected, {} doctor issue(s)",
+            c.stale, c.uninspected, c.doctor_issues
+        ),
     });
     rungs.push(Rung {
         name: "excellent".into(),
@@ -300,6 +364,23 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
                 "{} open smell(s), {} untriaged finding(s), {} stale finding(s)",
                 c.open_smells, c.untriaged, c.stale_findings
             )
+        },
+    });
+    rungs.push(Rung {
+        name: "exported".into(),
+        state: if c.active == 0 {
+            RungState::NotApplicable
+        } else if c.export_fresh {
+            RungState::Met
+        } else {
+            RungState::Unmet
+        },
+        detail: if c.active == 0 {
+            "no active intents yet".into()
+        } else if c.export_fresh {
+            "loom.graph.json fresh".into()
+        } else {
+            "loom.graph.json missing or stale".into()
         },
     });
     rungs

@@ -22,6 +22,7 @@ pub mod signal;
 pub mod store;
 pub mod sync;
 pub mod travel;
+pub mod truth;
 pub mod workitem;
 
 /// Crate-wide result type. Per the repo `rs-result-type` rule, the error type is

@@ -166,16 +166,19 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     let codefiles = store
         .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
         .len();
+    let ladder = crate::maturity::ladder(&store)?;
     if json {
-        let recommended = if stale > 0 {
-            "loom next --mode fix"
-        } else if planned > 0 {
-            "loom next --mode build"
-        } else if uninspected > 0 {
-            "loom next --mode analyze"
-        } else {
-            "loom status"
-        };
+        let rungs: Vec<_> = ladder
+            .rungs
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "name": r.name,
+                    "state": r.state,
+                    "detail": r.detail,
+                })
+            })
+            .collect();
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
@@ -185,22 +188,24 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
                 "inbox": inbox,
                 "intents": intents,
                 "codefiles": codefiles,
-                "recommended": recommended,
+                "phase": ladder.phase,
+                "recommended": ladder.next_command,
+                "rungs": rungs,
             }))?
         );
         return Ok(());
     }
     println!("what do you want from this session? offers:");
+    println!(
+        "  - recommended: {}              (phase: {})",
+        ladder.next_command, ladder.phase
+    );
     if stale > 0 {
-        println!(
-            "  - repair {stale} failing/stale claim(s)   [loom next --mode fix]  (recommended)"
-        );
+        println!("  - repair {stale} failing/stale claim(s)   [loom next --mode fix]");
     } else if planned > 0 {
-        println!(
-            "  - build {planned} unrealized intent(s)    [loom next --mode build]  (recommended)"
-        );
+        println!("  - build {planned} unrealized intent(s)    [loom next --mode build]");
     } else if uninspected > 0 {
-        println!("  - inspect {uninspected} claim(s)           [loom next --mode analyze]  (recommended)");
+        println!("  - inspect {uninspected} claim(s)           [loom next --mode analyze]");
     } else if intents == 0 && codefiles == 0 {
         println!("  - fresh graph — nothing mapped yet. Start here:");
         println!("      loom guide                  the driving loop + roles");
@@ -214,14 +219,32 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     Ok(())
 }
+fn truth_axis_matrix() -> Vec<serde_json::Value> {
+    crate::truth::TRUTH_AXES
+        .iter()
+        .map(|axis| {
+            let g = axis.gap();
+            serde_json::json!({
+                "axis": g.axis.as_str(),
+                "missing_form": g.missing_form,
+                "authoritative_write": g.authoritative_write,
+                "forbidden_write": g.forbidden_write,
+                "after_write": g.after_write,
+            })
+        })
+        .collect()
+}
 pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
     if json {
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "role": role,
-                "commands": ["loom sync", "loom next", "loom status", "loom door"],
+                "commands": ["loom sync", "loom next --all", "loom status", "loom coverage", "loom doctor", "loom export --check", "loom door"],
                 "roles": ["builder", "analyzer", "fixer", "validator", "quality", "monitor"],
+                "rung_gates": ["seeded", "realized", "proven", "hardened", "excellent", "exported"],
+                "closeout": ["loom coverage", "loom doctor", "loom next --all", "loom export", "loom export --check"],
+                "truth_axes": truth_axis_matrix(),
             }))?
         );
         return Ok(());
@@ -229,11 +252,21 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
     match role {
         None => {
             println!("loom — driving protocol (the loop):");
-            println!("  loom sync     recompute the structural plane after code changes");
-            println!("  loom next     the asserted residue: one work item + its prompt contract");
-            println!("  loom next --mode triage   judge the programmatic flags (findings): justified | needed | blocked");
-            println!("  loom status   maturity + the single next move");
-            println!("  loom door     capture a raw utterance before routing it");
+            println!("  loom sync       recompute the structural plane after code changes");
+            println!("  loom next --all show every lane queue + compass");
+            println!("  loom next       serve one work item + its prompt contract");
+            println!("  loom status     rung ladder + the single next move");
+            println!("  loom door       capture a raw utterance before routing it");
+            println!(
+                "Closeout gates: loom coverage; loom doctor; loom next --all; loom export --check."
+            );
+            println!("Truth forms — fill the one that is stale/missing (loom next names it):");
+            for axis in crate::truth::TRUTH_AXES {
+                let g = axis.gap();
+                println!("  {:<15} {}", g.axis.as_str(), g.missing_form);
+                println!("      make true: {}", g.authoritative_write);
+                println!("      then:      {}", g.after_write);
+            }
             println!("Roles: builder | analyzer | fixer | validator | quality (see `loom guide --role`).");
             println!("Integration monitoring (watch an upstream you depend on): loom guide --role monitor");
             Ok(())
@@ -245,8 +278,8 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
         Some(r) => {
             let (mindset, allowed, forbidden) = match r {
                 "builder" => (
-                    "Realize behavior in code; ground to file+symbol. Functions are locators, not intents.",
-                    "edit code; loom edge implement; loom intent mark; loom sync",
+                    "Use Loom first to understand why, likely files/entities, and prior evidence; then inspect relevant code before editing. Functions are locators, not intents.",
+                    "loom status; loom next --all; loom intent show <intent>; loom codefile list; loom codefile show <file>; edit code; loom edge implement; loom intent mark; loom sync",
                     "loom rule verdict passing; loom validation mark passed",
                 ),
                 "analyzer" => (
@@ -255,8 +288,8 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "edit code; verdict from name similarity",
                 ),
                 "fixer" => (
-                    "Repair the root cause; code moving is not behavior changing. Findings judged `needed` are queued work — consult `loom finding list --state needed`.",
-                    "edit code; loom sync; re-ground; loom finding list --state needed",
+                    "Use Loom first to understand the stale/failing criterion, linked entities, likely files, and prior evidence; then inspect relevant code before repairing the root cause. Findings judged `needed` are queued work — consult `loom finding list --state needed`.",
+                    "loom status; loom next --all; loom edge show <edge_id>; loom intent show <linked intent>; loom codefile show <file>; edit code; loom sync; re-ground; loom finding list --state needed",
                     "suppress the symptom; mark passing without re-verification",
                 ),
                 "validator" => (

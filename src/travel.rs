@@ -103,6 +103,7 @@ pub fn read_export(path: &Path) -> Result<Export> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn empty_export_is_deterministic() {
@@ -116,10 +117,44 @@ mod tests {
             facets: vec![],
             tags: vec![],
         };
-        let a = e.to_json().unwrap();
-        let b = e.to_json().unwrap();
-        assert_eq!(a, b);
-        let parsed = Export::from_json(&a).unwrap();
+        let json = e.to_json().unwrap();
+        insta::assert_snapshot!(json, @r###"{
+  "format": 1,
+  "graph_id": "g1",
+  "name": "demo",
+  "observed": false,
+  "nodes": [],
+  "edges": [],
+  "facets": [],
+  "tags": []
+}
+"###);
+        let parsed = Export::from_json(&json).unwrap();
         assert_eq!(parsed, e);
+    }
+
+    proptest! {
+        #[test]
+        fn empty_export_roundtrips_for_generated_identity(
+            graph_id in "[a-z0-9]{1,16}",
+            name in "[a-z][a-z0-9 -]{0,20}",
+            observed in any::<bool>(),
+        ) {
+            let export = Export {
+                format: FORMAT,
+                graph_id,
+                name,
+                observed,
+                nodes: vec![],
+                edges: vec![],
+                facets: vec![],
+                tags: vec![],
+            };
+
+            let first = export.to_json().unwrap();
+            let second = export.to_json().unwrap();
+            prop_assert_eq!(&first, &second);
+            prop_assert_eq!(Export::from_json(&first).unwrap(), export);
+        }
     }
 }
