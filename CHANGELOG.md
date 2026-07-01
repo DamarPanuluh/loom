@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.9.0] - 2026-07-01
+- Global --json across all read/show/list commands; split commands.rs and cli.rs into cohesive submodules
+
 ## [0.8.0]
 - **Full CRUD completeness.** UPDATE: `edge set-locator`, `intent set`, `surface update`,
   `validation update`. READ: `validation|hypothesis|task show`, and `intent show` now
