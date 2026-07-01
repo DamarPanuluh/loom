@@ -75,6 +75,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     let changed_intents = sync_structural(store, root, &codefiles, &mut report)?;
     ripple_changed_intents(store, &changed_intents, &mut report)?;
     ripple_artifact_drift(store, root, &mut report)?;
+    ripple_runner_drift(store, root, &mut report)?;
     rebuild_findings(store, root, &codefiles, &rules, &mut report)?;
     Ok(report)
 }
@@ -290,6 +291,107 @@ fn ripple_artifact_drift(store: &Store, root: &Path, report: &mut SyncReport) ->
         // Only count/reset a validation that was actually proven; one already
         // at `not_run` is unchanged, so it is neither reset nor counted.
         if val.status != "not_run" {
+            store.set_node_status(&val.id, "not_run")?;
+            report.validations_reset += 1;
+        }
+    }
+    Ok(())
+}
+
+/// Self-healing ripple for typed-runner coverage. A `journey_coverage` node may
+/// carry `runner_ref` / `test_ref` pointing at the code that proves its flow
+/// (path or `path::symbol`). Those files are not necessarily registered
+/// CodeFiles, so the structural pass never sees them — meaning a developer can
+/// edit (and break) the runner while the coverage's proof stays green. Track a
+/// derived hash per ref and, on a real change or disappearance, stale the
+/// covered intent's journey `validates` edges and reset a proven journey
+/// validation to `not_run` — so the proof re-enters the validate queue and the
+/// coverage flips to uncovered until it is re-run. Mirrors `ripple_artifact_drift`.
+///
+/// Only explicit path refs are content-tracked; a free-text ref (no on-disk
+/// path component) is left to `journey coverage drift`'s existence check.
+fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {
+    let coverages = store.list_nodes(Some(NodeType::JourneyCoverage), usize::MAX)?;
+    for cov in coverages {
+        let mut drifted = false;
+        for field in ["runner_ref", "test_ref"] {
+            let Some(reference) = cov.body.get(field).and_then(|v| v.as_str()) else {
+                continue;
+            };
+            // The on-disk path is the ref up to an optional `::symbol` locator.
+            let rel_path = reference.split("::").next().unwrap_or(reference);
+            if rel_path.is_empty() {
+                continue;
+            }
+            let facet_key = format!("{field}_hash");
+            let prior = store.get_facet(&cov.id, TargetKind::Node, &facet_key)?;
+            let current = match std::fs::read_to_string(root.join(rel_path)) {
+                Ok(c) => Some(crate::extract::fnv1a(&c)),
+                Err(_) => None,
+            };
+            // Seed on first observation (no prior hash) — never stale on it.
+            let this_drifted = match (prior.as_deref(), current.as_deref()) {
+                (Some(p), Some(c)) => p != c,
+                (Some(_), None) => true, // file disappeared
+                _ => false,
+            };
+            match &current {
+                Some(h) => store.set_facet(
+                    &cov.id,
+                    TargetKind::Node,
+                    &facet_key,
+                    h,
+                    TruthClass::Derived,
+                )?,
+                None => store.clear_facet(&cov.id, TargetKind::Node, &facet_key)?,
+            }
+            drifted |= this_drifted;
+        }
+        if !drifted {
+            continue;
+        }
+        // Find the covered intent (Covers: coverage → intent) and stale only the
+        // journey proof(s) this coverage actually stands behind, so a sibling
+        // proof for the same intent isn't disturbed. When the coverage declares
+        // a `contract_artifact`, match it to the validation's `body.artifact`;
+        // otherwise fall back to the intent's current passing L5/L6 journey
+        // proofs. Restricting to passing L5/L6 keeps an already-unproven or
+        // shallow validation untouched.
+        let Some(cover_edge) = store
+            .edges_with(Some(EdgeKind::Covers), Some(&cov.id), None)?
+            .into_iter()
+            .next()
+        else {
+            continue;
+        };
+        let coverage_artifact = cov.body.get("contract_artifact").and_then(|v| v.as_str());
+        for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&cover_edge.to_id))? {
+            let Some(val) = store.get_node(&e.from_id)? else {
+                continue;
+            };
+            let is_journey = val.body.get("proof_kind").and_then(|v| v.as_str()) == Some("journey");
+            let is_l5_plus = matches!(
+                val.body.get("proof_level").and_then(|v| v.as_str()),
+                Some("L5") | Some("L6")
+            );
+            if !is_journey || !is_l5_plus {
+                continue;
+            }
+            // Only a currently-proven proof is worth re-opening.
+            if val.status != "passed" {
+                continue;
+            }
+            // If the coverage names a specific artifact, only stale the proof
+            // backed by that same artifact.
+            if let Some(want) = coverage_artifact {
+                let proof_artifact = val.body.get("artifact").and_then(|v| v.as_str());
+                if proof_artifact != Some(want) {
+                    continue;
+                }
+            }
+            if store.stale_edge(&e.id)? {
+                report.edges_staled += 1;
+            }
             store.set_node_status(&val.id, "not_run")?;
             report.validations_reset += 1;
         }

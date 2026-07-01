@@ -2822,3 +2822,376 @@ fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
         "matching proof must avoid false drift: {findings}"
     );
 }
+
+/// Self-healing (slice 2): editing a covered journey's `runner_ref` source
+/// after the proof passed stales that journey proof on the next `loom sync`,
+/// resetting it to `not_run` so the flow re-enters the validate queue and
+/// coverage flips back to uncovered. The compiler/test suite catches the
+/// breakage; loom's job is to make the stale proof tracked work again.
+#[test]
+fn sync_stales_journey_proof_when_runner_ref_source_changes() {
+    use loom::model::{EdgeKind, InspectionStatus, NodeType};
+    use loom::store::Store;
+
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
+    std::fs::write(
+        tmp.path().join("src/journey_runner.rs"),
+        "pub fn checkout_runner() { /* v1 */ }\n",
+    )
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("contracts/checkout.v1.json"),
+        r#"{"routes":[]}"#,
+    )
+    .unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "checkout journey",
+            "--type",
+            "saga",
+            "--command",
+            "cargo test checkout_runner_test",
+            "--intent",
+            "checkout completes",
+            "--proof-level",
+            "L5",
+            "--proof-kind",
+            "journey",
+            "--artifact",
+            "contracts/checkout.v1.json",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow",
+            "--flow",
+            "src/journey_runner.rs::checkout_runner",
+            "--runner-ref",
+            "src/journey_runner.rs::checkout_runner",
+            "--contract-artifact",
+            "contracts/checkout.v1.json",
+            "checkout completes",
+        ],
+    );
+    // Make the proof pass.
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let val = store
+            .resolve_node("checkout journey", Some(NodeType::Validation))
+            .unwrap();
+        let intent = store
+            .resolve_node("checkout completes", Some(NodeType::Intent))
+            .unwrap();
+        store.set_node_status(&val.id, "passed").unwrap();
+        let e = store
+            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        store
+            .record_verdict(
+                &e.id,
+                InspectionStatus::Passing,
+                "journey green",
+                "saga passed",
+                0.9,
+                "test",
+            )
+            .unwrap();
+    }
+    // First sync SEEDS the runner_ref hash — it must NOT stale the fresh proof.
+    loom_ok(tmp.path(), &["sync"]);
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let val = store
+            .resolve_node("checkout journey", Some(NodeType::Validation))
+            .unwrap();
+        assert_eq!(
+            val.status, "passed",
+            "seeding sync must not stale the proof"
+        );
+    }
+    // Edit the runner source → next sync must stale the proof.
+    std::fs::write(
+        tmp.path().join("src/journey_runner.rs"),
+        "pub fn checkout_runner() { /* v2 — added a field */ }\n",
+    )
+    .unwrap();
+    loom_ok(tmp.path(), &["sync"]);
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let val = store
+            .resolve_node("checkout journey", Some(NodeType::Validation))
+            .unwrap();
+        assert_eq!(
+            val.status, "not_run",
+            "editing the runner_ref source must reset the journey proof"
+        );
+    }
+    // Coverage now reads uncovered (derived from the reset proof).
+    let rows = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
+    assert_eq!(
+        rows[0]["effective_status"], "uncovered",
+        "coverage flips to uncovered after runner drift: {rows}"
+    );
+}
+
+/// Signal-fed prompt (slice 1): when the intent's grounded code imports an
+/// infra crate (sqlx), `journey prompt` reports it in `signals.infra_hints`
+/// and emits the "needs infrastructure" rule — instead of blindly assuming an
+/// in-process typed runner. `grounded` reflects IMPLEMENTS modules, not imports.
+#[test]
+fn journey_prompt_signals_flag_infra_and_condition_rules() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(
+        tmp.path().join("src/repo.rs"),
+        "use sqlx::PgPool;\npub fn load(pool: &PgPool) {}\n",
+    )
+    .unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "orders persist to the database",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+    loom_ok(tmp.path(), &["codefile", "add", "src/repo.rs"]);
+    loom_ok(
+        tmp.path(),
+        &[
+            "edge",
+            "implement",
+            "orders persist to the database",
+            "src/repo.rs",
+            "--locator",
+            "fn load",
+        ],
+    );
+    // sync so the codefile's `imports` facet is extracted.
+    loom_ok(tmp.path(), &["sync"]);
+
+    let v = loom_json_out(
+        tmp.path(),
+        &[
+            "journey",
+            "prompt",
+            "orders persist to the database",
+            "--json",
+        ],
+    );
+    assert_eq!(
+        v["signals"]["grounded"], true,
+        "grounded via IMPLEMENTS: {v}"
+    );
+    let infra = v["signals"]["infra_hints"].as_array().unwrap();
+    assert!(
+        infra.iter().any(|h| h["capability"] == "database"),
+        "sqlx import flagged as database infra: {infra:?}"
+    );
+    let rules = v["rules"].as_array().unwrap();
+    assert!(
+        rules
+            .iter()
+            .any(|r| r.as_str().unwrap().contains("needs infrastructure")),
+        "infra hint emits the needs-infrastructure rule: {rules:?}"
+    );
+}
+
+/// Signal-fed prompt (slice 1): an intent with no code grounding must NOT get
+/// the in-process typed-runner rules; it should be steered to a consumer-facing
+/// HTTP/saga proof instead.
+#[test]
+fn journey_prompt_ungrounded_intent_steers_to_http_proof() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "external billing settles",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+
+    let v = loom_json_out(
+        tmp.path(),
+        &["journey", "prompt", "external billing settles", "--json"],
+    );
+    assert_eq!(v["signals"]["grounded"], false, "no modules: {v}");
+    let rules = v["rules"].as_array().unwrap();
+    assert!(
+        rules
+            .iter()
+            .any(|r| r.as_str().unwrap().contains("no in-process code grounding")),
+        "ungrounded intent is steered to an HTTP/saga proof: {rules:?}"
+    );
+    assert!(
+        !rules
+            .iter()
+            .any(|r| r.as_str().unwrap().contains("actual domain types")),
+        "ungrounded intent must NOT get the in-process typed-runner rule: {rules:?}"
+    );
+}
+
+/// Self-healing narrowing (slice 2): when an intent has two passing L5 journey
+/// proofs (artifacts A and B) and a coverage declares `contract_artifact=B`,
+/// editing that coverage's runner_ref must stale ONLY the B proof — the sibling
+/// A proof stays passed. Guards the over-stale bug the artifact match fixes.
+#[test]
+fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
+    use loom::model::{EdgeKind, InspectionStatus, NodeType};
+    use loom::store::Store;
+
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
+    std::fs::write(
+        tmp.path().join("src/runner_b.rs"),
+        "pub fn runner_b() { /* v1 */ }\n",
+    )
+    .unwrap();
+    std::fs::write(tmp.path().join("contracts/a.json"), r#"{"a":1}"#).unwrap();
+    std::fs::write(tmp.path().join("contracts/b.json"), r#"{"b":1}"#).unwrap();
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout completes",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+    for (name, artifact) in [
+        ("journey a", "contracts/a.json"),
+        ("journey b", "contracts/b.json"),
+    ] {
+        loom_ok(
+            tmp.path(),
+            &[
+                "validation",
+                "add",
+                "--name",
+                name,
+                "--type",
+                "saga",
+                "--command",
+                "loom saga run",
+                "--intent",
+                "checkout completes",
+                "--proof-level",
+                "L5",
+                "--proof-kind",
+                "journey",
+                "--artifact",
+                artifact,
+            ],
+        );
+    }
+    // Coverage stands behind the B proof, with a runner_ref we will edit.
+    loom_ok(
+        tmp.path(),
+        &[
+            "journey",
+            "coverage",
+            "add",
+            "--name",
+            "checkout flow b",
+            "--flow",
+            "f",
+            "--runner-ref",
+            "src/runner_b.rs::runner_b",
+            "--contract-artifact",
+            "contracts/b.json",
+            "checkout completes",
+        ],
+    );
+    // Pass both proofs.
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let intent = store
+            .resolve_node("checkout completes", Some(NodeType::Intent))
+            .unwrap();
+        for name in ["journey a", "journey b"] {
+            let val = store
+                .resolve_node(name, Some(NodeType::Validation))
+                .unwrap();
+            store.set_node_status(&val.id, "passed").unwrap();
+            let e = store
+                .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap();
+            store
+                .record_verdict(
+                    &e.id,
+                    InspectionStatus::Passing,
+                    "journey green",
+                    "saga passed",
+                    0.9,
+                    "test",
+                )
+                .unwrap();
+        }
+    }
+    loom_ok(tmp.path(), &["sync"]); // seed
+    std::fs::write(
+        tmp.path().join("src/runner_b.rs"),
+        "pub fn runner_b() { /* v2 */ }\n",
+    )
+    .unwrap();
+    loom_ok(tmp.path(), &["sync"]); // drift
+    let store = Store::open(tmp.path()).unwrap();
+    let a = store
+        .resolve_node("journey a", Some(NodeType::Validation))
+        .unwrap();
+    let b = store
+        .resolve_node("journey b", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(a.status, "passed", "sibling A proof must stay passed");
+    assert_eq!(b.status, "not_run", "artifact-matched B proof must reset");
+}

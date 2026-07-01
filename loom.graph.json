@@ -1532,12 +1532,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "when a codefile content hash changes, sync re-opens asserted edges grounded in that file and dependent proof/relationship edges",
-      "evidence": "src/sync.rs:1-8 states sync ripples staleness only for real changed prior hashes; src/sync.rs:155-160 stales IMPLEMENTS edges for changed codefiles and records changed intents; src/sync.rs:206-239 stales governs, validates, and relationship edges for those intents and resets linked validations",
+      "evidence": "src/sync.rs run() still stales IMPLEMENTS + dependent edges on content-hash change; this session added ripple_runner_drift (a new pass that stales journey proofs when a coverage runner_ref's source changes) — extends the same content-hash ripple model, doesn't change the codefile-change staleness path",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.730Z",
-      "updated_at": "2026-07-01T12:22:42.634Z"
+      "updated_at": "2026-07-01T15:59:56.675Z"
     },
     {
       "id": "c54711608652dda6602d831b1bb4195b",
@@ -2804,7 +2804,7 @@
       "target_id": "a56055709634988945f76e980fcf0480",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "cb58276a4c8fe919",
+      "value": "2694cc0f44126566",
       "truth_class": "derived"
     },
     {
@@ -2825,7 +2825,7 @@
       "target_id": "a56055709634988945f76e980fcf0480",
       "target_kind": "node",
       "key": "loc",
-      "value": "419",
+      "value": "521",
       "truth_class": "derived"
     },
     {
@@ -2839,7 +2839,7 @@
       "target_id": "a56055709634988945f76e980fcf0480",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "12",
+      "value": "13",
       "truth_class": "derived"
     },
     {
