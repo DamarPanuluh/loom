@@ -53,18 +53,40 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
     else {
         return Ok(None);
     };
+    // A registered file that no longer exists on disk cannot be read or
+    // grounded — do not send a worker to read a ghost. The only honest moves
+    // are unregistering it or re-pointing the registration.
+    let missing = !store.root().join(&cf.name).exists();
+    let (reason, contract) = if missing {
+        (
+            format!(
+                "registered codefile '{}' no longer exists on disk — unregister it (or re-register its successor)",
+                cf.name
+            ),
+            super::contracts::missing_codefile_contract(&cf),
+        )
+    } else {
+        (
+            format!("registered codefile '{}' has no owning intent", cf.name),
+            coverage_contract(&cf),
+        )
+    };
     Ok(Some(WorkItem {
         mode: "coverage".into(),
         owner_role: "builder".into(),
         effort: "low".into(),
-        reason: format!("registered codefile '{}' has no owning intent", cf.name),
+        reason,
         target: node_target(&cf),
         stale_causes: Vec::new(),
-        prompt_contract: coverage_contract(&cf),
+        prompt_contract: contract,
         context: node_context(
             store,
             &cf,
-            "Decide which intent this file realizes, or whether it should be unregistered.",
+            if missing {
+                "The file is gone; decide what its registration should become."
+            } else {
+                "Decide which intent this file realizes, or whether it should be unregistered."
+            },
         )?,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Implementation.gap(),
@@ -560,4 +582,113 @@ pub(super) fn prescreen_for(
         &patterns,
         20,
     ))
+}
+
+/// Per-queue backlog counts mirroring the EXACT serving partition of each
+/// queue above — the status surface reads this so it can never disagree with
+/// what `loom next --mode <m>` would actually serve.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct QueueCounts {
+    pub build: usize,
+    pub coverage: usize,
+    /// failing (any kind) + stale relationship/grounding claims.
+    pub fix: usize,
+    /// uninspected relationship/grounding claims.
+    pub analyze: usize,
+    /// open governs edges (uninspected + stale) plus never-measured
+    /// rule×root-intent pairs.
+    pub quality: usize,
+    /// open validates edges (unrun + stale).
+    pub validate: usize,
+    /// recorded verdicts below the review confidence floor.
+    pub review: usize,
+    /// unjudged/stale findings + new inbox items.
+    pub triage: usize,
+    /// proposed hypotheses awaiting proof.
+    pub prove: usize,
+    /// user-visible feature intents with open completeness axes.
+    pub elaborate: usize,
+}
+
+pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
+    use crate::model::TruthClass;
+    let failing = store
+        .edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
+        .len();
+    let stale = store.edges_by_status(
+        TruthClass::Asserted,
+        &[InspectionStatus::NeedsReverification],
+    )?;
+    let uninspected =
+        store.edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?;
+    let split = |edges: &[Edge]| -> (usize, usize, usize) {
+        let governs = edges.iter().filter(|e| e.kind == EdgeKind::Governs).count();
+        let validates = edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Validates)
+            .count();
+        (edges.len() - governs - validates, governs, validates)
+    };
+    let (stale_rel, stale_gov, stale_val) = split(&stale);
+    let (unin_rel, unin_gov, unin_val) = split(&uninspected);
+
+    // Never-measured rule × root implemented intent pairs (the quality
+    // fallback's exact predicate).
+    let governs_all = store.edges_with(Some(EdgeKind::Governs), None, None)?;
+    let measured: std::collections::BTreeSet<(&str, &str)> = governs_all
+        .iter()
+        .map(|e| (e.from_id.as_str(), e.to_id.as_str()))
+        .collect();
+    let children: std::collections::BTreeSet<String> = store
+        .edges_with(Some(EdgeKind::Hierarchy), None, None)?
+        .into_iter()
+        .map(|e| e.to_id)
+        .collect();
+    let rules = store.list_nodes(Some(NodeType::QualityRule), usize::MAX)?;
+    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
+    let mut pairs = 0usize;
+    for rule in rules.iter().filter(|r| r.status != "deprecated") {
+        for intent in intents
+            .iter()
+            .filter(|i| i.status == "implemented" && !children.contains(&i.id))
+        {
+            if !measured.contains(&(rule.id.as_str(), intent.id.as_str())) {
+                pairs += 1;
+            }
+        }
+    }
+
+    let review = store
+        .edges_by_status(
+            TruthClass::Asserted,
+            &[InspectionStatus::Passing, InspectionStatus::Independent],
+        )?
+        .into_iter()
+        .filter(|e| e.confidence > 0.0 && e.confidence < super::REVIEW_CONFIDENCE_FLOOR)
+        .count();
+    let findings = crate::signal::triage_findings(store)?.len();
+    let inbox_new = store
+        .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
+        .into_iter()
+        .filter(|n| n.status == "new")
+        .count();
+    Ok(QueueCounts {
+        build: store
+            .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
+            .len(),
+        coverage: crate::commands::unowned_codefiles(store)?.len(),
+        fix: failing + stale_rel,
+        analyze: unin_rel,
+        quality: stale_gov + unin_gov + pairs,
+        validate: stale_val + unin_val,
+        review,
+        triage: findings + inbox_new,
+        prove: store
+            .nodes_by_status(NodeType::Hypothesis, &["proposed"])?
+            .len(),
+        elaborate: crate::completeness::all_scorecards(store)?
+            .iter()
+            .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
+            .count(),
+    })
 }

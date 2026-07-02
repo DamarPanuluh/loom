@@ -374,6 +374,16 @@ pub(crate) fn scan_cmd(graph: Option<&Path>, cmd: crate::cli::ScanCmd, json: boo
                 format!("registered scan adapter '{name}'"),
             )
         }
+        ScanCmd::Update { name, command, map } => {
+            crate::scan::update_adapter(&store, &name, command.as_deref(), map.as_deref())?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "updated": name, "command": command, "map": map }),
+                "loom scan run",
+                format!("updated scan adapter '{name}'"),
+            )
+        }
         ScanCmd::List => {
             let adapters = crate::scan::list_adapters(&store)?;
             if json {

@@ -72,6 +72,42 @@ pub fn add_adapter(store: &Store, name: &str, command: &str, map: Option<&str>) 
     });
     write_adapters(store, &adapters)
 }
+/// Edit a registered scan adapter in place.
+pub fn update_adapter(
+    store: &Store,
+    name: &str,
+    command: Option<&str>,
+    map: Option<&str>,
+) -> Result<()> {
+    let name = name.trim();
+    if name.is_empty() {
+        bail!("scan adapter name must not be empty");
+    }
+    if command.is_none() && map.is_none() {
+        bail!("nothing to update — pass --command and/or --map");
+    }
+    if let Some(command) = command {
+        if command.trim().is_empty() {
+            bail!("scan adapter command must not be empty");
+        }
+    }
+    if let Some(map) = map {
+        validate_map_regex(map)?;
+    }
+
+    let mut adapters = list_adapters(store)?;
+    let adapter = adapters
+        .iter_mut()
+        .find(|a| a.name == name)
+        .ok_or_else(|| anyhow!("no scan adapter named '{name}'"))?;
+    if let Some(command) = command {
+        adapter.command = command.to_string();
+    }
+    if let Some(map) = map {
+        adapter.map = Some(map.to_string());
+    }
+    write_adapters(store, &adapters)
+}
 
 /// Remove a scan adapter from the store meta registry.
 pub fn remove_adapter(store: &Store, name: &str) -> Result<()> {

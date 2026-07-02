@@ -109,6 +109,78 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             )?;
             Ok(())
         }
+        RuleCmd::Update {
+            key,
+            description,
+            category,
+            severity,
+            effort,
+            guide,
+            hint,
+            pattern,
+            reason,
+        } => {
+            if reason.trim().is_empty() {
+                bail!("rule update needs substantive --reason");
+            }
+            if description.is_none()
+                && category.is_none()
+                && severity.is_none()
+                && effort.is_none()
+                && guide.is_none()
+                && hint.is_empty()
+                && pattern.is_empty()
+            {
+                bail!("nothing to update — pass a rule field to change");
+            }
+            let r = store.resolve_node(&key, Some(NodeType::QualityRule))?;
+            let mut body = r.body.clone();
+            if let Some(v) = &category {
+                body["category"] = serde_json::json!(v);
+            }
+            if let Some(v) = &severity {
+                body["severity"] = serde_json::json!(v);
+            }
+            if let Some(v) = &effort {
+                body["effort"] = serde_json::json!(v);
+            }
+            if let Some(v) = &guide {
+                body["inspection_guide"] = serde_json::json!(v);
+            }
+            if !hint.is_empty() {
+                body["detection_hints"] = serde_json::json!(hint);
+            }
+            if !pattern.is_empty() {
+                body["patterns"] = serde_json::json!(pattern);
+            }
+            let updated = if let Some(v) = &description {
+                store.update_node(&r.id, None, Some(v), None)?
+            } else {
+                r.clone()
+            };
+            store.set_node_body(&r.id, &body)?;
+            store.add_note(
+                &r.id,
+                "decision",
+                &format!("updated quality rule: {reason}"),
+            )?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "rule": {
+                        "id": r.id,
+                        "name": r.name,
+                        "description": updated.description,
+                        "body": body,
+                    },
+                    "reason": reason,
+                }),
+                "loom status",
+                format!("updated quality rule '{}'", r.name),
+            )?;
+            Ok(())
+        }
         RuleCmd::Remove { key } => {
             let r = store.resolve_node(&key, Some(NodeType::QualityRule))?;
             store.delete_node(&r.id)?;

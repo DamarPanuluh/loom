@@ -348,6 +348,11 @@ These must hold at all times and be enforced at every write boundary.
 6. **Role gates.** An asserted write from a role not allowed for that edge kind is rejected.
 7. **Ripple completeness.** Every dependency change reaches every dependent fact. No silent staleness.
 8. **No cross-plane silent mutation.** Documentation edits do not change intent meaning without going through InboxItem routing.
+9. **Pack definition is the baseline.** A seeded/builtin rule body compared against the shipped pack definition is a structural smell (`pack_drift`) if it differs. Remedy: re-baseline with `loom rule seed <pack>` (idempotent) or keep the customization as its recorded trace.
+
+### Structural smells
+
+The `loom smells` surface reports derived graph-shape signals, each with a remedy. One such smell is `pack_drift`: a quality rule that originated from a seeded pack has been edited in the graph, so its current body no longer matches the shipped pack definition. The remedy is either `loom rule seed <pack>` to re-baseline (idempotent) or to accept the customization and let it remain surfaced as a recorded divergence.
 
 ---
 

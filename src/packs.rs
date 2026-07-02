@@ -906,6 +906,38 @@ const DOCKER: &[PackRule] = &[
     },
 ];
 
+/// The canonical seeded body for one pack rule — the single source shared by
+/// `seed` (which writes it) and the pack-drift smell (which compares a stored
+/// rule against it after a loom upgrade).
+pub fn rule_body(pack_name: &str, r: &PackRule) -> serde_json::Value {
+    let detection_kind = if r.patterns.is_empty() {
+        "llm_judgment"
+    } else {
+        "pattern"
+    };
+    serde_json::json!({
+        "category": r.category,
+        "severity": r.severity,
+        "effort": r.effort,
+        "pack": pack_name,
+        "detection_kind": detection_kind,
+        "inspection_guide": r.inspection_guide,
+        "detection_hints": r.detection_hints,
+        "patterns": r.patterns,
+        "evidence_template": { "passing": r.evidence_passing, "failing": r.evidence_failing },
+        "passing_example": {
+            "criterion": r.example_passing.criterion,
+            "evidence": r.example_passing.evidence,
+            "confidence": r.example_passing.confidence,
+        },
+        "failing_example": {
+            "criterion": r.example_failing.criterion,
+            "evidence": r.example_failing.evidence,
+            "confidence": r.example_failing.confidence,
+        },
+    })
+}
+
 /// Seed a pack's rules as asserted `QualityRule` nodes. Idempotent.
 pub fn seed(store: &Store, pack_name: &str) -> Result<usize> {
     let rules = pack(pack_name);
@@ -916,34 +948,7 @@ pub fn seed(store: &Store, pack_name: &str) -> Result<usize> {
         );
     }
     for r in rules {
-        let hints = serde_json::to_value(r.detection_hints)?;
-        let patterns = serde_json::to_value(r.patterns)?;
-        let detection_kind = if r.patterns.is_empty() {
-            "llm_judgment"
-        } else {
-            "pattern"
-        };
-        let body = serde_json::json!({
-            "category": r.category,
-            "severity": r.severity,
-            "effort": r.effort,
-            "pack": pack_name,
-            "detection_kind": detection_kind,
-            "inspection_guide": r.inspection_guide,
-            "detection_hints": hints,
-            "patterns": patterns,
-            "evidence_template": { "passing": r.evidence_passing, "failing": r.evidence_failing },
-            "passing_example": {
-                "criterion": r.example_passing.criterion,
-                "evidence": r.example_passing.evidence,
-                "confidence": r.example_passing.confidence,
-            },
-            "failing_example": {
-                "criterion": r.example_failing.criterion,
-                "evidence": r.example_failing.evidence,
-                "confidence": r.example_failing.confidence,
-            },
-        });
+        let body = rule_body(pack_name, r);
         store.upsert_builtin_node(NodeType::QualityRule, r.name, r.name, r.description, body)?;
     }
     Ok(rules.len())

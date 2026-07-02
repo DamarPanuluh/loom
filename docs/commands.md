@@ -12,6 +12,8 @@ loom status [--json]
 
 Graph identity, maturity ladder, queue counts, validation summary, code ownership, and the compass. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of unanswered question-sourced inbox items.
 
+`loom status` now prints a true per-queue backlog line (`fix=N validate=N build=N coverage=N quality=N analyze=N prove=N triage=N review=N elaborate=N`) computed by the same partition that `loom next` serves, plus a note when human questions are waiting. In JSON mode the output gains a `queues` object with the same counts.
+
 ```text
 loom session [--json]
 ```
@@ -34,6 +36,7 @@ Queue partition is deliberately disjoint:
 - `fix`: every failing asserted edge, plus stale non-`governs`/non-`validates` asserted claims.
 - `quality`: uninspected or stale `governs` only. Failing `governs` routes to `fix`.
 - `validate`: uninspected or stale `validates` only. Failing `validates` routes to `fix`.
+- `coverage`: registered codefiles with no owning intent. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
 - `review`: asserted `passing` or `independent` verdicts with `0 < confidence < 0.7`, lowest confidence first. The work item keeps the edge kind's registry owner as `owner_role`, but the mindset is independent re-inspection.
 - `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet embeds the open axes and routes the builder to add missing scenarios/prerequisites/proofs/journey coverage, raise product questions, or waive non-question axes with reasons.
 
@@ -127,6 +130,7 @@ Detects repo languages and recommends seedable quality packs only. Available pac
 ```text
 loom scan add <name> "<command>" [--map <regex>] [--json]
 loom scan list [--json]
+loom scan update <name> [--command "<cmd>"] [--map <regex>] [--json]
 loom scan remove <name> [--json]
 loom scan run [<name>] [--json]
 ```
@@ -160,7 +164,7 @@ loom intent add --name "<name>"
 **Atomization guard:** if the intent name matches a symbol pattern (for example snake_case with no spaces), the command is rejected unless `--allow-symbol-name` and a behavioral `--description` are both provided. Functions and symbols are locators on `implements` edges, not intents.
 
 ```text
-loom intent update <intent> --description "<new>" --reason "<why>" [--reword] [--json]
+loom intent update <intent> --description "<new>" --reason "<why>" [--reword] [--name <new-name>] [--json]
 ```
 
 Description change = redefinition. It ripples one hop: passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers (`waiver:*` facets) are cleared so waived axes re-open, and old wording plus waiver reopening are preserved in decision notes. `--reword` is same meaning, clearer words; no ripple.
@@ -170,6 +174,7 @@ loom intent set <intent> [--level <level>] [--visibility user_visible|internal] 
 loom intent mark <intent> --lifecycle <lifecycle> [--reason "<why>"] [--json]
 loom intent confirm <intent> [--json]
 loom intent retire <intent> --reason "<why>" [--replaced-by <intent>] [--json]
+loom intent remove <intent> --reason "<why>" [--json]   (mistakes only; refuses intents that still have hierarchy children)
 loom intent reactivate <intent> --reason "<why>" [--json]
 loom intent waive <intent> scenarios|prerequisites|boundary|proof|journey --reason "<why>" [--json]
 loom intent show <intent> [--json]
@@ -328,6 +333,10 @@ loom journey coverage add <intent> --name <name> --flow <flow>
   [--test-ref <path-or-symbol>]
   [--contract-artifact <path>]
   [--json]
+loom journey coverage update <coverage> --reason "<why>"
+  [--runner-ref <path-or-symbol>] [--test-ref <path-or-symbol>] [--contract-artifact <path>]
+  [--json]
+loom journey coverage remove <coverage> [--json]
 loom journey coverage list [--limit N] [--json]
 loom journey coverage discover [--spawn-missing] [--json]
 loom journey coverage drift [--json]
@@ -341,6 +350,10 @@ Coverage nodes mark flows that need a journey proof. Effective coverage is deriv
 loom journey invariant add <intent> --name <name> --field <field> --assertion <assertion>
   [--reason <reason>]
   [--json]
+loom journey invariant update <invariant> --reason "<why>"
+  [--name <name>] [--field <field>] [--assertion <assertion>]
+  [--json]
+loom journey invariant remove <invariant> [--json]
 loom journey invariant list [--limit N] [--json]
 ```
 
@@ -370,6 +383,10 @@ Seedable packs: `iso5055`, `service`, `web-ui`, `data`, `concurrency`, `docker`.
 
 ```text
 loom rule add --name "<name>" [--description "<desc>"] [--category "<category>"] [--json]
+loom rule update <rule> --reason "<why>"
+  [--description "<desc>"] [--category "<category>"] [--severity <severity>] [--effort <effort>]
+  [--guide "<inspection_guide>"] [--hint "<detection_hint>"] [--pattern "<regex>"]
+  [--json]
 loom rule remove <rule> [--json]
 loom rule ungovern <rule> <intent> [--json]
 loom rule list [--limit N] [--json]
@@ -408,9 +425,13 @@ loom hypothesis add --name "<name>" --claim "<what is wrong now>" --target <inte
   [--predicted-outcome "<measurable result>"]
   [--json]
 
+loom hypothesis update <hypothesis> --reason "<why>"
+  [--claim "<new claim>"] [--proposal "<new proposal>"] [--predicted-outcome "<new outcome>"]
+  [--json]
 loom hypothesis prove <hypothesis> --verdict supported|refuted [--evidence "<what code showed>"] [--json]
 loom hypothesis adopt <hypothesis> [--spawned <planned-intent>] [--json]
 loom hypothesis reject <hypothesis> --reason "<why>" [--json]
+loom hypothesis remove <hypothesis> [--json]
 loom hypothesis show <hypothesis> [--json]
 loom hypothesis list [--limit N] [--json]
 ```
@@ -440,6 +461,7 @@ loom task add "<title>" [--kind spike|investigation|experiment|review|chore] [--
 loom task start <task> [--json]
 loom task close <task> --result "<summary>" [--json]
 loom task abandon <task> --reason "<why>" [--json]
+loom task remove <task> [--json]
 loom task show <task> [--json]
 loom task list [--limit N] [--json]
 ```
@@ -454,6 +476,7 @@ TaskRecords guide work but do not certify truth. Durable outcomes must be promot
 loom proposal add --title "<title>" (--file <path> | --text "<raw proposal>") [--json]
 loom proposal list [--limit N] [--json]
 loom proposal show <proposal> [--json]
+loom proposal remove <proposal> [--json]
 
 loom proposal item add <proposal> --text "<item>" [--kind <kind>] [--json]
 loom proposal item adopt <proposal> <number> [--as <intent|task>] [--name "<spawned name>"] [--description "<spawned description>"] [--json]
@@ -505,7 +528,7 @@ loom whoami [--json]
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.
 - `doctor`: schema conformance, provenance, evidence vacuity, role-gate audit; exits non-zero on any issue.
-- `smells`: structural signals from graph shape, each with a remedy.
+- `smells`: structural signals from graph shape, each with a remedy. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or keep the customization as its recorded trace).
 - `debt`: advisory statistical cluster feed; never appears in required work queues until promoted.
 - `whoami`: acting agent identity and lane enforcement.
 
@@ -516,6 +539,7 @@ loom whoami [--json]
 ```text
 loom note add <target> --text "<text>" [--kind decision|context|warning] [--json]
 loom note list [<target>] [--limit N] [--json]
+loom note remove <id> [--json]
 ```
 
 Durable notes attach to any node by name, id, or unique fragment.
@@ -527,6 +551,7 @@ Durable notes attach to any node by name, id, or unique fragment.
 ```text
 loom vocab add <term> [--why "<contrastive definition>"] [--json]
 loom vocab remove <term> [--json]
+loom vocab rename <from> <to> --reason "<why>" [--json]
 loom vocab list [--json]
 ```
 

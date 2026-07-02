@@ -2,7 +2,7 @@
 
 use super::{node_json, open, pulse, require_lane};
 use crate::cli::IntentCmd;
-use crate::model::{NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use crate::Result;
 use anyhow::bail;
 use std::path::Path;
@@ -50,9 +50,11 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
         IntentCmd::Update {
             key,
             description,
+            name,
             reason,
             reword,
-        } => intent_update(graph, key, description, reason, reword, json),
+        } => intent_update(graph, key, description, name, reason, reword, json),
+        IntentCmd::Remove { key, reason } => intent_remove(graph, key, reason, json),
         IntentCmd::Retire {
             key,
             reason,
@@ -382,55 +384,104 @@ fn intent_mark(
 fn intent_update(
     graph: Option<&Path>,
     key: String,
-    description: String,
+    description: Option<String>,
+    new_name: Option<String>,
     reason: String,
     reword: bool,
     json: bool,
 ) -> Result<()> {
+    if description.is_none() && new_name.is_none() {
+        bail!("nothing to update — pass --description and/or --name");
+    }
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
-    if reword {
-        // clearer words, same concept: no ripple
-        require_lane(&store, crate::registry::OwnerRole::Builder)?;
-        store.update_node(&n.id, None, Some(&description), None)?;
-        store.add_note(&n.id, "decision", &format!("reworded: {reason}"))?;
-        pulse::emit_line(
-            &store,
-            json,
-            serde_json::json!({
-                "intent": {
-                    "id": n.id,
-                    "name": n.name,
-                    "description": description,
-                    "status": n.status,
-                },
-                "reword": true,
-                "reason": reason,
-            }),
-            "loom status",
-            format!("reworded '{}' (no ripple)", n.name),
-        )?;
-    } else {
-        let reopened = store.redefine_intent(&n.id, &description)?;
-        store.add_note(&n.id, "decision", &format!("redefined: {reason}"))?;
-        pulse::emit_line(
-            &store,
-            json,
-            serde_json::json!({
-                "intent": {
-                    "id": n.id,
-                    "name": n.name,
-                    "description": description,
-                    "status": n.status,
-                },
-                "reword": false,
-                "reopened_edges": reopened,
-                "reason": reason,
-            }),
-            "loom status",
-            format!("redefined '{}' — {reopened} edge(s) re-opened", n.name),
+    require_lane(&store, crate::registry::OwnerRole::Builder)?;
+    // Rename first: a label change, never a ripple — the description stays
+    // the behavioral criterion.
+    if let Some(name) = &new_name {
+        if crate::commands::looks_like_symbol(name) {
+            bail!(
+                "new name '{name}' looks like a code symbol — intents are behaviors; \
+                 symbols belong on implements-edge locators"
+            );
+        }
+        store.update_node(&n.id, Some(name), None, None)?;
+        store.add_note(
+            &n.id,
+            "decision",
+            &format!("renamed from '{}': {reason}", n.name),
         )?;
     }
+    let mut reopened = 0usize;
+    if let Some(description) = &description {
+        if reword {
+            // clearer words, same concept: no ripple
+            store.update_node(&n.id, None, Some(description), None)?;
+            store.add_note(&n.id, "decision", &format!("reworded: {reason}"))?;
+        } else {
+            reopened = store.redefine_intent(&n.id, description)?;
+            store.add_note(&n.id, "decision", &format!("redefined: {reason}"))?;
+        }
+    }
+    let display_name = new_name.as_deref().unwrap_or(n.name.as_str());
+    let human = match (&new_name, &description) {
+        (Some(_), None) => format!("renamed '{}' → '{}' (no ripple)", n.name, display_name),
+        (None, Some(_)) if reword => format!("reworded '{display_name}' (no ripple)"),
+        (None, Some(_)) => {
+            format!("redefined '{display_name}' — {reopened} edge(s) re-opened")
+        }
+        (Some(_), Some(_)) if reword => {
+            format!("renamed + reworded '{display_name}' (no ripple)")
+        }
+        _ => format!("renamed + redefined '{display_name}' — {reopened} edge(s) re-opened"),
+    };
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": {
+                "id": n.id,
+                "name": display_name,
+                "previous_name": n.name,
+                "description": description,
+                "status": n.status,
+            },
+            "reword": reword,
+            "reopened_edges": reopened,
+            "reason": reason,
+        }),
+        "loom status",
+        human,
+    )?;
+    Ok(())
+}
+fn intent_remove(graph: Option<&Path>, key: String, reason: String, json: bool) -> Result<()> {
+    if reason.trim().is_empty() {
+        bail!("intent remove needs substantive --reason");
+    }
+    let store = open(graph)?;
+    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
+    require_lane(&store, crate::registry::OwnerRole::Builder)?;
+    let children = store.edges_with(Some(EdgeKind::Hierarchy), Some(&n.id), None)?;
+    if !children.is_empty() {
+        bail!(
+            "intent '{}' has {} hierarchy child edge(s); retire it or re-parent/remove the children first",
+            n.name,
+            children.len()
+        );
+    }
+    store.delete_node(&n.id)?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "removed": true,
+            "intent": node_json(&n),
+            "reason": reason,
+        }),
+        "loom status",
+        format!("removed mistaken intent '{}'", n.name),
+    )?;
     Ok(())
 }
 

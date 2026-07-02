@@ -89,7 +89,7 @@ WorkItem
     suggested_reads:
       - { reason, command }
     read_set:
-      - { path, locator?, why }   # real file paths
+      - { path, locator?, why }   # real file paths; missing files are annotated "GONE from disk"
   truth_gap:
     axis
     missing_form
@@ -458,6 +458,17 @@ human answers batched questions
 ```
 
 The LLM must not answer product questions for the human. It either creates the missing graph artifact, records a non-question waiver with a reason, or raises one crisp linked question.
+
+### coverage / missing-file contract
+
+A coverage WorkItem points at a registered `CodeFile` with no owning intent. When that file is missing from disk, the packet is a dedicated missing-file contract:
+
+- `read_set` is empty — there is nothing to read.
+- `prompt_contract.mindset`: the file is gone; do not try to inspect it.
+- `allowed_actions`: identify successor file(s), re-ground affected intents there, then `loom codefile remove` the ghost.
+- `write_back`: `loom codefile remove` after any re-grounding.
+
+If a grounded file mentioned in another lane's `read_set` is deleted, the read_set entry carries a `GONE from disk` annotation so the worker knows the locator is stale before trying to read it.
 
 ### wiki_author / wiki_reviewer `[deferred — not current CLI]`
 

@@ -97,16 +97,26 @@ fn sync_structural(
             Ok(c) => c,
             Err(_) => {
                 report.missing.push(cf.name.clone());
-                // A registered file that previously had content and is now gone
-                // is a deletion: ripple its dependents ONCE, then clear the
-                // derived content_hash. Clearing makes the next sync (prior=None)
-                // skip it, and makes the incremental state converge with a clean
-                // wipe+rebuild (which also has no hash for a missing file) — INV-2.
-                if store
+                // A registered file that is now gone is a deletion: ripple its
+                // dependents ONCE, then mark it, so a still-missing file never
+                // re-resets contracts a driver re-verified against its absence.
+                //
+                // The ripple also covers a file that NEVER got a hash (it was
+                // registered, grounded, even verdicted, and deleted before its
+                // first sync): the "missing prior hash never stales" rule
+                // protects fresh registrations that EXIST on disk, not claims
+                // grounded in nothing. The derived `missing_rippled` marker is
+                // the once-guard; it clears if the file reappears.
+                let had_hash = store
                     .get_facet(&cf.id, TargetKind::Node, "content_hash")?
-                    .is_some()
-                {
-                    report.files_deleted += 1;
+                    .is_some();
+                let already_rippled = store
+                    .get_facet(&cf.id, TargetKind::Node, "missing_rippled")?
+                    .is_some();
+                if had_hash || !already_rippled {
+                    if had_hash {
+                        report.files_deleted += 1;
+                    }
                     let cause = format!("registered codefile {} disappeared", cf.name);
                     ripple_codefile(
                         store,
@@ -116,12 +126,23 @@ fn sync_structural(
                         &mut seen_surfaces,
                         report,
                     )?;
-                    store.clear_facet(&cf.id, TargetKind::Node, "content_hash")?;
+                    if had_hash {
+                        store.clear_facet(&cf.id, TargetKind::Node, "content_hash")?;
+                    }
+                    store.set_facet(
+                        &cf.id,
+                        TargetKind::Node,
+                        "missing_rippled",
+                        "true",
+                        TruthClass::Derived,
+                    )?;
                 }
                 continue;
             }
         };
         let ex = extract(&cf.name, &content);
+        // The file exists (again): a future disappearance is a fresh deletion.
+        store.clear_facet(&cf.id, TargetKind::Node, "missing_rippled")?;
         let prior = store.get_facet(&cf.id, TargetKind::Node, "content_hash")?;
         let current = ex.content_hash.clone();
         if prior.as_deref() == Some(current.as_str()) {

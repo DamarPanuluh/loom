@@ -107,7 +107,48 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
     )?);
     out.extend(disclosure_smells(&intents, &tags_by_intent));
     out.extend(journey_proof_smells(&snap, &intents));
+    out.extend(pack_drift_smells(&snap));
     Ok(out)
+}
+
+/// Seeded quality rules whose stored bodies drifted from the shipped pack
+/// definition (typically after a loom upgrade enriched the pack with patterns
+/// or examples). Asserted nodes are never rewritten by machine (INV-5): the
+/// remedy is the explicit, idempotent re-seed — or keeping a deliberate
+/// customization, in which case the smell is the standing record of it.
+fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
+    let mut drifted: BTreeMap<String, usize> = BTreeMap::new();
+    for n in &snap.nodes {
+        if n.node_type != NodeType::QualityRule {
+            continue;
+        }
+        let Some(pack_name) = n.body.get("pack").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(rule) = crate::packs::pack(pack_name)
+            .iter()
+            .find(|r| r.name == n.name)
+        else {
+            continue;
+        };
+        if crate::packs::rule_body(pack_name, rule) != n.body {
+            *drifted.entry(pack_name.to_string()).or_default() += 1;
+        }
+    }
+    drifted
+        .into_iter()
+        .map(|(pack, count)| Smell {
+            kind: "pack_drift".into(),
+            message: format!(
+                "{count} seeded rule(s) in pack '{pack}' drifted from the shipped definition \
+                 (missing newer guidance like patterns/examples, or locally customized)"
+            ),
+            remedy: format!(
+                "loom rule seed {pack}  (idempotent refresh) — or keep the customization and \
+                 accept this smell as its record"
+            ),
+        })
+        .collect()
 }
 
 /// tangled files (>= N owners) and overlapping ownership (exactly 2 owners with

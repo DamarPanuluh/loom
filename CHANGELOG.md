@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.12.0] - 2026-07-02
+- Drive-tested smoothing: complete CRUD surface on every graph family (note/task/hypothesis/rule/vocab/proposal/journey-coverage/invariant/intent/scan gain update-rename-remove where semantics allow; retire stays the supersession path), intent rename via update --name, truthful per-queue backlog in loom status (same partition loom next serves), pack_drift smell (seeded rules vs shipped pack, idempotent re-seed remedy), ghost-file handling (missing-file coverage packet, GONE annotations in read sets, never-hashed deletions ripple once via missing_rippled marker), quiet SIGPIPE exit
+
 ## [0.11.0] - 2026-07-02
 - Sensors + Definition-of-Complete: loom scan adapters (any language's linters/checkers become derived findings, config travels in the export), regex pattern pre-screening in quality packets (confirm-or-refute hits), completeness scorecard with six axes + waivers (re-open on redefinition), elaborate queue growing the surroundings humans forget (scenario families via --aspect, prerequisites, batched open questions for the human), portable config in loom.graph.json (layer order/ignores/globs/adapters survive import), workitem split into cohesive submodules
 

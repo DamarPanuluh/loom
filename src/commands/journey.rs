@@ -260,6 +260,22 @@ fn coverage(graph: Option<&std::path::Path>, cmd: JourneyCoverageCmd, json: bool
             },
             json,
         ),
+        JourneyCoverageCmd::Update {
+            key,
+            runner_ref,
+            test_ref,
+            contract_artifact,
+            reason,
+        } => coverage_update(
+            graph,
+            &key,
+            runner_ref.as_deref(),
+            test_ref.as_deref(),
+            contract_artifact.as_deref(),
+            &reason,
+            json,
+        ),
+        JourneyCoverageCmd::Remove { key } => coverage_remove(graph, &key, json),
         JourneyCoverageCmd::List { limit } => coverage_list(graph, limit, json),
         JourneyCoverageCmd::Discover { spawn_missing } => {
             coverage_discover(graph, spawn_missing, json)
@@ -379,6 +395,76 @@ fn coverage_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> R
         println!("{}", serde_json::to_string_pretty(&rows)?);
     }
     Ok(())
+}
+fn coverage_update(
+    graph: Option<&std::path::Path>,
+    key: &str,
+    runner_ref: Option<&str>,
+    test_ref: Option<&str>,
+    contract_artifact: Option<&str>,
+    reason: &str,
+    json: bool,
+) -> Result<()> {
+    if reason.trim().is_empty() {
+        bail!("journey coverage update needs substantive --reason");
+    }
+    if runner_ref.is_none() && test_ref.is_none() && contract_artifact.is_none() {
+        bail!("nothing to update — pass --runner-ref, --test-ref, and/or --contract-artifact");
+    }
+    let store = open(graph)?;
+    let node = store.resolve_node(key, Some(NodeType::JourneyCoverage))?;
+    let mut body = node.body.clone();
+    if let Some(v) = runner_ref {
+        body["runner_ref"] = json!(v);
+    }
+    if let Some(v) = test_ref {
+        body["test_ref"] = json!(v);
+    }
+    if let Some(v) = contract_artifact {
+        body["contract_artifact"] = json!(v);
+    }
+    store.set_node_body(&node.id, &body)?;
+    store.add_note(
+        &node.id,
+        "decision",
+        &format!("updated journey coverage declaration: {reason}"),
+    )?;
+    pulse::emit_line(
+        &store,
+        json,
+        json!({
+            "coverage": {
+                "id": node.id,
+                "name": node.name,
+                "status": node.status,
+                "body": body,
+            },
+            "reason": reason,
+        }),
+        "loom journey coverage list",
+        format!("updated journey coverage '{}'", node.name),
+    )
+}
+
+fn coverage_remove(graph: Option<&std::path::Path>, key: &str, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let node = store.resolve_node(key, Some(NodeType::JourneyCoverage))?;
+    store.delete_node(&node.id)?;
+    pulse::emit_line(
+        &store,
+        json,
+        json!({
+            "removed": true,
+            "coverage": {
+                "id": node.id,
+                "name": node.name,
+                "status": node.status,
+                "body": node.body,
+            },
+        }),
+        "loom journey coverage list",
+        format!("removed journey coverage '{}'", node.name),
+    )
 }
 
 /// Discover coverage gaps: user-visible implemented intents with no passing L5
@@ -978,6 +1064,22 @@ fn invariant(graph: Option<&std::path::Path>, cmd: JourneyInvariantCmd, json: bo
             assertion,
             reason,
         } => invariant_add(graph, &name, &intent, &field, &assertion, &reason, json),
+        JourneyInvariantCmd::Update {
+            key,
+            field,
+            assertion,
+            reason_text,
+            reason,
+        } => invariant_update(
+            graph,
+            &key,
+            field.as_deref(),
+            assertion.as_deref(),
+            reason_text.as_deref(),
+            &reason,
+            json,
+        ),
+        JourneyInvariantCmd::Remove { key } => invariant_remove(graph, &key, json),
         JourneyInvariantCmd::List { limit } => invariant_list(graph, limit, json),
     }
 }
@@ -1069,4 +1171,74 @@ fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> 
         println!("{}", serde_json::to_string_pretty(&rows)?);
     }
     Ok(())
+}
+fn invariant_update(
+    graph: Option<&std::path::Path>,
+    key: &str,
+    field: Option<&str>,
+    assertion: Option<&str>,
+    reason_text: Option<&str>,
+    reason: &str,
+    json: bool,
+) -> Result<()> {
+    if reason.trim().is_empty() {
+        bail!("journey invariant update needs substantive --reason");
+    }
+    if field.is_none() && assertion.is_none() && reason_text.is_none() {
+        bail!("nothing to update — pass --field, --assertion, and/or --reason-text");
+    }
+    let store = open(graph)?;
+    let node = store.resolve_node(key, Some(NodeType::JourneyInvariantPoint))?;
+    let mut body = node.body.clone();
+    if let Some(v) = field {
+        body["field"] = json!(v);
+    }
+    if let Some(v) = assertion {
+        body["assertion"] = json!(v);
+    }
+    if let Some(v) = reason_text {
+        body["reason"] = json!(v);
+    }
+    store.set_node_body(&node.id, &body)?;
+    store.add_note(
+        &node.id,
+        "decision",
+        &format!("updated journey invariant point: {reason}"),
+    )?;
+    pulse::emit_line(
+        &store,
+        json,
+        json!({
+            "invariant": {
+                "id": node.id,
+                "name": node.name,
+                "status": node.status,
+                "body": body,
+            },
+            "reason": reason,
+        }),
+        "loom journey invariant list",
+        format!("updated journey invariant '{}'", node.name),
+    )
+}
+
+fn invariant_remove(graph: Option<&std::path::Path>, key: &str, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let node = store.resolve_node(key, Some(NodeType::JourneyInvariantPoint))?;
+    store.delete_node(&node.id)?;
+    pulse::emit_line(
+        &store,
+        json,
+        json!({
+            "removed": true,
+            "invariant": {
+                "id": node.id,
+                "name": node.name,
+                "status": node.status,
+                "body": node.body,
+            },
+        }),
+        "loom journey invariant list",
+        format!("removed journey invariant '{}'", node.name),
+    )
 }

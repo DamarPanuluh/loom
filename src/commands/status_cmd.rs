@@ -122,6 +122,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let edges = store.list_edges(None, usize::MAX)?.len();
     let ladder = crate::maturity::ladder(&store)?;
     let pulse = workitem::graph_state(&store)?;
+    let queues = workitem::queue_counts(&store)?;
     let validation_summary = crate::maturity::validation_summary(&store)?;
     let (registered_codefiles, owned_codefiles, unowned_codefiles) =
         code_ownership_summary(&store)?;
@@ -141,6 +142,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
             },
             "maturity": ladder,
             "graph_state": pulse,
+            "queues": queues,
             "validation_summary": validation_summary,
             "code_ownership": {
                 "registered": registered_codefiles,
@@ -205,17 +207,22 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         ladder.phase, ladder.next_command
     );
     println!(
-        "  queues: build={} fix={} analyze={} inbox={}  (advisory: findings={} open={} resolved={}; untriaged={} stale_findings={} needed={})",
-        pulse.planned,
-        pulse.stale,
-        pulse.uninspected,
-        pulse.inbox,
-        pulse.findings,
-        pulse.open_findings,
-        pulse.resolved_findings,
-        pulse.untriaged,
-        pulse.stale_findings,
-        pulse.needed
+        "  queues: fix={} validate={} build={} coverage={} quality={} analyze={} prove={} triage={} review={} elaborate={}{}",
+        queues.fix,
+        queues.validate,
+        queues.build,
+        queues.coverage,
+        queues.quality,
+        queues.analyze,
+        queues.prove,
+        queues.triage,
+        queues.review,
+        queues.elaborate,
+        if pulse.open_questions > 0 {
+            format!("  ({} question(s) for the human)", pulse.open_questions)
+        } else {
+            String::new()
+        }
     );
     Ok(())
 }

@@ -66,12 +66,15 @@ pub(super) fn node_context(store: &Store, node: &Node, purpose: &str) -> Result<
                 );
             }
         }
-        // Coverage-lane packets are about one concrete file: name it directly.
-        NodeType::CodeFile => ctx.read_set.push(FileRead {
-            path: node.name.clone(),
-            locator: None,
-            why: "the file this work item is about — read it before deciding".into(),
-        }),
+        // Coverage-lane packets are about one concrete file: name it directly —
+        // unless it is gone from disk, in which case there is nothing to read.
+        NodeType::CodeFile if store.root().join(&node.name).exists() => {
+            ctx.read_set.push(FileRead {
+                path: node.name.clone(),
+                locator: None,
+                why: "the file this work item is about — read it before deciding".into(),
+            });
+        }
         _ => {}
     }
     Ok(ctx)
@@ -148,10 +151,20 @@ fn push_intent_read_set(store: &Store, ctx: &mut TraversalContext, intent: &Node
             continue;
         }
         let locator = store.get_facet(&edge.id, crate::model::TargetKind::Edge, "locator")?;
+        // Never send a worker to read a ghost without saying so: a grounding
+        // whose file vanished is itself the finding.
+        let why = if store.root().join(&cf.name).exists() {
+            format!("grounds intent '{}'", intent.name)
+        } else {
+            format!(
+                "grounds intent '{}' — but the file is GONE from disk: re-ground the intent in its successor, then `loom codefile remove {}`",
+                intent.name, cf.name
+            )
+        };
         ctx.read_set.push(FileRead {
             path: cf.name.clone(),
             locator,
-            why: format!("grounds intent '{}'", intent.name),
+            why,
         });
     }
     Ok(())

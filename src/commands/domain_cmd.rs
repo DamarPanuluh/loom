@@ -157,6 +157,73 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
             )?;
             Ok(())
         }
+        HypothesisCmd::Update {
+            key,
+            claim,
+            proposal,
+            predicted_outcome,
+            reason,
+        } => {
+            if reason.trim().is_empty() {
+                bail!("hypothesis update needs substantive --reason");
+            }
+            if claim.is_none() && proposal.is_none() && predicted_outcome.is_none() {
+                bail!("nothing to update — pass --claim, --proposal, and/or --predicted-outcome");
+            }
+            let h = store.resolve_node(&key, Some(NodeType::Hypothesis))?;
+            if h.status != "proposed" {
+                bail!(
+                    "only proposed hypotheses can be updated (current: {}); proven/adopted/rejected hypotheses are history",
+                    h.status
+                );
+            }
+            let mut body = h.body.clone();
+            if let Some(v) = &claim {
+                body["claim"] = serde_json::json!(v);
+                store.update_node(&h.id, None, Some(v), None)?;
+            }
+            if let Some(v) = &proposal {
+                body["proposal"] = serde_json::json!(v);
+            }
+            if let Some(v) = &predicted_outcome {
+                body["predicted_outcome"] = serde_json::json!(v);
+            }
+            store.set_node_body(&h.id, &body)?;
+            store.add_note(&h.id, "decision", &format!("refined hypothesis: {reason}"))?;
+            let display_claim = claim.as_deref().unwrap_or(&h.description);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "hypothesis": {
+                        "id": h.id,
+                        "name": h.name,
+                        "status": h.status,
+                        "claim": display_claim,
+                        "body": body,
+                    },
+                    "reason": reason,
+                }),
+                "loom status",
+                format!("updated proposed hypothesis '{}'", h.name),
+            )?;
+            Ok(())
+        }
+        HypothesisCmd::Remove { key } => {
+            let h = store.resolve_node(&key, Some(NodeType::Hypothesis))?;
+            store.delete_node(&h.id)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "removed": true,
+                    "hypothesis": node_json(&h),
+                }),
+                "loom status",
+                format!("removed mistaken hypothesis '{}'", h.name),
+            )?;
+            Ok(())
+        }
         HypothesisCmd::Show { key } => {
             let h = store.resolve_node(&key, Some(NodeType::Hypothesis))?;
             let targets: Vec<_> = store
@@ -350,6 +417,51 @@ pub(crate) fn vocab(graph: Option<&Path>, cmd: VocabCmd, json: bool) -> Result<(
                 }),
                 "loom status",
                 format!("removed vocab term '{term}' (and untagged any nodes carrying it)"),
+            )?;
+            Ok(())
+        }
+        VocabCmd::Rename { from, to, reason } => {
+            if reason.trim().is_empty() {
+                bail!("vocab rename needs substantive --reason");
+            }
+            let from = from.trim();
+            let to = to.trim();
+            if from.is_empty() || to.is_empty() {
+                bail!("vocab terms must not be empty");
+            }
+            if from == to {
+                bail!("vocab rename needs distinct <from> and <to> terms");
+            }
+            let terms = store.list_vocab()?;
+            let from_why = terms
+                .iter()
+                .find(|(term, _)| term == from)
+                .map(|(_, why)| why.clone())
+                .ok_or_else(|| anyhow!("no vocab term '{from}'"))?;
+            let to_existing = terms.iter().any(|(term, _)| term == to);
+            if !to_existing {
+                store.add_vocab_term(to, &from_why)?;
+            }
+            let tags = store.snapshot()?.tags;
+            let mut retagged = 0usize;
+            for tag in tags.iter().filter(|tag| tag.term == from) {
+                store.set_tag(&tag.target_id, tag.target_kind, to)?;
+                store.remove_tag(&tag.target_id, tag.target_kind, from)?;
+                retagged += 1;
+            }
+            store.remove_vocab_term(from)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "from": from,
+                    "to": to,
+                    "merged": to_existing,
+                    "retagged": retagged,
+                    "reason": reason,
+                }),
+                "loom status",
+                format!("renamed vocab term '{from}' → '{to}' ({retagged} tag(s) moved)"),
             )?;
             Ok(())
         }

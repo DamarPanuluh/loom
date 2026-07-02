@@ -7,7 +7,7 @@
 //! TaskRecord node, recording the source proposal/item id in the spawned
 //! node's body for traceability.
 
-use super::{looks_like_symbol, node_json, open};
+use super::{looks_like_symbol, node_json, open, pulse};
 use crate::cli::{ProposalCmd, ProposalItemCmd};
 use crate::model::{NodeType, TargetKind, TruthClass};
 use crate::Result;
@@ -21,6 +21,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: ProposalCmd, json: bool) -> Result<()
         ProposalCmd::Add { title, file, text } => add(graph, title, file, text, json),
         ProposalCmd::List { limit } => list(graph, limit, json),
         ProposalCmd::Show { key } => show(graph, key, json),
+        ProposalCmd::Remove { key } => remove(graph, key, json),
         ProposalCmd::Item { cmd } => item(graph, cmd, json),
     }
 }
@@ -155,6 +156,32 @@ fn show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
             }
         }
     }
+    Ok(())
+}
+fn remove(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let n = store.resolve_node(&key, Some(NodeType::Proposal))?;
+    let item_count = n
+        .body
+        .get("items")
+        .and_then(|v| v.as_array())
+        .map(|items| items.len())
+        .unwrap_or(0);
+    store.delete_node(&n.id)?;
+    pulse::emit_line(
+        &store,
+        json,
+        json!({
+            "removed": true,
+            "proposal": node_json(&n),
+            "items_removed": item_count,
+        }),
+        "loom status",
+        format!(
+            "removed mistaken proposal '{}' ({} item(s))",
+            n.name, item_count
+        ),
+    )?;
     Ok(())
 }
 

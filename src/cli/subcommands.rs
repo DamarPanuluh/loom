@@ -71,16 +71,27 @@ pub enum IntentCmd {
         #[arg(long)]
         reason: Option<String>,
     },
-    /// Redefine the description (ripples one hop) or rename (--reword: no ripple).
+    /// Redefine the description (ripples one hop; --reword: same concept, no
+    /// ripple) and/or rename the intent (--name: label only, never ripples).
     Update {
         key: String,
         #[arg(long)]
-        description: String,
+        description: Option<String>,
+        /// New name (a label change; the description stays the criterion).
+        #[arg(long)]
+        name: Option<String>,
         #[arg(long)]
         reason: String,
         /// Clearer words, same concept: no ripple.
         #[arg(long)]
         reword: bool,
+    },
+    /// Hard-delete a mistaken intent (typo/duplicate only). Retire superseded
+    /// design instead; refuses intents that still have hierarchy children.
+    Remove {
+        key: String,
+        #[arg(long)]
+        reason: String,
     },
     /// Retire superseded design (status → deprecated).
     Retire {
@@ -228,6 +239,9 @@ pub enum NoteCmd {
         #[arg(long)]
         text: String,
     },
+    /// Remove a mistaken note. Notes are history and have no edit operation;
+    /// removal is only for accidental/misattached notes.
+    Remove { id: String },
     /// List notes, newest first, optionally scoped to one target node.
     List {
         target: Option<String>,
@@ -258,6 +272,8 @@ pub enum TaskCmd {
         #[arg(long)]
         reason: String,
     },
+    /// Delete an accidental task record. Use close/abandon for real work history.
+    Remove { key: String },
     /// Show a task record (kind/status/result).
     Show { key: String },
     /// List task records.
@@ -317,6 +333,30 @@ pub enum RuleCmd {
         category: String,
         #[arg(long, default_value = "")]
         description: String,
+    },
+    /// Edit a quality rule. Customizing a builtin/seeded rule is allowed but
+    /// will intentionally surface in pack_drift until reseeded or accepted.
+    Update {
+        key: String,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long)]
+        category: Option<String>,
+        #[arg(long)]
+        severity: Option<String>,
+        #[arg(long)]
+        effort: Option<String>,
+        /// Replacement inspection_guide text.
+        #[arg(long)]
+        guide: Option<String>,
+        /// Replacement detection_hints array; repeat --hint to set multiple.
+        #[arg(long = "hint")]
+        hint: Vec<String>,
+        /// Replacement patterns array; repeat --pattern to set multiple.
+        #[arg(long = "pattern")]
+        pattern: Vec<String>,
+        #[arg(long)]
+        reason: String,
     },
     /// Remove a quality rule (and its governs edges).
     Remove { key: String },
@@ -420,6 +460,21 @@ pub enum HypothesisCmd {
         #[arg(long)]
         reason: String,
     },
+    /// Refine a proposed hypothesis. Proven/adopted/rejected hypotheses are
+    /// history; remove only mistaken hypotheses.
+    Update {
+        key: String,
+        #[arg(long)]
+        claim: Option<String>,
+        #[arg(long)]
+        proposal: Option<String>,
+        #[arg(long)]
+        predicted_outcome: Option<String>,
+        #[arg(long)]
+        reason: String,
+    },
+    /// Delete a mistaken hypothesis. Cascades its target edges.
+    Remove { key: String },
     /// Show a hypothesis (claim/proposal/predicted outcome + target).
     Show { key: String },
     /// List hypotheses.
@@ -474,6 +529,14 @@ pub enum VocabCmd {
     },
     /// Remove a vocabulary term (cascade-untags any nodes carrying it).
     Remove { term: String },
+    /// Rename a vocabulary term across all tags, merging into an existing term
+    /// when present and deduping nodes that carried both terms.
+    Rename {
+        from: String,
+        to: String,
+        #[arg(long)]
+        reason: String,
+    },
     /// List vocabulary terms.
     List,
 }
@@ -528,6 +591,9 @@ pub enum ProposalCmd {
     },
     /// Show a proposal by id, name, or unique fragment.
     Show { key: String },
+    /// Delete a mistaken proposal capture, including its embedded items. Adopted
+    /// spawned work remains separate graph history.
+    Remove { key: String },
     /// Proposal item subcommands.
     Item {
         #[command(subcommand)]
@@ -642,6 +708,20 @@ pub enum JourneyCoverageCmd {
         #[arg(long)]
         contract_artifact: Option<String>,
     },
+    /// Fix a journey coverage declaration's proof references.
+    Update {
+        key: String,
+        #[arg(long)]
+        runner_ref: Option<String>,
+        #[arg(long)]
+        test_ref: Option<String>,
+        #[arg(long)]
+        contract_artifact: Option<String>,
+        #[arg(long)]
+        reason: String,
+    },
+    /// Withdraw a mistaken coverage declaration.
+    Remove { key: String },
     /// List journey coverage nodes with their effective coverage status.
     /// effective_status is DERIVED: "covered" iff the linked intent currently
     /// has a passing L5/L6 journey validation (proof_kind=journey). Runner/test
@@ -680,6 +760,21 @@ pub enum JourneyInvariantCmd {
         #[arg(long, default_value = "")]
         reason: String,
     },
+    /// Fix an invariant point while preserving its audit trail.
+    Update {
+        key: String,
+        #[arg(long)]
+        field: Option<String>,
+        #[arg(long)]
+        assertion: Option<String>,
+        /// Replacement body reason for the invariant itself.
+        #[arg(long = "reason-text")]
+        reason_text: Option<String>,
+        #[arg(long)]
+        reason: String,
+    },
+    /// Withdraw a mistaken invariant point.
+    Remove { key: String },
     /// List journey invariant points.
     List {
         #[arg(long, default_value_t = 50)]
@@ -697,6 +792,15 @@ pub enum ScanCmd {
         command: String,
         /// Custom parse regex with named groups `file` and `line` (optional
         /// `msg`, `code`). Default: GCC-style `file:line[:col]: message`.
+        #[arg(long)]
+        map: Option<String>,
+    },
+    /// Edit a registered adapter in place. Use this when the command or parser
+    /// regex changed; run scan afterwards to refresh derived findings.
+    Update {
+        name: String,
+        #[arg(long)]
+        command: Option<String>,
         #[arg(long)]
         map: Option<String>,
     },

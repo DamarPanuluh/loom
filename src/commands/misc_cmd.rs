@@ -213,6 +213,24 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
                 format!("noted {kind} on '{}' [{}]", n.name, &note.id[..8]),
             )
         }
+        NoteCmd::Remove { id } => {
+            let note = store.resolve_node(&id, Some(NodeType::Note))?;
+            store.delete_node(&note.id)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "removed": true,
+                    "note": node_json(&note),
+                }),
+                "loom status",
+                format!(
+                    "removed accidental note '{}' [{}]",
+                    note.description,
+                    &note.id[..8]
+                ),
+            )
+        }
         NoteCmd::List { target, limit } => {
             let target_id = target
                 .map(|t| store.resolve_node(&t, None))
@@ -286,6 +304,20 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
             store.update_node(&t.id, None, Some(&reason), Some("abandoned"))?;
             println!("task '{}' abandoned", t.name);
             Ok(())
+        }
+        TaskCmd::Remove { key } => {
+            let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
+            store.delete_node(&t.id)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "removed": true,
+                    "task": node_json(&t),
+                }),
+                "loom status",
+                format!("removed accidental task '{}' [{}]", t.name, &t.id[..8]),
+            )
         }
         TaskCmd::Show { key } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;

@@ -121,6 +121,42 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
     }
 }
 
+/// A registration pointing at a file that no longer exists on disk. There is
+/// nothing to read — the honest moves are unregistering, or registering the
+/// successor file and re-grounding the affected intents there.
+pub(super) fn missing_codefile_contract(codefile: &Node) -> PromptContract {
+    let file = q(&codefile.name);
+    PromptContract {
+        role: "builder".into(),
+        mindset: "This registered file is GONE from disk (deleted or renamed). Do not try to \
+                  read it. If it was renamed/split, register the successor file(s) and ground \
+                  the affected intents there; then unregister this ghost. If the behavior it \
+                  carried is genuinely gone, unregister it and let sync settle the residue."
+            .into(),
+        why_now: format!("codefile '{}' is registered but missing from disk", codefile.name),
+        allowed_actions: vec![
+            format!("loom codefile show {file} (see which intents grounded here)"),
+            "loom codefile add <successor-path> (when the file was renamed/split)".into(),
+            format!("loom edge implement <intent> <successor> --locator <symbol> (re-ground before removing)"),
+            format!("loom codefile remove {file}"),
+            "loom sync".into(),
+        ],
+        forbidden_actions: vec![
+            "grounding an intent to the missing file".into(),
+            "inventing an intent to keep a dead registration alive".into(),
+        ],
+        required_evidence: "the successor registration + re-grounding, or the removal of the dead registration".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!(
+            "loom codefile remove {file}  (after re-grounding any intents it carried)"
+        ),
+        stop_condition: "after unregistering (and any re-grounding) + sync, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
 pub(super) fn coverage_contract(codefile: &Node) -> PromptContract {
     let file = q(&codefile.name);
     PromptContract {
