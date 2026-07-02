@@ -53,7 +53,7 @@ fn is_journey_validation(node: &Node) -> bool {
     matches!(
         node.body.get("type").and_then(|t| t.as_str()),
         Some("journey") | Some("saga")
-    )
+    ) || node.body.get("proof_kind").and_then(|t| t.as_str()) == Some("journey")
 }
 
 fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {

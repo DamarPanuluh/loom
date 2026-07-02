@@ -153,7 +153,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": "2026-07-02T16:01:38.621Z"
+      "updated_at": "2026-07-02T16:20:01.089Z"
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -2065,7 +2065,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-02T16:01:38.619Z"
+      "updated_at": "2026-07-02T16:20:01.088Z"
     },
     {
       "id": "072bbe8e7e0117280cab5ac10e2ef62e",
@@ -2104,13 +2104,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "no SQL/shell/HTML construction from untrusted data in grounded files; any new string-built sink falsifies",
-      "evidence": "grep over src/journey.rs + src/commands/journey.rs for SQL-in-format, Command::new, innerHTML, exec( — zero hits; journey map proof-aware changes read graph state and serialize JSON; journey_run still delegates HTTP execution to reqwest",
+      "criterion": "no SQL/shell/HTML construction from untrusted data in grounded files; any new sink falsifies",
+      "evidence": "delta is src/commands/journey.rs:52-57: is_journey_validation now includes proof_kind=journey so map/list semantics align with effective coverage proof semantics; no SQL/shell/HTML construction added; prior grep over src/journey.rs + src/commands/journey.rs found zero sink hits",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.903Z",
-      "updated_at": "2026-07-02T15:59:48.308Z"
+      "updated_at": "2026-07-02T16:18:47.701Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -2345,12 +2345,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "no literal credential in grounded files; secrets must come from env or invocation",
-      "evidence": "secret scan hits only existing src/journey.rs:110-115 Authorization header name and :204/:576-581 env-token template/fallback; journey map/run changes add no credential literal",
+      "evidence": "delta is src/commands/journey.rs:52-57: is_journey_validation now includes proof_kind=journey so map/list semantics align with effective coverage proof semantics; no literals added; only existing Authorization header/env-token template in src/journey.rs",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.721Z",
-      "updated_at": "2026-07-02T15:59:48.349Z"
+      "updated_at": "2026-07-02T16:18:47.720Z"
     },
     {
       "id": "29460ae143847cab98926a1686df912d",
@@ -2764,13 +2764,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "no unreachable/unused functions and no significant duplicate logic; unused proof-status helpers or duplicated journey coverage logic falsify",
-      "evidence": "new helpers journey_proof_status/coverage_context/proof_gap_reason are called from journey_map; effective_coverage remains the single coverage-status helper; focused ring6 journey_map_reports_failing and journey_run_failing_exits tests passed",
+      "criterion": "no unused helpers or duplicate proof predicates; a second divergent journey predicate falsifies",
+      "evidence": "delta is src/commands/journey.rs:52-57: is_journey_validation now includes proof_kind=journey so map/list semantics align with effective coverage proof semantics; this removes the predicate divergence found in dry-run. Focused ring6 journey_map_classifies_proof_kind_journey_regardless_of_type passed",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.279Z",
-      "updated_at": "2026-07-02T15:59:48.446Z"
+      "updated_at": "2026-07-02T16:18:47.732Z"
     },
     {
       "id": "5d672b7684e7aa825dc911bc10fa3bad",
@@ -3964,13 +3964,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "all acquired resources release on every path; a new acquire without RAII/drop handling falsifies",
-      "evidence": "journey map helpers only perform Store reads; journey_run still uses reqwest client RAII via src/journey.rs:327-330 and now emits before bail on failed outcomes without acquiring new resources",
+      "criterion": "no resource acquisition in the changed predicate; leaked acquire falsifies",
+      "evidence": "delta is src/commands/journey.rs:52-57: is_journey_validation now includes proof_kind=journey so map/list semantics align with effective coverage proof semantics; predicate only reads node body fields and acquires no resources",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.575Z",
-      "updated_at": "2026-07-02T15:59:48.715Z"
+      "updated_at": "2026-07-02T16:18:47.745Z"
     },
     {
       "id": "c6e8cd017ffaf23452775b3a8640ffe4",
@@ -4804,13 +4804,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "falsified if src/commands/journey.rs no longer routes journey specs into parse/require/execute with graph writeback, or if map/read-side changes replace journey_run behavior",
-      "evidence": "src/commands/journey.rs:270-457 journey_map is read-only proof-aware summarization; :459-515 journey_run still parse/require/execute, emits outcomes, and after recording failed outcomes bails non-zero (:507-513). src/journey.rs:322-418 still executes real HTTP steps, stamps Validates edges, and updates journey validation status",
+      "criterion": "falsified if src/commands/journey.rs no longer routes journey specs into parse/require/execute with graph writeback, or if journey proof map predicates diverge from proof_kind journey semantics",
+      "evidence": "src/commands/journey.rs:52-57 is_journey_validation now recognizes type journey/saga OR proof_kind journey; :270-457 journey_map is proof-aware read output; :459-515 journey_run still parse/require/execute and bails non-zero only after recording failed outcomes. src/journey.rs:322-418 still executes real HTTP and stamps Validates edges",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:11:11.802Z",
-      "updated_at": "2026-07-02T15:58:22.364Z"
+      "updated_at": "2026-07-02T16:18:04.863Z"
     },
     {
       "id": "f50faeae69982c90218bc363fd57b9dd",
@@ -4909,13 +4909,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "fallible graph reads and journey execution failures are propagated or recorded; swallowed proof failure falsifies",
-      "evidence": "src/commands/journey.rs:270-457 propagates store reads with ?; journey_run :490-514 emits failed outcome then bails non-zero when failed>0; focused ring6 tests assert non-zero exit plus graph persistence",
+      "criterion": "fallible graph/journey operations propagate; predicate classification must not hide failed proof state",
+      "evidence": "delta is src/commands/journey.rs:52-57: is_journey_validation now includes proof_kind=journey so map/list semantics align with effective coverage proof semantics; no fallible calls added; focused ring6 predicate test passed and journey map still reports proof status from journey_proof_status/current_l5_journey_validations",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.427Z",
-      "updated_at": "2026-07-02T15:59:48.782Z"
+      "updated_at": "2026-07-02T16:18:47.757Z"
     },
     {
       "id": "fbf152e438d07be53e86f1fb398e076c",
@@ -6577,7 +6577,7 @@
       "target_id": "d02ba75caf0361030",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T16:01:04.918Z\",\"hash\":\"e7c5c850b4bdd0e4\",\"reason\":\"still a cohesive `loom journey` command-family module; this patch adds proof-aware map summaries and failure-exit handling inside existing journey/map/run responsibilities. The known future split seam remains coverage/invariant submodules, not a prerequisite for this smoothing patch\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T16:19:25.295Z\",\"hash\":\"154bb928d67502e6\",\"reason\":\"journey command module remains one cohesive command-family module; predicate fix is a small correctness alignment inside existing journey map/list proof semantics and does not add a new responsibility\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6675,7 +6675,7 @@
       "target_id": "db217ad66eaffffa1",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T16:01:04.942Z\",\"hash\":\"e7c5c850b4bdd0e4\",\"reason\":\"coverage_discover was not changed by this patch; complexity remains the previously-adjudicated linear discovery pipeline. New journey-map proof semantics live outside coverage_discover\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T16:19:25.320Z\",\"hash\":\"154bb928d67502e6\",\"reason\":\"coverage_discover unchanged by proof-kind predicate fix; complexity remains the previously-adjudicated linear discovery pipeline\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6913,7 +6913,7 @@
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e7c5c850b4bdd0e4",
+      "value": "154bb928d67502e6",
       "truth_class": "derived"
     },
     {

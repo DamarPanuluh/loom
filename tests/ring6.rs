@@ -881,6 +881,126 @@ fn journey_map_reports_failing_journey_proof_as_unproven_gap() {
     );
 }
 
+/// Contract: a Validation whose `body.type` is `test` (NOT `journey`/`saga`) is
+/// still recognized as a journey proof when `body.proof_kind == "journey"`.
+/// With a `passed` status and a `Passing` Validates edge to an implemented
+/// user_visible intent, `loom journey map --json` must surface the validation
+/// in `journeys`, count the intent as journeyed AND passing, leave no required
+/// gap, and report the intent row as `journey_proof_status == "passed"` and
+/// `effective_coverage == "covered"`. Guards the `is_journey_validation` fix
+/// that widened journey classification from `body.type` alone to also accept
+/// `body.proof_kind == "journey"` — a regression that re-narrows it to type-only
+/// would drop this validation from `journeys` and reopen the gap.
+#[test]
+fn journey_map_classifies_proof_kind_journey_regardless_of_type() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let intent_id = visible_intent(&store, "checkout completes");
+
+    // A validation whose body.type is `test` — NOT journey/saga — but whose
+    // proof_kind is `journey` at L5. This is the exact shape the fix targets:
+    // before the fix, `is_journey_validation` read only `body.type` and would
+    // skip this node entirely from the journey map.
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "dogfood journey proof",
+            "",
+            "passed",
+            serde_json::json!({"type":"test","proof_kind":"journey","proof_level":"L5"}),
+        )
+        .unwrap();
+    let edge = store
+        .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
+        .unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "dogfood journey passes end-to-end",
+            "dogfood run passed",
+            0.9,
+            "test",
+        )
+        .unwrap();
+
+    drop(store);
+
+    let out = run_cli_json(tmp.path(), &["journey", "map"]);
+
+    // ---- journeys: the type=test validation still appears as a journey row ----
+    let journeys = out["journeys"]
+        .as_array()
+        .expect("journey map emits a journeys array");
+    assert_eq!(journeys.len(), 1, "one journey row: {out}");
+    let row = &journeys[0];
+    assert_eq!(
+        row["name"], "dogfood journey proof",
+        "the type=test proof_kind=journey validation is classified as a journey: {out}"
+    );
+
+    // ---- intent row: passing proof, covered ----
+    let step_intents = row["intents"]
+        .as_array()
+        .expect("journey row emits an intents array");
+    assert_eq!(step_intents.len(), 1, "one step intent: {out}");
+    let step = &step_intents[0];
+    assert_eq!(
+        step["name"], "checkout completes",
+        "step intent name: {out}"
+    );
+    assert_eq!(
+        step["edge_status"], "passing",
+        "the Validates edge is passing: {step}"
+    );
+    assert_eq!(
+        step["journey_proof_status"], "passed",
+        "a passing L5 journey proof reports journey_proof_status=passed: {step}"
+    );
+    assert_eq!(
+        step["effective_coverage"], "covered",
+        "a passing L5 journey proof covers the intent: {step}"
+    );
+
+    // ---- summary: journeyed, passing, no gaps ----
+    let summary = &out["summary"];
+    assert_eq!(
+        summary["journeyed_intents"], 1,
+        "the one intent is journeyed: {out}"
+    );
+    assert_eq!(
+        summary["passing_journey_intents"], 1,
+        "the journeyed intent is passing: {out}"
+    );
+    assert_eq!(
+        summary["unproven_journey_intents"], 0,
+        "no unproven journey intent: {out}"
+    );
+    assert_eq!(
+        summary["journey_required_gaps"], 0,
+        "a passing journey proof leaves no required gap: {out}"
+    );
+
+    // ---- no gap list, no double-count as unjourneyed ----
+    let gaps = out["journey_gap_intents"]
+        .as_array()
+        .expect("journey map emits journey_gap_intents");
+    assert!(
+        gaps.is_empty(),
+        "a passing journey proof opens no journey gap: {out}"
+    );
+    let unjourneyed = out["unjourneyed_intents"]
+        .as_array()
+        .expect("journey map emits an unjourneyed_intents array");
+    assert!(
+        unjourneyed
+            .iter()
+            .all(|i| i["name"] != "checkout completes"),
+        "a journeyed intent must not be double-counted as unjourneyed: {out}"
+    );
+}
+
 /// Contract: a journey whose only route fails must record the journey node as
 /// `failed` and its Validates edge as `Failing` on disk, AND `loom journey run
 /// --json` must exit non-zero while still emitting the JSON outcome on stdout and
