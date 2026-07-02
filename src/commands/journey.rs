@@ -93,7 +93,7 @@ fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
         store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
         linked += 1;
         if let Some(p) = &prev {
-            let _ = store.ensure_edge(EdgeKind::Sequence, p, &intent.id);
+            store.ensure_edge(EdgeKind::Sequence, p, &intent.id)?;
         }
         prev = Some(intent.id);
     }

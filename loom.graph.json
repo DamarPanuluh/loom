@@ -103,6 +103,20 @@
       "updated_at": "2026-07-02T11:32:47.553Z"
     },
     {
+      "id": "0b272dad8eefa39c423085f35822ec76",
+      "type": "validation",
+      "name": "changing a file re-opens the asserted edges grounded in it regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring2 sync_ripples",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.330Z",
+      "updated_at": "2026-07-02T12:38:24.338Z"
+    },
+    {
       "id": "0cb1c6191b88f13f398a8a4a1d212dd9",
       "type": "inbox_item",
       "name": "field report: default scan parser misses svelte-check-style …",
@@ -132,14 +146,14 @@
       "type": "validation",
       "name": "http contract saga runner regression tests",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring6 http_contract",
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": ""
+      "updated_at": "2026-07-02T12:48:12.439Z"
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -209,6 +223,20 @@
       "updated_at": "2026-07-01T04:40:20.045Z"
     },
     {
+      "id": "25934d75c938df031bbc9da8cbced6b8",
+      "type": "validation",
+      "name": "the next router serves the highest-priority asserted residue with a prompt contract regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring3 next",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.511Z",
+      "updated_at": "2026-07-02T12:38:24.519Z"
+    },
+    {
       "id": "279357bb8daf851ae25b759c274fff36",
       "type": "codefile",
       "name": "src/registry.rs",
@@ -252,14 +280,14 @@
       "type": "validation",
       "name": "proposal item adoption regression tests",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring5 proposal_",
         "type": "test"
       },
       "created_at": "2026-07-01T07:49:58.681Z",
-      "updated_at": ""
+      "updated_at": "2026-07-02T12:18:02.929Z"
     },
     {
       "id": "2f3a8c1d7fe808701aa72b166d524b08",
@@ -274,17 +302,6 @@
       },
       "created_at": "2026-07-02T11:32:47.545Z",
       "updated_at": "2026-07-02T11:32:47.545Z"
-    },
-    {
-      "id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "type": "codefile",
-      "name": "src/saga.rs",
-      "description": "",
-      "status": "",
-      "truth_class": "asserted",
-      "body": {},
-      "created_at": "2026-06-30T14:07:19.149Z",
-      "updated_at": "2026-06-30T14:07:19.149Z"
     },
     {
       "id": "32a7aa1df018fb181b571a578e1054a6",
@@ -374,6 +391,20 @@
       "updated_at": "2026-06-30T14:07:19.907Z"
     },
     {
+      "id": "3ae65982005a870d3754e0732959c8b9",
+      "type": "validation",
+      "name": "debt clusters are computed on read and never stored regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring6 debt_size_outlier_is_not_stored",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.345Z",
+      "updated_at": "2026-07-02T12:38:24.354Z"
+    },
+    {
       "id": "3d59dbf0bc941b5d51b1b52976aa74fd",
       "type": "codefile",
       "name": "src/packs.rs",
@@ -385,18 +416,32 @@
       "updated_at": "2026-06-30T14:07:19.148Z"
     },
     {
+      "id": "40046ecc6e08e6f1691a8e2ed1a182f4",
+      "type": "validation",
+      "name": "CLI subcommands parse into typed command schemas regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.291Z",
+      "updated_at": "2026-07-02T12:38:24.302Z"
+    },
+    {
       "id": "4192d14d2cb9af4236e286007efb6c31",
       "type": "validation",
       "name": "journey proof metadata regression tests",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring5 metadata",
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:14.835Z",
-      "updated_at": ""
+      "updated_at": "2026-07-02T12:18:59.497Z"
     },
     {
       "id": "41c5912224804d3bd404707f811a8507",
@@ -437,6 +482,20 @@
       "updated_at": "2026-07-02T10:45:21.621Z"
     },
     {
+      "id": "447379f910dbb917098c56734d197936",
+      "type": "validation",
+      "name": "a symbol-pattern name is refused as an intent regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring1 inv_atom",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.311Z",
+      "updated_at": "2026-07-02T12:38:24.322Z"
+    },
+    {
       "id": "47fd245a84b8b500b59668dc1f6dc003",
       "type": "codefile",
       "name": "src/lib.rs",
@@ -446,17 +505,6 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.148Z",
       "updated_at": "2026-06-30T14:07:19.148Z"
-    },
-    {
-      "id": "48c727a143864846e3f069646dcdb1d6",
-      "type": "codefile",
-      "name": "src/commands/saga.rs",
-      "description": "",
-      "status": "",
-      "truth_class": "asserted",
-      "body": {},
-      "created_at": "2026-06-30T14:07:19.147Z",
-      "updated_at": "2026-06-30T14:07:19.147Z"
     },
     {
       "id": "4a30357f4be00c5f97da73c7f122c188",
@@ -606,6 +654,17 @@
       "updated_at": "2026-06-30T14:07:19.147Z"
     },
     {
+      "id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "type": "codefile",
+      "name": "src/journey.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-02T12:10:32.208Z",
+      "updated_at": "2026-07-02T12:10:32.208Z"
+    },
+    {
       "id": "603b77fce5ce8fb7ed7aaace532db171",
       "type": "codefile",
       "name": "src/extract/langs.rs",
@@ -637,6 +696,20 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.150Z",
       "updated_at": "2026-06-30T14:07:19.150Z"
+    },
+    {
+      "id": "67fb1cc399de93d59a134526f27fa621",
+      "type": "validation",
+      "name": "find surfaces each matched intent's grounding regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.361Z",
+      "updated_at": "2026-07-02T12:38:24.370Z"
     },
     {
       "id": "690822022500f37c8c768fb621bdfcba",
@@ -827,6 +900,34 @@
       "updated_at": "2026-06-30T14:07:19.705Z"
     },
     {
+      "id": "a180946a27db8ae520ef78edff69b3d4",
+      "type": "validation",
+      "name": "missing journey proofs surface as quality findings regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring6 journey_proof",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.410Z",
+      "updated_at": "2026-07-02T12:38:24.420Z"
+    },
+    {
+      "id": "a2796d0839082b02e43153c799f98c16",
+      "type": "validation",
+      "name": "seeded rule packs carry the per-rule inspection protocol regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 pack_seed_idempotent",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.477Z",
+      "updated_at": "2026-07-02T12:38:24.486Z"
+    },
+    {
       "id": "a56055709634988945f76e980fcf0480",
       "type": "codefile",
       "name": "src/sync.rs",
@@ -836,6 +937,20 @@
       "body": {},
       "created_at": "2026-06-30T14:07:19.149Z",
       "updated_at": "2026-06-30T14:07:19.149Z"
+    },
+    {
+      "id": "a6ce5f11bc1970794746d53900881f5b",
+      "type": "validation",
+      "name": "mutating commands emit next-step graph pulses regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.428Z",
+      "updated_at": "2026-07-02T12:38:24.436Z"
     },
     {
       "id": "a7ccca5b5ae90723f0366637b9c00532",
@@ -887,6 +1002,20 @@
       "updated_at": "2026-07-02T09:19:55.880Z"
     },
     {
+      "id": "ad90be37ab9a180d197ed0262a353136",
+      "type": "validation",
+      "name": "import loads every node before any edge regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring1 export_is_byte_deterministic_and_roundtrips",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.377Z",
+      "updated_at": "2026-07-02T12:38:24.386Z"
+    },
+    {
       "id": "aed762bc48f943d03e0be4871126697a",
       "type": "codefile",
       "name": "src/commands/proof_cmd.rs",
@@ -911,6 +1040,19 @@
       "updated_at": "2026-07-01T20:05:11.035Z"
     },
     {
+      "id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "type": "intent",
+      "name": "mutating commands emit next-step graph pulses",
+      "description": "Shared command output helpers append the next recommended loom step to text mutations and include next_step plus fresh graph_state in JSON mutation responses.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "component"
+      },
+      "created_at": "2026-07-02T12:21:00.796Z",
+      "updated_at": "2026-07-02T12:21:00.796Z"
+    },
+    {
       "id": "b3021037cc7c8f8d8ea43f01960a79cb",
       "type": "note",
       "name": "note:decision",
@@ -923,6 +1065,34 @@
       },
       "created_at": "2026-07-02T05:02:52.224Z",
       "updated_at": "2026-07-02T05:02:52.224Z"
+    },
+    {
+      "id": "b323394801e2a59103bf59f973955987",
+      "type": "note",
+      "name": "note:decision",
+      "description": "removed implements edge: src/commands/pulse.rs emits post-mutation next_step pulses, not loom next work-item routing",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "41c5912224804d3bd404707f811a8507"
+      },
+      "created_at": "2026-07-02T12:20:45.472Z",
+      "updated_at": "2026-07-02T12:20:45.472Z"
+    },
+    {
+      "id": "b7270f12cf676c8b66a55170bee208bc",
+      "type": "validation",
+      "name": "registered codefiles define the tracked source surface regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring5 codefile_rescan_picks_up_new_files",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.461Z",
+      "updated_at": "2026-07-02T12:38:24.470Z"
     },
     {
       "id": "b871074588d0364512087c94ea306c23",
@@ -970,14 +1140,14 @@
       "type": "validation",
       "name": "proposal capture regression tests",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring5 proposal_",
         "type": "test"
       },
       "created_at": "2026-07-01T07:49:58.674Z",
-      "updated_at": ""
+      "updated_at": "2026-07-02T12:15:15.014Z"
     },
     {
       "id": "bc0de0c4d44411d1dd1d8f91d77635b8",
@@ -1015,6 +1185,20 @@
       "updated_at": "2026-06-30T14:07:19.543Z"
     },
     {
+      "id": "caa6826458b7138239cdc725ea300faf",
+      "type": "validation",
+      "name": "maturity counts only leaf intents as needing grounding regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring4 proven_rung_ignores_rollup_parent",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.393Z",
+      "updated_at": "2026-07-02T12:38:24.402Z"
+    },
+    {
       "id": "cba33876a9c4047424b8c05f9fc14591",
       "type": "codefile",
       "name": "src/commands/diagnostics_cmd.rs",
@@ -1044,6 +1228,34 @@
       "type": "finding",
       "name": "src/commands/journey.rs is oversized",
       "description": "1303 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d084896407f997a5ece5c70ac105fbae",
+      "type": "validation",
+      "name": "proven rung can require journey proof regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring4 proven_rung_requires_passing_l5_journey_proof",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.444Z",
+      "updated_at": "2026-07-02T12:38:24.453Z"
+    },
+    {
+      "id": "d2228150595d32891",
+      "type": "finding",
+      "name": "src/journey.rs is oversized",
+      "description": "708 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1234,6 +1446,20 @@
       "body": {
         "kind": "complex_symbol",
         "symbol": "rule"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d6e14fbb52d4aa2fb",
+      "type": "finding",
+      "name": "src/journey.rs::execute is complex",
+      "description": "complexity ~21 (> 20)",
+      "status": "complex_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "complex_symbol",
+        "symbol": "execute"
       },
       "created_at": "",
       "updated_at": ""
@@ -1620,6 +1846,20 @@
       "updated_at": "2026-07-01T20:05:11.053Z"
     },
     {
+      "id": "f6385464c5aa21744cd3fa1277d46cec",
+      "type": "validation",
+      "name": "the derived plane rebuilds byte-identically regression coverage",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring2 inv2_derived_plane_rebuildable",
+        "type": "test"
+      },
+      "created_at": "2026-07-02T12:38:24.493Z",
+      "updated_at": "2026-07-02T12:38:24.502Z"
+    },
+    {
       "id": "f7723027343a45b8c2e8848255e47e33",
       "type": "codefile",
       "name": "src/commands/journey.rs",
@@ -1635,14 +1875,14 @@
       "type": "validation",
       "name": "cargo test suite",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test -q",
         "type": "test"
       },
       "created_at": "2026-06-30T14:07:19.973Z",
-      "updated_at": ""
+      "updated_at": "2026-07-02T12:16:55.797Z"
     },
     {
       "id": "ffc35278eff02828a5db18551f63d820",
@@ -1712,19 +1952,49 @@
   ],
   "edges": [
     {
+      "id": "02d8ca46a02323d281c77390677f5fe6",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "41c5912224804d3bd404707f811a8507",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.455Z",
+      "updated_at": "2026-07-02T12:51:05.455Z"
+    },
+    {
       "id": "03c47358a516a61186a41dacbe7ebb7a",
       "from_id": "da0094e3c821d6b7d",
       "to_id": "9046885650a069dbc63004ea95ef2f5e",
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "no literal credential exists in the files grounding the verdict write boundary",
-      "evidence": "src/commands/edge.rs, src/registry.rs, src/store.rs — grep for api_key/password/secret/private-key assignment patterns found zero matches; the only string literals are SQL text and enum names; no env-independent credentials anywhere",
-      "confidence": 0.92,
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.966Z",
-      "updated_at": "2026-07-02T09:09:26.143Z"
+      "updated_at": "2026-07-02T12:51:05.788Z"
+    },
+    {
+      "id": "04f92b70e4f321eef7d4238ab4d23efe",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "5a47a3fac0f28c37db75310c0829e225",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.337Z",
+      "updated_at": "2026-07-02T12:51:05.338Z"
     },
     {
       "id": "0551070005bc2986246f8af1a37b4573",
@@ -1747,14 +2017,14 @@
       "to_id": "27efc536c465612b1ba4d8b7584fd53d",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "proof",
-      "evidence": "`cargo test --test ring6 http_contract` exit 0",
+      "evidence": "cargo test --test ring6 http_contract: 2 passed (1 suite, 24 filtered, 0.82s)",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-02T05:56:11.628Z"
+      "updated_at": "2026-07-02T12:48:12.439Z"
     },
     {
       "id": "072bbe8e7e0117280cab5ac10e2ef62e",
@@ -1762,14 +2032,44 @@
       "to_id": "c029c388797de131660bfb9fa7c600e6",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "codefile add/rescan must register matched source files and remember globs for future expansion",
+      "evidence": "src/commands/codefile_cmd.rs:3-31 expands add patterns, registers new CodeFile nodes, and remembers glob patterns; src/commands/codefile_cmd.rs:112-153 rescans remembered globs and registers newly appeared files.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T09:19:55.824Z",
-      "updated_at": "2026-07-02T09:19:55.824Z"
+      "updated_at": "2026-07-02T12:56:29.966Z"
+    },
+    {
+      "id": "0baa289397757203395f890aea8c5297",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "ad3b8bd83c3285ba1077d767ad6a3ef2",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.582Z",
+      "updated_at": "2026-07-02T12:51:05.583Z"
+    },
+    {
+      "id": "0be0c3b1658726a3ce931a9fa12fda75",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.903Z",
+      "updated_at": "2026-07-02T12:51:05.903Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -1777,14 +2077,14 @@
       "to_id": "0237fd131f915654e586a5d3be394b51",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "hierarchy parents are exempt from the grounding requirement; only leaves count as ungrounded",
-      "evidence": "src/maturity.rs:89-100 — parents set built from Hierarchy from_ids; loop skips any intent in it ('roll-up parent — realized via children') before checking implements edges; realized rung at :280-282 reads that count",
-      "confidence": 0.92,
+      "status": "passing",
+      "criterion": "maturity grounding and proof counts must exempt hierarchy parents so only leaf intents require direct implementation/proof",
+      "evidence": "src/maturity.rs:89-105 builds the hierarchy parent set and skips those parents when counting ungrounded implemented intents; src/maturity.rs:120-131 uses the same parent exemption for unproven implemented intents.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.894Z",
-      "updated_at": "2026-07-02T11:48:56.748Z"
+      "updated_at": "2026-07-02T12:56:29.929Z"
     },
     {
       "id": "0d662e611004a901ef3ab7236fc3bd6c",
@@ -1792,14 +2092,14 @@
       "to_id": "a7ccca5b5ae90723f0366637b9c00532",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "supported hypotheses can be adopted into planned intents, preserving an adoption trail",
+      "evidence": "src/commands/domain_cmd.rs:102-118 requires supported hypothesis status, marks it adopted, and creates a planned Intent; src/commands/domain_cmd.rs:119-137 records a decision note and emits the spawned intent.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:55:53.711Z",
-      "updated_at": "2026-07-01T19:55:53.711Z"
+      "updated_at": "2026-07-02T12:56:29.959Z"
     },
     {
       "id": "0fbd6911cd68ec8177124f6a105f6cc2",
@@ -1817,19 +2117,64 @@
       "updated_at": "2026-06-30T14:07:19.724Z"
     },
     {
+      "id": "0ff59c5e5a8c2bf524441f1f8d2c4f4f",
+      "from_id": "41c5912224804d3bd404707f811a8507",
+      "to_id": "112653951ed4beba6942e28763f68072",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "prompt contracts must state lane role, allowed/forbidden actions, write-back command, and evidence requirements for routed work",
+      "evidence": "src/workitem/contracts.rs:195-220 builds analyzer contracts with write_back and evidence requirements; src/workitem/contracts.rs:379-407 builds validator contracts with concrete run and validation mark commands; src/workitem/contracts.rs:410-449 builds review contracts for low-confidence verdicts.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:25:06.840Z",
+      "updated_at": "2026-07-02T12:56:30.047Z"
+    },
+    {
+      "id": "149486b20cb99a5cefdeec4dc1e85555",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.889Z",
+      "updated_at": "2026-07-02T12:51:05.890Z"
+    },
+    {
       "id": "172035a2410f3f05196fd5e386137522",
       "from_id": "bb72c6fe8f0e76f59d2a7ba084a3a39a",
       "to_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "proof",
-      "evidence": "`cargo test --test ring5 proposal_` exit 0",
+      "evidence": "cargo test --test ring5 proposal_: 3 passed (1 suite, 43 filtered, 0.82s)",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:49:58.674Z",
-      "updated_at": "2026-07-02T10:05:05.553Z"
+      "updated_at": "2026-07-02T12:15:15.013Z"
+    },
+    {
+      "id": "18482938ad3dd6e828bd730ba0f8356c",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "b883d587c0992593e75dc398fb5ebe22",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.649Z",
+      "updated_at": "2026-07-02T12:51:05.649Z"
     },
     {
       "id": "19122987707e3e8e958e3db33c43f320",
@@ -1837,14 +2182,44 @@
       "to_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "glob expansion must preserve segment semantics, respect ignored hidden paths, and return sorted relative file paths",
+      "evidence": "src/fsglob.rs:17-29 handles literal existing file paths or errors loudly; src/fsglob.rs:31-57 compiles the glob with literal separators, walks files, sorts and deduplicates matches; src/fsglob.rs:60-76 builds reusable matchers with the same semantics.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T09:19:55.853Z",
-      "updated_at": "2026-07-02T09:19:55.853Z"
+      "updated_at": "2026-07-02T12:56:29.973Z"
+    },
+    {
+      "id": "1a4ec618a6a65669777ab63f3ed7ca18",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "039368426b41bf0383ed40ad0044a374",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.448Z",
+      "updated_at": "2026-07-02T12:51:05.448Z"
+    },
+    {
+      "id": "1a5dbab890d07d665279f0d832ca07b3",
+      "from_id": "40046ecc6e08e6f1691a8e2ed1a182f4",
+      "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.292Z",
+      "updated_at": "2026-07-02T12:38:24.302Z"
     },
     {
       "id": "1b5a0122cee466e68b9c98bd2ee292a6",
@@ -1862,19 +2237,34 @@
       "updated_at": "2026-07-02T09:21:06.330Z"
     },
     {
+      "id": "1ee42b4be4e4b266dd3dbded79f6c6c2",
+      "from_id": "447379f910dbb917098c56734d197936",
+      "to_id": "5a47a3fac0f28c37db75310c0829e225",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.312Z",
+      "updated_at": "2026-07-02T12:38:24.321Z"
+    },
+    {
       "id": "1ef3a68168e561f416475f4d582b7540",
       "from_id": "5a47a3fac0f28c37db75310c0829e225",
       "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "the two behaviors are grounded in the same CLI dispatch/handler layer and share the intent-versus-locator model: intent commands reject symbol-shaped behavior names while find exposes implements-edge locators for matched intents",
-      "evidence": "src/commands.rs:68 dispatches Command::Intent to intent::dispatch and src/commands.rs:88-89 dispatches Command::Find to misc_cmd::find_cmd; src/commands/intent.rs:99-123 rejects symbol-pattern intent names unless an override carries a behavioral description; src/commands/intent.rs:586-592 defines that symbol heuristic; src/commands/misc_cmd.rs:625-701 prints each matched intent's implements edge path, locator, status, and evidence",
-      "confidence": 0.92,
+      "status": "passing",
+      "criterion": "both behaviors enforce the intent-versus-locator model through the same CLI layer: intent commands reject symbol-looking behavior names while find exposes the locators that carry symbol-level detail",
+      "evidence": "src/commands.rs:68 dispatches Command::Intent to intent::dispatch and src/commands.rs:88-89 dispatches Command::Find to misc_cmd::find_cmd; src/commands/intent.rs:99-123 rejects symbol-pattern intent names unless explicitly allowed with description; src/commands/misc_cmd.rs:678-748 prints matched intent groundings with path, locator, status, and evidence",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.946Z",
-      "updated_at": "2026-07-02T11:48:56.871Z"
+      "updated_at": "2026-07-02T12:56:30.089Z"
     },
     {
       "id": "2571e5a54c7861468a1fa1374bac0322",
@@ -1882,14 +2272,119 @@
       "to_id": "cba33876a9c4047424b8c05f9fc14591",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "coverage output must report leaf-grounding gaps and registered codefile ownership using the same parent exemption",
+      "evidence": "src/commands/diagnostics_cmd.rs:158-186 collects active implemented intents, skips hierarchy parents, and reports ungrounded leaves; src/commands/diagnostics_cmd.rs:186-239 reports registered/owned/unowned codefile counts.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:55:54.600Z",
-      "updated_at": "2026-07-01T19:55:54.600Z"
+      "updated_at": "2026-07-02T12:56:29.936Z"
+    },
+    {
+      "id": "26096789ac27bd1dcd7b6774dac4d56f",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "97c38f63874377a0bc55ae47854f44a3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.200Z",
+      "updated_at": "2026-07-02T12:51:05.201Z"
+    },
+    {
+      "id": "276a433944edf20177607e36c0775020",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.721Z",
+      "updated_at": "2026-07-02T12:51:05.721Z"
+    },
+    {
+      "id": "29460ae143847cab98926a1686df912d",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "4a30357f4be00c5f97da73c7f122c188",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.405Z",
+      "updated_at": "2026-07-02T12:51:05.405Z"
+    },
+    {
+      "id": "2acc72e157adfda6374c8cebf1faa1ff",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.664Z",
+      "updated_at": "2026-07-02T12:51:05.664Z"
+    },
+    {
+      "id": "2f534364364d680ebbe02e63d62d0ef2",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "97c38f63874377a0bc55ae47854f44a3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.492Z",
+      "updated_at": "2026-07-02T12:51:05.492Z"
+    },
+    {
+      "id": "32e97d23da3e9010396c5fcdffc9d679",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.252Z",
+      "updated_at": "2026-07-02T12:51:05.253Z"
+    },
+    {
+      "id": "33b2c03bd61db44aa75401e7ffdeb678",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.266Z",
+      "updated_at": "2026-07-02T12:51:05.266Z"
     },
     {
       "id": "33b58ebeebc1efcab48be4e741e18245",
@@ -1922,19 +2417,139 @@
       "updated_at": "2026-07-02T10:42:41.589Z"
     },
     {
+      "id": "34d300cecc876ac74a825b7ca6606b16",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.684Z",
+      "updated_at": "2026-07-02T12:51:05.685Z"
+    },
+    {
+      "id": "3aced035ca47bb3af51b99b335f5056e",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "ad3b8bd83c3285ba1077d767ad6a3ef2",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.287Z",
+      "updated_at": "2026-07-02T12:51:05.287Z"
+    },
+    {
+      "id": "3d3f2ae0e0303eaaa2427f2b6d31657b",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "9046885650a069dbc63004ea95ef2f5e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.939Z",
+      "updated_at": "2026-07-02T12:51:05.940Z"
+    },
+    {
+      "id": "41e8843e76e3e7bdc3ceab20002e35ab",
+      "from_id": "a6ce5f11bc1970794746d53900881f5b",
+      "to_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.429Z",
+      "updated_at": "2026-07-02T12:38:24.436Z"
+    },
+    {
+      "id": "422783263bc655707ef88351ff6b4d64",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.947Z",
+      "updated_at": "2026-07-02T12:51:05.947Z"
+    },
+    {
+      "id": "42ad194717785407cc1d2e34d28797ce",
+      "from_id": "a180946a27db8ae520ef78edff69b3d4",
+      "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.411Z",
+      "updated_at": "2026-07-02T12:38:24.419Z"
+    },
+    {
       "id": "43fe09edf840160e4c0e137d96a090ac",
       "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
       "to_id": "ab2b8d59f555c85569866fd178d9bb05",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "the model layer must define the durable graph vocabulary: nodes, edges, truth classes, facets, tags, and canonical enum strings used by storage and export",
+      "evidence": "src/model.rs:30-83 defines canonical string-backed enums; src/model.rs:85-174 defines NodeType, TruthClass, InspectionStatus, IntentLifecycle, ValidationType, and EdgeKind; src/model.rs:177-260 defines Node, Edge, Facet, and Tag shapes for falsifiable graph memory",
+      "confidence": 0.92,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:57:02.120Z",
-      "updated_at": "2026-07-01T19:57:02.120Z"
+      "updated_at": "2026-07-02T12:57:42.063Z"
+    },
+    {
+      "id": "483faafbc6dceb4d2e41c5c93ef279a3",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.561Z",
+      "updated_at": "2026-07-02T12:51:05.561Z"
+    },
+    {
+      "id": "4a6f7c2abb9b6351cd55109ab40b2732",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.214Z",
+      "updated_at": "2026-07-02T12:51:05.214Z"
     },
     {
       "id": "4a882923f3abb7685ea2f07027933856",
@@ -1942,14 +2557,59 @@
       "to_id": "603b77fce5ce8fb7ed7aaace532db171",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "generic extraction must support non-Rust language structural facts for the derived plane",
+      "evidence": "src/extract/mod.rs:12-48 defines language detection for Rust, Python, Go, JavaScript, TypeScript and Other; src/extract/mod.rs:77-124 defines role detection that classifies source/test/generated/vendor/config/migration inputs.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T09:19:55.982Z",
-      "updated_at": "2026-07-02T09:19:55.982Z"
+      "updated_at": "2026-07-02T12:56:30.014Z"
+    },
+    {
+      "id": "4c7b811589f4c73964da54b11853d58a",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "039368426b41bf0383ed40ad0044a374",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.924Z",
+      "updated_at": "2026-07-02T12:51:05.924Z"
+    },
+    {
+      "id": "4c8e5f539c6add8dc7306737146574f8",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "9046885650a069dbc63004ea95ef2f5e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.462Z",
+      "updated_at": "2026-07-02T12:51:05.462Z"
+    },
+    {
+      "id": "507fd54633a6732d9f52a34632dc5b8b",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.441Z",
+      "updated_at": "2026-07-02T12:51:05.441Z"
     },
     {
       "id": "51bf0f10f59a14fd4103c82b3f8c3a30",
@@ -1957,14 +2617,29 @@
       "to_id": "0237fd131f915654e586a5d3be394b51",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "proven maturity must require passing validations for implemented leaves and additionally require user-visible implemented intents to have a passing L5/L6 JourneyProof; the compass routes unmet proof state to validate after stale/build/coverage work",
-      "evidence": "src/signal.rs:366-430 emits a journey-proof smell for implemented user_visible intents unless a validates edge points to a passed validation with proof_kind=journey and proof_level L5/L6; src/maturity.rs:120-131 counts implemented leaf intents without a passing validates edge; src/maturity.rs:214-229 routes to validate when validation results, unproven leaves, or journey proof smells are open; src/maturity.rs:297-327 keeps the proven rung unmet until all validations pass, unproven_implemented is zero, and open_journey_proof_smells is zero",
-      "confidence": 0.94,
+      "status": "passing",
+      "criterion": "proven maturity must require passing validations for leaves and user-visible L5/L6 journey proof gaps to be closed",
+      "evidence": "src/signal.rs:366-430 emits journey-proof smells for user_visible implemented intents without passing L5/L6 journey validations; src/maturity.rs:120-131 counts unproven implemented leaf intents; src/maturity.rs:214-229 routes unmet proof state to validate; src/maturity.rs:297-327 keeps proven unmet while validation or journey gaps remain.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:28:05.398Z",
-      "updated_at": "2026-07-02T11:48:56.748Z"
+      "updated_at": "2026-07-02T12:56:30.081Z"
+    },
+    {
+      "id": "524507d1fd42f4651bef0caa2c16b89b",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "5a47a3fac0f28c37db75310c0829e225",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.815Z",
+      "updated_at": "2026-07-02T12:51:05.816Z"
     },
     {
       "id": "53782dd239a01cd7a7f662feffb17216",
@@ -1972,14 +2647,14 @@
       "to_id": "eef1f7ea4ac2ce90cf500bd31f2873f8",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "Rust extraction must use tree-sitter to collect production symbols/imports/panic sites while excluding test modules",
+      "evidence": "src/extract/rust.rs:5-77 parses Rust, collects symbols/imports, and counts panic sites; src/extract/rust.rs:80-98 detects unwrap()/panic! AST nodes; src/extract/rust.rs:100-132 identifies cfg(test) modules so test-only panics are skipped.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T09:19:55.957Z",
-      "updated_at": "2026-07-02T09:19:55.957Z"
+      "updated_at": "2026-07-02T12:56:30.007Z"
     },
     {
       "id": "539b900a082c1702daa2f6cbe81b0766",
@@ -1997,6 +2672,21 @@
       "updated_at": "2026-06-30T14:07:19.620Z"
     },
     {
+      "id": "54b3b90c2e0a6fbfcfa9a1a4cdbd18ba",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "9046885650a069dbc63004ea95ef2f5e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.613Z",
+      "updated_at": "2026-07-02T12:51:05.613Z"
+    },
+    {
       "id": "556c898ac58485532b903b406509ea93",
       "from_id": "b883d587c0992593e75dc398fb5ebe22",
       "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
@@ -2012,19 +2702,49 @@
       "updated_at": "2026-07-02T10:53:55.128Z"
     },
     {
+      "id": "597498e17b5940d08803033947dfe832",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "039368426b41bf0383ed40ad0044a374",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.754Z",
+      "updated_at": "2026-07-02T12:51:05.755Z"
+    },
+    {
+      "id": "5cc811b3489e4c0036b43d30361a26a9",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.279Z",
+      "updated_at": "2026-07-02T12:51:05.280Z"
+    },
+    {
       "id": "5d672b7684e7aa825dc911bc10fa3bad",
       "from_id": "9046885650a069dbc63004ea95ef2f5e",
       "to_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "edge verdict commands must resolve displayed edge IDs and write through the central verdict boundary",
+      "evidence": "src/commands/edge.rs:254-279 resolves the edge id/prefix and calls store.record_verdict; src/commands/edge.rs:282-323 resolves relates endpoints and records the verdict through the same store boundary.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:54:33.430Z",
-      "updated_at": "2026-07-01T19:54:33.430Z"
+      "updated_at": "2026-07-02T12:56:30.067Z"
     },
     {
       "id": "5dfd43d6f1c7499e65f64ad666846ae3",
@@ -2032,14 +2752,29 @@
       "to_id": "71df360f44635e96e91fc6767bc93ea3",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "find must, for each matched intent, include every implements edge's codefile path, locator, status, and evidence in JSON and text output rather than only printing the intent node",
-      "evidence": "src/commands/misc_cmd.rs:625-633 gets keyword hits over intents/codefiles/rules; src/commands/misc_cmd.rs:633-663 emits JSON rows with groundings containing edge_id, path, locator, status, and evidence for intent hits; src/commands/misc_cmd.rs:670-695 prints each intent's implements edge path, locator, status, and evidence in text output",
-      "confidence": 0.94,
+      "status": "passing",
+      "criterion": "find must surface each matched intent grounding path, locator, status, and evidence",
+      "evidence": "src/commands/misc_cmd.rs:678-717 emits JSON rows with intent groundings; src/commands/misc_cmd.rs:723-748 prints each intent implements edge path, locator, status, and evidence in text mode.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T04:40:00.654Z",
-      "updated_at": "2026-07-02T11:48:56.685Z"
+      "updated_at": "2026-07-02T12:56:29.922Z"
+    },
+    {
+      "id": "5e6651475c36fe6335aa907ffd5c3a3a",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "5a47a3fac0f28c37db75310c0829e225",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.634Z",
+      "updated_at": "2026-07-02T12:51:05.634Z"
     },
     {
       "id": "5f2c10520055ff4d7caaa7dfa0c7f4ba",
@@ -2047,14 +2782,44 @@
       "to_id": "279357bb8daf851ae25b759c274fff36",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "edge-kind registry must define endpoint types, truth classes, and owner lanes for every edge kind",
+      "evidence": "src/registry.rs:1-10 documents the registry as the edge type system; src/registry.rs:39-56 defines EdgeKindSpec; src/registry.rs:61-201 defines the complete registry entries; src/registry.rs:203-210 resolves specs infallibly under the totality test.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:54:32.553Z",
-      "updated_at": "2026-07-01T19:54:32.553Z"
+      "updated_at": "2026-07-02T12:56:30.057Z"
+    },
+    {
+      "id": "628536b6e1b54962f28b493b0edec580",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.323Z",
+      "updated_at": "2026-07-02T12:51:05.323Z"
+    },
+    {
+      "id": "636673557d3898cdeaa18d5f016dbee3",
+      "from_id": "caa6826458b7138239cdc725ea300faf",
+      "to_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.394Z",
+      "updated_at": "2026-07-02T12:38:24.402Z"
     },
     {
       "id": "6421f644db703f88aba4c729acd2dc81",
@@ -2072,19 +2837,139 @@
       "updated_at": "2026-06-30T14:07:19.765Z"
     },
     {
+      "id": "6804fb4592f365196767c4046c71fe73",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "039368426b41bf0383ed40ad0044a374",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.597Z",
+      "updated_at": "2026-07-02T12:51:05.598Z"
+    },
+    {
+      "id": "683c5b011ed26af97349176af7bac26e",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "41c5912224804d3bd404707f811a8507",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.931Z",
+      "updated_at": "2026-07-02T12:51:05.932Z"
+    },
+    {
+      "id": "6955c320625f20dec2161c222bad2bf1",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:30:44.880Z",
+      "updated_at": "2026-07-02T12:51:05.230Z"
+    },
+    {
+      "id": "69dfd6d96a41aa2b098531042c172944",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.795Z",
+      "updated_at": "2026-07-02T12:51:05.795Z"
+    },
+    {
+      "id": "6b4f97cfba5bb926179f6e5222fc5484",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.547Z",
+      "updated_at": "2026-07-02T12:51:05.547Z"
+    },
+    {
       "id": "6ba93bee17cd0378e27d38904821d9b1",
       "from_id": "33fa0bcaa3abb7230a5d7c403beec040",
       "to_id": "ef6b66e4221155ce0d869190370a7210",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "the CLI root must parse into a typed Command enum rather than stringly command names",
+      "evidence": "src/cli.rs:12-29 defines Cli with a typed Command subcommand field; src/cli.rs:31-198 enumerates each typed top-level command variant.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:54:29.801Z",
-      "updated_at": "2026-07-01T19:54:29.801Z"
+      "updated_at": "2026-07-02T12:56:29.889Z"
+    },
+    {
+      "id": "6c44193f22345ec0177d0e86e271483a",
+      "from_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "to_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the journey engine must parse journey/HTTP contract specs and execute HTTP steps with capture-aware assertions",
+      "evidence": "src/journey.rs:159-186 parses JSON/YAML journey specs and HTTP contracts; src/journey.rs:199-205 maps bearer auth to an env-token placeholder; src/journey.rs:322-418 executes requests, checks responses, records step verdicts, and updates journey validation status.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:10:38.496Z",
+      "updated_at": "2026-07-02T12:56:29.980Z"
+    },
+    {
+      "id": "6c52e7b7bc19d645a32e01f2d52532d6",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "9046885650a069dbc63004ea95ef2f5e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.315Z",
+      "updated_at": "2026-07-02T12:51:05.316Z"
+    },
+    {
+      "id": "6df5bc69aaad091bb6a0b5ee3e4cc0d5",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "ad3b8bd83c3285ba1077d767ad6a3ef2",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.910Z",
+      "updated_at": "2026-07-02T12:51:05.910Z"
     },
     {
       "id": "6e552692a663cf30ad4bbb526e0a4456",
@@ -2102,19 +2987,64 @@
       "updated_at": "2026-07-01T12:34:20.389Z"
     },
     {
+      "id": "6fa98a7c1642a20c241076c6af325e8c",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.845Z",
+      "updated_at": "2026-07-02T12:51:05.845Z"
+    },
+    {
+      "id": "71e386ea6208839db782becfa97ae0db",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.867Z",
+      "updated_at": "2026-07-02T12:51:05.868Z"
+    },
+    {
       "id": "721a3fdc57373075e1c840cfd8fe85bf",
       "from_id": "039368426b41bf0383ed40ad0044a374",
       "to_id": "369f3a38c0f9d32a34779805cd189022",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "the extraction plane must derive structural facts deterministically from file content",
+      "evidence": "src/extract/mod.rs:1-6 states extraction is pure derived data used by sync; src/extract/mod.rs:12-48 deterministically detects language from extension; src/extract/rust.rs:5-77 walks a tree-sitter Rust AST and sorts/deduplicates symbols/imports.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T09:19:55.930Z",
-      "updated_at": "2026-07-02T09:19:55.930Z"
+      "updated_at": "2026-07-02T12:56:30.000Z"
+    },
+    {
+      "id": "7281dd6bc014686bd8785258fe71c4f7",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.742Z",
+      "updated_at": "2026-07-02T12:51:05.743Z"
     },
     {
       "id": "73333a47c1b87ec0a1f68362a1907fe3",
@@ -2122,14 +3052,29 @@
       "to_id": "9046885650a069dbc63004ea95ef2f5e",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "proof",
-      "evidence": "`cargo test -q` exit 0",
+      "evidence": "cargo test -q: 218 passed (13 suites, 0.00s)",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.973Z",
-      "updated_at": "2026-07-01T19:56:36.325Z"
+      "updated_at": "2026-07-02T12:16:55.797Z"
+    },
+    {
+      "id": "733b86118c0ca95a606621f5d2b7f050",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.539Z",
+      "updated_at": "2026-07-02T12:51:05.540Z"
     },
     {
       "id": "73758763c1fcf5a6dcbc337a451f8349",
@@ -2152,14 +3097,29 @@
       "to_id": "4a30357f4be00c5f97da73c7f122c188",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "proof",
-      "evidence": "`cargo test --test ring5 proposal_` exit 0",
+      "evidence": "cargo test --test ring5 proposal_: 3 passed (1 suite, 43 filtered, 0.82s)",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:49:58.682Z",
-      "updated_at": "2026-07-02T05:56:11.630Z"
+      "updated_at": "2026-07-02T12:18:02.928Z"
+    },
+    {
+      "id": "758ea8779493a46624dff54dacfb7321",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "b883d587c0992593e75dc398fb5ebe22",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.830Z",
+      "updated_at": "2026-07-02T12:51:05.831Z"
     },
     {
       "id": "791e3ad8cabd0d26e3d1e47751381ff8",
@@ -2167,14 +3127,59 @@
       "to_id": "df750d03bdf758ca85a8e5cf5172e579",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "next_cmd must serve the router work item and include the graph pulse in JSON/text outputs",
+      "evidence": "src/commands/status_cmd.rs:297-310 calls workitem::next and emits NextOutput with graph_state in JSON; src/commands/status_cmd.rs:312-333 prints the item or empty queue plus graph_state counts in text.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:54:31.672Z",
-      "updated_at": "2026-07-01T19:54:31.672Z"
+      "updated_at": "2026-07-02T12:56:30.021Z"
+    },
+    {
+      "id": "7c6ebb40d1f40d3d364211932a0937f1",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.838Z",
+      "updated_at": "2026-07-02T12:51:05.838Z"
+    },
+    {
+      "id": "7dcc0d93bbb4e5f868988e45b75b6400",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "b883d587c0992593e75dc398fb5ebe22",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.207Z",
+      "updated_at": "2026-07-02T12:51:05.207Z"
+    },
+    {
+      "id": "7de3286d5acf19ffafd03099c3c63b24",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.620Z",
+      "updated_at": "2026-07-02T12:51:05.620Z"
     },
     {
       "id": "7e4d38f75e4c40982db3124f253b4967",
@@ -2190,6 +3195,111 @@
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:53:00.759Z",
       "updated_at": "2026-07-02T10:56:51.125Z"
+    },
+    {
+      "id": "7fd51dc86451ffc50ffe796dbcbf49b9",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.678Z",
+      "updated_at": "2026-07-02T12:51:05.678Z"
+    },
+    {
+      "id": "80414d9b981c0f4336f3c0c81ac27f2b",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.852Z",
+      "updated_at": "2026-07-02T12:51:05.852Z"
+    },
+    {
+      "id": "823402df6293d6d1d0a205c4dda94263",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.245Z",
+      "updated_at": "2026-07-02T12:51:05.246Z"
+    },
+    {
+      "id": "826594e9a923602077326f694e58dfe6",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "039368426b41bf0383ed40ad0044a374",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.301Z",
+      "updated_at": "2026-07-02T12:51:05.302Z"
+    },
+    {
+      "id": "8355582ebd0dffdce3caeb60273f5753",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.238Z",
+      "updated_at": "2026-07-02T12:51:05.238Z"
+    },
+    {
+      "id": "8495afd1477f919303adadf4085fa4c7",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.361Z",
+      "updated_at": "2026-07-02T12:51:05.361Z"
+    },
+    {
+      "id": "8562ea965cce9ee5388d7d78a54eb77d",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "4a30357f4be00c5f97da73c7f122c188",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.259Z",
+      "updated_at": "2026-07-02T12:51:05.260Z"
     },
     {
       "id": "8648aa7c91ee04014241d726544a3d54",
@@ -2212,14 +3322,44 @@
       "to_id": "384d5ac4b7e33fb07e96c422f593aeb7",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "the work router must order stale/failing residue, uninspected claims, validations, quality, and other queues without overlap",
+      "evidence": "src/workitem/queues.rs:97-155 serves fix/analyze queues with failing/stale/uninspected partitioning and excludes governs/validates from analyze; src/workitem/queues.rs:279-307 routes validate work only for uninspected/stale validates edges.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T10:45:38.621Z",
-      "updated_at": "2026-07-02T10:45:38.621Z"
+      "updated_at": "2026-07-02T12:56:30.027Z"
+    },
+    {
+      "id": "87e539df28c0122d3ff241e67e646607",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "2c5e990da55b8f6774ad1979a080a5fe",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.712Z",
+      "updated_at": "2026-07-02T12:51:05.713Z"
+    },
+    {
+      "id": "8a2767fa6ef9d8e1be1a0dfcc7dd29d1",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.524Z",
+      "updated_at": "2026-07-02T12:51:05.524Z"
     },
     {
       "id": "8a7cbf02b5babeb8389366afa028c14c",
@@ -2237,6 +3377,36 @@
       "updated_at": "2026-06-30T14:07:19.927Z"
     },
     {
+      "id": "8c093dd2a1d9cab6140873f0501f2146",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.412Z",
+      "updated_at": "2026-07-02T12:51:05.412Z"
+    },
+    {
+      "id": "8c09a0832887e4257ce974885e0d0391",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.294Z",
+      "updated_at": "2026-07-02T12:51:05.295Z"
+    },
+    {
       "id": "8e3d87eb0dfc3f8f4336e6de28f00d90",
       "from_id": "5a47a3fac0f28c37db75310c0829e225",
       "to_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
@@ -2252,19 +3422,79 @@
       "updated_at": "2026-07-02T11:01:13.457Z"
     },
     {
+      "id": "8fa667bcf38b7090e48fe24ffc73768f",
+      "from_id": "0b272dad8eefa39c423085f35822ec76",
+      "to_id": "97c38f63874377a0bc55ae47854f44a3",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.330Z",
+      "updated_at": "2026-07-02T12:38:24.337Z"
+    },
+    {
+      "id": "91a60e9e48c758e90e276bd0229d5e66",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.477Z",
+      "updated_at": "2026-07-02T12:51:05.477Z"
+    },
+    {
+      "id": "91e2927e089f3c8704a3aa36f7abdeaa",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "4a30357f4be00c5f97da73c7f122c188",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.554Z",
+      "updated_at": "2026-07-02T12:51:05.554Z"
+    },
+    {
+      "id": "92c455140504dcb2b5682da3daab54bd",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "41c5912224804d3bd404707f811a8507",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.605Z",
+      "updated_at": "2026-07-02T12:51:05.606Z"
+    },
+    {
       "id": "969cecb8d1d612f51f4c9c134a56db14",
       "from_id": "33fa0bcaa3abb7230a5d7c403beec040",
       "to_id": "5d8f8250e698c08b3c016ae320640c3a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "parsed typed commands must dispatch to typed command handlers without reparsing strings",
+      "evidence": "src/commands.rs:31-116 matches on Command variants and passes typed subcommand payloads to command-family dispatch functions.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-01T19:54:30.799Z",
-      "updated_at": "2026-07-01T19:54:30.799Z"
+      "updated_at": "2026-07-02T12:56:29.897Z"
     },
     {
       "id": "995e32fcd5c208ea8d15b1c9b4c0fea6",
@@ -2272,29 +3502,104 @@
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "debt clusters are computed on demand from the current snapshot and are not persisted as graph edges or required work",
-      "evidence": "src/signal.rs:1-7 documents debt as computed on demand and never stored; src/signal.rs:460-502 builds Vec<DebtCluster> from store.snapshot() facets and returns it without store mutation",
-      "confidence": 0.95,
+      "status": "passing",
+      "criterion": "debt must be a read-time statistical projection over a snapshot, not stored graph truth",
+      "evidence": "src/signal.rs:1-8 states debt is computed on demand and never stored; src/signal.rs:501-545 computes DebtCluster values from store.snapshot() facets and returns them without graph writes.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.813Z",
-      "updated_at": "2026-07-01T19:56:36.251Z"
+      "updated_at": "2026-07-02T12:56:29.914Z"
     },
     {
-      "id": "9d5fb771799f9adde33700eed6c98d56",
-      "from_id": "27efc536c465612b1ba4d8b7584fd53d",
-      "to_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "kind": "implements",
+      "id": "9acaf3dc0493c4d1b9515fedc2d7de8c",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "5a47a3fac0f28c37db75310c0829e225",
+      "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "saga execution supports repo-agnostic HTTP contract routes with state extraction, substitution, query/body threading and response-field assertions",
-      "evidence": "src/saga.rs http_contract_to_saga now normalizes OpenAPI-style {param} path segments to {{ param }} via normalize_path_params before threading captures; check_response reports which fields were verified in the passing detail; conversion/execution semantics otherwise unchanged; 3 new unit tests + ring6 journey_run_contract_format_substitutes_single_brace_path_params pass",
-      "confidence": 0.95,
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
       "depends_on": [],
       "inspected_by": "llm",
-      "created_at": "2026-07-01T09:39:57.217Z",
-      "updated_at": "2026-07-02T05:56:11.535Z"
+      "created_at": "2026-07-02T12:51:05.193Z",
+      "updated_at": "2026-07-02T12:51:05.194Z"
+    },
+    {
+      "id": "9d16e8b8ab08867d8f5b838aa2b03c16",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "4a30357f4be00c5f97da73c7f122c188",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.883Z",
+      "updated_at": "2026-07-02T12:51:05.883Z"
+    },
+    {
+      "id": "9e11f6604eb4072e109c15e067044ee0",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.507Z",
+      "updated_at": "2026-07-02T12:51:05.508Z"
+    },
+    {
+      "id": "a05a976e48ad9628ad0791a360e80cc9",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "b883d587c0992593e75dc398fb5ebe22",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.353Z",
+      "updated_at": "2026-07-02T12:51:05.354Z"
+    },
+    {
+      "id": "a20e1f5eb32d589d2a6e6ae0862f39e6",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.470Z",
+      "updated_at": "2026-07-02T12:51:05.470Z"
+    },
+    {
+      "id": "a370e35e04d1ee566c0a07233ea64b4b",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.515Z",
+      "updated_at": "2026-07-02T12:51:05.516Z"
     },
     {
       "id": "a4948c777c6a771abc8a06c80a4e3d73",
@@ -2302,14 +3607,59 @@
       "to_id": "a56055709634988945f76e980fcf0480",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "when a codefile content hash changes, sync re-opens asserted edges grounded in that file and dependent proof/relationship edges",
-      "evidence": "src/sync.rs run() still stales IMPLEMENTS + dependent edges on content-hash change; this session added ripple_runner_drift (a new pass that stales journey proofs when a coverage runner_ref's source changes) — extends the same content-hash ripple model, doesn't change the codefile-change staleness path",
-      "confidence": 0.95,
+      "status": "passing",
+      "criterion": "sync must compare registered file content to prior derived hash and stale grounded asserted edges only when a real content change is detected",
+      "evidence": "src/sync.rs:70-80 runs structural sync before ripple; src/sync.rs:83-100 reads registered files and records missing files; src/sync.rs:451-484 rebuilds derived findings from current content after wiping derived graph.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.730Z",
-      "updated_at": "2026-07-02T05:56:11.595Z"
+      "updated_at": "2026-07-02T12:56:29.904Z"
+    },
+    {
+      "id": "a657f13392f79f3615367604e53418e3",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "ad3b8bd83c3285ba1077d767ad6a3ef2",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.434Z",
+      "updated_at": "2026-07-02T12:51:05.434Z"
+    },
+    {
+      "id": "aa9644d2983b432ba890ea93ecde6724",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "41c5912224804d3bd404707f811a8507",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.309Z",
+      "updated_at": "2026-07-02T12:51:05.309Z"
+    },
+    {
+      "id": "abbb482cc657e3f699cd49b8aacc70ce",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.222Z",
+      "updated_at": "2026-07-02T12:51:05.223Z"
     },
     {
       "id": "ad37f2f0367bd753dc3b86d2e03d59ba",
@@ -2317,14 +3667,59 @@
       "to_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "seeded rule packs must carry enriched inspection guidance and seed idempotent QualityRule nodes",
+      "evidence": "src/packs.rs:24-40 defines PackRule fields for inspection guides, patterns, templates, and examples; src/packs.rs:912-938 serializes those fields into rule body JSON; src/packs.rs:941-954 upserts pack rules as asserted QualityRule nodes.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T09:19:55.906Z",
-      "updated_at": "2026-07-02T09:19:55.906Z"
+      "updated_at": "2026-07-02T12:56:29.993Z"
+    },
+    {
+      "id": "ade1875dc605acc67fd11205c1969d9d",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "5a47a3fac0f28c37db75310c0829e225",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.484Z",
+      "updated_at": "2026-07-02T12:51:05.485Z"
+    },
+    {
+      "id": "b18e1c2c44380b19e13ee792c1d732f5",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.330Z",
+      "updated_at": "2026-07-02T12:51:05.330Z"
+    },
+    {
+      "id": "b242094605272bcdbda9601586e02004",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "41c5912224804d3bd404707f811a8507",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.774Z",
+      "updated_at": "2026-07-02T12:51:05.778Z"
     },
     {
       "id": "b593faf085897a351bf7c8347a7b5f72",
@@ -2332,14 +3727,164 @@
       "to_id": "43f6a120dba4735f759b2511efc0ece4",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "work items must carry target, context, prompt contract, truth gap, next step, and graph-state output",
+      "evidence": "src/workitem/mod.rs:133-157 defines WorkItem fields including prompt_contract, context, truth_gap, and next_step; src/workitem/mod.rs:323-330 defines NextOutput with work_item and graph_state; src/workitem/mod.rs:330-385 computes graph_state counts.",
+      "confidence": 0.9,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-02T10:46:14.964Z",
-      "updated_at": "2026-07-02T10:46:14.964Z"
+      "updated_at": "2026-07-02T12:56:30.033Z"
+    },
+    {
+      "id": "b5c8d0e968b9d17b1355c7c763bff596",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "b883d587c0992593e75dc398fb5ebe22",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.498Z",
+      "updated_at": "2026-07-02T12:51:05.499Z"
+    },
+    {
+      "id": "b8a52b97055ffb5ace36cf2f3b4ff5ad",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.368Z",
+      "updated_at": "2026-07-02T12:51:05.369Z"
+    },
+    {
+      "id": "b8cea401c07becc2cb3e16e32c0820b9",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "97c38f63874377a0bc55ae47854f44a3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.823Z",
+      "updated_at": "2026-07-02T12:51:05.824Z"
+    },
+    {
+      "id": "bdb7f1ac42320547c0e1603d014c8c2c",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.705Z",
+      "updated_at": "2026-07-02T12:51:05.706Z"
+    },
+    {
+      "id": "bf54d6d3b4009934da71046ae8129df3",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:28:20.874Z",
+      "updated_at": "2026-07-02T12:51:05.185Z"
+    },
+    {
+      "id": "bffb3d81da0d4830cbf073ad435e5816",
+      "from_id": "25934d75c938df031bbc9da8cbced6b8",
+      "to_id": "41c5912224804d3bd404707f811a8507",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.511Z",
+      "updated_at": "2026-07-02T12:38:24.518Z"
+    },
+    {
+      "id": "c083ade0fc9cdc8e5b2b46acec23475a",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "4a30357f4be00c5f97da73c7f122c188",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.698Z",
+      "updated_at": "2026-07-02T12:51:05.698Z"
+    },
+    {
+      "id": "c0e09a3f5d4be8d53cd930effda44500",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.691Z",
+      "updated_at": "2026-07-02T12:51:05.691Z"
+    },
+    {
+      "id": "c0e5dbd03302ba19585e733268410c87",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.627Z",
+      "updated_at": "2026-07-02T12:51:05.627Z"
+    },
+    {
+      "id": "c1dba2cf8786a8a0eaaa6917e1ee107b",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "ad3b8bd83c3285ba1077d767ad6a3ef2",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.733Z",
+      "updated_at": "2026-07-02T12:51:05.733Z"
     },
     {
       "id": "c54711608652dda6602d831b1bb4195b",
@@ -2357,19 +3902,139 @@
       "updated_at": "2026-06-30T14:07:19.847Z"
     },
     {
+      "id": "c60f6af5895d4119cfe727a9fb237e3a",
+      "from_id": "a2796d0839082b02e43153c799f98c16",
+      "to_id": "ad3b8bd83c3285ba1077d767ad6a3ef2",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.478Z",
+      "updated_at": "2026-07-02T12:38:24.485Z"
+    },
+    {
+      "id": "c67fc4a7ed42965267562dee6085f09d",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.575Z",
+      "updated_at": "2026-07-02T12:51:05.576Z"
+    },
+    {
+      "id": "c6e8cd017ffaf23452775b3a8640ffe4",
+      "from_id": "41c5912224804d3bd404707f811a8507",
+      "to_id": "074bc6a75ad692953f88d2035f05124b",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "work-item context must make packets self-contained with linked entities, suggested reads, and code read_set entries",
+      "evidence": "src/workitem/context.rs:6-80 builds node contexts with linked entities, suggested reads, and direct codefile read_set; src/workitem/context.rs:83-136 builds edge contexts from endpoints and grounded codefiles; src/workitem/context.rs:141-169 includes locators and ghost-file warnings in read_set.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:24:32.628Z",
+      "updated_at": "2026-07-02T12:56:30.040Z"
+    },
+    {
+      "id": "c9bcdc0767735db82acbed13c9bb1520",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.531Z",
+      "updated_at": "2026-07-02T12:51:05.531Z"
+    },
+    {
+      "id": "cb7b02931c79dd04e7665afb2bbfc2fb",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.917Z",
+      "updated_at": "2026-07-02T12:51:05.918Z"
+    },
+    {
+      "id": "cd73bec2fc6e750db93d36b49924b054",
+      "from_id": "d084896407f997a5ece5c70ac105fbae",
+      "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.445Z",
+      "updated_at": "2026-07-02T12:38:24.452Z"
+    },
+    {
       "id": "cdada8de2bf0de498d3e90d11dd2689b",
       "from_id": "33fa0bcaa3abb7230a5d7c403beec040",
       "to_id": "062105e11d1b02b813d44b68670a8575",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "src/cli/subcommands.rs defines the typed Clap subcommand schemas consumed by CLI dispatch",
-      "evidence": "session added --base-url to JourneyCmd::Run and fixed a stale JSON-only doc comment on SagaCmd::Add; file remains pure Clap schema enums",
-      "confidence": 0.95,
+      "status": "passing",
+      "criterion": "CLI parsing must define typed Clap subcommand enums for command families",
+      "evidence": "src/cli.rs:31-198 defines the top-level Command enum with typed subcommand fields; src/cli/subcommands.rs:4-817 defines the family-specific Clap Subcommand enums.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:29:22.635Z",
-      "updated_at": "2026-07-02T05:56:11.379Z"
+      "updated_at": "2026-07-02T12:56:29.882Z"
+    },
+    {
+      "id": "cea7c79ccf2333d1ba15898a31820f7e",
+      "from_id": "b7270f12cf676c8b66a55170bee208bc",
+      "to_id": "2c5e990da55b8f6774ad1979a080a5fe",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.462Z",
+      "updated_at": "2026-07-02T12:38:24.470Z"
+    },
+    {
+      "id": "cf15b72825b039f3c22902a240974e2f",
+      "from_id": "ad90be37ab9a180d197ed0262a353136",
+      "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.378Z",
+      "updated_at": "2026-07-02T12:38:24.385Z"
     },
     {
       "id": "d0208ae0d609bfcab",
@@ -2406,6 +4071,36 @@
       "from_id": "d622f101e93a3dcb0",
       "to_id": "d9b35a203478bd583",
       "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d125ac4384c2c6c5d039b5250e1120c5",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "2c5e990da55b8f6774ad1979a080a5fe",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.896Z",
+      "updated_at": "2026-07-02T12:51:05.896Z"
+    },
+    {
+      "id": "d187196569280f956",
+      "from_id": "d6e14fbb52d4aa2fb",
+      "to_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -2512,14 +4207,29 @@
       "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "these are cohesive persistence-correctness behaviors over the edge/node write boundary",
-      "evidence": "src/store.rs still owns restore ordering and record_verdict/schema gates in the same SQLite persistence boundary; cargo test passed.",
+      "status": "passing",
+      "criterion": "import safety and verdict safety share the store write boundary: restore validates edge endpoint types before writes and writes nodes before edges, while record_verdict enforces asserted-edge evidence and lane rules",
+      "evidence": "src/store.rs:1015-1068 refuses nonempty imports and validates every imported edge against registry endpoint/truth-class rules before any write; src/store.rs:1069-1088 writes nodes before edges in the transaction; src/store.rs:749-790 enforces asserted verdict evidence, truth-class, lane, and confidence gates",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.653Z",
-      "updated_at": "2026-07-01T19:56:36.322Z"
+      "updated_at": "2026-07-02T12:56:30.105Z"
+    },
+    {
+      "id": "d3bc762dceb59dc8dcb355f7f8a918ab",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "2c5e990da55b8f6774ad1979a080a5fe",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.420Z",
+      "updated_at": "2026-07-02T12:51:05.420Z"
     },
     {
       "id": "d4266c44c949ecbf1",
@@ -2541,6 +4251,36 @@
       "from_id": "d3e4d58c3c9e094a9",
       "to_id": "aed762bc48f943d03e0be4871126697a",
       "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d68e833fa9d43d4cb111e00d31d59861",
+      "from_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "to_id": "7f43e2ed7f88f4ccd5288b4a4ef316c1",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "mutating commands must emit a next-step pulse with graph_state in JSON and a next line in text output",
+      "evidence": "src/commands/pulse.rs:11-48 inserts next_step and fresh graph_state in JSON mode and prints next: in text mode; src/commands/pulse.rs:51-64 wraps single-line confirmations through the same emitter.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:21:36.318Z",
+      "updated_at": "2026-07-02T12:56:29.952Z"
+    },
+    {
+      "id": "d69ec8ffc7f59150d",
+      "from_id": "d2228150595d32891",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -2582,21 +4322,6 @@
       "updated_at": ""
     },
     {
-      "id": "d73244c84e97b6a419e19f7813bea962",
-      "from_id": "27efc536c465612b1ba4d8b7584fd53d",
-      "to_id": "48c727a143864846e3f069646dcdb1d6",
-      "kind": "implements",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-07-01T19:55:52.783Z",
-      "updated_at": "2026-07-01T19:55:52.783Z"
-    },
-    {
       "id": "d73be51e7db679a67",
       "from_id": "d02ba75caf0361030",
       "to_id": "d2fcf6c1e25f78a67",
@@ -2627,6 +4352,36 @@
       "updated_at": ""
     },
     {
+      "id": "d87fb92653fe51ef067377dd3d113573",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "97c38f63874377a0bc55ae47854f44a3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.641Z",
+      "updated_at": "2026-07-02T12:51:05.642Z"
+    },
+    {
+      "id": "d8db8ea49def3aedfca30422da7d9b8d",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.671Z",
+      "updated_at": "2026-07-02T12:51:05.671Z"
+    },
+    {
       "id": "d97fba6c97537aff8",
       "from_id": "d3e4d58c3c9e094a9",
       "to_id": "d2fcf6c1e25f78a67",
@@ -2640,6 +4395,21 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d9f58ae0deeafdc429ceec86be5dccd3",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
+      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.656Z",
+      "updated_at": "2026-07-02T12:51:05.656Z"
     },
     {
       "id": "db084c89979ddeee9",
@@ -2702,6 +4472,21 @@
       "updated_at": ""
     },
     {
+      "id": "dbb236c5a4cc20c47",
+      "from_id": "d2228150595d32891",
+      "to_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dbc65729c0a0f0efb",
       "from_id": "dd8a66484aee46a9f",
       "to_id": "d9b35a203478bd583",
@@ -2732,6 +4517,36 @@
       "updated_at": ""
     },
     {
+      "id": "dc5f28d13172f9a901930557aa492979",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.375Z",
+      "updated_at": "2026-07-02T12:51:05.375Z"
+    },
+    {
+      "id": "dca0388f9b6cecb30",
+      "from_id": "d6e14fbb52d4aa2fb",
+      "to_id": "d9b35a203478bd583",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dca17251191af1d0e",
       "from_id": "d01dff0e9dd4e989c",
       "to_id": "d2fcf6c1e25f78a67",
@@ -2747,19 +4562,34 @@
       "updated_at": ""
     },
     {
+      "id": "ddfc135b23a69810deee8420c2a0c8d2",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "2c5e990da55b8f6774ad1979a080a5fe",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.568Z",
+      "updated_at": "2026-07-02T12:51:05.569Z"
+    },
+    {
       "id": "de5014d98266ef78e7cec8e2fc055aa8",
       "from_id": "4192d14d2cb9af4236e286007efb6c31",
       "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "proof",
-      "evidence": "`cargo test --test ring5 metadata` exit 0",
+      "evidence": "cargo test --test ring5 metadata: 3 passed (1 suite, 43 filtered, 0.92s)",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:14.836Z",
-      "updated_at": "2026-07-01T19:56:36.321Z"
+      "updated_at": "2026-07-02T12:18:59.497Z"
     },
     {
       "id": "deda4a837adbef254",
@@ -2797,14 +4627,14 @@
       "to_id": "6312dfde0229497f5e8b78d2fa835d83",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "passing/failing verdicts require criterion and evidence, independent requires evidence, derived writes stay separated, wrong-lane writes are rejected, and bad truth_class values are rejected",
-      "evidence": "src/store.rs record_verdict and schema CHECKs remain the write boundary; cargo test passed, including the verdict/validation regressions.",
-      "confidence": 0.91,
+      "status": "passing",
+      "criterion": "the store verdict boundary must reject derived edges, enforce lane ownership, require substantive evidence, and validate confidence",
+      "evidence": "src/store.rs:730-747 resolves full ids or unambiguous displayed prefixes; src/store.rs:749-790 rejects derived edges, checks lane ownership, requires criterion/evidence for passing/failing and evidence for independent/blocked, and bounds confidence.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.577Z",
-      "updated_at": "2026-07-01T19:56:36.283Z"
+      "updated_at": "2026-07-02T12:56:30.074Z"
     },
     {
       "id": "dfd470d2c863110c5",
@@ -2822,19 +4652,139 @@
       "updated_at": ""
     },
     {
+      "id": "e13a135d9d96a3c803b6b17af4485c7a",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.397Z",
+      "updated_at": "2026-07-02T12:51:05.397Z"
+    },
+    {
+      "id": "e375845f1f532a4d989c8ffb189f1556",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.876Z",
+      "updated_at": "2026-07-02T12:51:05.876Z"
+    },
+    {
+      "id": "e79a00486fa6d61831a4c5b0c7c1a46f",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "97c38f63874377a0bc55ae47854f44a3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.345Z",
+      "updated_at": "2026-07-02T12:51:05.346Z"
+    },
+    {
+      "id": "e9e52afc958ef1a987bea2eec311f477",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.806Z",
+      "updated_at": "2026-07-02T12:51:05.806Z"
+    },
+    {
       "id": "ed13a2250fc1c9b0045290994502fa5a",
       "from_id": "88fcbe77fcd11a370842b523da58c7fb",
       "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "both intents are coordinated maturity-ladder computations over the same implemented-intent proof/readiness model",
-      "evidence": "src/maturity.rs:79-95 computes implemented leaf grounding; src/maturity.rs:113-120,183-189,246-274 uses journey-proof smells and validation counts in the same ladder/compass path, so both behaviors intentionally share build_rungs/compass",
+      "status": "passing",
+      "criterion": "both maturity behaviors use the same leaf-intent rollup and proof gate: hierarchy parents are exempt while leaf proofs and journey proof gaps determine the proven rung",
+      "evidence": "src/maturity.rs:89-105 skips hierarchy parents for grounding; src/maturity.rs:120-131 skips hierarchy parents for proof counting; src/maturity.rs:297-327 makes proven depend on passing validations, zero unproven leaves, and zero journey proof gaps",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:31:05.121Z",
-      "updated_at": "2026-07-01T19:56:36.324Z"
+      "updated_at": "2026-07-02T12:56:30.097Z"
+    },
+    {
+      "id": "ee1429b64cca0c9e848ce248a0012564",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.382Z",
+      "updated_at": "2026-07-02T12:51:05.383Z"
+    },
+    {
+      "id": "ee71dc474fb585a342db53a6a60e2c3f",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.389Z",
+      "updated_at": "2026-07-02T12:51:05.390Z"
+    },
+    {
+      "id": "f2a5d710c48dc171bf2a2c857ca21d1e",
+      "from_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "to_id": "f7723027343a45b8c2e8848255e47e33",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the journey run command must parse a spec, require the validation, execute the journey, and report pass/fail outcomes with next steps",
+      "evidence": "src/commands/journey.rs:136-148 parses the spec, applies base-url override, requires the journey validation, and executes with recording; src/commands/journey.rs:149-183 reports outcome counts and next_step through pulse::emit.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:11:11.802Z",
+      "updated_at": "2026-07-02T12:56:29.986Z"
+    },
+    {
+      "id": "f50faeae69982c90218bc363fd57b9dd",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "e7cf623babe2f60f1b36f13d53e4d7aa",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
+      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.590Z",
+      "updated_at": "2026-07-02T12:51:05.590Z"
     },
     {
       "id": "f80a302a1d6b1dd4db64c3a58f6bcb33",
@@ -2852,19 +4802,109 @@
       "updated_at": "2026-06-30T14:07:19.686Z"
     },
     {
+      "id": "f8b18411f638408c05cf3c8ee3d2935b",
+      "from_id": "f6385464c5aa21744cd3fa1277d46cec",
+      "to_id": "039368426b41bf0383ed40ad0044a374",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.493Z",
+      "updated_at": "2026-07-02T12:38:24.502Z"
+    },
+    {
+      "id": "f8d93ec3da2560dd3e9be69ce6ee49a1",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "2c5e990da55b8f6774ad1979a080a5fe",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.273Z",
+      "updated_at": "2026-07-02T12:51:05.273Z"
+    },
+    {
+      "id": "f94674348ffacc2af8295e163fcc3d7c",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
+      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.859Z",
+      "updated_at": "2026-07-02T12:51:05.860Z"
+    },
+    {
+      "id": "fa2e311b1aa4dbe6521a76d84f875714",
+      "from_id": "67fb1cc399de93d59a134526f27fa621",
+      "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.362Z",
+      "updated_at": "2026-07-02T12:38:24.370Z"
+    },
+    {
+      "id": "fa6f2ef04d5ae23c0e09f8fb5fe1a0aa",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
+      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
+      "confidence": 0.78,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:51:05.427Z",
+      "updated_at": "2026-07-02T12:51:05.427Z"
+    },
+    {
+      "id": "fbf152e438d07be53e86f1fb398e076c",
+      "from_id": "3ae65982005a870d3754e0732959c8b9",
+      "to_id": "b883d587c0992593e75dc398fb5ebe22",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-02T12:38:24.346Z",
+      "updated_at": "2026-07-02T12:38:24.353Z"
+    },
+    {
       "id": "ff2631f31f970ccebea4f2a683e6175d",
       "from_id": "ef76b8e10aba8fea8af3092d0c1052d3",
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "implemented user-visible intents lacking a current passing L5/L6 journey proof produce quality/smell findings",
-      "evidence": "src/signal.rs:323-389 builds validations_by_intent, filters implemented user_visible intents, detects passing proof_kind=journey with proof_level L5/L6, and emits missing_journey_proof or proof_too_shallow_for_intent smells with JourneyProof remediation",
-      "confidence": 0.95,
+      "status": "passing",
+      "criterion": "quality findings must surface missing or shallow journey proofs for user-visible implemented intents",
+      "evidence": "src/signal.rs:66-111 includes journey_proof_smells in the smell set; src/signal.rs:366-430 emits missing_journey_proof or proof_too_shallow_for_intent unless a passed L5/L6 journey validation exists.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:23:31.971Z",
-      "updated_at": "2026-07-01T19:56:36.252Z"
+      "updated_at": "2026-07-02T12:56:29.944Z"
     }
   ],
   "facets": [
@@ -3016,13 +5056,6 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "06f2e13c8fc73193a4f82880e5ea982f",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "registered codefile src/commands/saga.rs disappeared; registered codefile src/saga.rs disappeared",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "072bbe8e7e0117280cab5ac10e2ef62e",
       "target_kind": "edge",
       "key": "locator",
@@ -3079,17 +5112,17 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "0d3fd6576f6b6bbb5822813cb1737b86",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/maturity.rs changed",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "0d662e611004a901ef3ab7236fc3bd6c",
       "target_kind": "edge",
       "key": "locator",
       "value": "hypothesis",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0ff59c5e5a8c2bf524441f1f8d2c4f4f",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "builder_contract / analyzer_contract / validator_contract",
       "truth_class": "asserted"
     },
     {
@@ -3177,13 +5210,6 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "172035a2410f3f05196fd5e386137522",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/proposal_cmd.rs changed",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "19122987707e3e8e958e3db33c43f320",
       "target_kind": "edge",
       "key": "locator",
@@ -3196,13 +5222,6 @@
       "key": "locator",
       "value": "restore:866 (validate 879; nodes 920 before edges 930)",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "1ef3a68168e561f416475f4d582b7540",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/misc_cmd.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "2571e5a54c7861468a1fa1374bac0322",
@@ -3266,48 +5285,6 @@
       "key": "level",
       "value": "feature",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "target_kind": "node",
-      "key": "imports",
-      "value": "[\"anyhow::{anyhow, Context}\",\"crate::Result\",\"crate::model::{EdgeKind, InspectionStatus, NodeType}\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::path::Path\",\"std::time::Duration\"]",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "target_kind": "node",
-      "key": "language",
-      "value": "rust",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "target_kind": "node",
-      "key": "loc",
-      "value": "605",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "target_kind": "node",
-      "key": "missing_rippled",
-      "value": "true",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "target_kind": "node",
-      "key": "role",
-      "value": "source",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "target_kind": "node",
-      "key": "symbol_count",
-      "value": "27",
-      "truth_class": "derived"
     },
     {
       "target_id": "32a7aa1df018fb181b571a578e1054a6",
@@ -3625,48 +5602,6 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "48c727a143864846e3f069646dcdb1d6",
-      "target_kind": "node",
-      "key": "imports",
-      "value": "[\"crate::Result\",\"crate::cli::SagaCmd\",\"crate::model::{EdgeKind, NodeType}\",\"crate::store::Store\",\"std::path::{Path, PathBuf}\",\"super::open\"]",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "48c727a143864846e3f069646dcdb1d6",
-      "target_kind": "node",
-      "key": "language",
-      "value": "rust",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "48c727a143864846e3f069646dcdb1d6",
-      "target_kind": "node",
-      "key": "loc",
-      "value": "170",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "48c727a143864846e3f069646dcdb1d6",
-      "target_kind": "node",
-      "key": "missing_rippled",
-      "value": "true",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "48c727a143864846e3f069646dcdb1d6",
-      "target_kind": "node",
-      "key": "role",
-      "value": "source",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "48c727a143864846e3f069646dcdb1d6",
-      "target_kind": "node",
-      "key": "symbol_count",
-      "value": "6",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "4a30357f4be00c5f97da73c7f122c188",
       "target_kind": "node",
       "key": "level",
@@ -3700,13 +5635,6 @@
       "key": "locator",
       "value": "fn build_rungs: proven + fn compass: validate route",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "51bf0f10f59a14fd4103c82b3f8c3a30",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/maturity.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
@@ -3828,18 +5756,53 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "5dfd43d6f1c7499e65f64ad666846ae3",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/misc_cmd.rs changed",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "5f2c10520055ff4d7caaa7dfa0c7f4ba",
       "target_kind": "edge",
       "key": "locator",
       "value": "EDGE_KINDS",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "2a74b231c476746b",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::{anyhow, Context}\",\"crate::Result\",\"crate::model::{EdgeKind, InspectionStatus, NodeType}\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::path::Path\",\"std::time::Duration\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "708",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "31",
+      "truth_class": "derived"
     },
     {
       "target_id": "603b77fce5ce8fb7ed7aaace532db171",
@@ -3975,6 +5938,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "6c44193f22345ec0177d0e86e271483a",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "parse_with_kind / http_contract_to_journey / execute response field checks",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "content_hash",
@@ -4022,13 +5992,6 @@
       "key": "locator",
       "value": "extract",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "7531cd6d85be3790e53ef3fb6c0ec049",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/domain_cmd.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "791e3ad8cabd0d26e3d1e47751381ff8",
@@ -4171,32 +6134,11 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "9d5fb771799f9adde33700eed6c98d56",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "parse_with_kind/http_contract_to_saga/execute response field checks",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "9d5fb771799f9adde33700eed6c98d56",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "registered codefile src/saga.rs disappeared",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "a4948c777c6a771abc8a06c80a4e3d73",
       "target_kind": "edge",
       "key": "locator",
       "value": "run:65 (compare 85; ripple only when prior.is_some 90-98)",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "a4948c777c6a771abc8a06c80a4e3d73",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/sync.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "a56055709634988945f76e980fcf0480",
@@ -4381,6 +6323,27 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "happy",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "target_kind": "node",
+      "key": "level",
+      "value": "component",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b1f4ccac1c15f235850dac054e0dcffc",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "b593faf085897a351bf7c8347a7b5f72",
       "target_kind": "edge",
       "key": "locator",
@@ -4486,6 +6449,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "c6e8cd017ffaf23452775b3a8640ffe4",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "node_context / edge_context / push_intent_read_set",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "ca9db45bf812f86983765fc9bee1eb3c",
       "target_kind": "node",
       "key": "level",
@@ -4549,13 +6519,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "cdada8de2bf0de498d3e90d11dd2689b",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/cli/subcommands.rs changed",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "d0002c88c80599944",
       "target_kind": "node",
       "key": "adjudication",
@@ -4566,7 +6529,21 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T14:57:04.848Z\",\"hash\":\"ecf20e0fea63e480\",\"reason\":\"src/cli/subcommands.rs remains centralized typed CLI schema: only Clap Subcommand enum declarations; grew a few lines for --base-url and a doc-comment fix. Splitting by command family scatters DTOs without reducing coupling.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T13:04:00.820Z\",\"hash\":\"793582d147c9c758\",\"reason\":\"src/cli/subcommands.rs is a centralized Clap schema file: the inspected sections are enum/variant declarations for typed CLI DTOs only (IntentCmd at lines 4-113 and Journey/Scan variants at lines 644-818), so splitting would scatter the command contract without reducing behavior complexity.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d02ba75caf0361030",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:09:16.268Z\",\"hash\":\"f353812b48f7aeb7\",\"reason\":\"src/commands/journey.rs is large because it owns one journey command surface end to end: lines 1-15 define coverage/invariant semantics, lines 27-38 dispatch add/list/run/diagnose/coverage/invariant/prompt, lines 136-184 record real boundary journey results, lines 470-590 derive coverage gaps, and lines 803-1054 build typed-runner prompt context from the same coverage/invariant facts. Splitting now would add cross-module coupling across the same JourneyProof workflow rather than isolate unrelated behavior.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d2228150595d32891",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:14:40.398Z\",\"hash\":\"2a74b231c476746b\",\"reason\":\"src/journey.rs is 108 lines over threshold and is a single execution engine: lines 1-11 define the runner contract, lines 155-186 parse JSON/YAML and legacy names, lines 199-261 convert HTTP contracts into JourneySpec, lines 322-418 execute and stamp Validates verdicts, and lines 451-624 perform response assertions/interpolation/jsonpath. Separating parser/executor would add API surface around tightly coupled spec/outcome semantics.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -4584,6 +6561,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d3e4d58c3c9e094a9",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:13:04.025Z\",\"hash\":\"37ede215c370c141\",\"reason\":\"src/commands/proof_cmd.rs is 73 lines over threshold and owns one proof surface: quality rule commands and verdict write-back at lines 8-227, validation metadata/proof-level classification at lines 236-443, and validation execution/status recording at lines 481-673. Keeping rule verdicts and validation proof strength together preserves the operator proof workflow and shared mark_validation/pulse behavior.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d4af0e020bef2b77b",
       "target_kind": "node",
       "key": "adjudication",
@@ -4598,24 +6582,73 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "d59d6bf023b8f7d14",
+      "target_id": "d50a4490590dba276",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T08:00:26.577Z\",\"hash\":\"6494918856725f75\",\"reason\":\"Re-affirmed after adding portable-config snapshot support and waiver clearing: store.rs is still the single persistence boundary — every write path (nodes, edges, facets, meta, verdicts) enforces SQLite invariants and lane gates in one transactional locality (INV-5). Splitting would scatter the gate surface.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T13:16:23.863Z\",\"hash\":\"9239a3da3ef487ba\",\"reason\":\"src/workitem/queues.rs is the queue source of truth: lines 15-156 route build/coverage/fix/analyze without overlap, lines 159-277 handle quality fallback rule-intent work, lines 279-343 handle validate/review, and lines 621-702 compute the same queue counts from the same predicates. Keeping routing and counts together protects the next-router priority contract from drift.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
-      "target_id": "d73244c84e97b6a419e19f7813bea962",
+      "target_id": "d59d6bf023b8f7d14",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:07:45.143Z\",\"hash\":\"b104fdc3cb5dbd78\",\"reason\":\"src/store.rs is the single SQL/write boundary: lines 1-12 document hidden schema and integrity gates, lines 749-809 enforce asserted verdict evidence/truth-class/lane gates, and Store::restore at lines 1013-1131 validates all imported edges before one transaction writes meta, nodes, edges, facets, tags, and portable config. Splitting would duplicate transaction and invariant ownership.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d622f101e93a3dcb0",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:13:48.995Z\",\"hash\":\"37ede215c370c141\",\"reason\":\"rule complexity is the direct Clap subcommand match for one rule family: seed/verdict/list/show/add/update/remove/ungovern arms are visible in lines 8-227, each arm is linear and delegates durable gates to store.record_verdict at lines 37-38 or Store delete/update calls. The complexity counter reflects variant count, not nested control flow.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d68e833fa9d43d4cb111e00d31d59861",
       "target_kind": "edge",
       "key": "locator",
-      "value": "saga_run",
+      "value": "emit / emit_line",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d6e14fbb52d4aa2fb",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:14:53.651Z\",\"hash\":\"2a74b231c476746b\",\"reason\":\"execute is barely over the threshold (complexity ~21) because it is the boundary orchestration point: lines 327-366 build one HTTP request with interpolation/query/json body, lines 367-379 normalize transport errors into StepOutcome, lines 381-400 record per-step Validates verdicts, lines 405-409 reopen unreached prior passing steps, and lines 412-416 stamp the journey validation status. Extracting these branches would obscure the ordered journey invariant.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
       "target_id": "d76631ff740131229",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T12:22:09.871Z\",\"hash\":\"8613d3d3f5ea40c1\",\"reason\":\"src/signal.rs remains a cohesive pure read-plane module: lines 1-7 define one signal boundary, and the outline groups smells, findings, debt, doctor, and shared snapshot helpers without Store mutation; splitting now would move cohesive detectors rather than reduce coupling.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T13:05:46.840Z\",\"hash\":\"d534c40e8abcfb22\",\"reason\":\"src/signal.rs is a pure read-plane module: lines 1-7 declare smells/debt/doctor as snapshot reads with no mutation, lines 66-111 centralize structural smell composition, and lines 366-430 keep journey-proof quality findings beside the other graph-derived signals. The size preserves one signal vocabulary and avoids split detectors with duplicated snapshot indices.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d9e838551d0b74d93",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:15:55.551Z\",\"hash\":\"35c385ca58563422\",\"reason\":\"src/packs.rs is intentionally data-heavy: lines 1-10 declare the plane as pre-authored rule data with inspection guides/templates/examples, lines 16-40 define the PackRule schema, lines 65-907 are canonical static rule definitions, and lines 909-954 are the shared rule_body/seed path used by seeding and pack-drift comparison. Splitting rules would make the canonical pack body harder to audit and keep in sync.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "db217ad66eaffffa1",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:09:57.858Z\",\"hash\":\"f353812b48f7aeb7\",\"reason\":\"coverage_discover complexity is threshold noise from explicit graph filters, not tangled branching: lines 470-476 state the exact derived definition, lines 484-520 build visibility/coverage/L5-journey sets, lines 523-538 apply the implemented + user_visible + no-L5 + no-coverage gap predicate, and lines 540-590 optionally spawn or print those gaps. The single function keeps the predicate and spawned nodes consistent.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "db589a2e0c605c5fd",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:11:11.521Z\",\"hash\":\"66284ec235ddfc1e\",\"reason\":\"src/commands/misc_cmd.rs groups small operator utilities that do not have a deeper domain module: door/inbox routing at lines 3-175, task/session/guide helpers at lines 313-603, find grounding output at lines 678-754, and detect/schema at lines 755-925. The owned behavior (find surfaces intent grounding) is isolated in find_cmd lines 678-754; splitting the remaining miscellany would mostly redistribute tiny command handlers.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "dd263e1d1d65128e4",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:08:21.993Z\",\"hash\":\"b3dc7199f781db72\",\"reason\":\"src/commands/intent.rs is only 22 lines over the threshold and remains one command family: dispatch maps IntentCmd variants at lines 10-65, symbol-name rejection lives directly in add/update paths at lines 99-114 and 401-407, lifecycle/update handlers are adjacent at lines 347-456, and the locator heuristic plus tests stay with the command at lines 583-622. Splitting would separate the guard from its command surface.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -4624,6 +6657,13 @@
       "key": "artifact_hash",
       "value": "cf961e405bf58901",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "dd8a66484aee46a9f",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-02T13:15:28.273Z\",\"hash\":\"c6059b33d43da28e\",\"reason\":\"build_rungs complexity is deliberate presentation logic for one ladder: lines 276-284 seeded, 285-301 realized, 302-334 proven including validation and journey-proof gates, 335-348 hardened, 349-366 excellent, and 367-383 exported. It is pure state/detail construction from RungInputs; extracting each rung would hide the ordered maturity policy across helper indirection.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
     },
     {
       "target_id": "df750d03bdf758ca85a8e5cf5172e579",
@@ -4822,10 +6862,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "f2a5d710c48dc171bf2a2c857ca21d1e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "journey_run",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "b31d650f8f3ba14b",
+      "value": "f353812b48f7aeb7",
       "truth_class": "derived"
     },
     {
