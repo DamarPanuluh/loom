@@ -47,26 +47,60 @@ Every turn is: **compute → prompt → act → write-back → verify → ripple
 
 ## WorkItem
 
-A promptable unit of work emitted by `loom next`. It carries everything needed to act without a second lookup.
+A promptable unit of work emitted by `loom next`. In JSON mode the envelope is the real serialized `NextOutput`:
+
+```json
+{
+  "work_item": { "...": "WorkItem or null" },
+  "graph_state": {
+    "planned": 0,
+    "stale": 0,
+    "uninspected": 0,
+    "findings": 0,
+    "untriaged": 0,
+    "stale_findings": 0,
+    "needed": 0,
+    "open_findings": 0,
+    "resolved_findings": 0,
+    "inbox": 0,
+    "open_questions": 0,
+    "low_confidence": 0
+  }
+}
+```
+
+`graph_state.low_confidence` is the tier-coordination channel: asserted `passing` / `independent` verdicts with `0 < confidence < 0.7` route to `loom next --mode review` for independent re-inspection.
+
+Real `WorkItem` fields:
 
 ```text
 WorkItem
-  id
-  mode:             build | fix | validate | quality | analyze | align | prove | wiki | inbox | review
-  owner_role:       builder | analyzer | fixer | validator | quality | interviewer | wiki_author | wiki_reviewer
-  effort:           low | mid | high
-  reason:           why this item is next (stale cause, gap, queue trigger)
-  target_facts:     [] nodes/edges/codefiles directly involved
-  context_refs:     [] suggested supporting facts (hierarchy, related, prior notes)
-  stale_causes:     [] typed dependency refs that triggered staleness
-  read_set:         [] suggested files/symbols/locators to inspect
-  allowed_commands: [] exact CLI commands this role may run for this item
-  evidence_shape:   description of what evidence is required
-  write_back:       exact command(s) to record result
-  stop_condition:   when to return to loom status/next
-  human_gate:       null | reason this item needs human presence
-  prompt_contract:  embedded PromptContract for this item
+  mode:            build | coverage | fix | analyze | validate | quality | prove | triage | review | elaborate
+  owner_role:      builder | analyzer | fixer | validator | quality
+  effort:          low | mid | high
+  reason:          why this item is next
+  target:          { kind, id, name, from?, to? }
+  stale_causes:    [] typed stale_cause facets recorded by sync
+  prompt_contract: PromptContract
+  context:
+    purpose
+    linked_entities:
+      - { role, kind, id, name, description?, status?, edge_kind?, edge_status?, locator? }
+    suggested_reads:
+      - { reason, command }
+    read_set:
+      - { path, locator?, why }   # real file paths
+  truth_gap:
+    axis
+    missing_form
+    correct_when
+    authoritative_write
+    forbidden_write
+    after_write
+  next_step:       what to do after acting
 ```
+
+There is no top-level `id`, `target_facts`, `allowed_commands`, or `read_set`. The target id is `work_item.target.id`; allowed actions and write-back live in `work_item.prompt_contract`; the file read set lives in `work_item.context.read_set`.
 
 `effort` is a statement about the work, not a model. The harness maps effort to available models. loom never names vendors.
 
@@ -74,95 +108,147 @@ WorkItem
 
 ## PromptContract
 
-The LLM-facing contract embedded in or alongside a WorkItem. Defines mindset, allowed actions, forbidden actions, required evidence, write-back, and stop.
+The LLM-facing contract embedded in a WorkItem. Defines mindset, allowed actions, forbidden actions, required evidence, write-back, and stop.
 
 ```json
 {
   "role": "validator",
-  "mindset": "Run or mark proof honestly. Do not edit code to make it pass.",
-  "why_now": "Validation.last_result reset to not_run after src/auth/session.rs changed.",
-  "context": {
-    "validation": { "id": "...", "command": "cargo test auth::session_restores" },
-    "intent": { "id": "...", "name": "remember-me token restores session after browser restart" },
-    "codefiles": ["src/auth/session.rs", "src/auth/cookies.rs"],
-    "stale_cause": "src/auth/session.rs content hash changed"
-  },
+  "mindset": "Run it; do not guess. Record exactly what the command produced.",
+  "why_now": "validates edge is needs_reverification",
   "allowed_actions": [
-    "run validation command",
-    "loom validation mark passed --evidence ...",
-    "loom validation mark failed --evidence ...",
-    "loom validation mark blocked --reason ..."
+    "run: cargo test auth::session_restores",
+    "loom validate 'remember-me token restores session after browser restart'",
+    "loom validation mark 'remember-me session test' --result <passed|failed|blocked> --evidence '…'"
   ],
   "forbidden_actions": [
-    "edit source code",
-    "change intent meaning or description",
+    "edit code to make the proof pass",
     "mark passed without observed proof"
   ],
-  "required_evidence": "command output, test run result, or concrete blocker reason",
-  "write_back": "loom validation mark <id> --result <passed|failed|blocked> --evidence '...'",
-  "stop_condition": "After recording result, run loom status.",
+  "required_evidence": "command output, test count, failure message, or a concrete blocker reason",
+  "write_back": "loom validate 'remember-me token restores session after browser restart'  (or)  loom validation mark 'remember-me session test' --result <passed|failed|blocked> --evidence '…'",
+  "stop_condition": "after recording the result, return to loom status",
   "human_gate": null
 }
 ```
 
-Every `loom next` item should produce a PromptContract in `--json` output. The LLM reads it before acting.
+Every `loom next --json` item carries this contract inside `work_item.prompt_contract`. The LLM reads it before acting.
 
 ### Quality WorkItem PromptContract shape
 
-When `loom next --mode quality` serves a governs edge, the rule's inspection metadata enriches the contract. This is the primary mechanism for making quality verdicts consistent across LLM sessions.
+When `loom next --mode quality` serves a `governs` edge or the fallback never-measured `(rule × root implemented intent)` pair, the rule's inspection metadata enriches the contract in the real serialized shape. Quality metadata is not nested under `prompt_contract.context.rule`.
 
 ```json
 {
-  "role": "quality",
-  "mindset": "Measure at the highest honest altitude. independent requires evidence.",
-  "why_now": "governs edge uninspected: service-auth-at-boundary → admin delete user",
-  "context": {
-    "intent": { "id": "...", "name": "admin can delete user", "level": "feature" },
-    "codefiles": ["src/routes/admin.rs", "src/middleware/auth.rs"],
-    "rule": {
-      "name": "service-auth-at-boundary",
-      "description": "every externally reachable endpoint authenticates before side effects",
-      "category": "security",
-      "effort": "mid",
-      "detection_kind": "llm_judgment",
-      "inspection_guide": "1. Find all handlers for this intent's routes. 2. Check whether each handler verifies authentication before any write/delete/mutate. 3. Look for middleware, guards, or explicit auth calls. 4. If any handler skips auth before a side effect: failing.",
-      "detection_hints": [
-        "grep: require_auth, require_admin, authenticate, @guard, middleware",
-        "red flag: handler body begins with a DB call before any auth check",
-        "tree-sitter: function_item where first expression is not an auth call"
+  "work_item": {
+    "mode": "quality",
+    "owner_role": "quality",
+    "effort": "mid",
+    "reason": "rule 'service-auth-at-boundary' has never been measured against 'admin delete user' — the verdict creates the governs edge",
+    "target": {
+      "kind": "rule_intent_pair",
+      "id": "intent-id",
+      "name": "service-auth-at-boundary —governs?→ admin delete user",
+      "from": "service-auth-at-boundary",
+      "to": "admin delete user"
+    },
+    "prompt_contract": {
+      "role": "quality",
+      "mindset": "Measure this rule at the highest honest altitude. Follow the rule's inspection guide; do not invent your own protocol. independent requires evidence of non-applicability. Phrase evidence with the rule's evidence_template so verdicts are comparable across sessions. Guide: Find handlers and verify auth before side effects.",
+      "why_now": "'service-auth-at-boundary' is seeded but unmeasured against this intent",
+      "allowed_actions": [
+        "loom codefile show <file>",
+        "read the grounded code",
+        "loom rule verdict 'service-auth-at-boundary' 'admin delete user' --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+        "hint: grep: require_auth, require_admin, authenticate, middleware",
+        "hint: red flag: handler body mutates state before an auth check"
       ],
+      "forbidden_actions": [
+        "edit code",
+        "mark passing without inspecting",
+        "mark independent without evidence the rule does not apply"
+      ],
+      "required_evidence": "file/line locators showing compliance, violation, or non-applicability",
       "evidence_template": {
         "passing": "src/<file>:<lines> — all handlers check <auth method> before side effect",
-        "failing": "src/<file>:<lines> — <handler> calls <mutation> at line <N> with no auth check"
+        "failing": "src/<file>:<lines> — <handler> calls <mutation> before auth"
       },
-      "passing_example": {
-        "criterion": "every DELETE handler verifies admin role before executing",
-        "evidence": "src/routes/admin.rs:12-40 — require_admin() called at line 14 before delete_user()",
-        "confidence": 0.92
+      "examples": {
+        "passing": {
+          "criterion": "every DELETE handler verifies admin role before executing",
+          "evidence": "src/routes/admin.rs:12-40 — require_admin() called at line 14 before delete_user()",
+          "confidence": 0.92
+        },
+        "failing": {
+          "criterion": "every DELETE handler verifies admin role before executing",
+          "evidence": "src/routes/admin.rs:78-84 — delete_user() runs with no preceding auth check",
+          "confidence": 0.95
+        }
       },
-      "failing_example": {
-        "criterion": "every DELETE handler verifies admin role before executing",
-        "evidence": "src/routes/admin.rs:78 — delete_user() called at line 82 with no preceding auth check",
-        "confidence": 0.95
-      }
+      "pre_screened_hits": [
+        {
+          "path": "src/routes/admin.rs",
+          "line": 78,
+          "pattern": "delete_user\\(",
+          "excerpt": "delete_user(id);"
+        }
+      ],
+      "write_back": "loom rule verdict 'service-auth-at-boundary' 'admin delete user' --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+      "stop_condition": "after recording the verdict, return to loom status",
+      "human_gate": null
     },
-    "pre_screened_hits": []
+    "context": {
+      "purpose": "Read the rule's inspection guide, then measure the intent's grounded code against it.",
+      "linked_entities": [
+        {
+          "role": "target",
+          "kind": "intent",
+          "id": "intent-id",
+          "name": "admin delete user",
+          "description": "admins can delete a user only after authorization"
+        },
+        {
+          "role": "measuring_rule",
+          "kind": "quality_rule",
+          "id": "rule-id",
+          "name": "service-auth-at-boundary",
+          "description": "externally reachable endpoints authenticate before side effects"
+        }
+      ],
+      "suggested_reads": [
+        { "reason": "the measuring stick — its inspection guide and examples", "command": "loom rule show rule-id" }
+      ],
+      "read_set": [
+        { "path": "src/routes/admin.rs", "locator": "delete_user", "why": "grounded implementation for the target intent" }
+      ]
+    },
+    "truth_gap": {
+      "axis": "verdict",
+      "missing_form": "an asserted claim is uninspected or stale",
+      "correct_when": "every asserted edge status was earned by fresh inspection: the criterion states what would falsify the claim, the evidence cites file/line or runtime output that was actually read, and the confidence is honest — below 0.7 is a legitimate answer that routes to review",
+      "authoritative_write": "record the verdict with criterion, evidence, and honest confidence",
+      "forbidden_write": "code edits, proof runs, or prose summaries that do not update the asserted edge",
+      "after_write": "return to loom status so the router can recompute"
+    },
+    "next_step": "after recording the verdict, run `loom status`"
   },
-  "allowed_actions": [
-    "loom rule verdict 'service-auth-at-boundary' 'admin delete user' --status passing|failing|independent --criterion ... --evidence ... --confidence ..."
-  ],
-  "forbidden_actions": [
-    "edit code",
-    "mark passing without inspecting",
-    "mark independent without evidence the rule is not applicable here"
-  ],
-  "required_evidence": "file/line locators showing compliance, violation, or confirmed non-applicability",
-  "write_back": "loom rule verdict <rule> <intent> --status <s> --criterion '...' --evidence '...' --confidence <n>",
-  "stop_condition": "After recording verdict, run loom status."
+  "graph_state": {
+    "planned": 0,
+    "stale": 0,
+    "uninspected": 0,
+    "findings": 0,
+    "untriaged": 0,
+    "stale_findings": 0,
+    "needed": 0,
+    "open_findings": 0,
+    "resolved_findings": 0,
+    "inbox": 0,
+    "open_questions": 0,
+    "low_confidence": 0
+  }
 }
 ```
 
-`pre_screened_hits` is populated by sync when `detection_kind=pattern`. Empty when `detection_kind=llm_judgment`.
+Rule-authored `detection_hints` are folded into `prompt_contract.allowed_actions` as `hint: ...`. Rule-authored phrasing lives at `prompt_contract.evidence_template`; few-shot verdicts live at `prompt_contract.examples`. For rules with `detection_kind=pattern`, `patterns[]` are regex strings run over the target intent's grounded files when the quality packet is built; the resulting `pre_screened_hits` (`path`, `line`, `pattern`, `excerpt`) are candidates only, are never stored, and must be confirmed or refuted by the LLM before writing a verdict.
 
 ---
 
@@ -272,8 +358,8 @@ mindset:
 
 allowed:
   run validation command
-  loom validation mark passed / failed / blocked
-  loom saga run
+  loom validation mark <validation> --result passed|failed|blocked
+  loom journey run
   loom validate <intent>
 
 forbidden:
@@ -297,15 +383,16 @@ mindset:
   independent means "measured; this rule does not apply here" — it requires evidence.
   Follow the rule's inspection_guide — it is the consistent protocol for this rule.
   Use detection_hints to focus grep/read; do not guess what to look for.
+  If pre_screened_hits are attached, inspect and confirm or refute EVERY hit.
   Use evidence_template phrasing so verdicts are comparable across sessions.
   Never invent compliance; inspect the code.
-  Pattern rules: review pre_screened_hits first; confirm or refute each hit.
 
 allowed:
   loom rule verdict <rule> <intent> --status passing/failing/independent
-    --criterion ... --evidence ... [--evidence-locator file:lines] --confidence <n>
+    --criterion ... --evidence ... --confidence <n>
   loom codefile show
   read codefiles, detection hints, prior notes
+  inspect pre_screened_hits as candidates, not conclusions
 
 forbidden:
   edit code
@@ -327,14 +414,16 @@ mindset:
   Translate, do not decide.
   Humans speak product language; the graph uses typed nodes.
   One question closes one gap.
-  Capture the answer as InboxItem first, then normalize.
+  Capture the answer as InboxItem first; use the door landing menu to route it.
   Product decisions belong to the human, not the LLM.
   Intents labeled internal are not interview material.
 
 allowed:
   loom door "<utterance>"
-  loom inbox normalize
+  loom inbox mark <key> routed|rejected|duplicate|deferred
   loom intent add / update / retire / confirm
+  loom hypothesis add
+  loom task add --kind investigation
   loom session (turn-zero offer)
   ask one clarifying question if materially ambiguous
 
@@ -345,58 +434,34 @@ forbidden:
   flood user with graph vocabulary they did not request
 
 evidence required:
-  human confirmation or explicit decision recorded as Note
+  human confirmation, door capture id, or explicit decision recorded as Note
 ```
 
-### wiki_author
+### elaborate builder loop
 
-Generates wiki projection from graph facts with citations.
+`loom next --mode elaborate` serves the most-incomplete user-visible feature intent. The packet embeds the Definition-of-Complete scorecard, including the open axes: `scenarios`, `prerequisites`, `boundary`, `proof`, `journey`, and `questions`.
+
+The loop is deliberately cognitive-cognitive:
 
 ```text
-mindset:
-  Every claim must cite a graph fact.
-  Do not invent architecture prose.
-  A semantic change to the wiki must become an InboxItem, not a direct graph mutation.
-  The graph is the source; the wiki explains it.
+LLM proposes missing surroundings
+  → add scenario intents with --aspect sad|fallback|edge_case and scenario-of edges
+  → add prerequisite edges or proof/journey coverage where the answer is graph-derivable
+  → raise product decisions as questions:
+       loom inbox add "<one crisp product question>" --source question --link intent:<id>
+  → waive non-question axes only with a real reason:
+       loom intent waive <intent> <axis> --reason "<why it deliberately does not apply>"
 
-allowed:
-  loom wiki generate / update
-  read graph facts, codefiles, notes, validation results
-  write wiki pages with citations
-
-forbidden:
-  loom intent update (builder role)
-  loom edge explore ground (analyzer role)
-  writing wiki claims without graph evidence
-  treating wiki as source of truth
-
-evidence required:
-  graph node/edge ids, codefile locators, or validation evidence for each factual claim
+human answers batched questions
+  → surfaced by loom session and graph_state.open_questions
+  → route/answer the linked InboxItems before the questions axis closes
 ```
 
-### wiki_reviewer
+The LLM must not answer product questions for the human. It either creates the missing graph artifact, records a non-question waiver with a reason, or raises one crisp linked question.
 
-Verifies wiki citations, staleness, and routes semantic drift.
+### wiki_author / wiki_reviewer `[deferred — not current CLI]`
 
-```text
-mindset:
-  Check citations against current graph.
-  Stale citations mean stale page — flag, do not silently accept.
-  A wiki claim that contradicts the graph is a graph question, not a prose fix.
-  Semantic differences become InboxItems, not silent edits.
-
-allowed:
-  loom wiki verify
-  loom inbox add (for semantic drift findings)
-  flag stale pages
-
-forbidden:
-  accepting stale citations as valid
-  silently updating graph truth via wiki edit
-
-evidence required:
-  citation validity result, stale page list, drift description for routed InboxItems
-```
+The wiki roles remain the intended mindset if wiki projection returns, but the current binary does not expose wiki commands. Today, route documentation drift through `loom inbox add ... --source wiki` (or `--source code_audit` when found during code review) and continue the current WorkItem.
 
 ---
 
@@ -454,7 +519,7 @@ debt noticed while building
 ambiguous requirement found while analyzing
 missing validation noticed while quality-checking
 security concern spotted while fixing
-wiki inaccuracy found while reviewing
+documentation inaccuracy found while reviewing
 ```
 
 A card is one line to dismiss later. An uncaptured gap is gone from context forever.
@@ -472,7 +537,7 @@ after recording verdict: run loom status
 after code change: run loom sync, then loom status
 after grounding: run loom sync, then loom status
 after capturing InboxItem: return to current WorkItem
-after wiki page written: run loom wiki verify, then loom status
+after routing InboxItem: mark routed/rejected/duplicate/deferred, then loom status
 after interview turn: wait for human response or run loom status
 ```
 
@@ -496,17 +561,17 @@ missing prerequisite for human gate:
 Some queues require human presence. loom distinguishes autonomous and human-gated queues.
 
 ```text
-autonomous (LLM drains alone):
-  build, fix, validate, quality, analyze, prove, wiki, inbox normalize
+autonomous until they raise a human question (LLM drains alone):
+  build, elaborate, fix, validate, quality, analyze, prove, triage, review
 
 human-gated (requires human):
-  align (product meaning re-confirmation)
+  align/product meaning re-confirmation
   blocked proofs (external prerequisite or credential)
   hypothesis adoption/rejection rulings
-  major design decisions in InboxItem normalization
+  major product decisions captured through InboxItem routing
 ```
 
-`loom status` surfaces the human-gated remainder so the LLM can batch questions for one conversation window instead of interrupting repeatedly.
+`loom session` and `graph_state.open_questions` surface the human-gated remainder so the LLM can batch questions for one conversation window instead of interrupting repeatedly.
 
 ---
 
@@ -516,7 +581,7 @@ Every WorkItem carries `effort: low | mid | high`. This is a statement about the
 
 ```text
 low:   mechanical grounding, evidence-only re-verification, simple proof re-run
-mid:   relationship re-inspection, quality measurement, wiki page generation
+mid:   relationship re-inspection, quality measurement, finding/inbox triage
 high:  design reasoning, hypothesis proof, complex repair, intent alignment
 ```
 
@@ -533,15 +598,16 @@ When the session begins without a specific task:
 ```text
 loom session
   → emits offer menu: every way this session could be spent
-  → each offer backed by a live queue and count
-  → one recommended (scarcity order: human-gated first, then autonomous backlog)
+  → each offer backed by a live queue/count or graph-state signal
+  → surfaces graph_state.open_questions when product questions are waiting
+  → one recommended command from the compass
   → LLM asks human one question: "what do you want from this session?"
 
 human answers
   → loom door "<answer>"
-  → InboxItem captured
-  → normalized to graph command or route
-  → session proceeds
+  → InboxItem captured with a landing menu
+  → LLM runs the chosen typed command
+  → loom inbox mark <id> routed
 ```
 
 When the session continues from a known state:
@@ -549,7 +615,7 @@ When the session continues from a known state:
 ```text
 loom status
   → maturity + compass
-  → one_turn plan: lane, role, guide command, next queue
+  → graph_state, validation summary, code ownership, queues, and debt pulse
 
 loom next
   → single highest-priority WorkItem with full PromptContract

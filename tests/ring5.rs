@@ -1,6 +1,6 @@
-//! Ring 5 tests — quality, validation, hypothesis, saga model, vocab/layer.
+//! Ring 5 tests — quality, validation, hypothesis, journey model, vocab/layer.
 
-use loom::cli::{Cli, CodefileCmd, Command, EdgeCmd, IntentCmd, SagaCmd, ValidationCmd};
+use loom::cli::{Cli, CodefileCmd, Command, EdgeCmd, IntentCmd, JourneyCmd, ValidationCmd};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::workitem::{self, Mode};
@@ -104,6 +104,43 @@ fn quality_queue_serves_then_clears_on_verdict() {
             "llm",
         )
         .unwrap();
+
+    // The settled edge leaves the queue, but seeding created 4 sibling rules
+    // that were never measured against this root intent: the queue proposes
+    // the first unmeasured pair instead of going quiet.
+    let pair = workitem::next(&store, Some(Mode::Quality))
+        .unwrap()
+        .expect("unmeasured rule×intent pairs are open quality work");
+    assert_eq!(pair.target.kind, "rule_intent_pair");
+    assert_ne!(pair.target.from.as_deref(), Some(rule.name.as_str()));
+    assert!(
+        pair.prompt_contract
+            .write_back
+            .contains("loom rule verdict"),
+        "pair packet must carry the exact verdict command"
+    );
+
+    // Measuring every seeded rule against the intent truly clears the queue.
+    for r in loom::packs::pack("iso5055") {
+        let rn = store
+            .resolve_node(r.name, Some(NodeType::QualityRule))
+            .unwrap();
+        let e = store
+            .ensure_edge(EdgeKind::Governs, &rn.id, &intent.id)
+            .unwrap();
+        if e.status != InspectionStatus::Passing {
+            store
+                .record_verdict(
+                    &e.id,
+                    InspectionStatus::Independent,
+                    "rule surface absent here",
+                    "inspected: no such surface in the grounded code",
+                    0.9,
+                    "llm",
+                )
+                .unwrap();
+        }
+    }
     assert!(workitem::next(&store, Some(Mode::Quality))
         .unwrap()
         .is_none());
@@ -132,6 +169,7 @@ fn validate_runs_command_and_records_result() {
                 lifecycle: "implemented".into(),
                 visibility: None,
                 layer: None,
+                aspect: None,
                 allow_symbol_name: false,
             },
         },
@@ -193,6 +231,7 @@ fn validate_failing_command_records_failure() {
                 lifecycle: "implemented".into(),
                 visibility: None,
                 layer: None,
+                aspect: None,
                 allow_symbol_name: false,
             },
         },
@@ -252,6 +291,7 @@ fn validate_timed_out_command_records_blocked() {
                 lifecycle: "implemented".into(),
                 visibility: None,
                 layer: None,
+                aspect: None,
                 allow_symbol_name: false,
             },
         },
@@ -365,10 +405,10 @@ fn hypothesis_invisible_until_adopted() {
     assert!(workitem::next(&store, Some(Mode::Build)).unwrap().is_some());
 }
 
-// ---- saga model ------------------------------------------------------------
+// ---- journey model ---------------------------------------------------------
 
 #[test]
-fn saga_add_creates_validation_and_step_edges() {
+fn journey_add_creates_validation_and_step_edges() {
     let tmp = Tmp::new();
     run(
         tmp.path(),
@@ -392,28 +432,31 @@ fn saga_add_creates_validation_and_step_edges() {
     }
     drop(store);
 
-    let spec = tmp.path().join("checkout.saga.json");
+    let spec = tmp.path().join("checkout.journey.json");
     std::fs::write(
         &spec,
-        r#"{"saga":"checkout-flow","steps":[{"intent":"create cart"},{"intent":"capture payment"}]}"#,
+        r#"{"journey":"checkout-flow","steps":[{"intent":"create cart"},{"intent":"capture payment"}]}"#,
     )
     .unwrap();
     run(
         tmp.path(),
-        Command::Saga {
-            cmd: SagaCmd::Add { spec },
+        Command::Journey {
+            cmd: JourneyCmd::Add { spec },
         },
     );
 
     let store = Store::open(tmp.path()).unwrap();
-    let saga = store
+    let journey = store
         .resolve_node("checkout-flow", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(saga.body.get("type").and_then(|t| t.as_str()), Some("saga"));
+    assert_eq!(
+        journey.body.get("type").and_then(|t| t.as_str()),
+        Some("journey")
+    );
     let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&saga.id), None)
+        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
-    assert_eq!(validates.len(), 2, "saga validates each step intent");
+    assert_eq!(validates.len(), 2, "journey validates each step intent");
     // a sequence edge links the two steps
     let cart = store
         .resolve_node("create cart", Some(NodeType::Intent))
@@ -422,6 +465,49 @@ fn saga_add_creates_validation_and_step_edges() {
         .edges_with(Some(EdgeKind::Sequence), Some(&cart.id), None)
         .unwrap();
     assert_eq!(seq.len(), 1, "consecutive steps are sequence-linked");
+}
+
+#[test]
+fn journey_list_accepts_legacy_saga_type_and_hidden_alias() {
+    let tmp = Tmp::new();
+    run(
+        tmp.path(),
+        Command::Init {
+            path: Some(tmp.path().to_path_buf()),
+            name: Some("t".into()),
+            observed: false,
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    store
+        .add_node(
+            NodeType::Validation,
+            "legacy-checkout-flow",
+            "",
+            "not_run",
+            serde_json::json!({"type":"saga","proof_kind":"journey"}),
+        )
+        .unwrap();
+    drop(store);
+
+    let journey_rows = loom_json_out(tmp.path(), &["journey", "list", "--json"]);
+    assert!(
+        journey_rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["name"] == "legacy-checkout-flow"),
+        "journey list includes legacy saga-typed validations: {journey_rows}"
+    );
+    let alias_rows = loom_json_out(tmp.path(), &["saga", "list", "--json"]);
+    assert!(
+        alias_rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["name"] == "legacy-checkout-flow"),
+        "hidden saga alias lists the journey family: {alias_rows}"
+    );
 }
 
 // ---- vocab + layer ---------------------------------------------------------
@@ -812,6 +898,7 @@ fn intent_set_corrects_facets() {
                 key: "f".into(),
                 level: Some("system".into()),
                 visibility: Some("internal".into()),
+                aspect: None,
             },
         },
     );
@@ -1795,7 +1882,7 @@ fn validation_add_journey_metadata_round_trips_in_show_json() {
             "--type",
             "contract",
             "--command",
-            "loom saga run sample-service-http.contract.json",
+            "loom journey run sample-service-http.contract.json",
             "--intent",
             "register a person",
             "--proof-level",
@@ -1836,7 +1923,7 @@ fn validation_add_journey_metadata_round_trips_in_show_json() {
     assert_eq!(body["type"], "contract");
     assert_eq!(
         body["command"],
-        "loom saga run sample-service-http.contract.json"
+        "loom journey run sample-service-http.contract.json"
     );
 }
 
@@ -1893,16 +1980,16 @@ fn validation_add_without_metadata_has_no_journey_keys() {
     }
 }
 
-// ---- saga add on an HTTP contract writes JourneyProof metadata -----------
+// ---- journey add on an HTTP contract writes JourneyProof metadata ----------
 //
-// `loom saga add <contract.json>` must create a saga Validation whose body
+// `loom journey add <contract.json>` must create a journey Validation whose body
 // carries repo-agnostic JourneyProof metadata (proof_level L5, proof_kind
 // journey, a journey_id, repo_native_kind, artifact) — and must link the
 // route intents it can resolve. No grid-specific names appear anywhere.
 // Drives the compiled binary end-to-end and reads the stored node back.
 
 #[test]
-fn saga_add_http_contract_creates_validation_with_journey_metadata() {
+fn journey_add_http_contract_creates_validation_with_journey_metadata() {
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("t"));
     // the route intents the contract declares
@@ -1967,7 +2054,7 @@ fn saga_add_http_contract_creates_validation_with_journey_metadata() {
 
     let added = loom_json_out(
         tmp.path(),
-        &["saga", "add", spec.to_str().unwrap(), "--json"],
+        &["journey", "add", spec.to_str().unwrap(), "--json"],
     );
     assert_eq!(added["added"], true);
     assert_eq!(
@@ -1975,42 +2062,45 @@ fn saga_add_http_contract_creates_validation_with_journey_metadata() {
         "both resolvable route intents linked: {added}"
     );
 
-    // The saga Validation node carries the JourneyProof metadata contract.
+    // The journey Validation node carries the JourneyProof metadata contract.
     let store = Store::open(tmp.path()).unwrap();
-    let saga = store
+    let journey = store
         .resolve_node("sample-service-http", Some(NodeType::Validation))
         .unwrap();
     assert_eq!(
-        saga.body.get("type").and_then(|t| t.as_str()),
-        Some("saga"),
-        "saga node body type is `saga`: {}",
-        saga.body
+        journey.body.get("type").and_then(|t| t.as_str()),
+        Some("journey"),
+        "journey node body type is `journey`: {}",
+        journey.body
     );
     assert_eq!(
-        saga.body.get("proof_level").and_then(|v| v.as_str()),
+        journey.body.get("proof_level").and_then(|v| v.as_str()),
         Some("L5"),
         "proof_level L5 stamped: {}",
-        saga.body
+        journey.body
     );
     assert_eq!(
-        saga.body.get("proof_kind").and_then(|v| v.as_str()),
+        journey.body.get("proof_kind").and_then(|v| v.as_str()),
         Some("journey"),
         "proof_kind journey stamped: {}",
-        saga.body
+        journey.body
     );
     assert_eq!(
-        saga.body.get("journey_id").and_then(|v| v.as_str()),
+        journey.body.get("journey_id").and_then(|v| v.as_str()),
         Some("sample-service-http"),
         "journey_id is the contract name: {}",
-        saga.body
+        journey.body
     );
     assert_eq!(
-        saga.body.get("repo_native_kind").and_then(|v| v.as_str()),
+        journey
+            .body
+            .get("repo_native_kind")
+            .and_then(|v| v.as_str()),
         Some("http_contract_json"),
         "repo_native_kind marks the HTTP contract: {}",
-        saga.body
+        journey.body
     );
-    let artifact = saga
+    let artifact = journey
         .body
         .get("artifact")
         .and_then(|v| v.as_str())
@@ -2022,7 +2112,7 @@ fn saga_add_http_contract_creates_validation_with_journey_metadata() {
 
     // both route intents are validates-linked
     let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&saga.id), None)
+        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
     assert_eq!(validates.len(), 2, "both routes linked: {validates:?}");
     // a sequence edge orders the two steps
@@ -2113,9 +2203,9 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
             "--name",
             "checkout journey",
             "--type",
-            "saga",
+            "journey",
             "--command",
-            "loom saga run checkout",
+            "loom journey run checkout",
             "--intent",
             "checkout completes",
             "--proof-level",
@@ -2149,7 +2239,7 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
             "--result",
             "passed",
             "--evidence",
-            "saga green",
+            "journey green",
         ],
     );
 
@@ -2158,7 +2248,7 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
     loom_ok(tmp.path(), &["sync"]);
     // The validation mark set node status=passed, but the Validates edge needs a
     // Passing verdict to count as a current proof. Use the store directly to
-    // stamp the edge (mirrors what `loom saga run` does on a green run).
+    // stamp the edge (mirrors what `loom journey run` does on a green run).
     {
         use loom::model::{EdgeKind, InspectionStatus, NodeType};
         use loom::store::Store;
@@ -2180,7 +2270,7 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
                 &e.id,
                 InspectionStatus::Passing,
                 "journey green",
-                "saga passed",
+                "journey passed",
                 0.9,
                 "test",
             )
@@ -2577,7 +2667,7 @@ fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
             "--name",
             "checkout journey",
             "--type",
-            "saga",
+            "journey",
             "--command",
             "cargo test checkout_runner_test",
             "--intent",
@@ -2631,7 +2721,7 @@ fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
                 &e.id,
                 InspectionStatus::Passing,
                 "journey green",
-                "saga passed",
+                "journey passed",
                 0.9,
                 "test",
             )
@@ -2726,9 +2816,9 @@ fn journey_coverage_drift_reports_contract_artifact_mismatch() {
             "--name",
             "checkout journey",
             "--type",
-            "saga",
+            "journey",
             "--command",
-            "loom saga run proof",
+            "loom journey run proof",
             "--intent",
             "checkout completes",
             "--proof-level",
@@ -2776,7 +2866,7 @@ fn journey_coverage_drift_reports_contract_artifact_mismatch() {
                 &e.id,
                 InspectionStatus::Passing,
                 "journey green",
-                "saga passed",
+                "journey passed",
                 0.9,
                 "test",
             )
@@ -2821,9 +2911,9 @@ fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
                 "--name",
                 name,
                 "--type",
-                "saga",
+                "journey",
                 "--command",
-                "loom saga run",
+                "loom journey run",
                 "--intent",
                 "checkout completes",
                 "--proof-level",
@@ -2873,7 +2963,7 @@ fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
                     &e.id,
                     InspectionStatus::Passing,
                     "journey green",
-                    "saga passed",
+                    "journey passed",
                     0.9,
                     "test",
                 )
@@ -2933,7 +3023,7 @@ fn sync_stales_journey_proof_when_runner_ref_source_changes() {
             "--name",
             "checkout journey",
             "--type",
-            "saga",
+            "journey",
             "--command",
             "cargo test checkout_runner_test",
             "--intent",
@@ -2984,7 +3074,7 @@ fn sync_stales_journey_proof_when_runner_ref_source_changes() {
                 &e.id,
                 InspectionStatus::Passing,
                 "journey green",
-                "saga passed",
+                "journey passed",
                 0.9,
                 "test",
             )
@@ -3098,7 +3188,7 @@ fn journey_prompt_signals_flag_infra_and_condition_rules() {
 
 /// Signal-fed prompt (slice 1): an intent with no code grounding must NOT get
 /// the in-process typed-runner rules; it should be steered to a consumer-facing
-/// HTTP/saga proof instead.
+/// HTTP/journey proof instead.
 #[test]
 fn journey_prompt_ungrounded_intent_steers_to_http_proof() {
     let tmp = Tmp::new();
@@ -3127,7 +3217,7 @@ fn journey_prompt_ungrounded_intent_steers_to_http_proof() {
         rules
             .iter()
             .any(|r| r.as_str().unwrap().contains("no in-process code grounding")),
-        "ungrounded intent is steered to an HTTP/saga proof: {rules:?}"
+        "ungrounded intent is steered to an HTTP/journey proof: {rules:?}"
     );
     assert!(
         !rules
@@ -3182,9 +3272,9 @@ fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
                 "--name",
                 name,
                 "--type",
-                "saga",
+                "journey",
                 "--command",
-                "loom saga run",
+                "loom journey run",
                 "--intent",
                 "checkout completes",
                 "--proof-level",
@@ -3236,7 +3326,7 @@ fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
                     &e.id,
                     InspectionStatus::Passing,
                     "journey green",
-                    "saga passed",
+                    "journey passed",
                     0.9,
                     "test",
                 )

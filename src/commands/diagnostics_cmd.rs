@@ -39,7 +39,7 @@ pub(crate) fn finding(graph: Option<&Path>, cmd: FindingCmd, json: bool) -> Resu
             id,
             verdict,
             reason,
-        } => finding_verdict(graph, &id, &verdict, &reason),
+        } => finding_verdict(graph, &id, &verdict, &reason, json),
     }
 }
 fn finding_list(
@@ -95,7 +95,13 @@ fn finding_list(
     }
     Ok(())
 }
-fn finding_verdict(graph: Option<&Path>, id: &str, verdict: &str, reason: &str) -> Result<()> {
+fn finding_verdict(
+    graph: Option<&Path>,
+    id: &str,
+    verdict: &str,
+    reason: &str,
+    json: bool,
+) -> Result<()> {
     validate_finding_verdict(verdict)?;
     if reason.trim().is_empty() {
         bail!("finding verdict requires --reason");
@@ -103,8 +109,17 @@ fn finding_verdict(graph: Option<&Path>, id: &str, verdict: &str, reason: &str) 
     let store = open(graph)?;
     let finding = store.resolve_finding(id)?;
     store.record_finding_verdict(&finding.id, verdict, reason)?;
-    println!("{verdict} '{}'", finding.name);
-    print_next_move(&store)?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "finding": node_json(&finding),
+            "verdict": verdict,
+            "reason": reason,
+        }),
+        "loom status",
+        format!("{verdict} '{}'", finding.name),
+    )?;
     Ok(())
 }
 fn validate_finding_filter_state(state: &str) -> Result<()> {
@@ -236,7 +251,18 @@ pub(crate) fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd, json: bool) -> Re
                 .unwrap_or_default();
             list.push(serde_json::json!({ "glob": glob, "reason": reason }));
             store.set_meta("ignores", &serde_json::to_string(&list)?)?;
-            println!("ignoring '{glob}' ({reason})");
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "ignore": {
+                        "glob": glob,
+                        "reason": reason,
+                    },
+                }),
+                "loom status",
+                format!("ignoring '{glob}' ({reason})"),
+            )?;
             Ok(())
         }
         IgnoreCmd::Remove { glob } => {
@@ -250,7 +276,16 @@ pub(crate) fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd, json: bool) -> Re
                 bail!("no ignore rule for glob '{glob}'");
             }
             store.set_meta("ignores", &serde_json::to_string(&list)?)?;
-            println!("removed ignore rule '{glob}'");
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "removed": true,
+                    "glob": glob,
+                }),
+                "loom status",
+                format!("removed ignore rule '{glob}'"),
+            )?;
             Ok(())
         }
         IgnoreCmd::List => {
@@ -319,6 +354,112 @@ pub(crate) fn whoami_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         );
     } else {
         println!("graph: owned — you may build and fix here");
+    }
+    Ok(())
+}
+
+/// `loom scan` — external diagnostic adapters (any language's tools) whose
+/// output becomes derived findings in the ordinary triage lifecycle.
+pub(crate) fn scan_cmd(graph: Option<&Path>, cmd: crate::cli::ScanCmd, json: bool) -> Result<()> {
+    use crate::cli::ScanCmd;
+    let store = open(graph)?;
+    match cmd {
+        ScanCmd::Add { name, command, map } => {
+            crate::scan::add_adapter(&store, &name, &command, map.as_deref())?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "added": name, "command": command, "map": map }),
+                "loom scan run",
+                format!("registered scan adapter '{name}'"),
+            )
+        }
+        ScanCmd::List => {
+            let adapters = crate::scan::list_adapters(&store)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&adapters)?);
+            } else {
+                if adapters.is_empty() {
+                    println!("no scan adapters registered (loom scan add <name> <command>)");
+                }
+                for a in &adapters {
+                    println!("{:<12} {}", a.name, a.command);
+                }
+            }
+            Ok(())
+        }
+        ScanCmd::Remove { name } => {
+            crate::scan::remove_adapter(&store, &name)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "removed": name }),
+                "loom status",
+                format!("removed scan adapter '{name}'"),
+            )
+        }
+        ScanCmd::Run { name } => {
+            let root = store.root().to_path_buf();
+            let report = crate::scan::run(&store, &root, name.as_deref())?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "scan": report }),
+                "loom next --mode triage",
+                format!(
+                    "scan: {} adapter(s), {} diagnostic(s) → {} new finding(s), {} resolved",
+                    report.adapters_run,
+                    report.diagnostics,
+                    report.new_findings,
+                    report.resolved_findings
+                ),
+            )
+        }
+    }
+}
+
+/// `loom completeness` — the Definition-of-Complete scorecard: which axes
+/// around each behavioral idea are met, open, waived, or not applicable.
+pub(crate) fn completeness_cmd(graph: Option<&Path>, key: Option<&str>, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let cards = match key {
+        Some(k) => {
+            let intent = store.resolve_node(k, Some(crate::model::NodeType::Intent))?;
+            vec![crate::completeness::scorecard(&store, &intent)?]
+        }
+        None => crate::completeness::all_scorecards(&store)?,
+    };
+    if json {
+        println!("{}", serde_json::to_string_pretty(&cards)?);
+        return Ok(());
+    }
+    if cards.is_empty() {
+        println!("no feature-level intents to score");
+    }
+    for card in &cards {
+        println!(
+            "{} [{}]  open={}",
+            card.intent_name,
+            &card.intent_id[..8.min(card.intent_id.len())],
+            card.open
+        );
+        for a in &card.axes {
+            let mark = match a.state.as_str() {
+                "met" => "✓",
+                "open" => "·",
+                "waived" => "~",
+                _ => "-",
+            };
+            let waiver = a
+                .waived_reason
+                .as_ref()
+                .map(|r| format!(" (waived: {r})"))
+                .unwrap_or_default();
+            println!("  {mark} {:<14} {}{}", a.axis, a.detail, waiver);
+        }
+    }
+    if key.is_none() && cards.iter().any(|c| c.open > 0) {
+        println!("drain open axes: loom next --mode elaborate");
     }
     Ok(())
 }

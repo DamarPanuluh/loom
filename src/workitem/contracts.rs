@@ -1,0 +1,494 @@
+use super::queues::prescreen_for;
+use super::{q, PromptContract, REVIEW_CONFIDENCE_FLOOR};
+use crate::model::{Edge, EdgeKind, Node};
+use crate::store::Store;
+use crate::Result;
+
+/// The elaboration contract: grow the surroundings the human forgot, decide
+/// nothing that belongs to the human.
+pub(super) fn elaborator_contract(
+    intent: &Node,
+    card: &crate::completeness::Scorecard,
+) -> PromptContract {
+    let name = q(&intent.name);
+    PromptContract {
+        role: "builder".into(),
+        mindset: "The human gave the core idea; the surroundings are systematically \
+                  forgotten — growing them is this item's whole job. For each OPEN axis \
+                  on the scorecard: create the missing artifact, or waive the axis with a \
+                  real reason, or raise ONE crisp question to the human when it is a \
+                  product decision. Proposed scenarios are planned intents — the normal \
+                  build loop ratifies them. Never decide product questions yourself."
+            .into(),
+        why_now: format!(
+            "{} of {} completeness axes are open around this user-visible idea",
+            card.open,
+            card.axes.len()
+        ),
+        allowed_actions: vec![
+            format!(
+                "scenarios: loom intent add --name '<what goes wrong / degraded path / boundary case>' --description '<falsifiable criterion>' --aspect <sad|fallback|edge_case> --visibility user_visible; then loom edge relate scenario-of '<that scenario>' {name}"
+            ),
+            format!(
+                "prerequisites: loom edge relate requires {name} '<intent that must exist first>'"
+            ),
+            "boundary/proof/journey: loom validation add … / loom journey coverage add … (or let the quality and validate queues drive them)".into(),
+            format!(
+                "questions: loom inbox add \"<one crisp product question>\" --source question --link intent:{}",
+                intent.id
+            ),
+            format!("waive: loom intent waive {name} <axis> --reason '<why it deliberately does not apply>'"),
+        ],
+        forbidden_actions: vec![
+            "deciding a product question yourself — raise it and move on".into(),
+            "proposing scenarios that restate the happy path".into(),
+            "waiving an axis just to close it (a waiver needs a real reason)".into(),
+        ],
+        required_evidence: "every open axis closed by an artifact, a waiver, or a question — never by silence".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: "one command per open axis (see allowed actions), then loom status".into(),
+        stop_condition: "after addressing every open axis, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+// ---- role contracts (see docs/llm-driver.md) -------------------------------
+
+/// The exact re-record command that closes THIS edge's verdict, prefilled with
+/// real endpoint names. Relates claims use the ergonomic name-resolving
+/// `edge explore`; every other relationship kind is re-recorded by edge id —
+/// `edge explore` would silently target a different (relates) edge.
+fn verdict_write_back(edge: &Edge, from: &str, to: &str) -> String {
+    match edge.kind {
+        EdgeKind::Governs => format!(
+            "loom rule verdict {} {} --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+            q(from),
+            q(to)
+        ),
+        EdgeKind::Validates => format!(
+            "loom validation mark {} --result <passed|failed|blocked> --evidence '…'",
+            q(from)
+        ),
+        EdgeKind::Relates => format!(
+            "loom edge explore {} {} <ground|issue|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+            q(from),
+            q(to)
+        ),
+        _ => format!(
+            "loom edge verdict {} <ground|issue|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+            edge.id
+        ),
+    }
+}
+
+pub(super) fn builder_contract(intent: &Node) -> PromptContract {
+    let name = q(&intent.name);
+    PromptContract {
+        role: "builder".into(),
+        mindset: "Use Loom first to understand why this work exists, which entities/files are \
+                  likely relevant, and what prior evidence says; then inspect the relevant code \
+                  before editing. Functions/symbols are locators, not intents. Do not self-certify \
+                  quality or proofs."
+            .into(),
+        why_now: format!("intent '{}' is {} and not yet realized", intent.name, intent.status),
+        allowed_actions: vec![
+            "loom status".into(),
+            "loom next --all".into(),
+            format!("loom intent show {name}"),
+            "loom codefile list".into(),
+            "loom codefile show <file>".into(),
+            "edit code".into(),
+            format!("loom edge implement {name} <codefile> --locator <symbol>"),
+            format!("loom intent mark {name} --lifecycle implemented"),
+            "loom sync".into(),
+            "loom inbox add (out-of-scope findings)".into(),
+        ],
+        forbidden_actions: vec![
+            "loom rule verdict passing (quality lane)".into(),
+            "loom validation mark passed (validator lane)".into(),
+        ],
+        required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!(
+            "loom edge implement {name} <codefile> --locator <symbol>; loom intent mark {name} --lifecycle implemented"
+        ),
+        stop_condition: "after grounding + sync, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn coverage_contract(codefile: &Node) -> PromptContract {
+    let file = q(&codefile.name);
+    PromptContract {
+        role: "builder".into(),
+        mindset: "A registered file with no owning intent is a coverage gap: either it \
+                  realizes a behavior (ground it to that intent with a locator) or it is not \
+                  behavior worth tracking (unregister it). Read the file before deciding; do not \
+                  invent an intent just to satisfy the gate."
+            .into(),
+        why_now: format!("codefile '{}' is registered but unowned", codefile.name),
+        allowed_actions: vec![
+            format!("loom codefile show {file}"),
+            "loom intent list".into(),
+            "read the file to see which behavior it realizes".into(),
+            format!("loom edge implement <intent> {file} --locator <symbol>"),
+            format!("loom codefile remove {file} (if it should not be tracked)"),
+            "loom ignore add '<glob>' --reason '…' (if outside the tracked surface)".into(),
+            "loom sync".into(),
+        ],
+        forbidden_actions: vec![
+            "inventing an intent with no behavioral description just to ground the file".into(),
+            "loom rule verdict passing (quality lane)".into(),
+        ],
+        required_evidence: "file read, owning intent chosen with a locator, or a reason to unregister".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!(
+            "loom edge implement <intent> {file} --locator <symbol>  (or)  loom codefile remove {file}  (or)  loom ignore add '<glob>' --reason '…'"
+        ),
+        stop_condition: "after grounding or unregistering + sync, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn analyzer_contract(edge: &Edge, from_name: &str, to_name: &str) -> PromptContract {
+    let write_back = verdict_write_back(edge, from_name, to_name);
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "Read both sides. Form a hypothesis before inspecting code. Record exactly what \
+                  the code shows. Do not fix code; do not preserve the old verdict by assumption."
+            .into(),
+        why_now: format!("{} edge is {}", edge.kind, edge.status),
+        allowed_actions: vec![
+            "read codefiles, notes, prior evidence".into(),
+            write_back.clone(),
+            "loom inbox add (out-of-scope findings)".into(),
+        ],
+        forbidden_actions: vec![
+            "edit code".into(),
+            "record a verdict from name similarity or assumption".into(),
+        ],
+        required_evidence: "file/line locators, validation output, or runtime evidence".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back,
+        stop_condition: "after recording the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> PromptContract {
+    PromptContract {
+        role: "fixer".into(),
+        mindset: "Use Loom first to understand the stale/failing criterion, linked entities, \
+                  likely files, and prior evidence; then inspect the relevant code before editing. \
+                  Repair the actual broken behavior at its root cause, not the symptom. Code moving \
+                  is not behavior changing. If the product changed, route through intent update, not \
+                  a silent code change. After the fix, sync re-opens this claim and routes \
+                  re-measurement to its owning lane — do not record the verdict from the fixer hat."
+            .into(),
+        why_now: format!("{} edge is failing", edge.kind),
+        allowed_actions: vec![
+            "loom status".into(),
+            "loom next --all".into(),
+            format!("loom edge show {}", edge.id),
+            format!("loom intent show {}", q(if edge.kind == EdgeKind::Governs { to_name } else { from_name })),
+            "loom codefile show <file>".into(),
+            "edit code".into(),
+            "loom sync".into(),
+            "loom edge implement (re-ground if the fix moved code)".into(),
+            "loom inbox add (out-of-scope findings)".into(),
+        ],
+        forbidden_actions: vec![
+            "recording the passing verdict yourself (the owning lane re-measures after sync)".into(),
+            "suppress the symptom without a root-cause fix".into(),
+        ],
+        required_evidence: "Loom context checked, relevant code inspected, code change, sync clean, the failing criterion now addressed at its cause".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: "fix the source at root cause, then loom sync — sync re-opens this claim as needs_reverification and its owning lane re-measures it".into(),
+        stop_condition: "after the fix + sync, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn quality_contract(
+    store: &Store,
+    edge: &Edge,
+    rule_name: &str,
+    intent_name: &str,
+) -> Result<PromptContract> {
+    // The rule (edge.from) carries the inspection protocol — embed it so verdicts
+    // are consistent across sessions (see docs/llm-driver.md quality contract).
+    let rule = store.get_node(&edge.from_id)?;
+    let hits = prescreen_for(store, rule.as_ref(), &edge.to_id)?;
+    Ok(quality_contract_body(
+        rule.as_ref(),
+        &format!("governs edge is {}", edge.status),
+        rule_name,
+        intent_name,
+        hits,
+    ))
+}
+
+/// The quality prompt contract, shared by the edge path (re-measure) and the
+/// unmeasured-pair path (first measurement, where no edge exists yet).
+pub(super) fn quality_contract_body(
+    rule: Option<&Node>,
+    why_now: &str,
+    rule_name: &str,
+    intent_name: &str,
+    pre_screened_hits: Vec<crate::prescan::PreScreenHit>,
+) -> PromptContract {
+    let body = rule.map(|n| n.body.clone()).unwrap_or_default();
+    let guide = body
+        .get("inspection_guide")
+        .and_then(|v| v.as_str())
+        .unwrap_or("inspect the code against this rule")
+        .to_string();
+    let hints: Vec<String> = body
+        .get("detection_hints")
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+    let evidence_template = body
+        .get("evidence_template")
+        .cloned()
+        .filter(|v| !v.is_null());
+    let examples = match (body.get("passing_example"), body.get("failing_example")) {
+        (None, None) => None,
+        (p, f) => Some(serde_json::json!({ "passing": p, "failing": f })),
+    };
+    let write_back = format!(
+        "loom rule verdict {} {} --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+        q(rule_name),
+        q(intent_name)
+    );
+    let mut allowed = vec![
+        "loom codefile show <file>".into(),
+        "read the grounded code".into(),
+        write_back.clone(),
+    ];
+    allowed.extend(hints.into_iter().map(|h| format!("hint: {h}")));
+    let template_note = if evidence_template.is_some() {
+        " Phrase evidence with the rule's evidence_template so verdicts are comparable across sessions."
+    } else {
+        ""
+    };
+    let hits_note = if pre_screened_hits.is_empty() {
+        ""
+    } else {
+        " Machine pre-screened hits are attached: confirm or refute EVERY hit before your verdict — they are candidates, not conclusions."
+    };
+    PromptContract {
+        role: "quality".into(),
+        mindset: format!(
+            "Measure this rule at the highest honest altitude. Follow the rule's inspection guide; \
+             do not invent your own protocol. independent requires evidence of non-applicability.\
+             {template_note}{hits_note} Guide: {guide}"
+        ),
+        why_now: why_now.into(),
+        allowed_actions: allowed,
+        forbidden_actions: vec![
+            "edit code".into(),
+            "mark passing without inspecting".into(),
+            "mark independent without evidence the rule does not apply".into(),
+        ],
+        required_evidence: "file/line locators showing compliance, violation, or non-applicability"
+            .into(),
+        evidence_template,
+        examples,
+        pre_screened_hits,
+        write_back,
+        stop_condition: "after recording the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn validator_contract(
+    store: &Store,
+    edge: &Edge,
+    val_name: &str,
+    intent_name: &str,
+) -> Result<PromptContract> {
+    let val = store.get_node(&edge.from_id)?;
+    let command = val
+        .as_ref()
+        .and_then(|n| {
+            n.body
+                .get("command")
+                .and_then(|c| c.as_str())
+                .map(String::from)
+        })
+        .unwrap_or_default();
+    let write_back = format!(
+        "loom validate {}  (or)  {}",
+        q(intent_name),
+        verdict_write_back(edge, val_name, intent_name)
+    );
+    Ok(PromptContract {
+        role: "validator".into(),
+        mindset:
+            "Run it; do not guess. Record exactly what the command produced. Do not edit code \
+                  to make a proof pass. A blocked proof is honest — record it with a reason."
+                .into(),
+        why_now: format!("validates edge is {}", edge.status),
+        allowed_actions: vec![
+            format!(
+                "run: {}",
+                if command.is_empty() {
+                    "<no command — manual_check>".into()
+                } else {
+                    command
+                }
+            ),
+            format!("loom validate {}", q(intent_name)),
+            verdict_write_back(edge, val_name, intent_name),
+        ],
+        forbidden_actions: vec![
+            "edit code to make the proof pass".into(),
+            "mark passed without observed proof".into(),
+        ],
+        required_evidence:
+            "command output, test count, failure message, or a concrete blocker reason".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back,
+        stop_condition: "after recording the result, return to loom status".into(),
+        human_gate: None,
+    })
+}
+
+/// Independent re-inspection of a verdict recorded below the confidence floor.
+/// The reviewer forms their own hypothesis BEFORE reading the recorded
+/// evidence, then confirms or overturns with honest confidence.
+pub(super) fn reviewer_contract(
+    edge: &Edge,
+    owner_role: &str,
+    from_name: &str,
+    to_name: &str,
+) -> PromptContract {
+    let write_back = verdict_write_back(edge, from_name, to_name);
+    PromptContract {
+        role: owner_role.into(),
+        mindset: "This verdict was recorded honestly but with low confidence — it is not settled \
+                  truth. Re-inspect INDEPENDENTLY: form your own hypothesis from the code before \
+                  reading the recorded criterion/evidence, then compare. Confirm or overturn; \
+                  either way, record your own evidence and your own honest confidence."
+            .into(),
+        why_now: format!(
+            "{} verdict stands at confidence {:.2}, below the {} review floor",
+            edge.kind, edge.confidence, REVIEW_CONFIDENCE_FLOOR
+        ),
+        allowed_actions: vec![
+            "read both endpoints and the grounded code FIRST".into(),
+            format!("loom edge show {} (recorded criterion/evidence — read AFTER forming your own view)", edge.id),
+            write_back.clone(),
+            "loom inbox add (out-of-scope findings)".into(),
+        ],
+        forbidden_actions: vec![
+            "edit code".into(),
+            "rubber-stamping the prior verdict without independent inspection".into(),
+            "inheriting the prior confidence instead of stating your own".into(),
+        ],
+        required_evidence: "fresh file/line or runtime evidence; state explicitly whether the prior verdict was confirmed or overturned".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back,
+        stop_condition: "after recording the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
+    let name = q(&hyp.name);
+    PromptContract {
+        role: "analyzer".into(),
+        mindset:
+            "An idea is not work until its claim survives contact with the code. Form your own \
+                  reading first, then prove or refute the claim. Unproven ideas die honestly."
+                .into(),
+        why_now: format!("hypothesis '{}' is unproven", hyp.name),
+        allowed_actions: vec![
+            "read the targeted code".into(),
+            format!("loom hypothesis prove {name} --verdict supported|refuted --evidence '…'"),
+        ],
+        forbidden_actions: vec![
+            "adopt the hypothesis before proving it".into(),
+            "edit code".into(),
+        ],
+        required_evidence: "code evidence that the claim holds or fails".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!(
+            "loom hypothesis prove {name} --verdict <supported|refuted> --evidence '…'"
+        ),
+        stop_condition: "after the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn triage_contract(id: &str) -> PromptContract {
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "Look and decide; do not fix here. Justified, needed, or blocked — record why."
+            .into(),
+        why_now: "a programmatic flag is unjudged (or its prior judgment went stale when the file changed)".into(),
+        allowed_actions: vec![
+            format!("loom finding verdict {id} justified --reason <why it is acceptable>"),
+            format!("loom finding verdict {id} needed --reason <what to do>"),
+            format!("loom finding verdict {id} blocked --reason <what it waits on>"),
+        ],
+        forbidden_actions: vec![
+            "edit code here (mark it needed, then fix in build/fix)".into(),
+            "justified without a concrete reason".into(),
+        ],
+        required_evidence: "a concrete reason: why it is fine, what to do, or what it blocks on"
+            .into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!("loom finding verdict {id} <justified|needed|blocked> --reason '…'"),
+        stop_condition: "after recording the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "Normalize the raw lead. Route it to durable graph work or reject it with a reason; do not let it sit as free text.".into(),
+        why_now: "a raw inbox item is still new".into(),
+        allowed_actions: vec![
+            format!("loom inbox show {id}"),
+            "routing commands: loom intent add / loom hypothesis add / loom rule add / loom task add / loom note add".into(),
+            format!("loom inbox mark {id} routed --reason <where it was routed>"),
+            format!("loom inbox mark {id} rejected --reason <why it is not actionable>"),
+        ],
+        forbidden_actions: vec![
+            "leave the item new after using it".into(),
+            "drop context without recording the disposition".into(),
+        ],
+        required_evidence: "the durable destination or concrete rejection reason".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!("loom inbox mark {id} <routed|rejected|duplicate|deferred> --reason '…'"),
+        stop_condition: "after disposition, return to loom status".into(),
+        human_gate: None,
+    }
+}

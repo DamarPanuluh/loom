@@ -1,6 +1,6 @@
 //! `loom intent` command family.
 
-use super::{open, require_lane};
+use super::{node_json, open, pulse, require_lane};
 use crate::cli::IntentCmd;
 use crate::model::{NodeType, TargetKind, TruthClass};
 use crate::Result;
@@ -16,6 +16,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             lifecycle,
             visibility,
             layer,
+            aspect,
             allow_symbol_name,
         } => intent_add(
             graph,
@@ -26,35 +27,39 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
                 lifecycle,
                 visibility,
                 layer,
+                aspect,
                 allow_symbol_name,
             },
+            json,
         ),
         IntentCmd::Show { key } => intent_show(graph, key),
         IntentCmd::Set {
             key,
             level,
             visibility,
-        } => intent_set(graph, key, level, visibility),
-        IntentCmd::Reactivate { key, reason } => intent_reactivate(graph, key, reason),
+            aspect,
+        } => intent_set(graph, key, level, visibility, aspect, json),
+        IntentCmd::Waive { key, axis, reason } => intent_waive(graph, key, axis, reason, json),
+        IntentCmd::Reactivate { key, reason } => intent_reactivate(graph, key, reason, json),
         IntentCmd::List { limit } => intent_list(graph, limit, json),
         IntentCmd::Mark {
             key,
             lifecycle,
             reason,
-        } => intent_mark(graph, key, lifecycle, reason),
+        } => intent_mark(graph, key, lifecycle, reason, json),
         IntentCmd::Update {
             key,
             description,
             reason,
             reword,
-        } => intent_update(graph, key, description, reason, reword),
+        } => intent_update(graph, key, description, reason, reword, json),
         IntentCmd::Retire {
             key,
             reason,
             replaced_by,
-        } => intent_retire(graph, key, reason, replaced_by),
-        IntentCmd::Confirm { key } => intent_confirm(graph, key),
-        IntentCmd::Tag { action, key, term } => intent_tag(graph, action, key, term),
+        } => intent_retire(graph, key, reason, replaced_by, json),
+        IntentCmd::Confirm { key } => intent_confirm(graph, key, json),
+        IntentCmd::Tag { action, key, term } => intent_tag(graph, action, key, term, json),
     }
 }
 
@@ -65,10 +70,20 @@ struct IntentAddArgs {
     lifecycle: String,
     visibility: Option<String>,
     layer: Option<String>,
+    aspect: Option<String>,
     allow_symbol_name: bool,
 }
 
-fn intent_add(graph: Option<&Path>, args: IntentAddArgs) -> Result<()> {
+/// Validate a scenario aspect label.
+fn check_aspect(aspect: &str) -> Result<()> {
+    const ASPECTS: &[&str] = &["happy", "sad", "fallback", "edge_case"];
+    if !ASPECTS.contains(&aspect) {
+        bail!("unknown aspect '{aspect}' (use {})", ASPECTS.join("|"));
+    }
+    Ok(())
+}
+
+fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
     let IntentAddArgs {
         name,
         description,
@@ -76,6 +91,7 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs) -> Result<()> {
         lifecycle,
         visibility,
         layer,
+        aspect,
         allow_symbol_name,
     } = args;
     // INV-ATOM: symbols are locators, not intents.
@@ -118,25 +134,42 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs) -> Result<()> {
         &level,
         TruthClass::Asserted,
     )?;
-    if let Some(v) = visibility {
+    if let Some(v) = &visibility {
         store.set_facet(
             &node.id,
             TargetKind::Node,
             "visibility",
-            &v,
+            v,
             TruthClass::Asserted,
         )?;
     }
-    if let Some(l) = layer {
+    if let Some(l) = &layer {
+        store.set_facet(&node.id, TargetKind::Node, "layer", l, TruthClass::Asserted)?;
+    }
+    if let Some(a) = &aspect {
+        check_aspect(a)?;
         store.set_facet(
             &node.id,
             TargetKind::Node,
-            "layer",
-            &l,
+            "aspect",
+            a,
             TruthClass::Asserted,
         )?;
     }
-    println!("added intent '{}' [{}]", node.name, &node.id[..8]);
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": node_json(&node),
+            "level": level,
+            "visibility": visibility,
+            "layer": layer,
+            "aspect": aspect,
+            "allow_symbol_name": allow_symbol_name,
+        }),
+        "loom status",
+        format!("added intent '{}' [{}]", node.name, &node.id[..8]),
+    )?;
     Ok(())
 }
 
@@ -157,6 +190,9 @@ fn intent_show(graph: Option<&Path>, key: String) -> Result<()> {
     if let Some(layer) = store.get_facet(&n.id, TargetKind::Node, "layer")? {
         println!("  layer: {layer}");
     }
+    if let Some(aspect) = store.get_facet(&n.id, TargetKind::Node, "aspect")? {
+        println!("  aspect: {aspect}");
+    }
     let tags = store.tags_of(&n.id, TargetKind::Node)?;
     if !tags.is_empty() {
         println!("  tags: {}", tags.join(", "));
@@ -169,9 +205,11 @@ fn intent_set(
     key: String,
     level: Option<String>,
     visibility: Option<String>,
+    aspect: Option<String>,
+    json: bool,
 ) -> Result<()> {
-    if level.is_none() && visibility.is_none() {
-        bail!("nothing to set — pass --level and/or --visibility");
+    if level.is_none() && visibility.is_none() && aspect.is_none() {
+        bail!("nothing to set — pass --level, --visibility and/or --aspect");
     }
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
@@ -187,11 +225,71 @@ fn intent_set(
             TruthClass::Asserted,
         )?;
     }
-    println!("updated intent '{}'", n.name);
+    if let Some(a) = &aspect {
+        check_aspect(a)?;
+        store.set_facet(&n.id, TargetKind::Node, "aspect", a, TruthClass::Asserted)?;
+    }
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": node_json(&n),
+            "level": level,
+            "visibility": visibility,
+            "aspect": aspect,
+        }),
+        "loom status",
+        format!("updated intent '{}'", n.name),
+    )?;
     Ok(())
 }
 
-fn intent_reactivate(graph: Option<&Path>, key: String, reason: String) -> Result<()> {
+/// Deliberately close a completeness axis for this intent. The waiver is an
+/// asserted facet (`waiver:<axis>` = reason) plus a decision note, and it
+/// re-opens automatically when the intent is redefined — a waiver outliving
+/// the meaning it waived would be a silent lie.
+fn intent_waive(
+    graph: Option<&Path>,
+    key: String,
+    axis: String,
+    reason: String,
+    json: bool,
+) -> Result<()> {
+    crate::completeness::check_axis(&axis)?;
+    if axis == "questions" {
+        bail!(
+            "the questions axis is never waivable: answer the question or withdraw it \
+             (loom inbox mark <id> rejected --reason '…')"
+        );
+    }
+    if reason.trim().is_empty() {
+        bail!("a waiver needs a substantive --reason");
+    }
+    let store = open(graph)?;
+    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
+    store.set_facet(
+        &n.id,
+        TargetKind::Node,
+        &format!("waiver:{axis}"),
+        &reason,
+        TruthClass::Asserted,
+    )?;
+    store.add_note(&n.id, "decision", &format!("waived {axis}: {reason}"))?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": node_json(&n),
+            "waived_axis": axis,
+            "reason": reason,
+        }),
+        "loom status",
+        format!("waived {axis} for '{}'", n.name),
+    )?;
+    Ok(())
+}
+
+fn intent_reactivate(graph: Option<&Path>, key: String, reason: String, json: bool) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
     if n.status != "deprecated" {
@@ -203,7 +301,18 @@ fn intent_reactivate(graph: Option<&Path>, key: String, reason: String) -> Resul
     }
     store.set_node_status(&n.id, "planned")?;
     store.add_note(&n.id, "transition", &format!("reactivated: {reason}"))?;
-    println!("reactivated intent '{}' → planned", n.name);
+    let mut intent = node_json(&n);
+    intent["status"] = serde_json::json!("planned");
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": intent,
+            "reason": reason,
+        }),
+        "loom status",
+        format!("reactivated intent '{}' → planned", n.name),
+    )?;
     Ok(())
 }
 
@@ -238,16 +347,35 @@ fn intent_mark(
     key: String,
     lifecycle: String,
     reason: Option<String>,
+    json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
     // builder lane (lifecycle is builder-owned); solo allowed
     require_lane(&store, crate::registry::OwnerRole::Builder)?;
     store.update_node(&n.id, None, None, Some(&lifecycle))?;
-    if let Some(r) = reason {
+    if let Some(r) = &reason {
         store.add_note(&n.id, "decision", &format!("lifecycle {lifecycle}: {r}"))?;
     }
-    println!("marked '{}' lifecycle={lifecycle}", n.name);
+    let next_step = if lifecycle == "implemented" {
+        "loom sync"
+    } else {
+        "loom status"
+    };
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": {
+                "id": n.id,
+                "name": n.name,
+                "lifecycle": lifecycle,
+            },
+            "reason": reason,
+        }),
+        next_step,
+        format!("marked '{}' lifecycle={lifecycle}", n.name),
+    )?;
     Ok(())
 }
 
@@ -257,6 +385,7 @@ fn intent_update(
     description: String,
     reason: String,
     reword: bool,
+    json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
@@ -265,11 +394,42 @@ fn intent_update(
         require_lane(&store, crate::registry::OwnerRole::Builder)?;
         store.update_node(&n.id, None, Some(&description), None)?;
         store.add_note(&n.id, "decision", &format!("reworded: {reason}"))?;
-        println!("reworded '{}' (no ripple)", n.name);
+        pulse::emit_line(
+            &store,
+            json,
+            serde_json::json!({
+                "intent": {
+                    "id": n.id,
+                    "name": n.name,
+                    "description": description,
+                    "status": n.status,
+                },
+                "reword": true,
+                "reason": reason,
+            }),
+            "loom status",
+            format!("reworded '{}' (no ripple)", n.name),
+        )?;
     } else {
         let reopened = store.redefine_intent(&n.id, &description)?;
         store.add_note(&n.id, "decision", &format!("redefined: {reason}"))?;
-        println!("redefined '{}' — {reopened} edge(s) re-opened", n.name);
+        pulse::emit_line(
+            &store,
+            json,
+            serde_json::json!({
+                "intent": {
+                    "id": n.id,
+                    "name": n.name,
+                    "description": description,
+                    "status": n.status,
+                },
+                "reword": false,
+                "reopened_edges": reopened,
+                "reason": reason,
+            }),
+            "loom status",
+            format!("redefined '{}' — {reopened} edge(s) re-opened", n.name),
+        )?;
     }
     Ok(())
 }
@@ -279,6 +439,7 @@ fn intent_retire(
     key: String,
     reason: String,
     replaced_by: Option<String>,
+    json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
@@ -287,19 +448,48 @@ fn intent_retire(
         None => None,
     };
     store.retire_intent(&n.id, &reason, rb.as_deref())?;
-    println!("retired '{}'", n.name);
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": {
+                "id": n.id,
+                "name": n.name,
+                "status": "deprecated",
+            },
+            "reason": reason,
+            "replaced_by": rb,
+        }),
+        "loom status",
+        format!("retired '{}'", n.name),
+    )?;
     Ok(())
 }
 
-fn intent_confirm(graph: Option<&Path>, key: String) -> Result<()> {
+fn intent_confirm(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
     store.add_note(&n.id, "confirm", "meaning re-affirmed")?;
-    println!("confirmed '{}'", n.name);
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": node_json(&n),
+            "confirmed": true,
+        }),
+        "loom status",
+        format!("confirmed '{}'", n.name),
+    )?;
     Ok(())
 }
 
-fn intent_tag(graph: Option<&Path>, action: String, key: String, term: String) -> Result<()> {
+fn intent_tag(
+    graph: Option<&Path>,
+    action: String,
+    key: String,
+    term: String,
+    json: bool,
+) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
     match action.as_str() {
@@ -308,11 +498,31 @@ fn intent_tag(graph: Option<&Path>, action: String, key: String, term: String) -
                 bail!("'{term}' is not a registered vocab term; add it with `loom vocab add`");
             }
             store.set_tag(&n.id, TargetKind::Node, &term)?;
-            println!("tagged '{}' with '{term}'", n.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "intent": node_json(&n),
+                    "action": "add",
+                    "term": term,
+                }),
+                "loom status",
+                format!("tagged '{}' with '{term}'", n.name),
+            )?;
         }
         "remove" => {
             store.remove_tag(&n.id, TargetKind::Node, &term)?;
-            println!("untagged '{}' '{term}'", n.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "intent": node_json(&n),
+                    "action": "remove",
+                    "term": term,
+                }),
+                "loom status",
+                format!("untagged '{}' '{term}'", n.name),
+            )?;
         }
         other => bail!("unknown tag action '{other}' (use add|remove)"),
     }

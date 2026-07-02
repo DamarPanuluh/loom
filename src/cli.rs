@@ -64,7 +64,7 @@ pub enum Command {
     Status,
     /// The next work item (asserted residue) with its prompt contract.
     Next {
-        /// build | coverage | fix | analyze/discovery | validate | quality | prove | triage (omit for highest-priority)
+        /// build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate (omit for highest-priority)
         #[arg(long)]
         mode: Option<String>,
         /// Closeout view: every queue at once.
@@ -88,6 +88,11 @@ pub enum Command {
         #[command(subcommand)]
         cmd: TaskCmd,
     },
+    /// Durable notes on any node (decision/context/warning trails).
+    Note {
+        #[command(subcommand)]
+        cmd: NoteCmd,
+    },
     /// Turn-zero offer menu: how this session could be spent.
     Session,
     /// Adopt a lane's discipline (the prompt contract for a role).
@@ -104,6 +109,17 @@ pub enum Command {
     },
     /// Detect repo languages and recommend quality packs.
     Detect,
+    /// Register/run external diagnostic tools (linters, type-checkers) whose
+    /// output becomes derived findings.
+    Scan {
+        #[command(subcommand)]
+        cmd: ScanCmd,
+    },
+    /// The Definition-of-Complete scorecard: per-intent axes met/open/waived.
+    Completeness {
+        /// One intent (name, id, or fragment); omit for all feature intents.
+        key: Option<String>,
+    },
     /// Print the data model: node/edge kinds, statuses, vocabularies.
     Schema,
     /// Quality rule commands.
@@ -132,11 +148,6 @@ pub enum Command {
     Surface {
         #[command(subcommand)]
         cmd: SurfaceCmd,
-    },
-    /// Saga (composition proof) commands.
-    Saga {
-        #[command(subcommand)]
-        cmd: SagaCmd,
     },
     /// Vocabulary commands.
     Vocab {
@@ -178,7 +189,8 @@ pub enum Command {
         #[command(subcommand)]
         cmd: ProposalCmd,
     },
-    /// Journey coverage and invariant-point commands.
+    /// Journey proof, coverage, and invariant-point commands.
+    #[command(alias = "saga")]
     Journey {
         #[command(subcommand)]
         cmd: JourneyCmd,

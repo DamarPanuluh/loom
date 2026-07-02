@@ -40,7 +40,18 @@ pub struct Snapshot {
     pub edges: Vec<Edge>,
     pub facets: Vec<Facet>,
     pub tags: Vec<Tag>,
+    /// Portable repo config from the meta table — ONLY the allowlisted keys in
+    /// [`PORTABLE_META_KEYS`]. Never a blind meta dump: identity keys travel as
+    /// top-level export fields, and anything not allowlisted stays local.
+    pub config: std::collections::BTreeMap<String, String>,
 }
+
+/// Meta keys that travel with the export. Each is repo-portable configuration
+/// (what to track, what to ignore, the layer order, registered scan adapters) —
+/// without these an imported graph silently loses its coverage exclusions and
+/// detectors. Local-only or identity meta keys must NOT be added here.
+pub const PORTABLE_META_KEYS: &[&str] =
+    &["layer_order", "ignores", "codefile_globs", "scan_adapters"];
 
 /// The SQLite-backed graph store. Holds an exclusive advisory lock for its
 /// lifetime so two processes never write the same graph concurrently.
@@ -552,9 +563,11 @@ impl Store {
 
     /// Redefine an intent's description — the semantic twin of `sync`. Ripples
     /// one hop: every settled asserted verdict touching the intent re-opens to
-    /// needs_reverification, linked validations reset to not_run, and the old
-    /// wording is preserved in a decision note. A name-only change does not call
-    /// this (no ripple). Builder lane.
+    /// needs_reverification, linked validations reset to not_run, completeness
+    /// waivers are cleared (a waiver granted against the OLD meaning must be
+    /// re-earned against the new one), and the old wording is preserved in a
+    /// decision note. A name-only change does not call this (no ripple).
+    /// Builder lane.
     pub fn redefine_intent(&self, id: &str, new_description: &str) -> Result<usize> {
         self.check_lane(registry::OwnerRole::Builder)?;
         let intent = self
@@ -577,12 +590,31 @@ impl Store {
             "UPDATE node SET description=?2,updated_at=?3 WHERE id=?1",
             params![id, new_description, now],
         )?;
-        // ripple one hop: implements/governs/validates/relationships touching it
+        // A redefinition invalidates every completeness waiver: the reasons
+        // were given for the previous meaning.
+        let cleared = self.conn.execute(
+            "DELETE FROM facet WHERE target_id=?1 AND target_kind='node' AND key LIKE 'waiver:%'",
+            params![id],
+        )?;
+        if cleared > 0 {
+            self.add_note(
+                id,
+                "decision",
+                &format!("{cleared} completeness waiver(s) re-opened by redefinition"),
+            )?;
+        }
+        // ripple one hop: implements/targets/governs/validates/relationships touching it
+        let cause = format!("intent '{}' description updated", intent.name);
         let mut reopened = 0usize;
-        let touching_to = [EdgeKind::Implements, EdgeKind::Governs, EdgeKind::Validates];
+        let touching_to = [
+            EdgeKind::Implements,
+            EdgeKind::Targets,
+            EdgeKind::Governs,
+            EdgeKind::Validates,
+        ];
         for k in touching_to {
             for e in self.edges_with(Some(k), None, Some(id))? {
-                if self.stale_edge(&e.id)? {
+                if self.stale_edge(&e.id, &cause)? {
                     reopened += 1;
                 }
                 if k == EdgeKind::Validates {
@@ -599,12 +631,12 @@ impl Store {
             EdgeKind::Sequence,
         ] {
             for e in self.edges_with(Some(k), Some(id), None)? {
-                if self.stale_edge(&e.id)? {
+                if self.stale_edge(&e.id, &cause)? {
                     reopened += 1;
                 }
             }
             for e in self.edges_with(Some(k), None, Some(id))? {
-                if self.stale_edge(&e.id)? {
+                if self.stale_edge(&e.id, &cause)? {
                     reopened += 1;
                 }
             }
@@ -771,6 +803,7 @@ impl Store {
                 now
             ],
         )?;
+        self.clear_facet(edge_id, TargetKind::Edge, "stale_cause")?;
         self.get_edge(edge_id)?
             .ok_or_else(|| anyhow!("edge vanished after verdict"))
     }
@@ -921,12 +954,19 @@ impl Store {
         let edges = self.list_edges(None, usize::MAX)?;
         let facets = self.list_all_facets()?;
         let tags = self.list_all_tags()?;
+        let mut config = std::collections::BTreeMap::new();
+        for key in PORTABLE_META_KEYS {
+            if let Some(v) = self.get_meta(key)? {
+                config.insert((*key).to_string(), v);
+            }
+        }
         Ok(Snapshot {
             identity,
             nodes,
             edges,
             facets,
             tags,
+            config,
         })
     }
 
@@ -1077,6 +1117,16 @@ impl Store {
                 params![t.target_id, t.target_kind.as_str(), t.term],
             )?;
         }
+        for (key, value) in &snap.config {
+            if !PORTABLE_META_KEYS.contains(&key.as_str()) {
+                bail!("import: config key '{key}' is not portable");
+            }
+            tx.execute(
+                "INSERT INTO meta(key,value) VALUES (?1,?2)
+                 ON CONFLICT(key) DO UPDATE SET value=?2",
+                params![key, value],
+            )?;
+        }
         tx.commit()?;
         Ok(())
     }
@@ -1119,10 +1169,15 @@ impl Store {
     }
 
     /// Re-open an asserted edge whose dependency changed (sync ripple). Moves a
-    /// settled verdict to `needs_reverification`. Distinct from `record_verdict`
+    /// settled verdict to `needs_reverification` and records the concrete cause
+    /// on the edge as the `stale_cause` facet. Distinct from `record_verdict`
     /// (it writes no verdict) and from `set_derived_status` (asserted only).
     /// Returns true if the edge was re-opened.
-    pub fn stale_edge(&self, edge_id: &str) -> Result<bool> {
+    pub fn stale_edge(&self, edge_id: &str, cause: &str) -> Result<bool> {
+        let cause = cause.trim();
+        if cause.is_empty() {
+            bail!("stale_edge requires a cause");
+        }
         let edge = self
             .get_edge(edge_id)?
             .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
@@ -1138,14 +1193,56 @@ impl Store {
                     "UPDATE edge SET status='needs_reverification',updated_at=?2 WHERE id=?1",
                     params![edge_id, now],
                 )?;
+                self.set_facet(
+                    edge_id,
+                    TargetKind::Edge,
+                    "stale_cause",
+                    cause,
+                    TruthClass::Derived,
+                )?;
                 Ok(true)
             }
             _ => Ok(false),
         }
     }
 
-    /// Set a node's status directly (sync-owned, e.g. Validation last_result →
-    /// not_run). Touches updated_at.
+    /// Re-open only a previously passing asserted edge. Saga boundary failures
+    /// use this narrower transition for never-reached steps: stale green proofs
+    /// must be rechecked, but uninspected or already-failing edges carry useful
+    /// state and are left untouched.
+    pub fn stale_passing_edge(&self, edge_id: &str) -> Result<bool> {
+        let edge = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if edge.truth_class != TruthClass::Asserted || edge.status != InspectionStatus::Passing {
+            return Ok(false);
+        }
+        let now = now(&self.conn)?;
+        self.conn.execute(
+            "UPDATE edge SET status=?2,updated_at=?3 WHERE id=?1",
+            params![edge_id, InspectionStatus::NeedsReverification.as_str(), now],
+        )?;
+        Ok(true)
+    }
+
+    /// Reset a Validation to `not_run` as a deterministic sync consequence.
+    /// Sync-derived invalidation is not an authored state transition, so it uses
+    /// the derived timestamp sentinel to preserve INV-2 byte-identical exports
+    /// across repeated recomputes. User-visible status changes must keep using
+    /// [`set_node_status`].
+    pub fn reset_validation_status_for_sync(&self, id: &str) -> Result<()> {
+        let n = self.conn.execute(
+            "UPDATE node SET status='not_run',updated_at=?2 WHERE id=?1 AND node_type=?3",
+            params![id, DERIVED_TS, NodeType::Validation.as_str()],
+        )?;
+        if n == 0 {
+            bail!("no validation node '{id}'");
+        }
+        Ok(())
+    }
+
+    /// Set a node's status directly for asserted/user-visible transitions.
+    /// Touches updated_at with the live clock.
     pub fn set_node_status(&self, id: &str, status: &str) -> Result<()> {
         let now = now(&self.conn)?;
         let n = self.conn.execute(
@@ -1264,6 +1361,70 @@ impl Store {
             .execute("DELETE FROM edge WHERE truth_class='derived'", [])?;
         self.conn
             .execute("DELETE FROM node WHERE truth_class='derived'", [])?;
+        Ok(())
+    }
+
+    /// Delete specific derived Finding nodes and their incident derived edges.
+    ///
+    /// This is the scan adapter convergence primitive: callers validate adapter
+    /// scope, then ask the store to remove only disappeared derived findings.
+    /// The full id set is validated before any delete so a bad id cannot leave a
+    /// partial cleanup.
+    pub fn remove_derived_findings(&self, ids: &[String]) -> Result<()> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut node_ids = std::collections::BTreeSet::new();
+        let mut incident_edges = std::collections::BTreeSet::new();
+        for id in ids {
+            if !node_ids.insert(id.clone()) {
+                continue;
+            }
+            let node = self
+                .get_node(id)?
+                .ok_or_else(|| anyhow!("no finding node '{id}'"))?;
+            if node.node_type != NodeType::Finding || node.truth_class != TruthClass::Derived {
+                bail!("'{id}' is not a derived finding");
+            }
+            for edge in self.edges_with(None, Some(id), None)? {
+                if edge.truth_class != TruthClass::Derived {
+                    bail!("'{id}' has non-derived incident edge '{}'", edge.id);
+                }
+                incident_edges.insert(edge.id);
+            }
+            for edge in self.edges_with(None, None, Some(id))? {
+                if edge.truth_class != TruthClass::Derived {
+                    bail!("'{id}' has non-derived incident edge '{}'", edge.id);
+                }
+                incident_edges.insert(edge.id);
+            }
+        }
+
+        let tx = self.conn.unchecked_transaction()?;
+        for edge_id in &incident_edges {
+            tx.execute(
+                "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
+                params![edge_id],
+            )?;
+            tx.execute(
+                "DELETE FROM tag WHERE target_id=?1 AND target_kind='edge'",
+                params![edge_id],
+            )?;
+            tx.execute("DELETE FROM edge WHERE id=?1", params![edge_id])?;
+        }
+        for node_id in &node_ids {
+            tx.execute(
+                "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
+                params![node_id],
+            )?;
+            tx.execute(
+                "DELETE FROM tag WHERE target_id=?1 AND target_kind='node'",
+                params![node_id],
+            )?;
+            tx.execute("DELETE FROM node WHERE id=?1", params![node_id])?;
+        }
+        tx.commit()?;
         Ok(())
     }
 

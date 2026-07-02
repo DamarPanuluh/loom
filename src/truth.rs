@@ -55,6 +55,10 @@ pub struct TruthGap {
     pub axis: TruthAxis,
     /// One-line statement of which form is stale/missing.
     pub missing_form: String,
+    /// The falsifiable per-axis correctness criterion: what "right" looks like
+    /// for this axis, checkable against the graph. This is the self-teaching
+    /// line — every LLM operating the graph reads it before writing this axis.
+    pub correct_when: String,
     /// The authoritative write that makes this axis true.
     pub authoritative_write: String,
     /// The write that would be a lie from this hat (wrong-axis self-certification).
@@ -82,6 +86,13 @@ impl TruthAxis {
             TruthAxis::Intent => TruthGap {
                 axis: self,
                 missing_form: "behavior is not named as an intent".into(),
+                correct_when: "each active intent names exactly one falsifiable behavior, sized \
+                               for reuse: small enough to recur under multiple parents (overlap \
+                               with other intents is acceptable), big enough that the graph does \
+                               not devolve into noise. If the description needs 'and', split it; \
+                               if the name is just a function/symbol, it is a locator on an \
+                               implements edge, not an intent"
+                    .into(),
                 authoritative_write: "loom door \"<utterance>\" then loom intent add --name … --description …".into(),
                 forbidden_write: "writing code or proofs before the behavior is named".into(),
                 after_write: "loom status".into(),
@@ -89,20 +100,37 @@ impl TruthAxis {
             TruthAxis::Implementation => TruthGap {
                 axis: self,
                 missing_form: "intent has no code grounding (or a registered file has no owning intent)".into(),
+                correct_when: "every implements edge carries a locator that resolves to a live \
+                               symbol which actually performs the named behavior (not merely \
+                               references it), and every registered file has an owning intent or \
+                               a recorded ignore reason"
+                    .into(),
                 authoritative_write: "inspect the relevant files, edit code, then loom edge implement <intent> <codefile> --locator <symbol>".into(),
                 forbidden_write: "marking quality or validation passing (those are other axes)".into(),
                 after_write: "loom sync".into(),
             },
             TruthAxis::Proof => TruthGap {
                 axis: self,
-                missing_form: "implemented behavior has no passing proof (a flow may need a saga/journey proof)".into(),
-                authoritative_write: "loom validation add … --intent <intent> then run it; for flows, loom saga add <spec> and loom saga run <spec>".into(),
+                missing_form: "implemented behavior has no passing proof (a flow may need a journey proof)".into(),
+                correct_when: "every implemented intent has at least one validation whose latest \
+                               result was observed from a real run: passed/failed with actual \
+                               output, or blocked naming the concrete missing prerequisite. \
+                               not_run is not a proof, and a flow crossing a service boundary \
+                               needs a journey proof, not only unit proofs"
+                    .into(),
+                authoritative_write: "loom validation add … --intent <intent> then run it; for flows, loom journey add <spec> and loom journey run <spec>".into(),
                 forbidden_write: "editing code to force a proof green".into(),
                 after_write: "loom validation mark … --result passed|failed|blocked --evidence …".into(),
             },
             TruthAxis::Verdict => TruthGap {
                 axis: self,
                 missing_form: "an asserted claim is uninspected or stale".into(),
+                correct_when: "every asserted edge status was earned by fresh inspection: the \
+                               criterion states what would falsify the claim, the evidence cites \
+                               file/line or runtime output that was actually read, and the \
+                               confidence is honest — below 0.7 is a legitimate answer that \
+                               routes to review; a confident guess is graph corruption"
+                    .into(),
                 authoritative_write: "read both endpoints, then record the verdict for the edge kind (loom edge explore / loom rule verdict / loom validation mark)".into(),
                 forbidden_write: "editing code, or recording a verdict from name similarity instead of evidence".into(),
                 after_write: "loom status".into(),
@@ -110,6 +138,10 @@ impl TruthAxis {
             TruthAxis::Signal => TruthGap {
                 axis: self,
                 missing_form: "a derived finding or smell awaits adjudication".into(),
+                correct_when: "every derived finding carries a durable adjudication — justified, \
+                               needed, or blocked — with a concrete reason. The goal is zero \
+                               unjudged signals, not zero signals"
+                    .into(),
                 authoritative_write: "loom finding verdict <id> justified|needed|blocked --reason …".into(),
                 forbidden_write: "deferring the judgment to a human instead of judging it".into(),
                 after_write: "loom status".into(),
@@ -117,6 +149,9 @@ impl TruthAxis {
             TruthAxis::Projection => TruthGap {
                 axis: self,
                 missing_form: "the exported graph is missing or stale".into(),
+                correct_when: "loom.graph.json is byte-identical to a fresh export of the current \
+                               store — loom export --check exits clean"
+                    .into(),
                 authoritative_write: "loom export".into(),
                 forbidden_write: "hand-editing the exported file".into(),
                 after_write: "loom export --check".into(),
@@ -156,6 +191,7 @@ mod tests {
             assert_eq!(gap.axis, *axis);
             assert!(!axis.as_str().is_empty());
             assert!(!gap.missing_form.is_empty());
+            assert!(!gap.correct_when.is_empty());
             assert!(!gap.authoritative_write.is_empty());
             assert!(!gap.forbidden_write.is_empty());
             assert!(!gap.after_write.is_empty());

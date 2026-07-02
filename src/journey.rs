@@ -1,11 +1,11 @@
-//! Saga runner — the consumer-plane proof executor (ring 6).
+//! Journey runner — the consumer-plane proof executor (ring 6).
 //!
-//! Plane: execution + graph write-back. A saga spec is an ordered chain of HTTP
+//! Plane: execution + graph write-back. A journey spec is an ordered chain of HTTP
 //! requests, each naming the intent it proves, with values captured from one
 //! response threaded into later requests. `run` executes the journey and stamps
-//! `validates` edges: consecutive passing steps pass; the boundary into a
-//! failing step fails with the exact broken expectation; later steps untouched.
-//! `diagnose` executes without writing the graph.
+//! `validates` edges: consecutive passing steps pass, the failing boundary fails
+//! with the exact broken expectation, and never-reached steps are not executed;
+//! previously passing validates edges for never-reached steps are reopened.
 //!
 //! JSONPath is a dotted-subset (`$.a.b`) — enough for capture/threading without
 //! a full RFC 9535 engine.
@@ -20,22 +20,22 @@ use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpecKind {
-    SagaJson,
+    JourneyJson,
     HttpContractJson,
 }
 
 impl SpecKind {
     pub fn as_str(self) -> &'static str {
         match self {
-            SpecKind::SagaJson => "saga_json",
+            SpecKind::JourneyJson => "journey_json",
             SpecKind::HttpContractJson => "http_contract_json",
         }
     }
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
-pub struct SagaSpec {
-    pub saga: String,
+pub struct JourneySpec {
+    pub journey: String,
     #[serde(default)]
     pub base: String,
     pub steps: Vec<Step>,
@@ -152,42 +152,56 @@ pub struct StepOutcome {
     pub detail: String,
 }
 
-pub fn parse(path: &Path) -> Result<SagaSpec> {
+pub fn parse(path: &Path) -> Result<JourneySpec> {
     Ok(parse_with_kind(path)?.0)
 }
 
-pub fn parse_with_kind(path: &Path) -> Result<(SagaSpec, SpecKind)> {
+pub fn parse_with_kind(path: &Path) -> Result<(JourneySpec, SpecKind)> {
     let text =
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     // Try JSON first; fall back to YAML for `.yaml`/`.yml` specs.
-    let value: serde_json::Value = match serde_json::from_str(&text) {
+    let mut value: serde_json::Value = match serde_json::from_str(&text) {
         Ok(v) => v,
         Err(json_err) => {
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             if ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml") {
                 serde_yaml::from_str(&text).with_context(|| {
-                    format!("parsing saga spec as YAML (JSON failed: {json_err})")
+                    format!("parsing journey spec as YAML (JSON failed: {json_err})")
                 })?
             } else {
-                return Err(json_err).context("parsing saga spec (JSON)");
+                return Err(json_err).context("parsing journey spec (JSON)");
             }
         }
     };
     if value.get("routes").is_some() {
         let contract: HttpContract =
             serde_json::from_value(value).context("parsing HTTP contract")?;
-        return Ok((http_contract_to_saga(contract), SpecKind::HttpContractJson));
+        return Ok((
+            http_contract_to_journey(contract),
+            SpecKind::HttpContractJson,
+        ));
     }
-    let spec: SagaSpec = serde_json::from_value(value).context("parsing saga spec")?;
-    Ok((spec, SpecKind::SagaJson))
+    normalize_legacy_journey_key(&mut value);
+    let spec: JourneySpec = serde_json::from_value(value).context("parsing journey spec")?;
+    Ok((spec, SpecKind::JourneyJson))
 }
 
-fn http_contract_to_saga(contract: HttpContract) -> SagaSpec {
+fn normalize_legacy_journey_key(value: &mut serde_json::Value) {
+    if let Some(obj) = value.as_object_mut() {
+        if !obj.contains_key("journey") {
+            if let Some(legacy) = obj.get("saga").cloned() {
+                obj.insert("journey".to_string(), legacy);
+            }
+        }
+    }
+}
+
+fn http_contract_to_journey(contract: HttpContract) -> JourneySpec {
     let auth_header = contract.auth.as_ref().and_then(|auth| {
         if auth.scheme.eq_ignore_ascii_case("bearer") {
             Some((
                 auth.header.clone(),
-                "Bearer {{ env.LOOM_SAGA_AUTH_TOKEN }}".to_string(),
+                "Bearer {{ env.LOOM_JOURNEY_AUTH_TOKEN }}".to_string(),
             ))
         } else {
             None
@@ -239,8 +253,8 @@ fn http_contract_to_saga(contract: HttpContract) -> SagaSpec {
     } else {
         contract.base
     };
-    SagaSpec {
-        saga: contract.name,
+    JourneySpec {
+        journey: contract.name,
         base,
         steps,
     }
@@ -303,27 +317,32 @@ fn field_path(field: &str) -> String {
     }
 }
 
-/// Execute a saga. When `stamp` is true, write verdicts onto the saga's
+/// Execute a journey. When `record` is true, write verdicts onto the journey's
 /// `validates` edges; otherwise (diagnose) only report.
-pub fn execute(store: &Store, spec: &SagaSpec, stamp: bool) -> Result<Vec<StepOutcome>> {
+pub fn execute(
+    store: Option<&Store>,
+    spec: &JourneySpec,
+    record: bool,
+) -> Result<Vec<StepOutcome>> {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(30))
         .build()
         .context("building http client")?;
     let mut vars: BTreeMap<String, String> = BTreeMap::new();
     let mut outcomes = Vec::new();
-    let saga_val = if stamp {
-        Some(store.resolve_node(&spec.saga, Some(NodeType::Validation))?)
+    let journey_val = if record {
+        let store =
+            store.ok_or_else(|| anyhow!("recording a journey run requires a graph store"))?;
+        Some(store.resolve_node(&spec.journey, Some(NodeType::Validation))?)
     } else {
         None
     };
-    let mut boundary_failed = false;
-
-    for step in &spec.steps {
-        if boundary_failed {
-            break; // never-reached steps stay untouched
+    for (idx, step) in spec.steps.iter().enumerate() {
+        let base = interpolate(&spec.base, &vars);
+        if !record && (base.is_empty() || base.contains("{{")) {
+            bail_no_usable_base(spec, &base)?;
         }
-        let url = interpolate(&format!("{}{}", spec.base, step.request.url), &vars);
+        let url = interpolate(&format!("{base}{}", step.request.url), &vars);
         let method = step.request.method.to_uppercase();
         let mut req = client.request(
             reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
@@ -346,24 +365,27 @@ pub fn execute(store: &Store, spec: &SagaSpec, stamp: bool) -> Result<Vec<StepOu
             req = req.json(&interpolated);
         }
         let outcome = match req.send() {
-            Ok(resp) => check_response(step, resp, &mut vars),
+            Ok(resp) => check_response(step, resp, &mut vars, !record),
             Err(e) => StepOutcome {
                 name: step.name.clone(),
                 intent: step.intent.clone(),
                 passed: false,
-                detail: format!("request error: {e}"),
+                detail: if record {
+                    format!("request error: {e}")
+                } else {
+                    format!("request failed: {e}")
+                },
             },
         };
-        if !outcome.passed {
-            boundary_failed = true;
-        }
-        // stamp the validates edge for this step's intent
-        if let Some(saga) = &saga_val {
+        let passed = outcome.passed;
+        if let (Some(store), Some(journey)) = (store, &journey_val) {
             if let Ok(intent) = store.resolve_node(&step.intent, Some(NodeType::Intent)) {
-                for e in
-                    store.edges_with(Some(EdgeKind::Validates), Some(&saga.id), Some(&intent.id))?
-                {
-                    let status = if outcome.passed {
+                for e in store.edges_with(
+                    Some(EdgeKind::Validates),
+                    Some(&journey.id),
+                    Some(&intent.id),
+                )? {
+                    let status = if passed {
                         InspectionStatus::Passing
                     } else {
                         InspectionStatus::Failing
@@ -371,69 +393,128 @@ pub fn execute(store: &Store, spec: &SagaSpec, stamp: bool) -> Result<Vec<StepOu
                     store.record_verdict(
                         &e.id,
                         status,
-                        "saga step",
+                        "journey step",
                         &outcome.detail,
                         1.0,
-                        "saga",
+                        "journey",
                     )?;
                 }
             }
         }
         outcomes.push(outcome);
+        if !passed {
+            if let (Some(store), Some(journey)) = (store, &journey_val) {
+                stale_unreached_passing_steps(store, spec, &journey.id, idx + 1)?;
+            }
+            break;
+        }
     }
-    if stamp {
+    if record {
         let all_pass = outcomes.iter().all(|o| o.passed) && !outcomes.is_empty();
-        if let Some(saga) = &saga_val {
-            store.set_node_status(&saga.id, if all_pass { "passed" } else { "failed" })?;
+        if let (Some(store), Some(journey)) = (store, &journey_val) {
+            store.set_node_status(&journey.id, if all_pass { "passed" } else { "failed" })?;
         }
     }
     Ok(outcomes)
+}
+
+fn bail_no_usable_base(spec: &JourneySpec, resolved_base: &str) -> Result<()> {
+    anyhow::bail!(
+        "journey '{}' has no usable base URL (spec base='{}' resolved to '{resolved_base}'). \
+         Pass --base-url, set BASE_URL in the environment, or add a \"base\" field to the spec.",
+        spec.journey,
+        spec.base
+    )
+}
+
+fn stale_unreached_passing_steps(
+    store: &Store,
+    spec: &JourneySpec,
+    journey_id: &str,
+    start: usize,
+) -> Result<()> {
+    for step in spec.steps.iter().skip(start) {
+        let Ok(intent) = store.resolve_node(&step.intent, Some(NodeType::Intent)) else {
+            continue;
+        };
+        for e in store.edges_with(
+            Some(EdgeKind::Validates),
+            Some(journey_id),
+            Some(&intent.id),
+        )? {
+            store.stale_passing_edge(&e.id)?;
+        }
+    }
+    Ok(())
 }
 
 fn check_response(
     step: &Step,
     resp: reqwest::blocking::Response,
     vars: &mut BTreeMap<String, String>,
+    diagnose_style: bool,
 ) -> StepOutcome {
     let status = resp.status().as_u16();
     let body: serde_json::Value = resp.json().unwrap_or(serde_json::Value::Null);
-    // status check (default: any 2xx)
-    let status_ok = match step.expect.status {
-        Some(want) => status == want,
-        None => (200..300).contains(&status),
+    let status_ok = if diagnose_style {
+        status == step.expect.status.unwrap_or(200)
+    } else {
+        match step.expect.status {
+            Some(want) => status == want,
+            None => (200..300).contains(&status),
+        }
     };
     if !status_ok {
+        let detail = if diagnose_style {
+            format!(
+                "expected status {}, got {status}",
+                step.expect.status.unwrap_or(200)
+            )
+        } else {
+            format!("expected status {:?}, got {status}", step.expect.status)
+        };
         return StepOutcome {
             name: step.name.clone(),
             intent: step.intent.clone(),
             passed: false,
-            detail: format!("expected status {:?}, got {status}", step.expect.status),
+            detail,
         };
     }
-    // body expectations
     for (path, want) in &step.expect.body {
         let want_resolved = interpolate_json(want, vars);
         let got = jsonpath(&body, path);
         if got.as_ref() != Some(&want_resolved) {
+            let detail = if diagnose_style {
+                format!(
+                    "body {path}: expected {want_resolved}, got {}",
+                    got.map(|v| v.to_string()).unwrap_or_else(|| "null".into())
+                )
+            } else {
+                format!("expected {path}={want_resolved}, got {got:?}")
+            };
             return StepOutcome {
                 name: step.name.clone(),
                 intent: step.intent.clone(),
                 passed: false,
-                detail: format!("expected {path}={want_resolved}, got {got:?}"),
+                detail,
             };
         }
     }
     for path in &step.expect.exists {
         if jsonpath(&body, path).is_none() {
+            let detail = if diagnose_style {
+                format!("missing field {path}")
+            } else {
+                format!("expected field {path} to exist")
+            };
             return StepOutcome {
                 name: step.name.clone(),
                 intent: step.intent.clone(),
                 passed: false,
-                detail: format!("expected field {path} to exist"),
+                detail,
             };
         }
     }
-    // captures
     for (var, path) in &step.capture {
         if let Some(v) = jsonpath(&body, path) {
             let s = match v {
@@ -444,11 +525,19 @@ fn check_response(
         }
     }
     let detail = if step.expect.exists.is_empty() && step.expect.body.is_empty() {
-        format!("status {status}")
+        if diagnose_style {
+            format!("status {status} ok")
+        } else {
+            format!("status {status}")
+        }
     } else {
         let mut checked: Vec<&str> = step.expect.body.keys().map(String::as_str).collect();
         checked.extend(step.expect.exists.iter().map(String::as_str));
-        format!("status {status}, verified: {}", checked.join(", "))
+        if diagnose_style {
+            format!("status {status} ok, verified: {}", checked.join(", "))
+        } else {
+            format!("status {status}, verified: {}", checked.join(", "))
+        }
     };
     StepOutcome {
         name: step.name.clone(),
@@ -468,7 +557,7 @@ fn interpolate(s: &str, vars: &BTreeMap<String, String>) -> String {
         if let Some(end) = after.find("}}") {
             let key = after[..end].trim();
             let value = if let Some(env_key) = key.strip_prefix("env.") {
-                std::env::var(env_key).unwrap_or_default()
+                env_value(env_key)
             } else {
                 vars.get(key).cloned().unwrap_or_default()
             };
@@ -481,6 +570,18 @@ fn interpolate(s: &str, vars: &BTreeMap<String, String>) -> String {
     }
     out.push_str(rest);
     out
+}
+
+fn env_value(key: &str) -> String {
+    std::env::var(key)
+        .or_else(|_| {
+            if key == "LOOM_JOURNEY_AUTH_TOKEN" {
+                std::env::var("LOOM_SAGA_AUTH_TOKEN")
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+        .unwrap_or_default()
 }
 
 fn value_to_string(v: &serde_json::Value) -> String {
@@ -522,8 +623,8 @@ fn jsonpath(v: &serde_json::Value, path: &str) -> Option<serde_json::Value> {
     Some(cur.clone())
 }
 
-/// Diagnose common failure roots before/without stamping.
-pub fn diagnose_hints(spec: &SagaSpec) -> Vec<String> {
+/// Diagnose common failure roots before/without recording.
+pub fn diagnose_hints(spec: &JourneySpec) -> Vec<String> {
     let mut hints = Vec::new();
     if spec.base.is_empty() {
         hints.push("no `base` url set — relative step urls will fail".into());
@@ -546,7 +647,9 @@ pub fn require(store: &Store, name: &str) -> Result<()> {
     store
         .resolve_node(name, Some(NodeType::Validation))
         .map(|_| ())
-        .map_err(|_| anyhow!("no saga validation '{name}' — add it first with `loom saga add`"))
+        .map_err(|_| {
+            anyhow!("no journey validation '{name}' — add it first with `loom journey add`")
+        })
 }
 
 #[cfg(test)]
@@ -561,9 +664,9 @@ mod tests {
             interpolate("/carts/{{ cart_id }}/pay", &vars),
             "/carts/abc/pay"
         );
-        std::env::set_var("LOOM_SAGA_TEST_BASE", "http://x");
+        std::env::set_var("LOOM_JOURNEY_TEST_BASE", "http://x");
         assert_eq!(
-            interpolate("{{ env.LOOM_SAGA_TEST_BASE }}/y", &vars),
+            interpolate("{{ env.LOOM_JOURNEY_TEST_BASE }}/y", &vars),
             "http://x/y"
         );
     }

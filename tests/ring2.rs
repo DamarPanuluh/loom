@@ -395,7 +395,7 @@ fn sync_ripples_upstream_change_to_integration_contract() {
     );
 }
 
-// A JourneyProof validation's `body.artifact` (a contract JSON / saga file) is
+// A JourneyProof validation's `body.artifact` (a contract JSON / journey spec file) is
 // not necessarily a registered CodeFile, so the structural pass cannot see it.
 // Sync must track it directly: when the artifact changes, the validation is
 // reset and its Validates edge stales — a stale proof cannot keep an intent
@@ -423,7 +423,7 @@ fn sync_stales_journey_proof_when_artifact_drifts() {
             "",
             "not_run",
             serde_json::json!({
-                "type": "saga",
+                "type": "journey",
                 "proof_kind": "journey",
                 "proof_level": "L5",
                 "artifact": "contracts/checkout.v1.json",
@@ -450,7 +450,7 @@ fn sync_stales_journey_proof_when_artifact_drifts() {
             &validates.id,
             InspectionStatus::Passing,
             "journey passes end-to-end",
-            "saga run passed",
+            "journey run passed",
             0.9,
             "llm",
         )
@@ -509,7 +509,7 @@ fn sync_stales_journey_proof_when_artifact_disappears() {
             "",
             "not_run",
             serde_json::json!({
-                "type": "saga",
+                "type": "journey",
                 "proof_kind": "journey",
                 "proof_level": "L5",
                 "artifact": "contracts/checkout.v1.json",
@@ -532,7 +532,7 @@ fn sync_stales_journey_proof_when_artifact_disappears() {
             &validates.id,
             InspectionStatus::Passing,
             "journey passes",
-            "saga run passed",
+            "journey run passed",
             0.9,
             "llm",
         )
@@ -570,7 +570,7 @@ fn sync_artifact_drift_is_deterministic_on_rebuild() {
             "",
             "not_run",
             serde_json::json!({
-                "type": "saga",
+                "type": "journey",
                 "proof_kind": "journey",
                 "proof_level": "L5",
                 "artifact": "contracts/c.json",

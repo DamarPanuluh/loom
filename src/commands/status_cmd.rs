@@ -232,6 +232,8 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
         ("prove", workitem::Mode::Prove),
         ("analyze", workitem::Mode::Analyze),
         ("triage", workitem::Mode::Triage),
+        ("review", workitem::Mode::Review),
+        ("elaborate", workitem::Mode::Elaborate),
     ];
     if json {
         let mut queues = serde_json::Map::new();
@@ -257,7 +259,7 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
             }
         }
         println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={}",
+            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} open_questions={}",
             pulse.planned,
             pulse.stale,
             pulse.uninspected,
@@ -267,7 +269,9 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
             pulse.untriaged,
             pulse.stale_findings,
             pulse.needed,
-            pulse.inbox
+            pulse.inbox,
+            pulse.low_confidence,
+            pulse.open_questions
         );
     }
     Ok(())
@@ -305,7 +309,7 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
             ),
         }
         println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={}",
+            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} open_questions={}",
             pulse.planned,
             pulse.stale,
             pulse.uninspected,
@@ -315,7 +319,9 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
             pulse.untriaged,
             pulse.stale_findings,
             pulse.needed,
-            pulse.inbox
+            pulse.inbox,
+            pulse.low_confidence,
+            pulse.open_questions
         );
     }
     Ok(())
@@ -329,6 +335,26 @@ fn print_work_item(item: &workitem::WorkItem) {
     );
     println!("  id: {short}");
     println!("  why: {}", item.reason);
+    if !item.stale_causes.is_empty() {
+        println!("  stale cause: {}", item.stale_causes.join("; "));
+    }
+    if let Some(card) = &item.scorecard {
+        println!("  completeness:");
+        for a in card["axes"].as_array().into_iter().flatten() {
+            let state = a["state"].as_str().unwrap_or("");
+            let mark = match state {
+                "met" => "✓",
+                "open" => "·",
+                "waived" => "~",
+                _ => "-",
+            };
+            println!(
+                "    {mark} {:<14} {}",
+                a["axis"].as_str().unwrap_or(""),
+                a["detail"].as_str().unwrap_or("")
+            );
+        }
+    }
     if !item.context.linked_entities.is_empty() {
         println!("  linked:");
         for entity in &item.context.linked_entities {
@@ -353,6 +379,17 @@ fn print_work_item(item: &workitem::WorkItem) {
             );
         }
     }
+    if !item.context.read_set.is_empty() {
+        println!("  read these files:");
+        for r in &item.context.read_set {
+            let locator = r
+                .locator
+                .as_ref()
+                .map(|l| format!(" @ {l}"))
+                .unwrap_or_default();
+            println!("    - {}{} — {}", r.path, locator, r.why);
+        }
+    }
     if !item.context.suggested_reads.is_empty() {
         println!("  inspect first:");
         for read in &item.context.suggested_reads {
@@ -361,6 +398,7 @@ fn print_work_item(item: &workitem::WorkItem) {
     }
     let g = &item.truth_gap;
     println!("  truth axis: {} — {}", g.axis.as_str(), g.missing_form);
+    println!("    correct when: {}", g.correct_when);
     println!("    make true:  {}", g.authoritative_write);
     println!("    never here: {}", g.forbidden_write);
     println!("    then:       {}", g.after_write);

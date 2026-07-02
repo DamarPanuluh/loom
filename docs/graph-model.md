@@ -45,7 +45,7 @@ CodeFile family
 
 Cross-cutting
   Note            audit trail prose attached to any node or edge
-  InboxItem       raw free-form input before normalization
+  InboxItem       raw free-form input before routing
   TaskRecord      temporary operational work record (spike, investigation, etc.)
 ```
 
@@ -143,24 +143,19 @@ category:           security | performance | defect | style | robustness | ...
 severity:           error | warning
 effort:             low | mid | high
 detection_kind:     llm_judgment | pattern
-                      llm_judgment  LLM must inspect; no machine pre-screening
-                      pattern       sync runs each entry in patterns[]; hits
-                                    attached as pre_screened_hits in WorkItem;
-                                    LLM still confirms and records the verdict.
-                                    Constraint: detection_kind=pattern requires
-                                    at least one entry in patterns[]; a rule with
-                                    detection_kind=pattern and empty patterns[] is
-                                    rejected at write time. No silent downgrade.
-patterns:           [] machine-executable pre-screening rules, each:
-                      { kind: regex | tree_sitter,
-                        query: "<the pattern or query string>",
-                        scope: file | symbol,
-                        hit_label: "<human-readable description of what a hit means>" }
-                    regex scope=file  → run against each codefile's raw text
-                    regex scope=symbol → run against each extracted symbol body
-                    tree_sitter scope=file|symbol → AST query against extracted tree
+                      llm_judgment  LLM must inspect; no machine pre-screening.
+                      pattern       patterns[] contains regex strings that are
+                                    run at quality WorkItem build time against
+                                    the target intent's grounded CodeFiles.
+                                    Hits are attached to the packet as
+                                    pre_screened_hits; the LLM still confirms
+                                    or refutes every hit before recording the
+                                    verdict. Hits are never stored.
+patterns:           [] regex strings for machine pre-screening, e.g.
+                      ["\\bunwrap\\(\\)", "\\blet\\s+_\\s*="]
                     A hit means a candidate violation; LLM confirms verdict.
-                    Empty patterns[] is only valid when detection_kind=llm_judgment.
+                    Empty patterns[] means no machine pre-screening and is
+                    normal for detection_kind=llm_judgment.
 inspection_guide:   prose — step-by-step what to read and check
 detection_hints:    [] strings — LLM-facing guidance: grep targets, function names,
                                  anti-patterns, mental model for the inspection
@@ -206,12 +201,48 @@ Fields:
 id
 name
 description
-type:           test | assertion | benchmark | manual_check | saga | scenario | contract
+type:           test | assertion | benchmark | manual_check | journey | scenario | contract
 command:        (runnable command or empty for manual)
 last_result:    not_run | passed | failed | blocked
 last_run_at
 last_evidence:  (text evidence from last run)
 blocked_reason: (if blocked)
+created_at
+updated_at
+```
+
+`journey` is canonical for flow/composition proofs. Legacy graphs may still contain the old proof-type spelling, but new journey commands write `type: "journey"` and `proof_kind: "journey"`.
+ 
+### JourneyCoverage
+
+A flow that should have an L5/L6 journey proof for an intent. Its effective coverage status is derived: covered iff the linked intent currently has a passing journey validation.
+
+Fields:
+
+```text
+id
+name
+description
+flow:              human-readable flow path
+runner_ref:        optional path or path::symbol that must exist
+test_ref:          optional path or path::symbol that must exist
+contract_artifact: optional expected journey/contract artifact
+created_at
+updated_at
+```
+
+### JourneyInvariantPoint
+
+An internal domain assertion a journey should verify, linked to the intent it concerns.
+
+Fields:
+
+```text
+id
+name
+field
+assertion
+reason
 created_at
 updated_at
 ```
@@ -287,7 +318,7 @@ created_at
 
 ### InboxItem
 
-Raw free-form input before normalization into graph facts.
+Raw free-form input before routing into typed graph facts or disposition.
 
 Fields:
 
@@ -393,7 +424,7 @@ Most edge kinds have one allowed truth class. When a kind allows both, the truth
 | `scenario_of` | Intent | Intent | asserted | builder | child scenario to parent capability |
 | `variant_of` | Intent | Intent | asserted | builder | variant to base behavior |
 | `triggers` | Intent | Intent | asserted | builder/analyzer | when condition occurs, response must hold |
-| `sequence` | Intent | Intent | asserted | builder | ordered step in journey/saga |
+| `sequence` | Intent | Intent | asserted | builder | ordered step in journey |
 | `implements` | Intent | CodeFile | asserted | builder | behavior realized at file/locator |
 | `validates` | Validation | Intent | asserted | validator | proof checks behavior |
 | `governs` | QualityRule | Intent | asserted | quality | norm measured against behavior |
@@ -403,6 +434,8 @@ Most edge kinds have one allowed truth class. When a kind allows both, the truth
 | `exposes` | InterfaceSurface | CodeFile | derived **or** asserted | sync / builder | derived when sync extracts deterministically (annotations, schemas); asserted when declared by human/LLM |
 | `calls` | Validation | InterfaceSurface | asserted | validator | proof exercises a surface |
 | `relates` | Intent | Intent | asserted | analyzer | manual relationship, kind TBD |
+| `covers` | JourneyCoverage | Intent | asserted | builder | a flow that needs a journey proof covers this intent |
+| `asserts` | JourneyInvariantPoint | Intent | asserted | builder | an internal domain invariant point marks this intent |
 
 **`exposes` truth class note.** This is the only standard edge kind allowing both truth classes.
 - `derived` — sync extracted the surface from code (HTTP decorators, CLI annotations, schema definitions). Recomputed by sync.
@@ -527,16 +560,30 @@ tag_vocabulary
   created_at
 ```
 
+### Portable config
+
+Runtime configuration that must travel with the graph is exported under the top-level `config` map in `loom.graph.json`. The map's values are deterministic serialized JSON payloads keyed by:
+
+```text
+layer_order      ordered architecture layer labels from `loom layer order`
+ignores          coverage-exclusion globs plus recorded reasons
+codefile_globs   original registration globs from `loom codefile add`
+scan_adapters    external diagnostic adapter name/command/map entries
+```
+
+Import restores these keys before continuing normal graph work, so layer ordering, ignores, registered codefile globs, and scan adapters do not silently disappear when the graph travels.
+
 ---
 
 ## Core schema enums
 
-These must be Rust enums and SQLite `CHECK` constraints.
+These are core value families used by the store and CLI. Some values are registry-backed or stored as JSON strings rather than hard `CHECK` constraints.
 
 ```text
 NodeType =
   Intent | CodeFile | QualityRule | CodeRule | Validation | Hypothesis |
-  Finding | InterfaceSurface | Note | InboxItem | TaskRecord
+  Finding | InterfaceSurface | Note | InboxItem | TaskRecord | Proposal |
+  JourneyCoverage | JourneyInvariantPoint
 
 EdgeTruthClass =
   derived | asserted
@@ -549,7 +596,7 @@ IntentLifecycle =
   planned | implemented | needs_change | deprecated
 
 ValidationType =
-  test | assertion | benchmark | manual_check | saga | scenario | contract
+  test | assertion | benchmark | manual_check | journey | scenario | contract
 
 InterfaceKind =
   http | cli | ui_route | message_topic | sdk_method | internal_module | storage | other
@@ -583,7 +630,7 @@ The graph shape exposes gaps without cognitive judgment. The LLM confirms whethe
 | Leaf intent with no `implements` edge | Grounding gap |
 | CodeFile with no owning intent | Ownership gap |
 | `triggers` with no response intent | Reaction gap |
-| Journey sequence with no saga validation | Composition proof gap |
+| Journey sequence with no journey validation | Composition proof gap |
 | `governs` edge `uninspected` | Unmeasured quality norm |
 | `Validation.last_result = not_run`; linked `validates` edge `needs_reverification` | Unrun proof |
 | `implements` locator stale | Grounding mismatch after code change |

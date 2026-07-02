@@ -1,5 +1,5 @@
 //! Ring 6 tests — smells (structural), debt (statistical, never stored),
-//! doctor (integrity), and a live saga run against a mock HTTP server.
+//! doctor (integrity), and a live journey run against a mock HTTP server.
 
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
@@ -186,7 +186,7 @@ fn journey_proof_smell_silent_when_passing_l5_journey_proof_exists() {
             &edge.id,
             InspectionStatus::Passing,
             "journey passes end-to-end",
-            "saga run passed",
+            "journey run passed",
             0.9,
             "test",
         )
@@ -216,7 +216,7 @@ fn journey_proof_smell_re_fires_after_artifact_drift_resets_proof() {
             "",
             "not_run",
             serde_json::json!({
-                "type": "saga",
+                "type": "journey",
                 "proof_kind": "journey",
                 "proof_level": "L5",
                 "artifact": "contracts/checkout.v1.json",
@@ -234,7 +234,7 @@ fn journey_proof_smell_re_fires_after_artifact_drift_resets_proof() {
             &edge.id,
             InspectionStatus::Passing,
             "journey passes end-to-end",
-            "saga run passed",
+            "journey run passed",
             0.9,
             "test",
         )
@@ -339,7 +339,7 @@ fn doctor_flags_hierarchy_cycles() {
     );
 }
 
-// ---- live saga run ---------------------------------------------------------
+// ---- live journey run ------------------------------------------------------
 
 /// A tiny HTTP/1.1 server that answers `n` requests with the given (status, body).
 fn mock_server(responses: Vec<(u16, String)>) -> (String, std::thread::JoinHandle<()>) {
@@ -363,34 +363,34 @@ fn mock_server(responses: Vec<(u16, String)>) -> (String, std::thread::JoinHandl
 }
 
 #[test]
-fn saga_run_stamps_passing_steps() {
+fn journey_run_stamps_passing_steps() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let cart = intent(&store, "cart can be created", "implemented");
     let pay = intent(&store, "payment can be captured", "implemented");
-    // saga validation + validates edges (as `loom saga add` would create)
-    let saga = store
+    // journey validation + validates edges (as `loom journey add` would create)
+    let journey = store
         .add_node(
             NodeType::Validation,
             "checkout-flow",
             "",
             "not_run",
-            serde_json::json!({"type":"saga"}),
+            serde_json::json!({"type":"journey"}),
         )
         .unwrap();
     store
-        .ensure_edge(EdgeKind::Validates, &saga.id, &cart)
+        .ensure_edge(EdgeKind::Validates, &journey.id, &cart)
         .unwrap();
     store
-        .ensure_edge(EdgeKind::Validates, &saga.id, &pay)
+        .ensure_edge(EdgeKind::Validates, &journey.id, &pay)
         .unwrap();
 
     let (base, handle) = mock_server(vec![
         (201, r#"{"id":"c1"}"#.into()),
         (200, r#"{"state":"paid"}"#.into()),
     ]);
-    let spec = loom::saga::SagaSpec {
-        saga: "checkout-flow".into(),
+    let spec = loom::journey::JourneySpec {
+        journey: "checkout-flow".into(),
         base,
         steps: vec![
             serde_json::from_value(serde_json::json!({
@@ -408,7 +408,7 @@ fn saga_run_stamps_passing_steps() {
             .unwrap(),
         ],
     };
-    let outcomes = loom::saga::execute(&store, &spec, true).unwrap();
+    let outcomes = loom::journey::execute(Some(&store), &spec, true).unwrap();
     handle.join().unwrap();
     assert_eq!(outcomes.len(), 2);
     assert!(
@@ -416,19 +416,26 @@ fn saga_run_stamps_passing_steps() {
         "both steps should pass: {outcomes:?}"
     );
 
-    // both validates edges stamped passing; saga node passed
+    // both validates edges stamped passing; journey node passed
     for intent_id in [&cart, &pay] {
         let e = store
-            .edges_with(Some(EdgeKind::Validates), Some(&saga.id), Some(intent_id))
+            .edges_with(
+                Some(EdgeKind::Validates),
+                Some(&journey.id),
+                Some(intent_id),
+            )
             .unwrap();
         assert_eq!(e[0].status, InspectionStatus::Passing);
     }
-    assert_eq!(store.get_node(&saga.id).unwrap().unwrap().status, "passed");
+    assert_eq!(
+        store.get_node(&journey.id).unwrap().unwrap().status,
+        "passed"
+    );
 }
 
-// ---- HTTP contract JSON → saga run ----------------------------------------
+// ---- HTTP contract JSON → journey run -------------------------------------
 //
-// These exercise the `loom saga run` contract for an HTTP-contract spec
+// These exercise the `loom journey run` contract for an HTTP-contract spec
 // (routes → normalized steps). The mock server conditions its second response
 // on the `person_id` extracted from route 1 actually appearing in the path,
 // query, AND body of route 2 — so a broken interpolation cannot pass.
@@ -463,7 +470,7 @@ fn mock_server_handling(
 }
 
 /// Run the compiled `loom` binary against `tmp` graph with the given args;
-/// assert it exits zero (the saga add/run wiring under test).
+/// assert it exits zero (the journey add/run wiring under test).
 fn run_cli(tmp: &Path, args: &[&str]) {
     let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
     cmd.arg("--graph").arg(tmp).args(args);
@@ -503,7 +510,7 @@ fn run_cli_json(tmp: &Path, args: &[&str]) -> serde_json::Value {
     })
 }
 
-/// Contract: an HTTP-contract JSON with two routes runs through the saga
+/// Contract: an HTTP-contract JSON with two routes runs through the journey
 /// runner. Route 1 extracts `person_id`; route 2 threads it into the path,
 /// a query param, and the JSON body, and asserts `response_fields` existence.
 /// The mock conditions route 2's success on the extracted id appearing in all
@@ -512,7 +519,7 @@ fn run_cli_json(tmp: &Path, args: &[&str]) -> serde_json::Value {
 fn http_contract_runs_two_routes_threading_extracted_id() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    // intents the routes declare (saga add would link these)
+    // intents the routes declare (journey add would link these)
     let _create = intent(&store, "register a person", "implemented");
     let _fetch = intent(&store, "fetch the person record", "implemented");
     drop(store);
@@ -575,13 +582,13 @@ fn http_contract_runs_two_routes_threading_extracted_id() {
     )
     .unwrap();
 
-    // `saga run` requires a pre-existing Validation node named after the
-    // contract's `name`; `saga add` creates it (and the step edges).
-    run_cli(tmp.path(), &["saga", "add", spec_path.to_str().unwrap()]);
-    let out = run_cli_json(tmp.path(), &["saga", "run", spec_path.to_str().unwrap()]);
+    // `journey run` requires a pre-existing Validation node named after the
+    // contract's `name`; `journey add` creates it (and the step edges).
+    run_cli(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
+    let out = run_cli_json(tmp.path(), &["journey", "run", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
 
-    assert_eq!(out["saga"], "sample-service-http");
+    assert_eq!(out["journey"], "sample-service-http");
     assert_eq!(out["total"], 2, "both routes ran: {out}");
     assert_eq!(out["passed"], 2, "both routes passed: {out}");
     let outcomes = out["outcomes"].as_array().expect("outcomes is an array");
@@ -592,15 +599,15 @@ fn http_contract_runs_two_routes_threading_extracted_id() {
     );
 
     let store = Store::open(tmp.path()).unwrap();
-    // both validates edges stamped passing; saga node passed
-    let saga = store
+    // both validates edges stamped passing; journey node passed
+    let journey = store
         .resolve_node("sample-service-http", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(saga.status, "passed");
+    assert_eq!(journey.status, "passed");
     let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&saga.id), None)
+        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
-    assert_eq!(validates.len(), 2, "saga add linked both route intents");
+    assert_eq!(validates.len(), 2, "journey add linked both route intents");
     for e in &validates {
         assert_eq!(
             e.status,
@@ -646,8 +653,8 @@ fn http_contract_missing_response_field_fails_with_detail() {
     )
     .unwrap();
 
-    run_cli(tmp.path(), &["saga", "add", spec_path.to_str().unwrap()]);
-    let out = run_cli_json(tmp.path(), &["saga", "run", spec_path.to_str().unwrap()]);
+    run_cli(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
+    let out = run_cli_json(tmp.path(), &["journey", "run", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
 
     assert_eq!(out["total"], 1, "one route ran: {out}");
@@ -668,13 +675,13 @@ fn http_contract_missing_response_field_fails_with_detail() {
     );
 
     let store = Store::open(tmp.path()).unwrap();
-    // the failing route stamps its validates edge failing; saga node failed
-    let saga = store
+    // the failing route stamps its validates edge failing; journey node failed
+    let journey = store
         .resolve_node("missing-field-http", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(saga.status, "failed");
+    assert_eq!(journey.status, "failed");
     let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&saga.id), None)
+        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
     assert_eq!(validates.len(), 1, "the one route's edge was linked");
     assert_eq!(
@@ -684,12 +691,11 @@ fn http_contract_missing_response_field_fails_with_detail() {
     );
 }
 
-// ---- journey run (graph-free HTTP contract executor) -----------------------
+// ---- journey diagnose (graph-free HTTP contract executor) ------------------
 //
-// These test the `loom journey run <spec>` path that was the #1 user-reported
-// gap: a consumer-facing proof that parses JSON or YAML, sends requests,
-// checks status/fields, threads captures — no graph registration, no intent
-// resolution.
+// These test the `loom journey diagnose <spec>` path: a consumer-facing proof
+// that parses JSON or YAML, sends requests, checks status/fields, and threads
+// captures — no graph registration, no intent resolution.
 
 /// Run the compiled `loom` binary with arbitrary args (no --graph); returns
 /// stdout parsed as JSON. Panics on non-zero exit or non-JSON output.
@@ -716,12 +722,12 @@ fn run_loom_json(args: &[&str]) -> serde_json::Value {
     })
 }
 
-/// Contract: `loom journey run <spec.yaml>` parses a YAML HTTP contract,
+/// Contract: `loom journey diagnose <spec.yaml>` parses a YAML HTTP contract,
 /// sends requests against a mock server, checks status + field existence,
 /// threads captures via `{{ person_id }}` interpolation, and reports green.
-/// No graph, no intent nodes, no `saga add`.
+/// No graph, no intent nodes, no `journey add`.
 #[test]
-fn journey_run_yaml_contract_without_graph() {
+fn journey_diagnose_yaml_contract_without_graph() {
     let tmp = Tmp::new();
     let (base, handle) = mock_server_handling(2, |req| {
         // Route 1: POST /persons → 201 { person_id: "p1" }
@@ -766,7 +772,7 @@ routes:
     )
     .unwrap();
 
-    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    let out = run_loom_json(&["journey", "diagnose", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
 
     assert_eq!(out["journey"], "yaml-journey");
@@ -779,13 +785,13 @@ routes:
     );
 }
 
-// ---- saga add soft intent resolution --------------------------------------
+// ---- journey add soft intent resolution -----------------------------------
 //
-// `saga add` must not fail when step intents don't resolve to graph nodes.
+// `journey add` must not fail when step intents don't resolve to graph nodes.
 // It should report unmatched steps and create the Validation node anyway.
 
 #[test]
-fn saga_add_tolerates_unresolved_intents() {
+fn journey_add_tolerates_unresolved_intents() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     // Only add ONE intent; leave the other unresolvable.
@@ -817,8 +823,8 @@ fn saga_add_tolerates_unresolved_intents() {
     )
     .unwrap();
 
-    let out = run_cli_json(tmp.path(), &["saga", "add", spec_path.to_str().unwrap()]);
-    assert!(out["added"] == true, "saga add succeeded: {out}");
+    let out = run_cli_json(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
+    assert!(out["added"] == true, "journey add succeeded: {out}");
     assert_eq!(out["linked_steps"], 1, "one intent resolved: {out}");
     let unmatched = out["unmatched_steps"].as_array().unwrap();
     assert_eq!(unmatched.len(), 1, "one step unmatched: {out}");
@@ -830,22 +836,22 @@ fn saga_add_tolerates_unresolved_intents() {
 
     // The Validation node exists and is usable despite the unmatched step.
     let store = Store::open(tmp.path()).unwrap();
-    let saga = store
+    let journey = store
         .resolve_node("soft-resolution", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(saga.status, "not_run");
+    assert_eq!(journey.status, "not_run");
     let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&saga.id), None)
+        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
     assert_eq!(validates.len(), 1, "only the resolved intent is linked");
 }
 
-// ---- journey run: --base-url override + clear no-base error ----------------
+// ---- journey diagnose: --base-url override + clear no-base error -----------
 
-/// Contract: a spec whose `base` is unset (no env var, no field) fails fast
-/// with an actionable error naming the fix — not a bare "builder error".
+/// Contract: a legacy `saga:` spec whose `base` is unset (no env var, no field)
+/// fails fast with an actionable error naming the fix — not a bare "builder error".
 #[test]
-fn journey_run_reports_clear_error_when_base_unresolved() {
+fn journey_diagnose_reports_clear_error_when_base_unresolved() {
     let tmp = Tmp::new();
     let spec_path = tmp.path().join("no-base.json");
     std::fs::write(
@@ -861,7 +867,7 @@ fn journey_run_reports_clear_error_when_base_unresolved() {
     .unwrap();
 
     let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
-    cmd.args(["journey", "run", spec_path.to_str().unwrap()]);
+    cmd.args(["journey", "diagnose", spec_path.to_str().unwrap()]);
     // Ensure BASE_URL is not inherited from the test environment.
     cmd.env_remove("BASE_URL");
     let out = cmd.output().unwrap();
@@ -876,7 +882,7 @@ fn journey_run_reports_clear_error_when_base_unresolved() {
 /// Contract: `--base-url` overrides an unresolved/absent `base` field and lets
 /// the journey actually run against a real server.
 #[test]
-fn journey_run_base_url_flag_overrides_spec() {
+fn journey_diagnose_base_url_flag_overrides_spec() {
     let tmp = Tmp::new();
     let (base, handle) = mock_server_handling(1, |_req| (200, r#"{"ok":true}"#.into()));
 
@@ -884,7 +890,7 @@ fn journey_run_base_url_flag_overrides_spec() {
     std::fs::write(
         &spec_path,
         serde_json::json!({
-            "saga": "override-base-journey",
+            "journey": "override-base-journey",
             "steps": [
                 { "name": "ping", "intent": "ping", "request": { "method": "GET", "url": "/ping" } }
             ]
@@ -895,7 +901,7 @@ fn journey_run_base_url_flag_overrides_spec() {
 
     let out = run_loom_json(&[
         "journey",
-        "run",
+        "diagnose",
         spec_path.to_str().unwrap(),
         "--base-url",
         &base,
@@ -916,11 +922,11 @@ fn journey_run_base_url_flag_overrides_spec() {
 // side) was compared literally instead of interpolated first — so "assert the
 // response echoes back what we sent" could never pass without hardcoding.
 
-/// Contract (graph-free `journey run` path): a captured var referenced inside
+/// Contract (graph-free `journey diagnose` path): a captured var referenced inside
 /// `expect.body` is interpolated before comparison, so an echo-back assertion
 /// against the actual captured value passes.
 #[test]
-fn journey_run_interpolates_captured_vars_in_expect_body() {
+fn journey_diagnose_interpolates_captured_vars_in_expect_body() {
     let tmp = Tmp::new();
     let (base, handle) = mock_server_handling(2, |req| {
         if req.starts_with("POST") {
@@ -934,7 +940,7 @@ fn journey_run_interpolates_captured_vars_in_expect_body() {
     std::fs::write(
         &spec_path,
         serde_json::json!({
-            "saga": "echo-journey",
+            "journey": "echo-journey",
             "base": base,
             "steps": [
                 {
@@ -956,7 +962,7 @@ fn journey_run_interpolates_captured_vars_in_expect_body() {
     )
     .unwrap();
 
-    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    let out = run_loom_json(&["journey", "diagnose", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
 
     assert_eq!(out["total"], 2, "{out}");
@@ -966,10 +972,10 @@ fn journey_run_interpolates_captured_vars_in_expect_body() {
     );
 }
 
-/// Contract (graph-linked `saga run` path): the same interpolation fix applies
-/// to `src/saga.rs::check_response`, exercised via `saga add` + `saga run`.
+/// Contract (graph-linked `journey run` path): the same interpolation fix applies
+/// to `src/journey.rs::check_response`, exercised via `journey add` + `journey run`.
 #[test]
-fn saga_run_interpolates_captured_vars_in_expect_body() {
+fn journey_run_interpolates_captured_vars_in_expect_body() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let _create = intent(&store, "create resource", "implemented");
@@ -984,11 +990,11 @@ fn saga_run_interpolates_captured_vars_in_expect_body() {
         }
     });
 
-    let spec_path = tmp.path().join("echo-saga.json");
+    let spec_path = tmp.path().join("echo-journey.json");
     std::fs::write(
         &spec_path,
         serde_json::json!({
-            "saga": "echo-saga",
+            "journey": "echo-journey",
             "base": base,
             "steps": [
                 {
@@ -1010,8 +1016,8 @@ fn saga_run_interpolates_captured_vars_in_expect_body() {
     )
     .unwrap();
 
-    run_cli(tmp.path(), &["saga", "add", spec_path.to_str().unwrap()]);
-    let out = run_cli_json(tmp.path(), &["saga", "run", spec_path.to_str().unwrap()]);
+    run_cli(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
+    let out = run_cli_json(tmp.path(), &["journey", "run", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
 
     assert_eq!(out["total"], 2, "{out}");
@@ -1021,10 +1027,13 @@ fn saga_run_interpolates_captured_vars_in_expect_body() {
     );
 
     let store = Store::open(tmp.path()).unwrap();
-    let saga = store
-        .resolve_node("echo-saga", Some(NodeType::Validation))
+    let journey = store
+        .resolve_node("echo-journey", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(saga.status, "passed", "both steps passed, saga is passed");
+    assert_eq!(
+        journey.status, "passed",
+        "both steps passed, journey is passed"
+    );
 }
 
 // ---- contract format: single-brace path params + verified-field detail -----
@@ -1032,15 +1041,15 @@ fn saga_run_interpolates_captured_vars_in_expect_body() {
 // The HTTP contract format uses OpenAPI/REST-style `{person_id}` in path
 // templates (not loom's canonical `{{ person_id }}`). A route's `extract`
 // captures a value from one route; a later route's path references it via
-// the single-brace form. This must thread through exactly like the saga
+// the single-brace form. This must thread through exactly like the journey
 // format's `{{ var }}`, and a passing step's detail should name which
 // response fields were actually verified — not just "status 200 ok".
 
-/// Contract: `loom journey run <contract.json>` normalizes `{person_id}` in
+/// Contract: `loom journey diagnose <contract.json>` normalizes `{person_id}` in
 /// a later route's path to the value captured by an earlier route's
 /// `extract`, and the passing detail names the verified response fields.
 #[test]
-fn journey_run_contract_format_substitutes_single_brace_path_params() {
+fn journey_diagnose_contract_format_substitutes_single_brace_path_params() {
     let tmp = Tmp::new();
     let (base, handle) = mock_server_handling(2, |req| {
         if req.starts_with("POST") {
@@ -1083,7 +1092,7 @@ fn journey_run_contract_format_substitutes_single_brace_path_params() {
     )
     .unwrap();
 
-    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    let out = run_loom_json(&["journey", "diagnose", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
 
     assert_eq!(out["total"], 2, "{out}");
@@ -1103,11 +1112,11 @@ fn journey_run_contract_format_substitutes_single_brace_path_params() {
     );
 }
 
-/// Contract: a saga-format spec with no `expect.exists`/`expect.body` keeps
+/// Contract: a journey-format spec with no `expect.exists`/`expect.body` keeps
 /// the plain "status N" detail — the verified-fields addition must not
 /// clutter a step that asserted nothing about the body.
 #[test]
-fn journey_run_detail_stays_plain_when_no_body_expectations() {
+fn journey_diagnose_detail_stays_plain_when_no_body_expectations() {
     let tmp = Tmp::new();
     let (base, handle) = mock_server_handling(1, |_req| (200, r#"{"ok":true}"#.into()));
 
@@ -1115,7 +1124,7 @@ fn journey_run_detail_stays_plain_when_no_body_expectations() {
     std::fs::write(
         &spec_path,
         serde_json::json!({
-            "saga": "plain-journey",
+            "journey": "plain-journey",
             "base": base,
             "steps": [
                 { "name": "ping", "intent": "ping", "request": { "method": "GET", "url": "/ping" } }
@@ -1125,7 +1134,7 @@ fn journey_run_detail_stays_plain_when_no_body_expectations() {
     )
     .unwrap();
 
-    let out = run_loom_json(&["journey", "run", spec_path.to_str().unwrap()]);
+    let out = run_loom_json(&["journey", "diagnose", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
 
     let detail = out["outcomes"][0]["detail"].as_str().unwrap();

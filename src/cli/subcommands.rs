@@ -21,13 +21,16 @@ pub enum IntentCmd {
         /// Architecture layer label (arms the layering detector once an order is declared).
         #[arg(long)]
         layer: Option<String>,
+        /// Scenario aspect: happy | sad | fallback | edge_case
+        #[arg(long)]
+        aspect: Option<String>,
         /// Permit a symbol-looking name (requires a behavioral description).
         #[arg(long)]
         allow_symbol_name: bool,
     },
     /// Show an intent by id, name, or unique fragment.
     Show { key: String },
-    /// Correct the intent's attributes (level/visibility) without redefining it.
+    /// Correct the intent's attributes (level/visibility/aspect) without redefining it.
     Set {
         key: String,
         /// system | component | feature | cross_cutting
@@ -36,6 +39,18 @@ pub enum IntentCmd {
         /// user_visible | internal
         #[arg(long)]
         visibility: Option<String>,
+        /// happy | sad | fallback | edge_case
+        #[arg(long)]
+        aspect: Option<String>,
+    },
+    /// Deliberately waive a completeness axis for this intent (recorded, re-opens
+    /// when the intent's meaning changes).
+    Waive {
+        key: String,
+        /// scenarios | prerequisites | boundary | proof | journey | questions
+        axis: String,
+        #[arg(long)]
+        reason: String,
     },
     /// Reactivate a retired (deprecated) intent → planned.
     Reactivate {
@@ -176,22 +191,49 @@ pub enum InboxCmd {
         text: String,
         #[arg(long, default_value = "human")]
         source: String,
+        /// Optional origin ref, e.g. file:src/auth.rs or a node id.
+        #[arg(long)]
+        link: Option<String>,
     },
     /// List inbox items.
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        /// Filter by disposition (new|routed|rejected|duplicate|deferred).
+        #[arg(long)]
+        status: Option<String>,
     },
-    /// Mark an item's disposition (routed|rejected|duplicate|deferred).
+    /// Show one inbox item in full.
+    Show { key: String },
+    /// Mark an item's disposition: routed | rejected | duplicate | deferred.
     Mark {
         key: String,
-        #[arg(long)]
         status: String,
         #[arg(long)]
         reason: Option<String>,
     },
     /// Remove an inbox item (e.g. a resolved or accidental capture).
     Remove { key: String },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum NoteCmd {
+    /// Attach a durable note to any node (adjudications, context, warnings).
+    Add {
+        /// The node the note is about (name, id, or unique fragment).
+        target: String,
+        /// decision | context | warning
+        #[arg(long, default_value = "decision")]
+        kind: String,
+        #[arg(long)]
+        text: String,
+    },
+    /// List notes, newest first, optionally scoped to one target node.
+    List {
+        target: Option<String>,
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -288,7 +330,7 @@ pub enum ValidationCmd {
     Add {
         #[arg(long)]
         name: String,
-        /// test | assertion | benchmark | manual_check | saga | scenario | contract
+        /// test | assertion | benchmark | manual_check | journey | scenario | contract
         #[arg(long, default_value = "test")]
         r#type: String,
         #[arg(long, default_value = "")]
@@ -423,21 +465,6 @@ pub enum SurfaceCmd {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum SagaCmd {
-    /// Add a saga from a JSON or YAML spec (creates a saga Validation + step edges).
-    Add { spec: PathBuf },
-    /// List saga validations.
-    List {
-        #[arg(long, default_value_t = 50)]
-        limit: usize,
-    },
-    /// Execute a saga spec and stamp the result onto the graph.
-    Run { spec: PathBuf },
-    /// Execute a saga spec without writing the graph (failure diagnosis).
-    Diagnose { spec: PathBuf },
-}
-
-#[derive(Subcommand, Debug)]
 pub enum VocabCmd {
     /// Register a vocabulary term.
     Add {
@@ -549,32 +576,46 @@ pub enum ProposalItemCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum JourneyCmd {
+    /// Add a journey from a JSON or YAML spec (creates a journey Validation + step edges).
+    Add { spec: PathBuf },
+    /// List journey validations.
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+    /// Execute a journey spec and record the result onto the graph.
+    Run {
+        /// Path to the journey or HTTP contract spec file (.json or .yaml/.yml).
+        spec: PathBuf,
+        /// Override the base URL (takes precedence over the spec's `base` field
+        /// and `{{ env.BASE_URL }}`).
+        #[arg(long)]
+        base_url: Option<String>,
+    },
+    /// Execute a journey spec directly without a graph (failure diagnosis).
+    Diagnose {
+        /// Path to the journey or HTTP contract spec file (.json or .yaml/.yml).
+        spec: PathBuf,
+        /// Override the base URL (takes precedence over the spec's `base` field
+        /// and `{{ env.BASE_URL }}`).
+        #[arg(long)]
+        base_url: Option<String>,
+    },
     /// Journey coverage commands (mark flows needing a journey proof).
     Coverage {
         #[command(subcommand)]
         cmd: JourneyCoverageCmd,
-    },
-    /// Generate a typed journey-runner prompt context from loom's code
-    /// understanding of an intent. Read-time assembly, not code generation.
-    Prompt {
-        /// The intent whose flow needs a typed runner (id, name, or fragment).
-        intent: String,
     },
     /// Journey invariant point commands (mark internal domain assertions).
     Invariant {
         #[command(subcommand)]
         cmd: JourneyInvariantCmd,
     },
-    /// Execute an HTTP contract spec (JSON or YAML) directly, without
-    /// requiring graph registration or intent resolution. Consumer-facing
-    /// proof executor — sends requests, checks status/fields, reports green/red.
-    Run {
-        /// Path to the contract spec file (.json or .yaml/.yml).
-        spec: std::path::PathBuf,
-        /// Override the base URL (takes precedence over the spec's `base` field
-        /// and `{{ env.BASE_URL }}`). Use when the contract has no base field.
-        #[arg(long)]
-        base_url: Option<String>,
+    /// Generate a typed journey-runner prompt context from loom's code
+    /// understanding of an intent. Read-time assembly, not code generation.
+    Prompt {
+        /// The intent whose flow needs a typed runner (id, name, or fragment).
+        intent: String,
     },
 }
 
@@ -597,7 +638,7 @@ pub enum JourneyCoverageCmd {
         /// Optional test reference (path or path::symbol) that must exist.
         #[arg(long)]
         test_ref: Option<String>,
-        /// Optional contract/saga artifact path expected to back the proof.
+        /// Optional contract/journey artifact path expected to back the proof.
         #[arg(long)]
         contract_artifact: Option<String>,
     },
@@ -644,4 +685,25 @@ pub enum JourneyInvariantCmd {
         #[arg(long, default_value_t = 50)]
         limit: usize,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ScanCmd {
+    /// Register an external diagnostic tool (any language's linter/checker).
+    Add {
+        /// Adapter name (e.g. clippy, eslint, ruff).
+        name: String,
+        /// The command to run, e.g. "cargo clippy --message-format=short".
+        command: String,
+        /// Custom parse regex with named groups `file` and `line` (optional
+        /// `msg`, `code`). Default: GCC-style `file:line[:col]: message`.
+        #[arg(long)]
+        map: Option<String>,
+    },
+    /// List registered adapters.
+    List,
+    /// Remove an adapter.
+    Remove { name: String },
+    /// Run one adapter (or all) and convert diagnostics into derived findings.
+    Run { name: Option<String> },
 }

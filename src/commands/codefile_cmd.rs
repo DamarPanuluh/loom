@@ -28,29 +28,40 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             if path.contains('*') || path.contains('?') {
                 remember_glob(&store, &path)?;
             }
-            println!(
-                "registered {added} codefile(s) ({} matched, {} already present)",
-                targets.len(),
-                targets.len() - added
-            );
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "registered": added,
+                    "matched": targets.len(),
+                    "already_present": targets.len() - added,
+                    "pattern": path,
+                    "targets": targets,
+                }),
+                "loom sync",
+                format!(
+                    "registered {added} codefile(s) ({} matched, {} already present)",
+                    targets.len(),
+                    targets.len() - added
+                ),
+            )?;
             Ok(())
         }
-        CodefileCmd::Rescan => codefile_rescan(graph),
+        CodefileCmd::Rescan => codefile_rescan(graph, json),
         CodefileCmd::Remove { key } => {
             let store = open(graph)?;
             let n = store.resolve_node(&key, Some(NodeType::CodeFile))?;
             store.delete_node(&n.id)?;
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "removed": true,
-                        "codefile": node_json(&n),
-                    }))?
-                );
-            } else {
-                println!("removed codefile '{}' (and its groundings)", n.name);
-            }
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "removed": true,
+                    "codefile": node_json(&n),
+                }),
+                "loom status",
+                format!("removed codefile '{}' (and its groundings)", n.name),
+            )?;
             Ok(())
         }
         CodefileCmd::Show { key } => codefile_show(graph, &key, json),
@@ -97,13 +108,22 @@ fn remember_glob(store: &Store, pattern: &str) -> Result<()> {
     }
     Ok(())
 }
-fn codefile_rescan(graph: Option<&Path>) -> Result<()> {
+fn codefile_rescan(graph: Option<&Path>, json: bool) -> Result<()> {
     let root = resolve_root(graph)?;
     let store = Store::open(&root)?;
     let globs = registered_globs(&store)?;
     if globs.is_empty() {
-        println!("no globs remembered — register files with `loom codefile add '<glob>'` first");
-        return Ok(());
+        return pulse::emit_line(
+            &store,
+            json,
+            serde_json::json!({
+                "rescanned": false,
+                "globs": 0,
+                "new_files": [],
+            }),
+            "loom codefile add '<glob>'",
+            "no globs remembered — register files with `loom codefile add '<glob>'` first",
+        );
     }
     let existing: std::collections::HashSet<String> =
         store.codefiles()?.into_iter().map(|n| n.name).collect();
@@ -117,17 +137,35 @@ fn codefile_rescan(graph: Option<&Path>) -> Result<()> {
             new_files.push(t);
         }
     }
-    println!(
-        "rescanned {} glob(s): {} new file(s) registered",
-        globs.len(),
-        new_files.len()
-    );
-    for f in new_files.iter().take(10) {
-        println!("    + {f}");
-    }
-    if !new_files.is_empty() {
-        println!("  run `loom sync` to extract them");
-    }
+    let next_step = if new_files.is_empty() {
+        "loom status"
+    } else {
+        "loom sync"
+    };
+    pulse::emit(
+        &store,
+        json,
+        serde_json::json!({
+            "rescanned": true,
+            "globs": globs.len(),
+            "new_files": new_files,
+        }),
+        next_step,
+        || {
+            println!(
+                "rescanned {} glob(s): {} new file(s) registered",
+                globs.len(),
+                new_files.len()
+            );
+            for f in new_files.iter().take(10) {
+                println!("    + {f}");
+            }
+            if !new_files.is_empty() {
+                println!("  run `loom sync` to extract them");
+            }
+            Ok(())
+        },
+    )?;
     Ok(())
 }
 fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {

@@ -9,18 +9,23 @@
 //! Plane: pure path logic + a filesystem walk. No graph awareness.
 
 use crate::Result;
+use anyhow::bail;
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use std::path::Path;
 
 /// Expand a glob (relative to `root`) into matching relative file paths, sorted.
 /// A pattern with no glob metacharacters is returned as a single literal path if
-/// it exists as a file.
+/// it exists as a file; missing literal paths error loudly instead of
+/// masquerading as an empty glob match.
 pub fn expand(root: &Path, pattern: &str) -> Result<Vec<String>> {
     let pat = pattern.replace('\\', "/");
     if !pat.contains('*') && !pat.contains('?') {
         let p = root.join(&pat);
-        return Ok(if p.is_file() { vec![pat] } else { vec![] });
+        if p.is_file() {
+            return Ok(vec![pat]);
+        }
+        bail!("literal path '{}' does not exist or is not a file", pat);
     }
 
     let matcher = GlobBuilder::new(&pat)

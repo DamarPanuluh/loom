@@ -14,21 +14,224 @@
 //! invariant's `assertion` is a design claim about the flow, not a truth claim
 //! about proof; whether it is verified is derived from validations, not stored.
 
-use super::open;
+use super::{open, pulse};
 use crate::cli::{JourneyCmd, JourneyCoverageCmd, JourneyInvariantCmd};
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
 use anyhow::bail;
 use serde_json::{json, Value};
+use std::path::{Path, PathBuf};
 
 /// Dispatch entry point for the `loom journey` family.
-pub fn dispatch(graph: Option<&std::path::Path>, cmd: JourneyCmd, json: bool) -> Result<()> {
+pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()> {
     match cmd {
+        JourneyCmd::Add { spec } => journey_add(graph, spec, json),
+        JourneyCmd::List { limit } => journey_list(graph, limit, json),
+        JourneyCmd::Run { spec, base_url } => journey_run(graph, spec, base_url.as_deref(), json),
+        JourneyCmd::Diagnose { spec, base_url } => {
+            journey_diagnose(&spec, base_url.as_deref(), json)
+        }
         JourneyCmd::Coverage { cmd } => coverage(graph, cmd, json),
-        JourneyCmd::Prompt { intent } => prompt(graph, &intent, json),
         JourneyCmd::Invariant { cmd } => invariant(graph, cmd, json),
-        JourneyCmd::Run { spec, base_url } => journey_run(&spec, base_url.as_deref(), json),
+        JourneyCmd::Prompt { intent } => prompt(graph, &intent, json),
+    }
+}
+
+fn outcome_json(o: &crate::journey::StepOutcome) -> Value {
+    json!({
+        "name": o.name,
+        "step": o.name,
+        "intent": o.intent,
+        "passed": o.passed,
+        "detail": o.detail,
+    })
+}
+
+fn is_journey_validation(node: &Node) -> bool {
+    matches!(
+        node.body.get("type").and_then(|t| t.as_str()),
+        Some("journey") | Some("saga")
+    )
+}
+
+fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let (parsed, kind) = crate::journey::parse_with_kind(&spec)?;
+    let artifact = spec.display().to_string();
+    let val = store.add_node(
+        NodeType::Validation,
+        &parsed.journey,
+        "",
+        "not_run",
+        json!({
+            "type": "journey",
+            "command": format!("loom journey run {artifact}"),
+            "proof_level": "L5",
+            "proof_kind": "journey",
+            "journey_id": parsed.journey,
+            "repo_native_kind": kind.as_str(),
+            "artifact": artifact,
+        }),
+    )?;
+    let mut prev: Option<String> = None;
+    let mut linked = 0usize;
+    let mut unmatched_steps = Vec::new();
+    for step in &parsed.steps {
+        let intent = match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
+            Ok(intent) => intent,
+            Err(_) => {
+                // Soft resolution: report but don't fail. Consumer-facing specs
+                // use human-readable intent text, not Loom intent IDs.
+                unmatched_steps.push(json!({
+                    "step": step.name,
+                    "intent": step.intent,
+                }));
+                continue;
+            }
+        };
+        store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
+        linked += 1;
+        if let Some(p) = &prev {
+            let _ = store.ensure_edge(EdgeKind::Sequence, p, &intent.id);
+        }
+        prev = Some(intent.id);
+    }
+    let unmatched_count = unmatched_steps.len();
+    let payload = json!({
+        "added": true,
+        "validation": val,
+        "linked_steps": linked,
+        "unmatched_steps": unmatched_steps,
+    });
+    let next_step = format!("run `loom journey run {artifact}` to record the proof");
+    let line = if unmatched_count > 0 {
+        format!(
+            "added journey '{}' ({linked} step intent(s)); warning: {unmatched_count} route/step intent(s) were not linked",
+            val.name
+        )
+    } else {
+        format!("added journey '{}' ({linked} step intent(s))", val.name)
+    };
+    pulse::emit_line(&store, json, payload, &next_step, line)
+}
+
+fn journey_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let journeys: Vec<_> = store
+        .list_nodes(Some(NodeType::Validation), limit)?
+        .into_iter()
+        .filter(is_journey_validation)
+        .collect();
+    if json {
+        println!("{}", serde_json::to_string_pretty(&journeys)?);
+    } else {
+        for n in &journeys {
+            println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+        }
+    }
+    Ok(())
+}
+
+fn journey_run(
+    graph: Option<&Path>,
+    spec: PathBuf,
+    base_url: Option<&str>,
+    json: bool,
+) -> Result<()> {
+    let store = open(graph)?;
+    let mut parsed = crate::journey::parse(&spec)?;
+    if let Some(base) = base_url {
+        parsed.base = base.to_string();
+    }
+    crate::journey::require(&store, &parsed.journey)?;
+    let outcomes = crate::journey::execute(Some(&store), &parsed, true)?;
+    let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
+    let passed = outcomes.iter().filter(|o| o.passed).count();
+    let failed = outcomes.len().saturating_sub(passed);
+    let payload = json!({
+        "journey": parsed.journey,
+        "passed": passed,
+        "failed": failed,
+        "total": rows.len(),
+        "outcomes": rows,
+    });
+    let next_step = if failed > 0 {
+        format!(
+            "fix the failing step and rerun `loom journey run {}`",
+            spec.display()
+        )
+    } else {
+        "run `loom journey list` to review journey validations".to_string()
+    };
+    pulse::emit(&store, json, payload, &next_step, || {
+        for o in &outcomes {
+            println!(
+                "{} {} — {}",
+                if o.passed { "PASS" } else { "FAIL" },
+                o.name,
+                o.detail
+            );
+        }
+        println!(
+            "journey '{}': {}/{} step(s) passed",
+            parsed.journey,
+            passed,
+            outcomes.len()
+        );
+        Ok(())
+    })
+}
+
+fn journey_diagnose(spec: &Path, base_url: Option<&str>, json: bool) -> Result<()> {
+    let mut parsed = crate::journey::parse(spec)?;
+    if let Some(base) = base_url {
+        parsed.base = base.to_string();
+    }
+    let hints = crate::journey::diagnose_hints(&parsed);
+    let outcomes = crate::journey::execute(None, &parsed, false)?;
+    let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
+    let passed = outcomes.iter().filter(|o| o.passed).count();
+    let failed = outcomes.len().saturating_sub(passed);
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "journey": parsed.journey,
+                "passed": passed,
+                "failed": failed,
+                "total": rows.len(),
+                "hints": hints,
+                "outcomes": rows,
+            }))?
+        );
+    } else {
+        for h in hints {
+            println!("hint: {h}");
+        }
+        for o in &outcomes {
+            println!(
+                "{} {} — {}",
+                if o.passed { "PASS" } else { "FAIL" },
+                o.name,
+                o.detail
+            );
+        }
+        println!(
+            "journey '{}': {}/{} step(s) passed",
+            parsed.journey,
+            passed,
+            outcomes.len()
+        );
+    }
+    if failed > 0 {
+        bail!(
+            "journey '{}' failed ({} step(s) failed)",
+            parsed.journey,
+            failed
+        )
+    } else {
+        Ok(())
     }
 }
 
@@ -107,25 +310,27 @@ fn coverage_add(
         &intent.id,
         crate::model::TruthClass::Asserted,
     )?;
-    if json {
-        let out = json!({
-            "id": node.id,
-            "name": node.name,
-            "status": node.status,
-            "flow": args.flow,
-            "covers": intent.name,
-            "covers_id": intent.id,
-        });
-        println!("{}", serde_json::to_string_pretty(&out)?);
-    } else {
-        println!(
-            "added journey coverage '{}' → covers '{}' [{}]",
-            node.name,
-            intent.name,
-            &node.id[..8]
-        );
-    }
-    Ok(())
+    let payload = json!({
+        "id": node.id,
+        "name": node.name,
+        "status": node.status,
+        "flow": args.flow,
+        "covers": intent.name,
+        "covers_id": intent.id,
+    });
+    let line = format!(
+        "added journey coverage '{}' → covers '{}' [{}]",
+        node.name,
+        intent.name,
+        &node.id[..8]
+    );
+    pulse::emit_line(
+        &store,
+        json,
+        payload,
+        "run `loom journey prompt <intent>` when you are ready to author the proof",
+        line,
+    )
 }
 
 fn coverage_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> Result<()> {
@@ -268,24 +473,35 @@ fn coverage_discover(
         }
     }
 
-    if json {
-        let out = json!({
-            "gaps": gaps.iter().map(|n| n.name.clone()).collect::<Vec<_>>(),
-            "gap_count": gaps.len(),
-            "spawned": spawned,
-            "spawned_count": spawned.len(),
-        });
-        println!("{}", serde_json::to_string_pretty(&out)?);
+    let payload = json!({
+        "gaps": gaps.iter().map(|n| n.name.clone()).collect::<Vec<_>>(),
+        "gap_count": gaps.len(),
+        "spawned": spawned,
+        "spawned_count": spawned.len(),
+    });
+    if spawn_missing {
+        let line = format!(
+            "spawned {} journey_coverage node(s)",
+            payload["spawned_count"]
+        );
+        pulse::emit_line(
+            &store,
+            json,
+            payload,
+            "run `loom journey coverage list` to review spawned coverage nodes",
+            line,
+        )
     } else {
-        println!("{} coverage gap(s):", gaps.len());
-        for n in &gaps {
-            println!("  — {} [{}]", n.name, &n.id[..8]);
+        if json {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        } else {
+            println!("{} coverage gap(s):", gaps.len());
+            for n in &gaps {
+                println!("  — {} [{}]", n.name, &n.id[..8]);
+            }
         }
-        if spawn_missing {
-            println!("spawned {} journey_coverage node(s)", spawned.len());
-        }
+        Ok(())
     }
-    Ok(())
 }
 
 fn coverage_drift(graph: Option<&std::path::Path>, json: bool) -> Result<()> {
@@ -371,7 +587,7 @@ fn coverage_drift(graph: Option<&std::path::Path>, json: bool) -> Result<()> {
                 "intent": intent.name,
                 "proof": proof.name,
                 "message": "current passing L5 journey proof has no body.artifact, so contract drift cannot be tracked",
-                "remedy": "add/update the validation with --artifact pointing at the contract/saga/runner artifact",
+                "remedy": "add/update the validation with --artifact pointing at the contract/journey/runner artifact",
             })),
         }
     }
@@ -612,7 +828,7 @@ const INFRA_HINTS: &[(&str, &str)] = &[
 /// Assemble raw, evidence-tagged classification signals for the LLM. Every
 /// field is a fact loom already has (imports, language, declared layer), never
 /// an asserted architecture label. `infra_hints` reports which infra-touching
-/// imports were seen so the LLM can decide in-process-runner vs. saga/contract.
+/// imports were seen so the LLM can decide in-process-runner vs. journey/contract.
 fn classification_signals(
     store: &Store,
     intent_id: &str,
@@ -649,7 +865,7 @@ fn classification_signals(
 
 /// Choose the runner rules based on the signals. The in-process-runner rules
 /// only apply when the intent is actually grounded in domain code; when infra
-/// hints dominate, steer toward a saga/contract proof instead of asserting a
+/// hints dominate, steer toward a journey/contract proof instead of asserting a
 /// typed runner that may need infrastructure the runner can't stand up.
 fn prompt_rules(signals: &Value) -> Vec<String> {
     let grounded = signals["grounded"].as_bool().unwrap_or(false);
@@ -673,7 +889,7 @@ fn prompt_rules(signals: &Value) -> Vec<String> {
     // In-process typed-runner rules apply only when the flow is grounded in
     // domain code AND does not cross a service boundary. A cross-service flow
     // can't be proven by calling in-process methods, so those rules would
-    // contradict the saga steer below.
+    // contradict the journey steer below.
     let in_process = grounded && !has_service_call;
     if in_process {
         rules.push("Use the repo's actual domain types — no generic JSON.".into());
@@ -681,18 +897,18 @@ fn prompt_rules(signals: &Value) -> Vec<String> {
         rules.push("Assert internal domain state, not just HTTP status codes.".into());
     } else if !grounded {
         rules.push(
-            "This intent has no in-process code grounding — prefer a consumer-facing HTTP/saga proof over an in-process typed runner.".into(),
+            "This intent has no in-process code grounding — prefer a consumer-facing HTTP/journey proof over an in-process typed runner.".into(),
         );
     }
     rules.push("If a step mutates state, prove the mutation in the next step.".into());
     if has_infra {
         rules.push(
-            "This flow's code imports infrastructure (see signals.infra_hints); if the runner would need a live dependency it cannot stand up, generate a saga/contract proof and flag the typed runner as \"needs infrastructure\".".into(),
+            "This flow's code imports infrastructure (see signals.infra_hints); if the runner would need a live dependency it cannot stand up, generate a journey/contract proof and flag the typed runner as \"needs infrastructure\".".into(),
         );
     }
     if has_service_call {
         rules.push(
-            "This flow crosses a service boundary (outbound HTTP/gRPC/queue import) — prove it with a cross-service saga spec, not an in-process runner.".into(),
+            "This flow crosses a service boundary (outbound HTTP/gRPC/queue import) — prove it with a cross-service journey spec, not an in-process runner.".into(),
         );
     }
     rules.push("Return a JSON success body with ok=true on success.".into());
@@ -795,27 +1011,27 @@ fn invariant_add(
         &intent.id,
         crate::model::TruthClass::Asserted,
     )?;
-    if json {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&json!({
-                "id": node.id,
-                "name": node.name,
-                "field": field,
-                "assertion": assertion,
-                "asserts": intent.name,
-                "asserts_id": intent.id,
-            }))?
-        );
-    } else {
-        println!(
-            "added journey invariant '{}' → asserts '{}' [{}]",
-            node.name,
-            intent.name,
-            &node.id[..8]
-        );
-    }
-    Ok(())
+    let payload = json!({
+        "id": node.id,
+        "name": node.name,
+        "field": field,
+        "assertion": assertion,
+        "asserts": intent.name,
+        "asserts_id": intent.id,
+    });
+    let line = format!(
+        "added journey invariant '{}' → asserts '{}' [{}]",
+        node.name,
+        intent.name,
+        &node.id[..8]
+    );
+    pulse::emit_line(
+        &store,
+        json,
+        payload,
+        "run `loom journey prompt <intent>` to include this invariant in the proof design",
+        line,
+    )
 }
 
 fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> Result<()> {
@@ -853,230 +1069,4 @@ fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> 
         println!("{}", serde_json::to_string_pretty(&rows)?);
     }
     Ok(())
-}
-
-// ---- journey run (graph-free HTTP contract executor) -------------------------
-
-/// Execute a contract spec (JSON or YAML) directly. No graph registration,
-/// no intent resolution — consumer-facing proof that sends requests, checks
-/// status + fields, threads captures, and reports green/red.
-fn journey_run(spec: &std::path::Path, base_url: Option<&str>, json: bool) -> Result<()> {
-    let mut parsed = crate::saga::parse(spec)?;
-    if let Some(b) = base_url {
-        parsed.base = b.to_string();
-    }
-    let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()?;
-    let mut vars: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
-    let mut outcomes: Vec<Value> = Vec::new();
-    let mut passed = 0usize;
-    let mut failed = 0usize;
-
-    for step in &parsed.steps {
-        let base = interpolate_vars(&parsed.base, &vars);
-        if base.is_empty() || base.contains("{{") {
-            bail!(
-                "journey '{}' has no usable base URL (spec base='{}' resolved to '{base}'). \
-                 Pass --base-url, set BASE_URL in the environment, or add a \"base\" field to the spec.",
-                parsed.saga,
-                parsed.base
-            );
-        }
-        let url = interpolate_vars(&format!("{base}{}", step.request.url), &vars);
-        let method = step.request.method.to_uppercase();
-        let mut req = client.request(
-            reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
-            &url,
-        );
-        for (name, value) in &step.request.headers {
-            req = req.header(name, interpolate_vars(value, &vars));
-        }
-        if !step.request.query.is_empty() {
-            let query: Vec<(String, String)> = step
-                .request
-                .query
-                .iter()
-                .map(|(k, v)| (k.clone(), interpolate_vars(&value_to_string(v), &vars)))
-                .collect();
-            req = req.query(&query);
-        }
-        if let Some(body) = &step.request.json {
-            let interpolated = interpolate_json_vars(body, &vars);
-            req = req.json(&interpolated);
-        }
-        let (step_passed, detail) = match req.send() {
-            Ok(resp) => {
-                let status_code = resp.status().as_u16();
-                let expected = step.expect.status.unwrap_or(200);
-                if status_code != expected {
-                    (
-                        false,
-                        format!("expected status {expected}, got {status_code}"),
-                    )
-                } else {
-                    let body: serde_json::Value = resp.json().unwrap_or(Value::Null);
-                    let mut ok = true;
-                    let mut err_detail = String::new();
-                    for path in &step.expect.exists {
-                        if jsonpath_val(&body, path).is_none() {
-                            ok = false;
-                            err_detail = format!("missing field {path}");
-                            break;
-                        }
-                    }
-                    if ok {
-                        for (path, want) in &step.expect.body {
-                            let want_resolved = interpolate_json_vars(want, &vars);
-                            let got = jsonpath_val(&body, path);
-                            if got.as_ref() != Some(&want_resolved) {
-                                ok = false;
-                                err_detail = format!(
-                                    "body {path}: expected {want_resolved}, got {}",
-                                    got.map(|v| v.to_string()).unwrap_or_else(|| "null".into())
-                                );
-                                break;
-                            }
-                        }
-                    }
-                    if ok {
-                        // Thread captures
-                        for (var, path) in &step.capture {
-                            if let Some(v) = jsonpath_val(&body, path) {
-                                let s = match v {
-                                    Value::String(s) => s,
-                                    other => other.to_string(),
-                                };
-                                vars.insert(var.clone(), s);
-                            }
-                        }
-                        let success_detail =
-                            if step.expect.exists.is_empty() && step.expect.body.is_empty() {
-                                format!("status {status_code} ok")
-                            } else {
-                                let mut checked: Vec<&str> =
-                                    step.expect.body.keys().map(String::as_str).collect();
-                                checked.extend(step.expect.exists.iter().map(String::as_str));
-                                format!("status {status_code} ok, verified: {}", checked.join(", "))
-                            };
-                        (true, success_detail)
-                    } else {
-                        (false, err_detail)
-                    }
-                }
-            }
-            Err(e) => (false, format!("request failed: {e}")),
-        };
-        if step_passed {
-            passed += 1;
-        } else {
-            failed += 1;
-        }
-        outcomes.push(json!({
-            "step": step.name,
-            "passed": step_passed,
-            "detail": detail,
-        }));
-        if !step_passed {
-            break; // stop at boundary
-        }
-    }
-
-    if json {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&json!({
-                "journey": parsed.saga,
-                "passed": passed,
-                "failed": failed,
-                "total": passed + failed,
-                "outcomes": outcomes,
-            }))?
-        );
-    } else {
-        for o in &outcomes {
-            println!(
-                "{} {} — {}",
-                if o["passed"].as_bool().unwrap_or(false) {
-                    "PASS"
-                } else {
-                    "FAIL"
-                },
-                o["step"].as_str().unwrap_or(""),
-                o["detail"].as_str().unwrap_or("")
-            );
-        }
-        println!(
-            "journey '{}': {}/{} step(s) passed",
-            parsed.saga,
-            passed,
-            passed + failed
-        );
-    }
-
-    if failed > 0 {
-        bail!(
-            "journey '{}' failed ({} step(s) failed)",
-            parsed.saga,
-            failed
-        )
-    } else {
-        Ok(())
-    }
-}
-
-/// Interpolate `{{ var }}` and `{{ env.NAME }}` in a string (graph-free version).
-fn interpolate_vars(s: &str, vars: &std::collections::BTreeMap<String, String>) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut rest = s;
-    while let Some(start) = rest.find("{{") {
-        out.push_str(&rest[..start]);
-        let after = &rest[start + 2..];
-        if let Some(end) = after.find("}}") {
-            let key = after[..end].trim();
-            if let Some(stripped) = key.strip_prefix("env.") {
-                out.push_str(&std::env::var(stripped).unwrap_or_default());
-            } else if let Some(val) = vars.get(key) {
-                out.push_str(val);
-            }
-            rest = &after[end + 2..];
-        } else {
-            out.push_str("{{");
-            rest = after;
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
-fn interpolate_json_vars(v: &Value, vars: &std::collections::BTreeMap<String, String>) -> Value {
-    match v {
-        Value::String(s) => Value::String(interpolate_vars(s, vars)),
-        Value::Array(a) => Value::Array(a.iter().map(|x| interpolate_json_vars(x, vars)).collect()),
-        Value::Object(o) => Value::Object(
-            o.iter()
-                .map(|(k, x)| (k.clone(), interpolate_json_vars(x, vars)))
-                .collect(),
-        ),
-        other => other.clone(),
-    }
-}
-
-fn jsonpath_val(v: &Value, path: &str) -> Option<Value> {
-    let p = path
-        .strip_prefix("$.")
-        .or_else(|| path.strip_prefix('$'))
-        .unwrap_or(path);
-    let mut cur = v.clone();
-    for seg in p.split('.') {
-        cur = cur.get(seg)?.clone();
-    }
-    Some(cur)
-}
-
-fn value_to_string(v: &Value) -> String {
-    match v {
-        Value::String(s) => s.clone(),
-        other => other.to_string(),
-    }
 }

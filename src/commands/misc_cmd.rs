@@ -9,47 +9,111 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         "new",
         serde_json::json!({ "source": "human" }),
     )?;
+    let short = &item.id[..8.min(item.id.len())];
+    // Routing context: the closest existing intents, the compass, and a landing
+    // menu of prefilled commands. The caller (usually the PM-side model) picks
+    // ONE landing, runs it, then marks the capture routed — nothing is decided
+    // here, but nothing requires a second lookup either.
+    let matches = keyword_hits(&store, utterance, &[NodeType::Intent], 5)?;
+    let ladder = crate::maturity::ladder(&store)?;
+    let q = crate::workitem::q;
+    let mark_routed = format!("loom inbox mark {short} routed --reason '<destination>'");
+    let mut menu: Vec<serde_json::Value> = Vec::new();
+    for (score, _, name, id) in &matches {
+        menu.push(serde_json::json!({
+            "landing": "existing_intent",
+            "why": format!("closest existing intent (score {score}) — the utterance may refine, extend, or contradict it"),
+            "intent": name,
+            "id": id,
+            "command": format!("loom intent show {}", q(name)),
+        }));
+    }
+    menu.push(serde_json::json!({
+        "landing": "new_intent",
+        "why": "the utterance names a behavior no intent covers",
+        "command": "loom intent add --name '<one falsifiable behavior>' --description '<what makes it true>' --level feature --visibility user_visible --aspect happy",
+        "after": "loom next --mode elaborate grows the forgotten surroundings (failure scenarios, prerequisites, questions)",
+    }));
+    menu.push(serde_json::json!({
+        "landing": "hypothesis",
+        "why": "the utterance is a redesign idea — prove it before it becomes work",
+        "command": "loom hypothesis add --name '<idea>' --claim '<what is wrong now>' --proposal '<the change>' --predicted-outcome '<measurable result>' --target '<intent>'",
+    }));
+    menu.push(serde_json::json!({
+        "landing": "spike",
+        "why": "the utterance needs investigation before it can land anywhere",
+        "command": "loom task add '<question>' --kind investigation",
+    }));
+    menu.push(serde_json::json!({
+        "landing": "dismiss",
+        "why": "not actionable — record why so it does not resurface",
+        "command": format!("loom inbox mark {short} rejected --reason '<why>'"),
+    }));
     if json {
-        println!("{}", serde_json::to_string_pretty(&node_json(&item))?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "captured": node_json(&item),
+                "compass": { "phase": ladder.phase, "next_command": ladder.next_command },
+                "landing_menu": menu,
+                "next_step": format!("choose ONE landing, run it, then: {mark_routed}"),
+            }))?
+        );
     } else {
-        println!("captured inbox item [{}]", &item.id[..8]);
-        println!("  normalize it, then route via loom intent/edge/rule, then `loom inbox mark`");
+        println!("captured inbox item [{short}]");
+        if !matches.is_empty() {
+            println!("  closest intents:");
+            for (score, _, name, id) in &matches {
+                println!(
+                    "    - {} [{}] (score {score})",
+                    name,
+                    &id[..8.min(id.len())]
+                );
+            }
+        }
+        println!("  landings:");
+        for m in &menu {
+            println!(
+                "    - {}: {}",
+                m["landing"].as_str().unwrap_or(""),
+                m["command"].as_str().unwrap_or("")
+            );
+        }
+        println!("  then: {mark_routed}");
     }
     Ok(())
 }
 pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
-        InboxCmd::Add { text, source } => {
+        InboxCmd::Add { text, source, link } => {
+            let mut body = serde_json::json!({ "source": source });
+            if let Some(l) = &link {
+                body["link"] = serde_json::Value::String(l.clone());
+            }
             let item = store.add_node(
                 NodeType::InboxItem,
                 &truncate(&text, 60),
                 &text,
                 "new",
-                serde_json::json!({ "source": source }),
+                body,
             )?;
-            println!("inbox item [{}]", &item.id[..8]);
-            Ok(())
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "inbox_item": node_json(&item) }),
+                "return to the current work item; triage routes it later",
+                format!("inbox item [{}]", &item.id[..8]),
+            )
         }
-        InboxCmd::List { limit } => {
-            let items = store.list_nodes(Some(NodeType::InboxItem), limit)?;
+        InboxCmd::List { limit, status } => {
+            let items: Vec<_> = store
+                .list_nodes(Some(NodeType::InboxItem), limit)?
+                .into_iter()
+                .filter(|n| status.as_deref().is_none_or(|s| n.status == s))
+                .collect();
             if json {
-                let rows: Vec<_> = items
-                    .iter()
-                    .map(|n| {
-                        serde_json::json!({
-                            "id": n.id,
-                            "status": n.status,
-                            "title": n.name,
-                            "text": n.description,
-                            "source": n.body.get("source").and_then(|v| v.as_str()),
-                            "link": n.body.get("link").and_then(|v| v.as_str()),
-                            "body": n.body,
-                            "created_at": n.created_at,
-                            "updated_at": n.updated_at,
-                        })
-                    })
-                    .collect();
+                let rows: Vec<_> = items.iter().map(inbox_json).collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
                 if items.is_empty() {
@@ -61,27 +125,136 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
             }
             Ok(())
         }
+        InboxCmd::Show { key } => {
+            let n = store.resolve_node(&key, Some(NodeType::InboxItem))?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&inbox_json(&n))?);
+            } else {
+                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                println!("{}", n.description);
+            }
+            Ok(())
+        }
         InboxCmd::Mark {
             key,
             status,
             reason,
         } => {
+            const DISPOSITIONS: &[&str] = &["routed", "rejected", "duplicate", "deferred"];
+            if !DISPOSITIONS.contains(&status.as_str()) {
+                bail!(
+                    "unknown disposition '{status}' (use {})",
+                    DISPOSITIONS.join("|")
+                );
+            }
             let n = store.resolve_node(&key, Some(NodeType::InboxItem))?;
             store.update_node(&n.id, None, None, Some(&status))?;
-            if let Some(r) = reason {
+            if let Some(r) = &reason {
                 store.add_note(&n.id, "decision", &format!("{status}: {r}"))?;
             }
-            println!("inbox item '{}' → {status}", &n.id[..8]);
-            Ok(())
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "id": n.id, "status": status, "reason": reason }),
+                "loom status",
+                format!("inbox item '{}' → {status}", &n.id[..8]),
+            )
         }
         InboxCmd::Remove { key } => {
             let n = store.resolve_node(&key, Some(NodeType::InboxItem))?;
             store.delete_node(&n.id)?;
-            println!("removed inbox item [{}]", &n.id[..8]);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "removed": n.id }),
+                "loom status",
+                format!("removed inbox item [{}]", &n.id[..8]),
+            )
+        }
+    }
+}
+
+/// The JSON projection of one inbox item, shared by list/show.
+fn inbox_json(n: &crate::model::Node) -> serde_json::Value {
+    serde_json::json!({
+        "id": n.id,
+        "status": n.status,
+        "title": n.name,
+        "text": n.description,
+        "source": n.body.get("source").and_then(|v| v.as_str()),
+        "link": n.body.get("link").and_then(|v| v.as_str()),
+        "body": n.body,
+        "created_at": n.created_at,
+        "updated_at": n.updated_at,
+    })
+}
+/// Attach and list durable notes on any node — the adjudication trail.
+pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    match cmd {
+        NoteCmd::Add { target, kind, text } => {
+            const KINDS: &[&str] = &["decision", "context", "warning"];
+            if !KINDS.contains(&kind.as_str()) {
+                bail!("unknown note kind '{kind}' (use {})", KINDS.join("|"));
+            }
+            if text.trim().is_empty() {
+                bail!("a note needs substantive --text");
+            }
+            let n = store.resolve_node(&target, None)?;
+            let note = store.add_note(&n.id, &kind, &text)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "note": node_json(&note),
+                    "target": { "id": n.id, "name": n.name },
+                }),
+                "loom status",
+                format!("noted {kind} on '{}' [{}]", n.name, &note.id[..8]),
+            )
+        }
+        NoteCmd::List { target, limit } => {
+            let target_id = target
+                .map(|t| store.resolve_node(&t, None))
+                .transpose()?
+                .map(|n| n.id);
+            let notes: Vec<_> = store
+                .list_nodes(Some(NodeType::Note), usize::MAX)?
+                .into_iter()
+                .filter(|n| {
+                    target_id
+                        .as_deref()
+                        .is_none_or(|t| n.body.get("target_id").and_then(|v| v.as_str()) == Some(t))
+                })
+                .take(limit)
+                .collect();
+            if json {
+                let rows: Vec<_> = notes
+                    .iter()
+                    .map(|n| {
+                        serde_json::json!({
+                            "id": n.id,
+                            "kind": n.status,
+                            "text": n.description,
+                            "target_id": n.body.get("target_id").and_then(|v| v.as_str()),
+                            "created_at": n.created_at,
+                        })
+                    })
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else {
+                if notes.is_empty() {
+                    println!("no notes");
+                }
+                for n in &notes {
+                    println!("{:<9} {} [{}]", n.status, n.description, &n.id[..8]);
+                }
+            }
             Ok(())
         }
     }
 }
+
 pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
@@ -144,28 +317,18 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
 }
 pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let planned = store
-        .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
-        .len();
-    let stale = store
-        .edges_by_status(
-            TruthClass::Asserted,
-            &[
-                InspectionStatus::NeedsReverification,
-                InspectionStatus::Failing,
-            ],
-        )?
-        .len();
-    let uninspected = store
-        .edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
-        .len();
-    let inbox = store
-        .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
-        .len();
+    // One source of truth for the counts: the same pulse every work item and
+    // mutating command emits. Session only adds the offer framing on top.
+    let pulse = crate::workitem::graph_state(&store)?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
     let codefiles = store
         .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
         .len();
+    let open_axes: usize = crate::completeness::all_scorecards(&store)?
+        .iter()
+        .filter(|c| c.visibility.as_deref() == Some("user_visible"))
+        .map(|c| c.open)
+        .sum();
     let ladder = crate::maturity::ladder(&store)?;
     if json {
         let rungs: Vec<_> = ladder
@@ -182,12 +345,10 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
-                "planned": planned,
-                "stale": stale,
-                "uninspected": uninspected,
-                "inbox": inbox,
+                "graph_state": pulse,
                 "intents": intents,
                 "codefiles": codefiles,
+                "open_completeness_axes": open_axes,
                 "phase": ladder.phase,
                 "recommended": ladder.next_command,
                 "rungs": rungs,
@@ -200,12 +361,21 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         "  - recommended: {}              (phase: {})",
         ladder.next_command, ladder.phase
     );
-    if stale > 0 {
-        println!("  - repair {stale} failing/stale claim(s)   [loom next --mode fix]");
-    } else if planned > 0 {
-        println!("  - build {planned} unrealized intent(s)    [loom next --mode build]");
-    } else if uninspected > 0 {
-        println!("  - inspect {uninspected} claim(s)           [loom next --mode analyze]");
+    if pulse.stale > 0 {
+        println!(
+            "  - repair {} failing/stale claim(s)   [loom next --mode fix]",
+            pulse.stale
+        );
+    } else if pulse.planned > 0 {
+        println!(
+            "  - build {} unrealized intent(s)    [loom next --mode build]",
+            pulse.planned
+        );
+    } else if pulse.uninspected > 0 {
+        println!(
+            "  - inspect {} claim(s)           [loom next --mode analyze]",
+            pulse.uninspected
+        );
     } else if intents == 0 && codefiles == 0 {
         println!("  - fresh graph — nothing mapped yet. Start here:");
         println!("      loom guide                  the driving loop + roles");
@@ -214,8 +384,28 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     } else {
         println!("  - graph is settled; map more, or just get to work");
     }
-    if inbox > 0 {
-        println!("  - {inbox} inbox item(s) to triage          [loom inbox list]");
+    if pulse.open_questions > 0 {
+        println!(
+            "  - {} question(s) waiting for YOUR answer  [loom inbox list --status new]",
+            pulse.open_questions
+        );
+    }
+    if pulse.inbox > pulse.open_questions {
+        println!(
+            "  - {} inbox item(s) to triage          [loom inbox list --status new]",
+            pulse.inbox - pulse.open_questions
+        );
+    }
+    if pulse.low_confidence > 0 {
+        println!(
+            "  - re-inspect {} low-confidence verdict(s) [loom next --mode review]",
+            pulse.low_confidence
+        );
+    }
+    if open_axes > 0 {
+        println!(
+            "  - grow {open_axes} open completeness axis(es) around user-visible ideas [loom next --mode elaborate]"
+        );
     }
     Ok(())
 }
@@ -227,6 +417,7 @@ fn truth_axis_matrix() -> Vec<serde_json::Value> {
             serde_json::json!({
                 "axis": g.axis.as_str(),
                 "missing_form": g.missing_form,
+                "correct_when": g.correct_when,
                 "authoritative_write": g.authoritative_write,
                 "forbidden_write": g.forbidden_write,
                 "after_write": g.after_write,
@@ -264,8 +455,9 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             for axis in crate::truth::TRUTH_AXES {
                 let g = axis.gap();
                 println!("  {:<15} {}", g.axis.as_str(), g.missing_form);
-                println!("      make true: {}", g.authoritative_write);
-                println!("      then:      {}", g.after_write);
+                println!("      correct when: {}", g.correct_when);
+                println!("      make true:    {}", g.authoritative_write);
+                println!("      then:         {}", g.after_write);
             }
             println!("Roles: builder | analyzer | fixer | validator | quality (see `loom guide --role`).");
             println!("Integration monitoring (watch an upstream you depend on): loom guide --role monitor");
@@ -276,38 +468,49 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             Ok(())
         }
         Some(r) => {
-            let (mindset, allowed, forbidden) = match r {
+            let (mindset, allowed, forbidden, axis) = match r {
                 "builder" => (
                     "Use Loom first to understand why, likely files/entities, and prior evidence; then inspect relevant code before editing. Functions are locators, not intents.",
                     "loom status; loom next --all; loom intent show <intent>; loom codefile list; loom codefile show <file>; edit code; loom edge implement; loom intent mark; loom sync",
                     "loom rule verdict passing; loom validation mark passed",
+                    crate::truth::TruthAxis::Implementation,
                 ),
                 "analyzer" => (
-                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record justified/needed/blocked with a reason.",
-                    "loom edge explore ground|issue|independent; loom finding verdict <id> justified|needed|blocked --reason '…'",
-                    "edit code; verdict from name similarity",
+                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record justified/needed/blocked with a reason. Serves the review queue too: re-inspect low-confidence verdicts independently before reading the recorded evidence.",
+                    "loom edge explore <a> <b> ground|issue|independent; loom edge verdict <edge_id> ground|issue|independent (non-relates claims); loom finding verdict <id> justified|needed|blocked --reason '…'",
+                    "edit code; verdict from name similarity; inheriting a prior verdict's confidence",
+                    crate::truth::TruthAxis::Verdict,
                 ),
                 "fixer" => (
-                    "Use Loom first to understand the stale/failing criterion, linked entities, likely files, and prior evidence; then inspect relevant code before repairing the root cause. Findings judged `needed` are queued work — consult `loom finding list --state needed`.",
+                    "Use Loom first to understand the stale/failing criterion, linked entities, likely files, and prior evidence; then inspect relevant code before repairing the root cause. Findings judged `needed` are queued work — consult `loom finding list --state needed`. After the fix, `loom sync` re-opens the claim and its owning lane re-measures — do not record the verdict yourself.",
                     "loom status; loom next --all; loom edge show <edge_id>; loom intent show <linked intent>; loom codefile show <file>; edit code; loom sync; re-ground; loom finding list --state needed",
-                    "suppress the symptom; mark passing without re-verification",
+                    "suppress the symptom; record the passing verdict from the fixer hat",
+                    crate::truth::TruthAxis::Implementation,
                 ),
                 "validator" => (
                     "Run or honestly mark proofs; never edit code to make a proof pass.",
-                    "run validation; loom validation mark passed|failed|blocked",
+                    "run validation; loom validate <intent>; loom validation mark <validation> --result passed|failed|blocked --evidence '…'",
                     "edit code; mark passed without observed proof",
+                    crate::truth::TruthAxis::Proof,
                 ),
                 "quality" => (
-                    "Measure a rule against an intent at the highest honest altitude.",
-                    "loom rule verdict passing|failing|independent",
-                    "edit code; mark passing without inspecting",
+                    "Measure a rule against an intent at the highest honest altitude. Follow the rule's inspection_guide and evidence_template from the work packet; do not invent your own protocol.",
+                    "loom rule verdict <rule> <intent> --status passing|failing|independent --criterion '…' --evidence '…' --confidence <n>",
+                    "edit code; mark passing without inspecting; mark independent without evidence",
+                    crate::truth::TruthAxis::Verdict,
                 ),
                 other => bail!("unknown role '{other}'"),
             };
             println!("role: {r}");
             println!("  mindset:   {mindset}");
+            println!(
+                "  axis:      {} — correct when {}",
+                axis.as_str(),
+                axis.gap().correct_when
+            );
             println!("  allowed:   {allowed}");
             println!("  forbidden: {forbidden}");
+            println!("  honesty:   confidence below {} routes the verdict to review — uncertainty is honest, a confident guess corrupts the graph", crate::workitem::REVIEW_CONFIDENCE_FLOOR);
             println!("  set: export LOOM_AGENT=llm:{r}");
             Ok(())
         }
@@ -356,16 +559,23 @@ fn guide_monitor() {
     println!();
     println!("  Check every integration point is under contract:  loom interface gaps");
 }
-pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bool) -> Result<()> {
-    let store = open(graph)?;
+/// Keyword scoring shared by `loom find` and the door's landing menu: score
+/// nodes of the given kinds against the query terms, best first, capped at
+/// `limit`. Returns `(score, kind, name, id)` rows.
+fn keyword_hits(
+    store: &Store,
+    query: &str,
+    kinds: &[NodeType],
+    limit: usize,
+) -> Result<Vec<(usize, String, String, String)>> {
     let q = query_terms(query);
     let score = |hay: &str| -> usize {
         let h = hay.to_lowercase();
         q.iter().filter(|t| h.contains(t.as_str())).count()
     };
     let mut hits: Vec<(usize, String, String, String)> = Vec::new();
-    for nt in [NodeType::Intent, NodeType::CodeFile, NodeType::QualityRule] {
-        for n in store.list_nodes(Some(nt), usize::MAX)? {
+    for nt in kinds {
+        for n in store.list_nodes(Some(*nt), usize::MAX)? {
             if n.status == "deprecated" {
                 continue;
             }
@@ -376,7 +586,18 @@ pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bo
         }
     }
     hits.sort_by(|a, b| b.0.cmp(&a.0).then(a.2.cmp(&b.2)));
-    let limited: Vec<_> = hits.into_iter().take(limit).collect();
+    hits.truncate(limit);
+    Ok(hits)
+}
+
+pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let limited = keyword_hits(
+        &store,
+        query,
+        &[NodeType::Intent, NodeType::CodeFile, NodeType::QualityRule],
+        limit,
+    )?;
     if json {
         let mut rows = Vec::new();
         for (s, kind, name, id) in &limited {
@@ -462,21 +683,34 @@ pub(crate) fn detect_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         }
     }
     count_exts(&root, &mut langs, 0);
+    // Recommend only packs that actually exist (crate::packs::PACKS), from
+    // honest signals: a recommendation the seeder rejects is a dead end.
+    let mut recommended: Vec<&str> = vec!["iso5055"];
+    if markers.contains(&"docker") {
+        recommended.push("docker");
+    }
+    if markers.contains(&"node") {
+        recommended.push("web-ui");
+        recommended.push("service");
+    }
+    if markers.contains(&"rust") || markers.contains(&"go") {
+        recommended.push("concurrency");
+    }
+    if root.join("migrations").is_dir() || langs.contains_key("sql") {
+        recommended.push("data");
+    }
+    debug_assert!(
+        recommended.iter().all(|p| crate::packs::PACKS.contains(p)),
+        "detect recommended a pack that cannot be seeded"
+    );
     if json {
-        let mut recommended_packs = vec!["iso5055"];
-        if markers.contains(&"docker") {
-            recommended_packs.push("docker");
-        }
-        if markers.contains(&"node") {
-            recommended_packs.push("web-ui");
-            recommended_packs.push("service");
-        }
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "languages": langs,
                 "project_markers": markers,
-                "recommended_quality_packs": recommended_packs,
+                "recommended_quality_packs": recommended,
+                "available_packs": crate::packs::PACKS,
             }))?
         );
         return Ok(());
@@ -493,14 +727,11 @@ pub(crate) fn detect_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
             markers.join(", ")
         }
     );
-    println!("recommended quality packs: iso5055 (baseline)");
-    if markers.contains(&"docker") {
-        println!("  + docker");
-    }
-    if markers.contains(&"node") {
-        println!("  + web-ui / service (inspect the app)");
-    }
-    println!("(quality packs land in ring 5: `loom rule seed <pack>`)");
+    println!("recommended quality packs: {}", recommended.join(", "));
+    println!(
+        "  seed with: loom rule seed <pack>   (available: {})",
+        crate::packs::PACKS.join(", ")
+    );
     Ok(())
 }
 fn count_exts(
@@ -529,6 +760,7 @@ fn count_exts(
                 "go" => "go",
                 "ts" | "tsx" => "typescript",
                 "js" | "jsx" => "javascript",
+                "sql" => "sql",
                 _ => continue,
             };
             *langs.entry(label).or_insert(0) += 1;

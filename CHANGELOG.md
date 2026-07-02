@@ -8,6 +8,12 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.11.0] - 2026-07-02
+- Sensors + Definition-of-Complete: loom scan adapters (any language's linters/checkers become derived findings, config travels in the export), regex pattern pre-screening in quality packets (confirm-or-refute hits), completeness scorecard with six axes + waivers (re-open on redefinition), elaborate queue growing the surroundings humans forget (scenario families via --aspect, prerequisites, batched open questions for the human), portable config in loom.graph.json (layer order/ignores/globs/adapters survive import), workitem split into cohesive submodules
+
+## [0.10.0] - 2026-07-02
+- PM rebuild for weak-worker fidelity: journey absorbs saga (one executor, hidden alias); review queue with confidence<0.7 routing; disjoint fix/quality/validate queues; self-contained work packets (read_set, inline descriptions, stale causes, prefilled quoted write-backs); per-axis correct_when criteria in guide+packets; door landing menu; inbox show/link/status + positional mark; loom note; write-back pulse (--json + next everywhere); 6 quality packs with few-shot examples; sync stales targets edges + records stale causes; deterministic validation resets
+
 ## [0.9.0] - 2026-07-01
 - Global --json across all read/show/list commands; split commands.rs and cli.rs into cohesive submodules
 

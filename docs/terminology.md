@@ -177,9 +177,23 @@ Examples:
 
 Do not use `Finding` for statistical co-change or clone clusters unless a deterministic located occurrence is confirmed.
 
+### external diagnostic adapter
+
+A portable scan configuration entry registered by `loom scan add`. It names a linter, type-checker, static analyzer, or bespoke command from any language/toolchain plus an optional parse regex. `loom scan run` converts parsed diagnostics for registered `CodeFile`s into derived `Finding` nodes.
+
+### external diagnostic finding
+
+A derived `Finding` whose body records `kind=external_diagnostic`, adapter name, file, line, message, and optional diagnostic code. It participates in the ordinary finding triage lifecycle. If a later adapter run no longer emits the diagnostic, loom resolves the derived finding.
+
+### pattern pre-screening
+
+A quality-rule assist, not a verdict. Pack rules may carry `patterns[]` as regex strings. When a quality WorkItem is built, loom runs those regexes over the target intent's grounded files and embeds `pre_screened_hits` (`path`, `line`, `pattern`, `excerpt`) in the packet. The hits are never stored; the LLM must confirm or refute each hit before writing a `GOVERNS` verdict.
+
+`detection_kind=llm_judgment` means no machine pre-screening is used. `detection_kind=pattern` means `patterns[]` can produce `pre_screened_hits`, but the final judgment is still asserted evidence from the LLM/human.
+
 ### Validation
 
-A proof object: command, manual check, saga, benchmark, assertion, or scenario that validates one or more intents.
+A proof object: command, manual check, journey, benchmark, assertion, scenario, or contract that validates one or more intents.
 
 A test file is a `CodeFile`; the proof is the `Validation`.
 
@@ -266,9 +280,9 @@ An intent at capability altitude: the system can do something meaningful. It is 
 
 ### scenario intent
 
-A concrete case of a behavior, usually linked by `scenario_of`.
+A concrete case of a behavior, usually linked by `scenario_of`. Scenario families are ordinary intents connected to a parent capability by `ScenarioOf`; the scenario intent's `aspect` facet marks whether it is `happy`, `sad`, `fallback`, or `edge_case`.
 
-Example: `invalid password is rejected without session creation` scenario_of `user can log in with password`.
+Example: `invalid password is rejected without session creation` scenario_of `user can log in with password` with `aspect=sad`.
 
 ### variant intent
 
@@ -324,7 +338,7 @@ The condition belongs as an edge facet/property.
 
 ### sequence
 
-`Intent -> Intent`. Ordered step relation inside a journey/saga.
+`Intent -> Intent`. Ordered step relation inside a journey.
 
 ### implements
 
@@ -380,7 +394,7 @@ Examples:
 - assertion,
 - benchmark,
 - manual_check,
-- saga,
+- journey,
 - scenario,
 - contract.
 
@@ -395,14 +409,14 @@ Examples:
 | atomic leaf | unit/module test, assertion, property test |
 | internal capability | integration test through seam |
 | external interface | contract/API/CLI/UI test |
-| scenario/journey | saga or flow test |
+| scenario/journey | journey or flow test |
 | reaction | event/scenario test |
 | performance | benchmark |
 | visual/product acceptance | manual or visual proof |
 
-### composition proof
+### journey
 
-A proof that multiple behaviors work together. Usually saga/flow/integration proof.
+A proof that multiple behaviors work together in an ordered flow. Preferred term: `journey`. Avoid `saga` except when describing the deprecated legacy alias/key accepted for old specs and command aliases.
 
 Child proofs alone do not necessarily prove parent composition.
 
@@ -412,11 +426,11 @@ A validation that cannot currently run because of an explicit external prerequis
 
 ---
 
-## Wiki terminology
+## Wiki terminology `[deferred/not current CLI]`
 
 ### WikiProjection
 
-The generated human/agent-readable documentation derived from graph facts.
+Deferred generated human/agent-readable documentation derived from graph facts.
 
 Preferred term: wiki projection.
 
@@ -440,11 +454,11 @@ A graph/code/proof fact that a wiki page relies on. If the dependency changes, t
 
 ### preview run
 
-An isolated wiki generation under `.loom/wiki-runs/<run-id>/` before publishing.
+A deferred isolated wiki generation under `.loom/wiki-runs/<run-id>/` before publishing.
 
 ### publish
 
-Promotion of a verified wiki preview into `docs/loom/**`.
+Deferred promotion of a verified wiki preview into `docs/loom/**`.
 
 ---
 
@@ -452,23 +466,23 @@ Promotion of a verified wiki preview into `docs/loom/**`.
 
 ### event
 
-A change entering loom from human, LLM, code, wiki, validation, import, or external contract.
+A change entering loom from human, LLM, code, documentation, validation, import, or external contract.
 
 ### source
 
-Where an event came from: human, llm, code, wiki, validation, external, import, signal.
-
-### normalize
-
-Translate free-form input or external change into a typed graph delta, task, proposal, signal, or rejection.
+Where an event came from: human, llm, code, wiki/documentation, validation, external, import, signal.
 
 ### route
+
+Translate captured input or a graph state into a typed next step, task, proposal, signal, or rejection.
+
+### queue route
 
 Choose the next queue/work item based on graph state.
 
 ### WorkItem
 
-A promptable unit of work emitted by loom. It contains target facts, reason, role, effort, context refs, allowed actions, evidence requirements, write-back contract, and stop condition.
+A promptable unit of work emitted by `loom next`. Real fields are `mode`, `owner_role`, `effort`, `reason`, `target`, `stale_causes`, `prompt_contract`, `context`, `truth_gap`, and `next_step`. File hints live at `context.read_set`; allowed actions and write-back live inside `prompt_contract`.
 
 ### PromptContract
 
@@ -478,16 +492,18 @@ The LLM-facing contract for a WorkItem: mindset, allowed actions, forbidden acti
 
 The hat the LLM must adopt for a work item.
 
-Core roles:
+Current WorkItem owner roles:
 
 - builder,
 - analyzer,
 - fixer,
 - validator,
-- quality,
-- interviewer,
-- wiki_author,
-- wiki_reviewer.
+- quality.
+
+Human-protocol/deferred roles:
+
+- interviewer (implemented as door/inbox routing protocol, not a current WorkItem owner role),
+- wiki_author / wiki_reviewer (deferred wiki projection roles; not current CLI roles).
 
 ### mindset
 
@@ -511,6 +527,23 @@ A state requiring human decision or input. The LLM may frame choices, but must n
 
 A model-neutral difficulty tier for the work: low, mid, high. The harness maps effort to available model/tooling; loom does not name vendors.
 
+
+### Definition-of-Complete
+
+The per-intent scorecard reported by `loom completeness` and embedded in `loom next --mode elaborate`. Its axes are `scenarios`, `prerequisites`, `boundary`, `proof`, `journey`, and `questions`.
+
+### completeness waiver
+
+A reasoned facet written by `loom intent waive <intent> <axis> --reason "<why>"` for non-question completeness axes. A waiver says an axis deliberately does not apply right now; it is cleared when the intent is redefined, because the reason was granted against the previous meaning.
+
+### open question
+
+An unanswered product/design question captured as an `InboxItem` with `--source question`, usually linked to an intent by `--link intent:<id>`. Open questions are counted in `graph_state.open_questions` and surfaced by `loom session`; the linked intent's `questions` axis stays open until the inbox item is answered, routed, rejected, duplicated, deferred, or otherwise withdrawn from the open question set.
+
+### elaborate queue
+
+The builder queue behind `loom next --mode elaborate`. It serves the most-incomplete user-visible feature intent and asks the LLM to grow its forgotten surroundings: scenarios, prerequisites, boundary/proof/journey coverage, crisp human questions, or reasoned non-question waivers.
+
 ### state transition
 
 A legal status change accepted by loom after LLM write-back and validation.
@@ -531,9 +564,9 @@ A stable-ish reference to code: file path plus symbol or line range.
 
 The files/symbols/evidence loom suggests the LLM should inspect for a WorkItem.
 
-### dig
+### dig `[deferred/not current]`
 
-A focused code-intelligence view for one WorkItem: suggested read set, prior evidence, stale causes, and target facts.
+A deferred focused helper over a WorkItem's `context.read_set`, `stale_causes`, target, and prior evidence. The current CLI surfaces this context directly in `loom next`.
 
 ### extraction
 

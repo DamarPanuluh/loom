@@ -56,8 +56,18 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                 "proposed",
                 serde_json::json!({ "proposal": proposal, "predicted_outcome": predicted_outcome }),
             )?;
-            store.ensure_edge(EdgeKind::Targets, &h.id, &t.id)?;
-            println!("hypothesis '{}' targets '{}'", h.name, t.name);
+            let edge = store.ensure_edge(EdgeKind::Targets, &h.id, &t.id)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "hypothesis": node_json(&h),
+                    "target": node_json(&t),
+                    "edge": edge,
+                }),
+                "loom status",
+                format!("hypothesis '{}' targets '{}'", h.name, t.name),
+            )?;
             Ok(())
         }
         HypothesisCmd::Prove {
@@ -73,7 +83,20 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
             };
             store.set_node_status(&h.id, status)?;
             store.add_note(&h.id, "decision", &format!("{status}: {evidence}"))?;
-            println!("hypothesis '{}' {status}", h.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "hypothesis": {
+                        "id": h.id,
+                        "name": h.name,
+                        "status": status,
+                    },
+                    "evidence": evidence,
+                }),
+                "loom status",
+                format!("hypothesis '{}' {status}", h.name),
+            )?;
             Ok(())
         }
         HypothesisCmd::Adopt { key, spawned } => {
@@ -98,14 +121,40 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                 "decision",
                 &format!("adopted → spawned intent {}", intent.id),
             )?;
-            println!("adopted '{}' → planned intent '{}'", h.name, intent.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "hypothesis": {
+                        "id": h.id,
+                        "name": h.name,
+                        "status": "adopted",
+                    },
+                    "spawned_intent": node_json(&intent),
+                }),
+                "loom status",
+                format!("adopted '{}' → planned intent '{}'", h.name, intent.name),
+            )?;
             Ok(())
         }
         HypothesisCmd::Reject { key, reason } => {
             let h = store.resolve_node(&key, Some(NodeType::Hypothesis))?;
             store.set_node_status(&h.id, "rejected")?;
             store.add_note(&h.id, "decision", &format!("rejected: {reason}"))?;
-            println!("rejected '{}'", h.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "hypothesis": {
+                        "id": h.id,
+                        "name": h.name,
+                        "status": "rejected",
+                    },
+                    "reason": reason,
+                }),
+                "loom status",
+                format!("rejected '{}'", h.name),
+            )?;
             Ok(())
         }
         HypothesisCmd::Show { key } => {
@@ -174,11 +223,22 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
                 "",
                 serde_json::json!({ "kind": kind, "identity": identity }),
             )?;
-            if let Some(cf) = codefile {
+            let exposes_edge = if let Some(cf) = codefile {
                 let c = store.resolve_node(&cf, Some(NodeType::CodeFile))?;
-                store.add_edge(EdgeKind::Exposes, &s.id, &c.id, TruthClass::Asserted)?;
-            }
-            println!("declared surface '{}' [{}]", s.name, &s.id[..8]);
+                Some(store.add_edge(EdgeKind::Exposes, &s.id, &c.id, TruthClass::Asserted)?)
+            } else {
+                None
+            };
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "surface": node_json(&s),
+                    "exposes_edge": exposes_edge,
+                }),
+                "loom status",
+                format!("declared surface '{}' [{}]", s.name, &s.id[..8]),
+            )?;
             Ok(())
         }
         SurfaceCmd::Show { key } => {
@@ -206,21 +266,46 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
                 body["identity"] = serde_json::json!(id);
             }
             store.set_node_body(&s.id, &body)?;
-            if let Some(cf) = codefile {
+            let exposes_edge = if let Some(cf) = codefile {
                 let c = store.resolve_node(&cf, Some(NodeType::CodeFile))?;
                 // re-bind: drop the old exposes edge(s) from this surface, add the new one.
                 for e in store.edges_with(Some(EdgeKind::Exposes), Some(&s.id), None)? {
                     store.delete_edge(&e.id)?;
                 }
-                store.add_edge(EdgeKind::Exposes, &s.id, &c.id, TruthClass::Asserted)?;
-            }
-            println!("updated surface '{}'", s.name);
+                Some(store.add_edge(EdgeKind::Exposes, &s.id, &c.id, TruthClass::Asserted)?)
+            } else {
+                None
+            };
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "surface": {
+                        "id": s.id,
+                        "name": s.name,
+                        "status": s.status,
+                        "body": body,
+                    },
+                    "exposes_edge": exposes_edge,
+                }),
+                "loom status",
+                format!("updated surface '{}'", s.name),
+            )?;
             Ok(())
         }
         SurfaceCmd::Delete { key } => {
             let n = store.resolve_node(&key, Some(NodeType::InterfaceSurface))?;
             store.delete_node(&n.id)?;
-            println!("deleted surface '{}'", n.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "deleted": true,
+                    "surface": node_json(&n),
+                }),
+                "loom status",
+                format!("deleted surface '{}'", n.name),
+            )?;
             Ok(())
         }
         SurfaceCmd::List { limit } => {
@@ -242,12 +327,30 @@ pub(crate) fn vocab(graph: Option<&Path>, cmd: VocabCmd, json: bool) -> Result<(
     match cmd {
         VocabCmd::Add { term, why } => {
             store.add_vocab_term(&term, &why)?;
-            println!("registered vocab term '{term}'");
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "term": term,
+                    "why": why,
+                }),
+                "loom status",
+                format!("registered vocab term '{term}'"),
+            )?;
             Ok(())
         }
         VocabCmd::Remove { term } => {
             store.remove_vocab_term(&term)?;
-            println!("removed vocab term '{term}' (and untagged any nodes carrying it)");
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "removed": true,
+                    "term": term,
+                }),
+                "loom status",
+                format!("removed vocab term '{term}' (and untagged any nodes carrying it)"),
+            )?;
             Ok(())
         }
         VocabCmd::List => {

@@ -15,7 +15,7 @@ use crate::extract::{extract, Extraction, Role};
 use crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 /// Summary of one sync run.
@@ -80,15 +80,15 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     Ok(report)
 }
 
-/// Pass 1: detect content changes, recompute derived facets, and gather the set
-/// of intents whose grounding changed (the ripple seed).
+/// Pass 1: detect content changes, recompute derived facets, and gather a map
+/// of grounded intents to the concrete file-change causes that stale dependents.
 fn sync_structural(
     store: &Store,
     root: &Path,
     codefiles: &[Node],
     report: &mut SyncReport,
-) -> Result<BTreeSet<String>> {
-    let mut changed_intents: BTreeSet<String> = BTreeSet::new();
+) -> Result<BTreeMap<String, BTreeSet<String>>> {
+    let mut changed_intents: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();
     for cf in codefiles {
         report.files_scanned += 1;
@@ -107,9 +107,11 @@ fn sync_structural(
                     .is_some()
                 {
                     report.files_deleted += 1;
+                    let cause = format!("registered codefile {} disappeared", cf.name);
                     ripple_codefile(
                         store,
                         &cf.id,
+                        &cause,
                         &mut changed_intents,
                         &mut seen_surfaces,
                         report,
@@ -129,9 +131,11 @@ fn sync_structural(
         // Ripple only on a REAL change (prior hash existed and differs).
         if prior.is_some() {
             report.files_changed += 1;
+            let cause = format!("content hash of {} changed", cf.name);
             ripple_codefile(
                 store,
                 &cf.id,
+                &cause,
                 &mut changed_intents,
                 &mut seen_surfaces,
                 report,
@@ -149,15 +153,19 @@ fn sync_structural(
 fn ripple_codefile(
     store: &Store,
     cf_id: &str,
-    changed_intents: &mut BTreeSet<String>,
+    cause: &str,
+    changed_intents: &mut BTreeMap<String, BTreeSet<String>>,
     seen_surfaces: &mut BTreeSet<String>,
     report: &mut SyncReport,
 ) -> Result<()> {
     for e in store.edges_with(Some(EdgeKind::Implements), None, Some(cf_id))? {
-        if store.stale_edge(&e.id)? {
+        if store.stale_edge(&e.id, cause)? {
             report.edges_staled += 1;
         }
-        changed_intents.insert(e.from_id.clone());
+        changed_intents
+            .entry(e.from_id.clone())
+            .or_default()
+            .insert(cause.to_string());
     }
     // Integration-monitoring ripple: cf is the `to` of an `exposes` edge; the
     // surface is its `from`. Reset the contracts that `call` each surface.
@@ -177,10 +185,10 @@ fn ripple_codefile(
             if !was_proven {
                 continue;
             }
-            if store.stale_edge(&call.id)? {
+            if store.stale_edge(&call.id, cause)? {
                 report.edges_staled += 1;
             }
-            store.set_node_status(&call.from_id, "not_run")?;
+            store.reset_validation_status_for_sync(&call.from_id)?;
             report.contracts_reset += 1;
             // Fold into the headline reset tally so the summary line can never
             // read `0 validations reset` next to a reset contract.
@@ -188,7 +196,7 @@ fn ripple_codefile(
             // The contract proves intents via `validates`; reset those so the
             // intent's proof reads as unproven, mirroring the implements ripple.
             for v in store.edges_with(Some(EdgeKind::Validates), Some(&call.from_id), None)? {
-                if store.stale_edge(&v.id)? {
+                if store.stale_edge(&v.id, cause)? {
                     report.edges_staled += 1;
                 }
             }
@@ -198,24 +206,30 @@ fn ripple_codefile(
 }
 
 /// Pass 2: ripple staleness from changed intents to the edges that depend on
-/// them — governs, validates (also resetting the proof), and relationships.
+/// them — targets, governs, validates (also resetting the proof), and relationships.
 fn ripple_changed_intents(
     store: &Store,
-    changed_intents: &BTreeSet<String>,
+    changed_intents: &BTreeMap<String, BTreeSet<String>>,
     report: &mut SyncReport,
 ) -> Result<()> {
-    for intent in changed_intents {
+    for (intent, causes) in changed_intents {
+        let cause = causes.iter().cloned().collect::<Vec<_>>().join("; ");
         for e in store.edges_with(Some(EdgeKind::Governs), None, Some(intent))? {
-            if store.stale_edge(&e.id)? {
+            if store.stale_edge(&e.id, &cause)? {
+                report.edges_staled += 1;
+            }
+        }
+        for e in store.edges_with(Some(EdgeKind::Targets), None, Some(intent))? {
+            if store.stale_edge(&e.id, &cause)? {
                 report.edges_staled += 1;
             }
         }
         for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent))? {
-            if store.stale_edge(&e.id)? {
+            if store.stale_edge(&e.id, &cause)? {
                 report.edges_staled += 1;
             }
             // Reset the linked Validation's last_result.
-            store.set_node_status(&e.from_id, "not_run")?;
+            store.reset_validation_status_for_sync(&e.from_id)?;
             report.validations_reset += 1;
         }
         for kind in [
@@ -227,12 +241,12 @@ fn ripple_changed_intents(
             EdgeKind::Sequence,
         ] {
             for e in store.edges_with(Some(kind), Some(intent), None)? {
-                if store.stale_edge(&e.id)? {
+                if store.stale_edge(&e.id, &cause)? {
                     report.edges_staled += 1;
                 }
             }
             for e in store.edges_with(Some(kind), None, Some(intent))? {
-                if store.stale_edge(&e.id)? {
+                if store.stale_edge(&e.id, &cause)? {
                     report.edges_staled += 1;
                 }
             }
@@ -283,15 +297,20 @@ fn ripple_artifact_drift(store: &Store, root: &Path, report: &mut SyncReport) ->
         if !drifted {
             continue;
         }
+        let cause = if current.is_some() {
+            format!("artifact {artifact} changed")
+        } else {
+            format!("artifact {artifact} disappeared")
+        };
         for e in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
-            if store.stale_edge(&e.id)? {
+            if store.stale_edge(&e.id, &cause)? {
                 report.edges_staled += 1;
             }
         }
         // Only count/reset a validation that was actually proven; one already
         // at `not_run` is unchanged, so it is neither reset nor counted.
         if val.status != "not_run" {
-            store.set_node_status(&val.id, "not_run")?;
+            store.reset_validation_status_for_sync(&val.id)?;
             report.validations_reset += 1;
         }
     }
@@ -313,7 +332,7 @@ fn ripple_artifact_drift(store: &Store, root: &Path, report: &mut SyncReport) ->
 fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {
     let coverages = store.list_nodes(Some(NodeType::JourneyCoverage), usize::MAX)?;
     for cov in coverages {
-        let mut drifted = false;
+        let mut causes = BTreeSet::new();
         for field in ["runner_ref", "test_ref"] {
             let Some(reference) = cov.body.get(field).and_then(|v| v.as_str()) else {
                 continue;
@@ -345,11 +364,19 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
                 )?,
                 None => store.clear_facet(&cov.id, TargetKind::Node, &facet_key)?,
             }
-            drifted |= this_drifted;
+            if this_drifted {
+                let cause = if current.is_some() {
+                    format!("{field} {rel_path} changed")
+                } else {
+                    format!("{field} {rel_path} disappeared")
+                };
+                causes.insert(cause);
+            }
         }
-        if !drifted {
+        if causes.is_empty() {
             continue;
         }
+        let cause = causes.iter().cloned().collect::<Vec<_>>().join("; ");
         // Find the covered intent (Covers: coverage → intent) and stale only the
         // journey proof(s) this coverage actually stands behind, so a sibling
         // proof for the same intent isn't disturbed. When the coverage declares
@@ -389,10 +416,10 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
                     continue;
                 }
             }
-            if store.stale_edge(&e.id)? {
+            if store.stale_edge(&e.id, &cause)? {
                 report.edges_staled += 1;
             }
-            store.set_node_status(&val.id, "not_run")?;
+            store.reset_validation_status_for_sync(&val.id)?;
             report.validations_reset += 1;
         }
     }

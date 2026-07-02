@@ -5,7 +5,7 @@
 
 use crate::cli::{
     Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,
-    LayerCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
+    LayerCmd, NoteCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
 };
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
@@ -23,7 +23,7 @@ mod journey;
 mod misc_cmd;
 mod proof_cmd;
 mod proposal_cmd;
-mod saga;
+mod pulse;
 mod status_cmd;
 pub use intent::looks_like_symbol;
 pub(crate) use status_cmd::require_lane;
@@ -82,6 +82,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Door { utterance } => misc_cmd::door(cli.graph.as_deref(), &utterance, cli.json),
         Command::Inbox { cmd } => misc_cmd::inbox(cli.graph.as_deref(), cmd, cli.json),
         Command::Task { cmd } => misc_cmd::task(cli.graph.as_deref(), cmd, cli.json),
+        Command::Note { cmd } => misc_cmd::note(cli.graph.as_deref(), cmd, cli.json),
         Command::Session => misc_cmd::session(cli.graph.as_deref(), cli.json),
         Command::Guide { role } => misc_cmd::guide(role.as_deref(), cli.json),
         Command::Find { query, limit } => {
@@ -96,7 +97,6 @@ pub fn run(cli: Cli) -> Result<()> {
         }
         Command::Hypothesis { cmd } => domain_cmd::hypothesis(cli.graph.as_deref(), cmd, cli.json),
         Command::Surface { cmd } => domain_cmd::surface(cli.graph.as_deref(), cmd, cli.json),
-        Command::Saga { cmd } => saga::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Vocab { cmd } => domain_cmd::vocab(cli.graph.as_deref(), cmd, cli.json),
         Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd, cli.json),
         Command::Interface { cmd } => domain_cmd::interface(cli.graph.as_deref(), cmd, cli.json),
@@ -109,6 +109,10 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Whoami => diagnostics_cmd::whoami_cmd(cli.graph.as_deref(), cli.json),
         Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Scan { cmd } => diagnostics_cmd::scan_cmd(cli.graph.as_deref(), cmd, cli.json),
+        Command::Completeness { key } => {
+            diagnostics_cmd::completeness_cmd(cli.graph.as_deref(), key.as_deref(), cli.json)
+        }
     }
 }
 
@@ -144,16 +148,6 @@ pub(crate) fn node_json(n: &Node) -> serde_json::Value {
         "created_at": n.created_at,
         "updated_at": n.updated_at,
     })
-}
-
-/// After a judgment (a verdict / mark), echo loom's recommended next move so the
-/// loop never dead-ends at a terminal confirmation — the same self-teaching the
-/// work-item `next_step` gives, but emitted at the point of action so a driver
-/// is never stranded without re-running `loom next`.
-pub(crate) fn print_next_move(store: &Store) -> Result<()> {
-    let ladder = crate::maturity::ladder(store)?;
-    println!("→ next: {}", ladder.next_command);
-    Ok(())
 }
 
 /// Registered CodeFiles with no owning `implements` edge and not matched by a
@@ -264,8 +258,13 @@ fn layer(graph: Option<&Path>, cmd: LayerCmd, json: bool) -> Result<()> {
                 bail!("provide the layer order, top first");
             }
             store.set_meta("layer_order", &serde_json::to_string(&layers)?)?;
-            println!("layer order: {}", layers.join(" > "));
-            Ok(())
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "layer_order": layers }),
+                "loom sync",
+                format!("layer order: {}", layers.join(" > ")),
+            )
         }
         LayerCmd::List => {
             let state = domain_cmd::layer_detector_state(&store)?;
@@ -283,8 +282,13 @@ fn layer(graph: Option<&Path>, cmd: LayerCmd, json: bool) -> Result<()> {
         }
         LayerCmd::Clear => {
             store.set_meta("layer_order", "[]")?;
-            println!("layer order cleared");
-            Ok(())
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "layer_order": [] }),
+                "loom status",
+                "layer order cleared".to_string(),
+            )
         }
     }
 }

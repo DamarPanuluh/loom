@@ -23,6 +23,11 @@ pub struct Export {
     pub edges: Vec<Edge>,
     pub facets: Vec<Facet>,
     pub tags: Vec<Tag>,
+    /// Portable repo config (allowlisted meta keys: layer order, coverage
+    /// ignores, codefile globs, scan adapters). Absent when empty, so graphs
+    /// without config keep their exact pre-config byte format.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub config: std::collections::BTreeMap<String, String>,
 }
 
 /// Current export format version.
@@ -39,6 +44,7 @@ impl Export {
             edges: snap.edges,
             facets: snap.facets,
             tags: snap.tags,
+            config: snap.config,
         }
     }
 
@@ -54,6 +60,7 @@ impl Export {
             edges: self.edges,
             facets: self.facets,
             tags: self.tags,
+            config: self.config,
         }
     }
 
@@ -116,6 +123,7 @@ mod tests {
             edges: vec![],
             facets: vec![],
             tags: vec![],
+            config: Default::default(),
         };
         let json = e.to_json().unwrap();
         insta::assert_snapshot!(json, @r###"{
@@ -131,6 +139,32 @@ mod tests {
 "###);
         let parsed = Export::from_json(&json).unwrap();
         assert_eq!(parsed, e);
+    }
+
+    #[test]
+    fn config_keys_travel_and_absent_config_parses() {
+        // A populated allowlisted config round-trips…
+        let mut config = std::collections::BTreeMap::new();
+        config.insert("layer_order".to_string(), r#"["api","domain"]"#.to_string());
+        let e = Export {
+            format: FORMAT,
+            graph_id: "g1".into(),
+            name: "demo".into(),
+            observed: false,
+            nodes: vec![],
+            edges: vec![],
+            facets: vec![],
+            tags: vec![],
+            config,
+        };
+        let json = e.to_json().unwrap();
+        assert!(json.contains("\"layer_order\""));
+        assert_eq!(Export::from_json(&json).unwrap(), e);
+        // …and a pre-config export (no `config` field) still parses.
+        let legacy = r#"{"format":1,"graph_id":"g","name":"n","observed":false,
+                         "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
+        let parsed = Export::from_json(legacy).unwrap();
+        assert!(parsed.config.is_empty());
     }
 
     proptest! {
@@ -149,6 +183,7 @@ mod tests {
                 edges: vec![],
                 facets: vec![],
                 tags: vec![],
+                config: Default::default(),
             };
 
             let first = export.to_json().unwrap();

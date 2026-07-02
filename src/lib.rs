@@ -11,13 +11,16 @@
 
 pub mod cli;
 pub mod commands;
+pub mod completeness;
 pub mod extract;
 pub mod fsglob;
+pub mod journey;
 pub mod maturity;
 pub mod model;
 pub mod packs;
+pub mod prescan;
 pub mod registry;
-pub mod saga;
+pub mod scan;
 pub mod signal;
 pub mod store;
 pub mod sync;

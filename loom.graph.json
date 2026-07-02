@@ -1,9 +1,22 @@
 {
   "format": 1,
   "graph_id": "332d7887546233be9a9952fac1ee2b99",
-  "name": "loom",
+  "name": "t",
   "observed": false,
   "nodes": [
+    {
+      "id": "00164079625483a16d60fb3059b629f6",
+      "type": "inbox_item",
+      "name": "Amendment to b10f5f9a: The granularity rule (small enough to…",
+      "description": "Amendment to b10f5f9a: The granularity rule (small enough to be reusable with possible overlap, big enough to not become noise) applies specifically to the Intent axis. For other truth axes, LLM triage must make the proper decision per axis — no single granularity recipe carries over.",
+      "status": "duplicate",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-01T20:00:53.492Z",
+      "updated_at": "2026-07-01T20:05:11.044Z"
+    },
     {
       "id": "0237fd131f915654e586a5d3be394b51",
       "type": "codefile",
@@ -55,14 +68,14 @@
       "type": "validation",
       "name": "http contract saga runner regression tests",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring6 http_contract",
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": "2026-07-01T15:31:56.082Z"
+      "updated_at": ""
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -134,14 +147,14 @@
       "type": "validation",
       "name": "proposal item adoption regression tests",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring5 proposal_",
         "type": "test"
       },
       "created_at": "2026-07-01T07:49:58.681Z",
-      "updated_at": "2026-07-01T08:26:14.942Z"
+      "updated_at": ""
     },
     {
       "id": "321fdfdbb8b61e2e9f977f8d93339cc5",
@@ -232,14 +245,14 @@
       "type": "validation",
       "name": "journey proof metadata regression tests",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring5 metadata",
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:14.835Z",
-      "updated_at": "2026-07-01T09:42:34.591Z"
+      "updated_at": ""
     },
     {
       "id": "41c5912224804d3bd404707f811a8507",
@@ -317,6 +330,19 @@
       },
       "created_at": "2026-07-01T07:49:58.705Z",
       "updated_at": "2026-07-01T09:39:21.771Z"
+    },
+    {
+      "id": "4edaca9596b5f18ff3ae75141882fda0",
+      "type": "inbox_item",
+      "name": "TruthSync per-axis correctness criteria (canonical capture; …",
+      "description": "TruthSync per-axis correctness criteria (canonical capture; replaces b10f5f9a, 00164079, 962bcc30):\n\nContext: TruthSync is a good mechanism, but we have not defined what correct looks like per truth axis. During triage, a PM-oriented LLM must make the proper decision for each axis — there is no single universal rule.\n\nIntent axis (specific proposal for THIS axis only): intent granularity is currently undefined and not conceptually useful. Propose explicit sizing guidance: an intent should be sized so it can recur under multiple parents/contexts — reusable, with overlap between intents acceptable — yet not so fine-grained that the graph devolves into noise. This is Intent sizing guidance only, not a template for other axes.\n\nOther truth axes (RELATES_TO, GOVERNS, validations, hypotheses, etc.): each axis has its own correctness criterion, deliberately NOT enumerated here. Defining them requires code reconnaissance per axis; the triager is expected to investigate and decide what proper looks like for each (evidence bar, lifecycle, overlap policy, verdict honesty, or whatever that axis actually needs). Do not import the intent-sizing recipe elsewhere.\n\nImplementation ask: loom's LLM self-teaching facet (guide, role skills, docs surfaced at write time) must state these per-axis correctness criteria explicitly, so any LLM operating the graph knows what right looks like for Intent versus each other truth axis.\n\nDone when: loom's guide/self-teaching output states an explicit, falsifiable correctness criterion for each truth axis, with the intent-sizing rule above appearing under the Intent axis only.",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-01T20:05:04.749Z",
+      "updated_at": "2026-07-02T05:02:52.223Z"
     },
     {
       "id": "51dcde353291f8bc7d98db9fcfa5288b",
@@ -486,6 +512,20 @@
       "updated_at": "2026-07-01T04:32:22.669Z"
     },
     {
+      "id": "7a299c39a89e928083606029eee4ba19",
+      "type": "note",
+      "name": "note:decision",
+      "description": "duplicate: superseded by canonical capture 4edaca95",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "b10f5f9ad9ae6c5a8ee0f99546f480b6"
+      },
+      "created_at": "2026-07-01T20:05:11.036Z",
+      "updated_at": "2026-07-01T20:05:11.036Z"
+    },
+    {
       "id": "82ed362a41beb0a3af71f5042d5c3d34",
       "type": "intent",
       "name": "import loads every node before any edge",
@@ -523,6 +563,19 @@
       },
       "created_at": "2026-06-30T14:07:19.549Z",
       "updated_at": "2026-06-30T14:07:19.549Z"
+    },
+    {
+      "id": "962bcc30bb7b631ec07128160a379af1",
+      "type": "inbox_item",
+      "name": "FULL CAPTURE (supersedes terse items b10f5f9a and 00164079 —…",
+      "description": "FULL CAPTURE (supersedes terse items b10f5f9a and 00164079 — read this one for triage):\n\nContext: TruthSync is a good mechanism, but we have not defined what correct looks like per truth axis. During triage, a PM-oriented LLM must make the proper decision for each axis — there is no single universal rule (granularity is NOT the rule for every axis).\n\nIntent axis (specific proposal for THIS axis only): Intent granularity as currently practiced is not conceptually very useful. Propose explicit intent-granularity guidance: each intent should be small enough to be reusable (overlap with other intents is acceptable), yet large enough that the graph does not devolve into noise. This is a proposal about Intent sizing only — not a template for other axes.\n\nOther truth axes (RELATES_TO, GOVERNS, validations, hypotheses, etc.): Each axis has its own correctness criterion. Triage must decide what proper looks like per axis; do not import the intent-granularity recipe elsewhere. The decision may be about evidence bar, lifecycle, overlap policy, verdict honesty, or something else entirely — whatever that axis actually needs.\n\nImplementation ask: Loom's LLM self-teaching facet (guide, role skills, docs surfaced at write time) must make these per-axis correctness criteria explicit when someone implements or uses loom, so any LLM operating the graph understands what right looks like for Intent versus each other truth axis — not one blurred rule.",
+      "status": "duplicate",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-01T20:02:26.382Z",
+      "updated_at": "2026-07-01T20:05:11.053Z"
     },
     {
       "id": "97c38f63874377a0bc55ae47854f44a3",
@@ -580,6 +633,33 @@
       "body": {},
       "created_at": "2026-07-01T04:32:22.670Z",
       "updated_at": "2026-07-01T04:32:22.670Z"
+    },
+    {
+      "id": "b10f5f9ad9ae6c5a8ee0f99546f480b6",
+      "type": "inbox_item",
+      "name": "TruthSync is a good mechanism, but we haven't defined granul…",
+      "description": "TruthSync is a good mechanism, but we haven't defined granularity. Intent granularity is not conceptually very useful as-is. Propose ruling intent granularity properly: small enough to be reusable (possible overlap), big enough to not become noise. During triage, a PM LLM should make the correct decision. For intent and other truth axes, ensure loom's LLM self-teaching facet is clear about correctness criteria when implementing, so LLMs using loom understand the criterion for each truth axis.",
+      "status": "duplicate",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-01T19:59:36.819Z",
+      "updated_at": "2026-07-01T20:05:11.035Z"
+    },
+    {
+      "id": "b3021037cc7c8f8d8ea43f01960a79cb",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: Implemented: TruthGap.correct_when now states a falsifiable per-axis criterion (src/truth.rs); intent-sizing rule (reusable across parents, overlap OK, not noise) lands under the Intent axis only; surfaced in loom guide, guide --role, guide --json truth_axes, and every work packet's truth_gap. Other axes each got their own criterion from code recon as requested.",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "4edaca9596b5f18ff3ae75141882fda0"
+      },
+      "created_at": "2026-07-02T05:02:52.224Z",
+      "updated_at": "2026-07-02T05:02:52.224Z"
     },
     {
       "id": "b871074588d0364512087c94ea306c23",
@@ -686,7 +766,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "647 lines (> 600)",
+      "description": "709 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -790,10 +870,10 @@
       "updated_at": "2026-07-01T12:28:12.335Z"
     },
     {
-      "id": "d4af0e020bef2b77b",
+      "id": "d3e4d58c3c9e094a9",
       "type": "finding",
-      "name": "src/workitem.rs is oversized",
-      "description": "692 lines (> 600)",
+      "name": "src/commands/proof_cmd.rs is oversized",
+      "description": "601 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -804,15 +884,15 @@
       "updated_at": ""
     },
     {
-      "id": "d501830b3a0c93f39",
-      "type": "finding",
-      "name": "src/saga.rs is oversized",
-      "description": "605 lines (> 600)",
-      "status": "oversized_file",
-      "truth_class": "derived",
+      "id": "d531b729aa922c124",
+      "type": "code_rule",
+      "name": "scan:clippy",
+      "description": "external diagnostics emitted by scan adapter 'clippy'",
+      "status": "",
+      "truth_class": "asserted",
       "body": {
-        "kind": "oversized_file",
-        "symbol": ""
+        "adapter": "clippy",
+        "category": "external"
       },
       "created_at": "",
       "updated_at": ""
@@ -821,7 +901,7 @@
       "id": "d59d6bf023b8f7d14",
       "type": "finding",
       "name": "src/store.rs is oversized",
-      "description": "1592 lines (> 600)",
+      "description": "1902 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -835,7 +915,7 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "702 lines (> 600)",
+      "description": "759 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -885,6 +965,20 @@
       "updated_at": ""
     },
     {
+      "id": "d9e838551d0b74d93",
+      "type": "finding",
+      "name": "src/packs.rs is oversized",
+      "description": "972 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "da0094e3c821d6b7d",
       "type": "quality_rule",
       "name": "iso5055-sec-no-hardcoded-secrets",
@@ -926,6 +1020,20 @@
       "updated_at": "2026-07-01T07:49:58.775Z"
     },
     {
+      "id": "db589a2e0c605c5fd",
+      "type": "finding",
+      "name": "src/commands/misc_cmd.rs is oversized",
+      "description": "840 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dd4a08efd63191d9cc2c0bb6a3c4db52",
       "type": "validation",
       "name": "loom graph dogfood journey",
@@ -943,6 +1051,34 @@
       },
       "created_at": "2026-07-01T12:32:35.194Z",
       "updated_at": "2026-07-01T12:34:20.390Z"
+    },
+    {
+      "id": "dd8a66484aee46a9f",
+      "type": "finding",
+      "name": "src/maturity.rs::build_rungs is complex",
+      "description": "complexity ~25 (> 20)",
+      "status": "complex_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "complex_symbol",
+        "symbol": "build_rungs"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de26662fd8357ee714349e9c6c403d4e",
+      "type": "note",
+      "name": "note:decision",
+      "description": "duplicate: superseded by canonical capture 4edaca95",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "00164079625483a16d60fb3059b629f6"
+      },
+      "created_at": "2026-07-01T20:05:11.044Z",
+      "updated_at": "2026-07-01T20:05:11.044Z"
     },
     {
       "id": "df750d03bdf758ca85a8e5cf5172e579",
@@ -1054,18 +1190,32 @@
       "updated_at": "2026-07-01T12:23:38.858Z"
     },
     {
+      "id": "f5b9c9990691f5b9127ceda4e6f7b927",
+      "type": "note",
+      "name": "note:decision",
+      "description": "duplicate: superseded by canonical capture 4edaca95 (tightened reusability phrasing, added done-condition, noted other axes need per-axis code recon)",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "962bcc30bb7b631ec07128160a379af1"
+      },
+      "created_at": "2026-07-01T20:05:11.053Z",
+      "updated_at": "2026-07-01T20:05:11.053Z"
+    },
+    {
       "id": "fc74e160558226eb8afd5158d6e0177b",
       "type": "validation",
       "name": "cargo test suite",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test -q",
         "type": "test"
       },
       "created_at": "2026-06-30T14:07:19.973Z",
-      "updated_at": "2026-07-01T04:37:31.695Z"
+      "updated_at": ""
     },
     {
       "id": "ffc35278eff02828a5db18551f63d820",
@@ -1140,14 +1290,14 @@
       "to_id": "9046885650a069dbc63004ea95ef2f5e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "No literal credentials, tokens, private keys, passwords or connection strings are embedded in the verdict write-boundary implementation.",
       "evidence": "grep over src for api_key|secret|password|BEGIN PRIVATE KEY|token= found only rule/help text in src/packs.rs:56-69, not credential-bearing implementation literals.",
       "confidence": 0.92,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.966Z",
-      "updated_at": "2026-07-01T04:37:54.452Z"
+      "updated_at": "2026-07-01T19:56:36.324Z"
     },
     {
       "id": "0551070005bc2986246f8af1a37b4573",
@@ -1155,14 +1305,14 @@
       "to_id": "654882936617a51dedbe18bcd6518e5a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "exporting, wiping derived data, re-syncing and re-exporting yields identical bytes",
       "evidence": "travel.rs canonicalizes ordering; store.rs DERIVED_TS empty + FNV-1a derived_id; covered by inv2_derived_plane_rebuildable",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.692Z",
-      "updated_at": "2026-06-30T14:07:19.699Z"
+      "updated_at": "2026-07-01T19:56:36.297Z"
     },
     {
       "id": "06f2e13c8fc73193a4f82880e5ea982f",
@@ -1170,14 +1320,14 @@
       "to_id": "27efc536c465612b1ba4d8b7584fd53d",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring6 http_contract` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-01T15:31:56.081Z"
+      "updated_at": "2026-07-02T05:56:11.628Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -1185,14 +1335,29 @@
       "to_id": "0237fd131f915654e586a5d3be394b51",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "maturity only counts implemented leaf intents as ungrounded; hierarchy parents are exempt because children realize them",
       "evidence": "src/maturity.rs:79-95 builds a parent set from hierarchy edges, skips implemented intents whose id is in that parent set, and increments ungrounded only when a non-parent implemented intent has no Implements edge",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.894Z",
-      "updated_at": "2026-07-01T12:28:37.091Z"
+      "updated_at": "2026-07-01T19:56:36.214Z"
+    },
+    {
+      "id": "0d662e611004a901ef3ab7236fc3bd6c",
+      "from_id": "4a30357f4be00c5f97da73c7f122c188",
+      "to_id": "a7ccca5b5ae90723f0366637b9c00532",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:55:53.711Z",
+      "updated_at": "2026-07-01T19:55:53.711Z"
     },
     {
       "id": "0fbd6911cd68ec8177124f6a105f6cc2",
@@ -1230,14 +1395,14 @@
       "to_id": "6312dfde0229497f5e8b78d2fa835d83",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "importing a graph never inserts an edge before its endpoint nodes exist",
       "evidence": "src/store.rs restore still validates the full snapshot first, inserts all nodes before the edge loop, and commits in one transaction; cargo test passed.",
       "confidence": 0.91,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.635Z",
-      "updated_at": "2026-07-01T04:43:41.251Z"
+      "updated_at": "2026-07-01T19:56:36.283Z"
     },
     {
       "id": "1ef3a68168e561f416475f4d582b7540",
@@ -1245,14 +1410,29 @@
       "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these are cohesive command-surface behaviors sharing the CLI dispatch/handler layer",
       "evidence": "src/commands.rs still routes intent and find command surfaces to src/commands/intent.rs and src/commands/misc_cmd.rs; the intent_add args-struct refactor did not move the dispatch boundary",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.946Z",
-      "updated_at": "2026-07-01T13:42:56.384Z"
+      "updated_at": "2026-07-01T19:56:36.320Z"
+    },
+    {
+      "id": "2571e5a54c7861468a1fa1374bac0322",
+      "from_id": "88fcbe77fcd11a370842b523da58c7fb",
+      "to_id": "cba33876a9c4047424b8c05f9fc14591",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:55:54.600Z",
+      "updated_at": "2026-07-01T19:55:54.600Z"
     },
     {
       "id": "33b58ebeebc1efcab48be4e741e18245",
@@ -1290,14 +1470,29 @@
       "to_id": "eafb29133e985bbc463f651878d9a3e2",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "with a failing and an uninspected edge present, next returns the failing one first, with its contract",
       "evidence": "src/workitem.rs next()/validate_item ordering (fix>validate>build>quality>analyze>triage) is unchanged; this session only added open_findings/resolved_findings fields to GraphState, not the router priority",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.854Z",
-      "updated_at": "2026-07-01T13:42:45.419Z"
+      "updated_at": "2026-07-01T19:56:36.319Z"
+    },
+    {
+      "id": "43fe09edf840160e4c0e137d96a090ac",
+      "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
+      "to_id": "ab2b8d59f555c85569866fd178d9bb05",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:57:02.120Z",
+      "updated_at": "2026-07-01T19:57:02.120Z"
     },
     {
       "id": "51bf0f10f59a14fd4103c82b3f8c3a30",
@@ -1305,14 +1500,14 @@
       "to_id": "0237fd131f915654e586a5d3be394b51",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the proven rung and compass require a passing validation set plus no open JourneyProof smell for implemented user-visible intents",
       "evidence": "src/maturity.rs:113-120 counts only missing_journey_proof/proof_too_shallow_for_intent smells; src/maturity.rs:183-189 routes to validate while journey proof gaps remain; src/maturity.rs:246-274 keeps proven unmet unless all validations pass and open_journey_proof_smells is zero",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:28:05.398Z",
-      "updated_at": "2026-07-01T12:28:48.554Z"
+      "updated_at": "2026-07-01T19:56:36.214Z"
     },
     {
       "id": "539b900a082c1702daa2f6cbe81b0766",
@@ -1335,14 +1530,29 @@
       "to_id": "ef76b8e10aba8fea8af3092d0c1052d3",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "both intents are read-only signal-plane detectors over Store snapshots and intentionally share detector helpers",
       "evidence": "src/signal.rs:1-7 defines one read-only signal plane; src/signal.rs:323-389 implements JourneyProof smell detection, while src/signal.rs:460-502 computes DebtCluster output from the same snapshot/facet helper vocabulary without Store mutation",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:31:13.592Z",
-      "updated_at": "2026-07-01T12:31:31.501Z"
+      "updated_at": "2026-07-01T19:56:36.326Z"
+    },
+    {
+      "id": "5d672b7684e7aa825dc911bc10fa3bad",
+      "from_id": "9046885650a069dbc63004ea95ef2f5e",
+      "to_id": "51dcde353291f8bc7d98db9fcfa5288b",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:54:33.430Z",
+      "updated_at": "2026-07-01T19:54:33.430Z"
     },
     {
       "id": "5dfd43d6f1c7499e65f64ad666846ae3",
@@ -1350,14 +1560,29 @@
       "to_id": "71df360f44635e96e91fc6767bc93ea3",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "find on an intent term emits matching intent rows with grounding path, locator and verdict details",
       "evidence": "src/commands/misc_cmd.rs:197-249 builds JSON/human hits and follows implements edges with locator facets; ring5 JSON matrix and cargo test passed.",
       "confidence": 0.92,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T04:40:00.654Z",
-      "updated_at": "2026-07-01T04:40:10.779Z"
+      "updated_at": "2026-07-01T19:56:36.147Z"
+    },
+    {
+      "id": "5f2c10520055ff4d7caaa7dfa0c7f4ba",
+      "from_id": "9046885650a069dbc63004ea95ef2f5e",
+      "to_id": "279357bb8daf851ae25b759c274fff36",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:54:32.553Z",
+      "updated_at": "2026-07-01T19:54:32.553Z"
     },
     {
       "id": "6421f644db703f88aba4c729acd2dc81",
@@ -1373,6 +1598,21 @@
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.757Z",
       "updated_at": "2026-06-30T14:07:19.765Z"
+    },
+    {
+      "id": "6ba93bee17cd0378e27d38904821d9b1",
+      "from_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "to_id": "ef6b66e4221155ce0d869190370a7210",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:54:29.801Z",
+      "updated_at": "2026-07-01T19:54:29.801Z"
     },
     {
       "id": "6e552692a663cf30ad4bbb526e0a4456",
@@ -1395,14 +1635,14 @@
       "to_id": "9046885650a069dbc63004ea95ef2f5e",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.973Z",
-      "updated_at": "2026-07-01T04:37:31.695Z"
+      "updated_at": "2026-07-01T19:56:36.325Z"
     },
     {
       "id": "73758763c1fcf5a6dcbc337a451f8349",
@@ -1425,14 +1665,29 @@
       "to_id": "4a30357f4be00c5f97da73c7f122c188",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring5 proposal_` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:49:58.682Z",
-      "updated_at": "2026-07-01T08:26:14.941Z"
+      "updated_at": "2026-07-02T05:56:11.630Z"
+    },
+    {
+      "id": "791e3ad8cabd0d26e3d1e47751381ff8",
+      "from_id": "41c5912224804d3bd404707f811a8507",
+      "to_id": "df750d03bdf758ca85a8e5cf5172e579",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:54:31.672Z",
+      "updated_at": "2026-07-01T19:54:31.672Z"
     },
     {
       "id": "7e4d38f75e4c40982db3124f253b4967",
@@ -1440,14 +1695,14 @@
       "to_id": "4a30357f4be00c5f97da73c7f122c188",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proposal item adoption depends on the same Proposal node body contract created and displayed by proposal capture commands",
       "evidence": "src/commands/proposal_cmd.rs:32-157 creates/shows Proposal nodes with body.items; src/commands/proposal_cmd.rs:192-455 appends/adopts/defer/rejects numbered entries in that same body.items array and records spawned work metadata; proposal regression tests passed.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T07:53:00.759Z",
-      "updated_at": "2026-07-01T08:27:09.049Z"
+      "updated_at": "2026-07-02T05:56:11.631Z"
     },
     {
       "id": "8648aa7c91ee04014241d726544a3d54",
@@ -1455,14 +1710,14 @@
       "to_id": "aed762bc48f943d03e0be4871126697a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "validation add records normalized JourneyProof metadata only when supplied and validates proof-level/kind invariants",
       "evidence": "src/commands/proof_cmd.rs:111-155 handles proof_level/proof_kind/journey_id/repo_native_kind/artifact flags, rejects levels outside L0..L6 and journey metadata without proof_kind=journey, stores valid metadata in Validation body; ring5 metadata tests and cargo test passed.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:38:45.016Z",
-      "updated_at": "2026-07-01T09:44:32.050Z"
+      "updated_at": "2026-07-01T19:56:36.162Z"
     },
     {
       "id": "8a7cbf02b5babeb8389366afa028c14c",
@@ -1485,14 +1740,29 @@
       "to_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "loom intent add rejects symbol-pattern names unless explicitly allowed",
       "evidence": "src/commands/intent.rs intent_add still calls looks_like_symbol before add_node and bails without --allow-symbol-name; the args-struct refactor + --layer facet preserved that guard verbatim",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T04:39:31.837Z",
-      "updated_at": "2026-07-01T13:42:45.457Z"
+      "updated_at": "2026-07-02T05:56:11.436Z"
+    },
+    {
+      "id": "969cecb8d1d612f51f4c9c134a56db14",
+      "from_id": "33fa0bcaa3abb7230a5d7c403beec040",
+      "to_id": "5d8f8250e698c08b3c016ae320640c3a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:54:30.799Z",
+      "updated_at": "2026-07-01T19:54:30.799Z"
     },
     {
       "id": "995e32fcd5c208ea8d15b1c9b4c0fea6",
@@ -1500,14 +1770,14 @@
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "debt clusters are computed on demand from the current snapshot and are not persisted as graph edges or required work",
       "evidence": "src/signal.rs:1-7 documents debt as computed on demand and never stored; src/signal.rs:460-502 builds Vec<DebtCluster> from store.snapshot() facets and returns it without store mutation",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.813Z",
-      "updated_at": "2026-07-01T12:21:53.894Z"
+      "updated_at": "2026-07-01T19:56:36.251Z"
     },
     {
       "id": "9d5fb771799f9adde33700eed6c98d56",
@@ -1515,14 +1785,14 @@
       "to_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "saga execution supports repo-agnostic HTTP contract routes with state extraction, substitution, query/body threading and response-field assertions",
       "evidence": "src/saga.rs http_contract_to_saga now normalizes OpenAPI-style {param} path segments to {{ param }} via normalize_path_params before threading captures; check_response reports which fields were verified in the passing detail; conversion/execution semantics otherwise unchanged; 3 new unit tests + ring6 journey_run_contract_format_substitutes_single_brace_path_params pass",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:39:57.217Z",
-      "updated_at": "2026-07-01T15:28:18.225Z"
+      "updated_at": "2026-07-02T05:56:11.535Z"
     },
     {
       "id": "a4948c777c6a771abc8a06c80a4e3d73",
@@ -1530,14 +1800,14 @@
       "to_id": "a56055709634988945f76e980fcf0480",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "when a codefile content hash changes, sync re-opens asserted edges grounded in that file and dependent proof/relationship edges",
       "evidence": "src/sync.rs run() still stales IMPLEMENTS + dependent edges on content-hash change; this session added ripple_runner_drift (a new pass that stales journey proofs when a coverage runner_ref's source changes) — extends the same content-hash ripple model, doesn't change the codefile-change staleness path",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.730Z",
-      "updated_at": "2026-07-01T15:59:56.675Z"
+      "updated_at": "2026-07-02T05:56:11.595Z"
     },
     {
       "id": "c54711608652dda6602d831b1bb4195b",
@@ -1560,20 +1830,20 @@
       "to_id": "062105e11d1b02b813d44b68670a8575",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "src/cli/subcommands.rs defines the typed Clap subcommand schemas consumed by CLI dispatch",
       "evidence": "session added --base-url to JourneyCmd::Run and fixed a stale JSON-only doc comment on SagaCmd::Add; file remains pure Clap schema enums",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:29:22.635Z",
-      "updated_at": "2026-07-01T14:56:41.902Z"
+      "updated_at": "2026-07-02T05:56:11.379Z"
     },
     {
-      "id": "d034b5fc0c8852aea",
-      "from_id": "d59d6bf023b8f7d14",
-      "to_id": "d2fcf6c1e25f78a67",
-      "kind": "assesses",
+      "id": "d0208ae0d609bfcab",
+      "from_id": "dd8a66484aee46a9f",
+      "to_id": "0237fd131f915654e586a5d3be394b51",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -1585,8 +1855,8 @@
       "updated_at": ""
     },
     {
-      "id": "d154785c3690939f5",
-      "from_id": "d501830b3a0c93f39",
+      "id": "d034b5fc0c8852aea",
+      "from_id": "d59d6bf023b8f7d14",
       "to_id": "d2fcf6c1e25f78a67",
       "kind": "assesses",
       "truth_class": "derived",
@@ -1615,6 +1885,21 @@
       "updated_at": "2026-06-30T14:07:19.806Z"
     },
     {
+      "id": "d311d03884c662b88",
+      "from_id": "d9e838551d0b74d93",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d34f09ea6aeba056810be34caeedce8d",
       "from_id": "ca9db45bf812f86983765fc9bee1eb3c",
       "to_id": "88fcbe77fcd11a370842b523da58c7fb",
@@ -1635,20 +1920,35 @@
       "to_id": "82ed362a41beb0a3af71f5042d5c3d34",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these are cohesive persistence-correctness behaviors over the edge/node write boundary",
       "evidence": "src/store.rs still owns restore ordering and record_verdict/schema gates in the same SQLite persistence boundary; cargo test passed.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.653Z",
-      "updated_at": "2026-07-01T04:46:55.363Z"
+      "updated_at": "2026-07-01T19:56:36.322Z"
     },
     {
-      "id": "d3d43a2611d4f4064",
-      "from_id": "d4af0e020bef2b77b",
-      "to_id": "d2fcf6c1e25f78a67",
-      "kind": "assesses",
+      "id": "d4a5976250f5618aa",
+      "from_id": "d3e4d58c3c9e094a9",
+      "to_id": "aed762bc48f943d03e0be4871126697a",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d6c0d6b2df1828ddf",
+      "from_id": "d9e838551d0b74d93",
+      "to_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -1675,9 +1975,39 @@
       "updated_at": ""
     },
     {
-      "id": "da3dbf9139ca0363b",
-      "from_id": "d501830b3a0c93f39",
-      "to_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
+      "id": "d73244c84e97b6a419e19f7813bea962",
+      "from_id": "27efc536c465612b1ba4d8b7584fd53d",
+      "to_id": "48c727a143864846e3f069646dcdb1d6",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-01T19:55:52.783Z",
+      "updated_at": "2026-07-01T19:55:52.783Z"
+    },
+    {
+      "id": "d97fba6c97537aff8",
+      "from_id": "d3e4d58c3c9e094a9",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db5988976bc451843",
+      "from_id": "db589a2e0c605c5fd",
+      "to_id": "71df360f44635e96e91fc6767bc93ea3",
       "kind": "flags",
       "truth_class": "derived",
       "status": "current",
@@ -1705,8 +2035,23 @@
       "updated_at": ""
     },
     {
-      "id": "dca17251191af1d0e",
-      "from_id": "d01dff0e9dd4e989c",
+      "id": "dbc65729c0a0f0efb",
+      "from_id": "dd8a66484aee46a9f",
+      "to_id": "d9b35a203478bd583",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dbe165ae4938f5b21",
+      "from_id": "db589a2e0c605c5fd",
       "to_id": "d2fcf6c1e25f78a67",
       "kind": "assesses",
       "truth_class": "derived",
@@ -1720,10 +2065,10 @@
       "updated_at": ""
     },
     {
-      "id": "de23c905ffcc86601",
-      "from_id": "d4af0e020bef2b77b",
-      "to_id": "eafb29133e985bbc463f651878d9a3e2",
-      "kind": "flags",
+      "id": "dca17251191af1d0e",
+      "from_id": "d01dff0e9dd4e989c",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -1740,14 +2085,14 @@
       "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring5 metadata` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:14.836Z",
-      "updated_at": "2026-07-01T09:42:34.591Z"
+      "updated_at": "2026-07-01T19:56:36.321Z"
     },
     {
       "id": "deda4a837adbef254",
@@ -1770,14 +2115,14 @@
       "to_id": "6312dfde0229497f5e8b78d2fa835d83",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "passing/failing verdicts require criterion and evidence, independent requires evidence, derived writes stay separated, wrong-lane writes are rejected, and bad truth_class values are rejected",
       "evidence": "src/store.rs record_verdict and schema CHECKs remain the write boundary; cargo test passed, including the verdict/validation regressions.",
       "confidence": 0.91,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.577Z",
-      "updated_at": "2026-07-01T04:45:32.071Z"
+      "updated_at": "2026-07-01T19:56:36.283Z"
     },
     {
       "id": "dfd470d2c863110c5",
@@ -1800,14 +2145,14 @@
       "to_id": "d34d53ba061cc639bc898a5a51e0a4ca",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "both intents are coordinated maturity-ladder computations over the same implemented-intent proof/readiness model",
       "evidence": "src/maturity.rs:79-95 computes implemented leaf grounding; src/maturity.rs:113-120,183-189,246-274 uses journey-proof smells and validation counts in the same ladder/compass path, so both behaviors intentionally share build_rungs/compass",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:31:05.121Z",
-      "updated_at": "2026-07-01T12:31:23.311Z"
+      "updated_at": "2026-07-01T19:56:36.324Z"
     },
     {
       "id": "f80a302a1d6b1dd4db64c3a58f6bcb33",
@@ -1830,14 +2175,14 @@
       "to_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "implemented user-visible intents lacking a current passing L5/L6 journey proof produce quality/smell findings",
       "evidence": "src/signal.rs:323-389 builds validations_by_intent, filters implemented user_visible intents, detects passing proof_kind=journey with proof_level L5/L6, and emits missing_journey_proof or proof_too_shallow_for_intent smells with JourneyProof remediation",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:23:31.971Z",
-      "updated_at": "2026-07-01T12:30:00.981Z"
+      "updated_at": "2026-07-01T19:56:36.252Z"
     }
   ],
   "facets": [
@@ -1845,7 +2190,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "8ace5c2e093a0f42",
+      "value": "f7db81dfaba97e56",
       "truth_class": "derived"
     },
     {
@@ -1866,7 +2211,7 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "loc",
-      "value": "306",
+      "value": "380",
       "truth_class": "derived"
     },
     {
@@ -1880,21 +2225,21 @@
       "target_id": "0237fd131f915654e586a5d3be394b51",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "9",
+      "value": "10",
       "truth_class": "derived"
     },
     {
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "6e24ba3c56173ee7",
+      "value": "2ce3ac4ce49c7228",
       "truth_class": "derived"
     },
     {
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::IntentCmd\",\"crate::model::{NodeType, TargetKind, TruthClass}\",\"std::path::Path\",\"super::{open, require_lane}\"]",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::IntentCmd\",\"crate::model::{NodeType, TargetKind, TruthClass}\",\"std::path::Path\",\"super::{node_json, open, pulse, require_lane}\"]",
       "truth_class": "derived"
     },
     {
@@ -1908,7 +2253,7 @@
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "loc",
-      "value": "361",
+      "value": "571",
       "truth_class": "derived"
     },
     {
@@ -1922,7 +2267,7 @@
       "target_id": "029fa615b3f2f2bd69fa6a12c9467fd8",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "14",
+      "value": "16",
       "truth_class": "derived"
     },
     {
@@ -1950,7 +2295,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ecf20e0fea63e480",
+      "value": "461a65aa1f3c5258",
       "truth_class": "derived"
     },
     {
@@ -1971,7 +2316,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "647",
+      "value": "709",
       "truth_class": "derived"
     },
     {
@@ -1985,7 +2330,14 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "20",
+      "value": "21",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "06f2e13c8fc73193a4f82880e5ea982f",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "registered codefile src/commands/saga.rs disappeared; registered codefile src/saga.rs disappeared",
       "truth_class": "derived"
     },
     {
@@ -1996,17 +2348,24 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "0d662e611004a901ef3ab7236fc3bd6c",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "hypothesis",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "8613d3d3f5ea40c1",
+      "value": "01d4e37dc44deafa",
       "truth_class": "derived"
     },
     {
       "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::model::{\\n    Edge, EdgeKind, Facet, InspectionStatus, Node, NodeType, TargetKind, TruthClass,\\n}\",\"crate::registry\",\"crate::store::{Snapshot, Store}\",\"serde::{Deserialize, Serialize}\",\"std::collections::{BTreeMap, BTreeSet}\"]",
+      "value": "[\"crate::Result\",\"crate::model::{\\n    Edge, EdgeKind, Facet, InspectionStatus, Node, NodeType, TargetKind, TruthClass,\\n}\",\"crate::registry\",\"crate::store::{Snapshot, Store}\",\"petgraph::algo::tarjan_scc\",\"petgraph::graph::{DiGraph, NodeIndex}\",\"serde::{Deserialize, Serialize}\",\"std::collections::{BTreeMap, BTreeSet}\"]",
       "truth_class": "derived"
     },
     {
@@ -2020,7 +2379,7 @@
       "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "target_kind": "node",
       "key": "loc",
-      "value": "702",
+      "value": "759",
       "truth_class": "derived"
     },
     {
@@ -2034,7 +2393,7 @@
       "target_id": "11f78fe87a771b36b2d5c8b4e759d263",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "28",
+      "value": "29",
       "truth_class": "derived"
     },
     {
@@ -2042,6 +2401,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "restore:866 (validate 879; nodes 920 before edges 930)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2571e5a54c7861468a1fa1374bac0322",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "coverage_cmd",
       "truth_class": "asserted"
     },
     {
@@ -2092,13 +2458,6 @@
       "key": "level",
       "value": "feature",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
-      "target_kind": "node",
-      "key": "content_hash",
-      "value": "3a72859779ab053a",
-      "truth_class": "derived"
     },
     {
       "target_id": "321fdfdbb8b61e2e9f977f8d93339cc5",
@@ -2265,7 +2624,7 @@
       "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "b8571f06045f39b7",
+      "value": "d0f51e7945bcf419",
       "truth_class": "derived"
     },
     {
@@ -2286,7 +2645,7 @@
       "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
       "target_kind": "node",
       "key": "loc",
-      "value": "143",
+      "value": "972",
       "truth_class": "derived"
     },
     {
@@ -2300,7 +2659,7 @@
       "target_id": "3d59dbf0bc941b5d51b1b52976aa74fd",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "3",
+      "value": "4",
       "truth_class": "derived"
     },
     {
@@ -2325,10 +2684,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "43fe09edf840160e4c0e137d96a090ac",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "Node",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "47fd245a84b8b500b59668dc1f6dc003",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5a6b811f853a9673",
+      "value": "5da4dd98b8d5fa8d",
       "truth_class": "derived"
     },
     {
@@ -2349,7 +2715,7 @@
       "target_id": "47fd245a84b8b500b59668dc1f6dc003",
       "target_kind": "node",
       "key": "loc",
-      "value": "43",
+      "value": "47",
       "truth_class": "derived"
     },
     {
@@ -2364,13 +2730,6 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "1",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "48c727a143864846e3f069646dcdb1d6",
-      "target_kind": "node",
-      "key": "content_hash",
-      "value": "cef4f1135c365c28",
       "truth_class": "derived"
     },
     {
@@ -2440,14 +2799,14 @@
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ce2b7944a46e6cba",
+      "value": "a3f29be4fbf18bcd",
       "truth_class": "derived"
     },
     {
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::anyhow\",\"crate::Result\",\"crate::cli::EdgeCmd\",\"crate::model::{EdgeKind, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::workitem\",\"std::path::Path\",\"super::{open, verdict_status}\"]",
+      "value": "[\"anyhow::anyhow\",\"crate::Result\",\"crate::cli::EdgeCmd\",\"crate::model::{EdgeKind, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::workitem\",\"std::path::Path\",\"super::{open, pulse, verdict_status}\"]",
       "truth_class": "derived"
     },
     {
@@ -2461,7 +2820,7 @@
       "target_id": "51dcde353291f8bc7d98db9fcfa5288b",
       "target_kind": "node",
       "key": "loc",
-      "value": "253",
+      "value": "364",
       "truth_class": "derived"
     },
     {
@@ -2493,17 +2852,24 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "5d672b7684e7aa825dc911bc10fa3bad",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "edge_verdict",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "79068ae480f2e440",
+      "value": "bae2d117ddbd76fd",
       "truth_class": "derived"
     },
     {
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::cli::{\\n    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,\\n    LayerCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,\\n}\",\"crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{travel, workitem}\",\"pub use intent::looks_like_symbol\",\"pub(crate) use status_cmd::require_lane\",\"std::path::{Path, PathBuf}\"]",
+      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::cli::{\\n    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,\\n    LayerCmd, NoteCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,\\n}\",\"crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{travel, workitem}\",\"pub use intent::looks_like_symbol\",\"pub(crate) use status_cmd::require_lane\",\"std::path::{Path, PathBuf}\"]",
       "truth_class": "derived"
     },
     {
@@ -2517,7 +2883,7 @@
       "target_id": "5d8f8250e698c08b3c016ae320640c3a",
       "target_kind": "node",
       "key": "loc",
-      "value": "280",
+      "value": "313",
       "truth_class": "derived"
     },
     {
@@ -2539,6 +2905,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "fn find_cmd",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5f2c10520055ff4d7caaa7dfa0c7f4ba",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "EDGE_KINDS",
       "truth_class": "asserted"
     },
     {
@@ -2587,14 +2960,14 @@
       "target_id": "6312dfde0229497f5e8b78d2fa835d83",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "6c0afc6506f16fd6",
+      "value": "b104fdc3cb5dbd78",
       "truth_class": "derived"
     },
     {
       "target_id": "6312dfde0229497f5e8b78d2fa835d83",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, bail, Context}\",\"crate::model::*\",\"crate::registry\",\"crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION}\",\"fs2::FileExt\",\"rusqlite::{params, Connection, OptionalExtension}\",\"std::fs::{File, OpenOptions}\",\"std::path::{Path, PathBuf}\"]",
+      "value": "[\"anyhow::{anyhow, bail, Context}\",\"crate::model::*\",\"crate::registry\",\"crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION}\",\"fs2::FileExt\",\"rusqlite::{params, Connection, OptionalExtension}\",\"rusqlite_migration::{Migrations, M}\",\"std::fs::{File, OpenOptions}\",\"std::path::{Path, PathBuf}\"]",
       "truth_class": "derived"
     },
     {
@@ -2608,7 +2981,7 @@
       "target_id": "6312dfde0229497f5e8b78d2fa835d83",
       "target_kind": "node",
       "key": "loc",
-      "value": "1592",
+      "value": "1902",
       "truth_class": "derived"
     },
     {
@@ -2622,14 +2995,14 @@
       "target_id": "6312dfde0229497f5e8b78d2fa835d83",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "76",
+      "value": "83",
       "truth_class": "derived"
     },
     {
       "target_id": "654882936617a51dedbe18bcd6518e5a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "83b2029864bc7a46",
+      "value": "7180640c725db232",
       "truth_class": "derived"
     },
     {
@@ -2650,7 +3023,7 @@
       "target_id": "654882936617a51dedbe18bcd6518e5a",
       "target_kind": "node",
       "key": "loc",
-      "value": "125",
+      "value": "195",
       "truth_class": "derived"
     },
     {
@@ -2668,10 +3041,17 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "6ba93bee17cd0378e27d38904821d9b1",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "Command",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ff835f06ea449c2f",
+      "value": "12df9f9757c9a571",
       "truth_class": "derived"
     },
     {
@@ -2692,7 +3072,7 @@
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "loc",
-      "value": "575",
+      "value": "840",
       "truth_class": "derived"
     },
     {
@@ -2706,7 +3086,28 @@
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "10",
+      "value": "14",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7531cd6d85be3790e53ef3fb6c0ec049",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/domain_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "791e3ad8cabd0d26e3d1e47751381ff8",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "next_cmd",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "7e4d38f75e4c40982db3124f253b4967",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/domain_cmd.rs changed",
       "truth_class": "derived"
     },
     {
@@ -2752,6 +3153,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "8e3d87eb0dfc3f8f4336e6de28f00d90",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9046885650a069dbc63004ea95ef2f5e",
       "target_kind": "node",
       "key": "level",
@@ -2763,6 +3171,13 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "969cecb8d1d612f51f4c9c134a56db14",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "dispatch",
       "truth_class": "asserted"
     },
     {
@@ -2794,6 +3209,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "9d5fb771799f9adde33700eed6c98d56",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "registered codefile src/saga.rs disappeared",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a4948c777c6a771abc8a06c80a4e3d73",
       "target_kind": "edge",
       "key": "locator",
@@ -2801,17 +3223,24 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "a4948c777c6a771abc8a06c80a4e3d73",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/sync.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a56055709634988945f76e980fcf0480",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "2694cc0f44126566",
+      "value": "60105dd7f9622af2",
       "truth_class": "derived"
     },
     {
       "target_id": "a56055709634988945f76e980fcf0480",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::extract::{extract, Extraction, Role}\",\"crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"std::collections::BTreeSet\",\"std::path::Path\"]",
+      "value": "[\"crate::Result\",\"crate::extract::{extract, Extraction, Role}\",\"crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"std::collections::{BTreeMap, BTreeSet}\",\"std::path::Path\"]",
       "truth_class": "derived"
     },
     {
@@ -2825,7 +3254,7 @@
       "target_id": "a56055709634988945f76e980fcf0480",
       "target_kind": "node",
       "key": "loc",
-      "value": "521",
+      "value": "548",
       "truth_class": "derived"
     },
     {
@@ -2846,7 +3275,7 @@
       "target_id": "a7ccca5b5ae90723f0366637b9c00532",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "b5999dece6af6b86",
+      "value": "f9278566b60d8beb",
       "truth_class": "derived"
     },
     {
@@ -2867,7 +3296,7 @@
       "target_id": "a7ccca5b5ae90723f0366637b9c00532",
       "target_kind": "node",
       "key": "loc",
-      "value": "327",
+      "value": "430",
       "truth_class": "derived"
     },
     {
@@ -2930,14 +3359,14 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "bc837e2aa5150ad4",
+      "value": "1c7698926590087f",
       "truth_class": "derived"
     },
     {
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"super::*\"]",
+      "value": "[\"process_control::{ChildExt, Control}\",\"std::process::Stdio\",\"std::time::Duration\",\"super::*\"]",
       "truth_class": "derived"
     },
     {
@@ -2951,7 +3380,7 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "loc",
-      "value": "441",
+      "value": "601",
       "truth_class": "derived"
     },
     {
@@ -2965,7 +3394,7 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "6",
+      "value": "8",
       "truth_class": "derived"
     },
     {
@@ -2986,14 +3415,14 @@
       "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ba6818e2c2a58283",
+      "value": "042a892aa50c27ca",
       "truth_class": "derived"
     },
     {
       "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"std::path::Path\"]",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"globset::{GlobBuilder, GlobSet, GlobSetBuilder}\",\"ignore::WalkBuilder\",\"std::path::Path\"]",
       "truth_class": "derived"
     },
     {
@@ -3007,7 +3436,7 @@
       "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
       "target_kind": "node",
       "key": "loc",
-      "value": "132",
+      "value": "153",
       "truth_class": "derived"
     },
     {
@@ -3021,14 +3450,14 @@
       "target_id": "bc0de0c4d44411d1dd1d8f91d77635b8",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "5",
+      "value": "2",
       "truth_class": "derived"
     },
     {
       "target_id": "c029c388797de131660bfb9fa7c600e6",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "481b2d858afbe295",
+      "value": "084d0be3384741b7",
       "truth_class": "derived"
     },
     {
@@ -3049,7 +3478,7 @@
       "target_id": "c029c388797de131660bfb9fa7c600e6",
       "target_kind": "node",
       "key": "loc",
-      "value": "240",
+      "value": "278",
       "truth_class": "derived"
     },
     {
@@ -3084,14 +3513,14 @@
       "target_id": "cba33876a9c4047424b8c05f9fc14591",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d9b21fdb446f2807",
+      "value": "f1005cc0fd6adf8e",
       "truth_class": "derived"
     },
     {
       "target_id": "cba33876a9c4047424b8c05f9fc14591",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"super::*\"]",
+      "value": "[\"crate::cli::ScanCmd\",\"super::*\"]",
       "truth_class": "derived"
     },
     {
@@ -3105,7 +3534,7 @@
       "target_id": "cba33876a9c4047424b8c05f9fc14591",
       "target_kind": "node",
       "key": "loc",
-      "value": "315",
+      "value": "465",
       "truth_class": "derived"
     },
     {
@@ -3119,7 +3548,7 @@
       "target_id": "cba33876a9c4047424b8c05f9fc14591",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "11",
+      "value": "13",
       "truth_class": "derived"
     },
     {
@@ -3128,6 +3557,13 @@
       "key": "locator",
       "value": "Clap Subcommand enums",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "cdada8de2bf0de498d3e90d11dd2689b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/cli/subcommands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "d0002c88c80599944",
@@ -3161,7 +3597,7 @@
       "target_id": "d4af0e020bef2b77b",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T13:44:18.989Z\",\"hash\":\"d66c5318181cf188\",\"reason\":\"src/workitem.rs remains a cohesive queue planner: Mode parsing, GraphState counts, work-item selection and prompt-contract rendering are one scheduling surface. This change only added open_findings/resolved_findings to the existing GraphState — same responsibility, no new concern to split out.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T08:00:26.608Z\",\"hash\":\"546eac52c43331fe\",\"reason\":\"The prior cohesion argument no longer holds: the file grew past 1650 lines absorbing queue planning, contract rendering, context assembly, and completeness routing. Split into workitem/{mod,context,queues,contracts} is in progress this session.\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
@@ -3175,7 +3611,14 @@
       "target_id": "d59d6bf023b8f7d14",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-01T04:33:40.372Z\",\"hash\":\"6c0afc6506f16fd6\",\"reason\":\"src/store.rs remains the single persistence boundary: graph writes, prefix resolution, facets, notes, verdicts and meta all enforce SQLite invariants in one place; splitting would weaken INV-5 transaction and ownership locality.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T08:00:26.577Z\",\"hash\":\"6494918856725f75\",\"reason\":\"Re-affirmed after adding portable-config snapshot support and waiver clearing: store.rs is still the single persistence boundary — every write path (nodes, edges, facets, meta, verdicts) enforces SQLite invariants and lane gates in one transactional locality (INV-5). Splitting would scatter the gate surface.\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d73244c84e97b6a419e19f7813bea962",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "saga_run",
       "truth_class": "asserted"
     },
     {
@@ -3196,7 +3639,7 @@
       "target_id": "df750d03bdf758ca85a8e5cf5172e579",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "6db52e051148a605",
+      "value": "0b82557082977d7d",
       "truth_class": "derived"
     },
     {
@@ -3217,7 +3660,7 @@
       "target_id": "df750d03bdf758ca85a8e5cf5172e579",
       "target_kind": "node",
       "key": "loc",
-      "value": "340",
+      "value": "419",
       "truth_class": "derived"
     },
     {
@@ -3300,13 +3743,6 @@
     {
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
-      "key": "content_hash",
-      "value": "d66c5318181cf188",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "eafb29133e985bbc463f651878d9a3e2",
-      "target_kind": "node",
       "key": "imports",
       "value": "[\"crate::Result\",\"crate::model::TruthClass\",\"crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType}\",\"crate::store::Store\",\"serde::Serialize\"]",
       "truth_class": "derived"
@@ -3322,7 +3758,7 @@
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "loc",
-      "value": "692",
+      "value": "1473",
       "truth_class": "derived"
     },
     {
@@ -3336,7 +3772,7 @@
       "target_id": "eafb29133e985bbc463f651878d9a3e2",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "30",
+      "value": "53",
       "truth_class": "derived"
     },
     {
@@ -3385,7 +3821,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ce8a52c479564fce",
+      "value": "4c6477d011fcd526",
       "truth_class": "derived"
     },
     {
@@ -3406,7 +3842,7 @@
       "target_id": "ef6b66e4221155ce0d869190370a7210",
       "target_kind": "node",
       "key": "loc",
-      "value": "186",
+      "value": "198",
       "truth_class": "derived"
     },
     {
@@ -3484,5 +3920,9 @@
       "target_kind": "node",
       "term": "debt-projection"
     }
-  ]
+  ],
+  "config": {
+    "codefile_globs": "[\"src/commands/*.rs\",\"src/extract/**/*.rs\"]",
+    "scan_adapters": "[{\"name\":\"clippy\",\"command\":\"cargo clippy --message-format=short 2>&1\"}]"
+  }
 }

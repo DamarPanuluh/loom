@@ -1,0 +1,1163 @@
+//! Ring 10 tests — completeness scorecard, waivers, questions axis + pulse,
+//! elaborate queue, prescreen, scan adapters, and config travel.
+//!
+//! Each test names the externally observable contract it defends. Failure
+//! messages are prefixed with the numbered contract so a red run points at the
+//! violated behavior.
+
+use loom::completeness::{self, AXES};
+use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
+use loom::packs;
+use loom::scan;
+use loom::store::Store;
+use loom::travel::Export;
+use loom::workitem::{self, graph_state, Mode};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+struct Tmp(PathBuf);
+impl Tmp {
+    fn new() -> Tmp {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let p =
+            std::env::temp_dir().join(format!("loom-ring10-{}-{nanos}-{n}", std::process::id()));
+        std::fs::create_dir_all(&p).unwrap();
+        Tmp(p)
+    }
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+impl Drop for Tmp {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+// ---- shared builders --------------------------------------------------------
+
+/// A feature-level intent with the given visibility facet.
+fn feature_intent(store: &Store, name: &str, visibility: Option<&str>) -> loom::model::Node {
+    let n = store
+        .add_node(
+            NodeType::Intent,
+            name,
+            "one falsifiable behavior",
+            "implemented",
+            serde_json::json!({ "level": "feature" }),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &n.id,
+            TargetKind::Node,
+            "level",
+            "feature",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    if let Some(v) = visibility {
+        store
+            .set_facet(
+                &n.id,
+                TargetKind::Node,
+                "visibility",
+                v,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+    n
+}
+
+/// A scenario intent linked to its happy-path parent via a ScenarioOf edge,
+/// carrying the given aspect facet.
+fn scenario_of(
+    store: &Store,
+    name: &str,
+    aspect: &str,
+    parent: &loom::model::Node,
+) -> loom::model::Node {
+    let s = store
+        .add_node(
+            NodeType::Intent,
+            name,
+            "a falsifiable scenario criterion",
+            "planned",
+            serde_json::json!({ "level": "feature" }),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &s.id,
+            TargetKind::Node,
+            "level",
+            "feature",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &s.id,
+            TargetKind::Node,
+            "aspect",
+            aspect,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::ScenarioOf,
+            &s.id,
+            &parent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    s
+}
+
+/// Look up one axis state in a scorecard by axis name.
+fn axis_state<'a>(
+    card: &'a loom::completeness::Scorecard,
+    name: &str,
+) -> &'a loom::completeness::AxisState {
+    card.axes
+        .iter()
+        .find(|a| a.axis == name)
+        .unwrap_or_else(|| panic!("scorecard missing axis '{name}'"))
+}
+
+// ===========================================================================
+// 1. COMPLETENESS SCORECARD
+// ===========================================================================
+
+#[test]
+fn scorecard_user_visible_feature_with_no_surroundings_scores_axes_open() {
+    // Contract 1: a user_visible feature intent with no scenarios/proof/journey
+    // scores those axes `open`; prerequisites defaults to met (none declared).
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        card.intent_id, intent.id,
+        "contract 1: scorecard is keyed by the intent id"
+    );
+    assert_eq!(
+        card.visibility.as_deref(),
+        Some("user_visible"),
+        "contract 1: scorecard echoes the visibility facet"
+    );
+    assert_eq!(
+        card.axes.len(),
+        AXES.len(),
+        "contract 1: scorecard carries exactly the fixed axis set"
+    );
+    assert_eq!(
+        axis_state(&card, "scenarios").state,
+        "open",
+        "contract 1: scenarios axis is open when no sad/fallback/edge_case scenarios exist"
+    );
+    assert_eq!(
+        axis_state(&card, "proof").state,
+        "open",
+        "contract 1: proof axis is open when no validation is registered"
+    );
+    assert_eq!(
+        axis_state(&card, "journey").state,
+        "open",
+        "contract 1: journey axis is open when no journey proof or coverage exists"
+    );
+    assert_eq!(
+        axis_state(&card, "prerequisites").state,
+        "met",
+        "contract 1: prerequisites axis is met when none are declared"
+    );
+    assert_eq!(
+        axis_state(&card, "questions").state,
+        "met",
+        "contract 1: questions axis is met when no open question inbox items exist"
+    );
+    assert_eq!(
+        card.open, 3,
+        "contract 1: open count matches the three open axes"
+    );
+}
+
+#[test]
+fn scorecard_aspect_tagged_scenarioof_intents_close_the_scenarios_axis() {
+    // Contract 1: adding aspect-tagged (sad+fallback+edge_case) ScenarioOf-linked
+    // intents closes the scenarios axis to `met`.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+
+    // Before: open.
+    let before = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&before, "scenarios").state,
+        "open",
+        "contract 1: scenarios open before surrounding scenarios are added"
+    );
+
+    scenario_of(&store, "login with wrong password", "sad", &intent);
+    scenario_of(
+        &store,
+        "login when auth service is down",
+        "fallback",
+        &intent,
+    );
+    scenario_of(&store, "login with empty password", "edge_case", &intent);
+
+    let after = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&after, "scenarios").state,
+        "met",
+        "contract 1: scenarios axis is met once sad+fallback+edge_case ScenarioOf children exist"
+    );
+}
+
+#[test]
+fn scorecard_internal_intent_gets_not_applicable_for_scenarios_and_journey() {
+    // Contract 1: an internal intent (no user_visible facet) gets
+    // not_applicable for scenarios and journey; questions still applies.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // No visibility facet → internal.
+    let intent = feature_intent(&store, "persist session token", None);
+
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        card.visibility, None,
+        "contract 1: internal intent has no visibility facet echoed"
+    );
+    assert_eq!(
+        axis_state(&card, "scenarios").state,
+        "not_applicable",
+        "contract 1: internal intents are not_applicable for scenarios"
+    );
+    assert_eq!(
+        axis_state(&card, "journey").state,
+        "not_applicable",
+        "contract 1: internal intents are not_applicable for journey"
+    );
+    assert_eq!(
+        axis_state(&card, "questions").state,
+        "met",
+        "contract 1: questions axis still applies to internal intents"
+    );
+}
+
+#[test]
+fn scorecard_intent_carrying_aspect_sad_is_itself_a_scenario() {
+    // Contract 1: an intent that itself carries aspect=sad gets scenarios
+    // not_applicable — it IS a scenario, not a scenario-needing happy path.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let happy = feature_intent(&store, "user can log in", Some("user_visible"));
+    let sad = store
+        .add_node(
+            NodeType::Intent,
+            "login with wrong password",
+            "a falsifiable sad-path criterion",
+            "planned",
+            serde_json::json!({ "level": "feature" }),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &sad.id,
+            TargetKind::Node,
+            "level",
+            "feature",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &sad.id,
+            TargetKind::Node,
+            "aspect",
+            "sad",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &sad.id,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::ScenarioOf,
+            &sad.id,
+            &happy.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let card = completeness::scorecard(&store, &sad).unwrap();
+    assert_eq!(
+        axis_state(&card, "scenarios").state,
+        "not_applicable",
+        "contract 1: an intent that IS a sad scenario is not_applicable for scenarios"
+    );
+    let _ = happy; // suppress unused warning
+}
+
+#[test]
+fn all_scorecards_lists_feature_intents_most_incomplete_first() {
+    // Contract 1: all_scorecards returns feature-level intents, sorted
+    // most-incomplete first; a non-feature intent is excluded. Scenario
+    // intents are feature-level too, so they appear in the list.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let complete = feature_intent(&store, "complete behavior", Some("user_visible"));
+    // Surround it so its scenarios axis is met (fewer open axes).
+    scenario_of(&store, "complete sad", "sad", &complete);
+    scenario_of(&store, "complete fallback", "fallback", &complete);
+    scenario_of(&store, "complete edge", "edge_case", &complete);
+
+    let _incomplete = feature_intent(&store, "incomplete behavior", Some("user_visible"));
+
+    // A component-level intent must be excluded.
+    let component = store
+        .add_node(
+            NodeType::Intent,
+            "component detail",
+            "a component detail",
+            "implemented",
+            serde_json::json!({ "level": "component" }),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &component.id,
+            TargetKind::Node,
+            "level",
+            "component",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let cards = completeness::all_scorecards(&store).unwrap();
+    let names: Vec<&str> = cards.iter().map(|c| c.intent_name.as_str()).collect();
+    assert!(
+        !names.contains(&"component detail"),
+        "contract 1: all_scorecards excludes non-feature intents"
+    );
+    assert!(
+        names.contains(&"incomplete behavior") && names.contains(&"complete behavior"),
+        "contract 1: all_scorecards includes both happy-path feature intents"
+    );
+    assert_eq!(
+        cards[0].intent_name, "incomplete behavior",
+        "contract 1: most-incomplete intent sorts first"
+    );
+    assert!(
+        cards[0].open > cards[1].open,
+        "contract 1: ordering is by descending open count"
+    );
+}
+
+#[test]
+fn check_axis_rejects_unknown_axes_and_accepts_known() {
+    // Contract 1: check_axis rejects unknown axis labels and accepts each
+    // declared axis.
+    for a in AXES {
+        assert!(
+            completeness::check_axis(a).is_ok(),
+            "contract 1: check_axis accepts declared axis '{a}'"
+        );
+    }
+    assert!(
+        completeness::check_axis("bogus").is_err(),
+        "contract 1: check_axis rejects an unknown axis"
+    );
+    assert!(
+        completeness::check_axis("").is_err(),
+        "contract 1: check_axis rejects an empty axis label"
+    );
+}
+
+// ===========================================================================
+// 2. WAIVERS
+// ===========================================================================
+
+#[test]
+fn waiver_facilitiy_turns_open_axis_into_waived_with_reason() {
+    // Contract 2: a `waiver:<axis>` facet turns an open axis into `waived`
+    // carrying the reason.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+
+    // scenarios is open by default.
+    let before = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&before, "scenarios").state,
+        "open",
+        "contract 2: scenarios axis is open before a waiver"
+    );
+
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "waiver:scenarios",
+            "single-user CLI — no failure scenarios apply",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let after = completeness::scorecard(&store, &intent).unwrap();
+    let s = axis_state(&after, "scenarios");
+    assert_eq!(
+        s.state, "waived",
+        "contract 2: waiver:scenarios facet flips the axis to waived"
+    );
+    assert_eq!(
+        s.waived_reason.as_deref(),
+        Some("single-user CLI — no failure scenarios apply"),
+        "contract 2: waived axis carries the recorded reason"
+    );
+    // The open count must drop since the axis is no longer open.
+    assert!(
+        after.open < before.open,
+        "contract 2: waiving an open axis reduces the open count"
+    );
+}
+
+#[test]
+fn waiver_does_not_apply_to_a_met_axis() {
+    // Contract 2: a waiver facet on an already-met axis does not flip it to
+    // waived — waivers only apply to open axes.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+    // prerequisites is met (none declared).
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "waiver:prerequisites",
+            "n/a",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&card, "prerequisites").state,
+        "met",
+        "contract 2: a waiver on a met axis does not flip it to waived"
+    );
+    assert!(
+        axis_state(&card, "prerequisites").waived_reason.is_none(),
+        "contract 2: a met axis carries no waived reason even if a waiver facet exists"
+    );
+}
+
+#[test]
+fn redefine_intent_clears_waiver_facets_and_records_decision_note() {
+    // Contract 2: Store::redefine_intent clears waiver:* facets (axis back to
+    // open) and records a decision note.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "waiver:scenarios",
+            "single-user CLI",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let waived = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&waived, "scenarios").state,
+        "waived",
+        "contract 2: axis is waived before redefinition"
+    );
+
+    store
+        .redefine_intent(&intent.id, "user can log in with a password")
+        .unwrap();
+
+    let reopened = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&reopened, "scenarios").state,
+        "open",
+        "contract 2: redefine_intent re-opens a previously waived axis"
+    );
+    assert!(
+        axis_state(&reopened, "scenarios").waived_reason.is_none(),
+        "contract 2: redefined axis carries no waived reason"
+    );
+
+    // A decision note recording the waiver re-opening was added.
+    let notes: Vec<loom::model::Node> = store
+        .list_nodes(Some(NodeType::Note), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .filter(|n| n.body.get("target_id").and_then(|v| v.as_str()) == Some(intent.id.as_str()))
+        .collect();
+    assert!(
+        notes.iter().any(|n| n.description.contains("waiver")),
+        "contract 2: redefine_intent records a decision note mentioning the cleared waivers"
+    );
+    assert!(
+        notes.iter().any(|n| n.description.contains("redefined")),
+        "contract 2: redefine_intent records a decision note preserving the old wording"
+    );
+}
+
+#[test]
+fn questions_axis_is_never_waivable() {
+    // Contract 2: the questions axis is NEVER waivable — a waiver:questions
+    // facet must not flip it. The questions axis skips apply_waiver.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+
+    // No open questions → questions axis is `met`. Record a waiver:questions
+    // facet anyway; it must not change the state nor attach a reason.
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "waiver:questions",
+            "I will answer them later",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    let q = axis_state(&card, "questions");
+    assert_ne!(
+        q.state, "waived",
+        "contract 2: questions axis is never waivable — waiver:questions does not flip it to waived"
+    );
+    assert!(
+        q.waived_reason.is_none(),
+        "contract 2: questions axis never carries a waived reason"
+    );
+
+    // And when questions ARE open, the waiver still does not apply.
+    store
+        .add_node(
+            NodeType::InboxItem,
+            "open product question",
+            "should login support SSO?",
+            "new",
+            serde_json::json!({
+                "source": "question",
+                "link": format!("intent:{}", intent.id),
+            }),
+        )
+        .unwrap();
+    let card_open = completeness::scorecard(&store, &intent).unwrap();
+    let q_open = axis_state(&card_open, "questions");
+    assert_eq!(
+        q_open.state, "open",
+        "contract 2: questions axis is open when an unanswered question inbox item exists"
+    );
+    assert!(
+        q_open.waived_reason.is_none(),
+        "contract 2: an open questions axis is not flipped to waived by a waiver:questions facet"
+    );
+}
+
+// ===========================================================================
+// 3. QUESTIONS AXIS + PULSE
+// ===========================================================================
+
+#[test]
+fn question_inbox_item_opens_questions_axis_and_increments_open_questions() {
+    // Contract 3: an inbox item status=new, body.source=question,
+    // body.link=intent:<id> opens the questions axis and increments
+    // graph_state().open_questions.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+
+    let before = graph_state(&store).unwrap();
+    assert_eq!(
+        before.open_questions, 0,
+        "contract 3: open_questions starts at zero"
+    );
+    let card_before = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&card_before, "questions").state,
+        "met",
+        "contract 3: questions axis is met before a question is raised"
+    );
+
+    store
+        .add_node(
+            NodeType::InboxItem,
+            "open product question",
+            "should login support SSO?",
+            "new",
+            serde_json::json!({
+                "source": "question",
+                "link": format!("intent:{}", intent.id),
+            }),
+        )
+        .unwrap();
+
+    let after = graph_state(&store).unwrap();
+    assert_eq!(
+        after.open_questions, 1,
+        "contract 3: a new question inbox item increments open_questions"
+    );
+    let card_after = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&card_after, "questions").state,
+        "open",
+        "contract 3: a linked question inbox item opens the questions axis"
+    );
+}
+
+#[test]
+fn marking_question_routed_closes_questions_axis_and_decrements_open_questions() {
+    // Contract 3: marking the question inbox item `routed` closes both the
+    // questions axis and decrements open_questions.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+    let q = store
+        .add_node(
+            NodeType::InboxItem,
+            "open product question",
+            "should login support SSO?",
+            "new",
+            serde_json::json!({
+                "source": "question",
+                "link": format!("intent:{}", intent.id),
+            }),
+        )
+        .unwrap();
+
+    let open = graph_state(&store).unwrap();
+    assert_eq!(
+        open.open_questions, 1,
+        "contract 3: open_questions is 1 before routing"
+    );
+
+    store
+        .update_node(&q.id, None, None, Some("routed"))
+        .unwrap();
+
+    let closed = graph_state(&store).unwrap();
+    assert_eq!(
+        closed.open_questions, 0,
+        "contract 3: routing the question decrements open_questions back to zero"
+    );
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&card, "questions").state,
+        "met",
+        "contract 3: routing the question closes the questions axis"
+    );
+}
+
+#[test]
+fn non_question_inbox_item_does_not_open_the_questions_axis() {
+    // Contract 3: an inbox item whose source is NOT `question` must not open
+    // the questions axis nor count toward open_questions — only question-sourced
+    // items do.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+    store
+        .add_node(
+            NodeType::InboxItem,
+            "a human note",
+            "remember to revisit login copy",
+            "new",
+            serde_json::json!({
+                "source": "human",
+                "link": format!("intent:{}", intent.id),
+            }),
+        )
+        .unwrap();
+    let pulse = graph_state(&store).unwrap();
+    assert_eq!(
+        pulse.open_questions, 0,
+        "contract 3: a non-question inbox item does not count toward open_questions"
+    );
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&card, "questions").state,
+        "met",
+        "contract 3: a non-question inbox item does not open the questions axis"
+    );
+}
+
+// ===========================================================================
+// 4. ELABORATE QUEUE
+// ===========================================================================
+
+#[test]
+fn mode_parse_elaborate_yields_elaborate_mode() {
+    // Contract 4: Mode::parse("elaborate") returns Some(Mode::Elaborate).
+    assert_eq!(
+        Mode::parse("elaborate"),
+        Some(Mode::Elaborate),
+        "contract 4: Mode::parse(\"elaborate\") yields Mode::Elaborate"
+    );
+}
+
+#[test]
+fn elaborate_serves_incomplete_user_visible_feature_intent() {
+    // Contract 4: with one incomplete user_visible feature intent,
+    // next(store, Some(Mode::Elaborate)) serves mode=elaborate, owner_role=
+    // builder, scorecard Some (JSON contains axes), and prompt_contract.
+    // write_back non-empty.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _intent = feature_intent(&store, "user can log in", Some("user_visible"));
+
+    let item = workitem::next(&store, Some(Mode::Elaborate))
+        .unwrap()
+        .expect("contract 4: elaborate serves an incomplete user-visible feature intent");
+    assert_eq!(
+        item.mode, "elaborate",
+        "contract 4: elaborate item reports mode=elaborate"
+    );
+    assert_eq!(
+        item.owner_role, "builder",
+        "contract 4: elaborate item is owned by the builder role"
+    );
+    let card = item
+        .scorecard
+        .as_ref()
+        .expect("contract 4: elaborate item carries a scorecard");
+    let axes = card
+        .get("axes")
+        .expect("contract 4: scorecard JSON contains an axes array");
+    assert!(
+        axes.is_array(),
+        "contract 4: scorecard JSON axes field is an array"
+    );
+    assert!(
+        !item.prompt_contract.write_back.is_empty(),
+        "contract 4: elaborate prompt_contract.write_back is non-empty"
+    );
+}
+
+#[test]
+fn elaborate_returns_none_when_no_user_visible_feature_intents() {
+    // Contract 4: with no user_visible feature intents, elaborate returns None.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // An internal feature intent only — not user_visible.
+    let _internal = feature_intent(&store, "persist session token", None);
+    let item = workitem::next(&store, Some(Mode::Elaborate)).unwrap();
+    assert!(
+        item.is_none(),
+        "contract 4: elaborate returns None when no user_visible feature intent is incomplete"
+    );
+}
+
+#[test]
+fn default_next_reaches_elaborate_only_after_other_queues_drain() {
+    // Contract 4: default next(None) only reaches elaborate after other queues
+    // are empty. Seed a failing edge (fix queue) and assert the fix item wins
+    // over elaborate; then clear it and assert elaborate surfaces.
+    //
+    // No quality rules are seeded and no codefiles are registered, so once the
+    // single failing edge is resolved every other queue is empty and elaborate
+    // is the only remaining work.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = feature_intent(&store, "user can log in", Some("user_visible"));
+    let b = feature_intent(&store, "user can log out", Some("user_visible"));
+    let rel = store
+        .add_edge(EdgeKind::Relates, &a.id, &b.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &rel.id,
+            loom::model::InspectionStatus::Failing,
+            "logout does not invalidate the login session",
+            "src/auth.rs:40",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    // With a failing verdict, the fix queue must win over elaborate.
+    let item = workitem::next(&store, None)
+        .unwrap()
+        .expect("contract 4: default next serves the failing verdict before elaborate");
+    assert_eq!(
+        item.mode, "fix",
+        "contract 4: default next serves the fix queue before elaborate when a failing verdict exists"
+    );
+
+    // Resolve the failure (passing verdict) so the fix queue drains. With no
+    // rules/codefiles/validations, every other queue is empty too.
+    store
+        .record_verdict(
+            &rel.id,
+            loom::model::InspectionStatus::Passing,
+            "logout invalidates the session",
+            "src/auth.rs:40",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    // Now elaborate should surface (both intents still have open scenarios/
+    // proof/journey axes, and no other queue has work).
+    let item = workitem::next(&store, None)
+        .unwrap()
+        .expect("contract 4: default next reaches elaborate once other queues are empty");
+    assert_eq!(
+        item.mode, "elaborate",
+        "contract 4: default next reaches elaborate only after other queues drain"
+    );
+}
+
+// ===========================================================================
+// 5. PRESCREEN
+// ===========================================================================
+
+#[test]
+fn prescreen_finds_secret_literal_with_iso5055_patterns_and_respects_cap() {
+    // Contract 5: given a temp root with a file containing a secret-like
+    // literal and the iso5055 secrets rule's patterns (read from
+    // packs::pack("iso5055")), prescreen returns a hit with the right path+
+    // line; cap is respected.
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("src/auth.rs"),
+        "fn main() {\n    let api_key = \"sk-live-abcdefghijklmnop\";\n}\n",
+    )
+    .unwrap();
+
+    // Read the patterns from the iso5055 pack's secrets rule.
+    let secrets_rule = packs::pack("iso5055")
+        .iter()
+        .find(|r| r.name == "iso5055-sec-no-hardcoded-secrets")
+        .expect("contract 5: iso5055 pack contains the secrets rule");
+    let patterns: Vec<String> = secrets_rule
+        .patterns
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    assert!(
+        !patterns.is_empty(),
+        "contract 5: the iso5055 secrets rule carries non-empty patterns"
+    );
+
+    let hits = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 20);
+    assert_eq!(
+        hits.len(),
+        1,
+        "contract 5: prescreen returns one hit for the secret literal"
+    );
+    assert_eq!(
+        hits[0].path, "src/auth.rs",
+        "contract 5: hit path matches the scanned file"
+    );
+    assert_eq!(
+        hits[0].line, 2,
+        "contract 5: hit line number points at the secret literal"
+    );
+    assert!(
+        !hits[0].pattern.is_empty(),
+        "contract 5: hit records the matching pattern"
+    );
+
+    // Cap respected: with cap=0 nothing is returned; with two secret lines and
+    // cap=1 exactly one hit is returned.
+    std::fs::write(
+        root.join("src/auth.rs"),
+        "let api_key = \"sk-live-abcdefghijklmnop\";\nlet token = \"tok-live-abcdefghijklmnop\";\n",
+    )
+    .unwrap();
+    let none = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 0);
+    assert!(
+        none.is_empty(),
+        "contract 5: prescreen with cap=0 returns no hits"
+    );
+    let capped = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 1);
+    assert_eq!(
+        capped.len(),
+        1,
+        "contract 5: prescreen respects the cap when more hits exist"
+    );
+}
+
+#[test]
+fn quality_work_item_carries_pre_screened_hits_for_grounded_intent() {
+    // Contract 5: a quality work item for that rule/intent pair carries
+    // prompt_contract.pre_screened_hits non-empty (register the file as a
+    // CodeFile + implements edge first).
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("src/auth.rs"),
+        "fn main() {\n    let api_key = \"sk-live-abcdefghijklmnop\";\n}\n",
+    )
+    .unwrap();
+
+    let store = Store::init(root, Some("t"), false).unwrap();
+    packs::seed(&store, "iso5055").unwrap();
+    let rule = store
+        .resolve_node(
+            "iso5055-sec-no-hardcoded-secrets",
+            Some(NodeType::QualityRule),
+        )
+        .unwrap();
+    let intent = feature_intent(
+        &store,
+        "config loads secrets from env",
+        Some("user_visible"),
+    );
+    // Register the CodeFile and ground the intent in it.
+    let codefile = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/auth.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &codefile.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    // Create an uninspected governs edge from the secrets rule to this intent.
+    // The quality queue serves uninspected governs edges before the fallback,
+    // so the served item is for THIS rule and carries its pre_screened_hits.
+    store
+        .ensure_edge(EdgeKind::Governs, &rule.id, &intent.id)
+        .unwrap();
+
+    // The quality queue serves the uninspected governs edge, and the packet's
+    // pre_screened_hits come from prescreen_for running the rule's patterns
+    // over the intent's grounded file.
+    let item = workitem::next(&store, Some(Mode::Quality))
+        .unwrap()
+        .expect("contract 5: quality queue serves the unmeasured rule×intent pair");
+    assert_eq!(
+        item.mode, "quality",
+        "contract 5: quality item reports mode=quality"
+    );
+    assert!(
+        !item.prompt_contract.pre_screened_hits.is_empty(),
+        "contract 5: quality work item carries non-empty pre_screened_hits for a grounded intent whose file matches the rule patterns"
+    );
+    let hit = &item.prompt_contract.pre_screened_hits[0];
+    assert_eq!(
+        hit.path, "src/auth.rs",
+        "contract 5: pre_screened_hit path is the grounded CodeFile"
+    );
+    assert_eq!(
+        hit.line, 2,
+        "contract 5: pre_screened_hit line points at the secret literal"
+    );
+}
+
+// ===========================================================================
+// 6. SCAN ADAPTERS
+// ===========================================================================
+
+#[test]
+fn add_adapter_rejects_duplicate_names_and_bad_map_regex() {
+    // Contract 6: add_adapter rejects duplicate names and a map regex without
+    // named file/line groups.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    scan::add_adapter(&store, "fake", "printf 'src/a.rs:1: boom\\n'", None).unwrap();
+
+    let dup = scan::add_adapter(&store, "fake", "printf 'src/a.rs:1: boom\\n'", None);
+    assert!(
+        dup.is_err(),
+        "contract 6: add_adapter rejects a duplicate adapter name"
+    );
+
+    // A map regex missing the `file` named group.
+    let bad_map = scan::add_adapter(
+        &store,
+        "other",
+        "printf 'src/a.rs:1: boom\\n'",
+        Some(r"^(?P<line>\d+):\s*(?P<msg>.+)$"),
+    );
+    assert!(
+        bad_map.is_err(),
+        "contract 6: add_adapter rejects a map regex missing the named 'file' group"
+    );
+
+    // A map regex missing the `line` named group.
+    let bad_line = scan::add_adapter(
+        &store,
+        "other",
+        "printf 'src/a.rs:1: boom\\n'",
+        Some(r"^(?P<file>[^:]+):\s*(?P<msg>.+)$"),
+    );
+    assert!(
+        bad_line.is_err(),
+        "contract 6: add_adapter rejects a map regex missing the named 'line' group"
+    );
+}
+
+#[test]
+fn scan_run_with_fake_adapter_creates_visible_finding_and_resolves_on_empty_rerun() {
+    // Contract 6: run with a fake printf-style adapter creates a finding visible
+    // via findings_view; re-run with empty output resolves it.
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(root.join("src/lib.rs"), "pub fn demo() {}\n").unwrap();
+    let store = Store::init(root, Some("t"), false).unwrap();
+    store
+        .add_node(
+            NodeType::CodeFile,
+            "src/lib.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    scan::add_adapter(&store, "fake", "printf 'src/lib.rs:1: boom\\n'", None).unwrap();
+
+    let first = scan::run(&store, root, Some("fake")).unwrap();
+    assert_eq!(
+        first.diagnostics, 1,
+        "contract 6: first scan run reports one diagnostic"
+    );
+    assert_eq!(
+        first.new_findings, 1,
+        "contract 6: first scan run creates one new finding"
+    );
+    let findings = loom::signal::findings_view(&store).unwrap();
+    assert_eq!(
+        findings.len(),
+        1,
+        "contract 6: the adapter finding is visible via findings_view"
+    );
+    assert_eq!(
+        findings[0].state, "untriaged",
+        "contract 6: a fresh adapter finding is untriaged"
+    );
+    assert!(
+        findings[0].node.name.contains("src/lib.rs:1 boom"),
+        "contract 6: adapter finding name carries the path, line, and message"
+    );
+
+    // Re-run with empty output: the finding is resolved (removed).
+    scan::remove_adapter(&store, "fake").unwrap();
+    scan::add_adapter(&store, "fake", "printf ''", None).unwrap();
+    let second = scan::run(&store, root, Some("fake")).unwrap();
+    assert_eq!(
+        second.diagnostics, 0,
+        "contract 6: empty-output re-run reports no diagnostics"
+    );
+    assert_eq!(
+        second.resolved_findings, 1,
+        "contract 6: empty-output re-run resolves the prior finding"
+    );
+    let after = loom::signal::findings_view(&store).unwrap();
+    assert!(
+        after.is_empty(),
+        "contract 6: no findings remain after the empty-output re-run"
+    );
+}
+
+#[test]
+fn scan_adapter_config_appears_in_snapshot_and_survives_export_round_trip() {
+    // Contract 6: adapter config appears in Store::snapshot().config under
+    // scan_adapters, and survives an Export::from_snapshot → into_snapshot
+    // round trip.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    scan::add_adapter(&store, "fake", "printf 'src/lib.rs:1: boom\\n'", None).unwrap();
+
+    let snap = store.snapshot().unwrap();
+    let cfg = snap
+        .config
+        .get("scan_adapters")
+        .expect("contract 6: snapshot().config contains the scan_adapters key");
+    assert!(
+        cfg.contains("fake"),
+        "contract 6: scan_adapters config records the registered adapter name"
+    );
+
+    // Round trip through Export.
+    let export = Export::from_snapshot(snap);
+    let json = export.to_json().unwrap();
+    assert!(
+        json.contains("scan_adapters"),
+        "contract 6: export JSON carries the scan_adapters config"
+    );
+    let reparsed = Export::from_json(&json).unwrap();
+    let restored_snap = reparsed.into_snapshot();
+    let restored_cfg = restored_snap
+        .config
+        .get("scan_adapters")
+        .expect("contract 6: scan_adapters config survives the export round trip");
+    assert!(
+        restored_cfg.contains("fake"),
+        "contract 6: the round-tripped scan_adapters config still records the adapter"
+    );
+}
+
+// ===========================================================================
+// 7. CONFIG TRAVEL
+// ===========================================================================
+
+#[test]
+fn layer_order_set_via_meta_appears_in_snapshot_and_survives_restore() {
+    // Contract 7: layer_order set via meta appears in snapshot().config and,
+    // after restore() into a fresh store, get_meta("layer_order") returns it.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let order = r#"["presentation","domain","storage"]"#;
+    store.set_meta("layer_order", order).unwrap();
+
+    let snap = store.snapshot().unwrap();
+    let cfg = snap
+        .config
+        .get("layer_order")
+        .expect("contract 7: snapshot().config contains layer_order");
+    assert_eq!(
+        cfg, order,
+        "contract 7: snapshot().config layer_order matches the meta value"
+    );
+
+    // Restore into a fresh store and read it back.
+    let tmp2 = Tmp::new();
+    let mut store2 = Store::init(tmp2.path(), Some("t2"), false).unwrap();
+    store2.restore(&snap).unwrap();
+    let restored = store2
+        .get_meta("layer_order")
+        .unwrap()
+        .expect("contract 7: layer_order is readable after restore into a fresh store");
+    assert_eq!(
+        restored, order,
+        "contract 7: get_meta(\"layer_order\") returns the traveled value after restore"
+    );
+}

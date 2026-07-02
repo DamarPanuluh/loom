@@ -1,6 +1,6 @@
 //! `loom edge` command family.
 
-use super::{open, verdict_status};
+use super::{open, pulse, verdict_status};
 use crate::cli::EdgeCmd;
 use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
@@ -53,27 +53,44 @@ fn edge_implement(
     intent: String,
     codefile: String,
     locator: Option<String>,
-    _json: bool,
+    json: bool,
 ) -> Result<()> {
     let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
     let cf = store.resolve_node(&codefile, Some(NodeType::CodeFile))?;
     let e = store.add_edge(EdgeKind::Implements, &i.id, &cf.id, TruthClass::Asserted)?;
-    if let Some(loc) = locator {
+    if let Some(loc) = &locator {
         store.set_facet(
             &e.id,
             TargetKind::Edge,
             "locator",
-            &loc,
+            loc,
             TruthClass::Asserted,
         )?;
     }
-    println!("grounded '{}' in '{}' [{}]", i.name, cf.name, &e.id[..8]);
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": e,
+            "intent": {
+                "id": i.id,
+                "name": i.name,
+            },
+            "codefile": {
+                "id": cf.id,
+                "path": cf.name,
+            },
+            "locator": locator,
+        }),
+        "loom sync",
+        format!("grounded '{}' in '{}' [{}]", i.name, cf.name, &e.id[..8]),
+    )?;
     Ok(())
 }
 
 /// Bind a validation to an interface surface it exercises (a `calls` edge).
 /// Idempotent: re-calling the same pair returns the existing edge.
-fn edge_call(store: &Store, validation: String, surface: String, _json: bool) -> Result<()> {
+fn edge_call(store: &Store, validation: String, surface: String, json: bool) -> Result<()> {
     let v = store.resolve_node(&validation, Some(NodeType::Validation))?;
     let s = store.resolve_node(&surface, Some(NodeType::InterfaceSurface))?;
     let existing = store.edges_with(Some(EdgeKind::Calls), Some(&v.id), Some(&s.id))?;
@@ -81,14 +98,30 @@ fn edge_call(store: &Store, validation: String, surface: String, _json: bool) ->
         Some(e) => e,
         None => store.add_edge(EdgeKind::Calls, &v.id, &s.id, TruthClass::Asserted)?,
     };
-    println!("'{}' calls surface '{}' [{}]", v.name, s.name, &e.id[..8]);
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": e,
+            "validation": {
+                "id": v.id,
+                "name": v.name,
+            },
+            "surface": {
+                "id": s.id,
+                "name": s.name,
+            },
+        }),
+        "loom status",
+        format!("'{}' calls surface '{}' [{}]", v.name, s.name, &e.id[..8]),
+    )?;
     Ok(())
 }
 
 /// Prune an edge. Refuses derived edges — those are recomputed by `loom sync`,
 /// so deleting one is pointless (it returns on the next sync); the fix is to
 /// remove its source. Asserted edges (a redundant grounding/relationship) go.
-fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, _json: bool) -> Result<()> {
+fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
@@ -116,29 +149,50 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, _json: bo
         )?;
     }
     store.delete_edge(&e.id)?;
-    println!(
-        "removed {} edge [{}]  ({} → {})",
-        e.kind,
-        &e.id[..8],
-        e.from_id,
-        e.to_id
-    );
-    if let Some(intent_name) = ungrounded_intent {
+    let warning = if let Some(intent_name) = &ungrounded_intent {
         if store
             .edges_with(Some(EdgeKind::Implements), Some(&e.from_id), None)?
             .is_empty()
         {
-            eprintln!(
+            Some(format!(
                 "warning: intent '{intent_name}' now has zero implements edges; run `loom status` or re-ground it"
-            );
+            ))
+        } else {
+            None
         }
-    }
+    } else {
+        None
+    };
+    pulse::emit(
+        store,
+        json,
+        serde_json::json!({
+            "removed": true,
+            "edge": e,
+            "reason": reason,
+            "warning": warning,
+        }),
+        "loom status",
+        || {
+            println!(
+                "removed {} edge [{}]  ({} → {})",
+                e.kind,
+                &e.id[..8],
+                e.from_id,
+                e.to_id
+            );
+            if let Some(w) = &warning {
+                println!("{w}");
+            }
+            Ok(())
+        },
+    )?;
     Ok(())
 }
 
 /// Correct the `locator` (symbol) facet on an asserted edge — e.g. a grounding
 /// whose target symbol moved or was misnamed. Upserts; refuses derived edges.
-fn edge_set_locator(store: &Store, edge_id: String, locator: String, _json: bool) -> Result<()> {
+fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
@@ -153,21 +207,47 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, _json: bool
         &locator,
         TruthClass::Asserted,
     )?;
-    println!(
-        "set locator on {} edge [{}] → {locator}",
-        e.kind,
-        &e.id[..8]
-    );
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": e,
+            "locator": locator,
+        }),
+        "loom sync",
+        format!(
+            "set locator on {} edge [{}] → {locator}",
+            e.kind,
+            &e.id[..8]
+        ),
+    )?;
     Ok(())
 }
 
-fn edge_relate(store: &Store, kind: String, from: String, to: String, _json: bool) -> Result<()> {
+fn edge_relate(store: &Store, kind: String, from: String, to: String, json: bool) -> Result<()> {
     let k = workitem::relationship_kind(&kind)
         .ok_or_else(|| anyhow!("unknown relationship kind '{kind}'"))?;
     let a = store.resolve_node(&from, Some(NodeType::Intent))?;
     let b = store.resolve_node(&to, Some(NodeType::Intent))?;
     let e = store.add_edge(k, &a.id, &b.id, TruthClass::Asserted)?;
-    println!("{} '{}' → '{}' [{}]", kind, a.name, b.name, &e.id[..8]);
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": e,
+            "kind": kind,
+            "from": {
+                "id": a.id,
+                "name": a.name,
+            },
+            "to": {
+                "id": b.id,
+                "name": b.name,
+            },
+        }),
+        "loom status",
+        format!("{} '{}' → '{}' [{}]", kind, a.name, b.name, &e.id[..8]),
+    )?;
     Ok(())
 }
 
@@ -178,13 +258,24 @@ fn edge_verdict(
     criterion: String,
     evidence: String,
     confidence: f64,
-    _json: bool,
+    json: bool,
 ) -> Result<()> {
     let status = verdict_status(&verdict)?;
     let target = store.resolve_edge(&edge_id)?;
     let e = store.record_verdict(&target.id, status, &criterion, &evidence, confidence, "llm")?;
-    println!("recorded {} on edge [{}]", e.status, &e.id[..8]);
-    super::print_next_move(store)?;
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": e,
+            "verdict": verdict,
+            "criterion": criterion,
+            "evidence": evidence,
+            "confidence": confidence,
+        }),
+        "loom status",
+        format!("recorded {} on edge [{}]", e.status, &e.id[..8]),
+    )?;
     Ok(())
 }
 
@@ -197,7 +288,7 @@ fn edge_explore(
     criterion: String,
     evidence: String,
     confidence: f64,
-    _json: bool,
+    json: bool,
 ) -> Result<()> {
     let ia = store.resolve_node(&a, Some(NodeType::Intent))?;
     let ib = store.resolve_node(&b, Some(NodeType::Intent))?;
@@ -207,9 +298,29 @@ fn edge_explore(
         None => store.add_edge(EdgeKind::Relates, &ia.id, &ib.id, TruthClass::Asserted)?,
     };
     let status = verdict_status(&verdict)?;
-    store.record_verdict(&edge.id, status, &criterion, &evidence, confidence, "llm")?;
-    println!("explored '{}' ~ '{}': {}", ia.name, ib.name, status);
-    super::print_next_move(store)?;
+    let verdict_edge =
+        store.record_verdict(&edge.id, status, &criterion, &evidence, confidence, "llm")?;
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": verdict_edge,
+            "a": {
+                "id": ia.id,
+                "name": ia.name,
+            },
+            "b": {
+                "id": ib.id,
+                "name": ib.name,
+            },
+            "verdict": verdict,
+            "criterion": criterion,
+            "evidence": evidence,
+            "confidence": confidence,
+        }),
+        "loom status",
+        format!("explored '{}' ~ '{}': {}", ia.name, ib.name, status),
+    )?;
     Ok(())
 }
 

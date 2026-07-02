@@ -13,11 +13,11 @@ Change can enter from any surface:
 ```text
 human utterance
 LLM code edit
-LLM or human wiki edit
+documentation correction or note
 code change outside loom
 validation result
 external contract or API change
-graph import (porting, federation)
+graph import
 signal confirmation from debt feed
 ```
 
@@ -39,12 +39,12 @@ Every fact type has a canonical owner. A change to one expression of truth must 
 | Quality judgment | `governs` edge verdict | quality role |
 | Interface contract | `InterfaceSurface` / contract artifact | sync (derived) / builder (asserted) |
 | Rationale / decision | `Note` | any role |
-| Generated docs | `WikiProjection` + `WikiManifest` | wiki_author / wiki_reviewer |
+| Generated docs | deferred wiki projection (not current CLI) | routed through InboxItem today |
 | Statistical suspicion | `DebtCluster` (computed, not stored) | computed on demand |
-| Raw input | `InboxItem` | capture before normalization |
+| Raw input | `InboxItem` | capture before routing |
 | Operational work | `TaskRecord` | any role |
 
-A wiki prose edit is not a change to behavior meaning unless it is routed as a graph delta through `InboxItem` normalization and accepted.
+A documentation prose edit is not a change to behavior meaning unless it is routed as a graph delta through `InboxItem` and accepted.
 
 ---
 
@@ -53,7 +53,7 @@ A wiki prose edit is not a change to behavior meaning unless it is routed as a g
 ```
 event enters
   → classify source and fact type
-  → normalize to typed delta / proposal / signal
+  → route to typed delta / proposal / signal
   → apply to canonical owner plane
   → evaluate dependencies
   → propagate staleness (ripple)
@@ -61,7 +61,7 @@ event enters
   → LLM or human acts (see llm-driver.md)
   → write-back recorded in graph
   → loom validates transition
-  → export / wiki pages settle or remain stale
+  → export settles or remains stale
   → next event
 ```
 
@@ -73,7 +73,7 @@ This cycle is non-blocking. Multiple events can queue. The LLM works one `WorkIt
 
 | Event | Source | Primary fact changed |
 |---|---|---|
-| `HumanUtteranceCaptured` | human | InboxItem (pending normalization) |
+| `HumanUtteranceCaptured` | human | InboxItem (pending routing) |
 | `IntentMeaningChanged` | builder | Intent description/name |
 | `IntentLifecycleChanged` | builder | Intent lifecycle |
 | `CodeFileChanged` | sync | CodeFile derived facts |
@@ -86,10 +86,9 @@ This cycle is non-blocking. Multiple events can queue. The LLM works one `WorkIt
 | `HypothesisAdopted` | builder | Intent lifecycle (planned spawned) |
 | `InterfaceSurfaceChanged` | sync / builder | InterfaceSurface / exposes edge |
 | `ExternalContractChanged` | builder / human | InterfaceSurface / contract_ref |
-| `GraphImportedAsPlanned` | builder (import) | Intent lifecycle = planned, proofs not_run |
+| `GraphImported` | builder (import) | restored graph facts |
 | `DebtClusterConfirmed` | human / LLM | Hypothesis / needs_change Intent / manual edge / Note |
-| `DecisionNoteAdded` | any role | Note on target node/edge |
-| `WikiPageEdited` | wiki_author / human | WikiPage + pending citation check |
+| `DocumentationDriftCaptured` | any role | InboxItem |
 | `TaskRecordCreated` | any role | TaskRecord |
 | `TaskRecordClosed` | any role | TaskRecord + optional promoted graph facts |
 
@@ -108,7 +107,7 @@ CodeFile content hash changed
   → governs edges whose intent grounds this file → needs_reverification
   → Validation.last_result → not_run; linked validates edges → needs_reverification
   → relates/requires/triggers/sequence edges between intents grounding this file → needs_reverification
-  → wiki pages whose page_dependency includes this file → stale
+  → documentation items depending on this file should be captured/routed through InboxItem (wiki projection deferred)
 ```
 
 ### Intent meaning changed
@@ -119,11 +118,12 @@ Intent description changed (redefinition)
   → governs edges for this intent → needs_reverification
   → validates edges for this intent → needs_reverification; linked Validation.last_result → not_run
   → relates/requires/etc edges touching this intent → needs_reverification
-  → old wording preserved in a decision Note
-  → wiki pages depending on this intent → stale
+  → completeness waiver facets are cleared so waived axes re-open under the new meaning
+  → old wording and waiver reopening are preserved in decision Notes
+  → documentation items depending on this intent should be captured/routed through InboxItem (wiki projection deferred)
 
 Intent name changed only
-  → no ripple (cosmetic); wiki pages stale if they reference the name
+  → no ripple (cosmetic); documentation references may need InboxItem routing
 ```
 
 ### Validation result changed
@@ -131,16 +131,16 @@ Intent name changed only
 ```text
 Validation passed/failed/blocked
   → validates edge status updated
-  → wiki pages depending on this validation → stale
-  → if failed: parent intent may surface in fix/build queue
+  → documentation items depending on this validation should be captured/routed through InboxItem
+  → if failed: the linked intent surfaces in fix queue
 ```
 
 ### Quality verdict changed
 
 ```text
 governs edge status changed
-  → wiki pages depending on this rule/intent pair → stale
-  → if failing: intent surfaces in fix queue
+  → documentation items depending on this rule/intent pair should be captured/routed through InboxItem
+  → if failing: linked intent surfaces in fix queue
 ```
 
 ### Interface surface changed
@@ -149,8 +149,7 @@ governs edge status changed
 InterfaceSurface identity/contract changed
   → calls edges from validations → needs_reverification
   → related intents via exposes chain → stale check
-  → wiki pages depending on this surface → stale
-  → saga Validations: last_result → not_run; linked calls edges → needs_reverification
+  → journey validations: last_result → not_run; linked calls edges → needs_reverification
 ```
 
 ### External contract changed
@@ -159,33 +158,32 @@ InterfaceSurface identity/contract changed
 External contract artifact changed
   → InterfaceSurface contract_ref stale
   → related intents → needs_reverification
-  → sagas/validations: Validation.last_result → not_run; linked validates and calls edges → needs_reverification
-  → wiki interface pages → stale
+  → journey validations: Validation.last_result → not_run; linked validates and calls edges → needs_reverification
+  → documentation drift captured as InboxItem if present
 ```
 
-### Graph imported as planned
+### Graph imported
 
 ```text
-Import source graph (--as-planned)
-  → all intents arrive lifecycle=planned
-  → all implements groundings dropped (code differs)
-  → all Validation.last_result → not_run; linked validates edges → needs_reverification
-  → build queue drives realization
-  → validate queue drives re-proving
+Import source graph
+  → restore exported graph facts into a fresh store
+  → validate before writing; never leave a partial graph
+  → run loom status / loom next to continue from the imported state
 ```
 
-### Wiki page edited
+Porting import that drops groundings and proof results as planned work is deferred; the current binary does not expose `import --as-planned`.
+
+### Documentation edited `[deferred wiki projection]`
 
 ```text
-Wiki page prose-only change
-  → run citation check (do graph facts referenced still exist?)
-  → if citations valid: accept
-  → if citations broken: flag stale
+Documentation prose-only change
+  → if it is merely explanatory, no graph change
+  → if it contradicts or extends graph truth, capture as InboxItem
 
-Wiki page semantic claim differs from graph
-  → capture as InboxItem(kind=docs_gap or missing_intent or ...)
-  → normalize → proposed graph delta
-  → graph remains canonical until delta accepted
+Documentation semantic claim differs from graph
+  → loom inbox add "<drift>" --source wiki --link <ref>
+  → route through door/inbox landing commands
+  → graph remains canonical until a typed graph write is accepted
 ```
 
 ### Debt cluster confirmed
@@ -231,8 +229,8 @@ Initial state:
   Intents sparse or absent
   Validations may exist as codefiles but not as Validation nodes
 
-First queues:
-  seed/align (elicit meaning from existing code)
+First work:
+  human product check (elicit meaning from existing code; no current `align` queue)
   build (ground discovered intents)
   validate (connect test files as Validation nodes)
   quality (measure existing code against rules)
@@ -258,9 +256,9 @@ Key invariant:
   Code moving never implies behavior changed.
 ```
 
-### Port
+### Port `[deferred/non-current]`
 
-Starting context: source graph imported as design for a new codebase.
+Starting context: a source graph is used as design input for a new codebase. The current binary imports a graph as-is; planned-port import that drops groundings/proofs is deferred.
 
 ```text
 Initial state:
@@ -269,7 +267,7 @@ Initial state:
   No proof results (Validation.last_result = not_run, validates edges = uninspected)
   Criteria travel as acceptance contracts
 
-First queues:
+First work once such a graph is prepared:
   build (realize planned intents in new language/codebase)
   validate (re-earn proofs)
   quality (re-measure rules)
@@ -282,12 +280,12 @@ Starting context: external dependency (API, contract, service) changed.
 ```text
 Initial state:
   InterfaceSurface / contract_ref stale
-  Related intents and sagas need reverification
+  Related intents and journeys need reverification
 
-First queues:
+First queues/work:
   fix (update interface groundings)
-  validate (re-run sagas)
-  align (check if product behavior evolved)
+  validate (re-run journey proofs)
+  human product check (decide whether product behavior evolved; no current `align` queue)
 ```
 
 ---
@@ -319,7 +317,7 @@ whether evidence is sufficient
 whether a design decision is good
 whether a human requirement evolved
 how to repair code
-whether a wiki claim is accurate
+whether a documentation claim is accurate
 ```
 
 Therefore, the program state machine **compiles into prompt state** for the LLM:
@@ -330,6 +328,7 @@ graph facts + fact ownership context
 + suggested read set
 + allowed graph writes
 + required evidence shape
++ truth axis correct_when line
 + stop condition
 ```
 
@@ -348,7 +347,7 @@ These must hold at all times and be enforced at every write boundary.
 5. **Evidence gates.** Asserted edges with empty criterion or evidence are rejected at write time.
 6. **Role gates.** An asserted write from a role not allowed for that edge kind is rejected.
 7. **Ripple completeness.** Every dependency change reaches every dependent fact. No silent staleness.
-8. **No cross-plane silent mutation.** Wiki edit does not change intent meaning without going through InboxItem normalization.
+8. **No cross-plane silent mutation.** Documentation edits do not change intent meaning without going through InboxItem routing.
 
 ---
 
@@ -381,13 +380,12 @@ deprecated
 | Queue | Triggered by | Owner role |
 |---|---|---|
 | `build` | planned / needs_change intents | builder |
-| `fix` | stale implements locators, failing relationships | fixer |
-| `validate` | not_run / failing validations | validator |
-| `quality` | uninspected / failing governs edges | quality |
-| `analyze` | stale / uninspected asserted relationships | analyzer |
-| `review` | low-confidence verdicts (< 0.7) | analyzer (re-inspection mindset — form own hypothesis before reading prior evidence, then confirm or overturn) |
-| `align` | stale user-visible intents (churn × centrality) | interviewer |
-| `prove` | proposed / stale-supported hypotheses | analyzer |
-| `wiki` | stale wiki pages after graph/code change | wiki_author |
-| `inbox` | new InboxItems pending normalization | any |
-| `debt` | DebtCluster feed (advisory only) | human / LLM |
+| `elaborate` | user-visible feature intents with open Definition-of-Complete axes; highest incomplete score first | builder |
+| `coverage` | registered codefiles with no owning intent | builder |
+| `fix` | failing asserted edges of any kind; stale asserted edges except `governs`/`validates` | fixer for failing, analyzer for stale relationship/grounding re-verification |
+| `validate` | uninspected / stale `validates` edges only | validator |
+| `quality` | uninspected / stale `governs` edges only; or first never-measured rule × root implemented intent pair | quality |
+| `analyze` | uninspected non-`governs`/non-`validates` asserted relationships | analyzer |
+| `triage` | untriaged/stale derived findings, including external diagnostic findings, and new InboxItems needing routing | analyzer |
+| `review` | asserted passing/independent verdicts with `0 < confidence < 0.7`, lowest first | edge kind's registry owner, with independent re-inspection mindset |
+| `prove` | proposed hypotheses | analyzer |

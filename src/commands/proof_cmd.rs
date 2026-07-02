@@ -10,7 +10,16 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
     match cmd {
         RuleCmd::Seed { pack } => {
             let n = crate::packs::seed(&store, &pack)?;
-            println!("seeded pack '{pack}': {n} rule(s)");
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "pack": pack,
+                    "seeded_rules": n,
+                }),
+                "loom status",
+                format!("seeded pack '{pack}': {n} rule(s)"),
+            )?;
             Ok(())
         }
         RuleCmd::Verdict {
@@ -25,9 +34,23 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
             let edge = store.ensure_edge(EdgeKind::Governs, &r.id, &i.id)?;
             let st = verdict_status_quality(&status)?;
-            store.record_verdict(&edge.id, st, &criterion, &evidence, confidence, "llm")?;
-            println!("rule '{}' {} on '{}'", r.name, st, i.name);
-            print_next_move(&store)?;
+            let verdict_edge =
+                store.record_verdict(&edge.id, st, &criterion, &evidence, confidence, "llm")?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "rule": node_json(&r),
+                    "intent": node_json(&i),
+                    "edge": verdict_edge,
+                    "status": status,
+                    "criterion": criterion,
+                    "evidence": evidence,
+                    "confidence": confidence,
+                }),
+                "loom status",
+                format!("rule '{}' {} on '{}'", r.name, st, i.name),
+            )?;
             Ok(())
         }
         RuleCmd::List { limit } => {
@@ -75,13 +98,30 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
                 "",
                 serde_json::json!({ "category": category }),
             )?;
-            println!("added quality rule '{}' [{}]", r.name, &r.id[..8]);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "rule": node_json(&r),
+                }),
+                "loom status",
+                format!("added quality rule '{}' [{}]", r.name, &r.id[..8]),
+            )?;
             Ok(())
         }
         RuleCmd::Remove { key } => {
             let r = store.resolve_node(&key, Some(NodeType::QualityRule))?;
             store.delete_node(&r.id)?;
-            println!("removed quality rule '{}'", r.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "removed": true,
+                    "rule": node_json(&r),
+                }),
+                "loom status",
+                format!("removed quality rule '{}'", r.name),
+            )?;
             Ok(())
         }
         RuleCmd::Ungovern { rule, intent } => {
@@ -94,7 +134,18 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             {
                 Some(e) => {
                     store.delete_edge(&e.id)?;
-                    println!("'{}' no longer governs '{}'", r.name, i.name);
+                    pulse::emit_line(
+                        &store,
+                        json,
+                        serde_json::json!({
+                            "removed": true,
+                            "edge": e,
+                            "rule": node_json(&r),
+                            "intent": node_json(&i),
+                        }),
+                        "loom status",
+                        format!("'{}' no longer governs '{}'", r.name, i.name),
+                    )?;
                 }
                 None => bail!("'{}' does not govern '{}'", r.name, i.name),
             }
@@ -157,8 +208,18 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 body["artifact"] = serde_json::json!(v);
             }
             let val = store.add_node(NodeType::Validation, &name, "", "not_run", body)?;
-            store.ensure_edge(EdgeKind::Validates, &val.id, &i.id)?;
-            println!("added validation '{}' → '{}'", val.name, i.name);
+            let edge = store.ensure_edge(EdgeKind::Validates, &val.id, &i.id)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "validation": node_json(&val),
+                    "intent": node_json(&i),
+                    "edge": edge,
+                }),
+                "loom status",
+                format!("added validation '{}' → '{}'", val.name, i.name),
+            )?;
             Ok(())
         }
         ValidationCmd::Mark {
@@ -169,8 +230,21 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
             mark_validation(&store, &val.id, &result, &evidence, &reason)?;
-            println!("validation '{}' → {result}", val.name);
-            print_next_move(&store)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "validation": {
+                        "id": val.id,
+                        "name": val.name,
+                        "result": result,
+                    },
+                    "evidence": evidence,
+                    "reason": reason,
+                }),
+                "loom status",
+                format!("validation '{}' → {result}", val.name),
+            )?;
             Ok(())
         }
         ValidationCmd::Show { key } => {
@@ -211,7 +285,20 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 body["command"] = serde_json::json!(c);
             }
             store.set_node_body(&val.id, &body)?;
-            println!("updated validation '{}'", val.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "validation": {
+                        "id": val.id,
+                        "name": val.name,
+                        "status": val.status,
+                        "body": body,
+                    },
+                }),
+                "loom status",
+                format!("updated validation '{}'", val.name),
+            )?;
             Ok(())
         }
         ValidationCmd::Unlink { validation, intent } => {
@@ -224,7 +311,18 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             {
                 Some(e) => {
                     store.delete_edge(&e.id)?;
-                    println!("unlinked '{}' from '{}'", v.name, i.name);
+                    pulse::emit_line(
+                        &store,
+                        json,
+                        serde_json::json!({
+                            "removed": true,
+                            "edge": e,
+                            "validation": node_json(&v),
+                            "intent": node_json(&i),
+                        }),
+                        "loom status",
+                        format!("unlinked '{}' from '{}'", v.name, i.name),
+                    )?;
                 }
                 None => bail!("'{}' does not validate '{}'", v.name, i.name),
             }
@@ -233,7 +331,16 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         ValidationCmd::Delete { key } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
             store.delete_node(&val.id)?;
-            println!("deleted validation '{}'", val.name);
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "deleted": true,
+                    "validation": node_json(&val),
+                }),
+                "loom status",
+                format!("deleted validation '{}'", val.name),
+            )?;
             Ok(())
         }
         ValidationCmd::List { limit } => {
@@ -323,57 +430,60 @@ pub(crate) fn validate_cmd(
         out
     };
     if vals.is_empty() {
-        if json {
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&serde_json::json!({
-                    "ran": [],
-                    "summary": { "passed": 0, "failed": 0, "blocked": 0, "skipped": 0 },
-                }))?
-            );
-        } else {
-            println!("no validations to run");
-        }
-        return Ok(());
+        return pulse::emit_line(
+            &store,
+            json,
+            serde_json::json!({
+                "ran": [],
+                "summary": { "passed": 0, "failed": 0, "blocked": 0, "skipped": 0 },
+            }),
+            "loom status",
+            "no validations to run",
+        );
     }
     let root = store.root().to_path_buf();
+    drop(store);
+
     let mut results = Vec::new();
+    let mut human_lines = Vec::new();
     for v in &vals {
-        let command = v.body.get("command").and_then(|c| c.as_str()).unwrap_or("");
+        let command = v
+            .body
+            .get("command")
+            .and_then(|c| c.as_str())
+            .unwrap_or("")
+            .to_string();
         if command.is_empty() {
-            if json {
-                results.push(serde_json::json!({
-                    "id": v.id,
-                    "name": v.name,
-                    "status": "skipped",
-                    "reason": "manual_check",
-                }));
-            } else {
-                println!(
-                    "skip '{}' (manual_check — use loom validation mark)",
-                    v.name
-                );
-            }
+            results.push(serde_json::json!({
+                "id": v.id,
+                "name": v.name,
+                "status": "skipped",
+                "reason": "manual_check",
+            }));
+            human_lines.push(format!(
+                "skip '{}' (manual_check — use loom validation mark)",
+                v.name
+            ));
             continue;
         }
         let timeout_secs = validation_timeout_secs(v);
-        let out = run_validation_command(&root, command, timeout_secs);
+        let out = run_validation_command(&root, &command, timeout_secs);
         match out {
             Ok(Some(o)) if o.status.success() => {
+                let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "passed", &format!("`{command}` exit 0"), "")?;
-                if json {
-                    results.push(serde_json::json!({
-                        "id": v.id,
-                        "name": v.name,
-                        "status": "passed",
-                        "command": command,
-                    }));
-                } else {
-                    println!("PASS {}", v.name);
-                }
+                drop(store);
+                results.push(serde_json::json!({
+                    "id": v.id,
+                    "name": v.name,
+                    "status": "passed",
+                    "command": command,
+                }));
+                human_lines.push(format!("PASS {}", v.name));
             }
             Ok(Some(o)) => {
                 let code = o.status.code().unwrap_or(-1);
+                let store = open(Some(&root))?;
                 mark_validation(
                     &store,
                     &v.id,
@@ -381,80 +491,85 @@ pub(crate) fn validate_cmd(
                     &format!("`{command}` exit {code}"),
                     "",
                 )?;
-                if json {
-                    results.push(serde_json::json!({
-                        "id": v.id,
-                        "name": v.name,
-                        "status": "failed",
-                        "command": command,
-                        "exit_code": code,
-                    }));
-                } else {
-                    println!("FAIL {} (exit {code})", v.name);
-                }
+                drop(store);
+                results.push(serde_json::json!({
+                    "id": v.id,
+                    "name": v.name,
+                    "status": "failed",
+                    "command": command,
+                    "exit_code": code,
+                }));
+                human_lines.push(format!("FAIL {} (exit {code})", v.name));
             }
             Ok(None) => {
                 let reason = format!("`{command}` timed out after {timeout_secs}s");
+                let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "blocked", "", &reason)?;
-                if json {
-                    results.push(serde_json::json!({
-                        "id": v.id,
-                        "name": v.name,
-                        "status": "blocked",
-                        "command": command,
-                        "reason": reason,
-                    }));
-                } else {
-                    println!("BLOCKED {} (timed out after {timeout_secs}s)", v.name);
-                }
+                drop(store);
+                results.push(serde_json::json!({
+                    "id": v.id,
+                    "name": v.name,
+                    "status": "blocked",
+                    "command": command,
+                    "reason": reason,
+                }));
+                human_lines.push(format!(
+                    "BLOCKED {} (timed out after {timeout_secs}s)",
+                    v.name
+                ));
             }
             Err(e) => {
+                let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "blocked", "", &format!("could not run: {e}"))?;
-                if json {
-                    results.push(serde_json::json!({
-                        "id": v.id,
-                        "name": v.name,
-                        "status": "blocked",
-                        "command": command,
-                        "reason": e.to_string(),
-                    }));
-                } else {
-                    println!("BLOCKED {} ({e})", v.name);
-                }
+                drop(store);
+                results.push(serde_json::json!({
+                    "id": v.id,
+                    "name": v.name,
+                    "status": "blocked",
+                    "command": command,
+                    "reason": e.to_string(),
+                }));
+                human_lines.push(format!("BLOCKED {} ({e})", v.name));
             }
         }
     }
-    if json {
-        let passed = results
-            .iter()
-            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("passed"))
-            .count();
-        let failed = results
-            .iter()
-            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("failed"))
-            .count();
-        let blocked = results
-            .iter()
-            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("blocked"))
-            .count();
-        let skipped = results
-            .iter()
-            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("skipped"))
-            .count();
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&serde_json::json!({
-                "ran": results,
-                "summary": {
-                    "passed": passed,
-                    "failed": failed,
-                    "blocked": blocked,
-                    "skipped": skipped,
-                }
-            }))?
-        );
-    }
-    Ok(())
+    let passed = results
+        .iter()
+        .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("passed"))
+        .count();
+    let failed = results
+        .iter()
+        .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("failed"))
+        .count();
+    let blocked = results
+        .iter()
+        .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("blocked"))
+        .count();
+    let skipped = results
+        .iter()
+        .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("skipped"))
+        .count();
+    let store = open(Some(&root))?;
+    pulse::emit(
+        &store,
+        json,
+        serde_json::json!({
+            "ran": results,
+            "summary": {
+                "passed": passed,
+                "failed": failed,
+                "blocked": blocked,
+                "skipped": skipped,
+            }
+        }),
+        "loom status",
+        || {
+            for line in human_lines {
+                println!("{line}");
+            }
+            Ok(())
+        },
+    )
 }
 
 fn validation_timeout_secs(v: &crate::model::Node) -> u64 {
