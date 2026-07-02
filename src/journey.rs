@@ -344,10 +344,9 @@ pub fn execute(
         }
         let url = interpolate(&format!("{base}{}", step.request.url), &vars);
         let method = step.request.method.to_uppercase();
-        let mut req = client.request(
-            reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
-            &url,
-        );
+        let method = reqwest::Method::from_bytes(method.as_bytes())
+            .map_err(|_| anyhow!("step '{}': invalid HTTP method '{method}'", step.name))?;
+        let mut req = client.request(method, &url);
         for (name, value) in &step.request.headers {
             req = req.header(name, interpolate(value, &vars));
         }

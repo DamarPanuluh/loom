@@ -846,6 +846,109 @@ fn journey_add_tolerates_unresolved_intents() {
     assert_eq!(validates.len(), 1, "only the resolved intent is linked");
 }
 
+#[test]
+fn journey_map_joins_step_intents_and_exposes_gaps() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let submit_checkout = intent(&store, "submit checkout", "implemented");
+    let apply_discount = intent(&store, "apply discount", "implemented");
+    let plain_validated = intent(&store, "email receipt is rendered", "implemented");
+    let _deprecated = intent(&store, "legacy checkout path", "deprecated");
+
+    store
+        .set_facet(
+            &plain_validated,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let journey = store
+        .add_node(
+            NodeType::Validation,
+            "checkout happy path",
+            "",
+            "not_run",
+            serde_json::json!({"type":"journey","artifact":"lab/checkout.yaml"}),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &journey.id, &submit_checkout)
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &journey.id, &apply_discount)
+        .unwrap();
+
+    let plain_validation = store
+        .add_node(
+            NodeType::Validation,
+            "receipt rendering unit test",
+            "",
+            "not_run",
+            serde_json::json!({"type":"test"}),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &plain_validation.id, &plain_validated)
+        .unwrap();
+
+    drop(store);
+
+    let out = run_cli_json(tmp.path(), &["journey", "map"]);
+    let journeys = out["journeys"]
+        .as_array()
+        .expect("journey map emits a journeys array");
+    assert_eq!(journeys.len(), 1, "one journey row: {out}");
+    let row = &journeys[0];
+    assert_eq!(row["name"], "checkout happy path", "journey name: {out}");
+    assert_eq!(
+        row["artifact"], "lab/checkout.yaml",
+        "journey artifact: {out}"
+    );
+
+    let step_intents = row["intents"]
+        .as_array()
+        .expect("journey row emits an intents array");
+    assert_eq!(step_intents.len(), 2, "two step intents: {out}");
+    assert_eq!(step_intents[0]["name"], "apply discount", "sorted by name");
+    assert_eq!(step_intents[1]["name"], "submit checkout", "sorted by name");
+    for step in step_intents {
+        assert_eq!(
+            step["edge_status"], "uninspected",
+            "step carries edge status: {step}"
+        );
+    }
+
+    let unjourneyed = out["unjourneyed_intents"]
+        .as_array()
+        .expect("journey map emits an unjourneyed_intents array");
+    let gap = unjourneyed
+        .iter()
+        .find(|i| i["name"] == "email receipt is rendered")
+        .expect("a test validation must not count as journey coverage");
+    assert_eq!(
+        gap["visibility"], "user_visible",
+        "visibility facet round-trips: {gap}"
+    );
+    assert!(
+        unjourneyed.iter().all(|i| i["name"] != "apply discount"),
+        "journey step intent must not be unjourneyed: {out}"
+    );
+    assert!(
+        unjourneyed.iter().all(|i| i["name"] != "submit checkout"),
+        "journey step intent must not be unjourneyed: {out}"
+    );
+    assert!(
+        unjourneyed
+            .iter()
+            .all(|i| i["name"] != "legacy checkout path"),
+        "deprecated intent must not be unjourneyed: {out}"
+    );
+}
+
 // ---- journey diagnose: --base-url override + clear no-base error -----------
 
 /// Contract: a legacy `saga:` spec whose `base` is unset (no env var, no field)
@@ -876,6 +979,46 @@ fn journey_diagnose_reports_clear_error_when_base_unresolved() {
     assert!(
         stderr.contains("no usable base URL") && stderr.contains("--base-url"),
         "error names the fix: {stderr}"
+    );
+}
+
+#[test]
+fn journey_diagnose_rejects_invalid_http_method() {
+    let tmp = Tmp::new();
+    let spec_path = tmp.path().join("invalid-method.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "journey": "x",
+            "base": "http://127.0.0.1:1",
+            "steps": [
+                {
+                    "name": "boom",
+                    "intent": "i",
+                    "request": { "method": "BAD METHOD", "url": "/x" },
+                    "expect": { "status": 200 }
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    cmd.args(["journey", "diagnose", spec_path.to_str().unwrap()]);
+    let out = cmd.output().unwrap();
+    assert!(
+        !out.status.success(),
+        "malformed methods used to silently fall back to GET"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("invalid HTTP method 'BAD METHOD'"),
+        "malformed methods used to silently fall back to GET; stderr: {stderr}"
+    );
+    assert!(
+        stderr.contains("boom"),
+        "error should name the failing step; stderr: {stderr}"
     );
 }
 

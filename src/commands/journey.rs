@@ -28,6 +28,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()>
     match cmd {
         JourneyCmd::Add { spec } => journey_add(graph, spec, json),
         JourneyCmd::List { limit } => journey_list(graph, limit, json),
+        JourneyCmd::Map => journey_map(graph, json),
         JourneyCmd::Run { spec, base_url } => journey_run(graph, spec, base_url.as_deref(), json),
         JourneyCmd::Diagnose { spec, base_url } => {
             journey_diagnose(&spec, base_url.as_deref(), json)
@@ -128,6 +129,116 @@ fn journey_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
     } else {
         for n in &journeys {
             println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+        }
+    }
+    Ok(())
+}
+/// Joined read view: every journey validation with the intents its Validates
+/// edges exercise, plus every active intent no journey touches. Both sections
+/// are deliberately unbounded — a truncated map would hide exactly the gaps
+/// it exists to expose. Linked intents are sorted by name (Validates edges
+/// carry no order; step order lives in Sequence edges).
+fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
+    const ALL: usize = i64::MAX as usize;
+    let store = open(graph)?;
+    let journeys: Vec<Node> = store
+        .list_nodes(Some(NodeType::Validation), ALL)?
+        .into_iter()
+        .filter(is_journey_validation)
+        .collect();
+    let mut journey_rows: Vec<Value> = Vec::new();
+    for j in &journeys {
+        let mut intents: Vec<(String, Value)> = Vec::new();
+        for e in store.edges_with(Some(EdgeKind::Validates), Some(&j.id), None)? {
+            let Some(intent) = store.get_node(&e.to_id)? else {
+                continue;
+            };
+            if intent.node_type != NodeType::Intent {
+                continue;
+            }
+            let sort_key = intent.name.clone();
+            let row = json!({
+                "id": intent.id,
+                "name": intent.name,
+                "lifecycle": intent.status,
+                "edge_status": e.status.as_str(),
+            });
+            intents.push((sort_key, row));
+        }
+        intents.sort_by(|a, b| a.0.cmp(&b.0));
+        journey_rows.push(json!({
+            "id": j.id,
+            "name": j.name,
+            "status": j.status,
+            "artifact": j.body.get("artifact").and_then(|v| v.as_str()),
+            "intents": intents.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
+        }));
+    }
+    // An intent counts as journeyed iff SOME journey validation holds a
+    // Validates edge to it — checked per intent (not via the set above) so a
+    // Validates edge from a plain test validation never masks a gap.
+    let mut unjourneyed: Vec<Value> = Vec::new();
+    for n in store.list_nodes(Some(NodeType::Intent), ALL)? {
+        if n.status == "deprecated" {
+            continue;
+        }
+        let mut has_journey = false;
+        for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&n.id))? {
+            if let Some(v) = store.get_node(&e.from_id)? {
+                if is_journey_validation(&v) {
+                    has_journey = true;
+                    break;
+                }
+            }
+        }
+        if has_journey {
+            continue;
+        }
+        unjourneyed.push(json!({
+            "id": n.id,
+            "name": n.name,
+            "lifecycle": n.status,
+            "level": store.get_facet(&n.id, TargetKind::Node, "level")?,
+            "visibility": store.get_facet(&n.id, TargetKind::Node, "visibility")?,
+            "aspect": store.get_facet(&n.id, TargetKind::Node, "aspect")?,
+        }));
+    }
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "journeys": journey_rows,
+                "unjourneyed_intents": unjourneyed,
+            }))?
+        );
+    } else {
+        println!("journeys: {}", journey_rows.len());
+        for j in &journey_rows {
+            println!(
+                "{:<10} {} [{}]",
+                j["status"].as_str().unwrap_or(""),
+                j["name"].as_str().unwrap_or(""),
+                &j["id"].as_str().unwrap_or("")[..8]
+            );
+            for i in j["intents"].as_array().into_iter().flatten() {
+                println!(
+                    "    -> {} [{}] ({})",
+                    i["name"].as_str().unwrap_or(""),
+                    &i["id"].as_str().unwrap_or("")[..8],
+                    i["edge_status"].as_str().unwrap_or("")
+                );
+            }
+        }
+        println!("intents with no journey: {}", unjourneyed.len());
+        for i in &unjourneyed {
+            println!(
+                "{}  {}  lifecycle={} visibility={} level={}",
+                &i["id"].as_str().unwrap_or("")[..8],
+                i["name"].as_str().unwrap_or(""),
+                i["lifecycle"].as_str().unwrap_or(""),
+                i["visibility"].as_str().unwrap_or("—"),
+                i["level"].as_str().unwrap_or("—")
+            );
         }
     }
     Ok(())
@@ -775,29 +886,10 @@ fn repo_ref_exists(root: &std::path::Path, reference: &str) -> bool {
 /// single truth source — it reads the same validations the journey_proof smell
 /// reads, so a staled proof flips coverage to uncovered with no separate write.
 fn effective_coverage(store: &Store, intent_id: &str) -> String {
-    let Ok(validations) = store.edges_with(Some(EdgeKind::Validates), None, Some(intent_id)) else {
-        return "uncovered".into();
-    };
-    for e in &validations {
-        if e.status != InspectionStatus::Passing {
-            continue;
-        }
-        let Ok(Some(v)) = store.get_node(&e.from_id) else {
-            continue;
-        };
-        if v.status != "passed" {
-            continue;
-        }
-        let is_journey = v.body.get("proof_kind").and_then(|x| x.as_str()) == Some("journey");
-        let is_l5_plus = matches!(
-            v.body.get("proof_level").and_then(|x| x.as_str()),
-            Some("L5") | Some("L6")
-        );
-        if is_journey && is_l5_plus {
-            return "covered".into();
-        }
+    match current_l5_journey_validations(store, intent_id) {
+        Ok(proofs) if !proofs.is_empty() => "covered".into(),
+        _ => "uncovered".into(),
     }
-    "uncovered".into()
 }
 
 // ---- typed runner prompt context ------------------------------------------

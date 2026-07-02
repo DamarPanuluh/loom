@@ -649,6 +649,11 @@ pub enum JourneyCmd {
         #[arg(long, default_value_t = 50)]
         limit: usize,
     },
+    /// Joined map: every journey validation with its step intents (via
+    /// Validates edges), plus every active intent no journey exercises.
+    /// Deliberately unbounded — a truncated map would hide the gaps it
+    /// exists to expose.
+    Map,
     /// Execute a journey spec and record the result onto the graph.
     Run {
         /// Path to the journey or HTTP contract spec file (.json or .yaml/.yml).

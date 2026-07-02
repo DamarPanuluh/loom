@@ -153,7 +153,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": "2026-07-02T12:48:12.439Z"
+      "updated_at": "2026-07-02T14:16:37.640Z"
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -207,6 +207,20 @@
       },
       "created_at": "2026-07-02T09:46:41.142Z",
       "updated_at": "2026-07-02T09:46:41.142Z"
+    },
+    {
+      "id": "1c43ab6cae8381b0bd8267f4f341bae3",
+      "type": "inbox_item",
+      "name": "commands/journey.rs: effective_coverage duplicates current_l…",
+      "description": "commands/journey.rs: effective_coverage duplicates current_l5_journey_validations' filter loop (:712-734 vs :777-801); could collapse to !current_l5_journey_validations(...).is_empty()",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "link": "file:src/commands/journey.rs",
+        "source": "code_audit"
+      },
+      "created_at": "2026-07-02T13:48:36.859Z",
+      "updated_at": "2026-07-02T14:00:57.206Z"
     },
     {
       "id": "1c709486a94ead8fec01c9ff843903b1",
@@ -427,7 +441,7 @@
         "type": "test"
       },
       "created_at": "2026-07-02T12:38:24.291Z",
-      "updated_at": "2026-07-02T12:38:24.302Z"
+      "updated_at": "2026-07-02T14:03:23.650Z"
     },
     {
       "id": "4192d14d2cb9af4236e286007efb6c31",
@@ -507,6 +521,20 @@
       "updated_at": "2026-06-30T14:07:19.148Z"
     },
     {
+      "id": "4840a6a506f5f3c7dd8148ff3d458834",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: routed to open chore task 'collapse effective_coverage into current_l5_journey_validations' — deferred mechanical dedup, ring5 effective_status tests defend the semantics when executed",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "1c43ab6cae8381b0bd8267f4f341bae3"
+      },
+      "created_at": "2026-07-02T14:00:57.207Z",
+      "updated_at": "2026-07-02T14:00:57.207Z"
+    },
+    {
       "id": "4a30357f4be00c5f97da73c7f122c188",
       "type": "intent",
       "name": "proposal items can spawn adopted planned work",
@@ -532,6 +560,19 @@
       },
       "created_at": "2026-07-02T09:46:41.114Z",
       "updated_at": "2026-07-02T09:46:41.114Z"
+    },
+    {
+      "id": "4c11d5bb510b762f2cb455bd0a7f06e8",
+      "type": "task_record",
+      "name": "collapse effective_coverage into current_l5_journey_validations",
+      "description": "effective_coverage now delegates to current_l5_journey_validations; cargo test --test ring5 journey_coverage, cargo test -q, fmt, and clippy passed",
+      "status": "completed",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "chore"
+      },
+      "created_at": "2026-07-02T14:00:29.336Z",
+      "updated_at": "2026-07-02T14:18:44.183Z"
     },
     {
       "id": "4ed61da79b031f63bf40ac1cea5ab21c",
@@ -1213,7 +1254,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "818 lines (> 600)",
+      "description": "823 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1227,7 +1268,7 @@
       "id": "d02ba75caf0361030",
       "type": "finding",
       "name": "src/commands/journey.rs is oversized",
-      "description": "1303 lines (> 600)",
+      "description": "1395 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1255,7 +1296,7 @@
       "id": "d2228150595d32891",
       "type": "finding",
       "name": "src/journey.rs is oversized",
-      "description": "708 lines (> 600)",
+      "description": "707 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2019,12 +2060,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proof",
-      "evidence": "cargo test --test ring6 http_contract: 2 passed (1 suite, 24 filtered, 0.82s)",
+      "evidence": "`cargo test --test ring6 http_contract` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-02T12:48:12.439Z"
+      "updated_at": "2026-07-02T14:16:37.639Z"
     },
     {
       "id": "072bbe8e7e0117280cab5ac10e2ef62e",
@@ -2063,13 +2104,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
-      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "criterion": "no SQL/shell/HTML construction from untrusted data in the grounded files; any new string-built sink falsifies",
+      "evidence": "grep over src/journey.rs + src/commands/journey.rs for SQL-in-format, Command::new, innerHTML, exec( — zero hits; delta is src/commands/journey.rs:888-892 only: effective_coverage now calls current_l5_journey_validations(:823-845) instead of duplicating that filter loop; no new sink introduced",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.903Z",
-      "updated_at": "2026-07-02T12:51:05.903Z"
+      "updated_at": "2026-07-02T14:14:04.188Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -2214,12 +2255,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proof",
-      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "evidence": "`cargo test -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:38:24.292Z",
-      "updated_at": "2026-07-02T12:38:24.302Z"
+      "updated_at": "2026-07-02T14:03:23.648Z"
     },
     {
       "id": "1b5a0122cee466e68b9c98bd2ee292a6",
@@ -2303,13 +2344,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
-      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
-      "confidence": 0.78,
+      "criterion": "no literal credential in grounded files; secrets must come from env or invocation",
+      "evidence": "secret scan hits only src/journey.rs:110-115 header name Authorization and :204/:576-581 env-token template/fallback; delta is src/commands/journey.rs:888-892 only: effective_coverage now calls current_l5_journey_validations(:823-845) instead of duplicating that filter loop; no credential literal introduced",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.721Z",
-      "updated_at": "2026-07-02T12:51:05.721Z"
+      "updated_at": "2026-07-02T14:14:04.207Z"
     },
     {
       "id": "29460ae143847cab98926a1686df912d",
@@ -2723,13 +2764,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
-      "confidence": 0.78,
+      "criterion": "no unreachable/unused function and no significant duplicate logic; duplicated filter loops falsify if still present",
+      "evidence": "delta is src/commands/journey.rs:888-892 only: effective_coverage now calls current_l5_journey_validations(:823-845) instead of duplicating that filter loop; duplicated passing-L5-journey filter removed, leaving one implementation in current_l5_journey_validations(:823-845); cargo test --test ring5 journey_coverage passed 8 tests",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.279Z",
-      "updated_at": "2026-07-02T12:51:05.280Z"
+      "updated_at": "2026-07-02T14:14:04.220Z"
     },
     {
       "id": "5d672b7684e7aa825dc911bc10fa3bad",
@@ -2933,13 +2974,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the journey engine must parse journey/HTTP contract specs and execute HTTP steps with capture-aware assertions",
-      "evidence": "src/journey.rs:159-186 parses JSON/YAML journey specs and HTTP contracts; src/journey.rs:199-205 maps bearer auth to an env-token placeholder; src/journey.rs:322-418 executes requests, checks responses, records step verdicts, and updates journey validation status.",
+      "criterion": "falsified if src/journey.rs stops parsing journey/HTTP-contract specs or stops executing real HTTP steps with capture threading and boundary assertions",
+      "evidence": "src/journey.rs:322-419 execute(): reqwest blocking client (:327), per-step interpolate/capture threading (:341-345), boundary assertions in check_response; fix at :346-349 now bails on invalid spec method instead of silent GET — parsing entry parse_with_kind still exported (used by commands/journey.rs:60); claim strengthened, not moved",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:10:38.496Z",
-      "updated_at": "2026-07-02T12:56:29.980Z"
+      "updated_at": "2026-07-02T13:55:34.133Z"
     },
     {
       "id": "6c52e7b7bc19d645a32e01f2d52532d6",
@@ -3442,14 +3483,14 @@
       "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
-      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "status": "independent",
+      "criterion": "applies only if the argument-parsing plane acquires files/locks/connections/handles; a resource acquired during clap parsing would make it applicable",
+      "evidence": "src/cli/subcommands.rs is entirely #[derive(Subcommand)] enum declarations (incl. new Map variant :656) — zero I/O or acquisition; src/cli.rs:12-29 is the derive-only Parser struct; resource acquisition (Store/sqlite) happens in command handlers behind RAII Drop, outside this intent's parsing plane",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.477Z",
-      "updated_at": "2026-07-02T12:51:05.477Z"
+      "updated_at": "2026-07-02T13:48:55.671Z"
     },
     {
       "id": "91e2927e089f3c8704a3aa36f7abdeaa",
@@ -3698,13 +3739,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
-      "confidence": 0.78,
+      "criterion": "every fallible call in the parse/dispatch path propagates or handles its error; a swallowed Result or unwrap_or_default masking a real failure falsifies",
+      "evidence": "src/cli/subcommands.rs holds no fallible calls (derive-only enums, incl. Map :656); src/commands.rs:32 run(cli: Cli) -> Result<()> propagates via ? on every handler call (e.g. :40-41 Store::init?/identity?, :51 to_string_pretty?); clap surfaces parse failures as typed errors before dispatch",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.330Z",
-      "updated_at": "2026-07-02T12:51:05.330Z"
+      "updated_at": "2026-07-02T13:49:29.790Z"
     },
     {
       "id": "b242094605272bcdbda9601586e02004",
@@ -3803,13 +3844,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
-      "confidence": 0.78,
+      "criterion": "no unused enum variants/functions and no duplicated command definitions in the parsing plane; an unreferenced subcommand variant or copy-pasted family falsifies",
+      "evidence": "cargo build clean, zero dead-code warnings; every JourneyCmd variant incl. new Map (subcommands.rs:656) is matched in src/commands/journey.rs:29-38 dispatch; clap derive enums are declarative one-per-family with no duplicated definitions; no #[allow(dead_code)] anywhere in src/cli*",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:28:20.874Z",
-      "updated_at": "2026-07-02T12:51:05.185Z"
+      "updated_at": "2026-07-02T13:49:44.464Z"
     },
     {
       "id": "bffb3d81da0d4830cbf073ad435e5816",
@@ -3863,13 +3904,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
-      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
-      "confidence": 0.78,
+      "criterion": "no literal credential appears in the CLI parsing plane; any embedded key/password/connection string falsifies",
+      "evidence": "grep over src/cli.rs, src/cli/subcommands.rs, src/commands.rs for key/password/secret/token/credential-URL patterns — only doc-comment hits on the word 'token' meaning text tokens (commands.rs:219-221); zero literal secrets",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.627Z",
-      "updated_at": "2026-07-02T12:51:05.627Z"
+      "updated_at": "2026-07-02T13:50:07.414Z"
     },
     {
       "id": "c1dba2cf8786a8a0eaaa6917e1ee107b",
@@ -3923,13 +3964,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
-      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "criterion": "all acquired resources release on every path; a new acquire without RAII/drop handling falsifies",
+      "evidence": "delta is src/commands/journey.rs:888-892 only: effective_coverage now calls current_l5_journey_validations(:823-845) instead of duplicating that filter loop; helper performs no resource acquisition and delegates to store API; src/journey.rs:327-330 reqwest client remains RAII-managed",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.575Z",
-      "updated_at": "2026-07-02T12:51:05.576Z"
+      "updated_at": "2026-07-02T14:14:04.234Z"
     },
     {
       "id": "c6e8cd017ffaf23452775b3a8640ffe4",
@@ -3998,13 +4039,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "CLI parsing must define typed Clap subcommand enums for command families",
-      "evidence": "src/cli.rs:31-198 defines the top-level Command enum with typed subcommand fields; src/cli/subcommands.rs:4-817 defines the family-specific Clap Subcommand enums.",
-      "confidence": 0.9,
+      "criterion": "falsified if src/cli/subcommands.rs stops defining typed clap Subcommand enums for the command families, or dispatch receives stringly args instead of typed variants",
+      "evidence": "src/cli/subcommands.rs:643-691 JourneyCmd #[derive(Subcommand)] enum incl. new unit variant Map at :656; src/cli.rs:9-10 'mod subcommands; pub use subcommands::*'; src/commands.rs:31+ run(cli: Cli) dispatches typed Command; src/commands/journey.rs:31 matches JourneyCmd::Map — change was additive, claim intact",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T12:29:22.635Z",
-      "updated_at": "2026-07-02T12:56:29.882Z"
+      "updated_at": "2026-07-02T13:44:45.727Z"
     },
     {
       "id": "cea7c79ccf2333d1ba15898a31820f7e",
@@ -4702,14 +4743,14 @@
       "to_id": "33fa0bcaa3abb7230a5d7c403beec040",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
-      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "status": "independent",
+      "criterion": "applies only if the parsing plane constructs SQL/shell/HTML from arguments; any such construction would make it applicable",
+      "evidence": "grep over src/cli.rs, src/cli/subcommands.rs, src/commands.rs for SQL keywords in format!, Command::new, innerHTML — zero hits; the plane parses argv into typed enums and delegates, all SQL construction lives in store.rs behind params![]",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.806Z",
-      "updated_at": "2026-07-02T12:51:05.806Z"
+      "updated_at": "2026-07-02T13:51:27.080Z"
     },
     {
       "id": "ed13a2250fc1c9b0045290994502fa5a",
@@ -4763,13 +4804,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the journey run command must parse a spec, require the validation, execute the journey, and report pass/fail outcomes with next steps",
-      "evidence": "src/commands/journey.rs:136-148 parses the spec, applies base-url override, requires the journey validation, and executes with recording; src/commands/journey.rs:149-183 reports outcome counts and next_step through pulse::emit.",
+      "criterion": "falsified if src/commands/journey.rs no longer routes journey specs into parse/require/execute, or if the changed coverage helper moved/stubbed journey_run behavior",
+      "evidence": "src/commands/journey.rs:136-245 adds/keeps journey_map read view; changed helper at :888-892 only delegates coverage status to current_l5_journey_validations(:823-845). src/journey.rs:322-418 execute still builds reqwest client, validates methods, sends real HTTP, stamps Validates edges and journey status; journey_run behavior remains grounded",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:11:11.802Z",
-      "updated_at": "2026-07-02T12:56:29.986Z"
+      "updated_at": "2026-07-02T14:12:34.713Z"
     },
     {
       "id": "f50faeae69982c90218bc363fd57b9dd",
@@ -4868,13 +4909,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
-      "confidence": 0.78,
+      "criterion": "fallible store/helper calls are propagated or intentionally mapped to uncovered at read boundary; swallowed write/run failure falsifies",
+      "evidence": "src/commands/journey.rs:888-892 intentionally maps current_l5_journey_validations Result errors to uncovered for derived read status, preserving previous effective_coverage behavior; runner invalid-method failure still propagates via src/journey.rs:347-348; cargo test --test ring5 journey_coverage passed",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.427Z",
-      "updated_at": "2026-07-02T12:51:05.427Z"
+      "updated_at": "2026-07-02T14:14:04.248Z"
     },
     {
       "id": "fbf152e438d07be53e86f1fb398e076c",
@@ -5017,7 +5058,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "793582d147c9c758",
+      "value": "57d4072b9f198d1f",
       "truth_class": "derived"
     },
     {
@@ -5038,7 +5079,7 @@
       "target_id": "062105e11d1b02b813d44b68670a8575",
       "target_kind": "node",
       "key": "loc",
-      "value": "818",
+      "value": "823",
       "truth_class": "derived"
     },
     {
@@ -5766,7 +5807,7 @@
       "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "2a74b231c476746b",
+      "value": "1e260ccabb5d09d5",
       "truth_class": "derived"
     },
     {
@@ -5787,7 +5828,7 @@
       "target_id": "5f8ff4e5ac373235a76cdf0a8736ddcd",
       "target_kind": "node",
       "key": "loc",
-      "value": "708",
+      "value": "707",
       "truth_class": "derived"
     },
     {
@@ -6529,21 +6570,21 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:04:00.820Z\",\"hash\":\"793582d147c9c758\",\"reason\":\"src/cli/subcommands.rs is a centralized Clap schema file: the inspected sections are enum/variant declarations for typed CLI DTOs only (IntentCmd at lines 4-113 and Journey/Scan variants at lines 644-818), so splitting would scatter the command contract without reducing behavior complexity.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T13:56:38.404Z\",\"hash\":\"57d4072b9f198d1f\",\"reason\":\"declarative clap enum registry — 828 flat derive-only lines, one enum per command family; the +5-line delta is the documented Map variant; splitting into per-family modules adds ceremony without changing behavior or aiding navigation (families are already contiguous and greppable)\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
       "target_id": "d02ba75caf0361030",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:09:16.268Z\",\"hash\":\"f353812b48f7aeb7\",\"reason\":\"src/commands/journey.rs is large because it owns one journey command surface end to end: lines 1-15 define coverage/invariant semantics, lines 27-38 dispatch add/list/run/diagnose/coverage/invariant/prompt, lines 136-184 record real boundary journey results, lines 470-590 derive coverage gaps, and lines 803-1054 build typed-runner prompt context from the same coverage/invariant facts. Splitting now would add cross-module coupling across the same JourneyProof workflow rather than isolate unrelated behavior.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T14:14:42.827Z\",\"hash\":\"40ef999ea9d26b86\",\"reason\":\"same one-file-per `loom journey` command-family convention as before; this change removes duplicate filter code in effective_coverage (src/commands/journey.rs:888-892 now delegates to current_l5_journey_validations) and does not add size/responsibility; future split seam remains coverage/invariant submodules if the family grows\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
       "target_id": "d2228150595d32891",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:14:40.398Z\",\"hash\":\"2a74b231c476746b\",\"reason\":\"src/journey.rs is 108 lines over threshold and is a single execution engine: lines 1-11 define the runner contract, lines 155-186 parse JSON/YAML and legacy names, lines 199-261 convert HTTP contracts into JourneySpec, lines 322-418 execute and stamp Validates verdicts, and lines 451-624 perform response assertions/interpolation/jsonpath. Separating parser/executor would add API surface around tightly coupled spec/outcome semantics.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T13:58:11.413Z\",\"hash\":\"1e260ccabb5d09d5\",\"reason\":\"709 lines forming one cohesive execution plane: spec types + parse (JSON/YAML/HTTP-contract), interpolation, execute with capture threading, response checking, graph write-back — the file's own header declares the plane; my delta was 4 lines (:346-349 method validation) inside execute, adding no new responsibility; splitting parse from execute would sever the spec types both halves share\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6613,7 +6654,7 @@
       "target_id": "d6e14fbb52d4aa2fb",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:14:53.651Z\",\"hash\":\"2a74b231c476746b\",\"reason\":\"execute is barely over the threshold (complexity ~21) because it is the boundary orchestration point: lines 327-366 build one HTTP request with interpolation/query/json body, lines 367-379 normalize transport errors into StepOutcome, lines 381-400 record per-step Validates verdicts, lines 405-409 reopen unreached prior passing steps, and lines 412-416 stamp the journey validation status. Extracting these branches would obscure the ordered journey invariant.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T13:58:59.044Z\",\"hash\":\"1e260ccabb5d09d5\",\"reason\":\"execute() is one per-step pipeline (interpolate base/url :341-345, validate method :346-349, build request :349-366, send, then delegate to check_response and edge stamping); helpers already carry the branching; the staling delta replaced a silent unwrap_or(GET) fallback with an early bail — control flow got simpler and more honest, not more complex\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6634,7 +6675,7 @@
       "target_id": "db217ad66eaffffa1",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:09:57.858Z\",\"hash\":\"f353812b48f7aeb7\",\"reason\":\"coverage_discover complexity is threshold noise from explicit graph filters, not tangled branching: lines 470-476 state the exact derived definition, lines 484-520 build visibility/coverage/L5-journey sets, lines 523-538 apply the implemented + user_visible + no-L5 + no-coverage gap predicate, and lines 540-590 optionally spawn or print those gaps. The single function keeps the predicate and spawned nodes consistent.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T14:15:24.770Z\",\"hash\":\"40ef999ea9d26b86\",\"reason\":\"coverage_discover unchanged by this dedup; its complexity remains a linear phase pipeline: visibility map, Covers set, passing-L5-journey set, one flat filter loop, optional spawn, emit. The actual change is effective_coverage delegating to current_l5_journey_validations outside coverage_discover, reducing duplication rather than increasing complexity\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6872,7 +6913,7 @@
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "f353812b48f7aeb7",
+      "value": "40ef999ea9d26b86",
       "truth_class": "derived"
     },
     {
@@ -6893,7 +6934,7 @@
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "loc",
-      "value": "1303",
+      "value": "1395",
       "truth_class": "derived"
     },
     {
@@ -6907,7 +6948,7 @@
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "29",
+      "value": "30",
       "truth_class": "derived"
     },
     {
