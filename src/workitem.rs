@@ -14,6 +14,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Build,
+    Coverage,
     Fix,
     Analyze,
     Quality,
@@ -26,6 +27,7 @@ impl Mode {
     pub fn parse(s: &str) -> Option<Mode> {
         match s {
             "build" => Some(Mode::Build),
+            "coverage" => Some(Mode::Coverage),
             "fix" => Some(Mode::Fix),
             "analyze" | "discovery" => Some(Mode::Analyze),
             "quality" => Some(Mode::Quality),
@@ -330,8 +332,9 @@ pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
     // monitor cannot change the upstream it watches (docs/commands.md:90).
     let observed = store.identity()?.observed;
     match mode {
-        Some(Mode::Build) | Some(Mode::Fix) if observed => Ok(None),
+        Some(Mode::Build) | Some(Mode::Fix) | Some(Mode::Coverage) if observed => Ok(None),
         Some(Mode::Build) => build_item(store),
+        Some(Mode::Coverage) => coverage_item(store),
         Some(Mode::Fix) => fix_item(store),
         Some(Mode::Analyze) => analyze_item(store),
         Some(Mode::Quality) => quality_item(store),
@@ -353,6 +356,11 @@ pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
             }
             if !observed {
                 if let Some(w) = build_item(store)? {
+                    return Ok(Some(w));
+                }
+            }
+            if !observed {
+                if let Some(w) = coverage_item(store)? {
                     return Ok(Some(w));
                 }
             }
@@ -393,6 +401,33 @@ fn build_item(store: &Store) -> Result<Option<WorkItem>> {
         )?,
         truth_gap: crate::truth::TruthAxis::Implementation.gap(),
         next_step: "after grounding + sync, run `loom status`".into(),
+    }))
+}
+
+fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
+    // The first unowned, non-ignored CodeFile (stable by name). Coverage is
+    // grounding truth: either the file belongs to an intent (ground it) or it
+    // does not belong in the graph (unregister it, or `loom ignore` it).
+    let Some(cf) = crate::commands::unowned_codefiles(store)?
+        .into_iter()
+        .next()
+    else {
+        return Ok(None);
+    };
+    Ok(Some(WorkItem {
+        mode: "coverage".into(),
+        owner_role: "builder".into(),
+        effort: "low".into(),
+        reason: format!("registered codefile '{}' has no owning intent", cf.name),
+        target: node_target(&cf),
+        prompt_contract: coverage_contract(&cf),
+        context: node_context(
+            store,
+            &cf,
+            "Decide which intent this file realizes, or whether it should be unregistered.",
+        )?,
+        truth_gap: crate::truth::TruthAxis::Implementation.gap(),
+        next_step: "after grounding or unregistering + sync, run `loom status`".into(),
     }))
 }
 
@@ -709,6 +744,35 @@ fn builder_contract(intent: &Node) -> PromptContract {
         required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
         write_back: "loom edge implement <intent> <codefile> --locator <symbol>; loom intent mark <intent> --lifecycle implemented".into(),
         stop_condition: "after grounding + sync, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+fn coverage_contract(codefile: &Node) -> PromptContract {
+    PromptContract {
+        role: "builder".into(),
+        mindset: "A registered file with no owning intent is a coverage gap: either it \
+                  realizes a behavior (ground it to that intent with a locator) or it is not \
+                  behavior worth tracking (unregister it). Read the file before deciding; do not \
+                  invent an intent just to satisfy the gate."
+            .into(),
+        why_now: format!("codefile '{}' is registered but unowned", codefile.name),
+        allowed_actions: vec![
+            "loom codefile show <file>".into(),
+            "loom intent list".into(),
+            "read the file to see which behavior it realizes".into(),
+            "loom edge implement <intent> <codefile> --locator <symbol>".into(),
+            "loom codefile remove <file> (if it should not be tracked)".into(),
+            "loom ignore add '<glob>' --reason '…' (if outside the tracked surface)".into(),
+            "loom sync".into(),
+        ],
+        forbidden_actions: vec![
+            "inventing an intent with no behavioral description just to ground the file".into(),
+            "loom rule verdict passing (quality lane)".into(),
+        ],
+        required_evidence: "file read, owning intent chosen with a locator, or a reason to unregister".into(),
+        write_back: "loom edge implement <intent> <codefile> --locator <symbol>  (or)  loom codefile remove <codefile>  (or)  loom ignore add '<glob>' --reason '…'".into(),
+        stop_condition: "after grounding or unregistering + sync, return to loom status".into(),
         human_gate: None,
     }
 }

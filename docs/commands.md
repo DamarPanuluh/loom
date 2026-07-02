@@ -36,7 +36,7 @@ loom next [--mode <queue>] [--take N] [--compact] [--slice <id>]
 Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `--mode`, routes by compass priority.
 
 ```text
---mode:     build | fix | validate | quality | analyze (alias: discovery) | align | prove | wiki | inbox | review | debt
+--mode:     build | coverage | fix | validate | quality | analyze (alias: discovery) | align | prove | wiki | inbox | review | debt
 --take N:   bulk read, N compact items (max 50); used for batch loops
 --compact:  minimal projection — ids, edge, read set, one-line command; no full context
 --slice:    scope to one intent subtree territory for parallel worker dispatch

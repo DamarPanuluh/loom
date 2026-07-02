@@ -65,16 +65,9 @@ pub fn validation_summary(store: &Store) -> Result<ValidationSummary> {
 }
 
 fn unowned_registered_codefiles(store: &Store) -> Result<usize> {
-    let mut unowned = 0usize;
-    for cf in store.list_nodes(Some(NodeType::CodeFile), usize::MAX)? {
-        if store
-            .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
-            .is_empty()
-        {
-            unowned += 1;
-        }
-    }
-    Ok(unowned)
+    // Single source of truth (ignore-aware) shared with the coverage diagnostic
+    // and the coverage work queue.
+    Ok(crate::commands::unowned_codefiles(store)?.len())
 }
 
 /// Compute the maturity ladder and compass for the current graph.

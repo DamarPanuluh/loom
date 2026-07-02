@@ -205,15 +205,24 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         implemented.len() - ungrounded.len(),
         ungrounded.len()
     );
-    for u in ungrounded.iter().take(10) {
+    for u in ungrounded.iter().take(20) {
         println!("    ungrounded: {u}");
+    }
+    if ungrounded.len() > 20 {
+        println!(
+            "    … +{} more ungrounded (see --json)",
+            ungrounded.len() - 20
+        );
     }
     println!(
         "  codefiles: {registered_codefiles} registered, {owned} owned, {} unowned",
         unowned.len()
     );
-    for u in unowned.iter().take(10) {
+    for u in unowned.iter().take(20) {
         println!("    unowned: {u}");
+    }
+    if unowned.len() > 20 {
+        println!("    … +{} more unowned (see --json)", unowned.len() - 20);
     }
     Ok(())
 }

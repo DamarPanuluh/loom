@@ -64,7 +64,7 @@ pub enum Command {
     Status,
     /// The next work item (asserted residue) with its prompt contract.
     Next {
-        /// build | fix | analyze/discovery | validate | quality | prove | triage (omit for highest-priority)
+        /// build | coverage | fix | analyze/discovery | validate | quality | prove | triage (omit for highest-priority)
         #[arg(long)]
         mode: Option<String>,
         /// Closeout view: every queue at once.

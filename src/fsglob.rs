@@ -9,7 +9,7 @@
 //! Plane: pure path logic + a filesystem walk. No graph awareness.
 
 use crate::Result;
-use globset::GlobBuilder;
+use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use std::path::Path;
 
@@ -50,6 +50,25 @@ pub fn expand(root: &Path, pattern: &str) -> Result<Vec<String>> {
     out.sort();
     out.dedup();
     Ok(out)
+}
+
+/// Compile a set of glob patterns into a matcher tested directly against
+/// relative paths (no filesystem walk). Same segment semantics as [`expand`]:
+/// `*`/`?` do not cross `/`, `**` is recursive. Invalid patterns are skipped so
+/// one bad rule cannot poison the whole set. An empty set matches nothing.
+pub fn matcher<I, S>(patterns: I) -> Result<GlobSet>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut builder = GlobSetBuilder::new();
+    for p in patterns {
+        let pat = p.as_ref().replace('\\', "/");
+        if let Ok(glob) = GlobBuilder::new(&pat).literal_separator(true).build() {
+            builder.add(glob);
+        }
+    }
+    Ok(builder.build()?)
 }
 
 #[cfg(test)]

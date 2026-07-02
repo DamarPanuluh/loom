@@ -156,21 +156,50 @@ pub(crate) fn print_next_move(store: &Store) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec<String>)> {
-    let codefiles = store.codefiles()?;
-    let mut owned = 0usize;
+/// Registered CodeFiles with no owning `implements` edge and not matched by a
+/// coverage-exclusion glob (`loom ignore`). This is the single definition of
+/// the coverage gap: the diagnostic, the `realized` maturity gate, and the
+/// `coverage` work queue all read it, so they can never disagree. Sorted by
+/// name for a stable next-item.
+pub(crate) fn unowned_codefiles(store: &Store) -> Result<Vec<Node>> {
+    let ignore = crate::fsglob::matcher(store.ignore_globs()?)?;
     let mut unowned = Vec::new();
-    for cf in &codefiles {
+    for cf in store.codefiles()? {
+        if ignore.is_match(&cf.name) {
+            continue; // deliberately outside the tracked surface
+        }
         if store
             .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
             .is_empty()
         {
-            unowned.push(cf.name.clone());
+            unowned.push(cf);
+        }
+    }
+    unowned.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(unowned)
+}
+
+/// `(registered, owned, unowned_names)` after coverage exclusions. Ignored
+/// files are dropped from every bucket, so `registered == owned + unowned`.
+pub(crate) fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec<String>)> {
+    let ignore = crate::fsglob::matcher(store.ignore_globs()?)?;
+    let mut owned = 0usize;
+    let mut unowned = Vec::new();
+    for cf in store.codefiles()? {
+        if ignore.is_match(&cf.name) {
+            continue;
+        }
+        if store
+            .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
+            .is_empty()
+        {
+            unowned.push(cf.name);
         } else {
             owned += 1;
         }
     }
-    Ok((codefiles.len(), owned, unowned))
+    unowned.sort();
+    Ok((owned + unowned.len(), owned, unowned))
 }
 
 pub(crate) fn verdict_status(verdict: &str) -> Result<InspectionStatus> {

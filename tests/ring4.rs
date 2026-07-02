@@ -4,6 +4,7 @@ use loom::maturity::{ladder, RungState};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::travel;
+use loom::workitem::{self, Mode};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -275,6 +276,141 @@ fn registered_unowned_codefile_routes_to_coverage() {
     assert_eq!(realized.state, RungState::Unmet);
     assert!(realized.detail.contains("1 unowned codefile(s)"));
     assert_eq!(l.truth_axis, Some(loom::truth::TruthAxis::Implementation));
+}
+
+#[test]
+fn ignored_unowned_codefile_excluded_from_coverage_gate_and_queue() {
+    // Same graph shape as `registered_unowned_codefile_routes_to_coverage`: an
+    // implemented intent, one owned+grounded codefile, one UNOWNED codefile, and
+    // a passing proof — so the only remaining spine gap is the unowned file.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "intent a",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let owned = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/owned.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_node(
+            NodeType::CodeFile,
+            "src/vendored.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let impl_edge = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &owned.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &impl_edge.id,
+            InspectionStatus::Passing,
+            "c",
+            "src/owned.rs:1",
+            0.95,
+            "llm",
+        )
+        .unwrap();
+    let proof = store
+        .add_node(
+            NodeType::Validation,
+            "proof",
+            "",
+            "passed",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let proof_edge = store
+        .add_edge(
+            EdgeKind::Validates,
+            &proof.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &proof_edge.id,
+            InspectionStatus::Passing,
+            "proof",
+            "cargo test proof",
+            1.0,
+            "llm",
+        )
+        .unwrap();
+
+    // Pre-ignore: the unowned file is a real coverage gap — it heads the queue
+    // and blocks the realized rung. (Sanity, so the test cannot pass on a
+    // silently-empty graph.)
+    let before = workitem::next(&store, Some(Mode::Coverage)).unwrap();
+    let before = before.expect("unowned codefile must surface a coverage work item");
+    assert_eq!(before.mode, "coverage");
+    assert_eq!(before.target.name, "src/vendored.rs");
+    let realized_before = ladder(&store)
+        .unwrap()
+        .rungs
+        .into_iter()
+        .find(|r| r.name == "realized")
+        .unwrap();
+    assert_eq!(realized_before.state, RungState::Unmet);
+    assert!(realized_before.detail.contains("1 unowned codefile(s)"));
+
+    // Record a coverage exclusion for the vendored file (the shape written by
+    // `loom ignore add`).
+    store
+        .set_meta(
+            "ignores",
+            &serde_json::to_string(&serde_json::json!([{
+                "glob": "src/vendored.rs",
+                "reason": "vendored upstream — outside the tracked surface",
+            }]))
+            .unwrap(),
+        )
+        .unwrap();
+
+    // Post-ignore: the deliberately-excluded file is no longer a gap — the
+    // queue drains and the realized rung is unblocked by ownership.
+    assert!(
+        workitem::next(&store, Some(Mode::Coverage))
+            .unwrap()
+            .is_none(),
+        "an ignored file must not surface as coverage work"
+    );
+    let realized_after = ladder(&store)
+        .unwrap()
+        .rungs
+        .into_iter()
+        .find(|r| r.name == "realized")
+        .unwrap();
+    assert!(
+        realized_after.detail.contains("0 unowned codefile(s)"),
+        "ignored file must drop from the unowned count: {}",
+        realized_after.detail
+    );
+    assert_eq!(
+        realized_after.state,
+        RungState::Met,
+        "with the only gap ignored, the realized rung is met"
+    );
 }
 
 #[test]

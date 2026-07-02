@@ -1441,6 +1441,26 @@ impl Store {
             .optional()
             .map_err(Into::into)
     }
+
+    /// Coverage-exclusion globs recorded via `loom ignore add`. These files are
+    /// deliberately outside the tracked surface: an unowned file matching one of
+    /// them is not a coverage gap. Malformed entries are skipped rather than
+    /// failing the read.
+    pub fn ignore_globs(&self) -> Result<Vec<String>> {
+        let raw = match self.get_meta("ignores")? {
+            Some(v) => v,
+            None => return Ok(Vec::new()),
+        };
+        let list: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap_or_default();
+        Ok(list
+            .into_iter()
+            .filter_map(|r| {
+                r.get("glob")
+                    .and_then(|g| g.as_str())
+                    .map(|s| s.to_string())
+            })
+            .collect())
+    }
 }
 
 // ---- helpers -------------------------------------------------------------

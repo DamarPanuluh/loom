@@ -227,6 +227,7 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
         ("fix", workitem::Mode::Fix),
         ("validate", workitem::Mode::Validate),
         ("build", workitem::Mode::Build),
+        ("coverage", workitem::Mode::Coverage),
         ("quality", workitem::Mode::Quality),
         ("prove", workitem::Mode::Prove),
         ("analyze", workitem::Mode::Analyze),
