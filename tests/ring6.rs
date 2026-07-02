@@ -856,6 +856,30 @@ fn journey_map_joins_step_intents_and_exposes_gaps() {
     let plain_validated = intent(&store, "email receipt is rendered", "implemented");
     let _deprecated = intent(&store, "legacy checkout path", "deprecated");
 
+    // Two additional unjourneyed intents to exercise the missing-visibility
+    // classification buckets. Neither is linked to the journey (no Validates
+    // edge from a journey validation), so both land in `unjourneyed_intents`.
+    let feature_no_visibility = intent(&store, "discount rule engine", "implemented");
+    store
+        .set_facet(
+            &feature_no_visibility,
+            TargetKind::Node,
+            "level",
+            "feature",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let behavior_no_visibility = intent(&store, "rounding helper", "implemented");
+    store
+        .set_facet(
+            &behavior_no_visibility,
+            TargetKind::Node,
+            "level",
+            "behavior",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
     store
         .set_facet(
             &plain_validated,
@@ -898,6 +922,40 @@ fn journey_map_joins_step_intents_and_exposes_gaps() {
     drop(store);
 
     let out = run_cli_json(tmp.path(), &["journey", "map"]);
+
+    // ---- summary counts (the contract for this exact graph) ----
+    let summary = &out["summary"];
+    assert!(
+        summary.is_object(),
+        "journey map emits a summary object: {out}"
+    );
+    assert_eq!(summary["journeys"], 1, "one journey row in summary: {out}");
+    assert_eq!(
+        summary["coverage_nodes"], 0,
+        "no coverage nodes in this graph: {out}"
+    );
+    assert_eq!(
+        summary["journeyed_intents"], 2,
+        "submit checkout + apply discount are journeyed: {out}"
+    );
+    assert_eq!(
+        summary["unjourneyed_intents"], 3,
+        "plain-validated user_visible, feature-no-visibility, behavior-no-visibility: {out}"
+    );
+    assert_eq!(
+        summary["journey_required_gaps"], 1,
+        "only the implemented user_visible intent is a required gap: {out}"
+    );
+    assert_eq!(
+        summary["unknown_visibility"], 1,
+        "feature-level missing-visibility intent is unknown_visibility: {out}"
+    );
+    assert_eq!(
+        summary["not_applicable"], 1,
+        "behavior-level missing-visibility intent is not_applicable: {out}"
+    );
+
+    // ---- journeys + their step intents (unchanged contract) ----
     let journeys = out["journeys"]
         .as_array()
         .expect("journey map emits a journeys array");
@@ -922,9 +980,12 @@ fn journey_map_joins_step_intents_and_exposes_gaps() {
         );
     }
 
+    // ---- unjourneyed intents + classification buckets ----
     let unjourneyed = out["unjourneyed_intents"]
         .as_array()
         .expect("journey map emits an unjourneyed_intents array");
+
+    // (1) implemented + user_visible, only plain-test validated => required gap.
     let gap = unjourneyed
         .iter()
         .find(|i| i["name"] == "email receipt is rendered")
@@ -933,6 +994,53 @@ fn journey_map_joins_step_intents_and_exposes_gaps() {
         gap["visibility"], "user_visible",
         "visibility facet round-trips: {gap}"
     );
+    assert_eq!(
+        gap["journey_applicability"], "required",
+        "implemented user_visible intent with no journey is a required gap: {gap}"
+    );
+    let reason = gap["journey_gap_reason"]
+        .as_str()
+        .expect("gap carries a journey_gap_reason string");
+    assert!(
+        reason.contains("implemented user_visible"),
+        "required-gap reason names the implemented user_visible signal: {gap}"
+    );
+
+    // (2) implemented feature-level intent with no visibility => unknown_visibility.
+    let feature_gap = unjourneyed
+        .iter()
+        .find(|i| i["name"] == "discount rule engine")
+        .expect("feature-level missing-visibility intent is unjourneyed");
+    assert_eq!(
+        feature_gap["journey_applicability"], "unknown_visibility",
+        "feature-level implemented intent with no visibility is unknown_visibility: {feature_gap}"
+    );
+    let feature_reason = feature_gap["journey_gap_reason"]
+        .as_str()
+        .expect("gap carries a journey_gap_reason string");
+    assert!(
+        feature_reason.contains("missing visibility"),
+        "unknown_visibility reason names the missing visibility: {feature_gap}"
+    );
+
+    // (3) implemented behavior-level intent with no visibility => not_applicable.
+    let behavior_gap = unjourneyed
+        .iter()
+        .find(|i| i["name"] == "rounding helper")
+        .expect("behavior-level missing-visibility intent is unjourneyed");
+    assert_eq!(
+        behavior_gap["journey_applicability"], "not_applicable",
+        "behavior-level implemented intent with no visibility is not_applicable: {behavior_gap}"
+    );
+    let behavior_reason = behavior_gap["journey_gap_reason"]
+        .as_str()
+        .expect("gap carries a journey_gap_reason string");
+    assert!(
+        behavior_reason.contains("behavior-level"),
+        "not_applicable reason names the behavior-level signal: {behavior_gap}"
+    );
+
+    // ---- journeyed intents must not appear as unjourneyed ----
     assert!(
         unjourneyed.iter().all(|i| i["name"] != "apply discount"),
         "journey step intent must not be unjourneyed: {out}"

@@ -133,6 +133,46 @@ fn journey_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
     }
     Ok(())
 }
+
+fn journey_applicability(
+    lifecycle: &str,
+    level: Option<&str>,
+    visibility: Option<&str>,
+) -> (&'static str, &'static str) {
+    match (visibility, lifecycle) {
+        (Some("user_visible"), "implemented") => (
+            "required",
+            "implemented user_visible intent has no journey validation",
+        ),
+        (Some("user_visible"), _) => (
+            "not_applicable",
+            "journey proof waits until lifecycle is implemented",
+        ),
+        (Some("internal"), _) => (
+            "not_applicable",
+            "internal intent — journeys prove user-visible flows",
+        ),
+        (Some(_), _) => ("unknown_visibility", "visibility facet is not recognized"),
+        (None, "implemented") => match level {
+            Some("system" | "feature" | "component") => (
+                "unknown_visibility",
+                "missing visibility on implemented system/feature/component intent",
+            ),
+            Some("behavior") => (
+                "not_applicable",
+                "behavior-level intent without user_visible facet is treated as internal",
+            ),
+            _ => (
+                "unknown_visibility",
+                "missing visibility on implemented intent",
+            ),
+        },
+        (None, _) => (
+            "not_applicable",
+            "journey proof waits until lifecycle is implemented",
+        ),
+    }
+}
 /// Joined read view: every journey validation with the intents its Validates
 /// edges exercise, plus every active intent no journey touches. Both sections
 /// are deliberately unbounded — a truncated map would hide exactly the gaps
@@ -146,6 +186,10 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
         .into_iter()
         .filter(is_journey_validation)
         .collect();
+    let coverage_node_count = store
+        .list_nodes(Some(NodeType::JourneyCoverage), ALL)?
+        .len();
+    let mut journeyed_intent_ids = std::collections::BTreeSet::new();
     let mut journey_rows: Vec<Value> = Vec::new();
     for j in &journeys {
         let mut intents: Vec<(String, Value)> = Vec::new();
@@ -156,9 +200,11 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
             if intent.node_type != NodeType::Intent {
                 continue;
             }
+            let intent_id = intent.id.clone();
             let sort_key = intent.name.clone();
+            journeyed_intent_ids.insert(intent_id.clone());
             let row = json!({
-                "id": intent.id,
+                "id": intent_id,
                 "name": intent.name,
                 "lifecycle": intent.status,
                 "edge_status": e.status.as_str(),
@@ -194,25 +240,67 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
         if has_journey {
             continue;
         }
+        let level = store.get_facet(&n.id, TargetKind::Node, "level")?;
+        let visibility = store.get_facet(&n.id, TargetKind::Node, "visibility")?;
+        let aspect = store.get_facet(&n.id, TargetKind::Node, "aspect")?;
+        let (journey_applicability, journey_gap_reason) =
+            journey_applicability(&n.status, level.as_deref(), visibility.as_deref());
         unjourneyed.push(json!({
             "id": n.id,
             "name": n.name,
             "lifecycle": n.status,
-            "level": store.get_facet(&n.id, TargetKind::Node, "level")?,
-            "visibility": store.get_facet(&n.id, TargetKind::Node, "visibility")?,
-            "aspect": store.get_facet(&n.id, TargetKind::Node, "aspect")?,
+            "level": level,
+            "visibility": visibility,
+            "aspect": aspect,
+            "journey_applicability": journey_applicability,
+            "journey_gap_reason": journey_gap_reason,
         }));
     }
+    let journey_required_gaps = unjourneyed
+        .iter()
+        .filter(|i| i.get("journey_applicability").and_then(|v| v.as_str()) == Some("required"))
+        .count();
+    let unknown_visibility = unjourneyed
+        .iter()
+        .filter(|i| {
+            i.get("journey_applicability").and_then(|v| v.as_str()) == Some("unknown_visibility")
+        })
+        .count();
+    let not_applicable = unjourneyed
+        .iter()
+        .filter(|i| {
+            i.get("journey_applicability").and_then(|v| v.as_str()) == Some("not_applicable")
+        })
+        .count();
+    let summary = json!({
+        "journeys": journey_rows.len(),
+        "coverage_nodes": coverage_node_count,
+        "journeyed_intents": journeyed_intent_ids.len(),
+        "unjourneyed_intents": unjourneyed.len(),
+        "journey_required_gaps": journey_required_gaps,
+        "unknown_visibility": unknown_visibility,
+        "not_applicable": not_applicable,
+    });
     if json {
         println!(
             "{}",
             serde_json::to_string_pretty(&json!({
+                "summary": summary,
                 "journeys": journey_rows,
                 "unjourneyed_intents": unjourneyed,
             }))?
         );
     } else {
-        println!("journeys: {}", journey_rows.len());
+        println!(
+            "summary: journeys={} coverage_nodes={} journeyed_intents={} unjourneyed_intents={} journey_required_gaps={} unknown_visibility={} not_applicable={}",
+            summary["journeys"],
+            summary["coverage_nodes"],
+            summary["journeyed_intents"],
+            summary["unjourneyed_intents"],
+            summary["journey_required_gaps"],
+            summary["unknown_visibility"],
+            summary["not_applicable"]
+        );
         for j in &journey_rows {
             println!(
                 "{:<10} {} [{}]",
@@ -232,12 +320,14 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
         println!("intents with no journey: {}", unjourneyed.len());
         for i in &unjourneyed {
             println!(
-                "{}  {}  lifecycle={} visibility={} level={}",
+                "{}  {}  lifecycle={} visibility={} level={} applicability={} reason={}",
                 &i["id"].as_str().unwrap_or("")[..8],
                 i["name"].as_str().unwrap_or(""),
                 i["lifecycle"].as_str().unwrap_or(""),
                 i["visibility"].as_str().unwrap_or("—"),
-                i["level"].as_str().unwrap_or("—")
+                i["level"].as_str().unwrap_or("—"),
+                i["journey_applicability"].as_str().unwrap_or(""),
+                i["journey_gap_reason"].as_str().unwrap_or("")
             );
         }
     }
