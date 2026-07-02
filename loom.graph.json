@@ -750,7 +750,7 @@
         "type": "test"
       },
       "created_at": "2026-07-02T12:38:24.361Z",
-      "updated_at": "2026-07-02T16:03:19.105Z"
+      "updated_at": "2026-07-02T17:12:26.830Z"
     },
     {
       "id": "690822022500f37c8c768fb621bdfcba",
@@ -1660,7 +1660,7 @@
       "id": "db589a2e0c605c5fd",
       "type": "finding",
       "name": "src/commands/misc_cmd.rs is oversized",
-      "description": "954 lines (> 600)",
+      "description": "1037 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2300,12 +2300,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "grounded if symbol-looking names remain treated as locators rather than behavioral intents, while find exposes grounding locators for behavioral intent matches",
-      "evidence": "src/commands/intent.rs:99-113 rejects looks_like_symbol names unless deliberately overridden with behavioral description; src/commands/misc_cmd.rs:707-745 find_cmd still emits intent groundings with path/locator/status/evidence. Door weak-match changes are confined to menu ordering and do not alter find_cmd",
+      "evidence": "src/commands/intent.rs:99-113 rejects symbol-looking intent names unless explicitly overridden with a behavioral description; src/commands/intent.rs:586-592 defines symbol shape; src/commands/misc_cmd.rs:790-866 find_cmd still emits matched intent groundings with path, locator, status, and evidence.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.946Z",
-      "updated_at": "2026-07-02T15:57:27.626Z"
+      "updated_at": "2026-07-02T17:25:17.779Z"
     },
     {
       "id": "2571e5a54c7861468a1fa1374bac0322",
@@ -2584,13 +2584,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "door/find scoring code has no unused path and no significant duplicate menu logic; weak/strong split used in JSON and text",
-      "evidence": "src/commands/misc_cmd.rs:21-64 builds strong/weak menu entries; :83-102 text path labels both; focused ring9 door test passed",
+      "criterion": "the grounded find command contains no unreachable functions or duplicated logic",
+      "evidence": "src/commands/misc_cmd.rs:790-866 — find_cmd is the single live implementation for search result grounding; JSON and text branches share store edge lookup without copied unreachable helper code.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.214Z",
-      "updated_at": "2026-07-02T15:59:48.417Z"
+      "updated_at": "2026-07-02T17:15:58.506Z"
     },
     {
       "id": "4a882923f3abb7685ea2f07027933856",
@@ -2794,13 +2794,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "falsified if loom find no longer searches intents/codefiles/rules or no longer emits grounding path/locator/status/evidence for matched intents",
-      "evidence": "src/commands/misc_cmd.rs:707-745 find_cmd scores intent/codefile/quality-rule matches and, for intent hits, emits implements-edge groundings with path, locator, status, and evidence at :720-734. Door weak-match changes only affect door menu construction, not find_cmd",
-      "confidence": 0.9,
+      "criterion": "grounded if fn find_cmd emits each matched intent's implements edges with file path, locator, status, and evidence in both JSON and text output",
+      "evidence": "src/commands/misc_cmd.rs:790-866 — find_cmd opens the graph, searches intents/codefiles/rules, and for intent matches reads EdgeKind::Implements edges; lines 811-817 emit path/locator/status/evidence in JSON and lines 842-860 print path @ locator [status] evidence in text.",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T04:40:00.654Z",
-      "updated_at": "2026-07-02T15:57:39.228Z"
+      "updated_at": "2026-07-02T17:26:36.398Z"
     },
     {
       "id": "5e6651475c36fe6335aa907ffd5c3a3a",
@@ -3184,13 +3184,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "find/door text never constructs SQL/shell/HTML from query text; any sink construction from query falsifies",
-      "evidence": "grep over src/commands/misc_cmd.rs for SQL-in-format, Command::new, innerHTML, exec( — zero hits; door weak-match patch only reorders JSON/text menu entries",
+      "criterion": "the grounded find command does not concatenate untrusted query data into SQL, shell, HTML, or command strings",
+      "evidence": "src/commands/misc_cmd.rs:790-866 — query is passed to in-process keyword_hits and only printed as terminal text; find_cmd constructs no SQL, shell command, HTML, or external query string.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.838Z",
-      "updated_at": "2026-07-02T15:59:48.562Z"
+      "updated_at": "2026-07-02T17:17:13.816Z"
     },
     {
       "id": "7dcc0d93bbb4e5f868988e45b75b6400",
@@ -3319,13 +3319,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "fallible Store lookups while rendering find/door results propagate; swallowed lookup failures falsify",
-      "evidence": "src/commands/misc_cmd.rs:707-780 find_cmd propagates Store edge/node/facet lookups with ?; door uses keyword_hits and maturity ladder with ? before rendering; weak-match ordering adds no fallible calls",
+      "criterion": "every fallible operation in the grounded find command is handled or explicitly propagated",
+      "evidence": "src/commands/misc_cmd.rs:790-866 — open, keyword_hits, edges_with, get_node, get_facet, and JSON serialization all propagate errors with ?; Option fallbacks only format missing names/locators and do not discard Result failures.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.361Z",
-      "updated_at": "2026-07-02T15:59:48.619Z"
+      "updated_at": "2026-07-02T17:18:26.489Z"
     },
     {
       "id": "8562ea965cce9ee5388d7d78a54eb77d",
@@ -3588,14 +3588,14 @@
       "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
-      "criterion": "applies only if find/door acquire files/locks/connections/child processes; pure Store reads and JSON/text rendering make it non-applicable",
-      "evidence": "src/commands/misc_cmd.rs:707-780 find_cmd and :3-84 door perform Store reads and println/JSON rendering only; no resource acquisition beyond Store handle owned by command open",
-      "confidence": 0.9,
+      "status": "passing",
+      "criterion": "resources acquired in the grounded find command are released on all paths, including errors",
+      "evidence": "src/commands/misc_cmd.rs:790-866 — find_cmd only opens the Store at line 791 and keeps it in a local RAII value; all early errors propagate with ? and drop locals, with no manual release path to skip.",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.507Z",
-      "updated_at": "2026-07-02T15:59:48.645Z"
+      "updated_at": "2026-07-02T17:19:40.101Z"
     },
     {
       "id": "a05a976e48ad9628ad0791a360e80cc9",
@@ -4444,13 +4444,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "no literal credential in find/door grounding display code",
-      "evidence": "secret scan over src/commands/misc_cmd.rs found no credential literals",
+      "criterion": "no literal credentials, tokens, or keys exist in the grounded find command",
+      "evidence": "src/commands/misc_cmd.rs:790-866 — find_cmd contains only search/formatting strings and graph lookups; no credential, token, key, password, private-key, or connection-string literals are present.",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.656Z",
-      "updated_at": "2026-07-02T15:59:48.748Z"
+      "updated_at": "2026-07-02T17:20:52.158Z"
     },
     {
       "id": "db084c89979ddeee9",
@@ -4900,7 +4900,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:38:24.362Z",
-      "updated_at": "2026-07-02T16:03:19.095Z"
+      "updated_at": "2026-07-02T17:12:26.824Z"
     },
     {
       "id": "fa6f2ef04d5ae23c0e09f8fb5fe1a0aa",
@@ -5989,7 +5989,7 @@
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "69fabd0739735d70",
+      "value": "6300593b22e62ddc",
       "truth_class": "derived"
     },
     {
@@ -6010,7 +6010,7 @@
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "loc",
-      "value": "954",
+      "value": "1037",
       "truth_class": "derived"
     },
     {
@@ -6024,7 +6024,7 @@
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "15",
+      "value": "17",
       "truth_class": "derived"
     },
     {
@@ -6682,7 +6682,7 @@
       "target_id": "db589a2e0c605c5fd",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T16:01:04.966Z\",\"hash\":\"69fabd0739735d70\",\"reason\":\"misc_cmd.rs is already the miscellaneous read/session command module; this patch only adjusts door menu ordering/text labels within the existing door handler. Splitting would be broader cleanup, not required for the weak-match fix\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T17:29:12.730Z\",\"hash\":\"6300593b22e62ddc\",\"reason\":\"misc_cmd.rs remains the miscellaneous read/session command module; this patch adds self-teaching operator-loop lookup beside guide/truth_axes, the existing LLM-facing guide surface. Splitting a small guide helper would add indirection without reducing command-family responsibility; broader command-module splitting is out of scope for this targeted guidance change.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {

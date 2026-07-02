@@ -692,6 +692,7 @@ fn monitoring_self_teaching_surfaces_run_clean() {
 
     // The integration-monitoring playbook and the fresh-graph entrypoints must
     // run without erroring — a cold LLM relies on them for direction.
+    run(tmp.path(), Command::Guide { role: None });
     run(
         tmp.path(),
         Command::Guide {

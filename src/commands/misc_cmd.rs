@@ -539,6 +539,86 @@ fn truth_axis_matrix() -> Vec<serde_json::Value> {
         })
         .collect()
 }
+fn operator_loops() -> Vec<serde_json::Value> {
+    vec![
+        serde_json::json!({
+            "mode": "seeding",
+            "purpose": "turn ambiguous product/code understanding into durable graph artifacts",
+            "caller": "user or orchestrator chooses this when using a stronger model or human operator",
+            "prefer": [
+                "loom door <utterance>",
+                "loom next --mode coverage",
+                "loom next --mode build",
+                "loom next --mode elaborate",
+                "loom journey coverage discover",
+                "loom journey prompt <intent>",
+                "loom rule seed <pack>"
+            ],
+            "creates": [
+                "intents",
+                "scenario families",
+                "prerequisite edges",
+                "interface boundaries",
+                "validations",
+                "journey coverage",
+                "journey invariant points",
+                "product questions",
+                "reasoned non-question waivers"
+            ],
+            "forbidden": [
+                "answering product questions for the human",
+                "marking proofs passed without observed runs",
+                "using prose summaries instead of graph artifacts"
+            ],
+        }),
+        serde_json::json!({
+            "mode": "draining",
+            "purpose": "close already-routed graph gaps one packet at a time",
+            "caller": "user or orchestrator chooses this when using a cheaper/bounded model or automation",
+            "prefer": [
+                "loom next",
+                "loom next --mode fix",
+                "loom next --mode validate",
+                "loom next --mode quality",
+                "loom next --mode analyze",
+                "loom next --mode review",
+                "loom validate <intent>",
+                "loom journey run <spec>",
+                "loom export --check"
+            ],
+            "closes": [
+                "failing/stale implementation claims",
+                "unrun validations",
+                "stale journey proofs",
+                "unmeasured quality rules",
+                "uninspected relationships",
+                "low-confidence review items",
+                "export freshness"
+            ],
+            "forbidden": [
+                "inventing broad product structure",
+                "expanding beyond the packet",
+                "silently waiving missing meaning"
+            ],
+        }),
+    ]
+}
+
+fn print_operator_loops() {
+    println!("Operator modes — caller chooses the mode/model; evidence still proves truth:");
+    println!("  seeding   use a stronger model/human to turn ambiguous understanding into graph artifacts");
+    println!("            create intents, scenarios, prerequisites, validations, journey coverage, invariant points, questions, and reasoned waivers");
+    println!(
+        "            do not answer product questions or mark proofs passed without observed runs"
+    );
+    println!(
+        "  draining  use a bounded/cheaper model to close already-routed gaps one packet at a time"
+    );
+    println!("            run validations/journeys, inspect stated claims, record evidence, confidence, or blocked prerequisites");
+    println!("            do not invent broad product structure or expand beyond the packet");
+    println!("  invariant mode routes work; role controls writes; evidence determines truth.");
+}
+
 pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
     if json {
         println!(
@@ -549,6 +629,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                 "roles": ["builder", "analyzer", "fixer", "validator", "quality", "monitor"],
                 "rung_gates": ["seeded", "realized", "proven", "hardened", "excellent", "exported"],
                 "closeout": ["loom coverage", "loom doctor", "loom next --all", "loom export", "loom export --check"],
+                "operator_loops": operator_loops(),
                 "truth_axes": truth_axis_matrix(),
             }))?
         );
@@ -565,6 +646,8 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             println!(
                 "Closeout gates: loom coverage; loom doctor; loom next --all; loom export --check."
             );
+            print_operator_loops();
+            println!();
             println!("Truth forms — fill the one that is stale/missing (loom next names it):");
             for axis in crate::truth::TRUTH_AXES {
                 let g = axis.gap();

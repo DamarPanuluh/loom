@@ -86,7 +86,7 @@ Capture-first entry for free-form human/LLM language. Creates an `InboxItem` and
 loom guide [--role builder|analyzer|fixer|validator|quality|monitor] [--json]
 ```
 
-Self-contained driving protocol. `--json` includes `truth_axes`; each axis includes `correct_when`, the falsifiable criterion for that form of truth. `--role` adds the lane's mindset, allowed/forbidden writes, evidence requirements, and the same truth-axis honesty line.
+Self-contained driving protocol. `--json` includes `operator_loops` and `truth_axes`; each truth axis includes `correct_when`, the falsifiable criterion for that form of truth. `--role` adds the lane's mindset, allowed/forbidden writes, evidence requirements, and the same truth-axis honesty line.
 
 ```text
 loom schema [--json]

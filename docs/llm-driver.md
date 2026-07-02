@@ -104,6 +104,29 @@ There is no top-level `id`, `target_facts`, `allowed_commands`, or `read_set`. T
 
 `effort` is a statement about the work, not a model. The harness maps effort to available models. loom never names vendors.
 
+## Operator loops
+
+Loom's current enforcement model is role-based (`LOOM_AGENT=llm:<role>`), but
+operators also need a session strategy. The user or orchestrator chooses the
+model and loop; the model does not self-certify capability.
+
+**Seeding mode** spends high-capability reasoning to turn ambiguous product/code
+understanding into durable graph artifacts: intents, scenario families,
+prerequisites, interface boundaries, validations, journey coverage, invariant
+points, reasoned waivers, and crisp product questions. Prefer graph writes over
+prose summaries. Do not answer product questions for the human, and do not mark
+proofs passed without observed runs.
+
+**Draining mode** closes already-routed gaps one packet at a time. A bounded or
+cheaper model can run `loom next`, inspect the packet's `read_set`, satisfy
+`truth_gap.correct_when`, execute validations/journeys/scans, and record
+evidence, confidence, or blocked prerequisites. Do not rediscover product shape
+or invent broad graph structure; if meaning is missing, raise a linked question
+or mark the proof blocked.
+
+Invariant: mode routes work; role controls writes; evidence determines truth.
+`loom guide --json` exposes this as `operator_loops` for LLM lookup.
+
 ---
 
 ## PromptContract
