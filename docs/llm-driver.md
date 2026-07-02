@@ -320,7 +320,7 @@ evidence required:
 
 ### fixer
 
-Repairs known failing or stale behavior at its root cause. Preserves intent meaning unless evidence shows the product itself changed.
+Repairs known failing behavior at its root cause. Never records verdicts: after the repair, `loom sync` re-opens the claim and its owning lane (analyze/quality/validate) re-measures. Preserves intent meaning unless evidence shows the product itself changed.
 
 ```text
 mindset:

@@ -1143,3 +1143,466 @@ fn journey_diagnose_detail_stays_plain_when_no_body_expectations() {
         "no expectations: plain detail, got: {detail}"
     );
 }
+
+// ---- journey invariant update ------------------------------------------------
+
+/// Run `loom --graph <tmp> <args>` and return (status, stdout, stderr) without
+/// asserting on exit code — used for error-path assertions where a non-zero
+/// exit is the contract under test.
+fn run_cli_raw(tmp: &Path, args: &[&str]) -> (std::process::ExitStatus, String, String) {
+    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    cmd.arg("--graph").arg(tmp).args(args);
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom {:?}: {e}", args));
+    (
+        out.status,
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+/// Contract: `journey invariant update --asserts <B>` re-points the invariant's
+/// Asserts edge to intent B, preserving the invariant node id and recording a
+/// decision note that mentions "re-pointed journey invariant". The old Asserts
+/// edge to A is gone.
+#[test]
+fn journey_invariant_update_repoints_asserts_edge_preserving_node_id() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = intent(&store, "intent A", "implemented");
+    let b = intent(&store, "intent B", "implemented");
+    drop(store);
+
+    run_cli(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "add",
+            "--name",
+            "inv1",
+            &a,
+            "--field",
+            "f",
+            "--assertion",
+            "x > 0",
+            "--reason",
+            "r",
+        ],
+    );
+
+    // Capture the invariant id as it exists right after add.
+    let after_add = run_cli_json(tmp.path(), &["journey", "invariant", "list"]);
+    let added = after_add
+        .as_array()
+        .expect("invariant list --json emits an array")
+        .iter()
+        .find(|r| r["name"] == "inv1")
+        .expect("inv1 present after add");
+    let inv_id = added["id"]
+        .as_str()
+        .expect("invariant row has id")
+        .to_string();
+    assert_eq!(
+        added["asserts"],
+        "intent A",
+        "after add, invariant asserts intent A, got: {}",
+        serde_json::to_string_pretty(&added).unwrap()
+    );
+
+    // Re-point to B.
+    run_cli(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "update",
+            "inv1",
+            "--asserts",
+            &b,
+            "--reason",
+            "wrong intent",
+        ],
+    );
+
+    let after_update = run_cli_json(tmp.path(), &["journey", "invariant", "list"]);
+    let updated = after_update
+        .as_array()
+        .expect("invariant list --json emits an array")
+        .iter()
+        .find(|r| r["id"] == inv_id)
+        .expect("same invariant node id preserved across update");
+    assert_eq!(
+        updated["id"], inv_id,
+        "update preserves the invariant node id (re-point lives on the edge)"
+    );
+    assert_eq!(
+        updated["asserts"],
+        "intent B",
+        "after update, invariant asserts intent B, got: {}",
+        serde_json::to_string_pretty(&updated).unwrap()
+    );
+
+    // Exactly one Asserts edge from the invariant now (the old A edge was deleted,
+    // not orphaned alongside the new B edge). `list` only surfaces the first
+    // Asserts edge, so verify the count at the store level to defend this.
+    let store = Store::open(tmp.path()).unwrap();
+    let asserts_edges = store
+        .edges_with(Some(EdgeKind::Asserts), Some(&inv_id), None)
+        .unwrap();
+    assert_eq!(
+        asserts_edges.len(),
+        1,
+        "re-point replaces the Asserts edge (1 expected), got: {}",
+        asserts_edges.len()
+    );
+    assert_eq!(
+        asserts_edges[0].to_id, b,
+        "the single Asserts edge points at intent B"
+    );
+    drop(store);
+
+    // A decision note was added recording the re-point.
+    let notes = run_cli_json(tmp.path(), &["note", "list", &inv_id]);
+    let arr = notes.as_array().expect("note list --json emits an array");
+    let re_pointed = arr.iter().find(|n| {
+        n["text"]
+            .as_str()
+            .is_some_and(|t| t.contains("re-pointed journey invariant"))
+    });
+    assert!(
+        re_pointed.is_some(),
+        "a decision note mentioning 're-pointed journey invariant' must exist on the invariant, got: {}",
+        serde_json::to_string_pretty(&notes).unwrap()
+    );
+    let note = re_pointed.unwrap();
+    assert_eq!(
+        note["kind"].as_str(),
+        Some("decision"),
+        "the re-point note is a decision note, got: {}",
+        serde_json::to_string_pretty(&note).unwrap()
+    );
+    assert!(
+        note["text"].as_str().unwrap().contains("intent B"),
+        "the re-point note names the new target intent B, got: {}",
+        serde_json::to_string_pretty(&note).unwrap()
+    );
+    assert!(
+        note["text"].as_str().unwrap().contains("intent A"),
+        "the re-point note records the prior target intent A, got: {}",
+        serde_json::to_string_pretty(&note).unwrap()
+    );
+}
+
+/// Contract: re-pointing `--asserts` at the intent the invariant already asserts
+/// is idempotent — exactly one Asserts edge remains, no duplicate is created, and
+/// no old edge is deleted (there was none to delete).
+#[test]
+fn journey_invariant_update_repoint_to_current_intent_is_idempotent() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = intent(&store, "intent A", "implemented");
+    let b = intent(&store, "intent B", "implemented");
+    drop(store);
+
+    run_cli(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "add",
+            "--name",
+            "inv2",
+            &a,
+            "--field",
+            "f",
+            "--assertion",
+            "x > 0",
+            "--reason",
+            "r",
+        ],
+    );
+    run_cli(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "update",
+            "inv2",
+            "--asserts",
+            &b,
+            "--reason",
+            "first repoint",
+        ],
+    );
+
+    // Snapshot the single Asserts edge after the first real re-point.
+    let store = Store::open(tmp.path()).unwrap();
+    let inv2 = store
+        .resolve_node("inv2", Some(NodeType::JourneyInvariantPoint))
+        .unwrap();
+    let edges_before = store
+        .edges_with(Some(EdgeKind::Asserts), Some(&inv2.id), None)
+        .unwrap();
+    assert_eq!(
+        edges_before.len(),
+        1,
+        "baseline: one Asserts edge after first repoint"
+    );
+    drop(store);
+
+    // Now re-point to the SAME intent B again.
+    run_cli(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "update",
+            "inv2",
+            "--asserts",
+            &b,
+            "--reason",
+            "duplicate repoint",
+        ],
+    );
+
+    // List still shows B exactly once (list takes the first Asserts edge, so a
+    // duplicate would be hidden here — hence the store-level count below).
+    let list = run_cli_json(tmp.path(), &["journey", "invariant", "list"]);
+    let row = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["name"] == "inv2")
+        .unwrap();
+    assert_eq!(
+        row["asserts"],
+        "intent B",
+        "list still shows intent B once, got: {}",
+        serde_json::to_string_pretty(&row).unwrap()
+    );
+
+    // Store-level invariant: still exactly one Asserts edge (no duplicate
+    // created by re-pointing at the already-asserted intent). `list` only
+    // surfaces the first Asserts edge, so a duplicate would be invisible there
+    // — the count is what defends the no-duplicate contract.
+    let store = Store::open(tmp.path()).unwrap();
+    let edges_after = store
+        .edges_with(Some(EdgeKind::Asserts), Some(&inv2.id), None)
+        .unwrap();
+    assert_eq!(
+        edges_after.len(),
+        1,
+        "idempotent re-point leaves exactly one Asserts edge (no duplicate), got: {}",
+        edges_after.len()
+    );
+    assert_eq!(
+        edges_after[0].to_id, b,
+        "the single edge still points at intent B"
+    );
+}
+
+/// Contract: an update with ONLY `--reason` (no --field/--assertion/--asserts/
+/// --reason-text) is rejected with a non-zero exit and a message naming the
+/// missing update fields. The reason is otherwise valid, so this is the
+/// "nothing to update" guard, not the empty-reason guard.
+#[test]
+fn journey_invariant_update_with_only_reason_exits_nonzero() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = intent(&store, "intent A", "implemented");
+    drop(store);
+
+    run_cli(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "add",
+            "--name",
+            "inv3",
+            &a,
+            "--field",
+            "f",
+            "--assertion",
+            "x > 0",
+            "--reason",
+            "r",
+        ],
+    );
+
+    let (status, _stdout, stderr) = run_cli_raw(
+        tmp.path(),
+        &[
+            "journey",
+            "invariant",
+            "update",
+            "inv3",
+            "--reason",
+            "just a reason, no fields",
+        ],
+    );
+    assert!(
+        !status.success(),
+        "update with only --reason must exit non-zero, got: {status:?}\n--stderr--\n{stderr}"
+    );
+    assert!(
+        stderr.contains("nothing to update"),
+        "stderr must mention 'nothing to update' so the operator knows which flags to pass, got: {stderr}"
+    );
+}
+
+// ---- note targets: edges, node precedence, and the no-match error ----------
+
+/// Contract: a note can be attached to an EDGE (by id or prefix) and scoped
+/// `note list` returns exactly that note with `target_id` equal to the full
+/// edge id. Adjudications live on claims, and claims live on edges too.
+#[test]
+fn note_add_attaches_to_edge_and_list_scopes_to_edge() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _a = intent(&store, "intent alpha", "implemented");
+    let _b = intent(&store, "intent beta", "implemented");
+    drop(store);
+
+    // Create the relates edge via the surface under test and capture its id.
+    let relate = run_cli_json(
+        tmp.path(),
+        &["edge", "relate", "relates", "intent alpha", "intent beta"],
+    );
+    let edge_id = relate["edge"]["id"]
+        .as_str()
+        .expect("edge relate --json emits the edge with its id")
+        .to_string();
+    assert!(
+        !edge_id.is_empty(),
+        "relate must produce a non-empty edge id, got: {relate}"
+    );
+    let prefix = &edge_id[..8];
+
+    // Attach a warning note by the edge id PREFIX (the resolution path that
+    // distinguishes edges from nodes must accept the short form too).
+    let added = run_cli_json(
+        tmp.path(),
+        &[
+            "note",
+            "add",
+            prefix,
+            "--kind",
+            "warning",
+            "--text",
+            "verdict recorded from wrong lane",
+        ],
+    );
+    assert_eq!(
+        added["target"]["id"].as_str(),
+        Some(edge_id.as_str()),
+        "note add resolves the prefix to the full edge id, got: {}",
+        serde_json::to_string_pretty(&added).unwrap()
+    );
+
+    // note list scoped to the edge returns exactly that note, with target_id
+    // equal to the FULL edge id (not the prefix we passed).
+    let notes = run_cli_json(tmp.path(), &["note", "list", &edge_id]);
+    let arr = notes.as_array().expect("note list --json emits an array");
+    assert_eq!(
+        arr.len(),
+        1,
+        "exactly one note scoped to the edge, got: {}",
+        serde_json::to_string_pretty(&notes).unwrap()
+    );
+    assert_eq!(
+        arr[0]["target_id"].as_str(),
+        Some(edge_id.as_str()),
+        "the scoped note's target_id is the full edge id, got: {}",
+        serde_json::to_string_pretty(&arr[0]).unwrap()
+    );
+    assert_eq!(
+        arr[0]["kind"].as_str(),
+        Some("warning"),
+        "the note kind round-trips as warning, got: {}",
+        serde_json::to_string_pretty(&arr[0]).unwrap()
+    );
+    assert_eq!(
+        arr[0]["text"].as_str(),
+        Some("verdict recorded from wrong lane"),
+        "the note text is preserved verbatim, got: {}",
+        serde_json::to_string_pretty(&arr[0]).unwrap()
+    );
+}
+
+/// Contract: node precedence — when the target string names a node (here an
+/// intent), the note lands on the node even though edges exist in the graph.
+/// `resolve_note_target` tries nodes first and only falls through to edges on a
+/// hard "no node matches", so a name that resolves a node must never be
+/// misread as an edge prefix.
+#[test]
+fn note_add_on_node_name_lands_on_node_not_edge() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = intent(&store, "intent alpha", "implemented");
+    let _b = intent(&store, "intent beta", "implemented");
+    drop(store);
+
+    // Add a relates edge so edges exist in the graph — proving the node path
+    // is chosen by precedence, not by absence of edges.
+    run_cli(
+        tmp.path(),
+        &["edge", "relate", "relates", "intent alpha", "intent beta"],
+    );
+
+    let added = run_cli_json(
+        tmp.path(),
+        &["note", "add", "intent alpha", "--text", "node note"],
+    );
+    assert_eq!(
+        added["target"]["id"].as_str(),
+        Some(a.as_str()),
+        "the note attached to the intent node, not an edge, got: {}",
+        serde_json::to_string_pretty(&added).unwrap()
+    );
+
+    // Scoped list on the node returns the note; scoped list on the edge must
+    // NOT see it — the node note did not leak onto the edge.
+    let node_notes = run_cli_json(tmp.path(), &["note", "list", "intent alpha"]);
+    let arr = node_notes
+        .as_array()
+        .expect("note list --json emits an array");
+    assert_eq!(
+        arr.len(),
+        1,
+        "one note scoped to the intent node, got: {}",
+        serde_json::to_string_pretty(&node_notes).unwrap()
+    );
+    assert_eq!(
+        arr[0]["target_id"].as_str(),
+        Some(a.as_str()),
+        "the note's target_id is the intent node id, got: {}",
+        serde_json::to_string_pretty(&arr[0]).unwrap()
+    );
+}
+
+/// Contract: a target that matches neither a node nor an edge exits non-zero
+/// with a message containing "no node or edge matches" — the single error that
+/// tells the operator the target could not be resolved at all.
+#[test]
+fn note_add_dead_target_exits_nonzero_with_no_match_message() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _a = intent(&store, "intent alpha", "implemented");
+    drop(store);
+
+    // "deadbeef99" cannot be a node name (no node is named that), a node id
+    // prefix, or an edge id prefix in this graph.
+    let (status, _stdout, stderr) =
+        run_cli_raw(tmp.path(), &["note", "add", "deadbeef99", "--text", "x"]);
+    assert!(
+        !status.success(),
+        "note add on an unresolvable target must exit non-zero, got: {status:?}\n--stderr--\n{stderr}"
+    );
+    assert!(
+        stderr.contains("no node or edge matches"),
+        "stderr must name the no-match contract so the operator knows the target resolved to nothing, got: {stderr}"
+    );
+}

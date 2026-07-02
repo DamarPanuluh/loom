@@ -32,7 +32,7 @@ This is the v2 spine: derived facts are reproducible, asserted facts persist unt
 
 ## Current feature spine
 
-- **External diagnostics:** `loom scan add/list/remove/run` wraps any language's linter, type-checker, or custom diagnostic command. GCC-style `file:line[:col]: message` output works by default; custom named-group regex maps (`file`, `line`, optional `msg`, `code`) are supported. Parsed diagnostics become derived findings and converge on re-run when diagnostics disappear.
+- **External diagnostics:** `loom scan add/list/remove/run` wraps any language's linter, type-checker, or custom diagnostic command. GCC-style `file:line[:col]: message` output works by default, as do two-line diagnostics (a bare `file:line[:col]` location line with the message on the immediately following line, as svelte-check emits); custom named-group regex maps (`file`, `line`, optional `msg`, `code`) are supported and stay strictly per-line. Parsed diagnostics become derived findings and converge on re-run when diagnostics disappear.
 - **Pattern pre-screening:** seeded quality packs can carry regex `patterns[]`. Quality packets embed computed `pre_screened_hits` (`path`, `line`, `pattern`, `excerpt`) at packet-build time so the LLM can confirm or refute every candidate before writing the verdict.
 - **Definition-of-Complete:** `loom completeness [intent]` scores user-visible feature intents across scenarios, prerequisites, boundary, proof, journey, and questions. `loom next --mode elaborate` serves the most-incomplete feature and embeds the scorecard.
 - **Scenario families:** `loom intent add/set --aspect happy|sad|fallback|edge_case` plus `scenario-of` edges model happy paths, sad paths, fallbacks, and edge cases without inventing a separate scenario node type.
@@ -178,7 +178,7 @@ loom --json next --all
 Then follow the returned lane:
 
 - **build** — realize planned or changed intents.
-- **fix** — repair failing or stale asserted facts.
+- **fix** — repair failing asserted facts at root cause (never records verdicts).
 - **analyze** — inspect relationships and record evidence.
 - **validate** — run or mark proofs.
 - **quality** — inspect rules against intents.

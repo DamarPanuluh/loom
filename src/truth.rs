@@ -171,7 +171,7 @@ pub fn axis_for_phase(phase: &str, next_command: &str) -> Option<TruthAxis> {
         "build" => Some(TruthAxis::Implementation),
         "coverage" => Some(TruthAxis::Implementation),
         "validate" => Some(TruthAxis::Proof),
-        "fix" | "analyze" => Some(TruthAxis::Verdict),
+        "fix" | "analyze" | "quality" => Some(TruthAxis::Verdict),
         "audit" if next_command.contains("doctor") => Some(TruthAxis::Verdict),
         "audit" => Some(TruthAxis::Signal),
         "triage" => Some(TruthAxis::Signal),

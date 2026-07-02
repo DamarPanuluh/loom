@@ -88,7 +88,7 @@ pub enum Command {
         #[command(subcommand)]
         cmd: TaskCmd,
     },
-    /// Durable notes on any node (decision/context/warning trails).
+    /// Durable notes on any node or edge (decision/context/warning trails).
     Note {
         #[command(subcommand)]
         cmd: NoteCmd,

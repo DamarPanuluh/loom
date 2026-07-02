@@ -33,7 +33,8 @@ Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `-
 
 Queue partition is deliberately disjoint:
 
-- `fix`: every failing asserted edge, plus stale non-`governs`/non-`validates` asserted claims.
+- `fix`: every failing asserted edge — strictly root-cause repair. A fix packet never carries verdict authority: repair the source, run `loom sync`, and the owning lane re-measures.
+- `analyze`: uninspected and stale non-`governs`/non-`validates` asserted claims. Stale claims are served first — a settled truth that broke misleads readers; an uninspected claim only waits.
 - `quality`: uninspected or stale `governs` only. Failing `governs` routes to `fix`.
 - `validate`: uninspected or stale `validates` only. Failing `validates` routes to `fix`.
 - `coverage`: registered codefiles with no owning intent. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
@@ -137,7 +138,7 @@ loom scan run [<name>] [--json]
 
 External diagnostic adapters can wrap any language's linter, type-checker, static analyzer, or bespoke script. `scan add` stores the adapter command in graph config; `scan list` shows registered adapters; `scan remove` deletes one; `scan run [<name>]` runs one adapter or all adapters and converts parsed diagnostics into derived `Finding` nodes for ordinary `triage`.
 
-The default parse map is GCC-style `file:line[:col]: message`. `--map` accepts a custom regex with named groups `file` and `line`, plus optional `msg` and `code`; only diagnostics whose `file` resolves to a registered `CodeFile` become findings. Re-running an adapter converges: findings for diagnostics still present stay active, new diagnostics create findings, and findings whose diagnostics disappeared are resolved. Scan adapters travel with `loom export` in `config.scan_adapters`.
+The default parse map is GCC-style `file:line[:col]: message`. The default parser also pairs a bare `file:line[:col]` location line with the message on the immediately following line (svelte-check-style two-line output; a blank line in between drops the pair). `--map` accepts a custom regex with named groups `file` and `line`, plus optional `msg` and `code`; a custom map is strictly per-line. Only diagnostics whose `file` resolves to a registered `CodeFile` become findings. Re-running an adapter converges: findings for diagnostics still present stay active, new diagnostics create findings, and findings whose diagnostics disappeared are resolved. Scan adapters travel with `loom export` in `config.scan_adapters`.
 
 ```text
 loom completeness [<intent>] [--json]
@@ -351,13 +352,13 @@ loom journey invariant add <intent> --name <name> --field <field> --assertion <a
   [--reason <reason>]
   [--json]
 loom journey invariant update <invariant> --reason "<why>"
-  [--name <name>] [--field <field>] [--assertion <assertion>]
+  [--field <field>] [--assertion <assertion>] [--asserts <intent>] [--reason-text <reason>]
   [--json]
 loom journey invariant remove <invariant> [--json]
 loom journey invariant list [--limit N] [--json]
 ```
 
-Invariant points mark internal domain assertions that a journey should verify.
+Invariant points mark internal domain assertions that a journey should verify. `update --asserts <intent>` re-points the invariant at a different intent by replacing its `asserts` edge in place — the node, its history, and its notes stay intact, and the move is recorded as a decision note.
 
 ### Journey runner prompt
 
@@ -542,7 +543,7 @@ loom note list [<target>] [--limit N] [--json]
 loom note remove <id> [--json]
 ```
 
-Durable notes attach to any node by name, id, or unique fragment.
+Durable notes attach to any node (by name, id, or unique fragment) or any edge (by id or unique id prefix) — adjudications attach to claims, and claims live on edges too. On a key that could name both, the node wins.
 
 ---
 

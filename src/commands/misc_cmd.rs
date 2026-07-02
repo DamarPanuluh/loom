@@ -188,7 +188,44 @@ fn inbox_json(n: &crate::model::Node) -> serde_json::Value {
         "updated_at": n.updated_at,
     })
 }
-/// Attach and list durable notes on any node — the adjudication trail.
+/// Resolve a note target: any node (name/id/fragment) or, failing that, any
+/// edge (id/prefix) — adjudications attach to claims, and claims live on
+/// edges too. Nodes win on collision; the precedence is deliberate.
+fn resolve_note_target(store: &crate::store::Store, key: &str) -> Result<(String, String)> {
+    let node_err = match store.resolve_node(key, None) {
+        Ok(n) => return Ok((n.id, n.name)),
+        Err(e) => e,
+    };
+    // An ambiguous node fragment carries candidates — surface it; never fall
+    // through to an edge when the key ALMOST named a node.
+    if !node_err.to_string().starts_with("no node matches") {
+        return Err(node_err);
+    }
+    match store.resolve_edge(key) {
+        Ok(edge) => {
+            let endpoint = |id: &str| {
+                store
+                    .get_node(id)
+                    .ok()
+                    .flatten()
+                    .map(|n| n.name)
+                    .unwrap_or_else(|| id.chars().take(8).collect())
+            };
+            let name = format!(
+                "{} —{}→ {}",
+                endpoint(&edge.from_id),
+                edge.kind,
+                endpoint(&edge.to_id)
+            );
+            Ok((edge.id, name))
+        }
+        // Edge ambiguity carries the match count — keep it too.
+        Err(edge_err) if edge_err.to_string().starts_with("ambiguous") => Err(edge_err),
+        Err(_) => bail!("no node or edge matches '{key}'"),
+    }
+}
+
+/// Attach and list durable notes on any node or edge — the adjudication trail.
 pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
@@ -200,17 +237,17 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
             if text.trim().is_empty() {
                 bail!("a note needs substantive --text");
             }
-            let n = store.resolve_node(&target, None)?;
-            let note = store.add_note(&n.id, &kind, &text)?;
+            let (target_id, target_name) = resolve_note_target(&store, &target)?;
+            let note = store.add_note(&target_id, &kind, &text)?;
             pulse::emit_line(
                 &store,
                 json,
                 serde_json::json!({
                     "note": node_json(&note),
-                    "target": { "id": n.id, "name": n.name },
+                    "target": { "id": target_id, "name": target_name },
                 }),
                 "loom status",
-                format!("noted {kind} on '{}' [{}]", n.name, &note.id[..8]),
+                format!("noted {kind} on '{target_name}' [{}]", &note.id[..8]),
             )
         }
         NoteCmd::Remove { id } => {
@@ -233,9 +270,9 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
         }
         NoteCmd::List { target, limit } => {
             let target_id = target
-                .map(|t| store.resolve_node(&t, None))
+                .map(|t| resolve_note_target(&store, &t))
                 .transpose()?
-                .map(|n| n.id);
+                .map(|(id, _)| id);
             let notes: Vec<_> = store
                 .list_nodes(Some(NodeType::Note), usize::MAX)?
                 .into_iter()
@@ -393,27 +430,43 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         "  - recommended: {}              (phase: {})",
         ladder.next_command, ladder.phase
     );
-    if pulse.stale > 0 {
+    let queues = crate::workitem::queue_counts(&store)?;
+    if queues.fix > 0 {
         println!(
-            "  - repair {} failing/stale claim(s)   [loom next --mode fix]",
-            pulse.stale
+            "  - repair {} failing claim(s)       [loom next --mode fix]",
+            queues.fix
         );
-    } else if pulse.planned > 0 {
+    } else if queues.build > 0 {
         println!(
             "  - build {} unrealized intent(s)    [loom next --mode build]",
-            pulse.planned
+            queues.build
         );
-    } else if pulse.uninspected > 0 {
+    } else if queues.coverage > 0 {
         println!(
-            "  - inspect {} claim(s)           [loom next --mode analyze]",
-            pulse.uninspected
+            "  - own {} uncovered codefile(s)     [loom next --mode coverage]",
+            queues.coverage
+        );
+    } else if queues.validate > 0 {
+        println!(
+            "  - prove {} open proof claim(s)     [loom next --mode validate]",
+            queues.validate
+        );
+    } else if queues.quality > 0 {
+        println!(
+            "  - measure {} quality claim(s)      [loom next --mode quality]",
+            queues.quality
+        );
+    } else if queues.analyze > 0 {
+        println!(
+            "  - inspect {} claim(s)              [loom next --mode analyze]",
+            queues.analyze
         );
     } else if intents == 0 && codefiles == 0 {
         println!("  - fresh graph — nothing mapped yet. Start here:");
         println!("      loom guide                  the driving loop + roles");
         println!("      loom guide --role monitor   watch an upstream you depend on");
         println!("      loom intent add --name <pillar>   seed what this codebase should do");
-    } else {
+    } else if queues.prove + queues.triage + queues.review + queues.elaborate == 0 {
         println!("  - graph is settled; map more, or just get to work");
     }
     if pulse.open_questions > 0 {

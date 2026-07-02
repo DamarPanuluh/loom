@@ -1068,15 +1068,19 @@ fn invariant(graph: Option<&std::path::Path>, cmd: JourneyInvariantCmd, json: bo
             key,
             field,
             assertion,
+            asserts,
             reason_text,
             reason,
         } => invariant_update(
             graph,
             &key,
-            field.as_deref(),
-            assertion.as_deref(),
-            reason_text.as_deref(),
-            &reason,
+            InvariantUpdate {
+                field: field.as_deref(),
+                assertion: assertion.as_deref(),
+                asserts: asserts.as_deref(),
+                reason_text: reason_text.as_deref(),
+                reason: &reason,
+            },
             json,
         ),
         JourneyInvariantCmd::Remove { key } => invariant_remove(graph, &key, json),
@@ -1172,23 +1176,42 @@ fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> 
     }
     Ok(())
 }
+/// The optional payload of `journey invariant update` — grouped so the flag
+/// list can grow without widening the helper's signature.
+struct InvariantUpdate<'a> {
+    field: Option<&'a str>,
+    assertion: Option<&'a str>,
+    asserts: Option<&'a str>,
+    reason_text: Option<&'a str>,
+    reason: &'a str,
+}
+
 fn invariant_update(
     graph: Option<&std::path::Path>,
     key: &str,
-    field: Option<&str>,
-    assertion: Option<&str>,
-    reason_text: Option<&str>,
-    reason: &str,
+    update: InvariantUpdate<'_>,
     json: bool,
 ) -> Result<()> {
+    let InvariantUpdate {
+        field,
+        assertion,
+        asserts,
+        reason_text,
+        reason,
+    } = update;
     if reason.trim().is_empty() {
         bail!("journey invariant update needs substantive --reason");
     }
-    if field.is_none() && assertion.is_none() && reason_text.is_none() {
-        bail!("nothing to update — pass --field, --assertion, and/or --reason-text");
+    if field.is_none() && assertion.is_none() && asserts.is_none() && reason_text.is_none() {
+        bail!("nothing to update — pass --field, --assertion, --asserts, and/or --reason-text");
     }
     let store = open(graph)?;
     let node = store.resolve_node(key, Some(NodeType::JourneyInvariantPoint))?;
+    // Resolve the re-point target BEFORE any write so a bad --asserts key
+    // cannot leave a half-applied update (body changed, edge untouched).
+    let asserts_target: Option<Node> = asserts
+        .map(|k| store.resolve_node(k, Some(NodeType::Intent)))
+        .transpose()?;
     let mut body = node.body.clone();
     if let Some(v) = field {
         body["field"] = json!(v);
@@ -1200,26 +1223,62 @@ fn invariant_update(
         body["reason"] = json!(v);
     }
     store.set_node_body(&node.id, &body)?;
-    store.add_note(
-        &node.id,
-        "decision",
-        &format!("updated journey invariant point: {reason}"),
-    )?;
-    pulse::emit_line(
-        &store,
-        json,
-        json!({
-            "invariant": {
-                "id": node.id,
-                "name": node.name,
-                "status": node.status,
-                "body": body,
-            },
-            "reason": reason,
-        }),
-        "loom journey invariant list",
-        format!("updated journey invariant '{}'", node.name),
-    )
+    // Re-pointing lives on the asserts EDGE, not in the body: replace the edge
+    // in place so the invariant node — and its note trail — keeps continuity.
+    let mut moved: Option<(Vec<String>, Node)> = None;
+    if let Some(intent) = asserts_target {
+        let existing = store.edges_with(Some(EdgeKind::Asserts), Some(&node.id), None)?;
+        let already = existing.iter().any(|e| e.to_id == intent.id);
+        let mut old_names = Vec::new();
+        for e in existing.iter().filter(|e| e.to_id != intent.id) {
+            let old = store
+                .get_node(&e.to_id)?
+                .map(|n| n.name)
+                .unwrap_or_else(|| e.to_id.clone());
+            store.delete_edge(&e.id)?;
+            old_names.push(old);
+        }
+        if !already {
+            store.add_edge(
+                EdgeKind::Asserts,
+                &node.id,
+                &intent.id,
+                crate::model::TruthClass::Asserted,
+            )?;
+        }
+        moved = Some((old_names, intent));
+    }
+    let note_text = match &moved {
+        Some((old_names, intent)) if !old_names.is_empty() => format!(
+            "re-pointed journey invariant: asserts '{}' (was '{}'): {reason}",
+            intent.name,
+            old_names.join("', '"),
+        ),
+        _ => format!("updated journey invariant point: {reason}"),
+    };
+    store.add_note(&node.id, "decision", &note_text)?;
+    let mut payload = json!({
+        "invariant": {
+            "id": node.id,
+            "name": node.name,
+            "status": node.status,
+            "body": body,
+        },
+        "reason": reason,
+    });
+    if let Some((old_names, intent)) = &moved {
+        payload["invariant"]["asserts"] = json!(intent.name);
+        payload["invariant"]["asserts_id"] = json!(intent.id);
+        payload["moved_from"] = json!(old_names);
+    }
+    let line = match &moved {
+        Some((_, intent)) => format!(
+            "updated journey invariant '{}' → asserts '{}'",
+            node.name, intent.name
+        ),
+        None => format!("updated journey invariant '{}'", node.name),
+    };
+    pulse::emit_line(&store, json, payload, "loom journey invariant list", line)
 }
 
 fn invariant_remove(graph: Option<&std::path::Path>, key: &str, json: bool) -> Result<()> {

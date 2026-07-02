@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.13.0] - 2026-07-02
+- Field-report fixes: fix queue is strictly failing-verdict repair — stale claims reroute to analyze (stale-first) and fixer packets never carry verdict authority, with compass/session/queue-counts on the same partition; journey invariant update --asserts re-points the asserts edge in place (node + note trail preserved); notes attach to edges (node-first resolution, honest no-match error); default scan parser pairs svelte-check-style two-line diagnostics, custom --map stays per-line
+
 ## [0.12.0] - 2026-07-02
 - Drive-tested smoothing: complete CRUD surface on every graph family (note/task/hypothesis/rule/vocab/proposal/journey-coverage/invariant/intent/scan gain update-rename-remove where semantics allow; retire stays the supersession path), intent rename via update --name, truthful per-queue backlog in loom status (same partition loom next serves), pack_drift smell (seeded rules vs shipped pack, idempotent re-seed remedy), ghost-file handling (missing-file coverage packet, GONE annotations in read sets, never-hashed deletions ripple once via missing_rippled marker), quiet SIGPIPE exit
 

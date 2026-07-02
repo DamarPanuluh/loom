@@ -451,8 +451,9 @@ fn queue_modes_never_serve_the_same_edge() {
         "QUEUE DISJOINTNESS: fix must target the failing governs edge"
     );
 
-    // Settle the failing edge so fix can fall through to its second tier:
-    // stale relationship/grounding claims (NOT stale governs/validates).
+    // Settle the failing edge so the fix queue drains. Fix is strictly the
+    // failing-verdict repair lane: it must NEVER serve a packet whose
+    // write-back is a verdict, so stale claims are not fix work.
     store
         .record_verdict(
             &gov_fail.id,
@@ -463,18 +464,30 @@ fn queue_modes_never_serve_the_same_edge() {
             "llm",
         )
         .unwrap();
+    assert!(
+        workitem::next(&store, Some(Mode::Fix)).unwrap().is_none(),
+        "QUEUE DISJOINTNESS: fix must drain once no verdict is failing — stale remeasurement is analyze work"
+    );
 
-    // Now fix must serve ONLY the stale relates, never the stale governs.
-    let fix2 = workitem::next(&store, Some(Mode::Fix))
+    // analyze serves ONLY the stale relates, never the stale governs.
+    let a_item = workitem::next(&store, Some(Mode::Analyze))
         .unwrap()
-        .expect("QUEUE DISJOINTNESS: fix must serve a stale non-governs/validates edge after the failing one settles");
+        .expect("QUEUE DISJOINTNESS: analyze must serve the stale non-governs/validates edge");
     assert_eq!(
-        fix2.target.id, rel_stale.id,
-        "QUEUE DISJOINTNESS: fix must serve the stale relates edge, not the stale governs"
+        a_item.mode, "analyze",
+        "QUEUE DISJOINTNESS: stale remeasurement item mode must be analyze"
+    );
+    assert_eq!(
+        a_item.owner_role, "analyzer",
+        "QUEUE DISJOINTNESS: stale claims are verdict work, served by role analyzer"
+    );
+    assert_eq!(
+        a_item.target.id, rel_stale.id,
+        "QUEUE DISJOINTNESS: analyze must serve the stale relates edge, not the stale governs"
     );
     assert_ne!(
-        fix2.target.id, gov_stale.id,
-        "QUEUE DISJOINTNESS: fix must never serve the stale governs edge"
+        a_item.target.id, gov_stale.id,
+        "QUEUE DISJOINTNESS: analyze must never serve the stale governs edge"
     );
 
     // quality serves the stale governs edge.
@@ -509,7 +522,7 @@ fn queue_modes_never_serve_the_same_edge() {
 
     // Disjointness: no edge id served by two queues at once.
     let mut served = vec![
-        fix2.target.id.clone(),
+        a_item.target.id.clone(),
         q_item.target.id.clone(),
         v_item.target.id.clone(),
     ];
@@ -704,9 +717,9 @@ fn edge_packet_read_set_carries_codefile_path_and_locator() {
         .stale_edge(&imp.id, "content hash of src/x.rs changed")
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Fix))
+    let item = workitem::next(&store, Some(Mode::Analyze))
         .unwrap()
-        .expect("SELF-CONTAINED PACKETS: a stale implements edge must be served by fix");
+        .expect("SELF-CONTAINED PACKETS: a stale implements edge must be served by analyze");
 
     // context.read_set contains {path == codefile name, locator == facet value}.
     let read = item

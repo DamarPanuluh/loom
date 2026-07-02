@@ -229,9 +229,9 @@ pub enum InboxCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum NoteCmd {
-    /// Attach a durable note to any node (adjudications, context, warnings).
+    /// Attach a durable note to any node or edge (adjudications, context, warnings).
     Add {
-        /// The node the note is about (name, id, or unique fragment).
+        /// The node (name, id, or unique fragment) or edge (id or prefix) the note is about.
         target: String,
         /// decision | context | warning
         #[arg(long, default_value = "decision")]
@@ -242,7 +242,7 @@ pub enum NoteCmd {
     /// Remove a mistaken note. Notes are history and have no edit operation;
     /// removal is only for accidental/misattached notes.
     Remove { id: String },
-    /// List notes, newest first, optionally scoped to one target node.
+    /// List notes, newest first, optionally scoped to one target node or edge.
     List {
         target: Option<String>,
         #[arg(long, default_value_t = 50)]
@@ -767,6 +767,11 @@ pub enum JourneyInvariantCmd {
         field: Option<String>,
         #[arg(long)]
         assertion: Option<String>,
+        /// Re-point the invariant at a different intent (id, name, or unique
+        /// fragment). Replaces the asserts edge; the node, its history, and
+        /// its notes stay intact.
+        #[arg(long)]
+        asserts: Option<String>,
         /// Replacement body reason for the invariant itself.
         #[arg(long = "reason-text")]
         reason_text: Option<String>,

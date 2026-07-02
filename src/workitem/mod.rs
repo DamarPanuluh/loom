@@ -187,10 +187,11 @@ pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
         Some(Mode::Elaborate) if observed => Ok(None),
         Some(Mode::Elaborate) => elaborate_item(store),
         None => {
-            // Priority: repair failing/stale, then validate, then build, then
-            // measure quality, inspect relationships, and finally triage derived
-            // code flags after asserted graph residue is clean. On an observed
-            // graph the fix/build lanes are skipped entirely.
+            // Priority: repair failing verdicts, then validate, then build,
+            // then coverage, then measure quality, then inspect relationship
+            // claims (stale before uninspected, inside analyze), and finally
+            // triage derived code flags after asserted graph residue is clean.
+            // On an observed graph the fix/build lanes are skipped entirely.
             if !observed {
                 if let Some(w) = fix_item(store)? {
                     return Ok(Some(w));

@@ -18,6 +18,9 @@ use std::time::Duration;
 
 const ADAPTERS_META_KEY: &str = "scan_adapters";
 const DEFAULT_MAP: &str = r"^(?P<file>[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?:\s*(?P<msg>.+)$";
+/// A bare `file:line[:col]` location with no trailing message — the first half
+/// of a two-line diagnostic (svelte-check-style human output).
+const LOCATION_ONLY_MAP: &str = r"^(?P<file>[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?\s*$";
 const SCAN_TIMEOUT_SECS: u64 = 120;
 const TITLE_MSG_LIMIT: usize = 96;
 
@@ -144,14 +147,11 @@ pub fn run(store: &Store, root: &Path, name: Option<&str>) -> Result<ScanReport>
         let rule = ensure_adapter_rule(store, &adapter)?;
         let existing = adapter_finding_ids(store, &adapter.name)?;
         let output = run_adapter_command(root, &adapter.command, &adapter.name)?;
+        let (parsed, skipped) = parse_output(&regex, &output, adapter.map.is_none());
+        report.skipped_lines += skipped;
         let mut active = BTreeSet::new();
 
-        for line in output.lines() {
-            let line = line.trim_end_matches('\r');
-            let Some(mut diagnostic) = parse_diagnostic(&regex, line) else {
-                report.skipped_lines += 1;
-                continue;
-            };
+        for mut diagnostic in parsed {
             let Some(normalized) = normalize_path(root, &diagnostic.file) else {
                 continue;
             };
@@ -263,6 +263,66 @@ fn run_adapter_command(root: &Path, command: &str, adapter_name: &str) -> Result
     let mut combined = output.stdout;
     combined.extend(output.stderr);
     Ok(String::from_utf8_lossy(&combined).into_owned())
+}
+
+/// Parse adapter output line by line. `pair_locations` (default parser only)
+/// additionally accepts two-line diagnostics — a bare `file:line[:col]`
+/// location line whose message is the immediately following line, the shape
+/// svelte-check-style tools emit. A blank line drops the pending location:
+/// pairing across gaps would stitch unrelated output blocks into bogus
+/// diagnostics. A custom `--map` regex stays strictly per-line: the operator
+/// owns that grammar.
+fn parse_output(
+    regex: &Regex,
+    output: &str,
+    pair_locations: bool,
+) -> (Vec<ParsedDiagnostic>, usize) {
+    let location_only =
+        pair_locations.then(|| Regex::new(LOCATION_ONLY_MAP).expect("static location regex"));
+    let mut diagnostics = Vec::new();
+    let mut skipped = 0usize;
+    // A location line still waiting for its message line.
+    let mut pending: Option<(String, u64)> = None;
+    for raw in output.lines() {
+        let line = raw.trim_end_matches('\r');
+        // Location-only is checked BEFORE the adapter map: on a bare
+        // `file:line:col` line the default map would otherwise backtrack the
+        // optional column group and misread the column as the message. A full
+        // one-line diagnostic can never match here — location-only requires
+        // end-of-line right after the column.
+        if let Some(location_re) = &location_only {
+            if let Some(captures) = location_re.captures(line) {
+                skipped += usize::from(pending.take().is_some());
+                let file = captures.name("file").map(|m| m.as_str().trim().to_string());
+                let line_no = captures.name("line").and_then(|m| m.as_str().parse().ok());
+                if let (Some(file), Some(line_no)) = (file, line_no) {
+                    pending = Some((file, line_no));
+                }
+                continue;
+            }
+        }
+        if let Some(diagnostic) = parse_diagnostic(regex, line) {
+            // A full diagnostic abandons any unpaired location.
+            skipped += usize::from(pending.take().is_some());
+            diagnostics.push(diagnostic);
+            continue;
+        }
+        match pending.take() {
+            Some((file, line_no)) if !line.trim().is_empty() => {
+                diagnostics.push(ParsedDiagnostic {
+                    file,
+                    line: line_no,
+                    msg: line.trim().to_string(),
+                    code: None,
+                });
+            }
+            // A blank line right after a location: the location had no message.
+            Some(_) => skipped += 2,
+            None => skipped += 1,
+        }
+    }
+    skipped += usize::from(pending.is_some());
+    (diagnostics, skipped)
 }
 
 fn parse_diagnostic(regex: &Regex, line: &str) -> Option<ParsedDiagnostic> {
@@ -538,6 +598,152 @@ mod tests {
         assert_eq!(second.new_findings, 0);
         assert_eq!(second.resolved_findings, 1);
         assert!(crate::signal::findings_view(&store)?.is_empty());
+        Ok(())
+    }
+
+    // svelte-check-style two-line stream: a bare `file:line:col` location line
+    // followed by the message on the next non-empty line becomes ONE diagnostic.
+    // An indented code-excerpt line and a blank line between pairs are skipped,
+    // and a second location+message pair also parses.
+    #[test]
+    fn svelte_check_two_line_pairs_into_diagnostics() -> Result<()> {
+        let regex = Regex::new(DEFAULT_MAP)?;
+        let (diags, skipped) = parse_output(
+            &regex,
+            concat!(
+                "src/App.svelte:12:5\n",
+                "Warn: unused export (svelte)\n",
+                "  const x = 1\n",
+                "\n",
+                "src/App.svelte:13:2\n",
+                "Error: missing semicolon",
+            ),
+            true,
+        );
+        assert_eq!(
+            diags.len(),
+            2,
+            "two location+message pairs must yield exactly two diagnostics, got {diags:?}",
+        );
+        assert_eq!(diags[0].file, "src/App.svelte");
+        assert_eq!(diags[0].line, 12);
+        assert!(
+            diags[0].msg.contains("unused export"),
+            "paired message must carry the svelte warning text, got {:?}",
+            diags[0].msg,
+        );
+        assert!(
+            diags[0].msg != "5",
+            "the column must never be misread as the message",
+        );
+        assert_eq!(diags[1].file, "src/App.svelte");
+        assert_eq!(diags[1].line, 13);
+        assert!(
+            diags[1].msg.contains("missing semicolon"),
+            "second pair message must carry its text, got {:?}",
+            diags[1].msg,
+        );
+        // The indented code-excerpt line and the blank line between the pairs
+        // are not diagnostics and must be counted as skipped.
+        assert_eq!(
+            skipped, 2,
+            "code-excerpt line and blank line must both be skipped",
+        );
+        Ok(())
+    }
+
+    // A GCC one-liner and a two-line pair in the same stream both parse with
+    // pair_locations=true: the GCC line keeps its inline message, the bare
+    // location line is not misread as a standalone diagnostic.
+    #[test]
+    fn mixed_gcc_one_liner_and_two_line_pair_both_parse() -> Result<()> {
+        let regex = Regex::new(DEFAULT_MAP)?;
+        let (diags, skipped) = parse_output(
+            &regex,
+            "src/a.rs:3:1: error: boom\n\
+             src/App.svelte:12:5\n\
+             Warn: unused export (svelte)",
+            true,
+        );
+        assert_eq!(
+            diags.len(),
+            2,
+            "GCC one-liner plus a two-line pair must yield two diagnostics, got {diags:?}",
+        );
+        // GCC one-liner preserves its inline message verbatim.
+        assert_eq!(diags[0].file, "src/a.rs");
+        assert_eq!(diags[0].line, 3);
+        assert_eq!(diags[0].msg, "error: boom");
+        // Two-line pair carries the following line as its message.
+        assert_eq!(diags[1].file, "src/App.svelte");
+        assert_eq!(diags[1].line, 12);
+        assert!(
+            diags[1].msg.contains("unused export"),
+            "paired message must carry the warning text, got {:?}",
+            diags[1].msg,
+        );
+        assert_eq!(
+            skipped, 0,
+            "no lines should be skipped in a clean mixed stream"
+        );
+        Ok(())
+    }
+
+    // With pair_locations=false (a custom --map), the two-line shape is NOT
+    // paired: the bare location line has no inline message for the default map
+    // and pairing is disabled, so both lines count as skipped and no
+    // diagnostic is emitted.
+    #[test]
+    fn pair_locations_false_skips_two_line_shape() -> Result<()> {
+        let regex = Regex::new(DEFAULT_MAP)?;
+        let (diags, skipped) = parse_output(
+            &regex,
+            "src/App.svelte:12\n\
+             Warn: unused export (svelte)",
+            false,
+        );
+        assert!(
+            diags.is_empty(),
+            "with pairing off a bare location line must not produce a diagnostic, got {diags:?}",
+        );
+        assert_eq!(
+            skipped, 2,
+            "both the unpaired location line and its orphan message must be skipped",
+        );
+        Ok(())
+    }
+
+    // A blank line directly after a location line drops the pending location:
+    // pairing across gaps would stitch unrelated output into bogus diagnostics.
+    #[test]
+    fn blank_line_after_location_drops_pending() -> Result<()> {
+        let regex = Regex::new(DEFAULT_MAP)?;
+        let (diags, skipped) = parse_output(&regex, "src/App.svelte:12:5\n\n", true);
+        assert!(
+            diags.is_empty(),
+            "a blank line after a location must drop the pending location, got {diags:?}",
+        );
+        assert_eq!(
+            skipped, 2,
+            "the location line and its blank terminator must both count as skipped",
+        );
+        Ok(())
+    }
+
+    // Output ending on a bare location line with no following message leaves a
+    // dangling location: no diagnostic is synthesized from a location alone.
+    #[test]
+    fn dangling_location_at_end_of_output_is_not_a_diagnostic() -> Result<()> {
+        let regex = Regex::new(DEFAULT_MAP)?;
+        let (diags, skipped) = parse_output(&regex, "src/App.svelte:12:5", true);
+        assert!(
+            diags.is_empty(),
+            "a dangling location with no message must not yield a diagnostic, got {diags:?}",
+        );
+        assert_eq!(
+            skipped, 1,
+            "the dangling location line must be counted as skipped",
+        );
         Ok(())
     }
 }

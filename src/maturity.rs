@@ -159,7 +159,10 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         export_fresh,
     });
 
-    // Compass: lowest unmet rung → phase + next command.
+    // Compass: lowest unmet rung → phase + next command. Routing follows the
+    // EXACT queue partition (`queue_counts`) so the compass never points a
+    // lane at work that `loom next --mode <m>` would not serve.
+    let queues = crate::workitem::queue_counts(store)?;
     let (phase, next_command) = compass(
         active.len(),
         planned,
@@ -168,8 +171,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         implemented.len(),
         unproven_implemented,
         &validations,
-        stale,
-        uninspected,
+        &queues,
         doctor_issues,
         open_smells,
         open_journey_proof_smells,
@@ -196,8 +198,7 @@ fn compass(
     implemented: usize,
     unproven_implemented: usize,
     validations: &ValidationSummary,
-    stale: usize,
-    uninspected: usize,
+    queues: &crate::workitem::QueueCounts,
     doctor_issues: usize,
     open_smells: usize,
     open_journey_proof_smells: usize,
@@ -211,7 +212,7 @@ fn compass(
             "loom door \"<what should this codebase do>\" or loom intent add".into(),
         );
     }
-    if stale > 0 {
+    if queues.fix > 0 {
         return ("fix".into(), "loom next --mode fix".into());
     }
     if planned > 0 || ungrounded > 0 {
@@ -220,15 +221,19 @@ fn compass(
     if unowned_codefiles > 0 {
         return ("coverage".into(), "loom coverage".into());
     }
-    if implemented > 0
-        && (validations.registered == 0
-            || validations.passed < validations.registered
-            || unproven_implemented > 0
-            || open_journey_proof_smells > 0)
+    if queues.validate > 0
+        || (implemented > 0
+            && (validations.registered == 0
+                || validations.passed < validations.registered
+                || unproven_implemented > 0
+                || open_journey_proof_smells > 0))
     {
         return ("validate".into(), "loom next --mode validate".into());
     }
-    if uninspected > 0 {
+    if queues.quality > 0 {
+        return ("quality".into(), "loom next --mode quality".into());
+    }
+    if queues.analyze > 0 {
         return ("analyze".into(), "loom next --mode analyze".into());
     }
     if doctor_issues > 0 {

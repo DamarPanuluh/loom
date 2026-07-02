@@ -95,11 +95,11 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
 }
 
 pub(super) fn fix_item(store: &Store) -> Result<Option<WorkItem>> {
-    // Failing verdicts of every kind are repair work (root cause lives in the
-    // source), served first. Stale (needs_reverification) governs/validates
-    // claims belong to their own measurement lanes (quality/validate) — the fix
-    // queue re-verifies only stale relationship/grounding claims, so no edge is
-    // ever served by two queues at once.
+    // Repair lane, strictly: failing verdicts of every kind (root cause lives
+    // in the source). Stale (needs_reverification) claims are remeasurement
+    // work and belong to their measuring lanes — governs/validates to
+    // quality/validate, everything else to analyze — so a fix packet never
+    // carries verdict authority and no edge is ever served by two queues.
     let failing = store.edges_by_status(
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Failing],
@@ -113,6 +113,14 @@ pub(super) fn fix_item(store: &Store) -> Result<Option<WorkItem>> {
             "failing verdict — repair at root cause",
         )?));
     }
+    Ok(None)
+}
+
+pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
+    // Verdict lane for relationship/grounding claims; governs/validates have
+    // their own measuring lanes (quality/validate). Stale claims outrank
+    // never-inspected ones: a settled truth that broke misleads readers,
+    // an uninspected claim only waits.
     let stale = store.edges_by_status(
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::NeedsReverification],
@@ -124,21 +132,15 @@ pub(super) fn fix_item(store: &Store) -> Result<Option<WorkItem>> {
         return Ok(Some(edge_work(
             store,
             &e,
-            "fix",
+            "analyze",
             "analyzer",
             "dependency changed — re-verify this claim",
         )?));
     }
-    Ok(None)
-}
-
-pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
     let uninspected = store.edges_by_status(
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Uninspected],
     )?;
-    // governs/validates have their own lanes (quality/validate); analyze is
-    // relationships + groundings.
     if let Some(e) = uninspected
         .into_iter()
         .find(|e| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates))
@@ -534,7 +536,13 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
         )?,
         scorecard: None,
         truth_gap: axis_for_role(role).gap(),
-        next_step: "after recording the verdict, run `loom status`".into(),
+        // The fixer lane never records verdicts — its loop ends at sync, and
+        // the owning lane re-measures. Every other edge role writes a verdict.
+        next_step: if role == "fixer" {
+            "after the fix + `loom sync`, run `loom status`".into()
+        } else {
+            "after recording the verdict, run `loom status`".into()
+        },
     })
 }
 
@@ -677,8 +685,8 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
             .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
             .len(),
         coverage: crate::commands::unowned_codefiles(store)?.len(),
-        fix: failing + stale_rel,
-        analyze: unin_rel,
+        fix: failing,
+        analyze: unin_rel + stale_rel,
         quality: stale_gov + unin_gov + pairs,
         validate: stale_val + unin_val,
         review,
