@@ -654,11 +654,31 @@ fn http_contract_missing_response_field_fails_with_detail() {
     .unwrap();
 
     run_cli(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
-    let out = run_cli_json(tmp.path(), &["journey", "run", spec_path.to_str().unwrap()]);
+
+    // `journey run --json` records the failed outcome as JSON on stdout, then
+    // exits non-zero — the contract added so a failing journey cannot look
+    // green to a downstream driver. Parse stdout ourselves; assert the exit.
+    let (status, stdout, stderr) = run_cli_raw(
+        tmp.path(),
+        &["journey", "run", spec_path.to_str().unwrap(), "--json"],
+    );
     handle.join().unwrap();
+    assert!(
+        !status.success(),
+        "a failing journey must exit non-zero (got {status:?})\n--stdout--\n{stdout}\n--stderr--\n{stderr}"
+    );
+    let out: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_else(|e| {
+        panic!(
+            "journey run did not emit JSON (status {status:?}):\n--stdout--\n{stdout}\n--stderr--\n{stderr}\nparse: {e}"
+        )
+    });
 
     assert_eq!(out["total"], 1, "one route ran: {out}");
     assert_eq!(out["passed"], 0, "the route failed: {out}");
+    assert_eq!(
+        out["failed"], 1,
+        "the failure is counted in `failed`: {out}"
+    );
     let outcomes = out["outcomes"].as_array().expect("outcomes is an array");
     assert_eq!(outcomes.len(), 1);
     assert_eq!(
@@ -672,6 +692,10 @@ fn http_contract_missing_response_field_fails_with_detail() {
     assert!(
         detail.contains("$.name"),
         "the detail names the missing field path ($.name): {detail}"
+    );
+    assert!(
+        stderr.contains("journey 'missing-field-http' failed"),
+        "stderr names the specific journey that failed: {stderr}"
     );
 
     let store = Store::open(tmp.path()).unwrap();
@@ -688,6 +712,252 @@ fn http_contract_missing_response_field_fails_with_detail() {
         validates[0].status,
         InspectionStatus::Failing,
         "the failing route's edge is failing"
+    );
+}
+
+// ---- journey map: proof-aware gap classification ---------------------------
+//
+// A failed journey validation no longer silently closes the
+// `journey_required_gaps` bucket. `journey map --json` must surface the intent
+// as an unproven gap with `journey_proof_status == "failed"`, and a coverage
+// node that does not yet have a passing L5 proof keeps the gap open as
+// `planned_unproven` — guarding against duplicate coverage planning.
+
+/// Contract: a user_visible implemented intent validated by a journey whose
+/// Validates edge is `failing` is reported by `loom journey map --json` as an
+/// unproven journey gap. The summary counts the intent as journeyed but not
+/// passing; the gap list carries it with `journey_proof_status == "failed"`;
+/// a JourneyCoverage node linked via `Covers` keeps `coverage.status` at
+/// `planned_unproven` (no passing L5 proof exists to close it), and the
+/// journey row's intent reports `edge_status == "failing"`,
+/// `journey_proof_status == "failed"`, `effective_coverage == "uncovered"`.
+#[test]
+fn journey_map_reports_failing_journey_proof_as_unproven_gap() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let intent_id = visible_intent(&store, "checkout completes");
+
+    // A journey validation linked to the intent via a Validates edge.
+    let journey = store
+        .add_node(
+            NodeType::Validation,
+            "checkout journey",
+            "",
+            "failed",
+            serde_json::json!({"type":"journey","proof_kind":"journey","proof_level":"L5"}),
+        )
+        .unwrap();
+    let edge = store
+        .ensure_edge(EdgeKind::Validates, &journey.id, &intent_id)
+        .unwrap();
+    // Stamp the Validates edge failing — the journey ran and failed.
+    store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Failing,
+            "checkout journey passes end-to-end",
+            "journey run failed at the payment step",
+            0.9,
+            "test",
+        )
+        .unwrap();
+
+    // A JourneyCoverage node planning coverage for this intent. It has no
+    // passing L5 proof yet, so effective coverage stays `uncovered` and the
+    // coverage context reports `planned_unproven` — the gap must not close.
+    let coverage = store
+        .add_node(
+            NodeType::JourneyCoverage,
+            "checkout flow coverage",
+            "planned coverage for checkout",
+            "uncovered",
+            serde_json::json!({"flow":"checkout"}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Covers,
+            &coverage.id,
+            &intent_id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    drop(store);
+
+    let out = run_cli_json(tmp.path(), &["journey", "map"]);
+
+    // ---- summary: the intent is journeyed but not proven ----
+    let summary = &out["summary"];
+    assert_eq!(
+        summary["journeyed_intents"], 1,
+        "the one intent is journeyed: {out}"
+    );
+    assert_eq!(
+        summary["passing_journey_intents"], 0,
+        "no journey proof is passing: {out}"
+    );
+    assert_eq!(
+        summary["unproven_journey_intents"], 1,
+        "the journeyed intent is unproven: {out}"
+    );
+    assert_eq!(
+        summary["journey_required_gaps"], 1,
+        "the failed-journey intent is still a required gap: {out}"
+    );
+
+    // ---- journey_gap_intents: the failed-proof intent appears ----
+    let gaps = out["journey_gap_intents"]
+        .as_array()
+        .expect("journey map emits journey_gap_intents");
+    assert_eq!(gaps.len(), 1, "exactly one required gap: {out}");
+    let gap = &gaps[0];
+    assert_eq!(
+        gap["name"], "checkout completes",
+        "the gap is our intent: {out}"
+    );
+    assert_eq!(
+        gap["journey_proof_status"], "failed",
+        "a failing journey proof is reported as failed: {gap}"
+    );
+    assert_eq!(
+        gap["journey_applicability"], "required",
+        "implemented user_visible intent is a required gap: {gap}"
+    );
+    let coverage_status = gap["coverage"]["status"]
+        .as_str()
+        .expect("gap carries a coverage.status");
+    assert_eq!(
+        coverage_status, "planned_unproven",
+        "a coverage node with no passing L5 proof keeps the gap planned_unproven (guards duplicate coverage planning): {gap}"
+    );
+    let coverage_reason = gap["journey_gap_reason"]
+        .as_str()
+        .expect("gap carries a journey_gap_reason");
+    assert!(
+        coverage_reason.contains("failing"),
+        "the failed-proof gap reason names the failing proof: {gap}"
+    );
+
+    // ---- journey row: the intent's edge/proof/coverage are failing ----
+    let journeys = out["journeys"]
+        .as_array()
+        .expect("journey map emits a journeys array");
+    assert_eq!(journeys.len(), 1, "one journey row: {out}");
+    let row = &journeys[0];
+    assert_eq!(row["name"], "checkout journey", "journey name: {out}");
+    let step_intents = row["intents"]
+        .as_array()
+        .expect("journey row emits an intents array");
+    assert_eq!(step_intents.len(), 1, "one step intent: {out}");
+    let step = &step_intents[0];
+    assert_eq!(
+        step["name"], "checkout completes",
+        "step intent name: {out}"
+    );
+    assert_eq!(
+        step["edge_status"], "failing",
+        "the Validates edge is failing: {step}"
+    );
+    assert_eq!(
+        step["journey_proof_status"], "failed",
+        "the step's journey proof status is failed: {step}"
+    );
+    assert_eq!(
+        step["effective_coverage"], "uncovered",
+        "no passing L5 proof covers the intent: {step}"
+    );
+
+    // The journeyed intent must NOT also appear in unjourneyed_intents.
+    let unjourneyed = out["unjourneyed_intents"]
+        .as_array()
+        .expect("journey map emits an unjourneyed_intents array");
+    assert!(
+        unjourneyed
+            .iter()
+            .all(|i| i["name"] != "checkout completes"),
+        "a journeyed intent must not be double-counted as unjourneyed: {out}"
+    );
+}
+
+/// Contract: a journey whose only route fails must record the journey node as
+/// `failed` and its Validates edge as `Failing` on disk, AND `loom journey run
+/// --json` must exit non-zero while still emitting the JSON outcome on stdout and
+/// naming the failure on stderr. A regression that exits zero (green driver)
+/// or that forgets to persist the failure reddens this.
+#[test]
+fn journey_run_failing_exits_nonzero_while_recording_failure() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _create = intent(&store, "register a person", "implemented");
+    drop(store);
+
+    // The single route returns 500 — below the declared success_status of 201,
+    // so the step fails on status mismatch.
+    let (base, handle) = mock_server_handling(1, |_req| (500, r#"{"error":"boom"}"#.into()));
+
+    let spec_path = tmp.path().join("failing-status.contract.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "name": "failing-status-http",
+            "base": base,
+            "routes": [
+                {
+                    "method": "POST",
+                    "path": "/v1/example/persons",
+                    "intent": "register a person",
+                    "success_status": 201
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    run_cli(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
+
+    let (status, stdout, stderr) = run_cli_raw(
+        tmp.path(),
+        &["journey", "run", spec_path.to_str().unwrap(), "--json"],
+    );
+    handle.join().unwrap();
+
+    // The contract: non-zero exit, but JSON still emitted on stdout.
+    assert!(
+        !status.success(),
+        "a failing journey must exit non-zero (got {status:?})\n--stdout--\n{stdout}\n--stderr--\n{stderr}"
+    );
+    let out: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_else(|e| {
+        panic!(
+            "journey run must still emit JSON on failure (status {status:?}):\n--stdout--\n{stdout}\n--stderr--\n{stderr}\nparse: {e}"
+        )
+    });
+    assert_eq!(out["failed"], 1, "stdout JSON reports failed: 1: {out}");
+    assert_eq!(out["passed"], 0, "no steps passed: {out}");
+    assert!(
+        stderr.contains("journey 'failing-status-http' failed"),
+        "stderr names the specific journey that failed: {stderr}"
+    );
+
+    // The failure is persisted to the graph: journey node failed, edge Failing.
+    let store = Store::open(tmp.path()).unwrap();
+    let journey = store
+        .resolve_node("failing-status-http", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(
+        journey.status, "failed",
+        "the journey node is recorded as failed on disk"
+    );
+    let validates = store
+        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
+        .unwrap();
+    assert_eq!(validates.len(), 1, "the one route's edge was linked");
+    assert_eq!(
+        validates[0].status,
+        InspectionStatus::Failing,
+        "the failing route's Validates edge is Failing on disk"
     );
 }
 

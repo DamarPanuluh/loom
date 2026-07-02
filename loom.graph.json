@@ -153,7 +153,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:54.166Z",
-      "updated_at": "2026-07-02T15:00:57.134Z"
+      "updated_at": "2026-07-02T16:01:38.621Z"
     },
     {
       "id": "11f78fe87a771b36b2d5c8b4e759d263",
@@ -455,7 +455,7 @@
         "type": "test"
       },
       "created_at": "2026-07-01T09:41:14.835Z",
-      "updated_at": "2026-07-02T12:18:59.497Z"
+      "updated_at": "2026-07-02T16:02:15.949Z"
     },
     {
       "id": "41c5912224804d3bd404707f811a8507",
@@ -750,7 +750,7 @@
         "type": "test"
       },
       "created_at": "2026-07-02T12:38:24.361Z",
-      "updated_at": "2026-07-02T12:38:24.370Z"
+      "updated_at": "2026-07-02T16:03:19.105Z"
     },
     {
       "id": "690822022500f37c8c768fb621bdfcba",
@@ -1268,7 +1268,7 @@
       "id": "d02ba75caf0361030",
       "type": "finding",
       "name": "src/commands/journey.rs is oversized",
-      "description": "1485 lines (> 600)",
+      "description": "1615 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1425,7 +1425,7 @@
       "id": "d3e4d58c3c9e094a9",
       "type": "finding",
       "name": "src/commands/proof_cmd.rs is oversized",
-      "description": "673 lines (> 600)",
+      "description": "709 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1660,7 +1660,7 @@
       "id": "db589a2e0c605c5fd",
       "type": "finding",
       "name": "src/commands/misc_cmd.rs is oversized",
-      "description": "925 lines (> 600)",
+      "description": "954 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2065,7 +2065,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:54.167Z",
-      "updated_at": "2026-07-02T15:00:57.133Z"
+      "updated_at": "2026-07-02T16:01:38.619Z"
     },
     {
       "id": "072bbe8e7e0117280cab5ac10e2ef62e",
@@ -2105,12 +2105,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "no SQL/shell/HTML construction from untrusted data in grounded files; any new string-built sink falsifies",
-      "evidence": "grep over src/journey.rs + src/commands/journey.rs for SQL-in-format, Command::new, innerHTML, exec( — zero hits; delta is src/commands/journey.rs:137-335: journey_applicability classifier plus summary/per-intent JSON fields for journey_map; journey_run and src/journey.rs executor unchanged; classifier only reads facets/status and serializes JSON",
+      "evidence": "grep over src/journey.rs + src/commands/journey.rs for SQL-in-format, Command::new, innerHTML, exec( — zero hits; journey map proof-aware changes read graph state and serialize JSON; journey_run still delegates HTTP execution to reqwest",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.903Z",
-      "updated_at": "2026-07-02T14:57:55.749Z"
+      "updated_at": "2026-07-02T15:59:48.308Z"
     },
     {
       "id": "0d3fd6576f6b6bbb5822813cb1737b86",
@@ -2299,13 +2299,13 @@
       "kind": "relates",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "both behaviors enforce the intent-versus-locator model through the same CLI layer: intent commands reject symbol-looking behavior names while find exposes the locators that carry symbol-level detail",
-      "evidence": "src/commands.rs:68 dispatches Command::Intent to intent::dispatch and src/commands.rs:88-89 dispatches Command::Find to misc_cmd::find_cmd; src/commands/intent.rs:99-123 rejects symbol-pattern intent names unless explicitly allowed with description; src/commands/misc_cmd.rs:678-748 prints matched intent groundings with path, locator, status, and evidence",
+      "criterion": "grounded if symbol-looking names remain treated as locators rather than behavioral intents, while find exposes grounding locators for behavioral intent matches",
+      "evidence": "src/commands/intent.rs:99-113 rejects looks_like_symbol names unless deliberately overridden with behavioral description; src/commands/misc_cmd.rs:707-745 find_cmd still emits intent groundings with path/locator/status/evidence. Door weak-match changes are confined to menu ordering and do not alter find_cmd",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-06-30T14:07:19.946Z",
-      "updated_at": "2026-07-02T12:56:30.089Z"
+      "updated_at": "2026-07-02T15:57:27.626Z"
     },
     {
       "id": "2571e5a54c7861468a1fa1374bac0322",
@@ -2345,12 +2345,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "no literal credential in grounded files; secrets must come from env or invocation",
-      "evidence": "secret scan hits only existing src/journey.rs:110-115 Authorization header name and :204/:576-581 env-token template/fallback; delta is src/commands/journey.rs:137-335: journey_applicability classifier plus summary/per-intent JSON fields for journey_map; journey_run and src/journey.rs executor unchanged; no credential literal introduced",
+      "evidence": "secret scan hits only existing src/journey.rs:110-115 Authorization header name and :204/:576-581 env-token template/fallback; journey map/run changes add no credential literal",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.721Z",
-      "updated_at": "2026-07-02T14:57:55.770Z"
+      "updated_at": "2026-07-02T15:59:48.349Z"
     },
     {
       "id": "29460ae143847cab98926a1686df912d",
@@ -2523,14 +2523,14 @@
       "to_id": "4ed61da79b031f63bf40ac1cea5ab21c",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
-      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "status": "independent",
+      "criterion": "the rule applies to untrusted data being concatenated into SQL/shell/HTML/query strings; explicit operator-authored validation commands are a trusted execution boundary, not sanitized input",
+      "evidence": "src/commands/proof_cmd.rs:695-699 intentionally runs the graph-stored validation command via sh -c as the proof executor contract; no hidden request/user data is interpolated into that command by validate_cmd. This is a trust-boundary/non-applicability verdict, not a claim that sh -c sanitizes input",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.947Z",
-      "updated_at": "2026-07-02T12:51:05.947Z"
+      "updated_at": "2026-07-02T16:00:19.051Z"
     },
     {
       "id": "42ad194717785407cc1d2e34d28797ce",
@@ -2584,13 +2584,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
-      "confidence": 0.78,
+      "criterion": "door/find scoring code has no unused path and no significant duplicate menu logic; weak/strong split used in JSON and text",
+      "evidence": "src/commands/misc_cmd.rs:21-64 builds strong/weak menu entries; :83-102 text path labels both; focused ring9 door test passed",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.214Z",
-      "updated_at": "2026-07-02T12:51:05.214Z"
+      "updated_at": "2026-07-02T15:59:48.417Z"
     },
     {
       "id": "4a882923f3abb7685ea2f07027933856",
@@ -2764,13 +2764,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "no unreachable/unused functions and no significant duplicated logic; unused classifier or duplicated classification rules falsify",
-      "evidence": "delta is src/commands/journey.rs:137-335: journey_applicability classifier plus summary/per-intent JSON fields for journey_map; journey_run and src/journey.rs executor unchanged; journey_applicability is called at :246-247, summary counts are emitted in JSON/text, and cargo test --test ring6 journey_map_joins_step_intents_and_exposes_gaps passed with classification assertions",
+      "criterion": "no unreachable/unused functions and no significant duplicate logic; unused proof-status helpers or duplicated journey coverage logic falsify",
+      "evidence": "new helpers journey_proof_status/coverage_context/proof_gap_reason are called from journey_map; effective_coverage remains the single coverage-status helper; focused ring6 journey_map_reports_failing and journey_run_failing_exits tests passed",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.279Z",
-      "updated_at": "2026-07-02T14:57:55.784Z"
+      "updated_at": "2026-07-02T15:59:48.446Z"
     },
     {
       "id": "5d672b7684e7aa825dc911bc10fa3bad",
@@ -2794,13 +2794,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "find must surface each matched intent grounding path, locator, status, and evidence",
-      "evidence": "src/commands/misc_cmd.rs:678-717 emits JSON rows with intent groundings; src/commands/misc_cmd.rs:723-748 prints each intent implements edge path, locator, status, and evidence in text mode.",
+      "criterion": "falsified if loom find no longer searches intents/codefiles/rules or no longer emits grounding path/locator/status/evidence for matched intents",
+      "evidence": "src/commands/misc_cmd.rs:707-745 find_cmd scores intent/codefile/quality-rule matches and, for intent hits, emits implements-edge groundings with path, locator, status, and evidence at :720-734. Door weak-match changes only affect door menu construction, not find_cmd",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T04:40:00.654Z",
-      "updated_at": "2026-07-02T12:56:29.922Z"
+      "updated_at": "2026-07-02T15:57:39.228Z"
     },
     {
       "id": "5e6651475c36fe6335aa907ffd5c3a3a",
@@ -2839,13 +2839,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no unreachable/unused code or significant duplicated logic",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK after the journey error-propagation fix; global scan found no #[allow(dead_code)], todo!, or unimplemented! markers; remaining panic!/unwrap examples are rule/test fixtures or invariant tests, not dead production logic.",
-      "confidence": 0.78,
+      "criterion": "no unused helpers and no duplicated validation-output logic; dead output helper falsifies",
+      "evidence": "VALIDATION_OUTPUT_EXCERPT_BYTES, output_excerpt, and validation_output_json are used by validate_cmd failed-result branch; focused ring5 validate_failing_command_records_failure passed and asserts output fields/evidence",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.323Z",
-      "updated_at": "2026-07-02T12:51:05.323Z"
+      "updated_at": "2026-07-02T15:59:48.480Z"
     },
     {
       "id": "636673557d3898cdeaa18d5f016dbee3",
@@ -2929,13 +2929,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
-      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
-      "confidence": 0.78,
+      "criterion": "no literal credential in validation proof command handling; secrets must come from env or caller configuration",
+      "evidence": "secret scan over src/commands/proof_cmd.rs found no credential literals; new output excerpt helpers only cap/copy stdout/stderr bytes",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.795Z",
-      "updated_at": "2026-07-02T12:51:05.795Z"
+      "updated_at": "2026-07-02T15:59:48.525Z"
     },
     {
       "id": "6b4f97cfba5bb926179f6e5222fc5484",
@@ -3184,13 +3184,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source does not concatenate untrusted data into SQL, shell, HTML, or query strings; boundaries use parameterization or explicit trusted operator commands",
-      "evidence": "src/store.rs uses rusqlite params! and positional placeholders rather than interpolating values; src/journey.rs:360-364 sends query/body data through reqwest query/json APIs; shell execution in src/scan.rs and src/commands/proof_cmd.rs runs stored operator validation/adapter commands, not hidden string concatenation of request data; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "criterion": "find/door text never constructs SQL/shell/HTML from query text; any sink construction from query falsifies",
+      "evidence": "grep over src/commands/misc_cmd.rs for SQL-in-format, Command::new, innerHTML, exec( — zero hits; door weak-match patch only reorders JSON/text menu entries",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.838Z",
-      "updated_at": "2026-07-02T12:51:05.838Z"
+      "updated_at": "2026-07-02T15:59:48.562Z"
     },
     {
       "id": "7dcc0d93bbb4e5f868988e45b75b6400",
@@ -3214,13 +3214,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
-      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "criterion": "child process resources are waited/terminated on every path; leaked validation child or unbounded output handle falsifies",
+      "evidence": "src/commands/proof_cmd.rs:695-708 spawns with piped stdout/stderr then controlled_with_output().time_limit(...).terminate_for_timeout().wait(); new output JSON consumes already-captured process_control::Output bytes",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.620Z",
-      "updated_at": "2026-07-02T12:51:05.620Z"
+      "updated_at": "2026-07-02T15:59:48.589Z"
     },
     {
       "id": "7e4d38f75e4c40982db3124f253b4967",
@@ -3319,13 +3319,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
-      "confidence": 0.78,
+      "criterion": "fallible Store lookups while rendering find/door results propagate; swallowed lookup failures falsify",
+      "evidence": "src/commands/misc_cmd.rs:707-780 find_cmd propagates Store edge/node/facet lookups with ?; door uses keyword_hits and maturity ladder with ? before rendering; weak-match ordering adds no fallible calls",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.361Z",
-      "updated_at": "2026-07-02T12:51:05.361Z"
+      "updated_at": "2026-07-02T15:59:48.619Z"
     },
     {
       "id": "8562ea965cce9ee5388d7d78a54eb77d",
@@ -3349,13 +3349,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "validation add must accept proof-strength and JourneyProof metadata, reject journey-specific metadata unless proof_kind is journey, persist those fields on the Validation body, and link the validation to the target intent",
-      "evidence": "src/cli/subcommands.rs:371-394 defines validation add fields for proof_level, proof_kind, journey_id, repo_native_kind, and artifact; src/commands/proof_cmd.rs:250-258 validates proof_level as L0..L6; src/commands/proof_cmd.rs:259-265 requires proof_kind=journey when journey metadata is present; src/commands/proof_cmd.rs:266-283 persists proof_level/proof_kind/journey_id/repo_native_kind/artifact in the Validation body and creates the validates edge",
-      "confidence": 0.95,
+      "criterion": "falsified if validation add stops accepting/storing proof_level/proof_kind/journey metadata or no longer rejects inconsistent journey metadata",
+      "evidence": "src/commands/proof_cmd.rs:263-320 ValidationCmd::Add validates proof_level L0..L6 (:275-281), requires --proof-kind journey when journey metadata is present (:283-288), and stores proof_level/proof_kind/journey_id/repo_native_kind/artifact into validation body (:290-304). New output excerpt helpers only affect validate run result rows",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:38:45.016Z",
-      "updated_at": "2026-07-02T10:59:58.529Z"
+      "updated_at": "2026-07-02T15:58:00.392Z"
     },
     {
       "id": "876b180ee4fc06e940655a7f7052aa1f",
@@ -3588,14 +3588,14 @@
       "to_id": "3873edb7e2385ad991bb19eb7cb4a39c",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "acquired resources in grounded source are owned by Rust RAII guards or short-lived values that release on all paths",
-      "evidence": "src/store.rs:58-62 holds SQLite Connection and lock File as Store fields; src/store.rs:1688-1710 opens lock File and relies on FileExt/Drop; src/journey.rs and src/sync.rs use read_to_string/write paths without manual handles; cargo clippy --all-targets -- -D warnings: OK.",
-      "confidence": 0.78,
+      "status": "independent",
+      "criterion": "applies only if find/door acquire files/locks/connections/child processes; pure Store reads and JSON/text rendering make it non-applicable",
+      "evidence": "src/commands/misc_cmd.rs:707-780 find_cmd and :3-84 door perform Store reads and println/JSON rendering only; no resource acquisition beyond Store handle owned by command open",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.507Z",
-      "updated_at": "2026-07-02T12:51:05.508Z"
+      "updated_at": "2026-07-02T15:59:48.645Z"
     },
     {
       "id": "a05a976e48ad9628ad0791a360e80cc9",
@@ -3619,13 +3619,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "fallible operations in grounded source are handled, explicitly propagated, or deliberately constrained to tests/invariant checks",
-      "evidence": "cargo clippy --all-targets -- -D warnings: OK; src/commands/journey.rs:93-97 now propagates both Validates and Sequence ensure_edge failures with ?; scan hits for unwrap/expect/let _ are test helpers, invariant assertions, optional defaults, or RAII cleanup best-effort drops.",
-      "confidence": 0.78,
+      "criterion": "validation command spawn/timeouts/failures are handled distinctly and failed output is surfaced; ignored spawn/run failure falsifies",
+      "evidence": "validate_cmd handles success, nonzero, timeout, and spawn error branches; nonzero branch records failed status and bounded output JSON/evidence; focused ring5 validate_failing_command_records_failure passed",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.470Z",
-      "updated_at": "2026-07-02T12:51:05.470Z"
+      "updated_at": "2026-07-02T15:59:48.684Z"
     },
     {
       "id": "a370e35e04d1ee566c0a07233ea64b4b",
@@ -3965,12 +3965,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "all acquired resources release on every path; a new acquire without RAII/drop handling falsifies",
-      "evidence": "delta is src/commands/journey.rs:137-335: journey_applicability classifier plus summary/per-intent JSON fields for journey_map; journey_run and src/journey.rs executor unchanged; classifier/summary performs no resource acquisition, only Store read APIs already owned by the command handler; reqwest client remains RAII-managed in src/journey.rs:327-330",
+      "evidence": "journey map helpers only perform Store reads; journey_run still uses reqwest client RAII via src/journey.rs:327-330 and now emits before bail on failed outcomes without acquiring new resources",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.575Z",
-      "updated_at": "2026-07-02T14:57:55.801Z"
+      "updated_at": "2026-07-02T15:59:48.715Z"
     },
     {
       "id": "c6e8cd017ffaf23452775b3a8640ffe4",
@@ -4444,13 +4444,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded source contains no literal credentials, tokens, or private keys",
-      "evidence": "secret scan found no production credential literal; src/journey.rs:200-205 builds Bearer auth from {{ env.LOOM_JOURNEY_AUTH_TOKEN }} and src/journey.rs:577-580 reads env variables; secret-like strings in src/packs.rs/src/prescan.rs/src/extract/mod.rs are rule examples or test fixtures.",
-      "confidence": 0.78,
+      "criterion": "no literal credential in find/door grounding display code",
+      "evidence": "secret scan over src/commands/misc_cmd.rs found no credential literals",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.656Z",
-      "updated_at": "2026-07-02T12:51:05.656Z"
+      "updated_at": "2026-07-02T15:59:48.748Z"
     },
     {
       "id": "db084c89979ddeee9",
@@ -4625,12 +4625,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proof",
-      "evidence": "cargo test --test ring5 metadata: 3 passed (1 suite, 43 filtered, 0.92s)",
+      "evidence": "`cargo test --test ring5 metadata` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-01T09:41:14.836Z",
-      "updated_at": "2026-07-02T12:18:59.497Z"
+      "updated_at": "2026-07-02T16:02:15.948Z"
     },
     {
       "id": "deda4a837adbef254",
@@ -4804,13 +4804,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "falsified if src/commands/journey.rs no longer routes journey specs into parse/require/execute, or if journey map changes replace/stub journey_run behavior",
-      "evidence": "src/commands/journey.rs:137-335 adds journey map classification and summary only; src/commands/journey.rs:337+ journey_run remains the route into parse/require/execute. src/journey.rs:322-418 still executes real HTTP steps, validates methods, stamps Validates edges, and updates journey validation status",
+      "criterion": "falsified if src/commands/journey.rs no longer routes journey specs into parse/require/execute with graph writeback, or if map/read-side changes replace journey_run behavior",
+      "evidence": "src/commands/journey.rs:270-457 journey_map is read-only proof-aware summarization; :459-515 journey_run still parse/require/execute, emits outcomes, and after recording failed outcomes bails non-zero (:507-513). src/journey.rs:322-418 still executes real HTTP steps, stamps Validates edges, and updates journey validation status",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:11:11.802Z",
-      "updated_at": "2026-07-02T14:56:31.701Z"
+      "updated_at": "2026-07-02T15:58:22.364Z"
     },
     {
       "id": "f50faeae69982c90218bc363fd57b9dd",
@@ -4895,12 +4895,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proof",
-      "evidence": "Observed cargo test -q earlier: 218 passed (13 suites, 0.00s); targeted command recorded on validation for rerun.",
+      "evidence": "`cargo test -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:38:24.362Z",
-      "updated_at": "2026-07-02T12:38:24.370Z"
+      "updated_at": "2026-07-02T16:03:19.095Z"
     },
     {
       "id": "fa6f2ef04d5ae23c0e09f8fb5fe1a0aa",
@@ -4909,13 +4909,13 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "fallible store/lookups are propagated or intentionally classified; swallowed runtime/proof failures falsify",
-      "evidence": "src/commands/journey.rs:184-190 and :227-245 propagate list_nodes/get_facet/store lookups with ?; classifier has no fallible calls; focused test passed for required/unknown/not_applicable classification; journey executor invalid-method parse still propagates at src/journey.rs:347-348",
+      "criterion": "fallible graph reads and journey execution failures are propagated or recorded; swallowed proof failure falsifies",
+      "evidence": "src/commands/journey.rs:270-457 propagates store reads with ?; journey_run :490-514 emits failed outcome then bails non-zero when failed>0; focused ring6 tests assert non-zero exit plus graph persistence",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-02T12:51:05.427Z",
-      "updated_at": "2026-07-02T14:57:55.813Z"
+      "updated_at": "2026-07-02T15:59:48.782Z"
     },
     {
       "id": "fbf152e438d07be53e86f1fb398e076c",
@@ -5989,7 +5989,7 @@
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "66284ec235ddfc1e",
+      "value": "69fabd0739735d70",
       "truth_class": "derived"
     },
     {
@@ -6010,7 +6010,7 @@
       "target_id": "71df360f44635e96e91fc6767bc93ea3",
       "target_kind": "node",
       "key": "loc",
-      "value": "925",
+      "value": "954",
       "truth_class": "derived"
     },
     {
@@ -6325,7 +6325,7 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "37ede215c370c141",
+      "value": "39278adbcfa599c2",
       "truth_class": "derived"
     },
     {
@@ -6346,7 +6346,7 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "loc",
-      "value": "673",
+      "value": "709",
       "truth_class": "derived"
     },
     {
@@ -6360,7 +6360,7 @@
       "target_id": "aed762bc48f943d03e0be4871126697a",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "8",
+      "value": "10",
       "truth_class": "derived"
     },
     {
@@ -6577,7 +6577,7 @@
       "target_id": "d02ba75caf0361030",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T14:59:09.593Z\",\"hash\":\"c7addac1b863855c\",\"reason\":\"still one cohesive `loom journey` command-family module; this delta adds journey_map classification and summary inside the existing journey map read-view rather than a new responsibility. The future split seam remains coverage/invariant submodules if this family gets reorganized, but this patch does not justify a scope-expanding split now\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T16:01:04.918Z\",\"hash\":\"e7c5c850b4bdd0e4\",\"reason\":\"still a cohesive `loom journey` command-family module; this patch adds proof-aware map summaries and failure-exit handling inside existing journey/map/run responsibilities. The known future split seam remains coverage/invariant submodules, not a prerequisite for this smoothing patch\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6605,7 +6605,7 @@
       "target_id": "d3e4d58c3c9e094a9",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:13:04.025Z\",\"hash\":\"37ede215c370c141\",\"reason\":\"src/commands/proof_cmd.rs is 73 lines over threshold and owns one proof surface: quality rule commands and verdict write-back at lines 8-227, validation metadata/proof-level classification at lines 236-443, and validation execution/status recording at lines 481-673. Keeping rule verdicts and validation proof strength together preserves the operator proof workflow and shared mark_validation/pulse behavior.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T16:01:04.990Z\",\"hash\":\"39278adbcfa599c2\",\"reason\":\"proof_cmd.rs remains the validation/rule command family module; this patch adds bounded validation-output excerpts in validate_cmd without adding a new command family. A future split could separate rule vs validation handlers, but this targeted output fix does not require it\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6640,7 +6640,7 @@
       "target_id": "d622f101e93a3dcb0",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:13:48.995Z\",\"hash\":\"37ede215c370c141\",\"reason\":\"rule complexity is the direct Clap subcommand match for one rule family: seed/verdict/list/show/add/update/remove/ungovern arms are visible in lines 8-227, each arm is linear and delegates durable gates to store.record_verdict at lines 37-38 or Store delete/update calls. The complexity counter reflects variant count, not nested control flow.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T16:01:05.014Z\",\"hash\":\"39278adbcfa599c2\",\"reason\":\"stale complexity finding from file hash change; the modified door path is a simple strong/weak partition plus render loops, and no new nested control structure changes the prior complexity judgment\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6675,14 +6675,14 @@
       "target_id": "db217ad66eaffffa1",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T14:59:46.581Z\",\"hash\":\"c7addac1b863855c\",\"reason\":\"coverage_discover unchanged by journey_map classification; its complexity remains the previously-adjudicated linear phase pipeline (visibility map, Covers set, passing-L5 set, flat gap filter, optional spawn, emit). The new classifier lives in journey_map and does not affect this function\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T16:01:04.942Z\",\"hash\":\"e7c5c850b4bdd0e4\",\"reason\":\"coverage_discover was not changed by this patch; complexity remains the previously-adjudicated linear discovery pipeline. New journey-map proof semantics live outside coverage_discover\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
       "target_id": "db589a2e0c605c5fd",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-02T13:11:11.521Z\",\"hash\":\"66284ec235ddfc1e\",\"reason\":\"src/commands/misc_cmd.rs groups small operator utilities that do not have a deeper domain module: door/inbox routing at lines 3-175, task/session/guide helpers at lines 313-603, find grounding output at lines 678-754, and detect/schema at lines 755-925. The owned behavior (find surfaces intent grounding) is isolated in find_cmd lines 678-754; splitting the remaining miscellany would mostly redistribute tiny command handlers.\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-02T16:01:04.966Z\",\"hash\":\"69fabd0739735d70\",\"reason\":\"misc_cmd.rs is already the miscellaneous read/session command module; this patch only adjusts door menu ordering/text labels within the existing door handler. Splitting would be broader cleanup, not required for the weak-match fix\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -6913,7 +6913,7 @@
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c7addac1b863855c",
+      "value": "e7c5c850b4bdd0e4",
       "truth_class": "derived"
     },
     {
@@ -6934,7 +6934,7 @@
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "loc",
-      "value": "1485",
+      "value": "1615",
       "truth_class": "derived"
     },
     {
@@ -6948,7 +6948,7 @@
       "target_id": "f7723027343a45b8c2e8848255e47e33",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "31",
+      "value": "34",
       "truth_class": "derived"
     },
     {

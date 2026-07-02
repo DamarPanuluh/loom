@@ -19,9 +19,18 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
     let q = crate::workitem::q;
     let mark_routed = format!("loom inbox mark {short} routed --reason '<destination>'");
     let mut menu: Vec<serde_json::Value> = Vec::new();
-    for (score, _, name, id) in &matches {
+    let strong_matches: Vec<_> = matches
+        .iter()
+        .filter(|(score, _, _, _)| *score >= 2)
+        .collect();
+    let weak_matches: Vec<_> = matches
+        .iter()
+        .filter(|(score, _, _, _)| *score < 2)
+        .collect();
+    for (score, _, name, id) in &strong_matches {
         menu.push(serde_json::json!({
             "landing": "existing_intent",
+            "confidence": "strong",
             "why": format!("closest existing intent (score {score}) — the utterance may refine, extend, or contradict it"),
             "intent": name,
             "id": id,
@@ -44,6 +53,16 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         "why": "the utterance needs investigation before it can land anywhere",
         "command": "loom task add '<question>' --kind investigation",
     }));
+    for (score, _, name, id) in &weak_matches {
+        menu.push(serde_json::json!({
+            "landing": "existing_intent",
+            "confidence": "weak",
+            "why": format!("weak lexical overlap only (score {score}); prefer new_intent unless this truly refines the existing intent"),
+            "intent": name,
+            "id": id,
+            "command": format!("loom intent show {}", q(name)),
+        }));
+    }
     menu.push(serde_json::json!({
         "landing": "dismiss",
         "why": "not actionable — record why so it does not resurface",
@@ -61,11 +80,21 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         );
     } else {
         println!("captured inbox item [{short}]");
-        if !matches.is_empty() {
+        if !strong_matches.is_empty() {
             println!("  closest intents:");
-            for (score, _, name, id) in &matches {
+            for (score, _, name, id) in &strong_matches {
                 println!(
-                    "    - {} [{}] (score {score})",
+                    "    - {} [{}] (strong score {score})",
+                    name,
+                    &id[..8.min(id.len())]
+                );
+            }
+        }
+        if !weak_matches.is_empty() {
+            println!("  weak intent matches:");
+            for (score, _, name, id) in &weak_matches {
+                println!(
+                    "    - {} [{}] (weak score {score}; prefer new_intent unless this truly refines it)",
                     name,
                     &id[..8.min(id.len())]
                 );

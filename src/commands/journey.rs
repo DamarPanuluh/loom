@@ -173,6 +173,95 @@ fn journey_applicability(
         ),
     }
 }
+
+fn journey_proof_status(store: &Store, intent_id: &str) -> Result<&'static str> {
+    if !current_l5_journey_validations(store, intent_id)?.is_empty() {
+        return Ok("passed");
+    }
+    let mut saw_journey = false;
+    let mut saw_failed = false;
+    let mut saw_stale = false;
+    let mut saw_not_run = false;
+    for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent_id))? {
+        let Some(v) = store.get_node(&e.from_id)? else {
+            continue;
+        };
+        if !is_journey_validation(&v) {
+            continue;
+        }
+        saw_journey = true;
+        match (v.status.as_str(), e.status.as_str()) {
+            ("failed", _) | (_, "failing") => saw_failed = true,
+            (_, "needs_reverification") => saw_stale = true,
+            ("not_run", _) | (_, "uninspected") => saw_not_run = true,
+            _ => {}
+        }
+    }
+    Ok(if saw_failed {
+        "failed"
+    } else if saw_stale {
+        "stale"
+    } else if saw_not_run {
+        "not_run"
+    } else if saw_journey {
+        "unproven"
+    } else {
+        "missing"
+    })
+}
+
+fn coverage_context(store: &Store, intent_id: &str) -> Result<Value> {
+    let effective = effective_coverage(store, intent_id);
+    let mut nodes: Vec<(String, Value)> = Vec::new();
+    for e in store.edges_with(Some(EdgeKind::Covers), None, Some(intent_id))? {
+        let Some(cov) = store.get_node(&e.from_id)? else {
+            continue;
+        };
+        if cov.node_type != NodeType::JourneyCoverage {
+            continue;
+        }
+        let sort_key = cov.name.clone();
+        nodes.push((
+            sort_key,
+            json!({
+                "id": cov.id,
+                "name": cov.name,
+                "flow": cov.body.get("flow").and_then(|v| v.as_str()).unwrap_or(""),
+                "status": cov.status,
+                "effective_status": effective.clone(),
+            }),
+        ));
+    }
+    nodes.sort_by(|a, b| a.0.cmp(&b.0));
+    let status = if effective == "covered" {
+        "covered"
+    } else if nodes.is_empty() {
+        "none"
+    } else {
+        "planned_unproven"
+    };
+    Ok(json!({
+        "status": status,
+        "nodes": nodes.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
+    }))
+}
+
+fn proof_gap_reason(base: &str, proof_status: &str, coverage_status: &str) -> String {
+    match (proof_status, coverage_status) {
+        ("missing", "planned_unproven") => {
+            "coverage node exists, but no journey validation covers this intent".into()
+        }
+        ("missing", _) => base.into(),
+        ("not_run", _) => "journey validation exists, but has not been run".into(),
+        ("failed", _) => "journey validation exists, but current journey proof is failing".into(),
+        ("stale", _) => "journey validation exists, but proof needs reverification".into(),
+        ("unproven", _) => {
+            "journey validation exists, but no current passing L5/L6 proof covers this intent"
+                .into()
+        }
+        _ => base.into(),
+    }
+}
 /// Joined read view: every journey validation with the intents its Validates
 /// edges exercise, plus every active intent no journey touches. Both sections
 /// are deliberately unbounded — a truncated map would hide exactly the gaps
@@ -208,6 +297,8 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
                 "name": intent.name,
                 "lifecycle": intent.status,
                 "edge_status": e.status.as_str(),
+                "journey_proof_status": journey_proof_status(&store, &e.to_id)?,
+                "effective_coverage": effective_coverage(&store, &e.to_id),
             });
             intents.push((sort_key, row));
         }
@@ -220,32 +311,26 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
             "intents": intents.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
         }));
     }
-    // An intent counts as journeyed iff SOME journey validation holds a
-    // Validates edge to it — checked per intent (not via the set above) so a
-    // Validates edge from a plain test validation never masks a gap.
     let mut unjourneyed: Vec<Value> = Vec::new();
+    let mut journey_gap_intents: Vec<Value> = Vec::new();
     for n in store.list_nodes(Some(NodeType::Intent), ALL)? {
         if n.status == "deprecated" {
-            continue;
-        }
-        let mut has_journey = false;
-        for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&n.id))? {
-            if let Some(v) = store.get_node(&e.from_id)? {
-                if is_journey_validation(&v) {
-                    has_journey = true;
-                    break;
-                }
-            }
-        }
-        if has_journey {
             continue;
         }
         let level = store.get_facet(&n.id, TargetKind::Node, "level")?;
         let visibility = store.get_facet(&n.id, TargetKind::Node, "visibility")?;
         let aspect = store.get_facet(&n.id, TargetKind::Node, "aspect")?;
-        let (journey_applicability, journey_gap_reason) =
+        let (journey_applicability, base_gap_reason) =
             journey_applicability(&n.status, level.as_deref(), visibility.as_deref());
-        unjourneyed.push(json!({
+        let proof_status = journey_proof_status(&store, &n.id)?;
+        let coverage = coverage_context(&store, &n.id)?;
+        let coverage_status = coverage
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("none");
+        let gap_reason = proof_gap_reason(base_gap_reason, proof_status, coverage_status);
+        let has_journey = journeyed_intent_ids.contains(&n.id);
+        let row = json!({
             "id": n.id,
             "name": n.name,
             "lifecycle": n.status,
@@ -253,13 +338,30 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
             "visibility": visibility,
             "aspect": aspect,
             "journey_applicability": journey_applicability,
-            "journey_gap_reason": journey_gap_reason,
-        }));
+            "journey_gap_reason": gap_reason,
+            "journey_proof_status": proof_status,
+            "coverage": coverage,
+        });
+        if !has_journey {
+            unjourneyed.push(row.clone());
+        }
+        if journey_applicability == "required" && proof_status != "passed" {
+            journey_gap_intents.push(row);
+        }
     }
-    let journey_required_gaps = unjourneyed
+    journey_gap_intents.sort_by(|a, b| {
+        a["name"]
+            .as_str()
+            .unwrap_or("")
+            .cmp(b["name"].as_str().unwrap_or(""))
+    });
+    let passing_journey_intents = journeyed_intent_ids
         .iter()
-        .filter(|i| i.get("journey_applicability").and_then(|v| v.as_str()) == Some("required"))
+        .filter(|id| journey_proof_status(&store, id).ok() == Some("passed"))
         .count();
+    let unproven_journey_intents = journeyed_intent_ids
+        .len()
+        .saturating_sub(passing_journey_intents);
     let unknown_visibility = unjourneyed
         .iter()
         .filter(|i| {
@@ -276,8 +378,10 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
         "journeys": journey_rows.len(),
         "coverage_nodes": coverage_node_count,
         "journeyed_intents": journeyed_intent_ids.len(),
+        "passing_journey_intents": passing_journey_intents,
+        "unproven_journey_intents": unproven_journey_intents,
         "unjourneyed_intents": unjourneyed.len(),
-        "journey_required_gaps": journey_required_gaps,
+        "journey_required_gaps": journey_gap_intents.len(),
         "unknown_visibility": unknown_visibility,
         "not_applicable": not_applicable,
     });
@@ -287,15 +391,18 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
             serde_json::to_string_pretty(&json!({
                 "summary": summary,
                 "journeys": journey_rows,
+                "journey_gap_intents": journey_gap_intents,
                 "unjourneyed_intents": unjourneyed,
             }))?
         );
     } else {
         println!(
-            "summary: journeys={} coverage_nodes={} journeyed_intents={} unjourneyed_intents={} journey_required_gaps={} unknown_visibility={} not_applicable={}",
+            "summary: journeys={} coverage_nodes={} journeyed_intents={} passing_journey_intents={} unproven_journey_intents={} unjourneyed_intents={} journey_required_gaps={} unknown_visibility={} not_applicable={}",
             summary["journeys"],
             summary["coverage_nodes"],
             summary["journeyed_intents"],
+            summary["passing_journey_intents"],
+            summary["unproven_journey_intents"],
             summary["unjourneyed_intents"],
             summary["journey_required_gaps"],
             summary["unknown_visibility"],
@@ -310,23 +417,38 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
             );
             for i in j["intents"].as_array().into_iter().flatten() {
                 println!(
-                    "    -> {} [{}] ({})",
+                    "    -> {} [{}] edge={} proof={} coverage={}",
                     i["name"].as_str().unwrap_or(""),
                     &i["id"].as_str().unwrap_or("")[..8],
-                    i["edge_status"].as_str().unwrap_or("")
+                    i["edge_status"].as_str().unwrap_or(""),
+                    i["journey_proof_status"].as_str().unwrap_or(""),
+                    i["effective_coverage"].as_str().unwrap_or("")
                 );
             }
+        }
+        println!("journey-required gaps: {}", journey_gap_intents.len());
+        for i in &journey_gap_intents {
+            println!(
+                "{}  {}  proof={} coverage={} reason={}",
+                &i["id"].as_str().unwrap_or("")[..8],
+                i["name"].as_str().unwrap_or(""),
+                i["journey_proof_status"].as_str().unwrap_or(""),
+                i["coverage"]["status"].as_str().unwrap_or(""),
+                i["journey_gap_reason"].as_str().unwrap_or("")
+            );
         }
         println!("intents with no journey: {}", unjourneyed.len());
         for i in &unjourneyed {
             println!(
-                "{}  {}  lifecycle={} visibility={} level={} applicability={} reason={}",
+                "{}  {}  lifecycle={} visibility={} level={} applicability={} proof={} coverage={} reason={}",
                 &i["id"].as_str().unwrap_or("")[..8],
                 i["name"].as_str().unwrap_or(""),
                 i["lifecycle"].as_str().unwrap_or(""),
                 i["visibility"].as_str().unwrap_or("—"),
                 i["level"].as_str().unwrap_or("—"),
                 i["journey_applicability"].as_str().unwrap_or(""),
+                i["journey_proof_status"].as_str().unwrap_or(""),
+                i["coverage"]["status"].as_str().unwrap_or(""),
                 i["journey_gap_reason"].as_str().unwrap_or("")
             );
         }
@@ -365,7 +487,7 @@ fn journey_run(
     } else {
         "run `loom journey list` to review journey validations".to_string()
     };
-    pulse::emit(&store, json, payload, &next_step, || {
+    let emitted = pulse::emit(&store, json, payload, &next_step, || {
         for o in &outcomes {
             println!(
                 "{} {} — {}",
@@ -381,7 +503,15 @@ fn journey_run(
             outcomes.len()
         );
         Ok(())
-    })
+    });
+    if failed > 0 {
+        emitted?;
+        bail!(
+            "journey '{}' failed ({failed} step(s) failed)",
+            parsed.journey
+        );
+    }
+    emitted
 }
 
 fn journey_diagnose(spec: &Path, base_url: Option<&str>, json: bool) -> Result<()> {

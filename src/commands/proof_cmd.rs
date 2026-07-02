@@ -4,6 +4,30 @@ use std::process::Stdio;
 use std::time::Duration;
 
 const DEFAULT_VALIDATION_TIMEOUT_SECS: u64 = 300;
+const VALIDATION_OUTPUT_EXCERPT_BYTES: usize = 8192;
+
+fn output_excerpt(bytes: &[u8]) -> (String, usize, bool) {
+    let byte_count = bytes.len();
+    let take = byte_count.min(VALIDATION_OUTPUT_EXCERPT_BYTES);
+    (
+        String::from_utf8_lossy(&bytes[..take]).into_owned(),
+        byte_count,
+        byte_count > take,
+    )
+}
+
+fn validation_output_json(o: &process_control::Output) -> serde_json::Value {
+    let (stdout, stdout_bytes, stdout_truncated) = output_excerpt(&o.stdout);
+    let (stderr, stderr_bytes, stderr_truncated) = output_excerpt(&o.stderr);
+    serde_json::json!({
+        "stdout": stdout,
+        "stdout_bytes": stdout_bytes,
+        "stdout_truncated": stdout_truncated,
+        "stderr": stderr,
+        "stderr_bytes": stderr_bytes,
+        "stderr_truncated": stderr_truncated,
+    })
+}
 
 pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
@@ -555,22 +579,34 @@ pub(crate) fn validate_cmd(
             }
             Ok(Some(o)) => {
                 let code = o.status.code().unwrap_or(-1);
+                let output = validation_output_json(&o);
+                let stderr_excerpt = output["stderr"].as_str().unwrap_or("").trim();
+                let stdout_excerpt = output["stdout"].as_str().unwrap_or("").trim();
+                let excerpt = if stderr_excerpt.is_empty() {
+                    stdout_excerpt
+                } else {
+                    stderr_excerpt
+                };
+                let evidence = if excerpt.is_empty() {
+                    format!("`{command}` exit {code}")
+                } else {
+                    format!(
+                        "`{command}` exit {code}; output: {}",
+                        truncate(excerpt, 300)
+                    )
+                };
                 let store = open(Some(&root))?;
-                mark_validation(
-                    &store,
-                    &v.id,
-                    "failed",
-                    &format!("`{command}` exit {code}"),
-                    "",
-                )?;
+                mark_validation(&store, &v.id, "failed", &evidence, "")?;
                 drop(store);
-                results.push(serde_json::json!({
+                let mut row = serde_json::json!({
                     "id": v.id,
                     "name": v.name,
                     "status": "failed",
                     "command": command,
                     "exit_code": code,
-                }));
+                });
+                row["output"] = output;
+                results.push(row);
                 human_lines.push(format!("FAIL {} (exit {code})", v.name));
             }
             Ok(None) => {

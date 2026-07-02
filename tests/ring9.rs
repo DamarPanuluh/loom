@@ -1087,6 +1087,88 @@ fn door_landing_menu_and_inbox_mark_contract() {
 }
 
 #[test]
+fn door_weak_existing_intent_match_follows_new_intent_and_is_labelled_weak() {
+    // Contract: a weak lexical match (score < 2) must NOT displace new_intent.
+    // Strong matches (score >= 2) precede new_intent; weak ones follow spike and
+    // carry confidence="weak" with a why that nudges toward new_intent.
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+
+    // Seed an existing intent whose description shares exactly one query term
+    // with the utterance and whose name shares none. Scoring is
+    // score(name)*2 + score(description); a single description hit yields 1,
+    // which is below the strong threshold of 2 -> a weak match.
+    loom_run_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "unrelated thing",
+            "--description",
+            "giraffe",
+            "--level",
+            "feature",
+            "--visibility",
+            "user_visible",
+            "--aspect",
+            "happy",
+        ],
+    );
+
+    let door = loom_json(tmp.path(), &["door", "giraffe feeding schedule"]);
+    let menu = door
+        .get("landing_menu")
+        .and_then(|v| v.as_array())
+        .expect("DOOR WEAK MATCH: door --json must emit a landing_menu array");
+    let landings: Vec<&str> = menu
+        .iter()
+        .filter_map(|m| m.get("landing").and_then(|v| v.as_str()))
+        .collect();
+
+    // No strong match in this fixture, so new_intent must be first.
+    assert_eq!(
+        landings.first().copied(),
+        Some("new_intent"),
+        "DOOR WEAK MATCH: with no strong match, landing_menu[0] must be new_intent, got {:?}",
+        landings
+    );
+
+    // The weak existing_intent entry must follow spike (i.e. after the
+    // new_intent/hypothesis/spike block) and be labelled weak.
+    let spike_idx = landings
+        .iter()
+        .position(|&l| l == "spike")
+        .expect("DOOR WEAK MATCH: landing_menu must contain a spike landing");
+    let weak_idx = landings
+        .iter()
+        .position(|&l| l == "existing_intent")
+        .expect("DOOR WEAK MATCH: landing_menu must contain an existing_intent landing");
+    assert!(
+        weak_idx > spike_idx,
+        "DOOR WEAK MATCH: weak existing_intent must follow spike, got landings {:?}",
+        landings
+    );
+
+    let weak_entry = &menu[weak_idx];
+    assert_eq!(
+        weak_entry.get("confidence").and_then(|v| v.as_str()),
+        Some("weak"),
+        "DOOR WEAK MATCH: weak existing_intent entry must have confidence == \"weak\", got: {}",
+        serde_json::to_string_pretty(weak_entry).unwrap()
+    );
+    let why = weak_entry
+        .get("why")
+        .and_then(|v| v.as_str())
+        .expect("DOOR WEAK MATCH: weak existing_intent entry must have a why string");
+    assert!(
+        why.contains("weak lexical overlap") && why.contains("prefer new_intent"),
+        "DOOR WEAK MATCH: weak why must mention weak lexical overlap and prefer new_intent, got: {}",
+        why
+    );
+}
+
+#[test]
 fn note_add_then_list_round_trips() {
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("t"));

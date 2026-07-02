@@ -210,6 +210,15 @@ fn validate_runs_command_and_records_result() {
     assert_eq!(edges[0].status, InspectionStatus::Passing);
 }
 
+/// Contract: `loom validate --json` must record a failed row carrying bounded
+/// command output — `output.stdout`/`stderr` excerpts, byte counts, and
+/// truncation flags — and the persisted Validates-edge evidence must include
+/// an excerpt string, not just the exit code. Drives the compiled binary for
+/// the JSON step (in-process `run()` prints JSON to the test process's stdout,
+/// not a capturable buffer), then reads the stored edge back through the Store
+/// API. The failing command emits deterministic stdout AND stderr so both
+/// streams are exercisable; validate_cmd prefers the stderr excerpt for the
+/// evidence when stderr is non-empty.
 #[test]
 fn validate_failing_command_records_failure() {
     let tmp = Tmp::new();
@@ -236,13 +245,19 @@ fn validate_failing_command_records_failure() {
             },
         },
     );
+    let stdout_sentinel = "loom-out-sentinel";
+    let stderr_sentinel = "loom-err-sentinel";
+    // `echo` on POSIX sh emits exactly <arg>\n, so byte counts are deterministic
+    // (sentinel.len() + 1) — letting us assert the real captured byte count,
+    // not just field presence. exit 7 gives a non-zero exit code to record.
+    let command = format!("echo {stdout_sentinel}; echo {stderr_sentinel} >&2; exit 7");
     run(
         tmp.path(),
         Command::Validation {
             cmd: ValidationCmd::Add {
                 name: "false-proof".into(),
                 r#type: "test".into(),
-                command: "false".into(),
+                command,
                 intent: "always fails".into(),
                 proof_level: None,
                 proof_kind: None,
@@ -252,21 +267,73 @@ fn validate_failing_command_records_failure() {
             },
         },
     );
-    run(
-        tmp.path(),
-        Command::Validate {
-            intent: "always fails".into(),
-            all: false,
-        },
+
+    // Drive validate through the compiled binary with --json so the bounded
+    // output object on the failed row is capturable on stdout. validate_cmd
+    // returns Ok even when a proof fails (it records the failure, then emits),
+    // so the binary exits zero and loom_json_out's success assertion holds.
+    let v = loom_json_out(tmp.path(), &["validate", "always fails", "--json"]);
+    let ran = v
+        .get("ran")
+        .and_then(|r| r.as_array())
+        .expect("validate --json emits a `ran` array");
+    assert_eq!(ran.len(), 1, "exactly one validation targets this intent");
+    let row = &ran[0];
+    assert_eq!(row["status"], "failed", "failed-proof row status");
+    assert_eq!(row["exit_code"], 7, "recorded exit code");
+
+    // The bounded-output contract: both stream excerpts, their full byte
+    // counts, and truncation flags. Small output must not be truncated.
+    let output = &row["output"];
+    assert!(
+        output["stdout"].as_str().unwrap().contains(stdout_sentinel),
+        "output.stdout carries the stdout excerpt: {:?}",
+        output["stdout"],
+    );
+    assert!(
+        output["stderr"].as_str().unwrap().contains(stderr_sentinel),
+        "output.stderr carries the stderr excerpt: {:?}",
+        output["stderr"],
+    );
+    assert_eq!(
+        output["stdout_bytes"].as_u64().unwrap(),
+        (stdout_sentinel.len() + 1) as u64,
+        "stdout_bytes is the real captured byte count (sentinel + newline)",
+    );
+    assert_eq!(
+        output["stderr_bytes"].as_u64().unwrap(),
+        (stderr_sentinel.len() + 1) as u64,
+        "stderr_bytes is the real captured byte count (sentinel + newline)",
+    );
+    assert_eq!(
+        output["stdout_truncated"], false,
+        "small stdout is not truncated",
+    );
+    assert_eq!(
+        output["stderr_truncated"], false,
+        "small stderr is not truncated",
     );
 
+    // The stored Validates-edge evidence must carry an excerpt string — not
+    // just `exit 7`. validate_cmd prefers stderr when non-empty, so the
+    // stderr sentinel is the one persisted.
     let store = Store::open(tmp.path()).unwrap();
-    assert_eq!(
-        store
-            .resolve_node("false-proof", Some(NodeType::Validation))
-            .unwrap()
-            .status,
-        "failed"
+    let proof = store
+        .resolve_node("false-proof", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(proof.status, "failed", "node status recorded as failed");
+    let edges = store
+        .edges_with(Some(EdgeKind::Validates), Some(&proof.id), None)
+        .unwrap();
+    assert!(!edges.is_empty(), "validates edge exists for the proof");
+    let evidence = &edges[0].evidence;
+    assert!(
+        evidence.contains(stderr_sentinel),
+        "edge evidence carries the stderr excerpt, not just the exit code: {evidence:?}",
+    );
+    assert!(
+        evidence.contains("exit 7"),
+        "edge evidence also records the exit code alongside the excerpt: {evidence:?}",
     );
 }
 
