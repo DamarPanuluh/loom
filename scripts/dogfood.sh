@@ -61,7 +61,7 @@ SYS="loom maintains a falsifiable graph"
 # behavioral leaf: create it, tag it with its concern, hang it under SYS, and
 # verdict the hierarchy edge as holding (the child is independently grounded).
 leaf() { # name | desc | tag
-  "$B" intent add --name "$1" --description "$2" --level behavior \
+  "$B" intent add --name "$1" --description "$2" --level feature \
     --lifecycle implemented --visibility internal >/dev/null
   "$B" intent tag add "$1" "$3" >/dev/null
   local out eid

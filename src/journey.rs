@@ -363,7 +363,7 @@ pub fn execute(
             let interpolated = interpolate_json(body, &vars);
             req = req.json(&interpolated);
         }
-        let outcome = match req.send() {
+        let mut outcome = match req.send() {
             Ok(resp) => check_response(step, resp, &mut vars, !record),
             Err(e) => StepOutcome {
                 name: step.name.clone(),
@@ -376,30 +376,36 @@ pub fn execute(
                 },
             },
         };
-        let passed = outcome.passed;
         if let (Some(store), Some(journey)) = (store, &journey_val) {
-            if let Ok(intent) = store.resolve_node(&step.intent, Some(NodeType::Intent)) {
-                for e in store.edges_with(
-                    Some(EdgeKind::Validates),
-                    Some(&journey.id),
-                    Some(&intent.id),
-                )? {
-                    let status = if passed {
-                        InspectionStatus::Passing
-                    } else {
-                        InspectionStatus::Failing
-                    };
-                    store.record_verdict(
-                        &e.id,
-                        status,
-                        "journey step",
-                        &outcome.detail,
-                        1.0,
-                        "journey",
-                    )?;
+            match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
+                Ok(intent) => {
+                    for e in store.edges_with(
+                        Some(EdgeKind::Validates),
+                        Some(&journey.id),
+                        Some(&intent.id),
+                    )? {
+                        let status = if outcome.passed {
+                            InspectionStatus::Passing
+                        } else {
+                            InspectionStatus::Failing
+                        };
+                        store.record_verdict(
+                            &e.id,
+                            status,
+                            "journey step",
+                            &outcome.detail,
+                            1.0,
+                            "journey",
+                        )?;
+                    }
+                }
+                Err(e) => {
+                    outcome.passed = false;
+                    outcome.detail = format!("unresolved step intent '{}': {e}", step.intent);
                 }
             }
         }
+        let passed = outcome.passed;
         outcomes.push(outcome);
         if !passed {
             if let (Some(store), Some(journey)) = (store, &journey_val) {

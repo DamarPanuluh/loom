@@ -146,9 +146,26 @@ pub fn run(store: &Store, root: &Path, name: Option<&str>) -> Result<ScanReport>
         let regex = adapter_regex(&adapter)?;
         let rule = ensure_adapter_rule(store, &adapter)?;
         let existing = adapter_finding_ids(store, &adapter.name)?;
-        let output = run_adapter_command(root, &adapter.command, &adapter.name)?;
+        let (output, exit_code) = run_adapter_command(root, &adapter.command, &adapter.name)?;
+        // A command that could not run (127 not-found / 126 not-executable) would
+        // otherwise parse to zero diagnostics and converge every prior finding to
+        // resolved — silent data loss. Fail loudly instead (M-8). Linters that
+        // merely FOUND issues exit non-zero WITH output, so they pass this gate.
+        if matches!(exit_code, Some(126) | Some(127)) {
+            bail!(
+                "scan adapter '{}' failed to run (exit {}) — check its command; findings left untouched: {}",
+                adapter.name,
+                exit_code.unwrap_or(-1),
+                output.lines().find(|l| !l.trim().is_empty()).unwrap_or("").trim()
+            );
+        }
         let (parsed, skipped) = parse_output(&regex, &output, adapter.map.is_none());
         report.skipped_lines += skipped;
+        // A non-zero exit that produced no recognizable diagnostics is a failed
+        // run (a crash, a config error), not "every issue resolved" — a clean
+        // pass exits 0. Converging then would wrongly resolve every prior finding
+        // (M-8), so leave them untouched and let the next healthy run reconcile.
+        let healthy_run = exit_code == Some(0) || !parsed.is_empty();
         let mut active = BTreeSet::new();
 
         for mut diagnostic in parsed {
@@ -168,7 +185,7 @@ pub fn run(store: &Store, root: &Path, name: Option<&str>) -> Result<ScanReport>
         }
 
         let stale: Vec<String> = existing.difference(&active).cloned().collect();
-        if !stale.is_empty() {
+        if healthy_run && !stale.is_empty() {
             store.remove_derived_findings(&stale)?;
             report.resolved_findings += stale.len();
         }
@@ -238,8 +255,11 @@ fn ensure_adapter_rule(store: &Store, adapter: &Adapter) -> Result<Node> {
         }),
     )
 }
-
-fn run_adapter_command(root: &Path, command: &str, adapter_name: &str) -> Result<String> {
+fn run_adapter_command(
+    root: &Path,
+    command: &str,
+    adapter_name: &str,
+) -> Result<(String, Option<i64>)> {
     let script = format!("exec 2>&1\n{command}");
     let child = std::process::Command::new("sh")
         .arg("-c")
@@ -262,7 +282,10 @@ fn run_adapter_command(root: &Path, command: &str, adapter_name: &str) -> Result
 
     let mut combined = output.stdout;
     combined.extend(output.stderr);
-    Ok(String::from_utf8_lossy(&combined).into_owned())
+    Ok((
+        String::from_utf8_lossy(&combined).into_owned(),
+        output.status.code(),
+    ))
 }
 
 /// Parse adapter output line by line. `pair_locations` (default parser only)

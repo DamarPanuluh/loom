@@ -187,6 +187,9 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
     // recorded verdict.
     let mut owners = Vec::new();
     for e in store.edges_with(Some(EdgeKind::Implements), None, Some(&n.id))? {
+        if store.edge_superseded(&e.id)? {
+            continue; // rehomed away — history, not an owner
+        }
         let name = store
             .get_node(&e.from_id)?
             .map(|x| x.name)
@@ -194,9 +197,21 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         let locator = store
             .get_facet(&e.id, TargetKind::Edge, "locator")?
             .unwrap_or_default();
-        owners.push((name, locator, e.status.as_str().to_string(), e.evidence));
+        let grole = store.grounding_role(&e.id)?.as_str().to_string();
+        owners.push((
+            name,
+            locator,
+            e.status.as_str().to_string(),
+            e.evidence,
+            grole,
+        ));
     }
-    owners.sort_by(|a, b| a.0.cmp(&b.0));
+    // realizing owners first (they own coverage), then by name.
+    owners.sort_by(|a, b| {
+        (a.4 != "realizes")
+            .cmp(&(b.4 != "realizes"))
+            .then(a.0.cmp(&b.0))
+    });
 
     // Findings flagging this file, joined with their adjudication state.
     let flagged: std::collections::HashSet<String> = store
@@ -217,8 +232,8 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
             "role": role,
             "loc": loc.parse::<u64>().ok(),
             "symbol_count": symbols.parse::<u64>().ok(),
-            "owners": owners.iter().map(|(name, loc, verdict, ev)| serde_json::json!({
-                "intent": name, "locator": loc, "verdict": verdict, "evidence": ev,
+            "owners": owners.iter().map(|(name, loc, verdict, ev, role)| serde_json::json!({
+                "intent": name, "locator": loc, "verdict": verdict, "evidence": ev, "role": role,
             })).collect::<Vec<_>>(),
             "findings": findings.iter().map(|fv| serde_json::json!({
                 "state": fv.state, "stale": fv.stale, "title": fv.node.name, "reason": fv.reason,
@@ -245,11 +260,17 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
     if !facets.is_empty() {
         println!("  {}", facets.join("  "));
     }
-    println!("  owned by {} intent(s):", owners.len());
-    if owners.is_empty() {
-        println!("    (unowned — no implements edge; coverage gap or non-behavioral)");
+    let realizing = owners.iter().filter(|o| o.4 == "realizes").count();
+    println!(
+        "  grounded by {} edge(s) ({realizing} realizing):",
+        owners.len()
+    );
+    if realizing == 0 {
+        println!(
+            "    (no realizing owner — coverage gap; consumes/configures/verifies do not own)"
+        );
     }
-    for (name, locator, verdict, ev) in &owners {
+    for (name, locator, verdict, ev, role) in &owners {
         let at = if locator.is_empty() {
             String::new()
         } else {
@@ -260,7 +281,7 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         } else {
             format!(" — {ev}")
         };
-        println!("    ↳ {name}{at} [{verdict}]{ev}");
+        println!("    ↳ [{role}] {name}{at} [{verdict}]{ev}");
     }
     if !findings.is_empty() {
         println!("  findings:");

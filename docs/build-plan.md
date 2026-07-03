@@ -81,9 +81,9 @@ Never copy v1 code. Re-derive clean.
 - `loom codefile add '<glob>'` — register files, detect language/role
 - Tree-sitter extraction: symbols, imports, loc, content hash, generated/vendor/test classification
 - `loom sync` — content-hash change detection; re-extracts on change; never false-flags on mtime
-- Ripple from `loom sync`: implements locators → needs_reverification, governs → needs_reverification, Validation.last_result → not_run + linked validates → needs_reverification, asserted relationships → needs_reverification
+- Ripple from `loom sync`: realizing implements locators → needs_reverification + dependent ripple; consumes/configures/verifies groundings reopen only on seam-locator drift; governs → needs_reverification; Validation.last_result → not_run + linked validates → needs_reverification; asserted relationships → needs_reverification
 - Derived `Finding` nodes for structural occurrences (oversized_file, complex_symbol, panic_marker) + `flags`/`assesses` edges — derived, recomputed by sync
-- Derived `exposes` edges for deterministically extractable interface surfaces (HTTP decorators, CLI annotations)
+- InterfaceSurface extraction is not current; `exposes` edges are asserted-only, not derived by sync
 - `loom codefile show` — ownership view: owners, symbols, imports, stale count
 - Blast-radius preview is deferred/not current; use WorkItem context/read_set and `loom status` instead.
 
@@ -108,7 +108,7 @@ Never copy v1 code. Re-derive clean.
 - Intent retire: status=deprecated, invisible to computation, fallout reported
 - Edge CRUD for asserted edge kinds through `loom edge relate <kind> <from> <to>` where kind is `hierarchy`, `requires`, `scenario-of`, `variant-of`, `triggers`, `sequence`, or `relates`
 - `loom edge explore ground / issue / independent` (verdict commands with evidence gates)
-- `loom edge implement`, `loom edge call`, `loom edge remove`, `loom edge set-locator`
+- `loom edge implement --role realizes|consumes|configures|verifies`, `loom edge call`, `loom edge remove`, `loom edge set-locator`, `loom edge set-role`, `loom edge rehome`
 - Role gates: write-time check of owner_role vs edge_kind_registry
 - `loom next` — asserted residue router: one WorkItem + PromptContract per call
   - Modes: build, coverage, fix, analyze/discovery, validate, quality, prove, triage, review
@@ -213,11 +213,11 @@ Never copy v1 code. Re-derive clean.
   - layering violations (armed by `loom layer order` from ring 5)
   - complex symbols, hub files, happy-path-only groups
   - duplicated responsibility (armed by vocab from ring 5), unjourneyed surfaces
-  - vocab drift (armed by vocab registry from ring 5)
+  - vocab drift (armed by vocab registry from ring 5), `consumer_owned_file`
   - Each finding carries exact remedy command; open findings gate `Excellent` rung
 - `loom debt` — statistical cluster feed (co-change, clone, shotgun, recurrence, proof-locality); computed on demand, never stored as edges
 - `loom scan add/list/remove/run` — external diagnostic adapters (linters/type-checkers) whose diagnostics become derived findings in the normal triage lifecycle
-- `loom doctor` — schema conformance, evidence vacuity, provenance, role gate audit
+- `loom doctor` — schema conformance, evidence vacuity, provenance, role gate audit, and `consumes_without_seam`
 - Centrality hotspot and focused-dig helpers are deferred/not current; use `loom next` WorkItem context/read_set instead.
 
 **Invariants to test:**

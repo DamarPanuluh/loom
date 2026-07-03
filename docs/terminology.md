@@ -30,7 +30,7 @@ The durable model of a repository: nodes, edges, facets, evidence, provenance, a
 
 ### graph fact
 
-A typed claim stored or derived by loom. Examples: an intent exists, a codefile implements an intent, a validation passed, a rule verdict failed, an interface surface exists.
+A typed claim stored or derived by loom. Examples: an intent exists, a codefile realizes an intent through an `implements(role=realizes)` edge, a validation passed, a rule verdict failed, an interface surface exists.
 
 Use instead of vague “truth item.”
 
@@ -342,7 +342,27 @@ The condition belongs as an edge facet/property.
 
 ### implements
 
-`Intent -> CodeFile`. Behavior is realized at a file/locator.
+`Intent -> CodeFile`. Grounding edge from behavior to a file/locator. Its `role` edge facet says whether behavior lives there or the file is only a supporting surface; missing `role` means `realizes`.
+
+### grounding role
+
+The role on an `implements` edge. Canonical values are `realizes`, `consumes`, `configures`, and `verifies`.
+
+### realizes
+
+`implements.role=realizes`. The behavior lives in this file/locator. This is the default role and the only grounding role that owns coverage.
+
+### consumes
+
+`implements.role=consumes`. The file exercises behavior across a seam — route, topic, key, import, or similar boundary. It never owns coverage for that behavior.
+
+### configures
+
+`implements.role=configures`. The file supplies configuration for behavior that lives elsewhere. It never owns coverage.
+
+### verifies
+
+`implements.role=verifies`. The file checks or proves behavior that lives elsewhere. It never owns coverage.
 
 ### validates
 
@@ -362,7 +382,7 @@ The condition belongs as an edge facet/property.
 
 ### exposes
 
-`InterfaceSurface -> CodeFile`. Code exposes a surface.
+`InterfaceSurface -> CodeFile`. Code exposes a surface. `exposes` is asserted-only; derived surface extraction is not implemented.
 
 ### calls / exercises
 

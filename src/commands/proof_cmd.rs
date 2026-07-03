@@ -271,6 +271,15 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             repo_native_kind,
             artifact,
         } => {
+            // Enforce the validation-type vocabulary (M-15/I-5): the CLI advertises
+            // a finite set, so reject a typo instead of storing an arbitrary string.
+            let vtype = match r#type.parse::<crate::model::ValidationType>() {
+                Ok(t) => t,
+                Err(_) => bail!(
+                    "unknown validation type '{}' (use test|assertion|benchmark|manual_check|journey|scenario|contract)",
+                    r#type
+                ),
+            };
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
             if let Some(level) = &proof_level {
                 if !matches!(
@@ -287,7 +296,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                     "--journey-id, --repo-native-kind, and --artifact require --proof-kind journey"
                 );
             }
-            let mut body = serde_json::json!({ "type": r#type, "command": command });
+            let mut body = serde_json::json!({ "type": vtype.as_str(), "command": command });
             if let Some(v) = proof_level {
                 body["proof_level"] = serde_json::json!(v);
             }
@@ -488,7 +497,18 @@ fn mark_validation(
     let (node_status, edge_status, ev) = match result {
         "passed" => ("passed", InspectionStatus::Passing, evidence),
         "failed" => ("failed", InspectionStatus::Failing, evidence),
-        "blocked" => ("blocked", InspectionStatus::Blocked, reason),
+        // A blocked mark's reason lives in --reason, but a worker following the
+        // packet may pass it as --evidence; accept either so the blocker text is
+        // never silently dropped (M-2). record_verdict still requires it non-empty.
+        "blocked" => (
+            "blocked",
+            InspectionStatus::Blocked,
+            if reason.trim().is_empty() {
+                evidence
+            } else {
+                reason
+            },
+        ),
         other => bail!("unknown result '{other}' (use passed|failed|blocked)"),
     };
     // Record the edge verdicts FIRST: record_verdict enforces INV-6 (a

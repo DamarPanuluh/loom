@@ -222,6 +222,12 @@ pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
             if let Some(w) = review_item(store)? {
                 return Ok(Some(w));
             }
+            // Proposed hypotheses are real, operator-queued investigation work;
+            // surface them before elaboration (which invents NEW surroundings) so
+            // `loom next` never strands them behind --mode prove (M-1).
+            if let Some(w) = prove_item(store)? {
+                return Ok(Some(w));
+            }
             // Last: grow the surroundings of user-visible ideas. Elaboration
             // creates NEW work, so it only surfaces once existing debts are
             // drained.

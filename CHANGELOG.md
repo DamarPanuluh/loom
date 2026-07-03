@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.14.0] - 2026-07-03
+- Grounding roles on implements edges (realizes|consumes|configures|verifies): edge --role / set-role / rehome, consumes never owns coverage, seam-drift-only staleness, coverage-packet disambiguation, consumer_owned_file smell, consumes_without_seam doctor gate; exposes is asserted-only; audit hardening: fail-closed LOOM_AGENT, independent verdicts require criterion+evidence, redefine ripples implements groundings, sync preserves scan findings, observed queue counts, import format check, ValidationType/journey wiring, edge-show facets
+
 ## [0.13.0] - 2026-07-02
 - Field-report fixes: fix queue is strictly failing-verdict repair — stale claims reroute to analyze (stale-first) and fixer packets never carry verdict authority, with compass/session/queue-counts on the same partition; journey invariant update --asserts re-points the asserts edge in place (node + note trail preserved); notes attach to edges (node-first resolution, honest no-match error); default scan parser pairs svelte-check-style two-line diagnostics, custom --map stays per-line
 

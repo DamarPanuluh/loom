@@ -84,12 +84,16 @@ A valid atomic intent must satisfy all three:
 2. Independent failure modes (its failure is meaningful in isolation)
 3. A plausible proof or code grounding at a meaningful altitude
 
-The `implements` edge carries a `locator` field to point at specific symbols:
+The `implements` edge carries facets to explain the grounding:
 
 ```text
 Intent: payment can be captured
-  implements → src/payment.rs  --locator "fn capture_payment"
+  implements → src/payment.rs  --locator "fn capture_payment" --role realizes
+Intent: checkout calls payment
+  implements → src/checkout.rs --locator "POST /payments" --role consumes
 ```
+
+`role` defaults to `realizes` when the facet is absent, preserving old graph semantics.
 
 Fields:
 
@@ -407,13 +411,13 @@ edge_kind_registry
   kind
   from_node_type
   to_node_type
-  allowed_truth_classes:  [derived | asserted]   -- one value for most kinds; both allowed for exposes
+  allowed_truth_classes:  [derived | asserted]
   allowed_statuses:       []
   owner_role:             builder | analyzer | fixer | validator | quality | sync
   description
 ```
 
-Most edge kinds have one allowed truth class. When a kind allows both, the truth class is determined by the write source. The write-time check verifies the supplied truth class is in the allowed set for that kind.
+The write-time check verifies the supplied truth class is in the allowed set for that kind.
 
 ### Edge kinds
 
@@ -425,22 +429,31 @@ Most edge kinds have one allowed truth class. When a kind allows both, the truth
 | `variant_of` | Intent | Intent | asserted | builder | variant to base behavior |
 | `triggers` | Intent | Intent | asserted | builder/analyzer | when condition occurs, response must hold |
 | `sequence` | Intent | Intent | asserted | builder | ordered step in journey |
-| `implements` | Intent | CodeFile | asserted | builder | behavior realized at file/locator |
+| `implements` | Intent | CodeFile | asserted | builder | behavior grounded at file/locator; `role` facet defaults to `realizes` |
 | `validates` | Validation | Intent | asserted | validator | proof checks behavior |
 | `governs` | QualityRule | Intent | asserted | quality | norm measured against behavior |
 | `targets` | Hypothesis | Intent | asserted | analyzer | hypothesis concerns intent |
 | `flags` | Finding | CodeFile | derived | sync | finding concerns codefile |
 | `assesses` | Finding | CodeRule | derived | sync | finding is occurrence of code rule |
-| `exposes` | InterfaceSurface | CodeFile | derived **or** asserted | sync / builder | derived when sync extracts deterministically (annotations, schemas); asserted when declared by human/LLM |
+| `exposes` | InterfaceSurface | CodeFile | asserted | builder | declared surface exposed by a codefile |
 | `calls` | Validation | InterfaceSurface | asserted | validator | proof exercises a surface |
 | `relates` | Intent | Intent | asserted | analyzer | manual relationship, kind TBD |
 | `covers` | JourneyCoverage | Intent | asserted | builder | a flow that needs a journey proof covers this intent |
 | `asserts` | JourneyInvariantPoint | Intent | asserted | builder | an internal domain invariant point marks this intent |
 
-**`exposes` truth class note.** This is the only standard edge kind allowing both truth classes.
-- `derived` — sync extracted the surface from code (HTTP decorators, CLI annotations, schema definitions). Recomputed by sync.
-- `asserted` — a human or LLM declared the surface as a meaningful seam requiring judgment.
-Both produce the same edge schema row; the truth class is set at write time by the writer's source. Derived `exposes` edges are never queued for judgment. Asserted `exposes` edges follow the standard asserted verdict lifecycle.
+**`exposes` truth class note.** `exposes` is asserted-only. Derived `exposes` extraction was never implemented; sync does not create these edges, and attempts to add a derived `exposes` edge are rejected.
+
+**`implements` role note.** `implements` edges carry an asserted `role` facet:
+- `realizes` — behavior lives in this file/locator. This is the default when the facet is absent and the only role that owns coverage.
+- `consumes` — this file exercises behavior across a seam such as a route, topic, key, import, or interface. It never owns coverage for that behavior.
+- `configures` — this file supplies configuration for behavior that lives elsewhere. It never owns coverage.
+- `verifies` — this file checks behavior that lives elsewhere. It never owns coverage.
+
+Coverage and navigation use only live, non-superseded `implements` edges with `role=realizes` as owners. A CodeFile grounded only by `consumes`, `configures`, or `verifies` remains unowned until a realizing intent/file grounding exists.
+
+Sync reopens realizing groundings on file content changes and ripples to the intent's dependents. Non-realizing groundings reopen only when their seam locator drifts: the file vanished, or the locator string (or its last token) no longer appears in the file content. They do not ripple to the consumed/configured/verified intent.
+
+`loom edge rehome` supersedes rather than deletes: the old grounding receives a `superseded_by` facet and stops counting for coverage, staleness, and queues; the successor grounding carries the old locator and role and receives a `stale_cause` beginning with `rehomed`.
 
 Direction note for asymmetric edges:
 
@@ -548,6 +561,7 @@ Facets also have a truth class:
 
 - `derived` facets are recomputed by sync: `language`, `loc`, `symbol_count`.
 - `asserted` facets are pinned judgments: `visibility`, `layer`, `aspect`, tags.
+- edge facets include `locator`, `role`, `stale_cause`, and `superseded_by`. `role` is asserted and only valid on `implements`; `superseded_by` marks a rehomed edge that no longer counts for coverage, staleness, or queues.
 
 ### Tag
 
@@ -627,15 +641,17 @@ The graph shape exposes gaps without cognitive judgment. The LLM confirms whethe
 | `user_visible` capability with only `happy` aspect | Missing sad/fallback/edge scenarios |
 | `requires` target is `planned` | Prerequisite unimplemented |
 | Scenario/variant with no `validates` edge | Proof gap |
-| Leaf intent with no `implements` edge | Grounding gap |
-| CodeFile with no owning intent | Ownership gap |
+| Leaf intent with no realizing `implements` edge | Grounding gap |
+| CodeFile with no live realizing owner | Ownership gap |
 | `triggers` with no response intent | Reaction gap |
 | Journey sequence with no journey validation | Composition proof gap |
 | `governs` edge `uninspected` | Unmeasured quality norm |
 | `Validation.last_result = not_run`; linked `validates` edge `needs_reverification` | Unrun proof |
-| `implements` locator stale | Grounding mismatch after code change |
+| Realizing `implements` locator stale, or non-realizing seam locator drifted | Grounding mismatch after code change |
 | Many unrelated intents implementing one CodeFile | Tangle |
 | Two intents sharing tags in disjoint code with no edge | Duplicated responsibility; often appears after removing shared groundings that previously masked an undocumented relationship gap |
+| File whose only realizing owner is an intent whose other realizing files live in a different top-level directory cluster | `consumer_owned_file` smell |
+| Settled `consumes` grounding without a seam in criterion and without a locator | `consumes_without_seam` doctor issue |
 
 ---
 

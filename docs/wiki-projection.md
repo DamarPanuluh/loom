@@ -143,10 +143,10 @@ The authentication system is robust and handles all failure cases.
 
 ```text
 Authentication is modeled as three intents: password login, session creation, and
-remember-me restoration. Password login is implemented in `src/auth/password.rs`
-[Intent: user can log in with password → implements src/auth/password.rs]. Session
+remember-me restoration. Password login is realized in `src/auth/password.rs`
+[Intent: user can log in with password → implements(role=realizes) src/auth/password.rs]. Session
 creation is validated by `login_session_test` [Validation: login_session_test → passing].
-Remember-me restoration currently lacks a browser-restart saga [Intent: remember-me
+Remember-me restoration currently lacks a browser-restart journey [Intent: remember-me
 token restores session → validates: none].
 ```
 

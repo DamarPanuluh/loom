@@ -100,7 +100,7 @@ pub(super) fn fix_item(store: &Store) -> Result<Option<WorkItem>> {
     // work and belong to their measuring lanes — governs/validates to
     // quality/validate, everything else to analyze — so a fix packet never
     // carries verdict authority and no edge is ever served by two queues.
-    let failing = store.edges_by_status(
+    let failing = store.live_edges_by_status(
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Failing],
     )?;
@@ -121,7 +121,7 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
     // their own measuring lanes (quality/validate). Stale claims outrank
     // never-inspected ones: a settled truth that broke misleads readers,
     // an uninspected claim only waits.
-    let stale = store.edges_by_status(
+    let stale = store.live_edges_by_status(
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::NeedsReverification],
     )?;
@@ -137,7 +137,7 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
             "dependency changed — re-verify this claim",
         )?));
     }
-    let uninspected = store.edges_by_status(
+    let uninspected = store.live_edges_by_status(
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Uninspected],
     )?;
@@ -314,7 +314,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
 /// verdicts are excluded — they already route to the fix queue.
 pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
     let mut candidates: Vec<Edge> = store
-        .edges_by_status(
+        .live_edges_by_status(
             crate::model::TruthClass::Asserted,
             &[InspectionStatus::Passing, InspectionStatus::Independent],
         )?
@@ -572,11 +572,7 @@ pub(super) fn prescreen_for(
         return Ok(Vec::new());
     }
     let mut files = Vec::new();
-    for e in store
-        .edges_with(Some(EdgeKind::Implements), Some(intent_id), None)?
-        .into_iter()
-        .take(8)
-    {
+    for e in store.realizing_groundings(intent_id)?.into_iter().take(8) {
         if let Some(cf) = store.get_node(&e.to_id)? {
             files.push(cf.name);
         }
@@ -620,15 +616,19 @@ pub struct QueueCounts {
 
 pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
     use crate::model::TruthClass;
+    // An observed graph disables the build/fix/coverage/elaborate lanes in
+    // `next`; the counts MUST mirror that or `status` disagrees with what the
+    // queues actually serve (H-12).
+    let observed = store.identity()?.observed;
     let failing = store
-        .edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
+        .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
         .len();
-    let stale = store.edges_by_status(
+    let stale = store.live_edges_by_status(
         TruthClass::Asserted,
         &[InspectionStatus::NeedsReverification],
     )?;
     let uninspected =
-        store.edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?;
+        store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?;
     let split = |edges: &[Edge]| -> (usize, usize, usize) {
         let governs = edges.iter().filter(|e| e.kind == EdgeKind::Governs).count();
         let validates = edges
@@ -667,7 +667,7 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
     }
 
     let review = store
-        .edges_by_status(
+        .live_edges_by_status(
             TruthClass::Asserted,
             &[InspectionStatus::Passing, InspectionStatus::Independent],
         )?
@@ -681,11 +681,19 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
         .filter(|n| n.status == "new")
         .count();
     Ok(QueueCounts {
-        build: store
-            .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
-            .len(),
-        coverage: crate::commands::unowned_codefiles(store)?.len(),
-        fix: failing,
+        build: if observed {
+            0
+        } else {
+            store
+                .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
+                .len()
+        },
+        coverage: if observed {
+            0
+        } else {
+            crate::commands::unowned_codefiles(store)?.len()
+        },
+        fix: if observed { 0 } else { failing },
         analyze: unin_rel + stale_rel,
         quality: stale_gov + unin_gov + pairs,
         validate: stale_val + unin_val,
@@ -694,9 +702,13 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
         prove: store
             .nodes_by_status(NodeType::Hypothesis, &["proposed"])?
             .len(),
-        elaborate: crate::completeness::all_scorecards(store)?
-            .iter()
-            .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
-            .count(),
+        elaborate: if observed {
+            0
+        } else {
+            crate::completeness::all_scorecards(store)?
+                .iter()
+                .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
+                .count()
+        },
     })
 }

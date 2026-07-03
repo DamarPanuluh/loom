@@ -160,9 +160,11 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         kind: EdgeKind::Exposes,
         from: InterfaceSurface,
         to: CodeFile,
-        // The only kind allowing both: derived when sync extracts it,
-        // asserted when declared by human/LLM judgment.
-        truth_classes: &[Derived, Asserted],
+        // Asserted only: an interface surface is declared by human/LLM judgment.
+        // Deriving surfaces from code is not implemented (there is no derived
+        // `exposes` producer — M-10); if it returns it must ship a deterministic
+        // producer AND widen both this list and the edge uniqueness constraint.
+        truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "code exposes a surface",
     },
@@ -228,19 +230,17 @@ mod tests {
     }
 
     #[test]
-    fn only_exposes_allows_both_truth_classes() {
+    fn every_kind_allows_exactly_one_truth_class() {
+        // With derived-`exposes` extraction unbuilt, every edge kind resolves to
+        // a single truth class, so the `(from,to,kind)` edge uniqueness can never
+        // need to hold two classes of the same relationship (H-5).
         for s in REGISTRY {
-            if s.kind == EdgeKind::Exposes {
-                assert_eq!(s.truth_classes.len(), 2);
-            } else {
-                assert_eq!(
-                    s.truth_classes.len(),
-                    1,
-                    "only `exposes` may allow both truth classes; {} has {}",
-                    s.kind,
-                    s.truth_classes.len()
-                );
-            }
+            assert_eq!(
+                s.truth_classes.len(),
+                1,
+                "{} must allow exactly one truth class",
+                s.kind
+            );
         }
     }
 

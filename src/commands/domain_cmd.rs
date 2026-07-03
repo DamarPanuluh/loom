@@ -81,6 +81,9 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                 "refuted" => "refuted",
                 other => bail!("unknown verdict '{other}' (use supported|refuted)"),
             };
+            if evidence.trim().is_empty() {
+                bail!("{status} verdict requires non-empty evidence");
+            }
             store.set_node_status(&h.id, status)?;
             store.add_note(&h.id, "decision", &format!("{status}: {evidence}"))?;
             pulse::emit_line(
@@ -107,14 +110,30 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                     h.status
                 );
             }
-            store.set_node_status(&h.id, "adopted")?;
             let name = spawned.unwrap_or_else(|| format!("{} (adopted)", h.name));
+            if name.trim().is_empty() {
+                bail!("adopted intent name must be non-empty");
+            }
+            if looks_like_symbol(&name) && h.description.trim().is_empty() {
+                bail!(
+                    "intent name '{name}' looks like a code symbol. Hypothesis adoption \
+                     requires a non-empty hypothesis description for symbol-like intent names."
+                );
+            }
+            store.set_node_status(&h.id, "adopted")?;
             let intent = store.add_node(
                 NodeType::Intent,
                 &name,
                 &h.description,
                 "planned",
-                serde_json::json!({}),
+                serde_json::json!({ "level": "feature" }),
+            )?;
+            store.set_facet(
+                &intent.id,
+                TargetKind::Node,
+                "visibility",
+                "internal",
+                TruthClass::Asserted,
             )?;
             store.add_note(
                 &h.id,

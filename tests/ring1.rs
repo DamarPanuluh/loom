@@ -7,33 +7,8 @@ use loom::cli::{Cli, Command, IntentCmd};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::travel::Export;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
-
-static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-/// A unique temp dir that removes itself on drop.
-struct Tmp(PathBuf);
-impl Tmp {
-    fn new() -> Tmp {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let p = std::env::temp_dir().join(format!("loom-ring1-{}-{nanos}-{n}", std::process::id()));
-        std::fs::create_dir_all(&p).unwrap();
-        Tmp(p)
-    }
-    fn path(&self) -> &std::path::Path {
-        &self.0
-    }
-}
-impl Drop for Tmp {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
+mod common;
+use common::*;
 
 fn seed_intent(store: &Store, name: &str) -> String {
     store
@@ -121,7 +96,7 @@ fn inv4_independent_requires_evidence() {
         .record_verdict(
             &edge.id,
             InspectionStatus::Independent,
-            "",
+            "login and logout are independent behaviors",
             "login and logout share no state",
             0.9,
             "llm",
@@ -136,19 +111,21 @@ fn inv4_independent_requires_evidence() {
 fn inv5_verdict_path_rejects_derived_edge() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let surface = store
-        .add_node(
-            NodeType::InterfaceSurface,
-            "POST /pay",
-            "",
-            "",
+    let finding = store
+        .add_derived_node(
+            NodeType::Finding,
+            "long-file:src/pay.rs",
+            "src/pay.rs is long",
+            "600+ lines",
+            "long_file",
             serde_json::json!({}),
         )
-        .unwrap()
-        .id;
+        .unwrap();
     let file = seed_codefile(&store, "src/pay.rs");
+    // A legitimately-derived edge (Flags is sync-owned); add_edge no longer
+    // creates derived edges (M-12), so derived edges come from add_derived_edge.
     let derived = store
-        .add_edge(EdgeKind::Exposes, &surface, &file, TruthClass::Derived)
+        .add_derived_edge(EdgeKind::Flags, &finding.id, &file)
         .unwrap();
     // verdict path must refuse a derived edge
     assert!(store
@@ -216,7 +193,7 @@ fn registry_rejects_disallowed_truth_class() {
 }
 
 #[test]
-fn exposes_allows_both_truth_classes() {
+fn exposes_is_asserted_only() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let surface = store
@@ -230,13 +207,15 @@ fn exposes_allows_both_truth_classes() {
         .unwrap()
         .id;
     let f1 = seed_codefile(&store, "src/a.rs");
+    // Asserted exposes are declared by judgment; derived-`exposes` extraction is
+    // not implemented (H-5/M-10), so the derived path is refused.
+    assert!(store
+        .add_edge(EdgeKind::Exposes, &surface, &f1, TruthClass::Asserted)
+        .is_ok());
     let f2 = seed_codefile(&store, "src/b.rs");
     assert!(store
-        .add_edge(EdgeKind::Exposes, &surface, &f1, TruthClass::Derived)
-        .is_ok());
-    assert!(store
-        .add_edge(EdgeKind::Exposes, &surface, &f2, TruthClass::Asserted)
-        .is_ok());
+        .add_edge(EdgeKind::Exposes, &surface, &f2, TruthClass::Derived)
+        .is_err());
 }
 
 // ---- import round-trip + determinism ---------------------------------------
@@ -570,7 +549,10 @@ fn set_node_body_roundtrips() {
             &serde_json::json!({ "kind": "sdk_method", "identity": "/x" }),
         )
         .unwrap();
-    let got = store.get_node(&n.id).unwrap().unwrap();
+    let got = store
+        .get_node(&n.id)
+        .expect("get_node ok")
+        .expect("node exists");
     assert_eq!(got.body["kind"], "sdk_method");
     assert_eq!(got.body["identity"], "/x");
 }

@@ -139,6 +139,9 @@ pub enum EdgeCmd {
         codefile: String,
         #[arg(long)]
         locator: Option<String>,
+        /// Grounding role: realizes (default; owns coverage) | consumes | configures | verifies
+        #[arg(long)]
+        role: Option<String>,
     },
     /// Put an interface surface under contract: a validation that exercises it
     /// (creates a `calls` edge). When the code behind the surface changes, sync
@@ -192,6 +195,27 @@ pub enum EdgeCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+    },
+    /// Reclassify a grounding edge's role (realizes|consumes|configures|verifies).
+    /// Keeps the edge + verdict history; a changed role re-opens the claim
+    /// (stale_cause: role_changed) to be re-verdicted under the new criterion.
+    SetRole {
+        edge_id: String,
+        /// realizes | consumes | configures | verifies
+        role: String,
+        #[arg(long)]
+        reason: String,
+    },
+    /// Rehome a grounding edge to a successor intent (a true mis-attachment,
+    /// not just the wrong role). Supersede-not-delete: the old edge keeps its
+    /// history but stops counting; a fresh unverified edge on the successor
+    /// carries stale_cause: rehomed.
+    Rehome {
+        edge_id: String,
+        #[arg(long)]
+        to: String,
+        #[arg(long)]
+        reason: String,
     },
 }
 

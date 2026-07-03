@@ -5,37 +5,10 @@ use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::path::Path;
 
-static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-struct Tmp(PathBuf);
-impl Tmp {
-    fn new() -> Tmp {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let p = std::env::temp_dir().join(format!("loom-ring6-{}-{nanos}-{n}", std::process::id()));
-        std::fs::create_dir_all(&p).unwrap();
-        Tmp(p)
-    }
-    fn path(&self) -> &Path {
-        &self.0
-    }
-    fn write(&self, rel: &str, content: &str) {
-        let p = self.0.join(rel);
-        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-        std::fs::write(p, content).unwrap();
-    }
-}
-impl Drop for Tmp {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
+mod common;
+use common::*;
 
 fn intent(store: &Store, name: &str, lifecycle: &str) -> String {
     store
@@ -351,12 +324,12 @@ fn mock_server(responses: Vec<(u16, String)>) -> (String, std::thread::JoinHandl
                 break;
             };
             let mut buf = [0u8; 4096];
-            let _ = stream.read(&mut buf);
+            let _n = stream.read(&mut buf).expect("mock read");
             let resp = format!(
                 "HTTP/1.1 {status} OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
                 body.len()
             );
-            let _ = stream.write_all(resp.as_bytes());
+            stream.write_all(resp.as_bytes()).expect("mock write");
         }
     });
     (format!("http://127.0.0.1:{port}"), handle)
@@ -456,21 +429,23 @@ fn mock_server_handling(
                 break;
             };
             let mut buf = [0u8; 8192];
-            let read = stream.read(&mut buf).unwrap_or(0);
+            let read = stream.read(&mut buf).expect("mock read");
             let req = String::from_utf8_lossy(&buf[..read]).to_string();
             let (status, body) = handler(&req);
             let resp = format!(
                 "HTTP/1.1 {status} OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
                 body.len()
             );
-            let _ = stream.write_all(resp.as_bytes());
+            stream.write_all(resp.as_bytes()).expect("mock write");
         }
     });
     (format!("http://127.0.0.1:{port}"), handle)
 }
 
-/// Run the compiled `loom` binary against `tmp` graph with the given args;
-/// assert it exits zero (the journey add/run wiring under test).
+/// Run the compiled `loom` binary against `tmp` graph with the given args.
+/// Intentionally separate from ring5's in-process `run`: this exercises process
+/// startup, stdout/stderr, and Cargo's `CARGO_BIN_EXE_loom` wiring.
+/// Assert it exits zero (the journey add/run wiring under test).
 fn run_cli(tmp: &Path, args: &[&str]) {
     let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
     cmd.arg("--graph").arg(tmp).args(args);

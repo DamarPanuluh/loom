@@ -1,36 +1,13 @@
-//! Ring 3 invariant tests — judgment plane: lane gates (INV-7), the asserted
-//! residue router + prompt contract, and intent-redefinition ripple.
+//! Ring 3 invariant tests — judgment plane lane gates (INV-7), asserted
+//! residue routing, prompt contracts, and intent-redefinition ripple.
+//! INV-1 O(N) hierarchy coverage is not present in rings 1-3 and remains a gap.
 
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
 use loom::registry::OwnerRole;
 use loom::store::{Agent, Store};
 use loom::workitem::{self, Mode};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-struct Tmp(PathBuf);
-impl Tmp {
-    fn new() -> Tmp {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let p = std::env::temp_dir().join(format!("loom-ring3-{}-{nanos}-{n}", std::process::id()));
-        std::fs::create_dir_all(&p).unwrap();
-        Tmp(p)
-    }
-    fn path(&self) -> &Path {
-        &self.0
-    }
-}
-impl Drop for Tmp {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
+mod common;
+use common::*;
 
 fn intent(store: &Store, name: &str) -> String {
     store
@@ -101,7 +78,7 @@ fn inv7_verdict_lane_enforced() {
         .record_verdict(
             &edge.id,
             InspectionStatus::Independent,
-            "",
+            "the two behaviors are unrelated",
             "no link",
             0.9,
             "llm"
@@ -111,10 +88,18 @@ fn inv7_verdict_lane_enforced() {
 
 #[test]
 fn agent_parses_loom_agent_values() {
-    assert_eq!(Agent::parse("llm"), Agent::Solo);
-    assert_eq!(Agent::parse("llm:builder"), Agent::Lane(OwnerRole::Builder));
-    assert_eq!(Agent::parse("quality"), Agent::Lane(OwnerRole::Quality));
-    assert_eq!(Agent::parse("nonsense"), Agent::Solo);
+    assert_eq!(Agent::parse("llm").unwrap(), Agent::Solo);
+    assert_eq!(
+        Agent::parse("llm:builder").unwrap(),
+        Agent::Lane(OwnerRole::Builder)
+    );
+    assert_eq!(
+        Agent::parse("quality").unwrap(),
+        Agent::Lane(OwnerRole::Quality)
+    );
+    // H-4: an unrecognized lane fails closed (was silently Agent::Solo).
+    assert!(Agent::parse("llm:qualtiy").is_err());
+    assert!(Agent::parse("nonsense").is_err());
 }
 
 // ---- loom next serves a work item + prompt contract ------------------------
@@ -124,7 +109,9 @@ fn next_build_serves_planned_intent_with_contract() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     intent(&store, "payment can be captured");
-    let item = workitem::next(&store, Some(Mode::Build)).unwrap().unwrap();
+    let item = workitem::next(&store, Some(Mode::Build))
+        .expect("next build ok")
+        .expect("build item exists");
     assert_eq!(item.mode, "build");
     assert_eq!(item.owner_role, "builder");
     assert_eq!(item.target.name, "payment can be captured");
@@ -141,7 +128,9 @@ fn next_build_context_points_to_target_and_codefile_survey() {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let target_id = intent(&store, "payment can be captured");
 
-    let item = workitem::next(&store, Some(Mode::Build)).unwrap().unwrap();
+    let item = workitem::next(&store, Some(Mode::Build))
+        .expect("next build ok")
+        .expect("build item exists");
 
     assert!(item.context.linked_entities.iter().any(|entity| {
         entity.role == "target" && entity.kind == "intent" && entity.id == target_id
@@ -167,7 +156,9 @@ fn next_items_carry_the_right_truth_axis() {
     let b = intent(&store, "intent b");
 
     // build → implementation truth
-    let build = workitem::next(&store, Some(Mode::Build)).unwrap().unwrap();
+    let build = workitem::next(&store, Some(Mode::Build))
+        .expect("next build ok")
+        .expect("build item exists");
     assert_eq!(build.truth_gap.axis, TruthAxis::Implementation);
     assert!(!build.truth_gap.authoritative_write.is_empty());
 
@@ -176,8 +167,8 @@ fn next_items_carry_the_right_truth_axis() {
         .add_edge(EdgeKind::Relates, &a, &b, TruthClass::Asserted)
         .unwrap();
     let analyze = workitem::next(&store, Some(Mode::Analyze))
-        .unwrap()
-        .unwrap();
+        .expect("next analyze ok")
+        .expect("analyze item exists");
     assert_eq!(analyze.truth_gap.axis, TruthAxis::Verdict);
 
     // a not_run validation → validate → proof truth
@@ -194,8 +185,8 @@ fn next_items_carry_the_right_truth_axis() {
         .add_edge(EdgeKind::Validates, &v.id, &a, TruthClass::Asserted)
         .unwrap();
     let validate = workitem::next(&store, Some(Mode::Validate))
-        .unwrap()
-        .unwrap();
+        .expect("next validate ok")
+        .expect("validate item exists");
     assert_eq!(validate.truth_gap.axis, TruthAxis::Proof);
 
     // serializable for --json
@@ -237,8 +228,8 @@ fn next_edge_context_points_to_endpoints_edge_and_grounded_codefile() {
         .unwrap();
 
     let item = workitem::next(&store, Some(Mode::Analyze))
-        .unwrap()
-        .unwrap();
+        .expect("next analyze ok")
+        .expect("analyze item exists");
 
     assert!(item.context.linked_entities.iter().any(|entity| {
         entity.role == "target_edge" && entity.kind == "edge" && entity.id == relates.id
@@ -271,7 +262,7 @@ fn next_edge_context_points_to_endpoints_edge_and_grounded_codefile() {
 }
 
 #[test]
-fn next_analyze_serves_uninspected_then_fix_after_stale() {
+fn next_analyze_serves_uninspected_claim() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let a = intent(&store, "intent a");
@@ -281,8 +272,8 @@ fn next_analyze_serves_uninspected_then_fix_after_stale() {
         .unwrap();
     // uninspected → analyze queue serves it
     let item = workitem::next(&store, Some(Mode::Analyze))
-        .unwrap()
-        .unwrap();
+        .expect("next analyze ok")
+        .expect("analyze item exists");
     assert_eq!(item.owner_role, "analyzer");
     assert_eq!(item.target.kind, "edge");
 

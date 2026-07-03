@@ -4,37 +4,8 @@
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
 use loom::store::Store;
 use loom::travel::Export;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-struct Tmp(PathBuf);
-impl Tmp {
-    fn new() -> Tmp {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let p = std::env::temp_dir().join(format!("loom-ring2-{}-{nanos}-{n}", std::process::id()));
-        std::fs::create_dir_all(&p).unwrap();
-        Tmp(p)
-    }
-    fn path(&self) -> &Path {
-        &self.0
-    }
-    fn write(&self, rel: &str, content: &str) {
-        let p = self.0.join(rel);
-        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-        std::fs::write(p, content).unwrap();
-    }
-}
-impl Drop for Tmp {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
+mod common;
+use common::*;
 
 fn export_json(store: &Store) -> String {
     Export::from_snapshot(store.snapshot().unwrap())
@@ -134,7 +105,11 @@ fn sync_ripples_only_on_real_change() {
     // sync with identical content → no ripple, stays passing
     loom::sync::run(&store, tmp.path()).unwrap();
     assert_eq!(
-        store.get_edge(&edge.id).unwrap().unwrap().status,
+        store
+            .get_edge(&edge.id)
+            .expect("get_edge ok")
+            .expect("edge exists")
+            .status,
         InspectionStatus::Passing,
         "unchanged content must not stale the grounding"
     );
@@ -143,7 +118,11 @@ fn sync_ripples_only_on_real_change() {
     tmp.write("src/payment.rs", "pub fn capture() {}\n");
     loom::sync::run(&store, tmp.path()).unwrap();
     assert_eq!(
-        store.get_edge(&edge.id).unwrap().unwrap().status,
+        store
+            .get_edge(&edge.id)
+            .expect("get_edge ok")
+            .expect("edge exists")
+            .status,
         InspectionStatus::Passing,
         "identical content (mtime churn) must not stale"
     );
@@ -257,7 +236,7 @@ fn derived_findings_are_not_asserted_work() {
         .filter(|e| e.truth_class == TruthClass::Derived)
         .collect();
     assert!(!derived.is_empty(), "expected derived flags/assesses edges");
-    // INV-3/INV-5 corollary: every derived edge rests at `current`, never an
+    // INV-5 corollary: every derived edge rests at `current`, never an
     // asserted verdict status that would put it in the `loom next` residue.
     for e in &derived {
         assert_eq!(

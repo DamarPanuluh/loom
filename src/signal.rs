@@ -7,11 +7,12 @@
 //! All three are pure reads over a `Snapshot`. Nothing here mutates the graph.
 
 use crate::model::{
-    Edge, EdgeKind, Facet, InspectionStatus, Node, NodeType, TargetKind, TruthClass,
+    Edge, EdgeKind, Facet, GroundingRole, InspectionStatus, Node, NodeType, TargetKind, TruthClass,
 };
 use crate::registry;
 use crate::store::{Snapshot, Store};
 use crate::Result;
+use anyhow::Context;
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 use serde::{Deserialize, Serialize};
@@ -70,6 +71,13 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
     // shared indices (all borrow `snap`)
     let mut owners: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     for e in implements_edges(&snap) {
+        // Only `realizes` groundings confer ownership; a `consumes`/`configures`/
+        // `verifies` edge (or a superseded one) does not put the file in an
+        // intent's cluster. Feeding non-realizing edges here would leak consumer
+        // surfaces into ownership/coupling/layering/duplication smells.
+        if edge_is_superseded(&snap, &e.id) || edge_role(&snap, &e.id) != GroundingRole::Realizes {
+            continue;
+        }
         owners
             .entry(e.to_id.as_str())
             .or_default()
@@ -86,6 +94,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
 
     let mut out = Vec::new();
     out.extend(ownership_smells(&snap, &owners));
+    out.extend(consumer_owned_file_smells(&snap, &owners));
     out.extend(undeclared_coupling_smells(
         &snap,
         &owners,
@@ -201,12 +210,8 @@ fn undeclared_coupling_smells<'a>(
             continue;
         };
         for imp in imps {
-            // resolve an imported path to a known codefile (suffix match)
-            let Some(b_id) = path_to_id
-                .iter()
-                .find(|(p, _)| imp.contains(*p) || p.contains(imp.as_str()))
-                .map(|(_, id)| *id)
-            else {
+            // resolve an imported module path or file path to a registered codefile
+            let Some(b_id) = resolve_import(imp, path_to_id) else {
                 continue;
             };
             if b_id == file_id.as_str() {
@@ -301,27 +306,33 @@ fn layering_smells<'a>(
         let Some(a_owners) = owners.get(file_id.as_str()) else {
             continue;
         };
-        let a_layer = a_owners.iter().filter_map(|o| layer_of.get(*o)).next();
+        // All owner layers — a multi-owner file must not be judged by only its
+        // first owner's layer (L-3).
+        let a_layers: Vec<&String> = a_owners.iter().filter_map(|o| layer_of.get(*o)).collect();
+        if a_layers.is_empty() {
+            continue;
+        }
         for imp in imps {
-            let Some(b_id) = path_to_id
-                .iter()
-                .find(|(p, _)| imp.contains(*p))
-                .map(|(_, id)| *id)
-            else {
+            let Some(b_id) = resolve_import(imp, path_to_id) else {
                 continue;
             };
+            if b_id == file_id.as_str() {
+                continue;
+            }
             let Some(b_owners) = owners.get(b_id) else {
                 continue;
             };
-            let b_layer = b_owners.iter().filter_map(|o| layer_of.get(*o)).next();
-            let (Some(a), Some(b)) = (a_layer, b_layer) else {
-                continue;
-            };
-            let (Some(ra), Some(rb)) = (rank.get(a.as_str()), rank.get(b.as_str())) else {
-                continue;
-            };
-            // importing UP the order (lower rank index = higher layer)
-            if ra > rb {
+            let b_layers: Vec<&String> = b_owners.iter().filter_map(|o| layer_of.get(*o)).collect();
+            // importing UP the order (lower rank index = higher layer); flag once
+            // per (file, import) if ANY owner-layer pair inverts.
+            let inversion = a_layers.iter().find_map(|a| {
+                let ra = rank.get(a.as_str())?;
+                b_layers.iter().find_map(|b| {
+                    let rb = rank.get(b.as_str())?;
+                    (ra > rb).then_some((a.as_str(), b.as_str()))
+                })
+            });
+            if let Some((a, b)) = inversion {
                 out.push(Smell {
                     kind: "layering_violation".into(),
                     message: format!(
@@ -630,9 +641,52 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
                 ),
             });
         }
+        // Role vacuity (§3.4): a settled `consumes` grounding must name the seam
+        // it exercises (a route/topic/key/symbol) — in its criterion or locator.
+        // A vacuous consumes claim is as empty as a placeholder criterion.
+        if e.kind == EdgeKind::Implements
+            && e.truth_class == TruthClass::Asserted
+            && matches!(
+                e.status,
+                InspectionStatus::Passing
+                    | InspectionStatus::Failing
+                    | InspectionStatus::Independent
+            )
+            && edge_role(&snap, &e.id) == GroundingRole::Consumes
+            && !criterion_names_seam(&snap, e)
+        {
+            issues.push(DoctorIssue {
+                kind: "consumes_without_seam".into(),
+                message: format!(
+                    "consumes grounding {} is settled but names no seam (route/topic/key/symbol) in its criterion or locator",
+                    e.id
+                ),
+            });
+        }
     }
     issues.extend(hierarchy_cycle_issues(&snap));
     Ok(issues)
+}
+
+/// Whether a `consumes` grounding's criterion (or locator) names the seam it
+/// exercises. A consumes claim's falsifiability lives in the seam — a route,
+/// topic, config key, or symbol — so a criterion mentioning none, with no
+/// locator, is vacuous.
+fn criterion_names_seam(snap: &Snapshot, edge: &Edge) -> bool {
+    const SEAM_HINTS: &[&str] = &[
+        "/", "::", "route", "topic", "key", "endpoint", "import", "seam", "path", "url", "channel",
+        "queue", "sdk", "http", "grpc", "api", "call",
+    ];
+    let c = edge.criterion.to_lowercase();
+    if SEAM_HINTS.iter().any(|h| c.contains(h)) {
+        return true;
+    }
+    snap.facets.iter().any(|f| {
+        f.target_kind == TargetKind::Edge
+            && f.target_id == edge.id
+            && f.key == "locator"
+            && !f.value.trim().is_empty()
+    })
 }
 fn hierarchy_cycle_issues(snap: &Snapshot) -> Vec<DoctorIssue> {
     let mut graph = DiGraph::<&str, ()>::new();
@@ -700,6 +754,131 @@ fn active_intents(snap: &Snapshot) -> Vec<&Node> {
 
 fn implements_edges(snap: &Snapshot) -> impl Iterator<Item = &Edge> {
     snap.edges.iter().filter(|e| e.kind == EdgeKind::Implements)
+}
+
+/// Grounding role of an `implements` edge, read from the snapshot facets — a
+/// pure mirror of `Store::grounding_role`. A missing `role` facet reads as
+/// `Realizes` (pre-role default).
+fn edge_role(snap: &Snapshot, edge_id: &str) -> GroundingRole {
+    snap.facets
+        .iter()
+        .find(|f| f.target_kind == TargetKind::Edge && f.target_id == edge_id && f.key == "role")
+        .and_then(|f| f.value.parse().ok())
+        .unwrap_or(GroundingRole::Realizes)
+}
+
+/// Whether an edge was superseded by a `rehome` (bears a `superseded_by` facet).
+fn edge_is_superseded(snap: &Snapshot, edge_id: &str) -> bool {
+    snap.facets.iter().any(|f| {
+        f.target_kind == TargetKind::Edge && f.target_id == edge_id && f.key == "superseded_by"
+    })
+}
+
+/// The top-level directory ("cluster") of a file path — the first path segment.
+/// Two files in genuinely different areas of the tree (e.g. `routes/` vs `src/`)
+/// have different clusters; sub-directories under a shared root do not.
+fn dir_cluster(path: &str) -> &str {
+    path.split('/').next().unwrap_or(path)
+}
+
+/// Resolve an extracted import to a registered codefile id. First tries a
+/// path-style match (JS/TS/Go: `./foo`, `pkg/bar`); then, for Rust module-path
+/// imports (`crate::a::b::Type`, `super::c::f`), converts the leading snake_case
+/// module segments to an `a/b` fragment and matches a registered `…/a/b.rs` or
+/// `…/a/b/mod.rs`. Rust `use` text is module syntax, never a file path, so the
+/// plain substring match alone left most Rust imports invisible (H-7).
+fn resolve_import<'a>(imp: &str, path_to_id: &BTreeMap<&'a str, &'a str>) -> Option<&'a str> {
+    // Longest path match wins (more specific), for path-style imports.
+    let mut best: Option<(&str, usize)> = None;
+    for (p, id) in path_to_id {
+        if (imp.contains(*p) || p.contains(imp))
+            && best.map(|(_, len)| p.len() > len).unwrap_or(true)
+        {
+            best = Some((*id, p.len()));
+        }
+    }
+    if let Some((id, _)) = best {
+        return Some(id);
+    }
+    if !imp.contains("::") {
+        return None;
+    }
+    // Rust module path → snake_case module segments (drop crate/self/super and
+    // any trailing CamelCase item/glob/brace group).
+    let mods: Vec<&str> = imp
+        .split("::")
+        .map(str::trim)
+        .take_while(|s| !s.starts_with('{') && *s != "*" && !s.is_empty())
+        .filter(|s| !matches!(*s, "crate" | "self" | "super" | "std" | "core" | "alloc"))
+        .filter(|s| s.chars().next().is_some_and(|c| c.is_lowercase()))
+        .collect();
+    for take in (1..=mods.len()).rev() {
+        let frag = mods[..take].join("/");
+        let file = format!("{frag}.rs");
+        let module = format!("{frag}/mod.rs");
+        if let Some((_, id)) = path_to_id
+            .iter()
+            .find(|(p, _)| p.ends_with(&file) || p.ends_with(&module))
+        {
+            return Some(*id);
+        }
+    }
+    None
+}
+
+/// consumer-owned file: a file whose sole realizing owner is an intent whose
+/// other realizing files all live in a different top-level cluster. This is the
+/// systematic mis-attachment the role split exists to catch — a consumer
+/// surface (a page that calls a backend route, say) grounded as `realizes` to
+/// the behavior it merely exercises, which then silently satisfies coverage for
+/// a realizing intent that does not yet exist.
+fn consumer_owned_file_smells<'a>(
+    snap: &'a Snapshot,
+    owners: &BTreeMap<&'a str, Vec<&'a str>>,
+) -> Vec<Smell> {
+    let files_by_intent = files_by_intent(snap, owners);
+    let mut out = Vec::new();
+    for (file_id, intent_ids) in owners {
+        if intent_ids.len() != 1 {
+            continue; // multiple realizing owners — a genuine shared/vertical file
+        }
+        let owner = intent_ids[0];
+        let Some(owner_files) = files_by_intent.get(owner) else {
+            continue;
+        };
+        if owner_files.len() < 2 {
+            continue; // owner realizes only this file — nothing to contrast
+        }
+        let this_path = node_name(snap, file_id);
+        let this_cluster = dir_cluster(&this_path).to_string();
+        let others_elsewhere = owner_files.iter().filter(|f| **f != *file_id).all(|f| {
+            let p = node_name(snap, f);
+            dir_cluster(&p) != this_cluster
+        });
+        if others_elsewhere {
+            // The single realizing edge for this file — name it so the remedy is
+            // copy-paste runnable (§3.3).
+            let edge = implements_edges(snap).find(|e| {
+                e.to_id == *file_id
+                    && e.from_id == owner
+                    && !edge_is_superseded(snap, &e.id)
+                    && edge_role(snap, &e.id) == GroundingRole::Realizes
+            });
+            let edge_ref = edge.map(|e| &e.id[..8]).unwrap_or("<edge>");
+            out.push(Smell {
+                kind: "consumer_owned_file".into(),
+                message: format!(
+                    "{} is realized only by '{}', whose other files live in a different area — this looks like a consumer surface owned by the behavior it calls",
+                    this_path,
+                    node_name(snap, owner)
+                ),
+                remedy: format!(
+                    "if this file only exercises that behavior across a seam: `loom edge set-role {edge_ref} consumes --reason '…'`, then create a realizing intent for this surface and ground it --role realizes"
+                ),
+            });
+        }
+    }
+    out
 }
 
 fn node_name(snap: &Snapshot, id: &str) -> String {
@@ -774,7 +953,8 @@ fn facet_map<'a>(snap: &'a Snapshot, key: &str) -> BTreeMap<&'a str, String> {
 fn layer_order(store: &Store) -> Result<Option<Vec<String>>> {
     match store.get_meta("layer_order")? {
         Some(v) => {
-            let layers: Vec<String> = serde_json::from_str(&v).unwrap_or_default();
+            let layers: Vec<String> = serde_json::from_str(&v)
+                .with_context(|| format!("meta.layer_order is malformed JSON: {v}"))?;
             Ok(if layers.is_empty() {
                 None
             } else {

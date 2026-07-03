@@ -162,10 +162,7 @@ pub(crate) fn unowned_codefiles(store: &Store) -> Result<Vec<Node>> {
         if ignore.is_match(&cf.name) {
             continue; // deliberately outside the tracked surface
         }
-        if store
-            .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
-            .is_empty()
-        {
+        if store.realizing_implementers(&cf.id)?.is_empty() {
             unowned.push(cf);
         }
     }
@@ -183,10 +180,7 @@ pub(crate) fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec
         if ignore.is_match(&cf.name) {
             continue;
         }
-        if store
-            .edges_with(Some(EdgeKind::Implements), None, Some(&cf.id))?
-            .is_empty()
-        {
+        if store.realizing_implementers(&cf.id)?.is_empty() {
             unowned.push(cf.name);
         } else {
             owned += 1;

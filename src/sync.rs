@@ -12,7 +12,7 @@
 //! pure extraction), and ripples nothing because no prior hashes remain.
 
 use crate::extract::{extract, Extraction, Role};
-use crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, GroundingRole, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
 use std::collections::{BTreeMap, BTreeSet};
@@ -122,6 +122,7 @@ fn sync_structural(
                         store,
                         &cf.id,
                         &cause,
+                        None,
                         &mut changed_intents,
                         &mut seen_surfaces,
                         report,
@@ -157,6 +158,7 @@ fn sync_structural(
                 store,
                 &cf.id,
                 &cause,
+                Some(&content),
                 &mut changed_intents,
                 &mut seen_surfaces,
                 report,
@@ -175,18 +177,40 @@ fn ripple_codefile(
     store: &Store,
     cf_id: &str,
     cause: &str,
+    content: Option<&str>,
     changed_intents: &mut BTreeMap<String, BTreeSet<String>>,
     seen_surfaces: &mut BTreeSet<String>,
     report: &mut SyncReport,
 ) -> Result<()> {
     for e in store.edges_with(Some(EdgeKind::Implements), None, Some(cf_id))? {
-        if store.stale_edge(&e.id, cause)? {
-            report.edges_staled += 1;
+        if store.edge_superseded(&e.id)? {
+            continue; // a superseded (rehomed) grounding is history — never rippled
         }
-        changed_intents
-            .entry(e.from_id.clone())
-            .or_default()
-            .insert(cause.to_string());
+        if store.grounding_role(&e.id)? == GroundingRole::Realizes {
+            // The behavior lives here: any real change re-opens the claim AND
+            // ripples to the intent's other dependents.
+            if store.stale_edge(&e.id, cause)? {
+                report.edges_staled += 1;
+            }
+            changed_intents
+                .entry(e.from_id.clone())
+                .or_default()
+                .insert(cause.to_string());
+        } else {
+            // A consumer/config/verify grounding: the behavior lives elsewhere,
+            // so a content edit does NOT invalidate it and does NOT ripple to the
+            // consumed intent. Re-open ONLY if the seam locator drifted — the
+            // file vanished, or the locator symbol/route/key is gone from it.
+            let locator = store.get_facet(&e.id, TargetKind::Edge, "locator")?;
+            let drifted = match (content, locator.as_deref()) {
+                (None, _) => true,        // the consumer surface itself is gone
+                (Some(_), None) => false, // no seam locator to track
+                (Some(src), Some(loc)) => !seam_present(src, loc),
+            };
+            if drifted && store.stale_edge(&e.id, &format!("seam drift: {cause}"))? {
+                report.edges_staled += 1;
+            }
+        }
     }
     // Integration-monitoring ripple: cf is the `to` of an `exposes` edge; the
     // surface is its `from`. Reset the contracts that `call` each surface.
@@ -224,6 +248,21 @@ fn ripple_codefile(
         }
     }
     Ok(())
+}
+
+/// Whether a grounding's seam locator still resolves in the file content. Used
+/// to decide if a `consumes`/`configures`/`verifies` grounding drifted: the
+/// locator names the seam (a route, topic, config key, or symbol), so if it (or
+/// its most significant token) is gone, the seam moved and the claim re-opens.
+fn seam_present(src: &str, locator: &str) -> bool {
+    let loc = locator.trim();
+    if loc.is_empty() || src.contains(loc) {
+        return true;
+    }
+    match loc.split_whitespace().last() {
+        Some(tok) if !tok.is_empty() => src.contains(tok),
+        _ => false,
+    }
 }
 
 /// Pass 2: ripple staleness from changed intents to the edges that depend on
@@ -456,7 +495,7 @@ fn rebuild_findings(
     rules: &std::collections::HashMap<&'static str, String>,
     report: &mut SyncReport,
 ) -> Result<()> {
-    store.wipe_derived_graph()?;
+    store.wipe_structural_findings()?;
     for cf in codefiles {
         let path = root.join(&cf.name);
         let content = match std::fs::read_to_string(&path) {

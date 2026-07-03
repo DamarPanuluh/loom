@@ -68,7 +68,7 @@ fn verdict_write_back(edge: &Edge, from: &str, to: &str) -> String {
             q(to)
         ),
         EdgeKind::Validates => format!(
-            "loom validation mark {} --result <passed|failed|blocked> --evidence '…'",
+            "loom validation mark {} --result <passed|failed> --evidence '…'   (blocked: --result blocked --reason '…')",
             q(from)
         ),
         EdgeKind::Relates => format!(
@@ -161,33 +161,50 @@ pub(super) fn coverage_contract(codefile: &Node) -> PromptContract {
     let file = q(&codefile.name);
     PromptContract {
         role: "builder".into(),
-        mindset: "A registered file with no owning intent is a coverage gap: either it \
-                  realizes a behavior (ground it to that intent with a locator) or it is not \
-                  behavior worth tracking (unregister it). Read the file before deciding; do not \
-                  invent an intent just to satisfy the gate."
+        mindset: "A registered file with no owning intent is a coverage gap. Make the judgment \
+                  BEFORE grounding anything: does an intent's behavior LIVE in this file? If yes, \
+                  ground it --role realizes (that is what owns coverage). If the file only CALLS \
+                  behavior that lives elsewhere (an HTTP route, a topic, a config key, an SDK), it \
+                  is a consumer surface: create the owning intent for THIS surface, ground that \
+                  --role realizes, and record --role consumes edges to the intents it merely \
+                  exercises. A consumes edge never owns coverage, so a consumer surface stays \
+                  visibly unowned until its realizing intent exists. Read the file before deciding; \
+                  do not invent an intent, and do not ground a mere caller as realizes, just to \
+                  satisfy the gate."
             .into(),
         why_now: format!("codefile '{}' is registered but unowned", codefile.name),
         allowed_actions: vec![
             format!("loom codefile show {file}"),
             "loom intent list".into(),
-            "read the file to see which behavior it realizes".into(),
-            format!("loom edge implement <intent> {file} --locator <symbol>"),
+            "read the file to see whether a behavior LIVES here or is merely called".into(),
+            format!("loom edge implement <intent> {file} --role realizes --locator <symbol>"),
+            format!("loom edge implement <consumed-intent> {file} --role consumes --locator <seam>"),
             format!("loom codefile remove {file} (if it should not be tracked)"),
             "loom ignore add '<glob>' --reason '…' (if outside the tracked surface)".into(),
             "loom sync".into(),
         ],
         forbidden_actions: vec![
-            "inventing an intent with no behavioral description just to ground the file".into(),
+            "grounding a mere caller as --role realizes just to satisfy coverage".into(),
+            "inventing an intent with no behavioral description".into(),
             "loom rule verdict passing (quality lane)".into(),
         ],
-        required_evidence: "file read, owning intent chosen with a locator, or a reason to unregister".into(),
+        required_evidence: "file read; a realizing owner chosen with a locator, OR a new realizing intent for this surface plus consumes edges to what it calls, OR a reason to unregister".into(),
         evidence_template: None,
-        examples: None,
+        examples: Some(serde_json::json!([
+            {
+                "situation": "the behavior LIVES in this file",
+                "do": "loom edge implement \"<that intent>\" <file> --role realizes --locator <symbol>"
+            },
+            {
+                "situation": "the file only CALLS behavior that lives elsewhere (a page hitting a backend route)",
+                "do": "create the owning intent for this surface (level feature; visibility user_visible if a person touches it), ground it --role realizes, then add --role consumes edges to the intents it exercises, naming the seam (route/topic/key) in the locator"
+            }
+        ])),
         pre_screened_hits: Vec::new(),
         write_back: format!(
-            "loom edge implement <intent> {file} --locator <symbol>  (or)  loom codefile remove {file}  (or)  loom ignore add '<glob>' --reason '…'"
+            "loom edge implement <intent> {file} --role realizes --locator <symbol>   (or, if it only calls behavior elsewhere)   loom intent add --name '<surface behavior>' --visibility user_visible … ; loom edge implement '<surface behavior>' {file} --role realizes --locator <symbol> ; loom edge implement '<consumed intent>' {file} --role consumes --locator <seam>   (or)   loom codefile remove {file}"
         ),
-        stop_condition: "after grounding or unregistering + sync, return to loom status".into(),
+        stop_condition: "after grounding (realizes), or creating the realizing surface intent + its consumes edges, or unregistering, + sync, return to loom status".into(),
         human_gate: None,
     }
 }

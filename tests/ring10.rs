@@ -12,33 +12,8 @@ use loom::scan;
 use loom::store::Store;
 use loom::travel::Export;
 use loom::workitem::{self, graph_state, Mode};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-struct Tmp(PathBuf);
-impl Tmp {
-    fn new() -> Tmp {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let p =
-            std::env::temp_dir().join(format!("loom-ring10-{}-{nanos}-{n}", std::process::id()));
-        std::fs::create_dir_all(&p).unwrap();
-        Tmp(p)
-    }
-    fn path(&self) -> &Path {
-        &self.0
-    }
-}
-impl Drop for Tmp {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
+mod common;
+use common::*;
 
 // ---- shared builders --------------------------------------------------------
 
@@ -396,7 +371,7 @@ fn check_axis_rejects_unknown_axes_and_accepts_known() {
 // ===========================================================================
 
 #[test]
-fn waiver_facilitiy_turns_open_axis_into_waived_with_reason() {
+fn waiver_facility_turns_open_axis_into_waived_with_reason() {
     // Contract 2: a `waiver:<axis>` facet turns an open axis into `waived`
     // carrying the reason.
     let tmp = Tmp::new();

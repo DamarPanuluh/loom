@@ -286,6 +286,9 @@ mindset:
   Realize the behavior this intent describes.
   Ground it to the right file and symbol.
   Functions and symbols are locators on the implements edge, not intents.
+  Ask: does the behavior LIVE in this file? If yes, use `implements --role realizes`.
+  If the file only calls behavior elsewhere, create the realizing intent for this surface
+    and add `implements --role consumes` edges for the consumer seams instead.
   If an intent name looks like a function name (snake_case, no spaces), challenge it:
     confirm a behavioral criterion exists in the description;
     if the intent should be a locator instead, capture as InboxItem and propose
@@ -297,7 +300,7 @@ mindset:
 allowed:
   edit code
   loom intent mark --lifecycle implemented
-  loom edge implement
+  loom edge implement --role realizes|consumes|configures|verifies
   loom validation add (stub only)
   loom sync
   loom inbox add (for out-of-scope findings or suspect intents)
@@ -355,7 +358,7 @@ mindset:
 allowed:
   edit code
   loom sync
-  loom edge implement (re-ground after fix)
+  loom edge implement --role realizes|consumes|configures|verifies (re-ground after fix)
   loom intent mark --lifecycle implemented (after confirmed fix)
   loom inbox add (out-of-scope findings)
 
@@ -484,7 +487,11 @@ The LLM must not answer product questions for the human. It either creates the m
 
 ### coverage / missing-file contract
 
-A coverage WorkItem points at a registered `CodeFile` with no owning intent. When that file is missing from disk, the packet is a dedicated missing-file contract:
+A coverage WorkItem points at a registered `CodeFile` with no live realizing owner. A file grounded only by `consumes`, `configures`, or `verifies` remains unowned because those roles describe support for behavior that lives elsewhere.
+
+Ask the disambiguating question before writing back: does the behavior live in this file (`realizes`), or does this file only call behavior across a route/topic/key/import seam (`consumes`)? For a consumer file, create the realizing intent for the behavior surface and add consumes edges for the callers; the consumer file stays unowned until its realizing intent exists.
+
+When that file is missing from disk, the packet is a dedicated missing-file contract:
 
 - `read_set` is empty — there is nothing to read.
 - `prompt_contract.mindset`: the file is gone; do not try to inspect it.

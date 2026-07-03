@@ -32,7 +32,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             },
             json,
         ),
-        IntentCmd::Show { key } => intent_show(graph, key),
+        IntentCmd::Show { key } => intent_show(graph, key, json),
         IntentCmd::Set {
             key,
             level,
@@ -85,6 +85,42 @@ fn check_aspect(aspect: &str) -> Result<()> {
     Ok(())
 }
 
+fn check_level(level: &str) -> Result<()> {
+    const LEVELS: &[&str] = &["system", "component", "feature", "cross_cutting"];
+    if !LEVELS.contains(&level) {
+        bail!("unknown level '{level}' (use {})", LEVELS.join("|"));
+    }
+    Ok(())
+}
+
+fn check_lifecycle(lifecycle: &str, allow_deprecated: bool) -> Result<()> {
+    const ACTIVE_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change"];
+    const ALL_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change", "deprecated"];
+    let lifecycles = if allow_deprecated {
+        ALL_LIFECYCLES
+    } else {
+        ACTIVE_LIFECYCLES
+    };
+    if !lifecycles.contains(&lifecycle) {
+        bail!(
+            "unknown lifecycle '{lifecycle}' (use {})",
+            lifecycles.join("|")
+        );
+    }
+    Ok(())
+}
+
+fn check_visibility(visibility: &str) -> Result<()> {
+    const VISIBILITIES: &[&str] = &["user_visible", "internal"];
+    if !VISIBILITIES.contains(&visibility) {
+        bail!(
+            "unknown visibility '{visibility}' (use {})",
+            VISIBILITIES.join("|")
+        );
+    }
+    Ok(())
+}
+
 fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
     let IntentAddArgs {
         name,
@@ -111,6 +147,14 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<(
                  behavioral criterion"
             );
         }
+    }
+    check_level(&level)?;
+    check_lifecycle(&lifecycle, false)?;
+    if let Some(v) = &visibility {
+        check_visibility(v)?;
+    }
+    if let Some(a) = &aspect {
+        check_aspect(a)?;
     }
     let store = open(graph)?;
     let node = store.add_node(
@@ -149,7 +193,6 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<(
         store.set_facet(&node.id, TargetKind::Node, "layer", l, TruthClass::Asserted)?;
     }
     if let Some(a) = &aspect {
-        check_aspect(a)?;
         store.set_facet(
             &node.id,
             TargetKind::Node,
@@ -175,27 +218,43 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<(
     Ok(())
 }
 
-fn intent_show(graph: Option<&Path>, key: String) -> Result<()> {
+fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
+    let level = store.get_facet(&n.id, TargetKind::Node, "level")?;
+    let visibility = store.get_facet(&n.id, TargetKind::Node, "visibility")?;
+    let layer = store.get_facet(&n.id, TargetKind::Node, "layer")?;
+    let aspect = store.get_facet(&n.id, TargetKind::Node, "aspect")?;
+    let tags = store.tags_of(&n.id, TargetKind::Node)?;
+
+    if json {
+        let mut intent = node_json(&n);
+        intent["level"] = serde_json::json!(level);
+        intent["visibility"] = serde_json::json!(visibility);
+        intent["layer"] = serde_json::json!(layer);
+        intent["aspect"] = serde_json::json!(aspect);
+        intent["tags"] = serde_json::json!(tags);
+        println!("{}", serde_json::to_string_pretty(&intent)?);
+        return Ok(());
+    }
+
     println!("{} [{}]", n.name, n.id);
     println!("  lifecycle: {}", n.status);
     if !n.description.is_empty() {
         println!("  description: {}", n.description);
     }
-    if let Some(level) = store.get_facet(&n.id, TargetKind::Node, "level")? {
+    if let Some(level) = level {
         println!("  level: {level}");
     }
-    if let Some(vis) = store.get_facet(&n.id, TargetKind::Node, "visibility")? {
+    if let Some(vis) = visibility {
         println!("  visibility: {vis}");
     }
-    if let Some(layer) = store.get_facet(&n.id, TargetKind::Node, "layer")? {
+    if let Some(layer) = layer {
         println!("  layer: {layer}");
     }
-    if let Some(aspect) = store.get_facet(&n.id, TargetKind::Node, "aspect")? {
+    if let Some(aspect) = aspect {
         println!("  aspect: {aspect}");
     }
-    let tags = store.tags_of(&n.id, TargetKind::Node)?;
     if !tags.is_empty() {
         println!("  tags: {}", tags.join(", "));
     }
@@ -213,6 +272,15 @@ fn intent_set(
     if level.is_none() && visibility.is_none() && aspect.is_none() {
         bail!("nothing to set — pass --level, --visibility and/or --aspect");
     }
+    if let Some(l) = &level {
+        check_level(l)?;
+    }
+    if let Some(v) = &visibility {
+        check_visibility(v)?;
+    }
+    if let Some(a) = &aspect {
+        check_aspect(a)?;
+    }
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
     if let Some(l) = &level {
@@ -228,7 +296,6 @@ fn intent_set(
         )?;
     }
     if let Some(a) = &aspect {
-        check_aspect(a)?;
         store.set_facet(&n.id, TargetKind::Node, "aspect", a, TruthClass::Asserted)?;
     }
     pulse::emit_line(
@@ -351,6 +418,7 @@ fn intent_mark(
     reason: Option<String>,
     json: bool,
 ) -> Result<()> {
+    check_lifecycle(&lifecycle, false)?;
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
     // builder lane (lifecycle is builder-owned); solo allowed

@@ -176,10 +176,7 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         if parents.contains(&n.id) {
             continue; // roll-up parent — realized via children
         }
-        if store
-            .edges_with(Some(EdgeKind::Implements), Some(&n.id), None)?
-            .is_empty()
-        {
+        if store.realizing_groundings(&n.id)?.is_empty() {
             ungrounded.push(n.name.clone());
         }
     }

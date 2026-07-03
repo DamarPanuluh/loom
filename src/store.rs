@@ -72,23 +72,32 @@ pub enum Agent {
 }
 
 impl Agent {
-    /// Parse `LOOM_AGENT`: unset or `llm` → Solo; `llm:builder` etc → that lane.
-    pub fn from_env() -> Agent {
+    /// Parse `LOOM_AGENT` from the environment. Unset (or the bare `llm`/`solo`
+    /// sentinel) is Solo; a declared lane is that lane; anything else is an
+    /// error. A typo like `llm:qualtiy` MUST fail closed — never silently
+    /// disable the lane gate by falling through to Solo.
+    pub fn from_env() -> Result<Agent> {
         match std::env::var("LOOM_AGENT") {
             Ok(v) => Agent::parse(&v),
-            Err(_) => Agent::Solo,
+            Err(_) => Ok(Agent::Solo),
         }
     }
 
-    pub fn parse(v: &str) -> Agent {
+    pub fn parse(v: &str) -> Result<Agent> {
+        let v = v.trim();
+        if v.is_empty() || v == "llm" || v == "solo" {
+            return Ok(Agent::Solo);
+        }
         let lane = v.strip_prefix("llm:").unwrap_or(v);
         match lane {
-            "builder" => Agent::Lane(registry::OwnerRole::Builder),
-            "analyzer" => Agent::Lane(registry::OwnerRole::Analyzer),
-            "fixer" => Agent::Lane(registry::OwnerRole::Fixer),
-            "validator" => Agent::Lane(registry::OwnerRole::Validator),
-            "quality" => Agent::Lane(registry::OwnerRole::Quality),
-            _ => Agent::Solo,
+            "builder" => Ok(Agent::Lane(registry::OwnerRole::Builder)),
+            "analyzer" => Ok(Agent::Lane(registry::OwnerRole::Analyzer)),
+            "fixer" => Ok(Agent::Lane(registry::OwnerRole::Fixer)),
+            "validator" => Ok(Agent::Lane(registry::OwnerRole::Validator)),
+            "quality" => Ok(Agent::Lane(registry::OwnerRole::Quality)),
+            other => bail!(
+                "unrecognized LOOM_AGENT '{v}' — use llm:<builder|analyzer|fixer|validator|quality>, or leave unset for solo (got lane '{other}')"
+            ),
         }
     }
 }
@@ -165,8 +174,8 @@ impl Store {
         std::fs::create_dir_all(&loom_dir)
             .with_context(|| format!("creating {}", loom_dir.display()))?;
         let db_path = loom_dir.join(GRAPH_DB);
-        let fresh = !db_path.exists();
         let lock = acquire_lock(&loom_dir)?;
+        let fresh = !db_path.exists();
         let mut conn =
             Connection::open(&db_path).with_context(|| format!("opening {}", db_path.display()))?;
         configure(&conn)?;
@@ -210,7 +219,7 @@ impl Store {
         Ok(Store {
             conn,
             root: root.to_path_buf(),
-            agent: std::cell::Cell::new(Agent::from_env()),
+            agent: std::cell::Cell::new(Agent::from_env()?),
             _lock: lock,
         })
     }
@@ -232,7 +241,7 @@ impl Store {
         Ok(Store {
             conn,
             root: root.to_path_buf(),
-            agent: std::cell::Cell::new(Agent::from_env()),
+            agent: std::cell::Cell::new(Agent::from_env()?),
             _lock: lock,
         })
     }
@@ -289,7 +298,9 @@ impl Store {
         Ok(Identity {
             graph_id: get("graph_id")?,
             name: get("name")?,
-            schema_version: get("schema_version")?.parse().unwrap_or(SCHEMA_VERSION),
+            schema_version: get("schema_version")?
+                .parse()
+                .context("meta.schema_version is malformed")?,
             observed: get("observed").unwrap_or_else(|_| "0".into()) == "1",
         })
     }
@@ -606,19 +617,27 @@ impl Store {
         // ripple one hop: implements/targets/governs/validates/relationships touching it
         let cause = format!("intent '{}' description updated", intent.name);
         let mut reopened = 0usize;
-        let touching_to = [
-            EdgeKind::Implements,
-            EdgeKind::Targets,
-            EdgeKind::Governs,
-            EdgeKind::Validates,
-        ];
-        for k in touching_to {
+        // Implements is Intent→CodeFile, so a grounding hangs off the FROM
+        // side; the old to-side query never matched it, silently leaving
+        // grounding verdicts settled across a redefinition (H-1). Targets/
+        // governs/validates are X→Intent and hang off the TO side.
+        for e in self.edges_with(Some(EdgeKind::Implements), Some(id), None)? {
+            if self.edge_superseded(&e.id)? {
+                continue; // a superseded grounding is history, not re-opened
+            }
+            if self.stale_edge(&e.id, &cause)? {
+                reopened += 1;
+            }
+        }
+        for k in [EdgeKind::Targets, EdgeKind::Governs, EdgeKind::Validates] {
             for e in self.edges_with(Some(k), None, Some(id))? {
                 if self.stale_edge(&e.id, &cause)? {
                     reopened += 1;
                 }
                 if k == EdgeKind::Validates {
-                    self.set_node_status(&e.from_id, "not_run").ok();
+                    // A failed reset would leave the proof showing its old
+                    // result while the command reports success (M-11) — surface it.
+                    self.set_node_status(&e.from_id, "not_run")?;
                 }
             }
         }
@@ -676,10 +695,13 @@ impl Store {
     ) -> Result<Edge> {
         self.check_lane(registry::spec(kind).owner)?;
         self.validate_edge_endpoints(kind, from_id, to_id, truth_class)?;
-        let status = match truth_class {
-            TruthClass::Derived => InspectionStatus::Current,
-            TruthClass::Asserted => InspectionStatus::Uninspected,
-        };
+        // Asserted-only path: derived edges MUST go through `add_derived_edge`
+        // (a deterministic content-addressed id, so wipe+rebuild is byte-
+        // identical — INV-5). A random-id derived edge would break that (M-12).
+        if truth_class != TruthClass::Asserted {
+            bail!("add_edge is for asserted edges; use add_derived_edge for derived");
+        }
+        let status = InspectionStatus::Uninspected;
         let (id, now) = id_and_now(&self.conn)?;
         self.conn.execute(
             "INSERT INTO edge(id,from_id,to_id,kind,truth_class,status,created_at,updated_at)
@@ -771,9 +793,10 @@ impl Store {
                 }
             }
             InspectionStatus::Independent => {
-                // INV-4: absence is the default; an independent row must bear evidence.
-                if evidence.trim().is_empty() {
-                    bail!("independent verdict requires non-empty evidence");
+                // INV-6: a measured outcome bears a criterion; INV-4: and
+                // evidence of non-applicability. Both are required (H-2).
+                if criterion.trim().is_empty() || evidence.trim().is_empty() {
+                    bail!("independent verdict requires non-empty criterion and evidence");
                 }
             }
             InspectionStatus::Blocked => {
@@ -817,12 +840,232 @@ impl Store {
         if edge.truth_class != TruthClass::Derived {
             bail!("set_derived_status is for derived edges; '{edge_id}' is asserted");
         }
+        // A derived edge's only resting state is `current`; every other status
+        // is an asserted-verdict transition owned by `record_verdict`/`stale_edge`
+        // (INV-5). Refuse anything else here (M-13).
+        if status != InspectionStatus::Current {
+            bail!("a derived edge may only be set to 'current', not '{status}' (INV-5)");
+        }
         let now = now(&self.conn)?;
         self.conn.execute(
             "UPDATE edge SET status=?2,updated_at=?3 WHERE id=?1",
             params![edge_id, status.as_str(), now],
         )?;
         Ok(())
+    }
+
+    // ---- grounding roles (realizes / consumes / configures / verifies) ---
+
+    /// The grounding role of an `implements` edge. Read from the `role` edge
+    /// facet; a missing facet means `Realizes` (the pre-role default, so old
+    /// graphs keep their exact semantics). Only meaningful for `Implements`
+    /// edges.
+    pub fn grounding_role(&self, edge_id: &str) -> Result<GroundingRole> {
+        match self.get_facet(edge_id, TargetKind::Edge, "role")? {
+            Some(v) => v
+                .parse()
+                .map_err(|_| anyhow!("edge '{edge_id}' has unrecognized role facet '{v}'")),
+            None => Ok(GroundingRole::Realizes),
+        }
+    }
+
+    /// Set (or refresh) the `role` facet on a grounding edge. A pure facet
+    /// write — the re-open-on-change policy lives in `reclassify_grounding`.
+    pub fn set_grounding_role(&self, edge_id: &str, role: GroundingRole) -> Result<()> {
+        self.set_facet(
+            edge_id,
+            TargetKind::Edge,
+            "role",
+            role.as_str(),
+            TruthClass::Asserted,
+        )
+    }
+
+    /// Whether a grounding edge has been superseded by a `rehome` (its
+    /// `superseded_by` facet is set). Superseded edges are history: they keep
+    /// their verdict but no longer count for coverage, staleness, or navigation.
+    pub fn edge_superseded(&self, edge_id: &str) -> Result<bool> {
+        Ok(self
+            .get_facet(edge_id, TargetKind::Edge, "superseded_by")?
+            .is_some())
+    }
+
+    /// Live (non-superseded) `implements` edges into `codefile_id` whose role
+    /// is `realizes` — the only role that confers ownership. A file grounded
+    /// solely by `consumes`/`configures`/`verifies` edges is still unowned.
+    /// Every ownership query (coverage, maturity, finding owners, layer/smell
+    /// clustering) MUST route through this, never a raw `edges_with`.
+    pub fn realizing_implementers(&self, codefile_id: &str) -> Result<Vec<Edge>> {
+        let mut out = Vec::new();
+        for e in self.edges_with(Some(EdgeKind::Implements), None, Some(codefile_id))? {
+            if self.edge_superseded(&e.id)? {
+                continue;
+            }
+            if self.grounding_role(&e.id)? == GroundingRole::Realizes {
+                out.push(e);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Live (non-superseded) `implements` edges out of `intent_id` whose role
+    /// is `realizes` — the groundings where the intent's behavior actually
+    /// lives. Intent-grounding checks (maturity, `coverage` ungrounded) use it.
+    pub fn realizing_groundings(&self, intent_id: &str) -> Result<Vec<Edge>> {
+        let mut out = Vec::new();
+        for e in self.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
+            if self.edge_superseded(&e.id)? {
+                continue;
+            }
+            if self.grounding_role(&e.id)? == GroundingRole::Realizes {
+                out.push(e);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Reclassify a grounding edge's role (`loom edge set-role`). Keeps the
+    /// edge, its verdict history, and its notes; when the role actually
+    /// changes, a settled claim re-opens (→ needs_reverification, with
+    /// `stale_cause` leading `role_changed`) so the owning lane re-verdicts
+    /// under the new role's criterion. Reclassification is never deletion.
+    pub fn reclassify_grounding(
+        &self,
+        edge_id: &str,
+        role: GroundingRole,
+        reason: &str,
+    ) -> Result<(Edge, GroundingRole, bool)> {
+        let edge = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if edge.kind != EdgeKind::Implements {
+            bail!(
+                "set-role is for grounding (implements) edges; '{edge_id}' is a {} edge",
+                edge.kind
+            );
+        }
+        if edge.truth_class != TruthClass::Asserted {
+            bail!("cannot set the role of a derived edge");
+        }
+        self.check_lane(registry::spec(EdgeKind::Implements).owner)?;
+        let reason = reason.trim();
+        if reason.is_empty() {
+            bail!("set-role requires a reason");
+        }
+        let old = self.grounding_role(edge_id)?;
+        self.set_grounding_role(edge_id, role)?;
+        self.add_note(
+            &edge.from_id,
+            "decision",
+            &format!("grounding role {old} → {role}: {reason}"),
+        )?;
+        // Re-open a settled claim under the new criterion. An uninspected or
+        // blocked edge has nothing settled to re-open; the note above records
+        // the change either way.
+        let reopened = if old != role {
+            self.stale_edge(edge_id, &format!("role_changed ({old} → {role}): {reason}"))?
+        } else {
+            false
+        };
+        let edge = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("edge vanished after set-role"))?;
+        Ok((edge, old, reopened))
+    }
+
+    /// Rehome a grounding edge to a successor intent (`loom edge rehome`), for a
+    /// true mis-attachment (wrong intent, not just wrong role). Supersede, not
+    /// delete: the old edge keeps its verdict + notes but is marked
+    /// `superseded_by` the new edge and stops counting for coverage/staleness;
+    /// a fresh uninspected edge from the successor carries the old locator/role
+    /// and a `stale_cause: rehomed` so the analyze queue re-earns the claim.
+    pub fn rehome_grounding(
+        &self,
+        edge_id: &str,
+        successor_intent_id: &str,
+        reason: &str,
+    ) -> Result<(Edge, Edge)> {
+        let old = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if old.kind != EdgeKind::Implements {
+            bail!(
+                "rehome is for grounding (implements) edges; '{edge_id}' is a {} edge",
+                old.kind
+            );
+        }
+        if old.truth_class != TruthClass::Asserted {
+            bail!("cannot rehome a derived edge");
+        }
+        self.check_lane(registry::spec(EdgeKind::Implements).owner)?;
+        let reason = reason.trim();
+        if reason.is_empty() {
+            bail!("rehome requires a reason");
+        }
+        if old.from_id == successor_intent_id {
+            bail!("rehome successor is the current owner — use set-role for a role change");
+        }
+        // The new home carries the same file, locator, and role, and starts
+        // unverified: `ensure_edge` may return an already-settled successor
+        // grounding, so re-open it explicitly. `stale_cause: rehomed` routes it
+        // through the analyze queue to re-earn the claim on the new intent.
+        let new = self.ensure_edge(EdgeKind::Implements, successor_intent_id, &old.to_id)?;
+        if let Some(loc) = self.get_facet(edge_id, TargetKind::Edge, "locator")? {
+            self.set_facet(
+                &new.id,
+                TargetKind::Edge,
+                "locator",
+                &loc,
+                TruthClass::Asserted,
+            )?;
+        }
+        let role = self.grounding_role(edge_id)?;
+        self.set_grounding_role(&new.id, role)?;
+        let cause = format!("rehomed from '{}': {reason}", old.from_id);
+        // Re-open a settled successor; then stamp the cause so a freshly-created
+        // (already-uninspected) successor also carries the rehome context.
+        self.stale_edge(&new.id, &cause)?;
+        self.set_facet(
+            &new.id,
+            TargetKind::Edge,
+            "stale_cause",
+            &cause,
+            TruthClass::Derived,
+        )?;
+        // Supersede the old edge (history, not counted).
+        self.set_facet(
+            edge_id,
+            TargetKind::Edge,
+            "superseded_by",
+            &new.id,
+            TruthClass::Asserted,
+        )?;
+        self.add_note(
+            &old.from_id,
+            "decision",
+            &format!("grounding rehomed to intent {successor_intent_id}: {reason}"),
+        )?;
+        let new = self
+            .get_edge(&new.id)?
+            .ok_or_else(|| anyhow!("edge vanished after rehome"))?;
+        Ok((old, new))
+    }
+
+    /// Asserted edges of the given statuses, excluding any superseded by a
+    /// `rehome`. Work queues and maturity counts read this so a superseded
+    /// grounding (history) never re-enters a lane as live work.
+    pub fn live_edges_by_status(
+        &self,
+        truth: TruthClass,
+        statuses: &[InspectionStatus],
+    ) -> Result<Vec<Edge>> {
+        let mut out = Vec::new();
+        for e in self.edges_by_status(truth, statuses)? {
+            if !self.edge_superseded(&e.id)? {
+                out.push(e);
+            }
+        }
+        Ok(out)
     }
 
     pub fn list_edges(&self, kind: Option<EdgeKind>, limit: usize) -> Result<Vec<Edge>> {
@@ -1046,6 +1289,35 @@ impl Store {
                     "import: edge '{}' has endpoints violating kind '{}'",
                     e.id,
                     e.kind
+                );
+            }
+        }
+        // Facets/tags reference a node or edge by (target_id, target_kind), but
+        // the schema has no FK on target_id — an orphaned facet/tag would import
+        // silently (M-14). Validate every target against the imported nodes/edges.
+        let edge_ids: std::collections::HashSet<&str> =
+            snap.edges.iter().map(|e| e.id.as_str()).collect();
+        let has_target = |id: &str, kind: TargetKind| match kind {
+            TargetKind::Node => node_types.contains_key(id),
+            TargetKind::Edge => edge_ids.contains(id),
+        };
+        for f in &snap.facets {
+            if !has_target(&f.target_id, f.target_kind) {
+                bail!(
+                    "import: facet '{}' on {} '{}' references a missing target",
+                    f.key,
+                    f.target_kind,
+                    f.target_id
+                );
+            }
+        }
+        for t in &snap.tags {
+            if !has_target(&t.target_id, t.target_kind) {
+                bail!(
+                    "import: tag '{}' on {} '{}' references a missing target",
+                    t.term,
+                    t.target_kind,
+                    t.target_id
                 );
             }
         }
@@ -1364,6 +1636,27 @@ impl Store {
         Ok(())
     }
 
+    /// Delete only the STRUCTURAL derived findings (and their flags/assesses
+    /// edges), leaving external scan diagnostics (`status = external_diagnostic`)
+    /// intact. `sync` rebuilds structural findings every run, but scan
+    /// diagnostics are a SEPARATE derived plane owned by `loom scan run` — a
+    /// routine sync must not destroy them (H-6). Asserted adjudication facets on
+    /// deterministic finding ids survive and re-attach on rebuild.
+    pub fn wipe_structural_findings(&self) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM edge WHERE truth_class='derived' AND from_id IN
+                (SELECT id FROM node WHERE truth_class='derived' AND node_type='finding'
+                    AND status != 'external_diagnostic')",
+            [],
+        )?;
+        self.conn.execute(
+            "DELETE FROM node WHERE truth_class='derived' AND node_type='finding'
+                AND status != 'external_diagnostic'",
+            [],
+        )?;
+        Ok(())
+    }
+
     /// Delete specific derived Finding nodes and their incident derived edges.
     ///
     /// This is the scan adapter convergence primitive: callers validate adapter
@@ -1497,7 +1790,7 @@ impl Store {
             return Ok(Vec::new());
         };
         let mut out = Vec::new();
-        for e in self.edges_with(Some(EdgeKind::Implements), None, Some(&flags.to_id))? {
+        for e in self.realizing_implementers(&flags.to_id)? {
             if let Some(n) = self.get_node(&e.from_id)? {
                 if n.node_type == NodeType::Intent {
                     out.push(n);
@@ -1547,6 +1840,23 @@ impl Store {
             )
             .optional()
             .map_err(Into::into)
+    }
+
+    /// All facets on a target (node or edge), sorted by key. `edge show` reads
+    /// this so corrections that live on facets (locator, role, stale_cause,
+    /// superseded_by) are visible, not just the bare edge row (M-3).
+    pub fn facets_of(
+        &self,
+        target_id: &str,
+        target_kind: TargetKind,
+    ) -> Result<Vec<(String, String)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT key,value FROM facet WHERE target_id=?1 AND target_kind=?2 ORDER BY key",
+        )?;
+        let rows = stmt.query_map(params![target_id, target_kind.as_str()], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+        })?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
     // ---- ring 5: vocab + layer order -------------------------------------
@@ -1795,8 +2105,9 @@ fn row_to_node(r: &rusqlite::Row) -> rusqlite::Result<Node> {
         description: r.get("description")?,
         status: r.get("status")?,
         truth_class: parse_named(r, "truth_class")?,
-        body: serde_json::from_str(&body_str)
-            .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new())),
+        body: serde_json::from_str(&body_str).map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
+        })?,
         created_at: r.get("created_at")?,
         updated_at: r.get("updated_at")?,
     })
@@ -1814,8 +2125,9 @@ fn row_to_edge(r: &rusqlite::Row) -> rusqlite::Result<Edge> {
         criterion: r.get("criterion")?,
         evidence: r.get("evidence")?,
         confidence: r.get("confidence")?,
-        depends_on: serde_json::from_str(&depends_str)
-            .unwrap_or_else(|_| serde_json::Value::Array(Vec::new())),
+        depends_on: serde_json::from_str(&depends_str).map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
+        })?,
         inspected_by: r.get("inspected_by")?,
         created_at: r.get("created_at")?,
         updated_at: r.get("updated_at")?,

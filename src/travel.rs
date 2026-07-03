@@ -74,7 +74,17 @@ impl Export {
     pub fn from_json(text: &str) -> Result<Export> {
         // Two-phase import begins here: parse fully (and loudly) before the
         // store ever sees it. A malformed export never leaves a partial graph.
-        serde_json::from_str(text).context("parsing export (malformed loom.graph.json)")
+        let export: Export =
+            serde_json::from_str(text).context("parsing export (malformed loom.graph.json)")?;
+        // Reject a format this loom does not speak, rather than silently
+        // restoring it as the current schema (M-7).
+        if export.format != FORMAT {
+            anyhow::bail!(
+                "export format version {} is unsupported (this loom speaks format {FORMAT}) — upgrade loom or re-export",
+                export.format
+            );
+        }
+        Ok(export)
     }
 }
 
@@ -94,7 +104,10 @@ pub fn export_is_fresh(store: &Store) -> Result<bool> {
     let path = store.root().join(crate::GRAPH_EXPORT);
     let committed = match std::fs::read_to_string(&path) {
         Ok(c) => c,
-        Err(_) => return Ok(false),
+        // A missing export is honest drift; a real IO error (permissions, etc.)
+        // must surface, not masquerade as "not fresh" (L-1).
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) => return Err(e).with_context(|| format!("reading {}", path.display())),
     };
     let live = Export::from_snapshot(store.snapshot()?).to_json()?;
     Ok(committed == live)

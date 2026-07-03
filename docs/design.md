@@ -114,7 +114,7 @@ CREATE TABLE edge (
   id          TEXT PRIMARY KEY,
   from_id     TEXT NOT NULL,
   to_id       TEXT NOT NULL,
-  kind        TEXT NOT NULL,   -- hierarchy|implements|governs|validates|relates|triggers|sequence|flags|assesses
+  kind        TEXT NOT NULL,   -- hierarchy|implements|governs|validates|relates|triggers|sequence|flags|assesses|exposes|calls|covers|asserts
   truth_class TEXT NOT NULL,   -- derived | asserted
   status      TEXT NOT NULL DEFAULT 'uninspected',
   criterion   TEXT NOT NULL DEFAULT '',
@@ -290,7 +290,7 @@ The split is what makes "what code-quality concerns exist in this file?" a graph
   flagged: no reusable standard for file-level concerns).
 
 - **`InterfaceSurface`** (milestone 2) — a public surface a file exposes. Edge `exposes :
-  interface → codefile`; calls link via `calls : validation → interface`.
+  interface → codefile` is asserted-only; calls link via `calls : validation → interface`.
 
 ### What this changes from v1
 

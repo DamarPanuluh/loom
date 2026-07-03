@@ -1,5 +1,5 @@
 use super::{FileRead, LinkedEntity, SuggestedRead, TraversalContext};
-use crate::model::{Edge, EdgeKind, Node, NodeType};
+use crate::model::{Edge, EdgeKind, GroundingRole, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 
@@ -114,6 +114,23 @@ pub(super) fn edge_context(store: &Store, edge: &Edge, purpose: &str) -> Result<
     Ok(ctx)
 }
 
+/// The intent's live groundings, realizing edges first — where the behavior
+/// lives, so those are read first — then consumer/config/verify edges (they
+/// only exercise it across a seam). Superseded (rehomed) edges are dropped.
+fn ordered_groundings(store: &Store, intent_id: &str) -> Result<Vec<(Edge, GroundingRole)>> {
+    let mut edges = Vec::new();
+    for e in store.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
+        if store.edge_superseded(&e.id)? {
+            continue;
+        }
+        let role = store.grounding_role(&e.id)?;
+        edges.push((e, role));
+    }
+    // Stable sort: realizing first, original (id) order preserved within a role.
+    edges.sort_by_key(|(_, role)| u8::from(*role != GroundingRole::Realizes));
+    Ok(edges)
+}
+
 fn push_grounded_codefiles(
     store: &Store,
     ctx: &mut TraversalContext,
@@ -121,11 +138,7 @@ fn push_grounded_codefiles(
     seen_reads: &mut std::collections::BTreeSet<String>,
     intent: &Node,
 ) -> Result<()> {
-    for edge in store
-        .edges_with(Some(EdgeKind::Implements), Some(&intent.id), None)?
-        .into_iter()
-        .take(8)
-    {
+    for (edge, _role) in ordered_groundings(store, &intent.id)?.into_iter().take(8) {
         push_edge_entity(store, ctx, seen_entities, "grounding_edge", &edge)?;
         if let Some(cf) = store.get_node(&edge.to_id)? {
             push_node_entity(ctx, seen_entities, "grounded_codefile", &cf);
@@ -136,14 +149,11 @@ fn push_grounded_codefiles(
 }
 
 /// Append the intent's grounded files (path + implements locator) to the
-/// packet's read set. This is what makes a packet self-contained: the worker
-/// opens these files directly instead of running follow-up show commands.
+/// packet's read set — realizing files first, consumer surfaces after as
+/// context. This is what makes a packet self-contained: the worker opens these
+/// files directly instead of running follow-up show commands.
 fn push_intent_read_set(store: &Store, ctx: &mut TraversalContext, intent: &Node) -> Result<()> {
-    for edge in store
-        .edges_with(Some(EdgeKind::Implements), Some(&intent.id), None)?
-        .into_iter()
-        .take(8)
-    {
+    for (edge, role) in ordered_groundings(store, &intent.id)?.into_iter().take(8) {
         let Some(cf) = store.get_node(&edge.to_id)? else {
             continue;
         };
@@ -153,12 +163,20 @@ fn push_intent_read_set(store: &Store, ctx: &mut TraversalContext, intent: &Node
         let locator = store.get_facet(&edge.id, crate::model::TargetKind::Edge, "locator")?;
         // Never send a worker to read a ghost without saying so: a grounding
         // whose file vanished is itself the finding.
-        let why = if store.root().join(&cf.name).exists() {
-            format!("grounds intent '{}'", intent.name)
-        } else {
+        let why = if !store.root().join(&cf.name).exists() {
             format!(
                 "grounds intent '{}' — but the file is GONE from disk: re-ground the intent in its successor, then `loom codefile remove {}`",
                 intent.name, cf.name
+            )
+        } else if role == GroundingRole::Realizes {
+            format!(
+                "grounds intent '{}' (realizes — behavior lives here)",
+                intent.name
+            )
+        } else {
+            format!(
+                "exercises intent '{}' across a seam ({role}) — context, not where the behavior lives",
+                intent.name
             )
         };
         ctx.read_set.push(FileRead {

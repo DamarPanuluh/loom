@@ -98,14 +98,14 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         if parents.contains(&n.id) {
             continue; // roll-up parent — realized via children
         }
-        let impls = store.edges_with(Some(EdgeKind::Implements), Some(&n.id), None)?;
+        let impls = store.realizing_groundings(&n.id)?;
         if impls.is_empty() {
             ungrounded += 1;
         }
     }
 
     let stale = store
-        .edges_by_status(
+        .live_edges_by_status(
             TruthClass::Asserted,
             &[
                 InspectionStatus::NeedsReverification,
@@ -114,7 +114,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         )?
         .len();
     let uninspected = store
-        .edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
+        .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
         .len();
 
     // proofs (ring 5): registered validations are not proof until they pass.

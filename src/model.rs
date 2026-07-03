@@ -145,6 +145,7 @@ str_enum! {
         Benchmark => "benchmark",
         ManualCheck => "manual_check",
         Saga => "saga",
+        Journey => "journey",
         Scenario => "scenario",
         Contract => "contract",
     }
@@ -171,6 +172,24 @@ str_enum! {
         Relates => "relates",
         Covers => "covers",
         Asserts => "asserts",
+    }
+}
+
+str_enum! {
+    /// The claim a grounding (`implements`) edge makes about its file. Stored as
+    /// the `role` edge facet; a missing facet reads as `Realizes` (the historical
+    /// default, so pre-role graphs keep their exact semantics).
+    ///
+    /// Only `Realizes` bears ownership: a file grounded solely by
+    /// `consumes`/`configures`/`verifies` edges is still unowned and stays in the
+    /// coverage queue. The distinction is what keeps a consumer surface (a page
+    /// that calls a backend route, a test that exercises a behavior) from
+    /// silently satisfying the coverage gate for behavior that lives elsewhere.
+    GroundingRole {
+        Realizes => "realizes",
+        Consumes => "consumes",
+        Configures => "configures",
+        Verifies => "verifies",
     }
 }
 

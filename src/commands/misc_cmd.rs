@@ -350,26 +350,46 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
                 "proposed",
                 serde_json::json!({ "kind": kind }),
             )?;
-            println!("task [{}] {}", &t.id[..8], t.name);
-            Ok(())
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "task": node_json(&t) }),
+                "loom status",
+                format!("task [{}] {}", &t.id[..8], t.name),
+            )
         }
         TaskCmd::Start { key } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
-            store.update_node(&t.id, None, None, Some("active"))?;
-            println!("task '{}' active", t.name);
-            Ok(())
+            let t = store.update_node(&t.id, None, None, Some("active"))?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "task": node_json(&t), "status": "active" }),
+                "loom status",
+                format!("task '{}' active", t.name),
+            )
         }
         TaskCmd::Close { key, result } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
-            store.update_node(&t.id, None, Some(&result), Some("completed"))?;
-            println!("task '{}' completed", t.name);
-            Ok(())
+            let t = store.update_node(&t.id, None, Some(&result), Some("completed"))?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "task": node_json(&t), "status": "completed", "result": result }),
+                "loom status",
+                format!("task '{}' completed", t.name),
+            )
         }
         TaskCmd::Abandon { key, reason } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
-            store.update_node(&t.id, None, Some(&reason), Some("abandoned"))?;
-            println!("task '{}' abandoned", t.name);
-            Ok(())
+            let t = store.update_node(&t.id, None, Some(&reason), Some("abandoned"))?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "task": node_json(&t), "status": "abandoned", "reason": reason }),
+                "loom status",
+                format!("task '{}' abandoned", t.name),
+            )
         }
         TaskCmd::Remove { key } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
@@ -801,6 +821,9 @@ pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bo
             let mut groundings = Vec::new();
             if kind == "intent" {
                 for e in store.edges_with(Some(EdgeKind::Implements), Some(id), None)? {
+                    if store.edge_superseded(&e.id)? {
+                        continue;
+                    }
                     let path = store
                         .get_node(&e.to_id)?
                         .map(|n| n.name)
@@ -812,6 +835,7 @@ pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bo
                         "edge_id": e.id,
                         "path": path,
                         "locator": locator,
+                        "role": store.grounding_role(&e.id)?.as_str(),
                         "status": e.status.as_str(),
                         "evidence": e.evidence,
                     }));
@@ -836,10 +860,14 @@ pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bo
             println!("{:<10} {} [{}] (score {s})", kind, name, &id[..8]);
             if kind == "intent" {
                 let grounds = store.edges_with(Some(EdgeKind::Implements), Some(&id), None)?;
-                if grounds.is_empty() {
-                    println!("             ↳ (ungrounded — no implements edge yet)");
+                if store.realizing_groundings(&id)?.is_empty() {
+                    println!("             ↳ (no realizing grounding yet)");
                 }
                 for e in grounds {
+                    if store.edge_superseded(&e.id)? {
+                        continue;
+                    }
+                    let role = store.grounding_role(&e.id)?;
                     let path = store
                         .get_node(&e.to_id)?
                         .map(|n| n.name)
@@ -857,7 +885,10 @@ pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bo
                     } else {
                         format!(" — {}", e.evidence)
                     };
-                    println!("             ↳ {path}{at} [{}]{ev}", e.status.as_str());
+                    println!(
+                        "             ↳ [{role}] {path}{at} [{}]{ev}",
+                        e.status.as_str()
+                    );
                 }
             }
         }

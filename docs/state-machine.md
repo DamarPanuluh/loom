@@ -79,6 +79,8 @@ This cycle is non-blocking. Multiple events can queue. The LLM works one `WorkIt
 | `CodeFileChanged` | sync | CodeFile derived facts |
 | `CodeExtractionChanged` | sync | symbols, imports, hash |
 | `ImplementsLocatorStale` | sync | implements edge locator |
+| `GroundingRoleChanged` | builder | implements edge `role` facet |
+| `GroundingRehomed` | builder | implements edge `superseded_by` facet + successor grounding |
 | `ValidationResultChanged` | validator / sync | Validation last_result |
 | `QualityVerdictChanged` | quality | governs edge status |
 | `RelationshipVerdictChanged` | analyzer | relates/requires/etc edge status |
@@ -103,11 +105,25 @@ When a canonical fact changes, loom evaluates which downstream facts depend on i
 ```text
 CodeFile content hash changed
   → re-extract symbols, imports, metrics (derived facts updated)
-  → implements edges whose locator references this file → needs_reverification
-  → governs edges whose intent grounds this file → needs_reverification
+  → realizing implements edges for this file → needs_reverification; ripple to the intent's dependents
+  → consumes/configures/verifies implements edges for this file → needs_reverification only if the file vanished or seam locator drifted
+  → governs edges whose intent grounds this file through a realizing edge → needs_reverification
   → Validation.last_result → not_run; linked validates edges → needs_reverification
-  → relates/requires/triggers/sequence edges between intents grounding this file → needs_reverification
+  → relates/requires/triggers/sequence edges between intents realizing this file → needs_reverification
   → documentation items depending on this file should be captured/routed through InboxItem (wiki projection deferred)
+```
+
+### Grounding role changed or rehomed
+
+```text
+loom edge set-role <edge> <role> --reason ...
+  → if role changed and the edge was settled: edge → needs_reverification with stale_cause starting `role_changed`
+  → coverage ownership recomputed immediately; only `realizes` owns
+
+loom edge rehome <edge> --to "<successor intent>" --reason ...
+  → old edge gains superseded_by and leaves coverage/staleness/queues
+  → successor grounding carries old locator + role
+  → if the old edge was settled: successor edge → needs_reverification with stale_cause starting `rehomed`
 ```
 
 ### Intent meaning changed
@@ -352,7 +368,7 @@ These must hold at all times and be enforced at every write boundary.
 
 ### Structural smells
 
-The `loom smells` surface reports derived graph-shape signals, each with a remedy. One such smell is `pack_drift`: a quality rule that originated from a seeded pack has been edited in the graph, so its current body no longer matches the shipped pack definition. The remedy is either `loom rule seed <pack>` to re-baseline (idempotent) or to accept the customization and let it remain surfaced as a recorded divergence.
+The `loom smells` surface reports derived graph-shape signals, each with a remedy. One such smell is `pack_drift`: a quality rule that originated from a seeded pack has been edited in the graph, so its current body no longer matches the shipped pack definition. Another is `consumer_owned_file`: a file whose sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster. Remedies name the concrete edge or pack command; `pack_drift` is resolved either by `loom rule seed <pack>` to re-baseline (idempotent) or by accepting the customization and letting it remain surfaced as a recorded divergence.
 
 ---
 
@@ -386,7 +402,7 @@ deprecated
 |---|---|---|
 | `build` | planned / needs_change intents | builder |
 | `elaborate` | user-visible feature intents with open Definition-of-Complete axes; highest incomplete score first | builder |
-| `coverage` | registered codefiles with no owning intent | builder |
+| `coverage` | registered codefiles with no live realizing owner | builder |
 | `fix` | failing asserted edges of any kind; stale asserted edges except `governs`/`validates` | fixer for failing, analyzer for stale relationship/grounding re-verification |
 | `validate` | uninspected / stale `validates` edges only | validator |
 | `quality` | uninspected / stale `governs` edges only; or first never-measured rule × root implemented intent pair | quality |

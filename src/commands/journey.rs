@@ -841,7 +841,7 @@ fn coverage_discover(
         if e.status != InspectionStatus::Passing || v.status != "passed" {
             continue;
         }
-        let is_journey = v.body.get("proof_kind").and_then(|x| x.as_str()) == Some("journey");
+        let is_journey = is_journey_validation(v);
         let is_l5 = matches!(
             v.body.get("proof_level").and_then(|x| x.as_str()),
             Some("L5") | Some("L6")
@@ -1052,7 +1052,7 @@ fn current_l5_journey_validations(store: &Store, intent_id: &str) -> Result<Vec<
         if v.status != "passed" {
             continue;
         }
-        let is_journey = v.body.get("proof_kind").and_then(|x| x.as_str()) == Some("journey");
+        let is_journey = is_journey_validation(&v);
         let is_l5_plus = matches!(
             v.body.get("proof_level").and_then(|x| x.as_str()),
             Some("L5") | Some("L6")
@@ -1118,7 +1118,7 @@ fn prompt(graph: Option<&std::path::Path>, intent_key: &str, json: bool) -> Resu
     let store = open(graph)?;
     let intent = store.resolve_node(intent_key, Some(NodeType::Intent))?;
 
-    let implements = store.edges_with(Some(EdgeKind::Implements), Some(&intent.id), None)?;
+    let implements = store.realizing_groundings(&intent.id)?;
     let mut modules: Vec<Value> = Vec::new();
     // Raw classification signals — imports + language across the intent's
     // grounded files. These are FACTS loom already extracts, never a verdict:

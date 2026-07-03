@@ -2,7 +2,7 @@
 
 use super::{open, pulse, verdict_status};
 use crate::cli::EdgeCmd;
-use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::workitem;
 use crate::Result;
@@ -16,7 +16,8 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
             intent,
             codefile,
             locator,
-        } => edge_implement(&store, intent, codefile, locator, json),
+            role,
+        } => edge_implement(&store, intent, codefile, locator, role, json),
         EdgeCmd::Call {
             validation,
             surface,
@@ -43,9 +44,24 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
             evidence,
             confidence,
         } => edge_explore(&store, a, b, verdict, criterion, evidence, confidence, json),
+        EdgeCmd::SetRole {
+            edge_id,
+            role,
+            reason,
+        } => edge_set_role(&store, edge_id, role, reason, json),
+        EdgeCmd::Rehome {
+            edge_id,
+            to,
+            reason,
+        } => edge_rehome(&store, edge_id, to, reason, json),
         EdgeCmd::Show { edge_id } => edge_show(&store, edge_id, json),
         EdgeCmd::List { limit } => edge_list(&store, limit, json),
     }
+}
+
+fn parse_grounding_role(s: &str) -> Result<GroundingRole> {
+    s.parse::<GroundingRole>()
+        .map_err(|_| anyhow!("unknown role '{s}' (use realizes|consumes|configures|verifies)"))
 }
 
 fn edge_implement(
@@ -53,10 +69,15 @@ fn edge_implement(
     intent: String,
     codefile: String,
     locator: Option<String>,
+    role: Option<String>,
     json: bool,
 ) -> Result<()> {
     let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
     let cf = store.resolve_node(&codefile, Some(NodeType::CodeFile))?;
+    let role = match role.as_deref() {
+        Some(r) => parse_grounding_role(r)?,
+        None => GroundingRole::Realizes,
+    };
     let e = store.add_edge(EdgeKind::Implements, &i.id, &cf.id, TruthClass::Asserted)?;
     if let Some(loc) = &locator {
         store.set_facet(
@@ -67,23 +88,102 @@ fn edge_implement(
             TruthClass::Asserted,
         )?;
     }
+    // Persist the role facet only when non-default: a `realizes` grounding needs
+    // no facet (it is the default), so pre-role graphs keep their byte-format.
+    if role != GroundingRole::Realizes {
+        store.set_grounding_role(&e.id, role)?;
+    }
     pulse::emit_line(
         store,
         json,
         serde_json::json!({
             "edge": e,
-            "intent": {
-                "id": i.id,
-                "name": i.name,
-            },
-            "codefile": {
-                "id": cf.id,
-                "path": cf.name,
-            },
+            "intent": { "id": i.id, "name": i.name },
+            "codefile": { "id": cf.id, "path": cf.name },
             "locator": locator,
+            "role": role.as_str(),
         }),
         "loom sync",
-        format!("grounded '{}' in '{}' [{}]", i.name, cf.name, &e.id[..8]),
+        format!(
+            "grounded '{}' in '{}' as {} [{}]",
+            i.name,
+            cf.name,
+            role,
+            &e.id[..8]
+        ),
+    )?;
+    Ok(())
+}
+
+/// Reclassify a grounding edge's role. Delegates the re-open policy to the
+/// store (a changed role stales the settled claim as `role_changed`).
+fn edge_set_role(
+    store: &Store,
+    edge_id: String,
+    role: String,
+    reason: String,
+    json: bool,
+) -> Result<()> {
+    let role = parse_grounding_role(&role)?;
+    let e = store.resolve_edge(&edge_id)?;
+    let (edge, old, reopened) = store.reclassify_grounding(&e.id, role, &reason)?;
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": edge,
+            "old_role": old.as_str(),
+            "new_role": role.as_str(),
+            "reopened": reopened,
+            "reason": reason,
+        }),
+        if reopened {
+            "loom next --mode analyze"
+        } else {
+            "loom status"
+        },
+        format!(
+            "role {} → {} on [{}]{}",
+            old,
+            role,
+            &edge.id[..8],
+            if reopened {
+                " (claim re-opened: role_changed)"
+            } else {
+                ""
+            }
+        ),
+    )?;
+    Ok(())
+}
+
+/// Rehome a grounding edge to a successor intent (supersede-not-delete).
+fn edge_rehome(
+    store: &Store,
+    edge_id: String,
+    to: String,
+    reason: String,
+    json: bool,
+) -> Result<()> {
+    let e = store.resolve_edge(&edge_id)?;
+    let successor = store.resolve_node(&to, Some(NodeType::Intent))?;
+    let (old, new) = store.rehome_grounding(&e.id, &successor.id, &reason)?;
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "superseded_edge": old,
+            "new_edge": new,
+            "successor_intent": { "id": successor.id, "name": successor.name },
+            "reason": reason,
+        }),
+        "loom next --mode analyze",
+        format!(
+            "rehomed grounding [{}] → '{}' [{}] (old superseded, new unverified)",
+            &old.id[..8],
+            successor.name,
+            &new.id[..8]
+        ),
     )?;
     Ok(())
 }
@@ -150,12 +250,9 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: boo
     }
     store.delete_edge(&e.id)?;
     let warning = if let Some(intent_name) = &ungrounded_intent {
-        if store
-            .edges_with(Some(EdgeKind::Implements), Some(&e.from_id), None)?
-            .is_empty()
-        {
+        if store.realizing_groundings(&e.from_id)?.is_empty() {
             Some(format!(
-                "warning: intent '{intent_name}' now has zero implements edges; run `loom status` or re-ground it"
+                "warning: intent '{intent_name}' now has no realizing grounding; run `loom status` or re-ground it"
             ))
         } else {
             None
@@ -326,8 +423,15 @@ fn edge_explore(
 
 fn edge_show(store: &Store, edge_id: String, json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
+    let facets = store.facets_of(&e.id, TargetKind::Edge)?;
     if json {
-        println!("{}", serde_json::to_string_pretty(&e)?);
+        let facet_obj: serde_json::Map<String, serde_json::Value> = facets
+            .iter()
+            .map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone())))
+            .collect();
+        let mut v = serde_json::to_value(&e)?;
+        v["facets"] = serde_json::Value::Object(facet_obj);
+        println!("{}", serde_json::to_string_pretty(&v)?);
     } else {
         println!("{} [{}]", e.kind, e.id);
         println!("  {} → {}", e.from_id, e.to_id);
@@ -337,6 +441,9 @@ fn edge_show(store: &Store, edge_id: String, json: bool) -> Result<()> {
         }
         if !e.evidence.is_empty() {
             println!("  evidence: {}", e.evidence);
+        }
+        for (k, val) in &facets {
+            println!("  {k}: {val}");
         }
     }
     Ok(())

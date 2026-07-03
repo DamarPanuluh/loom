@@ -37,7 +37,7 @@ Queue partition is deliberately disjoint:
 - `analyze`: uninspected and stale non-`governs`/non-`validates` asserted claims. Stale claims are served first — a settled truth that broke misleads readers; an uninspected claim only waits.
 - `quality`: uninspected or stale `governs` only. Failing `governs` routes to `fix`.
 - `validate`: uninspected or stale `validates` only. Failing `validates` routes to `fix`.
-- `coverage`: registered codefiles with no owning intent. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
+- `coverage`: registered codefiles with no live realizing owner. Files grounded only by `consumes`, `configures`, or `verifies` edges remain unowned. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
 - `review`: asserted `passing` or `independent` verdicts with `0 < confidence < 0.7`, lowest confidence first. The work item keeps the edge kind's registry owner as `owner_role`, but the mindset is independent re-inspection.
 - `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet embeds the open axes and routes the builder to add missing scenarios/prerequisites/proofs/journey coverage, raise product questions, or waive non-question axes with reasons.
 
@@ -108,7 +108,7 @@ Creates `.loom/` and initializes `graph.sqlite`. `--observed` maps code the driv
 loom sync [--json]
 ```
 
-Recomputes the structural plane from disk. Content-hash based — mtime churn never false-flags. Sync now stales Targets (`hypothesis -> intent`) edges, records `stale_cause` facets on every staled edge, deterministically resets validations, and downgrades never-reached previously-passing journey steps to `needs_reverification` when a journey run fails earlier.
+Recomputes the structural plane from disk. Content-hash based — mtime churn never false-flags. Sync now stales Targets (`hypothesis -> intent`) edges, records `stale_cause` facets on every staled edge, deterministically resets validations, downgrades never-reached previously-passing journey steps to `needs_reverification` when a journey run fails earlier, fully reopens realizing `implements` groundings on changed files, and reopens non-realizing `implements` groundings only when their seam locator drifts.
 
 ```text
 loom export [--check] [--json]
@@ -191,15 +191,17 @@ loom intent tag remove <intent> <term> [--json]
 ## Edge commands
 
 ```text
-loom edge implement <intent> <codefile> [--locator "<symbol>"] [--json]
+loom edge implement <intent> <codefile> [--role realizes|consumes|configures|verifies] [--locator "<symbol>"] [--json]
 loom edge call <validation> <surface> [--json]
 loom edge remove <edge-id> [--reason "<why>"] [--json]
 loom edge set-locator <edge-id> <locator> [--json]
+loom edge set-role <edge-id> realizes|consumes|configures|verifies --reason "<why>" [--json]
+loom edge rehome <edge-id> --to "<successor intent>" --reason "<why>" [--json]
 loom edge show <edge-id> [--json]
 loom edge list [--limit N] [--json]
 ```
 
-`edge remove` refuses derived edges. `edge call` records that a validation exercises an interface surface; sync resets that contract when the code behind the surface changes.
+`edge implement` defaults to `--role realizes`; only realizing groundings own coverage. Use `consumes` when a file calls behavior across a seam, `configures` when it supplies configuration, and `verifies` when it checks behavior elsewhere. `edge set-role` records a decision note and reopens a settled edge with `stale_cause=role_changed...` when the role changes. `edge rehome` supersedes the old grounding with a `superseded_by` facet, creates or reuses the successor grounding with the old locator and role, and reopens it with `stale_cause=rehomed...`. `edge show` prints edge facets; JSON includes a `facets` object. `edge remove` refuses derived edges. `edge call` records that a validation exercises an interface surface; sync resets that contract when the code behind the surface changes.
 
 ```text
 loom edge relate <kind> <from-intent> <to-intent> [--json]
@@ -261,7 +263,7 @@ loom validation add --name "<name>" --intent <intent>
   [--json]
 ```
 
-Journey metadata flags require `--proof-kind journey`.
+Journey metadata flags require `--proof-kind journey`. `loom validation add --type journey` is accepted; `saga` remains legacy compatibility, not the preferred type for new graph writes.
 
 ```text
 loom validation mark <validation> --result passed|failed|blocked
@@ -525,11 +527,11 @@ loom debt [--json]
 loom whoami [--json]
 ```
 
-- `coverage`: vertical spine — intent tree shape, leaf grounding, file ownership, unaccounted files after ignores.
+- `coverage`: vertical spine — intent tree shape, leaf grounding, file ownership by live realizing `implements` edges, unaccounted files after ignores.
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.
-- `doctor`: schema conformance, provenance, evidence vacuity, role-gate audit; exits non-zero on any issue.
-- `smells`: structural signals from graph shape, each with a remedy. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or keep the customization as its recorded trace).
+- `doctor`: schema conformance, provenance, evidence vacuity, role-gate audit; exits non-zero on any issue. Includes `consumes_without_seam` when a settled `consumes` grounding has neither a locator nor a criterion naming a seam.
+- `smells`: structural signals from graph shape, each with a remedy. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or keep the customization as its recorded trace) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge.
 - `debt`: advisory statistical cluster feed; never appears in required work queues until promoted.
 - `whoami`: acting agent identity and lane enforcement.
 
