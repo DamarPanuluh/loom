@@ -1,7 +1,7 @@
 //! `loom intent` command family.
 
 use super::{node_json, open, pulse, require_lane};
-use crate::cli::IntentCmd;
+use crate::cli::{IntentCmd, IntentTagCmd};
 use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use crate::Result;
 use anyhow::bail;
@@ -33,27 +33,34 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             json,
         ),
         IntentCmd::Show { key } => intent_show(graph, key, json),
-        IntentCmd::Set {
-            key,
-            level,
-            visibility,
-            aspect,
-        } => intent_set(graph, key, level, visibility, aspect, json),
         IntentCmd::Waive { key, axis, reason } => intent_waive(graph, key, axis, reason, json),
         IntentCmd::Reactivate { key, reason } => intent_reactivate(graph, key, reason, json),
         IntentCmd::List { limit } => intent_list(graph, limit, json),
-        IntentCmd::Mark {
-            key,
-            lifecycle,
-            reason,
-        } => intent_mark(graph, key, lifecycle, reason, json),
         IntentCmd::Update {
             key,
             description,
             name,
+            level,
+            visibility,
+            aspect,
+            lifecycle,
             reason,
             reword,
-        } => intent_update(graph, key, description, name, reason, reword, json),
+        } => intent_update(
+            graph,
+            IntentUpdateArgs {
+                key,
+                description,
+                new_name: name,
+                level,
+                visibility,
+                aspect,
+                lifecycle,
+                reason,
+                reword,
+            },
+            json,
+        ),
         IntentCmd::Remove { key, reason } => intent_remove(graph, key, reason, json),
         IntentCmd::Retire {
             key,
@@ -61,7 +68,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             replaced_by,
         } => intent_retire(graph, key, reason, replaced_by, json),
         IntentCmd::Confirm { key } => intent_confirm(graph, key, json),
-        IntentCmd::Tag { action, key, term } => intent_tag(graph, action, key, term, json),
+        IntentCmd::Tag { cmd } => intent_tag(graph, cmd, json),
     }
 }
 
@@ -261,58 +268,6 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn intent_set(
-    graph: Option<&Path>,
-    key: String,
-    level: Option<String>,
-    visibility: Option<String>,
-    aspect: Option<String>,
-    json: bool,
-) -> Result<()> {
-    if level.is_none() && visibility.is_none() && aspect.is_none() {
-        bail!("nothing to set — pass --level, --visibility and/or --aspect");
-    }
-    if let Some(l) = &level {
-        check_level(l)?;
-    }
-    if let Some(v) = &visibility {
-        check_visibility(v)?;
-    }
-    if let Some(a) = &aspect {
-        check_aspect(a)?;
-    }
-    let store = open(graph)?;
-    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
-    if let Some(l) = &level {
-        store.set_facet(&n.id, TargetKind::Node, "level", l, TruthClass::Asserted)?;
-    }
-    if let Some(v) = &visibility {
-        store.set_facet(
-            &n.id,
-            TargetKind::Node,
-            "visibility",
-            v,
-            TruthClass::Asserted,
-        )?;
-    }
-    if let Some(a) = &aspect {
-        store.set_facet(&n.id, TargetKind::Node, "aspect", a, TruthClass::Asserted)?;
-    }
-    pulse::emit_line(
-        &store,
-        json,
-        serde_json::json!({
-            "intent": node_json(&n),
-            "level": level,
-            "visibility": visibility,
-            "aspect": aspect,
-        }),
-        "loom status",
-        format!("updated intent '{}'", n.name),
-    )?;
-    Ok(())
-}
-
 /// Deliberately close a completeness axis for this intent. The waiver is an
 /// asserted facet (`waiver:<axis>` = reason) plus a decision note, and it
 /// re-opens automatically when the intent is redefined — a waiver outliving
@@ -411,59 +366,49 @@ fn intent_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn intent_mark(
-    graph: Option<&Path>,
-    key: String,
-    lifecycle: String,
-    reason: Option<String>,
-    json: bool,
-) -> Result<()> {
-    check_lifecycle(&lifecycle, false)?;
-    let store = open(graph)?;
-    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
-    // builder lane (lifecycle is builder-owned); solo allowed
-    require_lane(&store, crate::registry::OwnerRole::Builder)?;
-    store.update_node(&n.id, None, None, Some(&lifecycle))?;
-    if let Some(r) = &reason {
-        store.add_note(&n.id, "decision", &format!("lifecycle {lifecycle}: {r}"))?;
+fn intent_update(graph: Option<&Path>, args: IntentUpdateArgs, json: bool) -> Result<()> {
+    let IntentUpdateArgs {
+        key,
+        description,
+        new_name,
+        level,
+        visibility,
+        aspect,
+        lifecycle,
+        reason,
+        reword,
+    } = args;
+    if description.is_none()
+        && new_name.is_none()
+        && level.is_none()
+        && visibility.is_none()
+        && aspect.is_none()
+        && lifecycle.is_none()
+    {
+        bail!(
+            "nothing to update — pass --description, --name, --level, --visibility, \
+             --aspect and/or --lifecycle"
+        );
     }
-    let next_step = if lifecycle == "implemented" {
-        "loom sync"
-    } else {
-        "loom status"
-    };
-    pulse::emit_line(
-        &store,
-        json,
-        serde_json::json!({
-            "intent": {
-                "id": n.id,
-                "name": n.name,
-                "lifecycle": lifecycle,
-            },
-            "reason": reason,
-        }),
-        next_step,
-        format!("marked '{}' lifecycle={lifecycle}", n.name),
-    )?;
-    Ok(())
-}
-
-fn intent_update(
-    graph: Option<&Path>,
-    key: String,
-    description: Option<String>,
-    new_name: Option<String>,
-    reason: String,
-    reword: bool,
-    json: bool,
-) -> Result<()> {
-    if description.is_none() && new_name.is_none() {
-        bail!("nothing to update — pass --description and/or --name");
+    if reason.trim().is_empty() {
+        bail!("intent update needs substantive --reason");
+    }
+    if let Some(l) = &level {
+        check_level(l)?;
+    }
+    if let Some(v) = &visibility {
+        check_visibility(v)?;
+    }
+    if let Some(a) = &aspect {
+        check_aspect(a)?;
+    }
+    if let Some(lc) = &lifecycle {
+        check_lifecycle(lc, false)?;
     }
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
     require_lane(&store, crate::registry::OwnerRole::Builder)?;
+    let mut parts: Vec<String> = Vec::new();
     // Rename first: a label change, never a ripple — the description stays
     // the behavioral criterion.
     if let Some(name) = &new_name {
@@ -479,29 +424,52 @@ fn intent_update(
             "decision",
             &format!("renamed from '{}': {reason}", n.name),
         )?;
+        parts.push(format!("renamed from '{}'", n.name));
     }
+    // Attribute corrections: asserted facets, never a ripple.
+    if let Some(l) = &level {
+        store.set_facet(&n.id, TargetKind::Node, "level", l, TruthClass::Asserted)?;
+        parts.push(format!("level={l}"));
+    }
+    if let Some(v) = &visibility {
+        store.set_facet(
+            &n.id,
+            TargetKind::Node,
+            "visibility",
+            v,
+            TruthClass::Asserted,
+        )?;
+        parts.push(format!("visibility={v}"));
+    }
+    if let Some(a) = &aspect {
+        store.set_facet(&n.id, TargetKind::Node, "aspect", a, TruthClass::Asserted)?;
+        parts.push(format!("aspect={a}"));
+    }
+    // Lifecycle: the prescriptive state moves; recorded, never a ripple.
+    if let Some(lc) = &lifecycle {
+        store.update_node(&n.id, None, None, Some(lc))?;
+        store.add_note(&n.id, "decision", &format!("lifecycle {lc}: {reason}"))?;
+        parts.push(format!("lifecycle={lc}"));
+    }
+    // Description last: the ONLY ripple source. Redefinition re-opens settled
+    // dependents; --reword keeps the concept and ripples nothing.
     let mut reopened = 0usize;
     if let Some(description) = &description {
         if reword {
-            // clearer words, same concept: no ripple
             store.update_node(&n.id, None, Some(description), None)?;
             store.add_note(&n.id, "decision", &format!("reworded: {reason}"))?;
+            parts.push("reworded (no ripple)".into());
         } else {
             reopened = store.redefine_intent(&n.id, description)?;
             store.add_note(&n.id, "decision", &format!("redefined: {reason}"))?;
+            parts.push(format!("redefined — {reopened} edge(s) re-opened"));
         }
     }
     let display_name = new_name.as_deref().unwrap_or(n.name.as_str());
-    let human = match (&new_name, &description) {
-        (Some(_), None) => format!("renamed '{}' → '{}' (no ripple)", n.name, display_name),
-        (None, Some(_)) if reword => format!("reworded '{display_name}' (no ripple)"),
-        (None, Some(_)) => {
-            format!("redefined '{display_name}' — {reopened} edge(s) re-opened")
-        }
-        (Some(_), Some(_)) if reword => {
-            format!("renamed + reworded '{display_name}' (no ripple)")
-        }
-        _ => format!("renamed + redefined '{display_name}' — {reopened} edge(s) re-opened"),
+    let next_step = if lifecycle.as_deref() == Some("implemented") {
+        "loom sync"
+    } else {
+        "loom status"
     };
     pulse::emit_line(
         &store,
@@ -512,16 +480,32 @@ fn intent_update(
                 "name": display_name,
                 "previous_name": n.name,
                 "description": description,
-                "status": n.status,
+                "level": level,
+                "visibility": visibility,
+                "aspect": aspect,
+                "lifecycle": lifecycle,
+                "status": lifecycle.as_deref().unwrap_or(&n.status),
             },
             "reword": reword,
             "reopened_edges": reopened,
             "reason": reason,
         }),
-        "loom status",
-        human,
+        next_step,
+        format!("updated '{display_name}': {}", parts.join(", ")),
     )?;
     Ok(())
+}
+
+struct IntentUpdateArgs {
+    key: String,
+    description: Option<String>,
+    new_name: Option<String>,
+    level: Option<String>,
+    visibility: Option<String>,
+    aspect: Option<String>,
+    lifecycle: Option<String>,
+    reason: String,
+    reword: bool,
 }
 fn intent_remove(graph: Option<&Path>, key: String, reason: String, json: bool) -> Result<()> {
     if reason.trim().is_empty() {
@@ -602,17 +586,11 @@ fn intent_confirm(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn intent_tag(
-    graph: Option<&Path>,
-    action: String,
-    key: String,
-    term: String,
-    json: bool,
-) -> Result<()> {
+fn intent_tag(graph: Option<&Path>, cmd: IntentTagCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
-    match action.as_str() {
-        "add" => {
+    match cmd {
+        IntentTagCmd::Add { key, term } => {
+            let n = store.resolve_node(&key, Some(NodeType::Intent))?;
             if !store.vocab_has(&term)? {
                 bail!("'{term}' is not a registered vocab term; add it with `loom vocab add`");
             }
@@ -629,7 +607,8 @@ fn intent_tag(
                 format!("tagged '{}' with '{term}'", n.name),
             )?;
         }
-        "remove" => {
+        IntentTagCmd::Remove { key, term } => {
+            let n = store.resolve_node(&key, Some(NodeType::Intent))?;
             store.remove_tag(&n.id, TargetKind::Node, &term)?;
             pulse::emit_line(
                 &store,
@@ -643,7 +622,6 @@ fn intent_tag(
                 format!("untagged '{}' '{term}'", n.name),
             )?;
         }
-        other => bail!("unknown tag action '{other}' (use add|remove)"),
     }
     Ok(())
 }

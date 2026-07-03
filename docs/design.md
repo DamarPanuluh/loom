@@ -72,7 +72,7 @@ carry the follow-up concerns their question raises (see §4d for the full ration
 
 - **`Intent`** — what the code should do. The atomic "what." Family:
   `QualityRule` (compliance norms: security, performance, defect, style), `Validation` (proofs:
-  test, assertion, benchmark, saga), `Hypothesis` (proposed changes — milestone 2).
+  test, assertion, benchmark, journey), `Hypothesis` (proposed changes — milestone 2).
 - **`CodeFile`** — where the code lives. The "where." Family:
   `CodeRule` (structural norms: size, complexity, safety), `Finding` (occurrences at a location —
   derived truth-class, §4d sub-fork), `InterfaceSurface` (public surfaces — milestone 2).
@@ -260,7 +260,7 @@ the norm from the measurement — they were conflated in v1 under one edge.
 - `QualityRule` — a norm the code must satisfy. Property `category ∈ {security, performance,
   defect, style, robustness, …}`. Seeded from packs or authored. Edge `governs : rule → intent`.
 - `Validation` — a proof that behavior holds. Property `type ∈ {test, assertion, benchmark,
-  manual_check, saga}`. Carries a `command`. Edge `validates : validation → intent`.
+  manual_check, journey, scenario, contract}`. Carries a `command`. Edge `validates : validation → intent`.
 - `Hypothesis` (milestone 2) — a proposed change to an intent's behavior, proven before adoption.
   Edge `targets : hypothesis → intent`.
 

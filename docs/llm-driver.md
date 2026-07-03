@@ -140,15 +140,15 @@ The LLM-facing contract embedded in a WorkItem. Defines mindset, allowed actions
   "why_now": "validates edge is needs_reverification",
   "allowed_actions": [
     "run: cargo test auth::session_restores",
-    "loom validate 'remember-me token restores session after browser restart'",
-    "loom validation mark 'remember-me session test' --result <passed|failed|blocked> --evidence '…'"
+    "loom validation run 'remember-me token restores session after browser restart'",
+    "loom validation verdict 'remember-me session test' <passed|failed|blocked> --evidence '…'"
   ],
   "forbidden_actions": [
     "edit code to make the proof pass",
     "mark passed without observed proof"
   ],
   "required_evidence": "command output, test count, failure message, or a concrete blocker reason",
-  "write_back": "loom validate 'remember-me token restores session after browser restart'  (or)  loom validation mark 'remember-me session test' --result <passed|failed|blocked> --evidence '…'",
+  "write_back": "loom validation run 'remember-me token restores session after browser restart'  (or)  loom validation verdict 'remember-me session test' <passed|failed|blocked> --evidence '…'",
   "stop_condition": "after recording the result, return to loom status",
   "human_gate": null
 }
@@ -181,7 +181,7 @@ When `loom next --mode quality` serves a `governs` edge or the fallback never-me
       "allowed_actions": [
         "loom codefile show <file>",
         "read the grounded code",
-        "loom rule verdict 'service-auth-at-boundary' 'admin delete user' --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+        "loom rule verdict 'service-auth-at-boundary' 'admin delete user' <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
         "hint: grep: require_auth, require_admin, authenticate, middleware",
         "hint: red flag: handler body mutates state before an auth check"
       ],
@@ -215,7 +215,7 @@ When `loom next --mode quality` serves a `governs` edge or the fallback never-me
           "excerpt": "delete_user(id);"
         }
       ],
-      "write_back": "loom rule verdict 'service-auth-at-boundary' 'admin delete user' --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+      "write_back": "loom rule verdict 'service-auth-at-boundary' 'admin delete user' <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
       "stop_condition": "after recording the verdict, return to loom status",
       "human_gate": null
     },
@@ -299,7 +299,7 @@ mindset:
 
 allowed:
   edit code
-  loom intent mark --lifecycle implemented
+  loom intent update <intent> --lifecycle implemented --reason '…'
   loom edge implement --role realizes|consumes|configures|verifies
   loom validation add (stub only)
   loom sync
@@ -308,7 +308,7 @@ allowed:
     with a genuine behavioral criterion; must provide full --description)
 
 forbidden:
-  loom validation mark passed (validator role)
+  loom validation verdict passed (validator role)
   loom rule verdict passing (quality role)
   loom edge explore ground (analyzer role)
   creating intents that are just function/method names with no behavioral criterion
@@ -337,7 +337,7 @@ allowed:
 
 forbidden:
   edit code
-  loom intent mark --lifecycle (builder role)
+  loom intent update --lifecycle (builder role)
   loom rule verdict (quality role)
 
 evidence required:
@@ -359,7 +359,7 @@ allowed:
   edit code
   loom sync
   loom edge implement --role realizes|consumes|configures|verifies (re-ground after fix)
-  loom intent mark --lifecycle implemented (after confirmed fix)
+  loom intent update <intent> --lifecycle implemented --reason '…' (after confirmed fix)
   loom inbox add (out-of-scope findings)
 
 forbidden:
@@ -384,9 +384,9 @@ mindset:
 
 allowed:
   run validation command
-  loom validation mark <validation> --result passed|failed|blocked
+  loom validation verdict <validation> passed|failed|blocked
   loom journey run
-  loom validate <intent>
+  loom validation run <intent>
 
 forbidden:
   edit source code
@@ -414,7 +414,7 @@ mindset:
   Never invent compliance; inspect the code.
 
 allowed:
-  loom rule verdict <rule> <intent> --status passing/failing/independent
+  loom rule verdict <rule> <intent> passing/failing/independent
     --criterion ... --evidence ... --confidence <n>
   loom codefile show
   read codefiles, detection hints, prior notes
@@ -520,7 +520,7 @@ The LLM is a state reporter. It reports through typed graph commands, not chat p
 
 ```text
 loom rule verdict "service-auth-at-boundary" "admin delete user" \
-  --status passing \
+  passing \
   --criterion "delete endpoint checks admin permission before side effect" \
   --evidence "src/routes/admin.rs:42-61 requires admin before delete_user call" \
   --confidence 0.91

@@ -30,19 +30,6 @@ pub enum IntentCmd {
     },
     /// Show an intent by id, name, or unique fragment.
     Show { key: String },
-    /// Correct the intent's attributes (level/visibility/aspect) without redefining it.
-    Set {
-        key: String,
-        /// system | component | feature | cross_cutting
-        #[arg(long)]
-        level: Option<String>,
-        /// user_visible | internal
-        #[arg(long)]
-        visibility: Option<String>,
-        /// happy | sad | fallback | edge_case
-        #[arg(long)]
-        aspect: Option<String>,
-    },
     /// Deliberately waive a completeness axis for this intent (recorded, re-opens
     /// when the intent's meaning changes).
     Waive {
@@ -63,16 +50,10 @@ pub enum IntentCmd {
         #[arg(long, default_value_t = 50)]
         limit: usize,
     },
-    /// Set the prescriptive lifecycle (planned|implemented|needs_change).
-    Mark {
-        key: String,
-        #[arg(long)]
-        lifecycle: String,
-        #[arg(long)]
-        reason: Option<String>,
-    },
-    /// Redefine the description (ripples one hop; --reword: same concept, no
-    /// ripple) and/or rename the intent (--name: label only, never ripples).
+    /// One mutation verb for an intent. --description redefines (ripples one
+    /// hop; --reword: same concept, no ripple). --name relabels, --level /
+    /// --visibility / --aspect correct attributes, --lifecycle moves the
+    /// prescriptive state — none of those ripple. Every update records --reason.
     Update {
         key: String,
         #[arg(long)]
@@ -80,6 +61,18 @@ pub enum IntentCmd {
         /// New name (a label change; the description stays the criterion).
         #[arg(long)]
         name: Option<String>,
+        /// system | component | feature | cross_cutting
+        #[arg(long)]
+        level: Option<String>,
+        /// user_visible | internal
+        #[arg(long)]
+        visibility: Option<String>,
+        /// happy | sad | fallback | edge_case
+        #[arg(long)]
+        aspect: Option<String>,
+        /// planned | implemented | needs_change
+        #[arg(long)]
+        lifecycle: Option<String>,
         #[arg(long)]
         reason: String,
         /// Clearer words, same concept: no ripple.
@@ -105,11 +98,17 @@ pub enum IntentCmd {
     Confirm { key: String },
     /// Tag from the registered vocabulary.
     Tag {
-        /// add | remove
-        action: String,
-        key: String,
-        term: String,
+        #[command(subcommand)]
+        cmd: IntentTagCmd,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum IntentTagCmd {
+    /// Tag an intent with a registered vocabulary term.
+    Add { key: String, term: String },
+    /// Remove a vocabulary tag from an intent.
+    Remove { key: String, term: String },
 }
 
 #[derive(Subcommand, Debug)]
@@ -328,13 +327,12 @@ pub enum FindingCmd {
 pub enum RuleCmd {
     /// Seed a pre-authored rule pack (e.g. iso5055).
     Seed { pack: String },
-    /// Record a verdict (creates the governs edge if needed).
+    /// Record a verdict; the outcome is positional (creates the governs edge if needed).
     Verdict {
         rule: String,
         intent: String,
         /// passing | failing | independent
-        #[arg(long)]
-        status: String,
+        outcome: String,
         #[arg(long, default_value = "")]
         criterion: String,
         #[arg(long, default_value = "")]
@@ -385,7 +383,7 @@ pub enum RuleCmd {
     /// Remove a quality rule (and its governs edges).
     Remove { key: String },
     /// Stop a rule governing an intent (removes the governs edge by name).
-    Ungovern { rule: String, intent: String },
+    Unlink { rule: String, intent: String },
 }
 
 #[derive(Subcommand, Debug)]
@@ -401,27 +399,38 @@ pub enum ValidationCmd {
         command: String,
         #[arg(long)]
         intent: String,
-        /// Optional proof-strength label, e.g. L0..L6.
+        /// Proof-strength label, e.g. L0..L6. For journey proofs prefer
+        /// `loom journey add <spec>`, which compiles the spec and sets this.
         #[arg(long)]
         proof_level: Option<String>,
-        /// Optional normalized proof kind, e.g. journey.
+        /// Normalized proof kind (e.g. journey). Prefer `loom journey add <spec>`;
+        /// set by hand only to register a repo-native journey runner.
         #[arg(long)]
         proof_kind: Option<String>,
-        /// Optional stable journey id/name when this validation is a journey proof.
+        /// Stable journey id/name; requires --proof-kind journey.
         #[arg(long)]
         journey_id: Option<String>,
-        /// Optional repo-native proof artifact kind, e.g. http_contract_json.
+        /// Repo-native proof artifact kind (e.g. http_contract_json); requires
+        /// --proof-kind journey.
         #[arg(long)]
         repo_native_kind: Option<String>,
-        /// Optional proof artifact path or reference.
+        /// Proof artifact path or reference; requires --proof-kind journey.
         #[arg(long)]
         artifact: Option<String>,
     },
-    /// Mark a result by hand (passed|failed|blocked).
-    Mark {
-        key: String,
+    /// Run stored proof commands for an intent (or --all pending).
+    Run {
+        #[arg(default_value = "")]
+        intent: String,
+        /// Run every pending validation.
         #[arg(long)]
-        result: String,
+        all: bool,
+    },
+    /// Record a proof result by hand; the outcome is positional.
+    Verdict {
+        key: String,
+        /// passed | failed | blocked
+        outcome: String,
         #[arg(long, default_value = "")]
         evidence: String,
         #[arg(long, default_value = "")]
@@ -439,8 +448,8 @@ pub enum ValidationCmd {
     },
     /// Unlink a validation from an intent (removes the validates edge by name).
     Unlink { validation: String, intent: String },
-    /// Delete a validation (e.g. a stale proof). Cascades its validates/calls edges.
-    Delete { key: String },
+    /// Remove a validation (e.g. a stale proof). Cascades its validates/calls edges.
+    Remove { key: String },
     /// List validations.
     List {
         #[arg(long, default_value_t = 50)]
@@ -463,12 +472,11 @@ pub enum HypothesisCmd {
         #[arg(long)]
         target: String,
     },
-    /// Prove or refute.
+    /// Prove or refute; the outcome is positional.
     Prove {
         key: String,
         /// supported | refuted
-        #[arg(long)]
-        verdict: String,
+        outcome: String,
         #[arg(long, default_value = "")]
         evidence: String,
     },
@@ -534,13 +542,16 @@ pub enum SurfaceCmd {
         #[arg(long)]
         codefile: Option<String>,
     },
-    /// Delete an interface surface. Cascades its exposes/calls edges.
-    Delete { key: String },
+    /// Remove an interface surface. Cascades its exposes/calls edges.
+    Remove { key: String },
     /// List surfaces.
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
     },
+    /// Report surface-plane gaps: unexposed surfaces and surfaces never
+    /// called by a validation.
+    Gaps,
 }
 
 #[derive(Subcommand, Debug)]
@@ -573,12 +584,6 @@ pub enum LayerCmd {
     List,
     /// Clear the declared order.
     Clear,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum InterfaceCmd {
-    /// Report interface-plane gaps.
-    Gaps,
 }
 
 #[derive(Subcommand, Debug)]
@@ -666,7 +671,7 @@ pub enum ProposalItemCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum JourneyCmd {
-    /// Add a journey from a JSON or YAML spec (creates a journey Validation + step edges).
+    /// Add a journey from a JSON or YAML spec (creates a journey Validation + validates edges to step intents).
     Add { spec: PathBuf },
     /// List journey validations.
     List {

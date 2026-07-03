@@ -104,7 +104,7 @@ Drive the loop:
 loom sync
 loom status
 loom next --all
-loom validate --all
+loom validation run --all
 loom export
 ```
 

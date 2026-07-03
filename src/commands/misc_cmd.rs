@@ -469,6 +469,7 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
                 "open_completeness_axes": open_axes,
                 "phase": ladder.phase,
                 "recommended": ladder.next_command,
+                "capture_entry": "loom door \"<utterance>\" — capture-first entry for a new topic/story/change",
                 "rungs": rungs,
             }))?
         );
@@ -541,6 +542,9 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
             "  - grow {open_axes} open completeness axis(es) around user-visible ideas [loom next --mode elaborate]"
         );
     }
+    println!(
+        "  - got a topic/story/change in mind?  loom door \"<utterance>\"   (capture + landing menu)"
+    );
     Ok(())
 }
 fn truth_axis_matrix() -> Vec<serde_json::Value> {
@@ -602,7 +606,7 @@ fn operator_loops() -> Vec<serde_json::Value> {
                 "loom next --mode quality",
                 "loom next --mode analyze",
                 "loom next --mode review",
-                "loom validate <intent>",
+                "loom validation run <intent>",
                 "loom journey run <spec>",
                 "loom export --check"
             ],
@@ -646,6 +650,12 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             serde_json::to_string_pretty(&serde_json::json!({
                 "role": role,
                 "commands": ["loom sync", "loom next --all", "loom status", "loom coverage", "loom doctor", "loom export --check", "loom door"],
+                "intake": {
+                    "raw_thought": "loom door \"<utterance>\" — capture first, route later (inbox mark closes it)",
+                    "structured_plan": "loom proposal add --title '…' (--file <path> | --text '…') — decompose into adoptable items",
+                    "falsifiable_design_claim": "loom hypothesis add --name '…' --claim '…' --target <intent> — prove supported|refuted before it becomes work",
+                    "timeboxed_activity": "loom task add '<title>' --kind spike — close with a result; promote durable outcomes to graph facts"
+                },
                 "roles": ["builder", "analyzer", "fixer", "validator", "quality", "monitor"],
                 "rung_gates": ["seeded", "realized", "proven", "hardened", "excellent", "exported"],
                 "closeout": ["loom coverage", "loom doctor", "loom next --all", "loom export", "loom export --check"],
@@ -663,6 +673,11 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             println!("  loom next       serve one work item + its prompt contract");
             println!("  loom status     rung ladder + the single next move");
             println!("  loom door       capture a raw utterance before routing it");
+            println!("Capture routing — pick the entrance by input shape:");
+            println!("  raw thought / finding / question   loom door \"<utterance>\"        capture first; route via inbox mark");
+            println!("  structured plan / RFC              loom proposal add               decompose into adoptable items");
+            println!("  falsifiable design claim           loom hypothesis add             prove supported|refuted, then adopt");
+            println!("  timeboxed activity                 loom task add                   close with a result; promote outcomes to graph facts");
             println!(
                 "Closeout gates: loom coverage; loom doctor; loom next --all; loom export --check."
             );
@@ -688,8 +703,8 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             let (mindset, allowed, forbidden, axis) = match r {
                 "builder" => (
                     "Use Loom first to understand why, likely files/entities, and prior evidence; then inspect relevant code before editing. Functions are locators, not intents.",
-                    "loom status; loom next --all; loom intent show <intent>; loom codefile list; loom codefile show <file>; edit code; loom edge implement; loom intent mark; loom sync",
-                    "loom rule verdict passing; loom validation mark passed",
+                    "loom status; loom next --all; loom intent show <intent>; loom codefile list; loom codefile show <file>; edit code; loom edge implement; loom intent update <intent> --lifecycle implemented --reason '…'; loom sync",
+                    "loom rule verdict passing; loom validation verdict passed",
                     crate::truth::TruthAxis::Implementation,
                 ),
                 "analyzer" => (
@@ -706,13 +721,13 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                 ),
                 "validator" => (
                     "Run or honestly mark proofs; never edit code to make a proof pass.",
-                    "run validation; loom validate <intent>; loom validation mark <validation> --result passed|failed|blocked --evidence '…'",
+                    "run validation; loom validation run <intent>; loom validation verdict <validation> passed|failed|blocked --evidence '…'",
                     "edit code; mark passed without observed proof",
                     crate::truth::TruthAxis::Proof,
                 ),
                 "quality" => (
                     "Measure a rule against an intent at the highest honest altitude. Follow the rule's inspection_guide and evidence_template from the work packet; do not invent your own protocol.",
-                    "loom rule verdict <rule> <intent> --status passing|failing|independent --criterion '…' --evidence '…' --confidence <n>",
+                    "loom rule verdict <rule> <intent> passing|failing|independent --criterion '…' --evidence '…' --confidence <n>",
                     "edit code; mark passing without inspecting; mark independent without evidence",
                     crate::truth::TruthAxis::Verdict,
                 ),
@@ -763,7 +778,7 @@ fn guide_monitor() {
     println!("       loom edge call \"<validation name>\" \"<surface name>\"");
     println!("  6. Baseline: sync, then record that the contract holds right now:");
     println!("       loom sync");
-    println!("       loom validation mark \"<validation name>\" --result passed --evidence \"<how you verified it>\"");
+    println!("       loom validation verdict \"<validation name>\" passed --evidence \"<how you verified it>\"");
     println!("  7. Later, after the upstream moves (re-pull, rescan for new files, then sync):");
     println!(
         "       git submodule update --remote vendor/<name>     # or update the vendored files"
@@ -774,7 +789,7 @@ fn guide_monitor() {
         "       loom next --mode validate     # re-verify each contract against the new upstream"
     );
     println!();
-    println!("  Check every integration point is under contract:  loom interface gaps");
+    println!("  Check every integration point is under contract:  loom surface gaps");
 }
 /// Keyword scoring shared by `loom find` and the door's landing menu: score
 /// nodes of the given kinds against the query terms, best first, capped at

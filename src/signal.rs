@@ -24,6 +24,11 @@ pub struct Smell {
     pub kind: String,
     pub message: String,
     pub remedy: String,
+    /// Stable subject key built from node/edge IDS — never display wording —
+    /// so the materialized finding id (and its durable adjudication) survives
+    /// renames and copy changes.
+    #[serde(skip)]
+    pub identity: String,
 }
 
 /// A statistical debt signal: ranked, advisory, never stored.
@@ -58,6 +63,29 @@ struct Adjudication {
     hash: String,
     #[serde(rename = "at")]
     _at: String,
+}
+
+/// The deterministic Finding det_key for a smell identity. `sync` materializes
+/// smell findings under this key; `loom smells` joins live smells against
+/// durable adjudications through it.
+pub fn smell_det_key(identity: &str) -> String {
+    format!("smell:{identity}")
+}
+
+/// Durable adjudication `(verdict, reason)` recorded for a node id, if any.
+/// Reads the asserted `adjudication` facet directly, so it also resolves for
+/// ids whose derived node has not been rebuilt yet.
+pub fn adjudication_of(store: &Store, node_id: &str) -> Result<Option<(String, String)>> {
+    let Some(raw) = store.get_facet(node_id, TargetKind::Node, "adjudication")? else {
+        return Ok(None);
+    };
+    let Ok(adj) = serde_json::from_str::<Adjudication>(&raw) else {
+        return Ok(None);
+    };
+    if !matches!(adj.verdict.as_str(), "justified" | "needed" | "blocked") {
+        return Ok(None);
+    }
+    Ok(Some((adj.verdict, adj.reason)))
 }
 
 const TANGLE_OWNERS: usize = 3;
@@ -156,6 +184,7 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
                 "loom rule seed {pack}  (idempotent refresh) — or keep the customization and \
                  accept this smell as its record"
             ),
+            identity: format!("pack_drift:{pack}"),
         })
         .collect()
 }
@@ -178,9 +207,15 @@ fn ownership_smells<'a>(
                 ),
                 remedy: "split the file or the intents; one file, one cohesive responsibility"
                     .into(),
+                identity: format!("tangled_file:{cf}"),
             });
         }
         if ids.len() == 2 && !edge_between(snap, ids[0], ids[1]) {
+            let (a, b) = if ids[0] <= ids[1] {
+                (ids[0], ids[1])
+            } else {
+                (ids[1], ids[0])
+            };
             out.push(Smell {
                 kind: "overlapping_ownership".into(),
                 message: format!(
@@ -190,6 +225,7 @@ fn ownership_smells<'a>(
                     node_name(snap, cf),
                 ),
                 remedy: "record a relates edge, or split ownership".into(),
+                identity: format!("overlapping_ownership:{cf}:{a}:{b}"),
             });
         }
     }
@@ -234,6 +270,7 @@ fn undeclared_coupling_smells<'a>(
                     remedy:
                         "record a relates edge between the owning intents, or justify with a note"
                             .into(),
+                    identity: format!("undeclared_coupling:{file_id}:{b_id}"),
                 });
                 break; // one per file is enough signal
             }
@@ -276,6 +313,7 @@ fn duplicated_responsibility_smells<'a>(
                     ),
                     remedy: "merge the responsibility, or record why they legitimately differ"
                         .into(),
+                    identity: format!("duplicated_responsibility:{a}:{b}:{}", shared[0]),
                 });
             }
         }
@@ -342,6 +380,7 @@ fn layering_smells<'a>(
                     ),
                     remedy: "your call: invert the dependency, or record a verdict justifying it as an accepted exception — judge it, don't defer it"
                         .into(),
+                    identity: format!("layering_violation:{file_id}:{b_id}"),
                 });
             }
         }
@@ -369,6 +408,7 @@ fn disclosure_smells(
             ),
             remedy: "register vocab terms and tag intents (loom vocab add / loom intent tag add)"
                 .into(),
+            identity: "duplicate_detection_unarmed".into(),
         });
     }
     out
@@ -437,6 +477,7 @@ fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
             remedy:
                 "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome"
                     .into(),
+            identity: format!("{kind}:{}", intent.id),
         });
     }
     out
@@ -623,23 +664,37 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
                 message: format!("derived edge {} has non-current status {}", e.id, e.status),
             });
         }
-        // evidence vacuity (INV-4/6): settled verdict with empty evidence
-        if e.truth_class == TruthClass::Asserted
-            && matches!(
-                e.status,
+        // Vacuity audit (INV-4/6): mirror the record_verdict write boundary so
+        // legacy/imported verdicts recorded before the gate are still caught.
+        // passing/failing/independent require substantive criterion AND evidence;
+        // blocked requires a substantive reason (stored in evidence).
+        if e.truth_class == TruthClass::Asserted {
+            let vacuous_field = match e.status {
                 crate::model::InspectionStatus::Passing
-                    | crate::model::InspectionStatus::Failing
-                    | crate::model::InspectionStatus::Independent
-            )
-            && e.evidence.trim().is_empty()
-        {
-            issues.push(DoctorIssue {
-                kind: "vacuous_verdict".into(),
-                message: format!(
-                    "{} edge {} is {} with empty evidence",
-                    e.kind, e.id, e.status
-                ),
-            });
+                | crate::model::InspectionStatus::Failing
+                | crate::model::InspectionStatus::Independent => {
+                    if crate::model::is_placeholder(&e.criterion) {
+                        Some("criterion")
+                    } else if crate::model::is_placeholder(&e.evidence) {
+                        Some("evidence")
+                    } else {
+                        None
+                    }
+                }
+                crate::model::InspectionStatus::Blocked => {
+                    crate::model::is_placeholder(&e.evidence).then_some("reason")
+                }
+                _ => None,
+            };
+            if let Some(field) = vacuous_field {
+                issues.push(DoctorIssue {
+                    kind: "vacuous_verdict".into(),
+                    message: format!(
+                        "{} edge {} is {} with empty or placeholder {field}",
+                        e.kind, e.id, e.status
+                    ),
+                });
+            }
         }
         // Role vacuity (§3.4): a settled `consumes` grounding must name the seam
         // it exercises (a route/topic/key/symbol) — in its criterion or locator.
@@ -875,6 +930,7 @@ fn consumer_owned_file_smells<'a>(
                 remedy: format!(
                     "if this file only exercises that behavior across a seam: `loom edge set-role {edge_ref} consumes --reason '…'`, then create a realizing intent for this surface and ground it --role realizes"
                 ),
+                identity: format!("consumer_owned_file:{file_id}:{owner}"),
             });
         }
     }

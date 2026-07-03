@@ -12,6 +12,93 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
+/// Whether a criterion / evidence / reason field is a non-substantive
+/// placeholder — either empty after trimming, or a whole-field filler token a
+/// driver left unfilled. The write_back templates hand the driver `…` as the
+/// hole, so a verbatim copy that forgets to fill it must be rejected at the
+/// honesty boundary, not silently recorded as earned evidence.
+///
+/// This checks the WHOLE field, not a substring: real evidence may legitimately
+/// contain an ellipsis (e.g. a truncated command-output excerpt), so only a
+/// field that IS the placeholder is rejected.
+pub fn is_placeholder(s: &str) -> bool {
+    // Strip whitespace and quote/backtick wrappers only — NOT angle brackets,
+    // so a whole-field `<reason>` hole stays detectable below.
+    let raw = s
+        .trim()
+        .trim_matches(|c: char| matches!(c, '\'' | '"' | '`'))
+        .trim();
+    if raw.is_empty() {
+        return true;
+    }
+    // A field that IS `<…>` (or `[…]`) is an unfilled write_back hole:
+    // `<symbol>`, `<reason>`, `<what was built>`, `<passing|failing|independent>`.
+    if (raw.starts_with('<') && raw.ends_with('>')) || (raw.starts_with('[') && raw.ends_with(']'))
+    {
+        return true;
+    }
+    matches!(
+        raw.to_ascii_lowercase().as_str(),
+        "…" | "..."
+            | ". . ."
+            | "todo"
+            | "tbd"
+            | "tba"
+            | "n/a"
+            | "na"
+            | "none"
+            | "-"
+            | "--"
+            | "."
+            | "?"
+            | "???"
+            | "xxx"
+            | "fixme"
+            | "placeholder"
+    )
+}
+
+#[cfg(test)]
+mod placeholder_tests {
+    use super::is_placeholder;
+
+    #[test]
+    fn rejects_whole_field_placeholders() {
+        for p in [
+            "",
+            "  ",
+            "…",
+            "...",
+            "<...>",
+            "TODO",
+            "tbd",
+            "n/a",
+            "-",
+            ".",
+            "???",
+            "'…'",
+            "<reason>",
+            "<what was built>",
+            "<symbol>",
+            "[fill me]",
+        ] {
+            assert!(is_placeholder(p), "should reject placeholder {p:?}");
+        }
+    }
+
+    #[test]
+    fn accepts_substantive_text_even_with_ellipsis() {
+        // Real evidence that merely CONTAINS an ellipsis (truncated output) is fine.
+        for s in [
+            "src/store/edges.rs:110 gates empty evidence",
+            "test output: assertion failed at line 42 …",
+            "no auth check before delete_user()",
+        ] {
+            assert!(!is_placeholder(s), "should accept substantive {s:?}");
+        }
+    }
+}
+
 /// Error returned when a string fails to parse into a model enum.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseEnumError {
@@ -144,7 +231,6 @@ str_enum! {
         Assertion => "assertion",
         Benchmark => "benchmark",
         ManualCheck => "manual_check",
-        Saga => "saga",
         Journey => "journey",
         Scenario => "scenario",
         Contract => "contract",

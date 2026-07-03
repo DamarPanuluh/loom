@@ -3,16 +3,70 @@ use super::*;
 pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     let smells = crate::signal::smells(&store)?;
+    // Join each live smell against its materialized finding (created by sync)
+    // and any durable adjudication recorded through `loom finding verdict`.
+    // The join is by deterministic id, so an adjudication resolves even while
+    // the derived node awaits the next sync.
+    let mut rows = Vec::new();
+    for s in &smells {
+        let id = Store::derived_node_id(
+            NodeType::Finding,
+            &crate::signal::smell_det_key(&s.identity),
+        );
+        let materialized = store.get_node(&id)?.is_some();
+        let adjudication = crate::signal::adjudication_of(&store, &id)?;
+        rows.push((s, id, materialized, adjudication));
+    }
     if json {
-        println!("{}", serde_json::to_string_pretty(&smells)?);
+        let out: Vec<_> = rows
+            .iter()
+            .map(|(s, id, materialized, adj)| {
+                serde_json::json!({
+                    "kind": s.kind,
+                    "message": s.message,
+                    "remedy": s.remedy,
+                    "finding_id": if *materialized { serde_json::json!(id) } else { serde_json::Value::Null },
+                    "state": adj.as_ref().map(|(v, _)| v.as_str()).unwrap_or("untriaged"),
+                    "reason": adj.as_ref().map(|(_, r)| r.as_str()).unwrap_or(""),
+                    "adjudicate": if *materialized {
+                        format!(
+                            "loom finding verdict {} <justified|needed|blocked> --reason '…'",
+                            &id[..8.min(id.len())]
+                        )
+                    } else {
+                        "loom sync   (materializes this smell as a finding first)".to_string()
+                    },
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&out)?);
     } else if smells.is_empty() {
         println!("no open smells");
     } else {
-        for s in &smells {
-            println!("[{}] {}", s.kind, s.message);
-            println!("    remedy: {}", s.remedy);
+        for (s, id, materialized, adj) in &rows {
+            match adj {
+                Some((verdict, reason)) => {
+                    println!("[{}·{verdict}] {}", s.kind, s.message);
+                    println!("    adjudicated: {reason}");
+                }
+                None => {
+                    println!("[{}] {}", s.kind, s.message);
+                    println!("    remedy: {}", s.remedy);
+                    if *materialized {
+                        println!(
+                            "    adjudicate: loom finding verdict {} <justified|needed|blocked> --reason '…'",
+                            &id[..8.min(id.len())]
+                        );
+                    } else {
+                        println!(
+                            "    adjudicate: run loom sync first (materializes this smell for triage)"
+                        );
+                    }
+                }
+            }
         }
-        println!("{} open finding(s)", smells.len());
+        let open = rows.iter().filter(|(_, _, _, adj)| adj.is_none()).count();
+        println!("{} smell(s); {} unadjudicated", rows.len(), open);
     }
     Ok(())
 }
@@ -103,8 +157,8 @@ fn finding_verdict(
     json: bool,
 ) -> Result<()> {
     validate_finding_verdict(verdict)?;
-    if reason.trim().is_empty() {
-        bail!("finding verdict requires --reason");
+    if crate::model::is_placeholder(reason) {
+        bail!("finding verdict requires a substantive --reason (not a placeholder like '…' or '<reason>')");
     }
     let store = open(graph)?;
     let finding = store.resolve_finding(id)?;

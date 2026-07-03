@@ -64,9 +64,9 @@ pub enum Command {
     Status,
     /// The next work item (asserted residue) with its prompt contract.
     Next {
-        /// build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate (omit for highest-priority)
-        #[arg(long)]
-        mode: Option<String>,
+        /// The queue to serve; omit for the highest-priority item overall.
+        #[arg(long, value_enum)]
+        mode: Option<ModeArg>,
         /// Closeout view: every queue at once.
         #[arg(long)]
         all: bool,
@@ -97,9 +97,9 @@ pub enum Command {
     Session,
     /// Adopt a lane's discipline (the prompt contract for a role).
     Guide {
-        /// builder | analyzer | fixer | validator | quality | monitor
-        #[arg(long)]
-        role: Option<String>,
+        /// The lane to adopt; omit for the whole driving protocol.
+        #[arg(long, value_enum)]
+        role: Option<RoleArg>,
     },
     /// Search the graph for intents/codefiles by keyword.
     Find {
@@ -132,13 +132,6 @@ pub enum Command {
         #[command(subcommand)]
         cmd: ValidationCmd,
     },
-    /// Run proofs for an intent (or --all pending).
-    Validate {
-        #[arg(default_value = "")]
-        intent: String,
-        #[arg(long)]
-        all: bool,
-    },
     /// Hypothesis commands (ideas proven before they become work).
     Hypothesis {
         #[command(subcommand)]
@@ -158,11 +151,6 @@ pub enum Command {
     Layer {
         #[command(subcommand)]
         cmd: LayerCmd,
-    },
-    /// Interface-plane gaps (uncalled surfaces, unbound boundaries).
-    Interface {
-        #[command(subcommand)]
-        cmd: InterfaceCmd,
     },
     /// Structural smells (computed from graph shape, each with a remedy).
     Smells,
@@ -190,9 +178,66 @@ pub enum Command {
         cmd: ProposalCmd,
     },
     /// Journey proof, coverage, and invariant-point commands.
-    #[command(alias = "saga")]
     Journey {
         #[command(subcommand)]
         cmd: JourneyCmd,
     },
+}
+
+/// Queue names for `loom next --mode`; `--help` is the enumeration.
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+pub enum ModeArg {
+    Fix,
+    Validate,
+    Build,
+    Coverage,
+    Quality,
+    /// Alias: discovery.
+    #[value(alias = "discovery")]
+    Analyze,
+    Prove,
+    Triage,
+    Review,
+    Elaborate,
+}
+
+impl ModeArg {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ModeArg::Fix => "fix",
+            ModeArg::Validate => "validate",
+            ModeArg::Build => "build",
+            ModeArg::Coverage => "coverage",
+            ModeArg::Quality => "quality",
+            ModeArg::Analyze => "analyze",
+            ModeArg::Prove => "prove",
+            ModeArg::Triage => "triage",
+            ModeArg::Review => "review",
+            ModeArg::Elaborate => "elaborate",
+        }
+    }
+}
+
+/// Lane names for `loom guide --role`.
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+pub enum RoleArg {
+    Builder,
+    Analyzer,
+    Fixer,
+    Validator,
+    Quality,
+    Monitor,
+}
+
+impl RoleArg {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RoleArg::Builder => "builder",
+            RoleArg::Analyzer => "analyzer",
+            RoleArg::Fixer => "fixer",
+            RoleArg::Validator => "validator",
+            RoleArg::Quality => "quality",
+            RoleArg::Monitor => "monitor",
+        }
+    }
 }

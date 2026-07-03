@@ -1,0 +1,541 @@
+use super::*;
+
+impl Store {
+    // ---- ring 2: structural plane (sync + derived data) ------------------
+
+    /// All CodeFile nodes.
+    pub fn codefiles(&self) -> Result<Vec<Node>> {
+        self.list_nodes(Some(NodeType::CodeFile), usize::MAX)
+    }
+
+    /// Edges filtered by any combination of kind / from / to. Used by the
+    /// sync ripple to find what a changed file or intent invalidates.
+    pub fn edges_with(
+        &self,
+        kind: Option<EdgeKind>,
+        from: Option<&str>,
+        to: Option<&str>,
+    ) -> Result<Vec<Edge>> {
+        let mut sql = format!("SELECT {EDGE_COLS} FROM edge WHERE 1=1");
+        let mut args: Vec<String> = Vec::new();
+        if let Some(k) = kind {
+            sql.push_str(&format!(" AND kind=?{}", args.len() + 1));
+            args.push(k.as_str().to_string());
+        }
+        if let Some(f) = from {
+            sql.push_str(&format!(" AND from_id=?{}", args.len() + 1));
+            args.push(f.to_string());
+        }
+        if let Some(t) = to {
+            sql.push_str(&format!(" AND to_id=?{}", args.len() + 1));
+            args.push(t.to_string());
+        }
+        sql.push_str(" ORDER BY id");
+        let mut stmt = self.conn.prepare(&sql)?;
+        let refs: Vec<&dyn rusqlite::ToSql> =
+            args.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+        let rows = stmt.query_map(refs.as_slice(), row_to_edge)?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    /// Re-open an asserted edge whose dependency changed (sync ripple). Moves a
+    /// settled verdict to `needs_reverification` and records the concrete cause
+    /// on the edge as the `stale_cause` facet. Distinct from `record_verdict`
+    /// (it writes no verdict) and from `set_derived_status` (asserted only).
+    /// Returns true if the edge was re-opened.
+    pub fn stale_edge(&self, edge_id: &str, cause: &str) -> Result<bool> {
+        let cause = cause.trim();
+        if cause.is_empty() {
+            bail!("stale_edge requires a cause");
+        }
+        let edge = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if edge.truth_class != TruthClass::Asserted {
+            return Ok(false);
+        }
+        match edge.status {
+            InspectionStatus::Passing
+            | InspectionStatus::Failing
+            | InspectionStatus::Independent => {
+                let now = now(&self.conn)?;
+                self.conn.execute(
+                    "UPDATE edge SET status='needs_reverification',updated_at=?2 WHERE id=?1",
+                    params![edge_id, now],
+                )?;
+                self.set_facet(
+                    edge_id,
+                    TargetKind::Edge,
+                    "stale_cause",
+                    cause,
+                    TruthClass::Derived,
+                )?;
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    /// Re-open only a previously passing asserted edge. Journey boundary failures
+    /// use this narrower transition for never-reached steps: stale green proofs
+    /// must be rechecked, but uninspected or already-failing edges carry useful
+    /// state and are left untouched.
+    pub fn stale_passing_edge(&self, edge_id: &str) -> Result<bool> {
+        let edge = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if edge.truth_class != TruthClass::Asserted || edge.status != InspectionStatus::Passing {
+            return Ok(false);
+        }
+        let now = now(&self.conn)?;
+        self.conn.execute(
+            "UPDATE edge SET status=?2,updated_at=?3 WHERE id=?1",
+            params![edge_id, InspectionStatus::NeedsReverification.as_str(), now],
+        )?;
+        Ok(true)
+    }
+
+    /// Reset a Validation to `not_run` as a deterministic sync consequence.
+    /// Sync-derived invalidation is not an authored state transition, so it uses
+    /// the derived timestamp sentinel to preserve INV-2 byte-identical exports
+    /// across repeated recomputes. User-visible status changes must keep using
+    /// [`set_node_status`].
+    pub fn reset_validation_status_for_sync(&self, id: &str) -> Result<()> {
+        let n = self.conn.execute(
+            "UPDATE node SET status='not_run',updated_at=?2 WHERE id=?1 AND node_type=?3",
+            params![id, DERIVED_TS, NodeType::Validation.as_str()],
+        )?;
+        if n == 0 {
+            bail!("no validation node '{id}'");
+        }
+        Ok(())
+    }
+
+    /// Set a node's status directly for asserted/user-visible transitions.
+    /// Touches updated_at with the live clock.
+    pub fn set_node_status(&self, id: &str, status: &str) -> Result<()> {
+        let now = now(&self.conn)?;
+        let n = self.conn.execute(
+            "UPDATE node SET status=?2,updated_at=?3 WHERE id=?1",
+            params![id, status, now],
+        )?;
+        if n == 0 {
+            bail!("no node '{id}'");
+        }
+        Ok(())
+    }
+
+    /// Add (or refresh) a derived node with a deterministic, content-addressed
+    /// id and a fixed sentinel timestamp, so wipe+rebuild is byte-identical
+    /// (INV-2). Sync-owned: derived truth class, never an asserted verdict.
+    pub fn add_derived_node(
+        &self,
+        node_type: NodeType,
+        det_key: &str,
+        name: &str,
+        description: &str,
+        status: &str,
+        body: serde_json::Value,
+    ) -> Result<Node> {
+        let id = derived_id(&[node_type.as_str(), det_key]);
+        self.conn.execute(
+            "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)
+             VALUES (?1,?2,?3,?4,?5,'derived',?6,?7,?7)
+             ON CONFLICT(id) DO UPDATE SET name=?3,description=?4,status=?5,body=?6",
+            params![id, node_type.as_str(), name, description, status, body.to_string(), DERIVED_TS],
+        )?;
+        self.get_node(&id)?
+            .ok_or_else(|| anyhow!("derived node vanished"))
+    }
+
+    /// Deterministic id a derived node of this type/key would get. Lets
+    /// read-side views join durable adjudications against live-computed
+    /// signals before (or after) sync materializes the node.
+    pub fn derived_node_id(node_type: NodeType, det_key: &str) -> String {
+        derived_id(&[node_type.as_str(), det_key])
+    }
+
+    /// Validate an edge against the registry: truth-class allowed for the kind,
+    /// both endpoints exist, and their node types match the kind's spec. Shared
+    /// by `add_edge` (asserted) and `add_derived_edge` (derived) so deterministic
+    /// ids never weaken edge-kind integrity.
+    pub(super) fn validate_edge_endpoints(
+        &self,
+        kind: EdgeKind,
+        from_id: &str,
+        to_id: &str,
+        truth_class: TruthClass,
+    ) -> Result<()> {
+        let spec = registry::spec(kind);
+        if !spec.allows_truth_class(truth_class) {
+            bail!("edge kind '{kind}' does not allow truth_class '{truth_class}'");
+        }
+        let from = self
+            .get_node(from_id)?
+            .ok_or_else(|| anyhow!("from node '{from_id}' does not exist"))?;
+        let to = self
+            .get_node(to_id)?
+            .ok_or_else(|| anyhow!("to node '{to_id}' does not exist"))?;
+        if from.node_type != spec.from {
+            bail!(
+                "edge '{kind}' requires from-node type '{}', got '{}'",
+                spec.from,
+                from.node_type
+            );
+        }
+        if to.node_type != spec.to {
+            bail!(
+                "edge '{kind}' requires to-node type '{}', got '{}'",
+                spec.to,
+                to.node_type
+            );
+        }
+        Ok(())
+    }
+
+    /// Add (or refresh) a derived edge with a deterministic id. Sync-owned.
+    pub fn add_derived_edge(&self, kind: EdgeKind, from_id: &str, to_id: &str) -> Result<Edge> {
+        self.validate_edge_endpoints(kind, from_id, to_id, TruthClass::Derived)?;
+        let id = derived_id(&["edge", kind.as_str(), from_id, to_id]);
+        self.conn.execute(
+            "INSERT INTO edge(id,from_id,to_id,kind,truth_class,status,created_at,updated_at)
+             VALUES (?1,?2,?3,?4,'derived','current',?5,?5)
+             ON CONFLICT(id) DO NOTHING",
+            params![id, from_id, to_id, kind.as_str(), DERIVED_TS],
+        )?;
+        self.get_edge(&id)?
+            .ok_or_else(|| anyhow!("derived edge vanished"))
+    }
+
+    /// Upsert a built-in seed node (e.g. a structural CodeRule) with a stable,
+    /// content-addressed id and sentinel timestamp, so built-ins are identical
+    /// across machines. Asserted truth class (a norm, not a derived occurrence).
+    pub fn upsert_builtin_node(
+        &self,
+        node_type: NodeType,
+        det_key: &str,
+        name: &str,
+        description: &str,
+        body: serde_json::Value,
+    ) -> Result<Node> {
+        let id = derived_id(&["builtin", node_type.as_str(), det_key]);
+        self.conn.execute(
+            "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)
+             VALUES (?1,?2,?3,?4,'',  'asserted', ?5,?6,?6)
+             ON CONFLICT(id) DO UPDATE SET description=?4, body=?5",
+            params![id, node_type.as_str(), name, description, body.to_string(), DERIVED_TS],
+        )?;
+        self.get_node(&id)?
+            .ok_or_else(|| anyhow!("builtin node vanished"))
+    }
+
+    /// Delete derived nodes + derived edges (Findings, flags, assesses, derived
+    /// exposes). Run every sync before re-deriving findings.
+    pub fn wipe_derived_graph(&self) -> Result<()> {
+        // Derived edges first (some hang off asserted nodes); derived nodes then
+        // cascade their remaining edges via FK.
+        self.conn
+            .execute("DELETE FROM edge WHERE truth_class='derived'", [])?;
+        self.conn
+            .execute("DELETE FROM node WHERE truth_class='derived'", [])?;
+        Ok(())
+    }
+
+    /// Delete only the STRUCTURAL derived findings (and their flags/assesses
+    /// edges), leaving external scan diagnostics (`status = external_diagnostic`)
+    /// intact. `sync` rebuilds structural findings every run, but scan
+    /// diagnostics are a SEPARATE derived plane owned by `loom scan run` — a
+    /// routine sync must not destroy them (H-6). Asserted adjudication facets on
+    /// deterministic finding ids survive and re-attach on rebuild.
+    pub fn wipe_structural_findings(&self) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM edge WHERE truth_class='derived' AND from_id IN
+                (SELECT id FROM node WHERE truth_class='derived' AND node_type='finding'
+                    AND status != 'external_diagnostic')",
+            [],
+        )?;
+        self.conn.execute(
+            "DELETE FROM node WHERE truth_class='derived' AND node_type='finding'
+                AND status != 'external_diagnostic'",
+            [],
+        )?;
+        Ok(())
+    }
+
+    /// Delete specific derived Finding nodes and their incident derived edges.
+    ///
+    /// This is the scan adapter convergence primitive: callers validate adapter
+    /// scope, then ask the store to remove only disappeared derived findings.
+    /// The full id set is validated before any delete so a bad id cannot leave a
+    /// partial cleanup.
+    pub fn remove_derived_findings(&self, ids: &[String]) -> Result<()> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut node_ids = std::collections::BTreeSet::new();
+        let mut incident_edges = std::collections::BTreeSet::new();
+        for id in ids {
+            if !node_ids.insert(id.clone()) {
+                continue;
+            }
+            let node = self
+                .get_node(id)?
+                .ok_or_else(|| anyhow!("no finding node '{id}'"))?;
+            if node.node_type != NodeType::Finding || node.truth_class != TruthClass::Derived {
+                bail!("'{id}' is not a derived finding");
+            }
+            for edge in self.edges_with(None, Some(id), None)? {
+                if edge.truth_class != TruthClass::Derived {
+                    bail!("'{id}' has non-derived incident edge '{}'", edge.id);
+                }
+                incident_edges.insert(edge.id);
+            }
+            for edge in self.edges_with(None, None, Some(id))? {
+                if edge.truth_class != TruthClass::Derived {
+                    bail!("'{id}' has non-derived incident edge '{}'", edge.id);
+                }
+                incident_edges.insert(edge.id);
+            }
+        }
+
+        let tx = self.conn.unchecked_transaction()?;
+        for edge_id in &incident_edges {
+            tx.execute(
+                "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
+                params![edge_id],
+            )?;
+            tx.execute(
+                "DELETE FROM tag WHERE target_id=?1 AND target_kind='edge'",
+                params![edge_id],
+            )?;
+            tx.execute("DELETE FROM edge WHERE id=?1", params![edge_id])?;
+        }
+        for node_id in &node_ids {
+            tx.execute(
+                "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
+                params![node_id],
+            )?;
+            tx.execute(
+                "DELETE FROM tag WHERE target_id=?1 AND target_kind='node'",
+                params![node_id],
+            )?;
+            tx.execute("DELETE FROM node WHERE id=?1", params![node_id])?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Delete all derived facets (language, loc, content_hash, …).
+    pub fn wipe_derived_facets(&self) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM facet WHERE truth_class='derived'", [])?;
+        Ok(())
+    }
+
+    /// Delete the ENTIRE derived plane — nodes, edges, and facets. The INV-2
+    /// operation: after this, a `sync` rebuilds a byte-identical derived plane
+    /// (and, because no prior content_hash remains, ripples nothing).
+    pub fn wipe_derived(&self) -> Result<()> {
+        self.wipe_derived_graph()?;
+        self.wipe_derived_facets()?;
+        Ok(())
+    }
+    /// Persist a durable adjudication verdict on a derived finding.
+    ///
+    /// Findings are rebuilt on every sync, but their ids are deterministic. Store
+    /// the operator's judgment as an asserted facet on that stable id so it
+    /// survives derived graph wipes, while stamping the current codefile hash so
+    /// a future file edit can falsify the judgment.
+    pub fn record_finding_verdict(
+        &self,
+        finding_id: &str,
+        verdict: &str,
+        reason: &str,
+    ) -> Result<()> {
+        let hash = self.finding_codefile_hash(finding_id)?.unwrap_or_default();
+        let at = now(&self.conn)?;
+        let adjudication = serde_json::json!({
+            "verdict": verdict,
+            "reason": reason,
+            "hash": hash,
+            "at": at,
+        })
+        .to_string();
+        self.set_facet(
+            finding_id,
+            TargetKind::Node,
+            "adjudication",
+            &adjudication,
+            TruthClass::Asserted,
+        )
+    }
+
+    /// Current content hash of the codefile flagged by a finding.
+    pub fn finding_codefile_hash(&self, finding_id: &str) -> Result<Option<String>> {
+        let Some(flags) = self
+            .edges_with(Some(EdgeKind::Flags), Some(finding_id), None)?
+            .into_iter()
+            .next()
+        else {
+            return Ok(None);
+        };
+        self.get_facet(&flags.to_id, TargetKind::Node, "content_hash")
+    }
+
+    /// Intents that own (implement) the codefile a finding flags. Cohesion
+    /// evidence for triage: one or two cohesive intents reads as justified
+    /// length; many unrelated ones reads as a file that needs splitting.
+    pub fn finding_owner_intents(&self, finding_id: &str) -> Result<Vec<Node>> {
+        let Some(flags) = self
+            .edges_with(Some(EdgeKind::Flags), Some(finding_id), None)?
+            .into_iter()
+            .next()
+        else {
+            return Ok(Vec::new());
+        };
+        let mut out = Vec::new();
+        for e in self.realizing_implementers(&flags.to_id)? {
+            if let Some(n) = self.get_node(&e.from_id)? {
+                if n.node_type == NodeType::Intent {
+                    out.push(n);
+                }
+            }
+        }
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        out.dedup_by(|a, b| a.id == b.id);
+        Ok(out)
+    }
+
+    /// Resolve a finding by exact id or unique id-prefix.
+    ///
+    /// Finding listings print short id prefixes; verdict writes must accept those
+    /// without falling back to names or fragments.
+    pub fn resolve_finding(&self, key: &str) -> Result<Node> {
+        if let Some(n) = self.get_node(key)? {
+            if n.node_type == NodeType::Finding {
+                return Ok(n);
+            }
+        }
+        let prefix = format!("{key}%");
+        let matches = self.find_nodes_by(
+            "id LIKE ?1",
+            params![prefix],
+            Some(NodeType::Finding.as_str()),
+        )?;
+        match matches.len() {
+            0 => bail!("no finding matches '{key}'"),
+            1 => Ok(matches.into_iter().next().expect("len == 1 by match arm")),
+            n => bail!("ambiguous finding prefix '{key}': {n} match"),
+        }
+    }
+
+    /// Read a derived facet value on a node (e.g. content_hash).
+    pub fn get_facet(
+        &self,
+        target_id: &str,
+        target_kind: TargetKind,
+        key: &str,
+    ) -> Result<Option<String>> {
+        self.conn
+            .query_row(
+                "SELECT value FROM facet WHERE target_id=?1 AND target_kind=?2 AND key=?3",
+                params![target_id, target_kind.as_str(), key],
+                |r| r.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// All facets on a target (node or edge), sorted by key. `edge show` reads
+    /// this so corrections that live on facets (locator, role, stale_cause,
+    /// superseded_by) are visible, not just the bare edge row (M-3).
+    pub fn facets_of(
+        &self,
+        target_id: &str,
+        target_kind: TargetKind,
+    ) -> Result<Vec<(String, String)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT key,value FROM facet WHERE target_id=?1 AND target_kind=?2 ORDER BY key",
+        )?;
+        let rows = stmt.query_map(params![target_id, target_kind.as_str()], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+        })?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    // ---- ring 5: vocab + layer order ----------------------------------------
+    // ---- ring 5: vocab + layer order -------------------------------------
+
+    /// Register a vocabulary term (idempotent).
+    pub fn add_vocab_term(&self, term: &str, description: &str) -> Result<()> {
+        let now = now(&self.conn)?;
+        self.conn.execute(
+            "INSERT INTO tag_vocabulary(term,description,created_at) VALUES (?1,?2,?3)
+             ON CONFLICT(term) DO UPDATE SET description=?2",
+            params![term, description, now],
+        )?;
+        Ok(())
+    }
+
+    /// All registered vocabulary terms.
+    pub fn list_vocab(&self) -> Result<Vec<(String, String)>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT term,description FROM tag_vocabulary ORDER BY term")?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    /// Whether a term is registered.
+    pub fn vocab_has(&self, term: &str) -> Result<bool> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT 1 FROM tag_vocabulary WHERE term=?1",
+                params![term],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some())
+    }
+
+    /// Set a meta key (e.g. the layer order JSON).
+    pub fn set_meta(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO meta(key,value) VALUES (?1,?2) ON CONFLICT(key) DO UPDATE SET value=?2",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    /// Read a meta key.
+    pub fn get_meta(&self, key: &str) -> Result<Option<String>> {
+        self.conn
+            .query_row("SELECT value FROM meta WHERE key=?1", params![key], |r| {
+                r.get::<_, String>(0)
+            })
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// Coverage-exclusion globs recorded via `loom ignore add`. These files are
+    /// deliberately outside the tracked surface: an unowned file matching one of
+    /// them is not a coverage gap. Malformed entries are skipped rather than
+    /// failing the read.
+    pub fn ignore_globs(&self) -> Result<Vec<String>> {
+        let raw = match self.get_meta("ignores")? {
+            Some(v) => v,
+            None => return Ok(Vec::new()),
+        };
+        let list: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap_or_default();
+        Ok(list
+            .into_iter()
+            .filter_map(|r| {
+                r.get("glob")
+                    .and_then(|g| g.as_str())
+                    .map(|s| s.to_string())
+            })
+            .collect())
+    }
+}

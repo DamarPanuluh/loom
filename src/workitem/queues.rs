@@ -416,22 +416,28 @@ pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
     // Cohesion evidence from the graph: which intents own the flagged file. One
     // or two cohesive owners reads as justified length; many unrelated ones (or
     // none) reads as a file that needs splitting — the judgment grep cannot make.
-    let owners = store.finding_owner_intents(&fv.node.id)?;
-    let cohesion = if owners.is_empty() {
-        " — flagged file owns no intents (ungrounded; ground or split it)".to_string()
+    // Graph-shape smells flag no file: their remedy IS the triage context.
+    let is_smell = fv.node.body.get("category").and_then(|v| v.as_str()) == Some("smell");
+    let cohesion = if is_smell {
+        format!(" — structural smell; remedy: {}", fv.node.description)
     } else {
-        let names: Vec<&str> = owners.iter().take(4).map(|n| n.name.as_str()).collect();
-        let more = if owners.len() > 4 {
-            format!(", +{} more", owners.len() - 4)
+        let owners = store.finding_owner_intents(&fv.node.id)?;
+        if owners.is_empty() {
+            " — flagged file owns no intents (ungrounded; ground or split it)".to_string()
         } else {
-            String::new()
-        };
-        format!(
-            " — flagged file owns {} intent(s): {}{}",
-            owners.len(),
-            names.join("; "),
-            more
-        )
+            let names: Vec<&str> = owners.iter().take(4).map(|n| n.name.as_str()).collect();
+            let more = if owners.len() > 4 {
+                format!(", +{} more", owners.len() - 4)
+            } else {
+                String::new()
+            };
+            format!(
+                " — flagged file owns {} intent(s): {}{}",
+                owners.len(),
+                names.join("; "),
+                more
+            )
+        }
     };
     let stale = if fv.stale {
         " — prior verdict is stale (file changed)"

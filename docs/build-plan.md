@@ -170,17 +170,17 @@ Never copy v1 code. Re-derive clean.
 - `QualityRule` with enriched seeded-pack fields: `inspection_guide`, `detection_hints`, `evidence_template`, `passing_example`, `failing_example`
 - `governs` edge + `loom rule verdict` (asserted, role=quality)
 - `loom rule seed <pack>` — iso5055, service, web-ui, data, concurrency, docker; 29 rules total; pack rules ship pre-authored with all guidance fields
-- `loom rule add / remove / ungovern / list / show` — current custom-rule CLI is deliberately small; rich guidance arrives through seeded packs
+- `loom rule add / remove / unlink / list / show` — current custom-rule CLI is deliberately small; rich guidance arrives through seeded packs
 - `loom next --mode quality` — uninspected/stale governs edges only; failing governs route to fix; if none exists, fallback proposes the first never-measured rule × root implemented intent pair and the verdict creates the edge
 - `CodeRule` + `Finding` derived pipeline — sync detects oversized files, complex symbols, panic markers → Finding nodes + flags/assesses edges; derived, recomputed by sync
 - `loom codefile show` — includes governing rules and findings
 - `loom next --mode validate` — uninspected/stale validates edges only; failing validates route to fix
-- `loom validation add / mark / update / unlink / delete / show / list`
-- `loom validate <intent> | --all`
+- `loom validation add / verdict / update / unlink / remove / show / list`
+- `loom validation run [<intent>] | --all`
 - Note commands: `loom note add <target> / list`
 - **Hypothesis plane** — `Hypothesis` node CRUD; `targets` edge; `loom hypothesis add / prove / adopt / reject / show / list`; `loom next --mode prove`
-- **Journey model** — `loom journey add <spec>` creates Validation(type=journey) + validates edges to step intents + sequence edges + calls edges to InterfaceSurfaces; spec parsing and graph write-back
-- **InterfaceSurface asserted** — `loom surface add / show / update / delete / list`; asserted `exposes` edges; `loom interface gaps`; `calls` edges from Validation → InterfaceSurface
+- **Journey model** — `loom journey add <spec>` creates Validation(type=journey) + validates edges to step intents + calls edges to InterfaceSurfaces; spec parsing and graph write-back
+- **InterfaceSurface asserted** — `loom surface add / show / update / remove / gaps / list`; asserted `exposes` edges; `calls` edges from Validation → InterfaceSurface
 - **Vocab and layer** — `loom vocab add / remove / list`; `loom intent tag add / remove`; `loom layer order / list / clear`; arms layering violation and duplicated-responsibility smells
 
 **Invariants to test:**

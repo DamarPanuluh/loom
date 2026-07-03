@@ -49,7 +49,7 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
         RuleCmd::Verdict {
             rule,
             intent,
-            status,
+            outcome,
             criterion,
             evidence,
             confidence,
@@ -57,7 +57,7 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             let r = store.resolve_node(&rule, Some(NodeType::QualityRule))?;
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
             let edge = store.ensure_edge(EdgeKind::Governs, &r.id, &i.id)?;
-            let st = verdict_status_quality(&status)?;
+            let st = verdict_status_quality(&outcome)?;
             let verdict_edge =
                 store.record_verdict(&edge.id, st, &criterion, &evidence, confidence, "llm")?;
             pulse::emit_line(
@@ -67,7 +67,7 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
                     "rule": node_json(&r),
                     "intent": node_json(&i),
                     "edge": verdict_edge,
-                    "status": status,
+                    "outcome": &outcome,
                     "criterion": criterion,
                     "evidence": evidence,
                     "confidence": confidence,
@@ -220,7 +220,7 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             )?;
             Ok(())
         }
-        RuleCmd::Ungovern { rule, intent } => {
+        RuleCmd::Unlink { rule, intent } => {
             let r = store.resolve_node(&rule, Some(NodeType::QualityRule))?;
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
             match store
@@ -258,6 +258,12 @@ fn verdict_status_quality(s: &str) -> Result<InspectionStatus> {
     }
 }
 pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -> Result<()> {
+    // `validation run` executes stored proof commands; validate_cmd manages its
+    // own store/lock lifecycle, so it must not run under this handler's store.
+    let cmd = match cmd {
+        ValidationCmd::Run { intent, all } => return validate_cmd(graph, &intent, all, json),
+        other => other,
+    };
     let store = open(graph)?;
     match cmd {
         ValidationCmd::Add {
@@ -327,14 +333,14 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             )?;
             Ok(())
         }
-        ValidationCmd::Mark {
+        ValidationCmd::Verdict {
             key,
-            result,
+            outcome,
             evidence,
             reason,
         } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
-            mark_validation(&store, &val.id, &result, &evidence, &reason)?;
+            mark_validation(&store, &val.id, &outcome, &evidence, &reason)?;
             pulse::emit_line(
                 &store,
                 json,
@@ -342,13 +348,13 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                     "validation": {
                         "id": val.id,
                         "name": val.name,
-                        "result": result,
+                        "outcome": &outcome,
                     },
                     "evidence": evidence,
                     "reason": reason,
                 }),
                 "loom status",
-                format!("validation '{}' → {result}", val.name),
+                format!("validation '{}' → {outcome}", val.name),
             )?;
             Ok(())
         }
@@ -433,18 +439,18 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             }
             Ok(())
         }
-        ValidationCmd::Delete { key } => {
+        ValidationCmd::Remove { key } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
             store.delete_node(&val.id)?;
             pulse::emit_line(
                 &store,
                 json,
                 serde_json::json!({
-                    "deleted": true,
+                    "removed": true,
                     "validation": node_json(&val),
                 }),
                 "loom status",
-                format!("deleted validation '{}'", val.name),
+                format!("removed validation '{}'", val.name),
             )?;
             Ok(())
         }
@@ -472,6 +478,8 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             }
             Ok(())
         }
+        // Intercepted before the store is opened (validate_cmd owns its lock).
+        ValidationCmd::Run { .. } => unreachable!("`validation run` is handled above"),
     }
 }
 fn validation_targets(store: &Store, val_id: &str) -> Result<Vec<serde_json::Value>> {
@@ -536,7 +544,22 @@ pub(crate) fn validate_cmd(
             .filter(|v| v.status == "not_run")
             .collect()
     } else {
-        let i = store.resolve_node(intent, Some(NodeType::Intent))?;
+        let i = match store.resolve_node(intent, Some(NodeType::Intent)) {
+            Ok(i) => i,
+            Err(e) => {
+                // A common driver slip: passing a validation NAME to `run`, which
+                // takes the INTENT whose proofs to run. Name the real usage.
+                if store
+                    .resolve_node(intent, Some(NodeType::Validation))
+                    .is_ok()
+                {
+                    bail!(
+                        "'{intent}' is a validation, but `validation run` takes the INTENT whose proofs to run — try `loom validation run <intent>` or `--all`"
+                    );
+                }
+                return Err(e);
+            }
+        };
         let mut out = Vec::new();
         for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&i.id))? {
             if let Some(v) = store.get_node(&e.from_id)? {
@@ -577,7 +600,7 @@ pub(crate) fn validate_cmd(
                 "reason": "manual_check",
             }));
             human_lines.push(format!(
-                "skip '{}' (manual_check — use loom validation mark)",
+                "skip '{}' (manual_check — use loom validation verdict)",
                 v.name
             ));
             continue;

@@ -86,7 +86,7 @@ Capture-first entry for free-form human/LLM language. Creates an `InboxItem` and
 loom guide [--role builder|analyzer|fixer|validator|quality|monitor] [--json]
 ```
 
-Self-contained driving protocol. `--json` includes `operator_loops` and `truth_axes`; each truth axis includes `correct_when`, the falsifiable criterion for that form of truth. `--role` adds the lane's mindset, allowed/forbidden writes, evidence requirements, and the same truth-axis honesty line.
+Self-contained driving protocol. `--json` includes `operator_loops`, `truth_axes` (each with `correct_when`, the falsifiable criterion for that form of truth), and `intake` — the capture-routing rule: raw thought/finding/question → `loom door`; structured plan/RFC → `loom proposal add`; falsifiable design claim → `loom hypothesis add`; timeboxed activity → `loom task add`. `--role` adds the lane's mindset, allowed/forbidden writes, evidence requirements, and the same truth-axis honesty line.
 
 ```text
 loom schema [--json]
@@ -165,14 +165,19 @@ loom intent add --name "<name>"
 **Atomization guard:** if the intent name matches a symbol pattern (for example snake_case with no spaces), the command is rejected unless `--allow-symbol-name` and a behavioral `--description` are both provided. Functions and symbols are locators on `implements` edges, not intents.
 
 ```text
-loom intent update <intent> --description "<new>" --reason "<why>" [--reword] [--name <new-name>] [--json]
+loom intent update <intent> --reason "<why>"
+  [--description "<new>"] [--reword]
+  [--name <new-name>]
+  [--level system|component|feature|cross_cutting]
+  [--visibility user_visible|internal]
+  [--aspect happy|sad|fallback|edge_case]
+  [--lifecycle planned|implemented|needs_change]
+  [--json]
 ```
 
-Description change = redefinition. It ripples one hop: passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers (`waiver:*` facets) are cleared so waived axes re-open, and old wording plus waiver reopening are preserved in decision notes. `--reword` is same meaning, clearer words; no ripple.
+`update` is the single mutation verb. The ripple rule lives in the fields, not in command choice: a `--description` change is a redefinition and ripples one hop (passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers are cleared so waived axes re-open, and old wording is preserved in decision notes); `--reword` is same meaning, clearer words, no ripple. `--name`, `--level`, `--visibility`, `--aspect`, and `--lifecycle` never ripple. Every update records `--reason`.
 
 ```text
-loom intent set <intent> [--level <level>] [--visibility user_visible|internal] [--aspect happy|sad|fallback|edge_case] [--json]
-loom intent mark <intent> --lifecycle <lifecycle> [--reason "<why>"] [--json]
 loom intent confirm <intent> [--json]
 loom intent retire <intent> --reason "<why>" [--replaced-by <intent>] [--json]
 loom intent remove <intent> --reason "<why>" [--json]   (mistakes only; refuses intents that still have hierarchy children)
@@ -184,7 +189,7 @@ loom intent tag add <intent> <term> [--json]
 loom intent tag remove <intent> <term> [--json]
 ```
 
-`confirm` ratifies meaning. `retire` sets status to deprecated and removes the intent from active computation while preserving history. `tag` uses positional action `add|remove`. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered/routed/withdrawn through the linked inbox item.
+`confirm` ratifies meaning. `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered/routed/withdrawn through the linked inbox item.
 
 ---
 
@@ -263,23 +268,23 @@ loom validation add --name "<name>" --intent <intent>
   [--json]
 ```
 
-Journey metadata flags require `--proof-kind journey`. `loom validation add --type journey` is accepted; `saga` remains legacy compatibility, not the preferred type for new graph writes.
+Journey metadata flags require `--proof-kind journey`; the canonical journey creation path is `loom journey add <spec>`.
 
 ```text
-loom validation mark <validation> --result passed|failed|blocked
+loom validation verdict <validation> passed|failed|blocked
   [--evidence "<observed proof>"]
   [--reason "<blocker>"]
   [--json]
 
 loom validation update <validation> [--type <type>] [--command "<cmd>"] [--json]
 loom validation unlink <validation> <intent> [--json]
-loom validation delete <validation> [--json]
+loom validation remove <validation> [--json]
 loom validation show <validation> [--json]
 loom validation list [--limit N] [--json]
-loom validate [<intent>] [--all] [--json]
+loom validation run [<intent>] [--all] [--json]
 ```
 
-`loom validate` runs stored commands without holding the graph lock while the command executes. Settled verdicts are not re-run unless made pending by sync or command changes.
+`loom validation run` executes stored commands without holding the graph lock while the command executes. Settled verdicts are not re-run unless made pending by sync or command changes.
 
 ### Finding triage commands
 
@@ -288,13 +293,13 @@ loom finding list [--kind <kind>] [--state <state>] [--json]
 loom finding verdict <id> <verdict> --reason "<why>" [--json]
 ```
 
-Findings are derived structural signals. Verdicts are adjudications of those signals, not fixes.
+Findings are derived structural signals — sync's code detectors, `scan run` diagnostics, and materialized graph-shape smells all land here. Verdicts are adjudications of those signals, not fixes.
 
 ---
 
 ## Journey commands
 
-`journey` is the canonical family for flow/composition proofs. Hidden legacy alias: `loom saga` still parses to this family for old scripts; new docs, prompts, and write-backs use `loom journey`.
+`journey` is the canonical family for flow/composition proofs.
 
 ```text
 loom journey add <spec.json|spec.yaml|http-contract.json> [--json]
@@ -303,7 +308,7 @@ loom journey run <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--
 loom journey diagnose <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--json]
 ```
 
-`add` creates a `Validation` whose body uses `type: "journey"`, `proof_level: "L5"`, `proof_kind: "journey"`, and command `loom journey run <artifact>`. It links resolved step intents with `validates` and adjacent steps with `sequence`. Normal journey specs fail on unresolved step intents; HTTP contract routes without matching intents are returned as `unmatched_steps`.
+`add` creates a `Validation` whose body uses `type: "journey"`, `proof_level: "L5"`, `proof_kind: "journey"`, and command `loom journey run <artifact>`. It links resolved step intents with `validates`. It does NOT link steps with `sequence` — a spec's step order is a test script, not a domain claim; assert ordering deliberately with `loom edge relate sequence` if it is real. Unresolved step intents do not fail the add: they are reported as `unmatched_steps` (both native specs and HTTP-contract routes).
 
 Native specs accept JSON or YAML:
 
@@ -323,7 +328,7 @@ Native specs accept JSON or YAML:
 }
 ```
 
-The preferred name key is `journey`; the older name key accepted by legacy specs is normalized only when `journey` is absent. HTTP contract specs use `name`, optional `base`/`auth`, and `routes`; route fields include `method`, `path`, optional `intent`/`name`, `success_status`, `query`, `example_request`, `response_fields`, and `extract`. Bearer auth injects `{{ env.LOOM_JOURNEY_AUTH_TOKEN }}`.
+The spec name key is `journey`. HTTP contract specs use `name`, optional `base`/`auth`, and `routes`; route fields include `method`, `path`, optional `intent`/`name`, `success_status`, `query`, `example_request`, `response_fields`, and `extract`. Bearer auth injects `{{ env.LOOM_JOURNEY_AUTH_TOKEN }}`.
 
 `run` records graph verdicts. A failing boundary records the exact failed expectation and reopens previously-passing never-reached later steps. `diagnose` executes directly without graph writes and is useful for missing env/auth/404/template failures. Both accept `--base-url`, which overrides the spec base and `{{ env.BASE_URL }}`.
 
@@ -391,7 +396,7 @@ loom rule update <rule> --reason "<why>"
   [--guide "<inspection_guide>"] [--hint "<detection_hint>"] [--pattern "<regex>"]
   [--json]
 loom rule remove <rule> [--json]
-loom rule ungovern <rule> <intent> [--json]
+loom rule unlink <rule> <intent> [--json]
 loom rule list [--limit N] [--json]
 loom rule show <rule> [--json]
 ```
@@ -401,8 +406,7 @@ Custom-rule creation is intentionally small in the current binary. Rich guidance
 ### Recording verdicts
 
 ```text
-loom rule verdict <rule> <intent>
-  --status passing|failing|independent
+loom rule verdict <rule> <intent> passing|failing|independent
   [--criterion "<what compliance means here>"]
   [--evidence "<what inspection found>"]
   [--confidence <0-1>]
@@ -431,7 +435,7 @@ loom hypothesis add --name "<name>" --claim "<what is wrong now>" --target <inte
 loom hypothesis update <hypothesis> --reason "<why>"
   [--claim "<new claim>"] [--proposal "<new proposal>"] [--predicted-outcome "<new outcome>"]
   [--json]
-loom hypothesis prove <hypothesis> --verdict supported|refuted [--evidence "<what code showed>"] [--json]
+loom hypothesis prove <hypothesis> supported|refuted [--evidence "<what code showed>"] [--json]
 loom hypothesis adopt <hypothesis> [--spawned <planned-intent>] [--json]
 loom hypothesis reject <hypothesis> --reason "<why>" [--json]
 loom hypothesis remove <hypothesis> [--json]
@@ -500,15 +504,15 @@ loom surface add --name "<name>" [--kind http|cli|ui_route|message_topic|sdk_met
   [--json]
 loom surface show <surface> [--json]
 loom surface update <surface> [--kind <kind>] [--identity "<identity>"] [--codefile <codefile>] [--json]
-loom surface delete <surface> [--json]
+loom surface remove <surface> [--json]
 loom surface list [--limit N] [--json]
 ```
 
 ```text
-loom interface gaps [--json]
+loom surface gaps [--json]
 ```
 
-Surfaces without validations, boundary intents without surface bindings, and validation edges missing `calls`.
+Surface-plane gaps: declared surfaces that expose no codefile (`unexposed_surface`) and surfaces never exercised by a validation `calls` edge (`uncalled_surface`). Reports `armed: false` when no surfaces are declared.
 
 ---
 
@@ -517,10 +521,7 @@ Surfaces without validations, boundary intents without surface bindings, and val
 ```text
 loom coverage [--json]
 loom completeness [<intent>] [--json]
-loom scan add <name> "<command>" [--map <regex>] [--json]
-loom scan list [--json]
-loom scan remove <name> [--json]
-loom scan run [<name>] [--json]
+loom scan run [<name>] [--json]   (adapters are registered in "Graph init and travel")
 loom doctor [--json]
 loom smells [--json]
 loom debt [--json]
@@ -531,7 +532,7 @@ loom whoami [--json]
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.
 - `doctor`: schema conformance, provenance, evidence vacuity, role-gate audit; exits non-zero on any issue. Includes `consumes_without_seam` when a settled `consumes` grounding has neither a locator nor a criterion naming a seam.
-- `smells`: structural signals from graph shape, each with a remedy. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or keep the customization as its recorded trace) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge.
+- `smells`: structural signals from graph shape, each with a remedy. Sync materializes every smell as a derived Finding (content-addressed by its subject ids), so smells are served by the triage queue and adjudicated with `loom finding verdict <id> <justified|needed|blocked> --reason "…"`; the adjudication is durable across syncs and shown by `loom smells`. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or adjudicate the customization `justified`) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge.
 - `debt`: advisory statistical cluster feed; never appears in required work queues until promoted.
 - `whoami`: acting agent identity and lane enforcement.
 
@@ -576,6 +577,7 @@ These are **not** current shipped commands or flags. Do not emit them from promp
 - removed/deferred command families: batch writes, impact preview, hotspots, dig, wiki projection, delegate/federation
 - removed/deferred subcommands: intent context, edge unimplement, vocab merge, inbox normalize
 - removed/deferred flags: `guide --mode`, `import --as-planned`
+- removed legacy (grammar convergence): top-level `loom validate` (→ `loom validation run`), `validation mark --result` (→ `validation verdict <outcome>`), `rule verdict --status` (→ positional outcome), `hypothesis prove --verdict` (→ positional outcome), `validation delete`/`surface delete` (→ `remove`), `rule ungovern` (→ `rule unlink`), the `loom saga` alias, the `saga` validation type, and the `saga:` spec name key
 
 ---
 

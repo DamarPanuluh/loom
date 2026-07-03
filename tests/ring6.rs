@@ -54,6 +54,64 @@ fn smells_detect_tangle_and_overlap() {
 }
 
 #[test]
+fn sync_materializes_smell_finding_adjudication_and_convergence() {
+    let tmp = Tmp::new();
+    tmp.write("src/pair.rs", "pub fn pair() {}\n");
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let cf = codefile(&store, "src/pair.rs");
+    let a = intent(&store, "alpha behavior", "implemented");
+    let b = intent(&store, "beta behavior", "implemented");
+    store
+        .add_edge(EdgeKind::Implements, &a, &cf, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Implements, &b, &cf, TruthClass::Asserted)
+        .unwrap();
+
+    let smell = loom::signal::smells(&store)
+        .unwrap()
+        .into_iter()
+        .find(|s| s.kind == "overlapping_ownership")
+        .unwrap();
+    let expected_id = Store::derived_node_id(
+        NodeType::Finding,
+        &loom::signal::smell_det_key(&smell.identity),
+    );
+    assert!(store.get_node(&expected_id).unwrap().is_none());
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+    let finding = store.get_node(&expected_id).unwrap().unwrap();
+    assert_eq!(finding.node_type, NodeType::Finding);
+    assert_eq!(finding.status, smell.kind);
+    assert_eq!(finding.name, smell.message);
+    assert_eq!(finding.description, smell.remedy);
+    assert_eq!(
+        finding.body.get("category").and_then(|v| v.as_str()),
+        Some("smell")
+    );
+    assert_eq!(
+        finding.body.get("identity").and_then(|v| v.as_str()),
+        Some(smell.identity.as_str())
+    );
+
+    store
+        .record_finding_verdict(&expected_id, "justified", "shared transition seam")
+        .unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert!(store.get_node(&expected_id).unwrap().is_some());
+    assert_eq!(
+        loom::signal::adjudication_of(&store, &expected_id).unwrap(),
+        Some(("justified".into(), "shared transition seam".into()))
+    );
+
+    store
+        .add_edge(EdgeKind::Relates, &a, &b, TruthClass::Asserted)
+        .unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert!(store.get_node(&expected_id).unwrap().is_none());
+}
+
+#[test]
 fn smells_duplicated_responsibility_via_tags() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
@@ -289,6 +347,85 @@ fn doctor_clean_on_valid_graph() {
     assert!(
         issues.is_empty(),
         "valid graph must pass doctor: {issues:?}"
+    );
+}
+
+#[test]
+fn doctor_flags_restored_placeholder_criterion_verdicts() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let from = intent(&store, "legacy source behavior", "implemented");
+    let to = intent(&store, "legacy target behavior", "implemented");
+    let passing = store
+        .add_edge(EdgeKind::Relates, &from, &to, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &passing.id,
+            InspectionStatus::Passing,
+            "source behavior reaches target behavior",
+            "manual inspection found source behavior supports target behavior",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    let blocked_from = intent(&store, "blocked source behavior", "implemented");
+    let blocked_to = intent(&store, "blocked target behavior", "implemented");
+    let blocked = store
+        .add_edge(
+            EdgeKind::Relates,
+            &blocked_from,
+            &blocked_to,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &blocked.id,
+            InspectionStatus::Blocked,
+            "blocked pending upstream behavior",
+            "upstream contract has not been published yet",
+            0.2,
+            "llm",
+        )
+        .unwrap();
+
+    let passing_id = passing.id.clone();
+    let blocked_id = blocked.id.clone();
+    let mut snap = store.snapshot().unwrap();
+    snap.edges
+        .iter_mut()
+        .find(|edge| edge.id == passing_id)
+        .unwrap()
+        .criterion = "…".into();
+    snap.edges
+        .iter_mut()
+        .find(|edge| edge.id == blocked_id)
+        .unwrap()
+        .evidence = "<reason>".into();
+
+    let restored_tmp = Tmp::new();
+    let mut restored = Store::init(restored_tmp.path(), Some("import"), false).unwrap();
+    restored.restore(&snap).unwrap();
+
+    let issues = loom::signal::doctor(&restored).unwrap();
+    assert!(
+        issues.iter().any(|issue| {
+            issue.kind == "vacuous_verdict"
+                && issue.message.contains(&passing_id)
+                && issue.message.contains("criterion")
+        }),
+        "doctor must flag restored placeholder criterion on a passing edge: {issues:?}"
+    );
+    assert!(
+        issues.iter().any(|issue| {
+            issue.kind == "vacuous_verdict"
+                && issue.message.contains(&blocked_id)
+                && issue.message.contains("blocked")
+                && issue.message.contains("reason")
+        }),
+        "doctor must flag restored placeholder blocked reason: {issues:?}"
     );
 }
 
@@ -558,7 +695,7 @@ fn http_contract_runs_two_routes_threading_extracted_id() {
     .unwrap();
 
     // `journey run` requires a pre-existing Validation node named after the
-    // contract's `name`; `journey add` creates it (and the step edges).
+    // contract's `name`; `journey add` creates it (plus validates edges to steps).
     run_cli(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
     let out = run_cli_json(tmp.path(), &["journey", "run", spec_path.to_str().unwrap()]);
     handle.join().unwrap();
@@ -856,7 +993,7 @@ fn journey_map_reports_failing_journey_proof_as_unproven_gap() {
     );
 }
 
-/// Contract: a Validation whose `body.type` is `test` (NOT `journey`/`saga`) is
+/// Contract: a Validation whose `body.type` is `test` (NOT `journey`) is
 /// still recognized as a journey proof when `body.proof_kind == "journey"`.
 /// With a `passed` status and a `Passing` Validates edge to an implemented
 /// user_visible intent, `loom journey map --json` must surface the validation
@@ -873,7 +1010,7 @@ fn journey_map_classifies_proof_kind_journey_regardless_of_type() {
 
     let intent_id = visible_intent(&store, "checkout completes");
 
-    // A validation whose body.type is `test` — NOT journey/saga — but whose
+    // A validation whose body.type is `test` — NOT journey — but whose
     // proof_kind is `journey` at L5. This is the exact shape the fix targets:
     // before the fix, `is_journey_validation` read only `body.type` and would
     // skip this node entirely from the journey map.
@@ -1424,7 +1561,7 @@ fn journey_map_joins_step_intents_and_exposes_gaps() {
 
 // ---- journey diagnose: --base-url override + clear no-base error -----------
 
-/// Contract: a legacy `saga:` spec whose `base` is unset (no env var, no field)
+/// Contract: a journey spec whose `base` is unset (no env var, no field)
 /// fails fast with an actionable error naming the fix — not a bare "builder error".
 #[test]
 fn journey_diagnose_reports_clear_error_when_base_unresolved() {
@@ -1433,7 +1570,7 @@ fn journey_diagnose_reports_clear_error_when_base_unresolved() {
     std::fs::write(
         &spec_path,
         serde_json::json!({
-            "saga": "no-base-journey",
+            "journey": "no-base-journey",
             "steps": [
                 { "name": "ping", "intent": "ping", "request": { "method": "GET", "url": "/ping" } }
             ]

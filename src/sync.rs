@@ -77,6 +77,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     ripple_artifact_drift(store, root, &mut report)?;
     ripple_runner_drift(store, root, &mut report)?;
     rebuild_findings(store, root, &codefiles, &rules, &mut report)?;
+    rebuild_smell_findings(store, &mut report)?;
     Ok(report)
 }
 
@@ -317,7 +318,7 @@ fn ripple_changed_intents(
 
 /// Pass 2b: ripple drift of a JourneyProof validation's `body.artifact` file.
 ///
-/// A validation may point at a contract JSON / saga YAML / runner file via
+/// A validation may point at a contract JSON / journey YAML / runner file via
 /// `body.artifact`. Those paths are not necessarily registered CodeFiles, so
 /// the structural pass cannot see them. Track a derived `artifact_hash` facet
 /// per such validation and, when the file changes or disappears, stale its
@@ -521,6 +522,26 @@ fn rebuild_findings(
             store.add_derived_edge(EdgeKind::Assesses, &node.id, rule_id)?;
             report.findings += 1;
         }
+    }
+    Ok(())
+}
+
+/// Pass 3b: materialize structural smells as derived Finding nodes. Smells
+/// stay computed-on-read for `loom smells`, but the materialized finding gives
+/// the triage queue a servable item and `loom finding verdict` a stable id
+/// whose asserted adjudication survives every rebuild — the same wipe/re-derive
+/// convergence cycle as the other structural findings.
+fn rebuild_smell_findings(store: &Store, report: &mut SyncReport) -> Result<()> {
+    for s in crate::signal::smells(store)? {
+        store.add_derived_node(
+            NodeType::Finding,
+            &crate::signal::smell_det_key(&s.identity),
+            &s.message,
+            &s.remedy,
+            &s.kind,
+            serde_json::json!({ "kind": s.kind, "category": "smell", "identity": s.identity }),
+        )?;
+        report.findings += 1;
     }
     Ok(())
 }

@@ -160,7 +160,7 @@ pub fn parse_with_kind(path: &Path) -> Result<(JourneySpec, SpecKind)> {
     let text =
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     // Try JSON first; fall back to YAML for `.yaml`/`.yml` specs.
-    let mut value: serde_json::Value = match serde_json::from_str(&text) {
+    let value: serde_json::Value = match serde_json::from_str(&text) {
         Ok(v) => v,
         Err(json_err) => {
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
@@ -181,19 +181,8 @@ pub fn parse_with_kind(path: &Path) -> Result<(JourneySpec, SpecKind)> {
             SpecKind::HttpContractJson,
         ));
     }
-    normalize_legacy_journey_key(&mut value);
     let spec: JourneySpec = serde_json::from_value(value).context("parsing journey spec")?;
     Ok((spec, SpecKind::JourneyJson))
-}
-
-fn normalize_legacy_journey_key(value: &mut serde_json::Value) {
-    if let Some(obj) = value.as_object_mut() {
-        if !obj.contains_key("journey") {
-            if let Some(legacy) = obj.get("saga").cloned() {
-                obj.insert("journey".to_string(), legacy);
-            }
-        }
-    }
 }
 
 fn http_contract_to_journey(contract: HttpContract) -> JourneySpec {

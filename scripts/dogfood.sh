@@ -31,7 +31,14 @@ done
 
 # capture the 8-char edge id the create commands print as "... [abcd1234]".
 # resolve_edge accepts the prefix, so verdicts can target what the CLI shows.
-last_eid() { local out="$1"; out="${out##*[}"; printf '%s' "${out%]}"; }
+# The bracketed id is NOT the last character of the output (a `next: …` pulse
+# line follows), so extract the last [hex] token instead of suffix-stripping.
+last_eid() {
+  local eid
+  eid="$(printf '%s' "$1" | grep -oE '\[[0-9a-f]{8}\]' | tail -1 | tr -d '[]')"
+  [ -n "$eid" ] || { echo "dogfood: no edge id in output: $1" >&2; exit 1; }
+  printf '%s' "$eid"
+}
 
 # triage each programmatic oversized_file flag with a SPECIFIC, recorded reason
 # — the loop's point is judgment, not a rubber stamp. Each known file is a large
@@ -40,10 +47,16 @@ last_eid() { local out="$1"; out="${out##*[}"; printf '%s' "${out%]}"; }
 # flag must reach a human, never be auto-laundered "cohesive".
 while read -r fid fpath; do
   case "$fpath" in
-    src/commands.rs) why="the CLI command surface: one dispatch arm per subcommand; splitting would only scatter the command table" ;;
-    src/store.rs)    why="the persistence layer: INV-5 funnels every write through this one module, so its size is the cost of a single SQL boundary" ;;
-    src/signal.rs)   why="the computed-signal plane: smells, debt, doctor and finding views are one read-only projection surface" ;;
-    src/workitem.rs) why="the 'loom next' surface: one work-item builder + prompt contract per mode, cohesive by the Mode enum" ;;
+    src/signal.rs)             why="the computed-signal plane: smells, debt, doctor and finding views are one read-only projection surface" ;;
+    src/sync.rs)               why="the structural-plane recompute: hashing, ripple, derived findings and journey resets need a single staleness writer" ;;
+    src/packs.rs)              why="pre-authored rule-pack data: declarative rule bodies with guidance fields, not control flow" ;;
+    src/journey.rs)            why="the journey spec model + executor: parse, template, execute and judge one flow format in one place" ;;
+    src/scan.rs)               why="the diagnostic-adapter plane: config, parse maps and finding convergence are one adapter lifecycle" ;;
+    src/cli/subcommands.rs)    why="the clap declaration table: one enum per command family; declarative surface, no logic" ;;
+    src/commands/misc_cmd.rs)  why="the orientation surface: door/session/guide/find/detect handlers share the keyword scorer and menu builders" ;;
+    src/commands/proof_cmd.rs) why="the proof command family: validation and rule handlers share the verdict/evidence plumbing" ;;
+    src/commands/intent.rs)    why="the intent command family: lifecycle/update/retire handlers share resolution, ripple and guard helpers" ;;
+    src/workitem/queues.rs)    why="the 'loom next' queue builders: one work-item builder per mode, cohesive by the queue partition" ;;
     *)
       echo "dogfood: untriaged oversized finding '$fpath' has no recorded judgment — triage it (justified|needed|blocked) before dogfood can complete" >&2
       exit 1
@@ -96,27 +109,27 @@ rel() { # a | b | why
 leaf "the verdict write boundary enforces the evidence, truth-class and lane gates" \
   "INV-4/5/6/7: record_verdict is the sole writer of asserted edge status; the verdict/show commands resolve the displayed 8-char id first, then it demands criterion+evidence for passing/failing, evidence for independent, refuses derived edges, and checks the agent's lane" evidence-gate
 gi "the verdict write boundary enforces the evidence, truth-class and lane gates" \
-  src/store.rs "schema CHECK(truth_class):96,109,130 + record_verdict gate:600-657 (resolve_edge:603)" \
-  "a passing/failing verdict with empty criterion or evidence is rejected; independent without evidence is rejected; a derived edge is rejected; a wrong-lane agent is rejected; and the column CHECK rejects any truth_class outside {derived,asserted}" \
-  "two enforcement layers — store.rs schema CHECK(truth_class) at lines 96/109/130 rejects bad values at write (defense in depth), and record_verdict gates evidence/lane/derived at 612-640; covered by inv4/inv5/inv6/inv7 and resolve_edge_by_prefix_or_errors"
+  src/store/edges.rs "fn record_verdict (evidence/lane/derived gate) + is_placeholder gate; schema CHECK in store/mod.rs" \
+  "a passing/failing verdict with empty OR placeholder criterion/evidence is rejected; independent without evidence is rejected; a derived edge is rejected; a wrong-lane agent is rejected; and the column CHECK rejects any truth_class outside {derived,asserted}" \
+  "two enforcement layers — store/mod.rs schema CHECK(truth_class) rejects bad values at write (defense in depth), and store/edges.rs record_verdict gates evidence/lane/derived + is_placeholder; covered by inv4/inv5/inv6/inv7 and record_verdict_rejects_placeholder_text_without_partial_write"
 
 leaf "import loads every node before any edge" \
   "two-phase restore: parse-and-validate the whole export, then in one transaction insert all nodes before any edge, so an edge endpoint always resolves" import-order
 gi "import loads every node before any edge" \
-  src/store.rs "restore:866 (validate 879; nodes 920 before edges 930)" \
+  src/store/facets.rs "fn restore (validate fully; nodes before edges in one txn)" \
   "importing a graph never inserts an edge before its endpoint nodes exist" \
-  "store.rs restore validates fully then inserts nodes (920) before edges (930) in one txn; travel.rs from_json parses before any write"
+  "store/facets.rs restore validates fully then inserts nodes before edges in one txn; travel.rs from_json parses before any write"
 
 rel "the verdict write boundary enforces the evidence, truth-class and lane gates" \
     "import loads every node before any edge" \
-    "both are store.rs persistence-correctness guarantees over the same edge table"
+    "both are store-module persistence-correctness guarantees over the same edge table"
 
 leaf "the derived plane rebuilds byte-identically" \
   "INV-2: export orders nodes/edges/facets canonically and derived rows are content-addressed with a sentinel timestamp, so wipe+sync+export reproduces identical bytes" determinism
 gi "the derived plane rebuilds byte-identically" \
   src/travel.rs "export_to_file:75 / Export::from_snapshot" \
   "exporting, wiping derived data, re-syncing and re-exporting yields identical bytes" \
-  "travel.rs canonicalizes ordering; store.rs DERIVED_TS empty + FNV-1a derived_id; covered by inv2_derived_plane_rebuildable"
+  "travel.rs canonicalizes ordering; store/mod.rs DERIVED_TS empty + FNV-1a derived_id; covered by inv2_derived_plane_rebuildable"
 
 leaf "changing a file re-opens the asserted edges grounded in it" \
   "content-hash ripple: sync stales the asserted edges depending on a changed codefile; an unchanged hash (or a first-ever observation) triggers no ripple, so there is no false churn" hash-ripple
@@ -128,9 +141,9 @@ gi "changing a file re-opens the asserted edges grounded in it" \
 leaf "a symbol-pattern name is refused as an intent" \
   "INV-ATOM: functions/symbols are locators on implements edges, not intents; intent add rejects a symbol-shaped name unless --allow-symbol-name is given with a behavioral description" atom-rule
 gi "a symbol-pattern name is refused as an intent" \
-  src/commands.rs "intent-add gate:107 -> looks_like_symbol:1627" \
+  src/commands/intent.rs "intent_add gate:136 -> looks_like_symbol:654" \
   "loom intent add --name capture_payment (no --allow-symbol-name) is rejected" \
-  "commands.rs guards the add path on looks_like_symbol; covered by inv_atom_rejects_symbol_named_intent"
+  "commands/intent.rs guards the add path on looks_like_symbol; covered by inv_atom_rejects_symbol_named_intent"
 
 leaf "debt clusters are computed on read and never stored" \
   "INV-3: statistical signal (debt) is a projection derived from a snapshot; it is never written back as a node or edge" debt-projection
@@ -142,9 +155,13 @@ gi "debt clusters are computed on read and never stored" \
 leaf "the next router serves the highest-priority asserted residue with a prompt contract" \
   "loom next returns failing, then stale, then uninspected asserted edges as a work item carrying allowed/forbidden actions and the evidence it expects" residue-router
 gi "the next router serves the highest-priority asserted residue with a prompt contract" \
-  src/workitem.rs "next:77 (analyze orders Failing > NeedsReverification > Uninspected)" \
+  src/workitem/mod.rs "next:171 (priority: fix > validate > build > coverage > quality > analyze > triage > review > prove > elaborate)" \
   "with a failing and an uninspected edge present, next returns the failing one first, with its contract" \
-  "workitem.rs next dispatches by mode and orders by status severity; each item carries a PromptContract"
+  "workitem/mod.rs next walks the fixed queue priority so failing claims (fix_item) are served before anything else; each item carries a PromptContract"
+gi "the next router serves the highest-priority asserted residue with a prompt contract" \
+  src/workitem/queues.rs "analyze_item:119 (stale before uninspected; failing routes to fix_item:97)" \
+  "an analyze packet serves a stale settled claim before a merely uninspected one" \
+  "queues.rs analyze_item takes needs_reverification non-governs/non-validates edges before uninspected ones; failing edges belong to fix_item, so no edge is served by two queues"
 
 leaf "maturity counts only leaf intents as needing grounding" \
   "an intent with hierarchy children is realized via its children; only leaves must ground to code, so a roll-up parent is not reported ungrounded" leaf-grounding
@@ -156,26 +173,26 @@ gi "maturity counts only leaf intents as needing grounding" \
 leaf "find surfaces each matched intent's grounding" \
   "loom find prints the file, locator and verdict of every implements edge under a matched intent, not just the node name — the edge a plain text search lacks" find-surface
 gi "find surfaces each matched intent's grounding" \
-  src/commands.rs "find_cmd:842 (walks edges_with Implements; prints path @ locator [verdict])" \
+  src/commands/misc_cmd.rs "find_cmd:810 (walks edges_with Implements; prints path @ locator [verdict])" \
   "find on an intent term prints its grounded path + locator + verdict lines beneath the match" \
-  "commands.rs find_cmd follows implements edges and reads the locator facet; verified by the cold-start test that find beats grep"
+  "misc_cmd.rs find_cmd follows implements edges and reads the locator facet; verified by the cold-start test that find beats grep"
 
 rel "a symbol-pattern name is refused as an intent" \
     "find surfaces each matched intent's grounding" \
-    "both are command-surface behaviors implemented in commands.rs"
+    "both are command-surface behaviors in the src/commands/ family"
 
 # ---- quality + a runnable proof ---------------------------------------------
 
 "$B" rule seed iso5055 >/dev/null
 "$B" rule verdict "iso5055-sec-no-hardcoded-secrets" \
   "the verdict write boundary enforces the evidence, truth-class and lane gates" \
-  --status passing --criterion "no literal credentials in the persistence layer" \
+  passing --criterion "no literal credentials in the persistence layer" \
   --evidence "store.rs uses parameterized SQL and SQLite functions; no secrets in source" --confidence 0.9 >/dev/null
 
 "$B" validation add --name "cargo test suite" --type test --command "cargo test -q" \
   --intent "the verdict write boundary enforces the evidence, truth-class and lane gates" >/dev/null
 # run it for real and record the observed result (honest proof, not an assertion)
-"$B" validate "the verdict write boundary enforces the evidence, truth-class and lane gates" >/dev/null
+"$B" validation run "the verdict write boundary enforces the evidence, truth-class and lane gates" >/dev/null
 
 "$B" export >/dev/null
 

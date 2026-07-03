@@ -259,6 +259,93 @@ fn review_queue_serves_low_confidence_relates_as_analyzer() {
 }
 
 #[test]
+fn record_verdict_rejects_placeholder_text_without_partial_write() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let from = implemented_intent(&store, "placeholder gate source intent");
+    let to = implemented_intent(&store, "placeholder gate target intent");
+    let e = store
+        .add_edge(EdgeKind::Relates, &from.id, &to.id, TruthClass::Asserted)
+        .unwrap();
+
+    assert!(
+        store
+            .record_verdict(
+                &e.id,
+                InspectionStatus::Passing,
+                "source behavior reaches target behavior",
+                "…",
+                0.9,
+                "llm",
+            )
+            .is_err(),
+        "HONESTY GATE: placeholder evidence must be rejected"
+    );
+    let unchanged = store.resolve_edge(&e.id).unwrap();
+    assert_eq!(
+        unchanged.status,
+        InspectionStatus::Uninspected,
+        "HONESTY GATE: rejected placeholder evidence must not change edge status"
+    );
+    assert_eq!(
+        unchanged.criterion, "",
+        "HONESTY GATE: rejected placeholder evidence must not persist criterion"
+    );
+    assert_eq!(
+        unchanged.evidence, "",
+        "HONESTY GATE: rejected placeholder evidence must not persist evidence"
+    );
+
+    assert!(
+        store
+            .record_verdict(
+                &e.id,
+                InspectionStatus::Passing,
+                "<reason>",
+                "inspected the intent graph and found the asserted relation grounded",
+                0.9,
+                "llm",
+            )
+            .is_err(),
+        "HONESTY GATE: placeholder criterion must be rejected"
+    );
+    let still_unchanged = store.resolve_edge(&e.id).unwrap();
+    assert_eq!(
+        still_unchanged.status,
+        InspectionStatus::Uninspected,
+        "HONESTY GATE: rejected placeholder criterion must not change edge status"
+    );
+    assert_eq!(
+        still_unchanged.criterion, "",
+        "HONESTY GATE: rejected placeholder criterion must not persist criterion"
+    );
+    assert_eq!(
+        still_unchanged.evidence, "",
+        "HONESTY GATE: rejected placeholder criterion must not persist evidence"
+    );
+
+    let accepted = store
+        .record_verdict(
+            &e.id,
+            InspectionStatus::Passing,
+            "source behavior reaches target behavior",
+            "inspected command output linked the two intents before truncation …",
+            0.9,
+            "llm",
+        )
+        .expect("HONESTY GATE: substantive evidence ending in ellipsis must be accepted");
+    assert_eq!(
+        accepted.status,
+        InspectionStatus::Passing,
+        "HONESTY GATE: accepted substantive verdict must be persisted as passing"
+    );
+    assert_eq!(
+        accepted.evidence, "inspected command output linked the two intents before truncation …",
+        "HONESTY GATE: substantive trailing ellipsis must be preserved"
+    );
+}
+
+#[test]
 fn review_queue_low_confidence_count_matches_eligible_edges() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();

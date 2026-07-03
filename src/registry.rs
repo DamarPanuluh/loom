@@ -106,7 +106,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         to: Intent,
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
-        description: "ordered step in journey/saga",
+        description: "ordered step in a journey",
     },
     EdgeKindSpec {
         kind: EdgeKind::Implements,

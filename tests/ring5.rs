@@ -173,9 +173,11 @@ fn validate_runs_command_and_records_result() {
     );
     run(
         tmp.path(),
-        Command::Validate {
-            intent: "always passes".into(),
-            all: false,
+        Command::Validation {
+            cmd: ValidationCmd::Run {
+                intent: "always passes".into(),
+                all: false,
+            },
         },
     );
 
@@ -191,7 +193,7 @@ fn validate_runs_command_and_records_result() {
     assert_eq!(edges[0].status, InspectionStatus::Passing);
 }
 
-/// Contract: `loom validate --json` must record a failed row carrying bounded
+/// Contract: `loom validation run --json` must record a failed row carrying bounded
 /// command output — `output.stdout`/`stderr` excerpts, byte counts, and
 /// truncation flags — and the persisted Validates-edge evidence must include
 /// an excerpt string, not just the exit code. Drives the compiled binary for
@@ -249,15 +251,15 @@ fn validate_failing_command_records_failure() {
         },
     );
 
-    // Drive validate through the compiled binary with --json so the bounded
-    // output object on the failed row is capturable on stdout. validate_cmd
-    // returns Ok even when a proof fails (it records the failure, then emits),
-    // so the binary exits zero and loom_json_out's success assertion holds.
-    let v = loom_json_out(tmp.path(), &["validate", "always fails", "--json"]);
+    // Drive `validation run` through the compiled binary with --json so the
+    // bounded output object on the failed row is capturable on stdout. The
+    // runner returns Ok even when a proof fails (it records the failure, then
+    // emits), so the binary exits zero and loom_json_out's assertion holds.
+    let v = loom_json_out(tmp.path(), &["validation", "run", "always fails", "--json"]);
     let ran = v
         .get("ran")
         .and_then(|r| r.as_array())
-        .expect("validate --json emits a `ran` array");
+        .expect("validation run --json emits a `ran` array");
     assert_eq!(ran.len(), 1, "exactly one validation targets this intent");
     let row = &ran[0];
     assert_eq!(row["status"], "failed", "failed-proof row status");
@@ -371,9 +373,11 @@ fn validate_timed_out_command_records_blocked() {
 
     run(
         tmp.path(),
-        Command::Validate {
-            intent: "can hang".into(),
-            all: false,
+        Command::Validation {
+            cmd: ValidationCmd::Run {
+                intent: "can hang".into(),
+                all: false,
+            },
         },
     );
 
@@ -456,7 +460,7 @@ fn hypothesis_invisible_until_adopted() {
 // ---- journey model ---------------------------------------------------------
 
 #[test]
-fn journey_add_creates_validation_and_step_edges() {
+fn journey_add_links_steps_with_validates_not_sequence() {
     let tmp = Tmp::new();
     run(
         tmp.path(),
@@ -505,18 +509,22 @@ fn journey_add_creates_validation_and_step_edges() {
         .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
     assert_eq!(validates.len(), 2, "journey validates each step intent");
-    // a sequence edge links the two steps
+    // journey add does NOT auto-create sequence edges — a spec's step order
+    // is a test script, not a domain claim (assert deliberately via `edge relate`).
     let cart = store
         .resolve_node("create cart", Some(NodeType::Intent))
         .unwrap();
     let seq = store
         .edges_with(Some(EdgeKind::Sequence), Some(&cart.id), None)
         .unwrap();
-    assert_eq!(seq.len(), 1, "consecutive steps are sequence-linked");
+    assert!(
+        seq.is_empty(),
+        "journey add must not auto-create sequence edges"
+    );
 }
 
 #[test]
-fn journey_list_accepts_legacy_saga_type_and_hidden_alias() {
+fn journey_list_recognizes_proof_kind_journey() {
     let tmp = Tmp::new();
     run(
         tmp.path(),
@@ -530,31 +538,24 @@ fn journey_list_accepts_legacy_saga_type_and_hidden_alias() {
     store
         .add_node(
             NodeType::Validation,
-            "legacy-checkout-flow",
+            "checkout-flow-runner",
             "",
             "not_run",
-            serde_json::json!({"type":"saga","proof_kind":"journey"}),
+            serde_json::json!({"type":"manual_check","proof_kind":"journey"}),
         )
         .unwrap();
     drop(store);
 
+    // `journey list` recognizes a journey proof by `proof_kind`, not only by
+    // `type: journey` — a repo-native runner stays visible to the family.
     let journey_rows = loom_json_out(tmp.path(), &["journey", "list", "--json"]);
     assert!(
         journey_rows
             .as_array()
             .unwrap()
             .iter()
-            .any(|n| n["name"] == "legacy-checkout-flow"),
-        "journey list includes legacy saga-typed validations: {journey_rows}"
-    );
-    let alias_rows = loom_json_out(tmp.path(), &["saga", "list", "--json"]);
-    assert!(
-        alias_rows
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|n| n["name"] == "legacy-checkout-flow"),
-        "hidden saga alias lists the journey family: {alias_rows}"
+            .any(|n| n["name"] == "checkout-flow-runner"),
+        "journey list includes proof_kind=journey validations: {journey_rows}"
     );
 }
 
@@ -677,7 +678,7 @@ fn monitoring_self_teaching_surfaces_run_clean() {
     run(
         tmp.path(),
         Command::Guide {
-            role: Some("monitor".into()),
+            role: Some(loom::cli::RoleArg::Monitor),
         },
     );
     run(tmp.path(), Command::Session);
@@ -724,9 +725,9 @@ fn validation_mark_passed_without_evidence_is_atomic() {
         graph: Some(tmp.path().to_path_buf()),
         json: false,
         command: Command::Validation {
-            cmd: ValidationCmd::Mark {
+            cmd: ValidationCmd::Verdict {
                 key: "probe".into(),
-                result: "passed".into(),
+                outcome: "passed".into(),
                 evidence: "".into(),
                 reason: "".into(),
             },
@@ -943,11 +944,16 @@ fn intent_set_corrects_facets() {
     run(
         tmp.path(),
         Command::Intent {
-            cmd: IntentCmd::Set {
+            cmd: IntentCmd::Update {
                 key: "f".into(),
+                description: None,
+                name: None,
                 level: Some("system".into()),
                 visibility: Some("internal".into()),
                 aspect: None,
+                lifecycle: None,
+                reason: "attribute correction".into(),
+                reword: false,
             },
         },
     );
@@ -1336,7 +1342,7 @@ fn json_read_commands_emit_json_and_full_fields() {
     assert_eq!(validation["status"], "not_run");
     assert_eq!(validation["validates"][0]["name"], "layered behavior a");
 
-    let gaps = loom_json_out(tmp.path(), &["interface", "gaps", "--json"]);
+    let gaps = loom_json_out(tmp.path(), &["surface", "gaps", "--json"]);
     assert_eq!(gaps["armed"], false);
     assert_eq!(gaps["surface_count"], 0);
     assert_eq!(gaps["warning"], "no surfaces declared");
@@ -1493,7 +1499,7 @@ fn advertised_global_json_read_commands_parse_as_json() {
         &["coverage", "--json"],
         &["inbox", "list", "--json"],
         &["validation", "list", "--json"],
-        &["interface", "gaps", "--json"],
+        &["surface", "gaps", "--json"],
         &["layer", "list", "--json"],
         &["finding", "list", "--json"],
         &["doctor", "--json"],
@@ -1504,7 +1510,7 @@ fn advertised_global_json_read_commands_parse_as_json() {
         &["rule", "list", "--json"],
         &["hypothesis", "list", "--json"],
         &["surface", "list", "--json"],
-        &["saga", "list", "--json"],
+        &["journey", "list", "--json"],
         &["vocab", "list", "--json"],
         &["ignore", "list", "--json"],
         &["task", "list", "--json"],
@@ -1516,7 +1522,7 @@ fn advertised_global_json_read_commands_parse_as_json() {
         &["edge", "list", "--json"],
         &["guide", "--json"],
         &["sync", "--json"],
-        &["validate", "--all", "--json"],
+        &["validation", "run", "--all", "--json"],
     ];
 
     for args in commands {
@@ -2164,14 +2170,17 @@ fn journey_add_http_contract_creates_validation_with_journey_metadata() {
         .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
     assert_eq!(validates.len(), 2, "both routes linked: {validates:?}");
-    // a sequence edge orders the two steps
+    // journey add does NOT order routes with sequence edges
     let first = store
         .resolve_node("register a person", Some(NodeType::Intent))
         .unwrap();
     let seq = store
         .edges_with(Some(EdgeKind::Sequence), Some(&first.id), None)
         .unwrap();
-    assert_eq!(seq.len(), 1, "consecutive routes are sequence-linked");
+    assert!(
+        seq.is_empty(),
+        "journey add must not auto-create sequence edges"
+    );
 }
 
 // ---- journey coverage: derived status (single truth source) ---------------
@@ -2283,9 +2292,8 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
         tmp.path(),
         &[
             "validation",
-            "mark",
+            "verdict",
             "checkout journey",
-            "--result",
             "passed",
             "--evidence",
             "journey green",
@@ -2295,7 +2303,7 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
     // before sync establishes the artifact hash, the edge is still uninspected
     // → still uncovered. Run sync to baseline, then record the verdict on the edge.
     loom_ok(tmp.path(), &["sync"]);
-    // The validation mark set node status=passed, but the Validates edge needs a
+    // The validation verdict set node status=passed, but the Validates edge needs a
     // Passing verdict to count as a current proof. Use the store directly to
     // stamp the edge (mirrors what `loom journey run` does on a green run).
     {
@@ -2401,9 +2409,8 @@ fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
         tmp.path(),
         &[
             "validation",
-            "mark",
+            "verdict",
             "unit checkout",
-            "--result",
             "passed",
             "--evidence",
             "unit green",

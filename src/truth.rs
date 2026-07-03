@@ -26,7 +26,7 @@ pub enum TruthAxis {
     Intent,
     /// Where behavior is realized. Authoritative form: code + `implements`.
     Implementation,
-    /// How behavior is proven. Authoritative form: `Validation`/saga + `validates`.
+    /// How behavior is proven. Authoritative form: `Validation`/journey + `validates`.
     Proof,
     /// Whether a recorded claim has been inspected. Authoritative form: an
     /// asserted edge verdict (analyzer/quality/validator, by edge kind).
@@ -120,7 +120,7 @@ impl TruthAxis {
                     .into(),
                 authoritative_write: "loom validation add … --intent <intent> then run it; for flows, loom journey add <spec> and loom journey run <spec>".into(),
                 forbidden_write: "editing code to force a proof green".into(),
-                after_write: "loom validation mark … --result passed|failed|blocked --evidence …".into(),
+                after_write: "loom validation verdict … passed|failed|blocked --evidence …".into(),
             },
             TruthAxis::Verdict => TruthGap {
                 axis: self,
@@ -131,7 +131,7 @@ impl TruthAxis {
                                confidence is honest — below 0.7 is a legitimate answer that \
                                routes to review; a confident guess is graph corruption"
                     .into(),
-                authoritative_write: "read both endpoints, then record the verdict for the edge kind (loom edge explore / loom rule verdict / loom validation mark)".into(),
+                authoritative_write: "read both endpoints, then record the verdict for the edge kind (loom edge explore / loom rule verdict / loom validation verdict)".into(),
                 forbidden_write: "editing code, or recording a verdict from name similarity instead of evidence".into(),
                 after_write: "loom status".into(),
             },

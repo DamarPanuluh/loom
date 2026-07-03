@@ -4,8 +4,8 @@
 //! output. No SQL here — that lives in `crate::store`.
 
 use crate::cli::{
-    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, InterfaceCmd,
-    LayerCmd, NoteCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
+    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, LayerCmd, NoteCmd,
+    RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
 };
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
@@ -75,7 +75,11 @@ pub fn run(cli: Cli) -> Result<()> {
             if all {
                 status_cmd::next_all(cli.graph.as_deref(), cli.json)
             } else {
-                status_cmd::next_cmd(cli.graph.as_deref(), mode.as_deref(), cli.json)
+                status_cmd::next_cmd(
+                    cli.graph.as_deref(),
+                    mode.map(crate::cli::ModeArg::as_str),
+                    cli.json,
+                )
             }
         }
         Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd, cli.json),
@@ -84,7 +88,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Task { cmd } => misc_cmd::task(cli.graph.as_deref(), cmd, cli.json),
         Command::Note { cmd } => misc_cmd::note(cli.graph.as_deref(), cmd, cli.json),
         Command::Session => misc_cmd::session(cli.graph.as_deref(), cli.json),
-        Command::Guide { role } => misc_cmd::guide(role.as_deref(), cli.json),
+        Command::Guide { role } => misc_cmd::guide(role.map(crate::cli::RoleArg::as_str), cli.json),
         Command::Find { query, limit } => {
             misc_cmd::find_cmd(cli.graph.as_deref(), &query, limit, cli.json)
         }
@@ -92,14 +96,10 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Schema => misc_cmd::schema_cmd(cli.json),
         Command::Rule { cmd } => proof_cmd::rule(cli.graph.as_deref(), cmd, cli.json),
         Command::Validation { cmd } => proof_cmd::validation(cli.graph.as_deref(), cmd, cli.json),
-        Command::Validate { intent, all } => {
-            proof_cmd::validate_cmd(cli.graph.as_deref(), &intent, all, cli.json)
-        }
         Command::Hypothesis { cmd } => domain_cmd::hypothesis(cli.graph.as_deref(), cmd, cli.json),
         Command::Surface { cmd } => domain_cmd::surface(cli.graph.as_deref(), cmd, cli.json),
         Command::Vocab { cmd } => domain_cmd::vocab(cli.graph.as_deref(), cmd, cli.json),
         Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd, cli.json),
-        Command::Interface { cmd } => domain_cmd::interface(cli.graph.as_deref(), cmd, cli.json),
         Command::Smells => diagnostics_cmd::smells_cmd(cli.graph.as_deref(), cli.json),
         Command::Debt => diagnostics_cmd::debt_cmd(cli.graph.as_deref(), cli.json),
         Command::Finding { cmd } => diagnostics_cmd::finding(cli.graph.as_deref(), cmd, cli.json),

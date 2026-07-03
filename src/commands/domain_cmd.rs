@@ -72,17 +72,17 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
         }
         HypothesisCmd::Prove {
             key,
-            verdict,
+            outcome,
             evidence,
         } => {
             let h = store.resolve_node(&key, Some(NodeType::Hypothesis))?;
-            let status = match verdict.as_str() {
+            let status = match outcome.as_str() {
                 "supported" => "supported",
                 "refuted" => "refuted",
-                other => bail!("unknown verdict '{other}' (use supported|refuted)"),
+                other => bail!("unknown outcome '{other}' (use supported|refuted)"),
             };
-            if evidence.trim().is_empty() {
-                bail!("{status} verdict requires non-empty evidence");
+            if crate::model::is_placeholder(&evidence) {
+                bail!("{status} verdict requires substantive evidence (not a placeholder like '…' or '<reason>')");
             }
             store.set_node_status(&h.id, status)?;
             store.add_note(&h.id, "decision", &format!("{status}: {evidence}"))?;
@@ -379,18 +379,18 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
             )?;
             Ok(())
         }
-        SurfaceCmd::Delete { key } => {
+        SurfaceCmd::Remove { key } => {
             let n = store.resolve_node(&key, Some(NodeType::InterfaceSurface))?;
             store.delete_node(&n.id)?;
             pulse::emit_line(
                 &store,
                 json,
                 serde_json::json!({
-                    "deleted": true,
+                    "removed": true,
                     "surface": node_json(&n),
                 }),
                 "loom status",
-                format!("deleted surface '{}'", n.name),
+                format!("removed surface '{}'", n.name),
             )?;
             Ok(())
         }
@@ -403,6 +403,59 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
                 for n in surfaces {
                     println!("{} [{}]", n.name, &n.id[..8]);
                 }
+            }
+            Ok(())
+        }
+        SurfaceCmd::Gaps => {
+            let surfaces = store.list_nodes(Some(NodeType::InterfaceSurface), usize::MAX)?;
+            let mut gaps = Vec::new();
+            for s in &surfaces {
+                let exposes = store.edges_with(Some(EdgeKind::Exposes), Some(&s.id), None)?;
+                let calls = store.edges_with(Some(EdgeKind::Calls), None, Some(&s.id))?;
+                if exposes.is_empty() {
+                    gaps.push(serde_json::json!({
+                        "surface_id": s.id,
+                        "surface": s.name,
+                        "kind": "unexposed_surface",
+                        "message": format!("surface '{}' exposes no codefile", s.name),
+                    }));
+                }
+                if calls.is_empty() {
+                    gaps.push(serde_json::json!({
+                        "surface_id": s.id,
+                        "surface": s.name,
+                        "kind": "uncalled_surface",
+                        "message": format!("surface '{}' is never called by a validation", s.name),
+                    }));
+                }
+            }
+            let armed = !surfaces.is_empty();
+            let warning = if armed {
+                None
+            } else {
+                Some("no surfaces declared")
+            };
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "armed": armed,
+                        "surface_count": surfaces.len(),
+                        "gaps": gaps,
+                        "warning": warning,
+                    }))?
+                );
+            } else if !armed {
+                println!("surface plane unmodeled: 0 surfaces declared; no surface-gap analysis possible");
+            } else {
+                for gap in &gaps {
+                    println!("{}", gap["message"].as_str().unwrap_or(""));
+                }
+                println!(
+                    "{} surface gap(s) across {} surface(s)",
+                    gaps.len(),
+                    surfaces.len()
+                );
             }
             Ok(())
         }
@@ -496,64 +549,6 @@ pub(crate) fn vocab(graph: Option<&Path>, cmd: VocabCmd, json: bool) -> Result<(
                 for (term, why) in terms {
                     println!("{term}  — {why}");
                 }
-            }
-            Ok(())
-        }
-    }
-}
-pub(crate) fn interface(graph: Option<&Path>, cmd: InterfaceCmd, json: bool) -> Result<()> {
-    let store = open(graph)?;
-    match cmd {
-        InterfaceCmd::Gaps => {
-            let surfaces = store.list_nodes(Some(NodeType::InterfaceSurface), usize::MAX)?;
-            let mut gaps = Vec::new();
-            for s in &surfaces {
-                let exposes = store.edges_with(Some(EdgeKind::Exposes), Some(&s.id), None)?;
-                let calls = store.edges_with(Some(EdgeKind::Calls), None, Some(&s.id))?;
-                if exposes.is_empty() {
-                    gaps.push(serde_json::json!({
-                        "surface_id": s.id,
-                        "surface": s.name,
-                        "kind": "unexposed_surface",
-                        "message": format!("surface '{}' exposes no codefile", s.name),
-                    }));
-                }
-                if calls.is_empty() {
-                    gaps.push(serde_json::json!({
-                        "surface_id": s.id,
-                        "surface": s.name,
-                        "kind": "uncalled_surface",
-                        "message": format!("surface '{}' is never called by a validation/saga", s.name),
-                    }));
-                }
-            }
-            let armed = !surfaces.is_empty();
-            let warning = if armed {
-                None
-            } else {
-                Some("no surfaces declared")
-            };
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "armed": armed,
-                        "surface_count": surfaces.len(),
-                        "gaps": gaps,
-                        "warning": warning,
-                    }))?
-                );
-            } else if !armed {
-                println!("interface plane unmodeled: 0 surfaces declared; no interface-gap analysis possible");
-            } else {
-                for gap in &gaps {
-                    println!("{}", gap["message"].as_str().unwrap_or(""));
-                }
-                println!(
-                    "{} interface gap(s) across {} surface(s)",
-                    gaps.len(),
-                    surfaces.len()
-                );
             }
             Ok(())
         }

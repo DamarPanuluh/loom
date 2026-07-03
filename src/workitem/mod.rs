@@ -151,7 +151,7 @@ pub struct WorkItem {
     pub scorecard: Option<serde_json::Value>,
     /// Which form of truth this item makes true, and the authoritative write /
     /// forbidden write / refresh for that axis. Lets the LLM self-teach whether
-    /// it should fill an intent, code, a proof, a saga, a verdict, or an export.
+    /// it should fill an intent, code, a proof, a journey, a verdict, or an export.
     pub truth_gap: crate::truth::TruthGap,
     pub next_step: String,
 }

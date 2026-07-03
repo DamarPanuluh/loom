@@ -140,6 +140,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
                 "codefiles": files,
                 "edges": edges,
             },
+            "compass": { "phase": ladder.phase, "next_command": ladder.next_command },
             "maturity": ladder,
             "graph_state": pulse,
             "queues": queues,

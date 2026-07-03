@@ -63,12 +63,12 @@ pub(super) fn elaborator_contract(
 fn verdict_write_back(edge: &Edge, from: &str, to: &str) -> String {
     match edge.kind {
         EdgeKind::Governs => format!(
-            "loom rule verdict {} {} --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+            "loom rule verdict {} {} <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
             q(from),
             q(to)
         ),
         EdgeKind::Validates => format!(
-            "loom validation mark {} --result <passed|failed> --evidence '…'   (blocked: --result blocked --reason '…')",
+            "loom validation verdict {} <passed|failed|blocked> --evidence '…'   (blocked: add --reason '…')",
             q(from)
         ),
         EdgeKind::Relates => format!(
@@ -101,20 +101,20 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
             "loom codefile show <file>".into(),
             "edit code".into(),
             format!("loom edge implement {name} <codefile> --locator <symbol>"),
-            format!("loom intent mark {name} --lifecycle implemented"),
+            format!("loom intent update {name} --lifecycle implemented --reason '<what was built>'"),
             "loom sync".into(),
             "loom inbox add (out-of-scope findings)".into(),
         ],
         forbidden_actions: vec![
             "loom rule verdict passing (quality lane)".into(),
-            "loom validation mark passed (validator lane)".into(),
+            "loom validation verdict passed (validator lane)".into(),
         ],
         required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
         evidence_template: None,
         examples: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
-            "loom edge implement {name} <codefile> --locator <symbol>; loom intent mark {name} --lifecycle implemented"
+            "loom edge implement {name} <codefile> --locator <symbol>; loom intent update {name} --lifecycle implemented --reason '<what was built>'"
         ),
         stop_condition: "after grounding + sync, return to loom status".into(),
         human_gate: None,
@@ -324,7 +324,7 @@ pub(super) fn quality_contract_body(
         (p, f) => Some(serde_json::json!({ "passing": p, "failing": f })),
     };
     let write_back = format!(
-        "loom rule verdict {} {} --status <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
+        "loom rule verdict {} {} <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
         q(rule_name),
         q(intent_name)
     );
@@ -386,7 +386,7 @@ pub(super) fn validator_contract(
         })
         .unwrap_or_default();
     let write_back = format!(
-        "loom validate {}  (or)  {}",
+        "loom validation run {}  (or)  {}",
         q(intent_name),
         verdict_write_back(edge, val_name, intent_name)
     );
@@ -406,7 +406,7 @@ pub(super) fn validator_contract(
                     command
                 }
             ),
-            format!("loom validate {}", q(intent_name)),
+            format!("loom validation run {}", q(intent_name)),
             verdict_write_back(edge, val_name, intent_name),
         ],
         forbidden_actions: vec![
@@ -477,7 +477,7 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
         why_now: format!("hypothesis '{}' is unproven", hyp.name),
         allowed_actions: vec![
             "read the targeted code".into(),
-            format!("loom hypothesis prove {name} --verdict supported|refuted --evidence '…'"),
+            format!("loom hypothesis prove {name} supported|refuted --evidence '…'"),
         ],
         forbidden_actions: vec![
             "adopt the hypothesis before proving it".into(),
@@ -487,9 +487,7 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
         evidence_template: None,
         examples: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!(
-            "loom hypothesis prove {name} --verdict <supported|refuted> --evidence '…'"
-        ),
+        write_back: format!("loom hypothesis prove {name} <supported|refuted> --evidence '…'"),
         stop_condition: "after the verdict, return to loom status".into(),
         human_gate: None,
     }

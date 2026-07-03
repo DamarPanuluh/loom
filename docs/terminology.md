@@ -338,7 +338,7 @@ The condition belongs as an edge facet/property.
 
 ### sequence
 
-`Intent -> Intent`. Ordered step relation inside a journey.
+`Intent -> Intent`. Ordered step relation inside a journey. Asserted by judgment via `loom edge relate sequence`; `loom journey add` does not create it, because a spec's step order is a test script, not a domain ordering claim.
 
 ### implements
 
@@ -436,7 +436,7 @@ Examples:
 
 ### journey
 
-A proof that multiple behaviors work together in an ordered flow. Preferred term: `journey`. Avoid `saga` except when describing the deprecated legacy alias/key accepted for old specs and command aliases.
+A proof that multiple behaviors work together in an ordered flow. The term is `journey`. `saga` is the retired v1 name — as of 0.15 the binary accepts no `saga` alias, validation type, or spec key; use it only when narrating history.
 
 Child proofs alone do not necessarily prove parent composition.
 
