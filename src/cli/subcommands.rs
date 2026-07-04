@@ -673,6 +673,12 @@ pub enum ProposalItemCmd {
 pub enum JourneyCmd {
     /// Add a journey from a JSON or YAML spec (creates a journey Validation + validates edges to step intents).
     Add { spec: PathBuf },
+    /// Remove a journey and its validation node(s) by journey id (cleans up
+    /// duplicates from an older non-idempotent add).
+    Remove {
+        /// The journey id (the spec's `journey:` value).
+        id: String,
+    },
     /// List journey validations.
     List {
         #[arg(long, default_value_t = 50)]

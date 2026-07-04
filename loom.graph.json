@@ -1174,7 +1174,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.251Z",
-      "updated_at": "2026-07-04T10:14:35.226Z"
+      "updated_at": "2026-07-04T13:37:08.818Z"
     },
     {
       "id": "9b3cb95638f815698d92c2b15dc0f057",
@@ -1212,7 +1212,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.353Z",
-      "updated_at": "2026-07-04T10:14:44.080Z"
+      "updated_at": "2026-07-04T13:37:07.587Z"
     },
     {
       "id": "a10348b450a4ef8d27f013cf92b95328",
@@ -1536,7 +1536,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "923 lines (> 600)",
+      "description": "929 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1694,7 +1694,7 @@
       "id": "d2228150595d32891",
       "type": "finding",
       "name": "src/journey.rs is oversized",
-      "description": "702 lines (> 600)",
+      "description": "757 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -4305,7 +4305,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.354Z",
-      "updated_at": "2026-07-04T10:13:31.568Z"
+      "updated_at": "2026-07-04T13:37:07.586Z"
     },
     {
       "id": "5c59e4b76d364c52152f69b51c2448ab",
@@ -4464,13 +4464,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
-      "evidence": "src/journey.rs: fn execute + fn parse_with_kind + fn check_response — the HTTP step runner, interpolation, capture threading, and verdict write-back live here",
+      "criterion": "the journey subsystem behavior still lives in journey.rs after the bugfix; the locator resolves to live symbols performing it",
+      "evidence": "src/journey.rs now hosts journey_validations/resolve_validation (idempotent dedupe by journey_id, tolerant run resolution) alongside execute/parse; behavior preserved+enhanced, ring6 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.352Z",
-      "updated_at": "2026-07-04T09:44:12.353Z"
+      "updated_at": "2026-07-04T13:38:32.038Z"
     },
     {
       "id": "73b24ac52049df9f586a09dad8001fa7",
@@ -4494,13 +4494,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
-      "evidence": "src/commands/journey/mod.rs: fn dispatch + journey_add/run/map — journey spec add, gap mapping, and run/diagnose dispatch live here",
+      "criterion": "the journey command family still lives in commands/journey/mod.rs; the locator resolves to live symbols performing it",
+      "evidence": "src/commands/journey/mod.rs journey_add is now an idempotent upsert (dedupe + spec_hash reset + edge reconcile) and adds journey_remove; add/list/map/run/diagnose dispatch intact, ring6 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.351Z",
-      "updated_at": "2026-07-04T09:44:12.351Z"
+      "updated_at": "2026-07-04T13:38:32.038Z"
     },
     {
       "id": "75a86dcfb8f32d537f9cacc9275cf047",
@@ -4899,13 +4899,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
-      "evidence": "src/cli/subcommands.rs: the nested *Cmd subcommand enums — each verb family's positional/flag arguments are declared here",
+      "criterion": "the CLI subcommand schema still lives in cli/subcommands.rs; the locator resolves to the live enums",
+      "evidence": "src/cli/subcommands.rs JourneyCmd gains a Remove{id} variant; the declarative *Cmd argument schema is otherwise unchanged, ring11 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.348Z",
-      "updated_at": "2026-07-04T09:44:12.348Z"
+      "updated_at": "2026-07-04T13:38:32.039Z"
     },
     {
       "id": "a697696cd174bac1550b5fd3b7e39836",
@@ -5670,7 +5670,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.251Z",
-      "updated_at": "2026-07-04T10:05:13.723Z"
+      "updated_at": "2026-07-04T13:37:08.817Z"
     },
     {
       "id": "d3e210444a3fea762",
@@ -7791,14 +7791,14 @@
       "target_id": "4c12eb186e3c14e56811398dd35388fa",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "2e4857d7f97c0322",
+      "value": "fa52aedb355a589a",
       "truth_class": "derived"
     },
     {
       "target_id": "4c12eb186e3c14e56811398dd35388fa",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::JourneyCmd\",\"crate::model::{EdgeKind, Node, NodeType, TargetKind}\",\"crate::store::Store\",\"serde_json::{json, Value}\",\"std::path::{Path, PathBuf}\",\"super::{open, pulse}\"]",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::JourneyCmd\",\"crate::model::EdgeKind\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::store::Store\",\"serde_json::Value\",\"serde_json::json\",\"std::path::Path\",\"std::path::PathBuf\",\"super::open\",\"super::pulse\"]",
       "truth_class": "derived"
     },
     {
@@ -7812,7 +7812,7 @@
       "target_id": "4c12eb186e3c14e56811398dd35388fa",
       "target_kind": "node",
       "key": "loc",
-      "value": "530",
+      "value": "585",
       "truth_class": "derived"
     },
     {
@@ -7826,7 +7826,7 @@
       "target_id": "4c12eb186e3c14e56811398dd35388fa",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "11",
+      "value": "12",
       "truth_class": "derived"
     },
     {
@@ -7875,14 +7875,14 @@
       "target_id": "4ea96a0eb7525e00baf28938e2ed569b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "38cca5511ec2f218",
+      "value": "e97652a000fabf9c",
       "truth_class": "derived"
     },
     {
       "target_id": "4ea96a0eb7525e00baf28938e2ed569b",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, Context}\",\"crate::Result\",\"crate::model::{EdgeKind, InspectionStatus, NodeType}\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::path::Path\",\"std::time::Duration\"]",
+      "value": "[\"anyhow::Context\",\"anyhow::anyhow\",\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::path::Path\",\"std::time::Duration\"]",
       "truth_class": "derived"
     },
     {
@@ -7896,7 +7896,7 @@
       "target_id": "4ea96a0eb7525e00baf28938e2ed569b",
       "target_kind": "node",
       "key": "loc",
-      "value": "702",
+      "value": "757",
       "truth_class": "derived"
     },
     {
@@ -7910,7 +7910,7 @@
       "target_id": "4ea96a0eb7525e00baf28938e2ed569b",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "30",
+      "value": "33",
       "truth_class": "derived"
     },
     {
@@ -9450,7 +9450,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "16dde99739bf3d0f",
+      "value": "9e416892fbccfc98",
       "truth_class": "derived"
     },
     {
@@ -9471,7 +9471,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "loc",
-      "value": "923",
+      "value": "929",
       "truth_class": "derived"
     },
     {
@@ -9562,7 +9562,7 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-04T10:22:08.772Z\",\"hash\":\"16dde99739bf3d0f\",\"reason\":\"src/cli/subcommands.rs is the declarative clap subcommand-argument tables; its length is intentional (declarative/cohesive family), a single responsibility — not tangled logic to split\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T13:38:32.040Z\",\"hash\":\"9e416892fbccfc98\",\"reason\":\"src/cli/subcommands.rs is the declarative clap subcommand-argument tables; its length is intentional (one enum per verb family), not tangled logic to split\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -9632,7 +9632,7 @@
       "target_id": "d2228150595d32891",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-03T08:17:01.497Z\",\"hash\":\"38cca5511ec2f218\",\"reason\":\"src/journey.rs is the journey spec model + executor: parse, template, execute and judge one flow format in one place; length is intentional, not tangled\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T13:38:32.041Z\",\"hash\":\"e97652a000fabf9c\",\"reason\":\"src/journey.rs is the cohesive journey runner (parse/interpolate/execute/verdict + the id resolver); one responsibility, length intentional\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -9863,7 +9863,7 @@
       "target_id": "d6e14fbb52d4aa2fb",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-04T10:22:08.783Z\",\"hash\":\"38cca5511ec2f218\",\"reason\":\"src/journey.rs::execute is complex: the branching is inherent to this dispatch/parse/build role; flattening it into helpers would scatter one cohesive decision and obscure it\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T13:38:32.042Z\",\"hash\":\"e97652a000fabf9c\",\"reason\":\"journey.rs::execute walks the step chain (request, interpolate, capture-thread, verdict, re-stale) as one cohesive HTTP-journey traversal; the branching is inherent to the flow, splitting would scatter it\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -10017,7 +10017,7 @@
       "target_id": "da38b123fdc51e040",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-04T10:22:08.779Z\",\"hash\":\"2e4857d7f97c0322\",\"reason\":\"src/commands/journey/mod.rs::journey_map is long: length is a flat sequence of cases/fields (match arms, struct literal, contract text), not nested logic — splitting would fragment one unit\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T13:38:32.041Z\",\"hash\":\"fa52aedb355a589a\",\"reason\":\"journey_map builds one joined map (journeys x step intents x uncovered intents) as a flat sequence of rows; its length is data assembly, not nested logic\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {

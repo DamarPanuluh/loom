@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.19.1] - 2026-07-04
+- Fix: loom journey add is idempotent — upsert by journey_id (dedupe duplicate validation nodes, reset proof to not_run on spec change, reconcile step Validates edges); journey run tolerates and repairs existing duplicates by merging their links instead of failing 'add it first'; add loom journey remove <id>
+
 ## [0.19.0] - 2026-07-04
 - Build lane is requires-aware: serve a prerequisite before the intent that requires it (unmet = a requires target not yet implemented, matching the completeness prerequisites axis); a fully-blocked candidate is served with a blocked reason so a requires cycle never stalls the lane
 

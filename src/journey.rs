@@ -10,7 +10,7 @@
 //! JSONPath is a dotted-subset (`$.a.b`) — enough for capture/threading without
 //! a full RFC 9535 engine.
 
-use crate::model::{EdgeKind, InspectionStatus, NodeType};
+use crate::model::{EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 use anyhow::{anyhow, Context};
@@ -322,7 +322,7 @@ pub fn execute(
     let journey_val = if record {
         let store =
             store.ok_or_else(|| anyhow!("recording a journey run requires a graph store"))?;
-        Some(store.resolve_node(&spec.journey, Some(NodeType::Validation))?)
+        Some(resolve_validation(store, &spec.journey, true)?)
     } else {
         None
     };
@@ -637,13 +637,68 @@ pub fn diagnose_hints(spec: &JourneySpec) -> Vec<String> {
     hints
 }
 
-pub fn require(store: &Store, name: &str) -> Result<()> {
-    store
-        .resolve_node(name, Some(NodeType::Validation))
-        .map(|_| ())
-        .map_err(|_| {
-            anyhow!("no journey validation '{name}' — add it first with `loom journey add`")
+fn journey_status_rank(status: &str) -> u8 {
+    match status {
+        "passed" => 0,
+        "not_run" => 1,
+        _ => 2,
+    }
+}
+
+/// Every journey validation registered for `journey_id`, canonical-sorted: a
+/// passed proof first, then not_run, then by id. A non-idempotent `add` could
+/// leave several duplicates for one id; the first is the one to keep.
+pub fn journey_validations(store: &Store, journey_id: &str) -> Result<Vec<Node>> {
+    let mut vals: Vec<Node> = store
+        .list_nodes(Some(NodeType::Validation), usize::MAX)?
+        .into_iter()
+        .filter(|n| {
+            // A journey validation created by `journey add` carries body.journey_id;
+            // a name-based one (e.g. `validation add --proof-kind journey`, or a
+            // legacy node) is matched by name. The is-journey guard keeps a
+            // same-named non-journey validation out.
+            let is_journey = n.body.get("type").and_then(|t| t.as_str()) == Some("journey")
+                || n.body.get("proof_kind").and_then(|t| t.as_str()) == Some("journey");
+            is_journey
+                && (n.body.get("journey_id").and_then(|v| v.as_str()) == Some(journey_id)
+                    || n.name == journey_id)
         })
+        .collect();
+    vals.sort_by(|a, b| {
+        journey_status_rank(&a.status)
+            .cmp(&journey_status_rank(&b.status))
+            .then(a.id.cmp(&b.id))
+    });
+    Ok(vals)
+}
+
+/// Resolve the single journey validation for `journey_id`. Tolerates duplicates
+/// left by a non-idempotent add (picks the canonical one); when `repair`, removes
+/// the duplicates so the graph self-heals on run. Errors only when none exists —
+/// the honest "add it first" case (never the misleading ambiguous-name error).
+pub fn resolve_validation(store: &Store, journey_id: &str, repair: bool) -> Result<Node> {
+    let mut vals = journey_validations(store, journey_id)?;
+    if vals.is_empty() {
+        anyhow::bail!(
+            "no journey validation '{journey_id}' — add it first with `loom journey add`"
+        );
+    }
+    let canonical = vals.remove(0);
+    if repair {
+        for dup in &vals {
+            // Inherit the duplicate's step links before removing it, so a later
+            // fixed add that linked more/different steps loses no coverage.
+            for e in store.edges_with(Some(EdgeKind::Validates), Some(&dup.id), None)? {
+                store.ensure_edge(EdgeKind::Validates, &canonical.id, &e.to_id)?;
+            }
+            store.delete_node(&dup.id)?;
+        }
+    }
+    Ok(canonical)
+}
+
+pub fn require(store: &Store, name: &str) -> Result<()> {
+    resolve_validation(store, name, false).map(|_| ())
 }
 
 #[cfg(test)]

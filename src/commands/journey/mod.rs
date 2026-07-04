@@ -27,6 +27,7 @@ use std::path::{Path, PathBuf};
 pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()> {
     match cmd {
         JourneyCmd::Add { spec } => journey_add(graph, spec, json),
+        JourneyCmd::Remove { id } => journey_remove(graph, &id, json),
         JourneyCmd::List { limit } => journey_list(graph, limit, json),
         JourneyCmd::Map => journey_map(graph, json),
         JourneyCmd::Run { spec, base_url } => journey_run(graph, spec, base_url.as_deref(), json),
@@ -60,56 +61,110 @@ fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
     let store = open(graph)?;
     let (parsed, kind) = crate::journey::parse_with_kind(&spec)?;
     let artifact = spec.display().to_string();
-    let val = store.add_node(
-        NodeType::Validation,
-        &parsed.journey,
-        "",
-        "not_run",
-        json!({
-            "type": "journey",
-            "command": format!("loom journey run {artifact}"),
-            "proof_level": "L5",
-            "proof_kind": "journey",
-            "journey_id": parsed.journey,
-            "repo_native_kind": kind.as_str(),
-            "artifact": artifact,
-        }),
-    )?;
+    // The spec's raw bytes fold into the body as spec_hash, so an edited spec at
+    // the SAME path changes the body (a path-only body would miss the common
+    // "fixed the spec, re-add" case).
+    let raw = std::fs::read_to_string(&spec)
+        .map_err(|e| anyhow::anyhow!("reading journey spec {}: {e}", spec.display()))?;
+    let spec_hash = crate::artifact::fingerprint(&raw);
+    let body = json!({
+        "type": "journey",
+        "command": format!("loom journey run {artifact}"),
+        "proof_level": "L5",
+        "proof_kind": "journey",
+        "journey_id": parsed.journey,
+        "repo_native_kind": kind.as_str(),
+        "artifact": artifact,
+        "spec_hash": spec_hash,
+    });
+    // Idempotent upsert by journey_id: reuse the canonical validation for this id,
+    // remove any duplicates a prior non-idempotent add left, and — when the spec
+    // changed — reset the proof to not_run (a fixed spec must be re-run, never
+    // left stale at its old result). Makes add→fix→add→run safe and repairs
+    // graphs that already accumulated duplicates.
+    let existing = crate::journey::journey_validations(&store, &parsed.journey)?;
+    let (val, updated) = match existing.split_first() {
+        Some((keep, dups)) => {
+            for dup in dups {
+                store.delete_node(&dup.id)?;
+            }
+            if keep.body != body {
+                store.set_node_body(&keep.id, &body)?;
+                if keep.status != "not_run" {
+                    store.set_node_status(&keep.id, "not_run")?;
+                }
+            }
+            let node = store
+                .get_node(&keep.id)?
+                .ok_or_else(|| anyhow::anyhow!("journey validation vanished after upsert"))?;
+            (node, true)
+        }
+        None => (
+            store.add_node(NodeType::Validation, &parsed.journey, "", "not_run", body)?,
+            false,
+        ),
+    };
+    // Reconcile step links: ensure the current spec's steps, then drop validates
+    // edges for steps the spec no longer names (a renamed/removed step must not
+    // keep a stale proof claim).
     let mut linked = 0usize;
     let mut unmatched_steps = Vec::new();
+    let mut wanted: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for step in &parsed.steps {
-        let intent = match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
-            Ok(intent) => intent,
-            Err(_) => {
-                // Soft resolution: report but don't fail. Consumer-facing specs
-                // use human-readable intent text, not Loom intent IDs.
-                unmatched_steps.push(json!({
-                    "step": step.name,
-                    "intent": step.intent,
-                }));
-                continue;
+        match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
+            Ok(intent) => {
+                wanted.insert(intent.id.clone());
+                store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
+                linked += 1;
             }
-        };
-        store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
-        linked += 1;
+            // Soft resolution: consumer specs use human-readable intent text, not
+            // Loom ids — report the miss, don't fail.
+            Err(_) => unmatched_steps.push(json!({ "step": step.name, "intent": step.intent })),
+        }
+    }
+    for e in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
+        if !wanted.contains(&e.to_id) {
+            store.delete_edge(&e.id)?;
+        }
     }
     let unmatched_count = unmatched_steps.len();
+    let verb = if updated { "updated" } else { "added" };
     let payload = json!({
-        "added": true,
-        "validation": val,
+        "added": !updated,
+        "updated": updated,
+        "validation": store.get_node(&val.id)?,
         "linked_steps": linked,
         "unmatched_steps": unmatched_steps,
     });
     let next_step = format!("run `loom journey run {artifact}` to record the proof");
     let line = if unmatched_count > 0 {
         format!(
-            "added journey '{}' ({linked} step intent(s)); warning: {unmatched_count} route/step intent(s) were not linked",
+            "{verb} journey '{}' ({linked} step intent(s)); warning: {unmatched_count} route/step intent(s) were not linked",
             val.name
         )
     } else {
-        format!("added journey '{}' ({linked} step intent(s))", val.name)
+        format!("{verb} journey '{}' ({linked} step intent(s))", val.name)
     };
     pulse::emit_line(&store, json, payload, &next_step, line)
+}
+
+fn journey_remove(graph: Option<&Path>, id: &str, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let vals = crate::journey::journey_validations(&store, id)?;
+    if vals.is_empty() {
+        bail!("no journey validation '{id}' to remove");
+    }
+    let removed = vals.len();
+    for v in &vals {
+        store.delete_node(&v.id)?;
+    }
+    pulse::emit_line(
+        &store,
+        json,
+        json!({ "removed": removed, "journey_id": id }),
+        "loom status",
+        format!("removed journey '{id}' ({removed} validation node(s))"),
+    )
 }
 
 fn journey_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {

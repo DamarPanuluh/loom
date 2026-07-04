@@ -524,6 +524,234 @@ fn journey_add_links_steps_with_validates_not_sequence() {
 }
 
 #[test]
+fn journey_add_is_idempotent_and_dedupes() {
+    // Reported bug: `journey add` twice for the same id created duplicate
+    // validation nodes, and `journey run` then failed with "add it first".
+    let tmp = Tmp::new();
+    run(
+        tmp.path(),
+        Command::Init {
+            path: Some(tmp.path().to_path_buf()),
+            name: Some("t".into()),
+            observed: false,
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    for n in ["create cart", "capture payment"] {
+        store
+            .add_node(
+                NodeType::Intent,
+                n,
+                "",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+    }
+    drop(store);
+    let spec = tmp.path().join("checkout.journey.json");
+    std::fs::write(
+        &spec,
+        r#"{"journey":"checkout-flow","steps":[{"intent":"create cart"},{"intent":"capture payment"}]}"#,
+    )
+    .unwrap();
+    for _ in 0..3 {
+        run(
+            tmp.path(),
+            Command::Journey {
+                cmd: JourneyCmd::Add { spec: spec.clone() },
+            },
+        );
+    }
+    let store = Store::open(tmp.path()).unwrap();
+    let vals = loom::journey::journey_validations(&store, "checkout-flow").unwrap();
+    assert_eq!(
+        vals.len(),
+        1,
+        "repeated add upserts one validation, not N duplicates"
+    );
+    // the run guard resolves cleanly — no ambiguity, no misleading "add it first"
+    assert!(loom::journey::require(&store, "checkout-flow").is_ok());
+    let validates = store
+        .edges_with(Some(EdgeKind::Validates), Some(&vals[0].id), None)
+        .unwrap();
+    assert_eq!(
+        validates.len(),
+        2,
+        "steps linked once, not duplicated per add"
+    );
+}
+
+#[test]
+fn resolve_validation_repairs_a_duplicated_graph() {
+    // A graph already bricked by the old bug (N duplicate nodes) self-heals:
+    // resolve_validation picks the canonical, merges links, deletes the rest.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let cart = store
+        .add_node(
+            NodeType::Intent,
+            "create cart",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let mut ids = vec![];
+    for _ in 0..3 {
+        let v = store
+            .add_node(
+                NodeType::Validation,
+                "dup-flow",
+                "",
+                "not_run",
+                serde_json::json!({"type":"journey","proof_kind":"journey","journey_id":"dup-flow"}),
+            )
+            .unwrap();
+        ids.push(v.id);
+    }
+    // A later fixed add linked a step onto one dup only.
+    store
+        .ensure_edge(EdgeKind::Validates, ids.last().unwrap(), &cart.id)
+        .unwrap();
+    assert_eq!(
+        loom::journey::journey_validations(&store, "dup-flow")
+            .unwrap()
+            .len(),
+        3
+    );
+    let canonical = loom::journey::resolve_validation(&store, "dup-flow", true).unwrap();
+    let after = loom::journey::journey_validations(&store, "dup-flow").unwrap();
+    assert_eq!(after.len(), 1, "duplicates removed");
+    assert_eq!(after[0].id, canonical.id);
+    let validates = store
+        .edges_with(Some(EdgeKind::Validates), Some(&canonical.id), None)
+        .unwrap();
+    assert_eq!(
+        validates.len(),
+        1,
+        "the deleted dup's link merged onto the canonical — no coverage lost"
+    );
+    assert!(loom::journey::require(&store, "dup-flow").is_ok());
+}
+
+#[test]
+fn missing_journey_gives_add_it_first_not_ambiguous() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let err = loom::journey::require(&store, "nope")
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("add it first"),
+        "0-case gives the honest error: {err}"
+    );
+}
+
+#[test]
+fn journey_remove_deletes_the_journey() {
+    let tmp = Tmp::new();
+    run(
+        tmp.path(),
+        Command::Init {
+            path: Some(tmp.path().to_path_buf()),
+            name: Some("t".into()),
+            observed: false,
+        },
+    );
+    let spec = tmp.path().join("f.journey.json");
+    std::fs::write(&spec, r#"{"journey":"gone-flow","steps":[]}"#).unwrap();
+    run(
+        tmp.path(),
+        Command::Journey {
+            cmd: JourneyCmd::Add { spec },
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(
+        loom::journey::journey_validations(&store, "gone-flow")
+            .unwrap()
+            .len(),
+        1
+    );
+    drop(store);
+    run(
+        tmp.path(),
+        Command::Journey {
+            cmd: JourneyCmd::Remove {
+                id: "gone-flow".into(),
+            },
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    assert!(loom::journey::journey_validations(&store, "gone-flow")
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn journey_readd_after_spec_change_resets_proof() {
+    let tmp = Tmp::new();
+    run(
+        tmp.path(),
+        Command::Init {
+            path: Some(tmp.path().to_path_buf()),
+            name: Some("t".into()),
+            observed: false,
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    store
+        .add_node(
+            NodeType::Intent,
+            "step a",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    drop(store);
+    let spec = tmp.path().join("r.journey.json");
+    std::fs::write(
+        &spec,
+        r#"{"journey":"reset-flow","steps":[{"intent":"step a"}]}"#,
+    )
+    .unwrap();
+    run(
+        tmp.path(),
+        Command::Journey {
+            cmd: JourneyCmd::Add { spec: spec.clone() },
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    let v = loom::journey::journey_validations(&store, "reset-flow")
+        .unwrap()
+        .remove(0);
+    store.set_node_status(&v.id, "passed").unwrap();
+    drop(store);
+    // Edit the spec at the SAME path (different bytes) and re-add.
+    std::fs::write(
+        &spec,
+        r#"{"journey":"reset-flow","base":"http://x","steps":[{"intent":"step a"}]}"#,
+    )
+    .unwrap();
+    run(
+        tmp.path(),
+        Command::Journey {
+            cmd: JourneyCmd::Add { spec },
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    let v = loom::journey::journey_validations(&store, "reset-flow")
+        .unwrap()
+        .remove(0);
+    assert_eq!(
+        v.status, "not_run",
+        "a changed spec resets the passed proof to not_run"
+    );
+}
+
+#[test]
 fn journey_list_recognizes_proof_kind_journey() {
     let tmp = Tmp::new();
     run(
