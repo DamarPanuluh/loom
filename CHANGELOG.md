@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.18.0] - 2026-07-04
+- Domain-blind engine core: extraction+scan behind a Deriver seam (sync orchestrates seed derivers), proofs behind a ProofRunner seam, exports behind a Projection seam, code files behind an ArtifactClass ground-artifact contract, truth-class membership as declared registry data, evidence policy as portable config with the new loom policy command, and a derived-floor balance surfaced in loom status
+
 ## [0.17.0] - 2026-07-04
 - loom apply gains adjudications/vocab/tags batch sections — durable finding verdicts, vocab registration, and intent tagging in one atomic transaction, each through the same gate as loom finding verdict / vocab add / intent tag add (shared adjudicate_finding + tag_intent); applied in dependency order (vocab first, tags last)
 

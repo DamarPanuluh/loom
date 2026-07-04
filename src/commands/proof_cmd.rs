@@ -1,33 +1,4 @@
 use super::*;
-use process_control::{ChildExt, Control};
-use std::process::Stdio;
-use std::time::Duration;
-
-const DEFAULT_VALIDATION_TIMEOUT_SECS: u64 = 300;
-const VALIDATION_OUTPUT_EXCERPT_BYTES: usize = 8192;
-
-fn output_excerpt(bytes: &[u8]) -> (String, usize, bool) {
-    let byte_count = bytes.len();
-    let take = byte_count.min(VALIDATION_OUTPUT_EXCERPT_BYTES);
-    (
-        String::from_utf8_lossy(&bytes[..take]).into_owned(),
-        byte_count,
-        byte_count > take,
-    )
-}
-
-fn validation_output_json(o: &process_control::Output) -> serde_json::Value {
-    let (stdout, stdout_bytes, stdout_truncated) = output_excerpt(&o.stdout);
-    let (stderr, stderr_bytes, stderr_truncated) = output_excerpt(&o.stderr);
-    serde_json::json!({
-        "stdout": stdout,
-        "stdout_bytes": stdout_bytes,
-        "stdout_truncated": stdout_truncated,
-        "stderr": stderr,
-        "stderr_bytes": stderr_bytes,
-        "stderr_truncated": stderr_truncated,
-    })
-}
 
 pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
@@ -592,25 +563,18 @@ pub(crate) fn validate_cmd(
             .and_then(|c| c.as_str())
             .unwrap_or("")
             .to_string();
-        if command.is_empty() {
-            results.push(serde_json::json!({
-                "id": v.id,
-                "name": v.name,
-                "status": "skipped",
-                "reason": "manual_check",
-            }));
-            human_lines.push(format!(
-                "skip '{}' (manual_check — use loom validation verdict)",
-                v.name
-            ));
-            continue;
-        }
-        let timeout_secs = validation_timeout_secs(v);
-        let out = run_validation_command(&root, &command, timeout_secs);
-        match out {
-            Ok(Some(o)) if o.status.success() => {
+        let ty = v
+            .body
+            .get("type")
+            .and_then(|t| t.as_str())
+            .and_then(|s| s.parse::<crate::model::ValidationType>().ok())
+            .unwrap_or(crate::model::ValidationType::Test);
+        // The engine records every outcome uniformly; the runner keyed by the
+        // validation type owns how the proof is actually attempted.
+        match crate::proof::runner_for(ty).run(&root, v) {
+            crate::proof::ProofOutcome::Passed { evidence } => {
                 let store = open(Some(&root))?;
-                mark_validation(&store, &v.id, "passed", &format!("`{command}` exit 0"), "")?;
+                mark_validation(&store, &v.id, "passed", &evidence, "")?;
                 drop(store);
                 results.push(serde_json::json!({
                     "id": v.id,
@@ -620,24 +584,11 @@ pub(crate) fn validate_cmd(
                 }));
                 human_lines.push(format!("PASS {}", v.name));
             }
-            Ok(Some(o)) => {
-                let code = o.status.code().unwrap_or(-1);
-                let output = validation_output_json(&o);
-                let stderr_excerpt = output["stderr"].as_str().unwrap_or("").trim();
-                let stdout_excerpt = output["stdout"].as_str().unwrap_or("").trim();
-                let excerpt = if stderr_excerpt.is_empty() {
-                    stdout_excerpt
-                } else {
-                    stderr_excerpt
-                };
-                let evidence = if excerpt.is_empty() {
-                    format!("`{command}` exit {code}")
-                } else {
-                    format!(
-                        "`{command}` exit {code}; output: {}",
-                        truncate(excerpt, 300)
-                    )
-                };
+            crate::proof::ProofOutcome::Failed {
+                evidence,
+                exit_code,
+                output,
+            } => {
                 let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "failed", &evidence, "")?;
                 drop(store);
@@ -646,14 +597,13 @@ pub(crate) fn validate_cmd(
                     "name": v.name,
                     "status": "failed",
                     "command": command,
-                    "exit_code": code,
+                    "exit_code": exit_code,
                 });
                 row["output"] = output;
                 results.push(row);
-                human_lines.push(format!("FAIL {} (exit {code})", v.name));
+                human_lines.push(format!("FAIL {} (exit {exit_code})", v.name));
             }
-            Ok(None) => {
-                let reason = format!("`{command}` timed out after {timeout_secs}s");
+            crate::proof::ProofOutcome::Blocked { reason } => {
                 let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "blocked", "", &reason)?;
                 drop(store);
@@ -664,23 +614,19 @@ pub(crate) fn validate_cmd(
                     "command": command,
                     "reason": reason,
                 }));
-                human_lines.push(format!(
-                    "BLOCKED {} (timed out after {timeout_secs}s)",
-                    v.name
-                ));
+                human_lines.push(format!("BLOCKED {} ({reason})", v.name));
             }
-            Err(e) => {
-                let store = open(Some(&root))?;
-                mark_validation(&store, &v.id, "blocked", "", &format!("could not run: {e}"))?;
-                drop(store);
+            crate::proof::ProofOutcome::Manual { reason } => {
                 results.push(serde_json::json!({
                     "id": v.id,
                     "name": v.name,
-                    "status": "blocked",
-                    "command": command,
-                    "reason": e.to_string(),
+                    "status": "skipped",
+                    "reason": reason,
                 }));
-                human_lines.push(format!("BLOCKED {} ({e})", v.name));
+                human_lines.push(format!(
+                    "skip '{}' ({reason} — use loom validation verdict)",
+                    v.name
+                ));
             }
         }
     }
@@ -721,32 +667,4 @@ pub(crate) fn validate_cmd(
             Ok(())
         },
     )
-}
-
-fn validation_timeout_secs(v: &crate::model::Node) -> u64 {
-    v.body
-        .get("timeout_seconds")
-        .and_then(|value| value.as_u64())
-        .filter(|secs| *secs > 0)
-        .unwrap_or(DEFAULT_VALIDATION_TIMEOUT_SECS)
-}
-
-fn run_validation_command(
-    root: &Path,
-    command: &str,
-    timeout_secs: u64,
-) -> std::io::Result<Option<process_control::Output>> {
-    let child = std::process::Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .current_dir(root)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    child
-        .controlled_with_output()
-        .time_limit(Duration::from_secs(timeout_secs))
-        .terminate_for_timeout()
-        .wait()
 }

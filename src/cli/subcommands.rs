@@ -896,3 +896,28 @@ pub enum ThresholdCmd {
         gate: Option<String>,
     },
 }
+
+#[derive(Subcommand, Debug)]
+pub enum PolicyCmd {
+    /// Show the current policy (configured values, or shipped defaults if unset).
+    Show,
+    /// Set the review-confidence floor (a fraction in [0.0, 1.0]); persists to
+    /// config.evidence_policy.
+    SetFloor {
+        /// The new floor: verdicts strictly below it route to review.
+        value: f64,
+    },
+    /// Add an owner lane to the human-gated set (builder | analyzer | fixer |
+    /// validator | quality).
+    GateAdd {
+        /// The lane whose work packets should carry a human gate.
+        role: String,
+    },
+    /// Remove an owner lane from the human-gated set.
+    GateRemove {
+        /// The lane to stop gating.
+        role: String,
+    },
+    /// Reset the whole policy to the shipped defaults (drops the config).
+    Reset,
+}

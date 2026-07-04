@@ -37,6 +37,20 @@ pub struct Ladder {
     /// `None` only for the terminal `complete` phase.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub truth_axis: Option<crate::truth::TruthAxis>,
+    /// The derived-floor balance: how much of the graph is machine-maintained
+    /// (derived) versus judgment the queue must carry (asserted).
+    pub derived_floor: DerivedFloor,
+}
+
+/// The ratio of derived to asserted facts, surfaced so a thin programmatic
+/// floor stays a visible measured number instead of silently growing the
+/// judgment queue. Facts are counted across nodes, edges, and facets.
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+pub struct DerivedFloor {
+    pub derived: usize,
+    pub asserted: usize,
+    /// `derived / (derived + asserted)`; `0.0` for an empty graph.
+    pub ratio: f64,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
@@ -191,11 +205,23 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     );
 
     let truth_axis = crate::truth::axis_for_phase(&phase, &next_command);
+    let (derived_facts, asserted_facts) = store.truth_class_census()?;
+    let total = derived_facts + asserted_facts;
+    let derived_floor = DerivedFloor {
+        derived: derived_facts,
+        asserted: asserted_facts,
+        ratio: if total == 0 {
+            0.0
+        } else {
+            derived_facts as f64 / total as f64
+        },
+    };
     Ok(Ladder {
         rungs,
         phase,
         next_command,
         truth_axis,
+        derived_floor,
     })
 }
 

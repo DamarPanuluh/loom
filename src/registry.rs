@@ -211,6 +211,41 @@ pub fn spec(kind: EdgeKind) -> &'static EdgeKindSpec {
         .expect("edge-kind registry is total (guarded by test)")
 }
 
+/// The declared truth class of each node kind — the node-side companion to the
+/// edge-kind [`REGISTRY`]. A fact kind's *class membership* is data here, not a
+/// hardcoded literal at each write site: `Store::add_node` /
+/// `Store::add_derived_node` read this at write time both to stamp the column
+/// and to reject the wrong constructor. The mapping may reassign a kind between
+/// classes, but the class *semantics* (derived = sync-rebuilt with a
+/// deterministic id + sentinel timestamp; asserted = a pinned judgment) live in
+/// the constructors, never here.
+pub const NODE_TRUTH_CLASSES: &[(NodeType, TruthClass)] = &[
+    (Intent, Asserted),
+    (CodeFile, Asserted),
+    (QualityRule, Asserted),
+    (CodeRule, Asserted),
+    (Validation, Asserted),
+    (Hypothesis, Asserted),
+    (Finding, Derived),
+    (InterfaceSurface, Asserted),
+    (Note, Asserted),
+    (InboxItem, Asserted),
+    (TaskRecord, Asserted),
+    (Proposal, Asserted),
+    (JourneyCoverage, Asserted),
+    (JourneyInvariantPoint, Asserted),
+];
+
+/// The declared truth class of a node kind. Infallible by construction once
+/// `node_registry_is_total` passes.
+pub fn node_truth_class(node_type: NodeType) -> TruthClass {
+    NODE_TRUTH_CLASSES
+        .iter()
+        .find(|(t, _)| *t == node_type)
+        .map(|(_, tc)| *tc)
+        .expect("node truth-class mapping is total (guarded by test)")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,6 +286,34 @@ mod tests {
             if s.truth_classes == [TruthClass::Derived] {
                 assert_eq!(s.owner, OwnerRole::Sync, "{} is derived-only", s.kind);
             }
+        }
+    }
+
+    #[test]
+    fn node_registry_is_total() {
+        // Every NodeType has exactly one declared truth class.
+        for nt in NodeType::ALL {
+            let matches: Vec<_> = NODE_TRUTH_CLASSES.iter().filter(|(t, _)| t == nt).collect();
+            assert_eq!(
+                matches.len(),
+                1,
+                "node kind {nt} must have exactly one truth class"
+            );
+        }
+        assert_eq!(NODE_TRUTH_CLASSES.len(), NodeType::ALL.len());
+    }
+
+    #[test]
+    fn only_finding_is_derived() {
+        // The class split the two node constructors enforce: Finding is the sole
+        // sync-rebuilt node kind; everything else is a pinned judgment.
+        for (nt, tc) in NODE_TRUTH_CLASSES {
+            let expect = if *nt == NodeType::Finding {
+                TruthClass::Derived
+            } else {
+                TruthClass::Asserted
+            };
+            assert_eq!(*tc, expect, "{nt} truth class");
         }
     }
 }

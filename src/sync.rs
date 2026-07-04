@@ -11,10 +11,8 @@
 //! byte-identical derived plane (deterministic ids + sentinel timestamps + a
 //! pure extraction), and ripples nothing because no prior hashes remain.
 
-use crate::extract::{extract, Extraction, Role};
-use crate::model::{EdgeKind, GroundingRole, Node, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
-use crate::thresholds::Thresholds;
 use crate::Result;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -36,155 +34,33 @@ pub struct SyncReport {
     pub missing: Vec<String>,
 }
 
-/// A built-in structural CodeRule and the finding kinds it covers.
-struct BuiltinRule {
-    key: &'static str,
-    name: &'static str,
-    category: &'static str,
-    description: &'static str,
-}
-
-const BUILTIN_RULES: &[BuiltinRule] = &[
-    BuiltinRule {
-        key: "max-file-size",
-        name: "max-file-size",
-        category: "size",
-        description: "a file should not exceed a maintainable line count",
-    },
-    BuiltinRule {
-        key: "complex-symbol",
-        name: "complex-symbol",
-        category: "complexity",
-        description: "a function should stay below a cognitive complexity threshold",
-    },
-    BuiltinRule {
-        key: "no-panic-marker",
-        name: "no-panic-marker",
-        category: "safety",
-        description: "production source should not panic at a boundary (unwrap/panic!)",
-    },
-    BuiltinRule {
-        key: "large-symbol",
-        name: "large-symbol",
-        category: "size",
-        description: "a function should stay below a maintainable line count",
-    },
-    BuiltinRule {
-        key: "deep-nesting",
-        name: "deep-nesting",
-        category: "complexity",
-        description: "a function should not nest control flow beyond a readable depth",
-    },
-    BuiltinRule {
-        key: "excess-args",
-        name: "excess-args",
-        category: "design",
-        description: "a function should take a bounded number of arguments",
-    },
-];
-
-/// Run a full sync against the graph rooted at `root`.
+/// Run a full sync against the graph rooted at `root`. Orchestrates the
+/// registered code-seed derivers to recompute the derived plane, then ripples
+/// the artifact changes they report — the engine names no extraction type, so
+/// unplugging a deriver leaves this loop intact and rippling correctly.
 pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     let mut report = SyncReport::default();
-    let rules = ensure_builtin_rules(store)?;
-    let thresholds = crate::thresholds::load(store)?;
-    let codefiles = store.codefiles()?;
-    let changed_intents = sync_structural(store, root, &codefiles, &mut report)?;
-    ripple_changed_intents(store, &changed_intents, &mut report)?;
-    ripple_artifact_drift(store, root, &mut report)?;
-    ripple_runner_drift(store, root, &mut report)?;
-    rebuild_findings(store, root, &codefiles, &rules, &thresholds, &mut report)?;
-    rebuild_smell_findings(store, &mut report)?;
-    Ok(report)
-}
-
-/// Pass 1: detect content changes, recompute derived facets, and gather a map
-/// of grounded intents to the concrete file-change causes that stale dependents.
-fn sync_structural(
-    store: &Store,
-    root: &Path,
-    codefiles: &[Node],
-    report: &mut SyncReport,
-) -> Result<BTreeMap<String, BTreeSet<String>>> {
     let mut changed_intents: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();
-    for cf in codefiles {
-        report.files_scanned += 1;
-        let path = root.join(&cf.name);
-        let content = match std::fs::read_to_string(&path) {
-            Ok(c) => c,
-            Err(_) => {
-                report.missing.push(cf.name.clone());
-                // A registered file that is now gone is a deletion: ripple its
-                // dependents ONCE, then mark it, so a still-missing file never
-                // re-resets contracts a driver re-verified against its absence.
-                //
-                // The ripple also covers a file that NEVER got a hash (it was
-                // registered, grounded, even verdicted, and deleted before its
-                // first sync): the "missing prior hash never stales" rule
-                // protects fresh registrations that EXIST on disk, not claims
-                // grounded in nothing. The derived `missing_rippled` marker is
-                // the once-guard; it clears if the file reappears.
-                let had_hash = store
-                    .get_facet(&cf.id, TargetKind::Node, "content_hash")?
-                    .is_some();
-                let already_rippled = store
-                    .get_facet(&cf.id, TargetKind::Node, "missing_rippled")?
-                    .is_some();
-                if had_hash || !already_rippled {
-                    if had_hash {
-                        report.files_deleted += 1;
-                    }
-                    let cause = format!("registered codefile {} disappeared", cf.name);
-                    ripple_codefile(
-                        store,
-                        &cf.id,
-                        &cause,
-                        None,
-                        &mut changed_intents,
-                        &mut seen_surfaces,
-                        report,
-                    )?;
-                    if had_hash {
-                        store.clear_facet(&cf.id, TargetKind::Node, "content_hash")?;
-                    }
-                    store.set_facet(
-                        &cf.id,
-                        TargetKind::Node,
-                        "missing_rippled",
-                        "true",
-                        TruthClass::Derived,
-                    )?;
-                }
-                continue;
-            }
-        };
-        let ex = extract(&cf.name, &content);
-        // The file exists (again): a future disappearance is a fresh deletion.
-        store.clear_facet(&cf.id, TargetKind::Node, "missing_rippled")?;
-        let prior = store.get_facet(&cf.id, TargetKind::Node, "content_hash")?;
-        let current = ex.content_hash.clone();
-        if prior.as_deref() == Some(current.as_str()) {
-            continue; // unchanged
-        }
-        write_facets(store, &cf.id, &ex)?;
-        // Ripple only on a REAL change (prior hash existed and differs).
-        if prior.is_some() {
-            report.files_changed += 1;
-            let cause = format!("content hash of {} changed", cf.name);
+    for deriver in crate::seed::sync_derivers() {
+        for change in deriver.derive(store, root, &mut report)? {
             ripple_codefile(
                 store,
-                &cf.id,
-                &cause,
-                Some(&content),
+                &change.artifact_id,
+                &change.cause,
+                change.content.as_deref(),
                 &mut changed_intents,
                 &mut seen_surfaces,
-                report,
+                &mut report,
             )?;
         }
     }
     report.surfaces_affected = seen_surfaces.len();
-    Ok(changed_intents)
+    ripple_changed_intents(store, &changed_intents, &mut report)?;
+    ripple_artifact_drift(store, root, &mut report)?;
+    ripple_runner_drift(store, root, &mut report)?;
+    rebuild_smell_findings(store, &mut report)?;
+    Ok(report)
 }
 
 /// Ripple one codefile's change or disappearance to everything that depended on
@@ -351,7 +227,7 @@ fn ripple_artifact_drift(store: &Store, root: &Path, report: &mut SyncReport) ->
         let path = root.join(artifact);
         let prior = store.get_facet(&val.id, TargetKind::Node, "artifact_hash")?;
         let current = match std::fs::read_to_string(&path) {
-            Ok(c) => Some(crate::extract::fnv1a(&c)),
+            Ok(c) => Some(crate::artifact::fingerprint(&c)),
             Err(_) => None,
         };
         // No prior hash and no current file: never-hashed + absent → nothing to
@@ -423,7 +299,7 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
             let facet_key = format!("{field}_hash");
             let prior = store.get_facet(&cov.id, TargetKind::Node, &facet_key)?;
             let current = match std::fs::read_to_string(root.join(rel_path)) {
-                Ok(c) => Some(crate::extract::fnv1a(&c)),
+                Ok(c) => Some(crate::artifact::fingerprint(&c)),
                 Err(_) => None,
             };
             // Seed on first observation (no prior hash) — never stale on it.
@@ -504,46 +380,6 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
     Ok(())
 }
 
-/// Pass 3: rebuild the derived finding plane deterministically (wipe + re-derive
-/// so unchanged input yields a byte-identical plane — INV-2).
-fn rebuild_findings(
-    store: &Store,
-    root: &Path,
-    codefiles: &[Node],
-    rules: &std::collections::HashMap<&'static str, String>,
-    thresholds: &Thresholds,
-    report: &mut SyncReport,
-) -> Result<()> {
-    store.wipe_structural_findings()?;
-    for cf in codefiles {
-        let path = root.join(&cf.name);
-        let content = match std::fs::read_to_string(&path) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-        let ex = extract(&cf.name, &content);
-        for f in derive_findings(&cf.name, &ex, thresholds) {
-            let rule_id = match rules.get(f.rule) {
-                Some(id) => id,
-                None => continue,
-            };
-            let det_key = format!("{}:{}:{}", f.kind, cf.name, f.symbol);
-            let node = store.add_derived_node(
-                NodeType::Finding,
-                &det_key,
-                &f.title,
-                &f.detail,
-                f.kind,
-                serde_json::json!({ "kind": f.kind, "symbol": f.symbol }),
-            )?;
-            store.add_derived_edge(EdgeKind::Flags, &node.id, &cf.id)?;
-            store.add_derived_edge(EdgeKind::Assesses, &node.id, rule_id)?;
-            report.findings += 1;
-        }
-    }
-    Ok(())
-}
-
 /// Pass 3b: materialize structural smells as derived Finding nodes. Smells
 /// stay computed-on-read for `loom smells`, but the materialized finding gives
 /// the triage queue a servable item and `loom finding verdict` a stable id
@@ -562,123 +398,4 @@ fn rebuild_smell_findings(store: &Store, report: &mut SyncReport) -> Result<()> 
         report.findings += 1;
     }
     Ok(())
-}
-
-fn write_facets(store: &Store, cf_id: &str, ex: &Extraction) -> Result<()> {
-    let d = TruthClass::Derived;
-    store.set_facet(cf_id, TargetKind::Node, "language", ex.language.as_str(), d)?;
-    store.set_facet(cf_id, TargetKind::Node, "role", ex.role.as_str(), d)?;
-    store.set_facet(cf_id, TargetKind::Node, "loc", &ex.loc.to_string(), d)?;
-    store.set_facet(cf_id, TargetKind::Node, "content_hash", &ex.content_hash, d)?;
-    store.set_facet(
-        cf_id,
-        TargetKind::Node,
-        "symbol_count",
-        &ex.symbols.len().to_string(),
-        d,
-    )?;
-    let imports = serde_json::to_string(&ex.imports).unwrap_or_else(|_| "[]".into());
-    store.set_facet(cf_id, TargetKind::Node, "imports", &imports, d)?;
-    Ok(())
-}
-
-fn ensure_builtin_rules(store: &Store) -> Result<std::collections::HashMap<&'static str, String>> {
-    let mut map = std::collections::HashMap::new();
-    for r in BUILTIN_RULES {
-        let node = store.upsert_builtin_node(
-            NodeType::CodeRule,
-            r.key,
-            r.name,
-            r.description,
-            serde_json::json!({ "category": r.category }),
-        )?;
-        map.insert(r.key, node.id);
-    }
-    Ok(map)
-}
-
-/// A derived finding descriptor (pre-persistence).
-struct FindingDesc {
-    kind: &'static str,
-    symbol: String,
-    title: String,
-    detail: String,
-    rule: &'static str,
-}
-
-/// Derive the built-in structural findings of one file. Symbol-level detectors
-/// apply to production callables only (functions/methods in `Role::Source`);
-/// every gate is a strict `>` on the configured [`Thresholds`].
-fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDesc> {
-    let mut out = Vec::new();
-    // oversized_file — language-agnostic, loc based.
-    if ex.loc > t.max_file_loc {
-        out.push(FindingDesc {
-            kind: "oversized_file",
-            symbol: String::new(),
-            title: format!("{path} is oversized"),
-            detail: format!("{} lines (> {})", ex.loc, t.max_file_loc),
-            rule: "max-file-size",
-        });
-    }
-    // Per-callable detectors (source files only).
-    if ex.role == Role::Source {
-        for s in &ex.symbols {
-            if !matches!(s.kind.as_str(), "function" | "method") {
-                continue;
-            }
-            if s.complexity > t.max_symbol_complexity {
-                out.push(FindingDesc {
-                    kind: "complex_symbol",
-                    symbol: s.name.clone(),
-                    title: format!("{}::{} is complex", path, s.name),
-                    detail: format!(
-                        "complexity ~{} (> {})",
-                        s.complexity, t.max_symbol_complexity
-                    ),
-                    rule: "complex-symbol",
-                });
-            }
-            let sym_loc = s.line_end.saturating_sub(s.line_start) + 1;
-            if sym_loc > t.max_symbol_loc {
-                out.push(FindingDesc {
-                    kind: "large_symbol",
-                    symbol: s.name.clone(),
-                    title: format!("{}::{} is long", path, s.name),
-                    detail: format!("{} lines (> {})", sym_loc, t.max_symbol_loc),
-                    rule: "large-symbol",
-                });
-            }
-            if s.max_nesting > t.max_nesting {
-                out.push(FindingDesc {
-                    kind: "deep_nesting",
-                    symbol: s.name.clone(),
-                    title: format!("{}::{} nests deeply", path, s.name),
-                    detail: format!("nesting depth {} (> {})", s.max_nesting, t.max_nesting),
-                    rule: "deep-nesting",
-                });
-            }
-            if s.arg_count > t.max_args {
-                out.push(FindingDesc {
-                    kind: "excess_args",
-                    symbol: s.name.clone(),
-                    title: format!("{}::{} takes many arguments", path, s.name),
-                    detail: format!("{} args (> {})", s.arg_count, t.max_args),
-                    rule: "excess-args",
-                });
-            }
-        }
-    }
-    // panic_marker — production unwrap()/panic! sites (AST-counted; excludes test
-    // modules and string/comment text).
-    if ex.role == Role::Source && ex.panic_sites > 0 {
-        out.push(FindingDesc {
-            kind: "panic_marker",
-            symbol: String::new(),
-            title: format!("{path} panics at a boundary"),
-            detail: format!("{} unwrap()/panic! site(s)", ex.panic_sites),
-            rule: "no-panic-marker",
-        });
-    }
-    out
 }

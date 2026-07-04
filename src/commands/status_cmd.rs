@@ -215,6 +215,13 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         };
         println!("    {mark} {:<12} {}", r.name, r.detail);
     }
+    let df = &ladder.derived_floor;
+    println!(
+        "  derived floor: {:.0}% ({} derived / {} asserted facts)",
+        df.ratio * 100.0,
+        df.derived,
+        df.asserted
+    );
     println!(
         "  compass: phase={} → {}",
         ladder.phase, ladder.next_command

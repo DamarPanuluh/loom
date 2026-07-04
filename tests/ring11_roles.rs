@@ -719,8 +719,9 @@ fn m12_add_edge_rejects_derived_truth_class() {
     // same add_edge path still refuses Derived — the error is the boundary, not
     // the kind's truth-class list.
     let finding = store
-        .add_node(
+        .add_derived_node(
             NodeType::Finding,
+            "finding:1",
             "finding:1",
             "todo found",
             "open",

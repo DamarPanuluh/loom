@@ -742,7 +742,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             );
             println!("  allowed:   {allowed}");
             println!("  forbidden: {forbidden}");
-            println!("  honesty:   confidence below {} routes the verdict to review — uncertainty is honest, a confident guess corrupts the graph", crate::workitem::REVIEW_CONFIDENCE_FLOOR);
+            println!("  honesty:   confidence below {} (the default policy cutoff) routes the verdict to review — uncertainty is honest, a confident guess corrupts the graph", crate::policy::DEFAULT_REVIEW_CONFIDENCE_FLOOR);
             println!("  set: export LOOM_AGENT=llm:{r}");
             Ok(())
         }

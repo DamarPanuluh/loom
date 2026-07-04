@@ -18,6 +18,57 @@ fn empty_graph_compass_routes_to_seed() {
 }
 
 #[test]
+fn derived_floor_balance_is_a_measured_fact() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // Empty graph: no facts, so the floor is a defined 0.0 (never NaN).
+    let empty = ladder(&store).unwrap().derived_floor;
+    assert_eq!(empty.derived, 0);
+    assert_eq!(empty.asserted, 0);
+    assert_eq!(empty.ratio, 0.0);
+
+    // An asserted intent is asserted weight; still no derived facts.
+    store
+        .add_node(
+            NodeType::Intent,
+            "payment can be captured",
+            "",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let floor = ladder(&store).unwrap().derived_floor;
+    assert!(floor.asserted >= 1, "the intent counts as an asserted fact");
+    assert_eq!(floor.derived, 0);
+    assert_eq!(floor.ratio, 0.0);
+
+    // A derived finding node lifts the programmatic floor above zero.
+    store
+        .add_derived_node(
+            NodeType::Finding,
+            "df:1",
+            "df:1",
+            "oversized",
+            "oversized_file",
+            serde_json::json!({ "kind": "oversized_file", "symbol": "" }),
+        )
+        .unwrap();
+    let lifted = ladder(&store).unwrap().derived_floor;
+    assert!(lifted.derived >= 1);
+    assert!(lifted.ratio > 0.0 && lifted.ratio < 1.0);
+    assert_eq!(
+        lifted.derived + lifted.asserted,
+        // ratio is the derived share of all counted facts
+        {
+            let total = lifted.derived + lifted.asserted;
+            let by_ratio = (lifted.ratio * total as f64).round() as usize;
+            assert_eq!(by_ratio, lifted.derived);
+            total
+        }
+    );
+}
+
+#[test]
 fn planned_intent_routes_to_build() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();

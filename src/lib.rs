@@ -9,18 +9,23 @@
 //! - `commands` — CLI command handlers.
 //! - `cli`      — clap command surface.
 
+pub mod artifact;
 pub mod cli;
 pub mod commands;
 pub mod completeness;
+pub mod deriver;
 pub mod extract;
 pub mod fsglob;
 pub mod journey;
 pub mod maturity;
 pub mod model;
 pub mod packs;
+pub mod policy;
 pub mod prescan;
+pub mod proof;
 pub mod registry;
 pub mod scan;
+pub mod seed;
 pub mod signal;
 pub mod store;
 pub mod sync;

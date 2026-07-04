@@ -90,10 +90,9 @@ impl Export {
 
 /// Export a store's graph to the canonical `loom.graph.json` at the project root.
 pub fn export_to_file(store: &Store) -> Result<std::path::PathBuf> {
-    let snap = store.snapshot()?;
-    let export = Export::from_snapshot(snap);
-    let json = export.to_json()?;
-    let path = store.root().join(crate::GRAPH_EXPORT);
+    let proj = graph_projection();
+    let json = proj.render(store.snapshot()?)?;
+    let path = store.root().join(proj.artifact_path());
     std::fs::write(&path, json).with_context(|| format!("writing {}", path.display()))?;
     Ok(path)
 }
@@ -101,7 +100,8 @@ pub fn export_to_file(store: &Store) -> Result<std::path::PathBuf> {
 /// Compute whether the committed export at `root` matches the live graph.
 /// Returns Ok(true) when fresh, Ok(false) when drifted or missing.
 pub fn export_is_fresh(store: &Store) -> Result<bool> {
-    let path = store.root().join(crate::GRAPH_EXPORT);
+    let proj = graph_projection();
+    let path = store.root().join(proj.artifact_path());
     let committed = match std::fs::read_to_string(&path) {
         Ok(c) => c,
         // A missing export is honest drift; a real IO error (permissions, etc.)
@@ -109,7 +109,7 @@ pub fn export_is_fresh(store: &Store) -> Result<bool> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
         Err(e) => return Err(e).with_context(|| format!("reading {}", path.display())),
     };
-    let live = Export::from_snapshot(store.snapshot()?).to_json()?;
+    let live = proj.render(store.snapshot()?)?;
     Ok(committed == live)
 }
 
@@ -119,7 +119,7 @@ pub fn export_is_fresh(store: &Store) -> Result<bool> {
 /// without ever creating an artifact a repo chose not to track, and without
 /// rewriting a fresh one (so determinism and clean diffs hold).
 pub fn refresh_export_if_tracked(store: &Store) -> Result<bool> {
-    let path = store.root().join(crate::GRAPH_EXPORT);
+    let path = store.root().join(graph_projection().artifact_path());
     if !path.exists() || export_is_fresh(store)? {
         return Ok(false);
     }
@@ -132,6 +132,58 @@ pub fn read_export(path: &Path) -> Result<Export> {
     let text =
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     Export::from_json(&text)
+}
+
+// ---- projection seam -------------------------------------------------------
+
+/// The registry key of the canonical deterministic graph export.
+pub const GRAPH_JSON_PROJECTION: &str = "graph_json";
+
+/// A projection renders the graph snapshot into a world-facing artifact. The
+/// engine's export path knows only this seam and the registry below: adding a
+/// new export format (an OKF bundle, a wiki page) means registering another
+/// `Projection`, never editing the export command or sync's freshness check.
+pub trait Projection {
+    /// The projection's stable registry key.
+    fn name(&self) -> &str;
+    /// The committed artifact's path, relative to the project root.
+    fn artifact_path(&self) -> &str;
+    /// Render a snapshot to deterministic bytes.
+    fn render(&self, snap: Snapshot) -> Result<String>;
+}
+
+/// The canonical deterministic JSON projection. Per the engine/seed boundary
+/// decision, `loom.graph.json` is loom's reference (and only) projection; other
+/// projections (OKF bundles) belong to the separate canonical engine.
+pub struct GraphJsonProjection;
+
+impl Projection for GraphJsonProjection {
+    fn name(&self) -> &str {
+        GRAPH_JSON_PROJECTION
+    }
+    fn artifact_path(&self) -> &str {
+        crate::GRAPH_EXPORT
+    }
+    fn render(&self, snap: Snapshot) -> Result<String> {
+        Export::from_snapshot(snap).to_json()
+    }
+}
+
+/// Every registered projection. The engine looks projections up here by key; a
+/// seed adds one by adding an entry, with no change to the export path.
+pub fn projections() -> Vec<Box<dyn Projection>> {
+    vec![Box::new(GraphJsonProjection)]
+}
+
+/// Look up a projection by its registry key.
+pub fn projection(name: &str) -> Option<Box<dyn Projection>> {
+    projections().into_iter().find(|p| p.name() == name)
+}
+
+/// The canonical graph projection, resolved through the registry — so the
+/// engine's export path dispatches by key rather than hardcoding the format.
+fn graph_projection() -> Box<dyn Projection> {
+    projection(GRAPH_JSON_PROJECTION).expect("graph_json projection is registered")
 }
 
 #[cfg(test)]
@@ -192,6 +244,37 @@ mod tests {
                          "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
         let parsed = Export::from_json(legacy).unwrap();
         assert!(parsed.config.is_empty());
+    }
+
+    #[test]
+    fn export_dispatches_through_the_projection_registry() {
+        // The canonical projection is registered and keys are honest.
+        let proj = projection(GRAPH_JSON_PROJECTION).expect("graph_json registered");
+        assert_eq!(proj.name(), "graph_json");
+        assert_eq!(proj.artifact_path(), crate::GRAPH_EXPORT);
+        assert!(
+            projection("okf_bundle").is_none(),
+            "no unregistered projection"
+        );
+
+        // Rendering through the seam is byte-identical to the direct export
+        // path, so routing the engine through the registry changed no bytes.
+        let snap = Snapshot {
+            identity: Identity {
+                graph_id: "g1".into(),
+                name: "demo".into(),
+                schema_version: crate::SCHEMA_VERSION,
+                observed: false,
+            },
+            nodes: vec![],
+            edges: vec![],
+            facets: vec![],
+            tags: vec![],
+            config: Default::default(),
+        };
+        let via_seam = proj.render(snap.clone()).unwrap();
+        let direct = Export::from_snapshot(snap).to_json().unwrap();
+        assert_eq!(via_seam, direct);
     }
 
     proptest! {

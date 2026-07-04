@@ -1,5 +1,5 @@
 use super::queues::prescreen_for;
-use super::{q, PromptContract, REVIEW_CONFIDENCE_FLOOR};
+use super::{q, PromptContract};
 use crate::model::{Edge, EdgeKind, Node};
 use crate::store::Store;
 use crate::Result;
@@ -432,6 +432,7 @@ pub(super) fn reviewer_contract(
     owner_role: &str,
     from_name: &str,
     to_name: &str,
+    review_floor: f64,
 ) -> PromptContract {
     let write_back = verdict_write_back(edge, from_name, to_name);
     PromptContract {
@@ -443,7 +444,7 @@ pub(super) fn reviewer_contract(
             .into(),
         why_now: format!(
             "{} verdict stands at confidence {:.2}, below the {} review floor",
-            edge.kind, edge.confidence, REVIEW_CONFIDENCE_FLOOR
+            edge.kind, edge.confidence, review_floor
         ),
         allowed_actions: vec![
             "read both endpoints and the grounded code FIRST".into(),

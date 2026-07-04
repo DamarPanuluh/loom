@@ -178,14 +178,11 @@ pub fn extract(path: &str, content: &str) -> Extraction {
     }
 }
 
-/// FNV-1a 64-bit content hash as hex. Deterministic, no external crate.
+/// FNV-1a 64-bit content hash as hex. The single implementation lives in
+/// [`crate::artifact::fingerprint`] (the engine's generic change-fingerprint);
+/// this alias keeps extraction's local vocabulary.
 pub fn fnv1a(s: &str) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in s.bytes() {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    }
-    format!("{h:016x}")
+    crate::artifact::fingerprint(s)
 }
 
 /// The `name` child identifier of a declaration node, as text.

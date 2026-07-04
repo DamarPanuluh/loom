@@ -167,8 +167,25 @@ pub struct Target {
     pub to: Option<String>,
 }
 
-/// Compute the next work item for a mode, or the highest-priority item overall.
+/// Compute the next work item, then stamp the policy's human gate on it. Gate
+/// placement is portable config ([`crate::policy`]): a repo can require human
+/// sign-off for a lane's writes without a code change (default: no lane gated).
 pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
+    let mut item = next_inner(store, mode)?;
+    if let Some(w) = item.as_mut() {
+        let policy = crate::policy::load(store)?;
+        if policy.gates_role(&w.owner_role) {
+            w.prompt_contract.human_gate = Some(format!(
+                "policy: the {} lane is human-gated — obtain human sign-off before recording this write",
+                w.owner_role
+            ));
+        }
+    }
+    Ok(item)
+}
+
+/// Compute the next work item for a mode, or the highest-priority item overall.
+fn next_inner(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
     // An observed graph maps code the driver does not own: discovery, quality,
     // and validation work only — the build and fix lanes are disabled, because a
     // monitor cannot change the upstream it watches (docs/commands.md:90).
@@ -238,9 +255,6 @@ pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
         }
     }
 }
-
-/// Verdicts below this confidence are not settled truth; they route to review.
-pub const REVIEW_CONFIDENCE_FLOOR: f64 = 0.7;
 
 fn node_target(n: &Node) -> Target {
     Target {
@@ -346,6 +360,7 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
         .filter(|fv| fv.state == "untriaged" || fv.stale || fv.state == "needed")
         .count();
     let resolved_findings = findings.len() - open_findings;
+    let floor = crate::policy::load(store)?.review_confidence_floor;
     Ok(GraphState {
         planned: store
             .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
@@ -387,7 +402,7 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
                 &[InspectionStatus::Passing, InspectionStatus::Independent],
             )?
             .into_iter()
-            .filter(|e| e.confidence > 0.0 && e.confidence < REVIEW_CONFIDENCE_FLOOR)
+            .filter(|e| e.confidence > 0.0 && e.confidence < floor)
             .count(),
     })
 }

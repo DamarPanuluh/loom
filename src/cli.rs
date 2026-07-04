@@ -134,6 +134,12 @@ pub enum Command {
         #[command(subcommand)]
         cmd: ThresholdCmd,
     },
+    /// Read or set the evidence policy (review-confidence floor + human-gate
+    /// placement); persists to portable config, absent = shipped defaults.
+    Policy {
+        #[command(subcommand)]
+        cmd: PolicyCmd,
+    },
     /// The Definition-of-Complete scorecard: per-intent axes met/open/waived.
     Completeness {
         /// One intent (name, id, or fragment); omit for all feature intents.

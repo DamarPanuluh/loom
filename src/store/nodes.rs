@@ -15,16 +15,21 @@ impl Store {
         if name.trim().is_empty() {
             bail!("node name must not be empty");
         }
+        let tc = registry::node_truth_class(node_type);
+        if tc != TruthClass::Asserted {
+            bail!("'{node_type}' is a {tc} node kind — use add_derived_node, not add_node");
+        }
         let (id, now) = id_and_now(&self.conn)?;
         self.conn.execute(
             "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)
-             VALUES (?1,?2,?3,?4,?5,'asserted',?6,?7,?7)",
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?8)",
             params![
                 id,
                 node_type.as_str(),
                 name,
                 description,
                 status,
+                tc.as_str(),
                 body.to_string(),
                 now
             ],

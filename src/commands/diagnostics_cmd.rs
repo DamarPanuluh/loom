@@ -697,3 +697,95 @@ pub(crate) fn threshold_cmd(
         }
     }
 }
+
+/// `loom policy` — read or set the evidence policy (review-confidence floor +
+/// human-gate placement). Values persist to portable `config.evidence_policy`;
+/// `reset` drops the config so the policy reverts to the shipped defaults.
+pub(crate) fn policy_cmd(
+    graph: Option<&Path>,
+    cmd: crate::cli::PolicyCmd,
+    json: bool,
+) -> Result<()> {
+    use crate::cli::PolicyCmd;
+    use crate::policy::{self, EvidencePolicy};
+    match cmd {
+        PolicyCmd::Show => {
+            let store = open_read(graph)?;
+            let p = policy::load(&store)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&p)?);
+            } else {
+                println!("review_confidence_floor  {}", p.review_confidence_floor);
+                let gated = if p.human_gated_roles.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    p.human_gated_roles.join(", ")
+                };
+                println!("human_gated_roles        {gated}");
+            }
+            Ok(())
+        }
+        PolicyCmd::SetFloor { value } => {
+            let store = open(graph)?;
+            let mut p = policy::load(&store)?;
+            p.review_confidence_floor = value;
+            policy::save(&store, &p)?; // save validates the range
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "review_confidence_floor": value }),
+                "loom status",
+                format!("review confidence floor = {value}"),
+            )
+        }
+        PolicyCmd::GateAdd { role } => {
+            let store = open(graph)?;
+            let mut p = policy::load(&store)?;
+            if !p.human_gated_roles.iter().any(|r| r == &role) {
+                p.human_gated_roles.push(role);
+                p.human_gated_roles.sort();
+            }
+            policy::save(&store, &p)?; // save validates the role name
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "human_gated_roles": p.human_gated_roles }),
+                "loom status",
+                format!("human-gated lanes: {}", p.human_gated_roles.join(", ")),
+            )
+        }
+        PolicyCmd::GateRemove { role } => {
+            let store = open(graph)?;
+            let mut p = policy::load(&store)?;
+            p.human_gated_roles.retain(|r| r != &role);
+            if p == EvidencePolicy::default() {
+                policy::clear(&store)?;
+            } else {
+                policy::save(&store, &p)?;
+            }
+            let gated = if p.human_gated_roles.is_empty() {
+                "(none)".to_string()
+            } else {
+                p.human_gated_roles.join(", ")
+            };
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "human_gated_roles": p.human_gated_roles }),
+                "loom status",
+                format!("human-gated lanes: {gated}"),
+            )
+        }
+        PolicyCmd::Reset => {
+            let store = open(graph)?;
+            policy::clear(&store)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "reset": "all" }),
+                "loom status",
+                "evidence policy reset to shipped defaults".to_string(),
+            )
+        }
+    }
+}

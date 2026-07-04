@@ -6,7 +6,7 @@ use super::contracts::{
 };
 use super::{
     axis_for_role, effort_for, node_target, rank_lifecycle, LinkedEntity, SuggestedRead, Target,
-    WorkItem, REVIEW_CONFIDENCE_FLOOR,
+    WorkItem,
 };
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
@@ -313,13 +313,14 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
 /// stronger reviewer instead of letting it stand as settled truth. Failing
 /// verdicts are excluded — they already route to the fix queue.
 pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
+    let floor = crate::policy::load(store)?.review_confidence_floor;
     let mut candidates: Vec<Edge> = store
         .live_edges_by_status(
             crate::model::TruthClass::Asserted,
             &[InspectionStatus::Passing, InspectionStatus::Independent],
         )?
         .into_iter()
-        .filter(|e| e.confidence > 0.0 && e.confidence < REVIEW_CONFIDENCE_FLOOR)
+        .filter(|e| e.confidence > 0.0 && e.confidence < floor)
         .collect();
     candidates.sort_by(|a, b| {
         a.confidence
@@ -332,7 +333,7 @@ pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
     };
     let reason = format!(
         "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
-        edge.confidence, REVIEW_CONFIDENCE_FLOOR
+        edge.confidence, floor
     );
     // Review runs AS the owning lane: the re-record command is gated by the
     // edge's owner (governs → quality, validates → validator, …), so the
@@ -511,7 +512,13 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
         .map(|c| vec![c])
         .unwrap_or_default();
     let contract = match (mode, role) {
-        ("review", _) => reviewer_contract(edge, role, &from_name, &to_name),
+        ("review", _) => reviewer_contract(
+            edge,
+            role,
+            &from_name,
+            &to_name,
+            crate::policy::load(store)?.review_confidence_floor,
+        ),
         (_, "fixer") => fixer_contract(edge, &from_name, &to_name),
         (_, "quality") => quality_contract(store, edge, &from_name, &to_name)?,
         (_, "validator") => validator_contract(store, edge, &from_name, &to_name)?,
@@ -672,13 +679,14 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
         }
     }
 
+    let floor = crate::policy::load(store)?.review_confidence_floor;
     let review = store
         .live_edges_by_status(
             TruthClass::Asserted,
             &[InspectionStatus::Passing, InspectionStatus::Independent],
         )?
         .into_iter()
-        .filter(|e| e.confidence > 0.0 && e.confidence < super::REVIEW_CONFIDENCE_FLOOR)
+        .filter(|e| e.confidence > 0.0 && e.confidence < floor)
         .count();
     let findings = crate::signal::triage_findings(store)?.len();
     let inbox_new = store

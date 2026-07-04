@@ -137,12 +137,16 @@ impl Store {
         status: &str,
         body: serde_json::Value,
     ) -> Result<Node> {
+        let tc = registry::node_truth_class(node_type);
+        if tc != TruthClass::Derived {
+            bail!("'{node_type}' is a {tc} node kind — use add_node, not add_derived_node");
+        }
         let id = derived_id(&[node_type.as_str(), det_key]);
         self.conn.execute(
             "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)
-             VALUES (?1,?2,?3,?4,?5,'derived',?6,?7,?7)
-             ON CONFLICT(id) DO UPDATE SET name=?3,description=?4,status=?5,body=?6",
-            params![id, node_type.as_str(), name, description, status, body.to_string(), DERIVED_TS],
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?8)
+             ON CONFLICT(id) DO UPDATE SET name=?3,description=?4,status=?5,body=?7",
+            params![id, node_type.as_str(), name, description, status, tc.as_str(), body.to_string(), DERIVED_TS],
         )?;
         self.get_node(&id)?
             .ok_or_else(|| anyhow!("derived node vanished"))
@@ -498,6 +502,27 @@ impl Store {
             )
             .optional()?
             .is_some())
+    }
+    /// Count stored facts by truth class across the node, edge, and facet
+    /// tables — the raw inputs to the derived-floor balance the maturity ladder
+    /// reports. Returns `(derived, asserted)`.
+    pub fn truth_class_census(&self) -> Result<(usize, usize)> {
+        let (mut derived, mut asserted) = (0usize, 0usize);
+        for table in ["node", "edge", "facet"] {
+            let mut stmt = self.conn.prepare(&format!(
+                "SELECT truth_class, COUNT(*) FROM {table} GROUP BY truth_class"
+            ))?;
+            let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?;
+            for row in rows {
+                let (tc, n) = row?;
+                match tc.as_str() {
+                    "derived" => derived += n as usize,
+                    "asserted" => asserted += n as usize,
+                    _ => {}
+                }
+            }
+        }
+        Ok((derived, asserted))
     }
 
     /// Set a meta key (e.g. the layer order JSON).
