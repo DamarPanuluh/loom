@@ -106,6 +106,17 @@
       "updated_at": "2026-07-03T08:16:58.958Z"
     },
     {
+      "id": "3d01e32c1ad5820adc5396ac13c9d732",
+      "type": "codefile",
+      "name": "src/thresholds.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-03T21:47:11.103Z",
+      "updated_at": "2026-07-03T21:47:11.103Z"
+    },
+    {
       "id": "408967614e3d396966799356a6bb195b",
       "type": "codefile",
       "name": "src/commands/edge.rs",
@@ -172,6 +183,17 @@
       "body": {},
       "created_at": "2026-07-03T08:16:58.956Z",
       "updated_at": "2026-07-03T08:16:58.956Z"
+    },
+    {
+      "id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "type": "codefile",
+      "name": "src/commands/apply_cmd.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-03T21:47:11.102Z",
+      "updated_at": "2026-07-03T21:47:11.102Z"
     },
     {
       "id": "4ea96a0eb7525e00baf28938e2ed569b",
@@ -332,6 +354,17 @@
       "updated_at": "2026-07-03T08:17:01.729Z"
     },
     {
+      "id": "96f73dcbb8d368d76e5ff0504cb815a6",
+      "type": "codefile",
+      "name": "src/extract/metrics.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-03T21:47:11.103Z",
+      "updated_at": "2026-07-03T21:47:11.103Z"
+    },
+    {
       "id": "983fbfe52123ec95d1498fed04cf7908",
       "type": "codefile",
       "name": "src/sync.rs",
@@ -369,14 +402,14 @@
       "type": "validation",
       "name": "cargo test suite",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test -q",
         "type": "test"
       },
       "created_at": "2026-07-03T08:17:03.110Z",
-      "updated_at": "2026-07-03T08:17:11.922Z"
+      "updated_at": ""
     },
     {
       "id": "bf09663257644367de9a2a3930b6179b",
@@ -463,7 +496,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "852 lines (> 600)",
+      "description": "879 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -474,10 +507,37 @@
       "updated_at": ""
     },
     {
+      "id": "d03e6ab228ff10a8a",
+      "type": "finding",
+      "name": "src/commands/proposal_cmd.rs::item_adopt takes many arguments",
+      "description": "7 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "item_adopt"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d105a1509d6314d8e",
+      "type": "code_rule",
+      "name": "large-symbol",
+      "description": "a function should stay below a maintainable line count",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "size"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d160c383b0cbfdb3e",
       "type": "finding",
       "name": "src/sync.rs is oversized",
-      "description": "629 lines (> 600)",
+      "description": "684 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -534,6 +594,20 @@
         },
         "patterns": [],
         "severity": "error"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d247f48b5ef8f0833",
+      "type": "finding",
+      "name": "src/commands/proof_cmd.rs::rule is long",
+      "description": "220 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "rule"
       },
       "created_at": "",
       "updated_at": ""
@@ -602,6 +676,20 @@
       "updated_at": ""
     },
     {
+      "id": "d3bc2007c9d21f3a3",
+      "type": "finding",
+      "name": "src/extract/mod.rs is oversized",
+      "description": "621 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d3e4d58c3c9e094a9",
       "type": "finding",
       "name": "src/commands/proof_cmd.rs is oversized",
@@ -630,6 +718,77 @@
       "updated_at": ""
     },
     {
+      "id": "d3ff8101e1dfa4913",
+      "type": "finding",
+      "name": "src/commands/edge.rs::edge_verdict takes many arguments",
+      "description": "7 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "edge_verdict"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d41e84da431a76593",
+      "type": "finding",
+      "name": "src/commands/codefile_cmd.rs::codefile_show is long",
+      "description": "129 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "codefile_show"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4673e0ba4975b09a",
+      "type": "finding",
+      "name": "src/commands/proof_cmd.rs::validation is long",
+      "description": "225 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "validation"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4817cbb6764c8867",
+      "type": "finding",
+      "name": "src/commands/journey/invariants.rs::invariant_add takes many arguments",
+      "description": "7 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "invariant_add"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4cbf2a057cd3398a",
+      "type": "finding",
+      "name": "user-visible intent 'loom maintains a falsifiable graph for LLM-driven codebase work' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:dee5b82cf2a0f9cfb402478c2b69f6ee",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d4d2a8e8624b4e00a",
       "type": "finding",
       "name": "src/commands/domain_cmd.rs::hypothesis is complex",
@@ -653,6 +812,20 @@
       "body": {
         "kind": "oversized_file",
         "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d59ea450b0ce7b5a8",
+      "type": "finding",
+      "name": "src/commands/domain_cmd.rs::surface is long",
+      "description": "168 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "surface"
       },
       "created_at": "",
       "updated_at": ""
@@ -703,7 +876,7 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "1022 lines (> 600)",
+      "description": "1036 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -723,6 +896,48 @@
       "body": {
         "kind": "complex_symbol",
         "symbol": "validation"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d7e350a2a66c90de8",
+      "type": "finding",
+      "name": "src/commands/journey/coverage.rs::coverage_update takes many arguments",
+      "description": "7 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "coverage_update"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d90ceb976a899684c",
+      "type": "finding",
+      "name": "src/commands/proof_cmd.rs::validate_cmd is long",
+      "description": "192 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "validate_cmd"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d930a061173abdb75",
+      "type": "finding",
+      "name": "src/commands/edge.rs::edge_explore takes many arguments",
+      "description": "8 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "edge_explore"
       },
       "created_at": "",
       "updated_at": ""
@@ -836,6 +1051,76 @@
       "updated_at": ""
     },
     {
+      "id": "da38b123fdc51e040",
+      "type": "finding",
+      "name": "src/commands/journey/mod.rs::journey_map is long",
+      "description": "188 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "journey_map"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "da43f58c15170d3fa",
+      "type": "finding",
+      "name": "src/signal.rs::doctor is long",
+      "description": "123 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "doctor"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db151dbcf04edb8e7",
+      "type": "finding",
+      "name": "src/commands/domain_cmd.rs::hypothesis is long",
+      "description": "255 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "hypothesis"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db23c217c2fd88001",
+      "type": "finding",
+      "name": "src/maturity.rs::compass takes many arguments",
+      "description": "14 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "compass"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db3b0c8822f7da186",
+      "type": "finding",
+      "name": "src/commands/misc_cmd.rs::session nests deeply",
+      "description": "nesting depth 8 (> 5)",
+      "status": "deep_nesting",
+      "truth_class": "derived",
+      "body": {
+        "kind": "deep_nesting",
+        "symbol": "session"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "db589a2e0c605c5fd",
       "type": "finding",
       "name": "src/commands/misc_cmd.rs is oversized",
@@ -845,6 +1130,47 @@
       "body": {
         "kind": "oversized_file",
         "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db7de80cbbb28c471",
+      "type": "code_rule",
+      "name": "deep-nesting",
+      "description": "a function should not nest control flow beyond a readable depth",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "complexity"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dbaa67a0b92488fdb",
+      "type": "finding",
+      "name": "src/store/facets.rs::restore is long",
+      "description": "147 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "restore"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dbf74e8168e6407ca",
+      "type": "finding",
+      "name": "src/commands/intent.rs::intent_update is long",
+      "description": "129 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "intent_update"
       },
       "created_at": "",
       "updated_at": ""
@@ -861,15 +1187,42 @@
       "updated_at": "2026-07-03T08:16:58.981Z"
     },
     {
+      "id": "dd02ddceb33aeff05",
+      "type": "finding",
+      "name": "src/sync.rs::ripple_codefile takes many arguments",
+      "description": "7 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "ripple_codefile"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dd263e1d1d65128e4",
       "type": "finding",
       "name": "src/commands/intent.rs is oversized",
-      "description": "668 lines (> 600)",
+      "description": "670 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
         "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dd371408af4da502b",
+      "type": "code_rule",
+      "name": "excess-args",
+      "description": "a function should take a bounded number of arguments",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {
+        "category": "design"
       },
       "created_at": "",
       "updated_at": ""
@@ -884,6 +1237,20 @@
       "body": {
         "kind": "complex_symbol",
         "symbol": "build_rungs"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de4eda701a00c81b9",
+      "type": "finding",
+      "name": "src/commands/proposal_cmd.rs::item_adopt is long",
+      "description": "158 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "item_adopt"
       },
       "created_at": "",
       "updated_at": ""
@@ -905,7 +1272,21 @@
       "id": "dee615a3c58247e84",
       "type": "finding",
       "name": "src/scan.rs is oversized",
-      "description": "772 lines (> 600)",
+      "description": "1485 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dfe03799171524433",
+      "type": "finding",
+      "name": "src/store/mod.rs is oversized",
+      "description": "665 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1143,14 +1524,14 @@
       "to_id": "51de5fe93196b86f14341bb036ef3dca",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "a passing/failing verdict with empty OR placeholder criterion/evidence is rejected; independent without evidence is rejected; a derived edge is rejected; a wrong-lane agent is rejected; and the column CHECK rejects any truth_class outside {derived,asserted}",
       "evidence": "two enforcement layers — store/mod.rs schema CHECK(truth_class) rejects bad values at write (defense in depth), and store/edges.rs record_verdict gates evidence/lane/derived + is_placeholder; covered by inv4/inv5/inv6/inv7 and record_verdict_rejects_placeholder_text_without_partial_write",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:01.695Z",
-      "updated_at": "2026-07-03T08:17:01.717Z"
+      "updated_at": "2026-07-03T21:47:11.540Z"
     },
     {
       "id": "134b6eb5d345cca7e06ee39dc6734422",
@@ -1158,14 +1539,14 @@
       "to_id": "983fbfe52123ec95d1498fed04cf7908",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "editing a grounded file's content moves its settled verdicts to needs_reverification; an unchanged file does not, and a never-seen file does not",
       "evidence": "sync.rs recomputes content_hash, skips on equal (86), ripples via stale_edge only when a prior hash existed and differs (90)",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.082Z",
-      "updated_at": "2026-07-03T08:17:02.115Z"
+      "updated_at": "2026-07-03T21:47:11.582Z"
     },
     {
       "id": "1a68f4b9b00b29c00edb0a397aeef4d2",
@@ -1173,14 +1554,14 @@
       "to_id": "cca334dcdb23278aa5f69374d006d147",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these behaviors are cohesive",
       "evidence": "both are command-surface behaviors in the src/commands/ family",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:03.023Z",
-      "updated_at": "2026-07-03T08:17:03.054Z"
+      "updated_at": "2026-07-03T21:47:11.639Z"
     },
     {
       "id": "263cecc67d81608632aea64bea6e62c5",
@@ -1188,14 +1569,14 @@
       "to_id": "e057d29c6a54e4f6cff7c8d51618b4d5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "importing a graph never inserts an edge before its endpoint nodes exist",
       "evidence": "store/facets.rs restore validates fully then inserts nodes before edges in one txn; travel.rs from_json parses before any write",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:01.789Z",
-      "updated_at": "2026-07-03T08:17:01.811Z"
+      "updated_at": "2026-07-03T21:47:11.547Z"
     },
     {
       "id": "296dc9b5eba6e7014e42b7c7e9dbf260",
@@ -1248,14 +1629,14 @@
       "to_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "loom debt emits clusters but writes no nodes or edges to the graph",
       "evidence": "signal.rs debt builds DebtCluster from a read-only snapshot; no INSERT; the statistical truth-class is computed-only",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.380Z",
-      "updated_at": "2026-07-03T08:17:02.419Z"
+      "updated_at": "2026-07-03T21:47:11.519Z"
     },
     {
       "id": "7f9d0d266a9ed821266b005d100b95aa",
@@ -1263,14 +1644,14 @@
       "to_id": "8620c2b385d5db5af9fe9d88d94f9d53",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no literal credentials in the persistence layer",
       "evidence": "store.rs uses parameterized SQL and SQLite functions; no secrets in source",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:03.092Z",
-      "updated_at": "2026-07-03T08:17:03.093Z"
+      "updated_at": "2026-07-03T21:47:11.636Z"
     },
     {
       "id": "826084bfb736b3fb5e4e7617ed3e2206",
@@ -1338,14 +1719,14 @@
       "to_id": "11b1d78a7895942cf141968e04b5bcf1",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "loom intent add --name capture_payment (no --allow-symbol-name) is rejected",
       "evidence": "commands/intent.rs guards the add path on looks_like_symbol; covered by inv_atom_rejects_symbol_named_intent",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.215Z",
-      "updated_at": "2026-07-03T08:17:02.252Z"
+      "updated_at": "2026-07-03T21:47:11.274Z"
     },
     {
       "id": "a76159af099af186021cecb720ea6f3e",
@@ -1368,14 +1749,14 @@
       "to_id": "94ce7d16c0327864e4106e2c60b0e5b7",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these behaviors are cohesive",
       "evidence": "both are store-module persistence-correctness guarantees over the same edge table",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:01.825Z",
-      "updated_at": "2026-07-03T08:17:01.847Z"
+      "updated_at": "2026-07-03T21:47:11.638Z"
     },
     {
       "id": "b3e26248f1f84096a4af1409c6977eb3",
@@ -1383,14 +1764,29 @@
       "to_id": "c9e6346eb970902a5ee5d89fe43b8f17",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "exporting, wiping derived data, re-syncing and re-exporting yields identical bytes",
       "evidence": "travel.rs canonicalizes ordering; store/mod.rs DERIVED_TS empty + FNV-1a derived_id; covered by inv2_derived_plane_rebuildable",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:01.936Z",
-      "updated_at": "2026-07-03T08:17:01.972Z"
+      "updated_at": "2026-07-03T21:47:11.592Z"
+    },
+    {
+      "id": "d021526ba1cd2d71c",
+      "from_id": "da43f58c15170d3fa",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
     },
     {
       "id": "d0254d21b9e6c40bd",
@@ -1438,9 +1834,69 @@
       "updated_at": ""
     },
     {
+      "id": "d070386ee0ca19b1b",
+      "from_id": "dbaa67a0b92488fdb",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d072a6e5a06f34bdd",
+      "from_id": "de4eda701a00c81b9",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d0c3ef85168121e40",
+      "from_id": "da43f58c15170d3fa",
+      "to_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d102e5671749f2d03",
       "from_id": "d622f101e93a3dcb0",
       "to_id": "d9b35a203478bd583",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d12de6933d155f1ca",
+      "from_id": "d3ff8101e1dfa4913",
+      "to_id": "dd371408af4da502b",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -1468,10 +1924,40 @@
       "updated_at": ""
     },
     {
+      "id": "d2037974fd3b11c56",
+      "from_id": "dbaa67a0b92488fdb",
+      "to_id": "e057d29c6a54e4f6cff7c8d51618b4d5",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d21b14f97d4794dd5",
       "from_id": "d4d2a8e8624b4e00a",
       "to_id": "d9b35a203478bd583",
       "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d25d69eaf5c3fbfae",
+      "from_id": "d247f48b5ef8f0833",
+      "to_id": "3573095c312928cee9385a611bab9457",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -1501,6 +1987,36 @@
       "id": "d311d03884c662b88",
       "from_id": "d9e838551d0b74d93",
       "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d33da47c3538512d5",
+      "from_id": "d930a061173abdb75",
+      "to_id": "408967614e3d396966799356a6bb195b",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d3541d076ee4e9a92",
+      "from_id": "da38b123fdc51e040",
+      "to_id": "d105a1509d6314d8e",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -1543,9 +2059,144 @@
       "updated_at": ""
     },
     {
+      "id": "d3ea4e3566e9dd4d5",
+      "from_id": "db151dbcf04edb8e7",
+      "to_id": "b4922a47d6403ed6ff36b41be6b87ccc",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d40d9d77edfef3afc",
+      "from_id": "db3b0c8822f7da186",
+      "to_id": "db7de80cbbb28c471",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d489944dc971e8d75",
+      "from_id": "d247f48b5ef8f0833",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d495cd9db875c038c",
       "from_id": "d01dff0e9dd4e989c",
       "to_id": "cdf2b0031b47d568bb2bd133ebb047ef",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4ba8f9295d3e57bc",
+      "from_id": "d4673e0ba4975b09a",
+      "to_id": "3573095c312928cee9385a611bab9457",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4c284b536c8818d7",
+      "from_id": "d3bc2007c9d21f3a3",
+      "to_id": "1a00968d12fb3207003a014c1aa9c1d0",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d54c6167b114379fb",
+      "from_id": "db151dbcf04edb8e7",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d582353955c5c3a17",
+      "from_id": "d4673e0ba4975b09a",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d58d936b83bf9b328",
+      "from_id": "d3ff8101e1dfa4913",
+      "to_id": "408967614e3d396966799356a6bb195b",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d606ab223626993e8",
+      "from_id": "d59ea450b0ce7b5a8",
+      "to_id": "b4922a47d6403ed6ff36b41be6b87ccc",
       "kind": "flags",
       "truth_class": "derived",
       "status": "current",
@@ -1588,6 +2239,21 @@
       "updated_at": ""
     },
     {
+      "id": "d6eb03ddec51476bd",
+      "from_id": "d90ceb976a899684c",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d7090cd29932e6e16",
       "from_id": "d6ecc6915d64bc284",
       "to_id": "cf38fb6d2ddc8f5105da3fbe467b3e72",
@@ -1605,6 +2271,21 @@
     {
       "id": "d72236700846da44d",
       "from_id": "db589a2e0c605c5fd",
+      "to_id": "eeb714b0189be16227cdcabc9cc80306",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d740cdb56fb3ec8d0",
+      "from_id": "db3b0c8822f7da186",
       "to_id": "eeb714b0189be16227cdcabc9cc80306",
       "kind": "flags",
       "truth_class": "derived",
@@ -1648,10 +2329,55 @@
       "updated_at": ""
     },
     {
+      "id": "d81a843f4963b033f",
+      "from_id": "db23c217c2fd88001",
+      "to_id": "dd371408af4da502b",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d87300f84cfb34926",
+      "from_id": "dd02ddceb33aeff05",
+      "to_id": "dd371408af4da502b",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d8f1334acbc839636",
       "from_id": "d7c1e9361db708ee5",
       "to_id": "d9b35a203478bd583",
       "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d8fe8df47a6cb82bc",
+      "from_id": "d7e350a2a66c90de8",
+      "to_id": "cf38fb6d2ddc8f5105da3fbe467b3e72",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -1708,6 +2434,66 @@
       "updated_at": ""
     },
     {
+      "id": "d9d5104160beac664",
+      "from_id": "db23c217c2fd88001",
+      "to_id": "eafe79c4df0964351f505f7ea4251a9a",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d9e3586c911340694",
+      "from_id": "d59ea450b0ce7b5a8",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dae05a64920de9795",
+      "from_id": "d03e6ab228ff10a8a",
+      "to_id": "f1511e2f67a80d5e629e88a4b0dc9e93",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db28e9dddee6c4e40",
+      "from_id": "dbf74e8168e6407ca",
+      "to_id": "11b1d78a7895942cf141968e04b5bcf1",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "db6497846ccde92da",
       "from_id": "d160c383b0cbfdb3e",
       "to_id": "d2fcf6c1e25f78a67",
@@ -1738,9 +2524,54 @@
       "updated_at": ""
     },
     {
+      "id": "dbbc7d6cbac6dd107",
+      "from_id": "d4817cbb6764c8867",
+      "to_id": "90d17d60cbf60c3f7c387ef2fff57aef",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dbc65729c0a0f0efb",
       "from_id": "dd8a66484aee46a9f",
       "to_id": "d9b35a203478bd583",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dbcebad1eb9c301a2",
+      "from_id": "d41e84da431a76593",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dbd757a3732767118",
+      "from_id": "d3bc2007c9d21f3a3",
+      "to_id": "d2fcf6c1e25f78a67",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -1813,6 +2644,36 @@
       "updated_at": ""
     },
     {
+      "id": "dd0cc398b0f904ff0",
+      "from_id": "d41e84da431a76593",
+      "to_id": "bf09663257644367de9a2a3930b6179b",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dd6fbed421fbe1da0",
+      "from_id": "de4eda701a00c81b9",
+      "to_id": "f1511e2f67a80d5e629e88a4b0dc9e93",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dd8f48745eb2f7f86",
       "from_id": "d6ecc6915d64bc284",
       "to_id": "d9b35a203478bd583",
@@ -1828,9 +2689,54 @@
       "updated_at": ""
     },
     {
+      "id": "dd98a5230c7299145",
+      "from_id": "dd02ddceb33aeff05",
+      "to_id": "983fbfe52123ec95d1498fed04cf7908",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dd9924f441c392874",
       "from_id": "d76631ff740131229",
       "to_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "ddd8646695737b827",
+      "from_id": "d4817cbb6764c8867",
+      "to_id": "dd371408af4da502b",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de41b7e202aba17aa",
+      "from_id": "da38b123fdc51e040",
+      "to_id": "4c12eb186e3c14e56811398dd35388fa",
       "kind": "flags",
       "truth_class": "derived",
       "status": "current",
@@ -1858,6 +2764,21 @@
       "updated_at": ""
     },
     {
+      "id": "de59bc92d517aebcf",
+      "from_id": "d03e6ab228ff10a8a",
+      "to_id": "dd371408af4da502b",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "de806b44fb5a95185",
       "from_id": "d3e90b82df9734109",
       "to_id": "11b1d78a7895942cf141968e04b5bcf1",
@@ -1873,9 +2794,99 @@
       "updated_at": ""
     },
     {
+      "id": "de9477cbd45d981ae",
+      "from_id": "dfe03799171524433",
+      "to_id": "f81666f5a36398c41ca93adcdef6d028",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "deed0b0563e947950",
       "from_id": "d50a4490590dba276",
       "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "df4f1c7b1064a06e9",
+      "from_id": "d930a061173abdb75",
+      "to_id": "dd371408af4da502b",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "df735f5fe4ca6d8f6",
+      "from_id": "dfe03799171524433",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "df8a3dc8600cf7431",
+      "from_id": "dbf74e8168e6407ca",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "df9930c4d26befac6",
+      "from_id": "d90ceb976a899684c",
+      "to_id": "3573095c312928cee9385a611bab9457",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dfa27662feab04276",
+      "from_id": "d7e350a2a66c90de8",
+      "to_id": "dd371408af4da502b",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -1938,14 +2949,14 @@
       "to_id": "8620c2b385d5db5af9fe9d88d94f9d53",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:03.111Z",
-      "updated_at": "2026-07-03T08:17:11.921Z"
+      "updated_at": "2026-07-03T21:47:11.637Z"
     },
     {
       "id": "f64e3443cc2cc1a241764ef06d72219f",
@@ -2028,17 +3039,24 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "0fc174603f7fb9202360e0371483b9d8",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "dcc91f5c364245c0",
+      "value": "59f4f2e147f643e7",
       "truth_class": "derived"
     },
     {
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::{IntentCmd, IntentTagCmd}\",\"crate::model::{EdgeKind, NodeType, TargetKind, TruthClass}\",\"std::path::Path\",\"super::{node_json, open, pulse, require_lane}\"]",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::{IntentCmd, IntentTagCmd}\",\"crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"std::path::Path\",\"super::{node_json, open, pulse, require_lane}\"]",
       "truth_class": "derived"
     },
     {
@@ -2052,7 +3070,7 @@
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "loc",
-      "value": "668",
+      "value": "670",
       "truth_class": "derived"
     },
     {
@@ -2066,7 +3084,7 @@
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "19",
+      "value": "20",
       "truth_class": "derived"
     },
     {
@@ -2077,10 +3095,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "134b6eb5d345cca7e06ee39dc6734422",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/sync.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "15079355d7d1d5fdf3406fbf027fdbed",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "65c0b6d5faf89bcb",
+      "value": "aa7ac719007f8190",
       "truth_class": "derived"
     },
     {
@@ -2101,7 +3126,7 @@
       "target_id": "15079355d7d1d5fdf3406fbf027fdbed",
       "target_kind": "node",
       "key": "loc",
-      "value": "427",
+      "value": "439",
       "truth_class": "derived"
     },
     {
@@ -2122,7 +3147,7 @@
       "target_id": "1a00968d12fb3207003a014c1aa9c1d0",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "01795f727493d768",
+      "value": "1947d01f62cfdb88",
       "truth_class": "derived"
     },
     {
@@ -2143,7 +3168,7 @@
       "target_id": "1a00968d12fb3207003a014c1aa9c1d0",
       "target_kind": "node",
       "key": "loc",
-      "value": "412",
+      "value": "621",
       "truth_class": "derived"
     },
     {
@@ -2161,11 +3186,25 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "1a68f4b9b00b29c00edb0a397aeef4d2",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "263cecc67d81608632aea64bea6e62c5",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn restore (validate fully; nodes before edges in one txn)",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "263cecc67d81608632aea64bea6e62c5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/facets.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "296dc9b5eba6e7014e42b7c7e9dbf260",
@@ -2220,7 +3259,7 @@
       "target_id": "2dce8757fea7946efb324d0cefb29aa4",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5da4dd98b8d5fa8d",
+      "value": "cc5afb40a4497571",
       "truth_class": "derived"
     },
     {
@@ -2241,7 +3280,7 @@
       "target_id": "2dce8757fea7946efb324d0cefb29aa4",
       "target_kind": "node",
       "key": "loc",
-      "value": "47",
+      "value": "48",
       "truth_class": "derived"
     },
     {
@@ -2340,6 +3379,48 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "10",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "822f3c041cfb555d",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::extract::{extract, Role}\",\"crate::store::Store\",\"serde::{Deserialize, Serialize}\",\"std::path::Path\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "287",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "7",
       "truth_class": "derived"
     },
     {
@@ -2444,7 +3525,7 @@
       "target_id": "478b63ee8257665adafe7da06f361dfe",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "a07b8bee16feb262",
+      "value": "5c1887b672d181a1",
       "truth_class": "derived"
     },
     {
@@ -2465,7 +3546,7 @@
       "target_id": "478b63ee8257665adafe7da06f361dfe",
       "target_kind": "node",
       "key": "loc",
-      "value": "772",
+      "value": "1485",
       "truth_class": "derived"
     },
     {
@@ -2479,7 +3560,7 @@
       "target_id": "478b63ee8257665adafe7da06f361dfe",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "23",
+      "value": "37",
       "truth_class": "derived"
     },
     {
@@ -2567,6 +3648,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "e9aa9ee7c5a59370",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::{anyhow, Context}\",\"crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{workitem, Result}\",\"serde::{Deserialize, Serialize}\",\"std::path::Path\",\"super::intent::{create_intent, IntentAddArgs}\",\"super::{open, pulse, verdict_status}\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "359",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "16",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "4ea96a0eb7525e00baf28938e2ed569b",
       "target_kind": "node",
       "key": "content_hash",
@@ -2619,14 +3742,14 @@
       "target_id": "508cd9787c6d10b1211734259335871b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e42fe6a508ada3f3",
+      "value": "ad9d7e28c1365846",
       "truth_class": "derived"
     },
     {
       "target_id": "508cd9787c6d10b1211734259335871b",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"super::{child_name, Language, Symbol}\"]",
+      "value": "[\"super::metrics::{measure, MetricSpec, GO_METRICS, JS_METRICS, PYTHON_METRICS, TS_METRICS}\",\"super::{child_name, Language, Symbol}\"]",
       "truth_class": "derived"
     },
     {
@@ -2640,7 +3763,7 @@
       "target_id": "508cd9787c6d10b1211734259335871b",
       "target_kind": "node",
       "key": "loc",
-      "value": "113",
+      "value": "138",
       "truth_class": "derived"
     },
     {
@@ -2661,7 +3784,7 @@
       "target_id": "51de5fe93196b86f14341bb036ef3dca",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "73388c969473e28a",
+      "value": "65bc52bdf5788677",
       "truth_class": "derived"
     },
     {
@@ -2682,7 +3805,7 @@
       "target_id": "51de5fe93196b86f14341bb036ef3dca",
       "target_kind": "node",
       "key": "loc",
-      "value": "447",
+      "value": "461",
       "truth_class": "derived"
     },
     {
@@ -2703,7 +3826,7 @@
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d7d848e5a18b84fc",
+      "value": "7f5b6108925c5865",
       "truth_class": "derived"
     },
     {
@@ -2724,7 +3847,7 @@
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "loc",
-      "value": "307",
+      "value": "320",
       "truth_class": "derived"
     },
     {
@@ -2738,7 +3861,7 @@
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "11",
+      "value": "12",
       "truth_class": "derived"
     },
     {
@@ -2875,10 +3998,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "68aac562f6de03b51af2801e587a9691",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/signal.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "736226be9513d0c8bfdcff2f37caad92",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "f6fdad004dd1487c",
+      "value": "638b05018a438a9d",
       "truth_class": "derived"
     },
     {
@@ -2899,7 +4029,7 @@
       "target_id": "736226be9513d0c8bfdcff2f37caad92",
       "target_kind": "node",
       "key": "loc",
-      "value": "243",
+      "value": "255",
       "truth_class": "derived"
     },
     {
@@ -2998,6 +4128,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "2",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7f9d0d266a9ed821266b005d100b95aa",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
       "truth_class": "derived"
     },
     {
@@ -3120,17 +4257,59 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "96f73dcbb8d368d76e5ff0504cb815a6",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "874a234f5cae4372",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "96f73dcbb8d368d76e5ff0504cb815a6",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "96f73dcbb8d368d76e5ff0504cb815a6",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "96f73dcbb8d368d76e5ff0504cb815a6",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "250",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "96f73dcbb8d368d76e5ff0504cb815a6",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "96f73dcbb8d368d76e5ff0504cb815a6",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "7",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "983fbfe52123ec95d1498fed04cf7908",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d585883afdffdce4",
+      "value": "4fd2ef4b0c751e2b",
       "truth_class": "derived"
     },
     {
       "target_id": "983fbfe52123ec95d1498fed04cf7908",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::extract::{extract, Extraction, Role}\",\"crate::model::{EdgeKind, GroundingRole, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"std::collections::{BTreeMap, BTreeSet}\",\"std::path::Path\"]",
+      "value": "[\"crate::Result\",\"crate::extract::{extract, Extraction, Role}\",\"crate::model::{EdgeKind, GroundingRole, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::thresholds::Thresholds\",\"std::collections::{BTreeMap, BTreeSet}\",\"std::path::Path\"]",
       "truth_class": "derived"
     },
     {
@@ -3144,7 +4323,7 @@
       "target_id": "983fbfe52123ec95d1498fed04cf7908",
       "target_kind": "node",
       "key": "loc",
-      "value": "629",
+      "value": "684",
       "truth_class": "derived"
     },
     {
@@ -3174,6 +4353,13 @@
       "key": "locator",
       "value": "intent_add gate:136 -> looks_like_symbol:654",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "9eda228e5da50bb440d844a649a37d58",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "aba77635c5b4c538441355020444b03d",
@@ -3218,11 +4404,25 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "ae89a98581b76f02624e9509c2a7c7c8",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "b3e26248f1f84096a4af1409c6977eb3",
       "target_kind": "edge",
       "key": "locator",
       "value": "export_to_file:75 / Export::from_snapshot",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "b3e26248f1f84096a4af1409c6977eb3",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/travel.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "b4922a47d6403ed6ff36b41be6b87ccc",
@@ -3312,14 +4512,14 @@
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "638937ed63d34814",
+      "value": "6c1a9e59fcefa065",
       "truth_class": "derived"
     },
     {
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"super::{child_name, Symbol}\"]",
+      "value": "[\"super::metrics::{measure, RUST_METRICS}\",\"super::{child_name, Symbol}\"]",
       "truth_class": "derived"
     },
     {
@@ -3333,7 +4533,7 @@
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "loc",
-      "value": "163",
+      "value": "137",
       "truth_class": "derived"
     },
     {
@@ -3347,14 +4547,14 @@
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "4",
+      "value": "3",
       "truth_class": "derived"
     },
     {
       "target_id": "c9e6346eb970902a5ee5d89fe43b8f17",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "9ace7acd176bb2a4",
+      "value": "7eb1281a33dec751",
       "truth_class": "derived"
     },
     {
@@ -3375,7 +4575,7 @@
       "target_id": "c9e6346eb970902a5ee5d89fe43b8f17",
       "target_kind": "node",
       "key": "loc",
-      "value": "208",
+      "value": "222",
       "truth_class": "derived"
     },
     {
@@ -3389,7 +4589,7 @@
       "target_id": "c9e6346eb970902a5ee5d89fe43b8f17",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "8",
+      "value": "9",
       "truth_class": "derived"
     },
     {
@@ -3424,7 +4624,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ecaf5e1d5c92f66c",
+      "value": "25854beb3ae3f65e",
       "truth_class": "derived"
     },
     {
@@ -3445,7 +4645,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "loc",
-      "value": "852",
+      "value": "879",
       "truth_class": "derived"
     },
     {
@@ -3459,7 +4659,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "21",
+      "value": "23",
       "truth_class": "derived"
     },
     {
@@ -3564,7 +4764,7 @@
       "target_id": "dc204addd5fce77853a4d7fd33f18b4e",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "860d56e3e6c59329",
+      "value": "d7de1c344f1bd357",
       "truth_class": "derived"
     },
     {
@@ -3585,7 +4785,7 @@
       "target_id": "dc204addd5fce77853a4d7fd33f18b4e",
       "target_kind": "node",
       "key": "loc",
-      "value": "381",
+      "value": "380",
       "truth_class": "derived"
     },
     {
@@ -3634,7 +4834,7 @@
       "target_id": "e057d29c6a54e4f6cff7c8d51618b4d5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "8b642a5b288ff49c",
+      "value": "eb78fcf7f8f3e96c",
       "truth_class": "derived"
     },
     {
@@ -3655,7 +4855,7 @@
       "target_id": "e057d29c6a54e4f6cff7c8d51618b4d5",
       "target_kind": "node",
       "key": "loc",
-      "value": "283",
+      "value": "282",
       "truth_class": "derived"
     },
     {
@@ -3676,7 +4876,7 @@
       "target_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d03225d52193605f",
+      "value": "d0bf5c8f8ce27357",
       "truth_class": "derived"
     },
     {
@@ -3697,7 +4897,7 @@
       "target_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
       "target_kind": "node",
       "key": "loc",
-      "value": "1022",
+      "value": "1036",
       "truth_class": "derived"
     },
     {
@@ -3914,7 +5114,7 @@
       "target_id": "f22d80bc9a087badf93704a7d425de28",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "472442e7bd400731",
+      "value": "22c10bbc37ccd43a",
       "truth_class": "derived"
     },
     {
@@ -3935,7 +5135,7 @@
       "target_id": "f22d80bc9a087badf93704a7d425de28",
       "target_kind": "node",
       "key": "loc",
-      "value": "526",
+      "value": "600",
       "truth_class": "derived"
     },
     {
@@ -3949,7 +5149,7 @@
       "target_id": "f22d80bc9a087badf93704a7d425de28",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "13",
+      "value": "15",
       "truth_class": "derived"
     },
     {
@@ -3995,17 +5195,24 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "f61d5bb638ad7470e0809543ee011796",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "f81666f5a36398c41ca93adcdef6d028",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "109bac7112520ffa",
+      "value": "f92ba7613c5a80df",
       "truth_class": "derived"
     },
     {
       "target_id": "f81666f5a36398c41ca93adcdef6d028",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, bail, Context}\",\"crate::model::*\",\"crate::registry\",\"crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION}\",\"fs2::FileExt\",\"rusqlite::{params, Connection, OptionalExtension}\",\"rusqlite_migration::{Migrations, M}\",\"std::fs::{File, OpenOptions}\",\"std::path::{Path, PathBuf}\"]",
+      "value": "[\"anyhow::{anyhow, bail, Context}\",\"crate::model::*\",\"crate::registry\",\"crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION}\",\"rusqlite::{params, Connection, OptionalExtension}\",\"rusqlite_migration::{Migrations, M}\",\"std::fs::{File, OpenOptions}\",\"std::path::{Path, PathBuf}\"]",
       "truth_class": "derived"
     },
     {
@@ -4019,7 +5226,7 @@
       "target_id": "f81666f5a36398c41ca93adcdef6d028",
       "target_kind": "node",
       "key": "loc",
-      "value": "593",
+      "value": "665",
       "truth_class": "derived"
     },
     {
@@ -4033,7 +5240,7 @@
       "target_id": "f81666f5a36398c41ca93adcdef6d028",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "26",
+      "value": "29",
       "truth_class": "derived"
     },
     {

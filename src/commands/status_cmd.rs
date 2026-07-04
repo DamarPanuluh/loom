@@ -64,6 +64,11 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let root = resolve_root(graph)?;
     let store = Store::open(&root)?;
     let report = crate::sync::run(&store, &root)?;
+    // Keep the committed portable artifact fresh as a byproduct of sync, so a
+    // separate `loom export` is not a required step in the loop. Only an export
+    // that already exists (the repo tracks it) and has drifted is rewritten:
+    // never creates an untracked file, and preserves byte-determinism.
+    let reexported = crate::travel::refresh_export_if_tracked(&store)?;
     if json {
         println!(
             "{}",
@@ -77,6 +82,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                 "surfaces_affected": report.surfaces_affected,
                 "files_deleted": report.files_deleted,
                 "missing": report.missing,
+                "reexported": reexported,
             }))?
         );
         return Ok(());
@@ -89,6 +95,12 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         report.validations_reset,
         report.findings
     );
+    if reexported {
+        println!(
+            "  refreshed {} (portable export kept fresh)",
+            crate::GRAPH_EXPORT
+        );
+    }
     if report.contracts_reset > 0 {
         println!(
             "  integration: {} upstream surface(s) changed → {} of the reset contract(s) need re-verification   [loom next --mode validate]",
@@ -113,7 +125,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     Ok(())
 }
 pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    let store = open_read(graph)?;
     let id = store.identity()?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
     let files = store
@@ -228,7 +240,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     Ok(())
 }
 pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    let store = open_read(graph)?;
     let ladder = crate::maturity::ladder(&store)?;
     let pulse = workitem::graph_state(&store)?;
     let modes = [
@@ -296,7 +308,7 @@ pub(crate) fn require_lane(store: &Store, owner: crate::registry::OwnerRole) -> 
     }
 }
 pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    let store = open_read(graph)?;
     let parsed = match mode {
         Some(m) => Some(workitem::Mode::parse(m).ok_or_else(|| anyhow!("unknown mode '{m}'"))?),
         None => None,

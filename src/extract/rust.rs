@@ -1,5 +1,6 @@
 //! Rust-specific extraction via tree-sitter-rust (symbols, imports, panic sites, complexity).
 
+use super::metrics::{measure, RUST_METRICS};
 use super::{child_name, Symbol};
 
 pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
@@ -28,13 +29,15 @@ pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
         match node.kind() {
             "function_item" => {
                 if let Some(name) = child_name(&node, bytes) {
-                    let complexity = complexity_of(&node);
+                    let m = measure(&node, bytes, &RUST_METRICS);
                     symbols.push(Symbol {
                         name,
                         kind: "function".into(),
                         line_start: node.start_position().row + 1,
                         line_end: node.end_position().row + 1,
-                        complexity,
+                        complexity: m.complexity,
+                        max_nesting: m.max_nesting,
+                        arg_count: m.arg_count,
                     });
                 }
             }
@@ -46,19 +49,27 @@ pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
                         line_start: node.start_position().row + 1,
                         line_end: node.end_position().row + 1,
                         complexity: 0,
+                        max_nesting: 0,
+                        arg_count: 0,
                     });
                 }
             }
             "use_declaration" => {
-                if let Ok(text) = node.utf8_text(bytes) {
-                    let t = text
-                        .trim_start_matches("use ")
-                        .trim_end_matches(';')
-                        .trim()
-                        .to_string();
-                    if !t.is_empty() {
-                        imports.push(t);
-                    }
+                // Walk the use tree into atomic, normalized module paths:
+                // visibility (`pub`/`pub(crate)`) is skipped, brace groups
+                // (including nested) are expanded, `as` aliases and `*` globs are
+                // dropped, `{self}` maps to the module itself, and a leading `::`
+                // is trimmed — so the resolver sees `crate::a::b`, never
+                // `pub use crate::{a, b}` or `a::b::*`.
+                let arg = node.child_by_field_name("argument").or_else(|| {
+                    let mut cur = node.walk();
+                    let found = node
+                        .named_children(&mut cur)
+                        .find(|c| c.kind() != "visibility_modifier");
+                    found
+                });
+                if let Some(arg) = arg {
+                    collect_use_paths(&arg, bytes, "", &mut imports);
                 }
             }
             // test module: its symbols + panics are test-only — skip the subtree
@@ -75,6 +86,77 @@ pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
     imports.sort();
     imports.dedup();
     (symbols, imports, panic_sites)
+}
+
+/// Expand a Rust `use` tree into atomic module paths. Recurses brace groups,
+/// distributes the path prefix, drops `as` aliases and `*` globs, and maps a
+/// `{self}` member to the module itself. Emitted paths have a leading `::`
+/// trimmed, so a global path resolves like a plain one.
+fn collect_use_paths(node: &tree_sitter::Node, bytes: &[u8], prefix: &str, out: &mut Vec<String>) {
+    match node.kind() {
+        "use_list" => {
+            let mut cur = node.walk();
+            for child in node.named_children(&mut cur) {
+                collect_use_paths(&child, bytes, prefix, out);
+            }
+        }
+        "scoped_use_list" => {
+            let path = node
+                .child_by_field_name("path")
+                .and_then(|p| p.utf8_text(bytes).ok())
+                .unwrap_or("");
+            let next = join_mod(prefix, path);
+            if let Some(list) = node.child_by_field_name("list") {
+                collect_use_paths(&list, bytes, &next, out);
+            }
+        }
+        "use_as_clause" => {
+            if let Some(p) = node
+                .child_by_field_name("path")
+                .and_then(|p| p.utf8_text(bytes).ok())
+            {
+                push_mod(prefix, p, out);
+            }
+        }
+        "use_wildcard" => {
+            let mut cur = node.walk();
+            let path = node
+                .named_children(&mut cur)
+                .next()
+                .and_then(|p| p.utf8_text(bytes).ok());
+            match path {
+                Some(p) => push_mod(prefix, p, out),
+                None if !prefix.is_empty() => push_mod(prefix, "", out),
+                None => {}
+            }
+        }
+        // A bare `self` inside a group (`{self, …}`) means the module itself.
+        "self" if !prefix.is_empty() => push_mod(prefix, "", out),
+        "identifier" | "scoped_identifier" | "crate" | "super" | "self" | "metavariable" => {
+            if let Ok(t) = node.utf8_text(bytes) {
+                push_mod(prefix, t, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Join a module prefix and a segment with `::`, tolerating an empty side.
+fn join_mod(prefix: &str, seg: &str) -> String {
+    match (prefix.is_empty(), seg.is_empty()) {
+        (true, _) => seg.to_string(),
+        (_, true) => prefix.to_string(),
+        _ => format!("{prefix}::{seg}"),
+    }
+}
+
+/// Push a joined path, trimming a leading `::` (global-path root) and skipping empties.
+fn push_mod(prefix: &str, seg: &str, out: &mut Vec<String>) {
+    let path = join_mod(prefix, seg);
+    let path = path.strip_prefix("::").unwrap_or(&path);
+    if !path.is_empty() {
+        out.push(path.to_string());
+    }
 }
 
 /// A production unwrap()/panic! site: `expr.unwrap()` or `panic!(…)`. AST-based,
@@ -129,35 +211,4 @@ fn is_cfg_test_mod(node: &tree_sitter::Node, bytes: &[u8]) -> bool {
         }
     }
     false
-}
-
-/// Cognitive-complexity proxy: 1 + nesting/branching points (if / while / for /
-/// loop / && / ||) plus one per `match` (counted once, not per arm). `?` is
-/// linear error propagation, not cognitive load, so it is NOT counted; and
-/// wide-but-flat dispatch tables are not penalized like genuinely nested logic.
-fn complexity_of(node: &tree_sitter::Node) -> u32 {
-    let mut count: u32 = 1;
-    let mut stack = vec![*node];
-    while let Some(n) = stack.pop() {
-        match n.kind() {
-            "if_expression" | "while_expression" | "for_expression" | "loop_expression"
-            | "match_expression" => count += 1,
-            "binary_expression" => {
-                // && and || add a branch
-                let mut c = n.walk();
-                for child in n.children(&mut c) {
-                    if matches!(child.kind(), "&&" | "||") {
-                        count += 1;
-                    }
-                }
-            }
-            _ => {}
-        }
-        for i in 0..n.child_count() {
-            if let Some(c) = n.child(i) {
-                stack.push(c);
-            }
-        }
-    }
-    count
 }

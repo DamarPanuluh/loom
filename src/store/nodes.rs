@@ -377,5 +377,4 @@ impl Store {
         self.set_node_status(id, "deprecated")?;
         Ok(())
     }
-
 }

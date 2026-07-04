@@ -2359,3 +2359,361 @@ fn note_add_dead_target_exits_nonzero_with_no_match_message() {
         "stderr must name the no-match contract so the operator knows the target resolved to nothing, got: {stderr}"
     );
 }
+
+// ---- layering smell import resolution ---------------------------------------
+
+fn intent_layer(store: &Store, name: &str, layer: &str) -> String {
+    let n = store
+        .add_node(
+            NodeType::Intent,
+            name,
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &n.id,
+            TargetKind::Node,
+            "layer",
+            layer,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    n.id
+}
+
+fn cf_imports(store: &Store, path: &str, imports: &[&str]) -> String {
+    let n = store
+        .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
+        .unwrap();
+    store
+        .set_facet(
+            &n.id,
+            TargetKind::Node,
+            "imports",
+            &serde_json::to_string(&imports).unwrap(),
+            TruthClass::Derived,
+        )
+        .unwrap();
+    n.id
+}
+
+fn own(store: &Store, intent: &str, cf: &str) {
+    store
+        .add_edge(EdgeKind::Implements, intent, cf, TruthClass::Asserted)
+        .unwrap();
+}
+
+fn layering_msgs(store: &Store) -> Vec<String> {
+    loom::signal::smells(store)
+        .unwrap()
+        .into_iter()
+        .filter(|s| s.kind == "layering_violation")
+        .map(|s| s.message)
+        .collect()
+}
+
+#[test]
+fn layering_ignores_stdlib_imports() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let app = intent_layer(&store, "invoke client", "application");
+    let importer = cf_imports(
+        &store,
+        "pulse-client/src/invocation.rs",
+        &["std::time::{SystemTime, UNIX_EPOCH}"],
+    );
+    own(&store, &app, &importer);
+
+    let http = intent_layer(&store, "http lifecycle", "http");
+    let http_decoy = cf_imports(
+        &store,
+        "pulse-http/src/tests/aaa_lifecycle_and_runtime.rs",
+        &[],
+    );
+    own(&store, &http, &http_decoy);
+
+    let runtime = intent_layer(&store, "runtime service", "runtime");
+    let runtime_decoy = cf_imports(&store, "pulse-runtime/src/runtime.rs", &[]);
+    own(&store, &runtime, &runtime_decoy);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn crate_import_stays_in_importing_crate() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let app = intent_layer(&store, "machine lifecycle", "application");
+    let importer = cf_imports(
+        &store,
+        "pulse-machine/src/lifecycle.rs",
+        &["crate::principal::Principal"],
+    );
+    own(&store, &app, &importer);
+
+    let principal = cf_imports(&store, "pulse-machine/src/principal.rs", &[]);
+    own(&store, &app, &principal);
+
+    let http = intent_layer(&store, "http principal", "http");
+    let decoy = cf_imports(&store, "pulse-http/src/principal.rs", &[]);
+    own(&store, &http, &decoy);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn super_import_resolves_sibling_not_other_crate() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let storage = intent_layer(&store, "catalog entries", "storage");
+    let importer = cf_imports(
+        &store,
+        "pulse-http/src/platform/catalog/entries.rs",
+        &["super::manifest::Manifest"],
+    );
+    own(&store, &storage, &importer);
+
+    let manifest = cf_imports(&store, "pulse-http/src/platform/catalog/manifest.rs", &[]);
+    own(&store, &storage, &manifest);
+
+    let http = intent_layer(&store, "agent manifest", "http");
+    let decoy = cf_imports(&store, "pulse-agent/src/manifest.rs", &[]);
+    own(&store, &http, &decoy);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn crate_import_requires_path_boundary() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let storage = intent_layer(&store, "webhook delivery", "storage");
+    let importer = cf_imports(
+        &store,
+        "pulse-machine/src/webhook.rs",
+        &["crate::delivery::deliver"],
+    );
+    own(&store, &storage, &importer);
+
+    let delivery = cf_imports(&store, "pulse-machine/src/delivery.rs", &[]);
+    own(&store, &storage, &delivery);
+
+    let http = intent_layer(&store, "commerce delivery", "http");
+    let decoy = cf_imports(&store, "pulse-http/src/commerce_delivery.rs", &[]);
+    own(&store, &http, &decoy);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn layering_skips_module_tree_parent_child() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let app = intent_layer(&store, "parent module", "application");
+    let parent = cf_imports(&store, "pulse-x/src/a/parent.rs", &["self::child::C"]);
+    own(&store, &app, &parent);
+
+    let http = intent_layer(&store, "child module", "http");
+    let child = cf_imports(&store, "pulse-x/src/a/parent/child.rs", &[]);
+    own(&store, &http, &child);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn layering_permits_multiowner_legal_pairing() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let kernel = intent_layer(&store, "grounding kernel", "kernel");
+    let importer = cf_imports(
+        &store,
+        "pulse-graph/src/grounding.rs",
+        &["crate::selection::Selection"],
+    );
+    own(&store, &kernel, &importer);
+
+    let selection = cf_imports(&store, "pulse-graph/src/selection.rs", &[]);
+    let selection_kernel = intent_layer(&store, "selection kernel", "kernel");
+    let selection_application = intent_layer(&store, "selection application", "application");
+    own(&store, &selection_kernel, &selection);
+    own(&store, &selection_application, &selection);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn layering_ignores_unresolvable_extern() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let app = intent_layer(&store, "client model", "application");
+    let importer = cf_imports(&store, "pulse-client/src/model.rs", &["serde::Deserialize"]);
+    own(&store, &app, &importer);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn layering_ignores_bare_extern_import() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let storage = intent_layer(&store, "x model", "storage");
+    let importer = cf_imports(&store, "crates/x/src/model.rs", &["serde"]);
+    own(&store, &storage, &importer);
+
+    let http = intent_layer(&store, "serde helpers", "http");
+    let decoy = cf_imports(&store, "crates/y/src/serde_helpers.rs", &[]);
+    own(&store, &http, &decoy);
+
+    assert_eq!(layering_msgs(&store), Vec::<String>::new());
+}
+
+#[test]
+fn layering_still_flags_real_up_import() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let app = intent_layer(&store, "api", "application");
+    let api = cf_imports(&store, "pulse-x/src/api.rs", &["crate::db::Db"]);
+    own(&store, &app, &api);
+
+    let http = intent_layer(&store, "db", "http");
+    let db = cf_imports(&store, "pulse-x/src/db.rs", &[]);
+    own(&store, &http, &db);
+
+    assert_eq!(
+        layering_msgs(&store),
+        vec![
+            "pulse-x/src/api.rs (layer application) imports pulse-x/src/db.rs (layer http) — points up the declared order"
+                .to_string()
+        ]
+    );
+}
+
+#[test]
+fn layering_resolves_extern_crate_dependency() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let storage = intent_layer(&store, "machine client", "storage");
+    let client = cf_imports(
+        &store,
+        "pulse-machine/src/client.rs",
+        &["pulse_http::api::Client"],
+    );
+    own(&store, &storage, &client);
+
+    let http = intent_layer(&store, "http api", "http");
+    let api = cf_imports(&store, "pulse-http/src/api.rs", &[]);
+    own(&store, &http, &api);
+
+    assert_eq!(
+        layering_msgs(&store),
+        vec![
+            "pulse-machine/src/client.rs (layer storage) imports pulse-http/src/api.rs (layer http) — points up the declared order"
+                .to_string()
+        ]
+    );
+}
+
+#[test]
+fn layering_resolves_extern_in_nested_workspace() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .set_meta(
+            "layer_order",
+            r#"["http","application","runtime","kernel","schema","storage"]"#,
+        )
+        .unwrap();
+
+    let storage = intent_layer(&store, "nested machine client", "storage");
+    let client = cf_imports(
+        &store,
+        "crates/pulse-machine/src/client.rs",
+        &["pulse_http::api::Client"],
+    );
+    own(&store, &storage, &client);
+
+    let http = intent_layer(&store, "nested http api", "http");
+    let api = cf_imports(&store, "crates/pulse-http/src/api.rs", &[]);
+    own(&store, &http, &api);
+
+    assert_eq!(
+        layering_msgs(&store),
+        vec![
+            "crates/pulse-machine/src/client.rs (layer storage) imports crates/pulse-http/src/api.rs (layer http) — points up the declared order"
+                .to_string()
+        ]
+    );
+}

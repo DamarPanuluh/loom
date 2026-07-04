@@ -133,6 +133,20 @@ impl Store {
         if !(0.0..=1.0).contains(&confidence) {
             bail!("confidence must be in [0,1], got {confidence}");
         }
+        // Idempotent at the boundary: once validation has passed, an identical
+        // re-record is a no-op — it must not bump `updated_at` (which is exported,
+        // so a repeat would dirty `loom.graph.json`) nor rewrite unchanged rows.
+        // Validation runs FIRST, so an invalid input still fails closed above; a
+        // settled edge in this exact state already has no `stale_cause` facet, so
+        // skipping the clear below is safe.
+        if edge.status == status
+            && edge.criterion == criterion
+            && edge.evidence == evidence
+            && edge.confidence.to_bits() == confidence.to_bits()
+            && edge.inspected_by == inspected_by
+        {
+            return Ok(edge);
+        }
         let now = now(&self.conn)?;
         self.conn.execute(
             "UPDATE edge SET status=?2,criterion=?3,evidence=?4,confidence=?5,

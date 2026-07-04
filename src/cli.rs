@@ -58,6 +58,11 @@ pub enum Command {
     },
     /// Restore a graph from an export into a fresh store.
     Import { file: PathBuf },
+    /// Apply one atomic batch of mutations from a JSON/YAML file — intents,
+    /// groundings, relationships, and verdicts in a single transaction. Collapses
+    /// the per-mutation call storm of a work session into one call; any rejected
+    /// item rolls the whole batch back.
+    Apply { file: PathBuf },
     /// Recompute the structural plane and ripple staleness.
     Sync,
     /// Print graph identity and counts.
@@ -114,6 +119,13 @@ pub enum Command {
     Scan {
         #[command(subcommand)]
         cmd: ScanCmd,
+    },
+    /// Derive structural finding thresholds from this repo's code distribution
+    /// (preview by default; --write persists them as portable config).
+    Calibrate {
+        /// Persist the proposed thresholds (they travel in the export).
+        #[arg(long)]
+        write: bool,
     },
     /// The Definition-of-Complete scorecard: per-intent axes met/open/waived.
     Completeness {

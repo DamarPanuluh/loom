@@ -14,6 +14,7 @@ use crate::{travel, workitem};
 use anyhow::{anyhow, bail};
 use std::path::{Path, PathBuf};
 
+mod apply_cmd;
 mod codefile_cmd;
 mod diagnostics_cmd;
 mod domain_cmd;
@@ -69,6 +70,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Codefile { cmd } => codefile_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Export { check } => status_cmd::export(cli.graph.as_deref(), check, cli.json),
         Command::Import { file } => status_cmd::import(cli.graph.as_deref(), &file, cli.json),
+        Command::Apply { file } => apply_cmd::apply(cli.graph.as_deref(), &file, cli.json),
         Command::Sync => status_cmd::sync_cmd(cli.graph.as_deref(), cli.json),
         Command::Status => status_cmd::status(cli.graph.as_deref(), cli.json),
         Command::Next { mode, all } => {
@@ -110,6 +112,9 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Scan { cmd } => diagnostics_cmd::scan_cmd(cli.graph.as_deref(), cmd, cli.json),
+        Command::Calibrate { write } => {
+            diagnostics_cmd::calibrate_cmd(cli.graph.as_deref(), write, cli.json)
+        }
         Command::Completeness { key } => {
             diagnostics_cmd::completeness_cmd(cli.graph.as_deref(), key.as_deref(), cli.json)
         }
@@ -134,6 +139,14 @@ pub(crate) fn resolve_root(graph: Option<&Path>) -> Result<PathBuf> {
 pub(crate) fn open(graph: Option<&Path>) -> Result<Store> {
     let root = resolve_root(graph)?;
     Store::open(&root)
+}
+
+/// Open the target graph read-only (shared lock, `query_only`). Read commands
+/// use this so several agents can query one graph concurrently and never block
+/// each other; only a writer holding the boundary makes them wait.
+pub(crate) fn open_read(graph: Option<&Path>) -> Result<Store> {
+    let root = resolve_root(graph)?;
+    Store::open_read(&root)
 }
 
 pub(crate) fn node_json(n: &Node) -> serde_json::Value {

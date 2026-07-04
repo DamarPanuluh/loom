@@ -1,6 +1,6 @@
 //! Ring 8 tests — durable finding triage.
 
-use loom::maturity::ladder;
+use loom::maturity::{ladder, RungState};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::workitem::{self, Mode};
@@ -219,6 +219,91 @@ fn graph_state_counts_needed_findings() {
     // A `needed` verdict is a judgment, so it leaves raw untriaged.
     assert_eq!(pulse.untriaged, 0);
     assert_eq!(pulse.stale_findings, 0);
+}
+#[test]
+fn excellent_rung_counts_needed_blocked_but_not_justified() {
+    fn excellent_state(store: &Store) -> RungState {
+        ladder(store)
+            .unwrap()
+            .rungs
+            .into_iter()
+            .find(|r| r.name == "excellent")
+            .unwrap()
+            .state
+    }
+
+    let tmp = Tmp::new();
+    tmp.write("src/x.rs", "pub fn x() {}\n");
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let codefile = mature_graph_with_codefile(&store);
+
+    let existing_owner = store
+        .realizing_implementers(&codefile.id)
+        .unwrap()
+        .pop()
+        .unwrap()
+        .from_id;
+    store
+        .add_vocab_term("cross_cut", "cross-cut concern")
+        .unwrap();
+    store
+        .set_tag(&existing_owner, TargetKind::Node, "cross_cut")
+        .unwrap();
+
+    let second_owner = store
+        .add_node(
+            NodeType::Intent,
+            "cross-cut behavior",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .set_tag(&second_owner.id, TargetKind::Node, "cross_cut")
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &second_owner.id,
+            &codefile.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let smells = loom::signal::smells(&store).unwrap();
+    assert_eq!(smells.len(), 1);
+    let smell = smells
+        .into_iter()
+        .find(|s| s.kind == "overlapping_ownership")
+        .unwrap();
+    let identity = smell.identity;
+    let finding_id =
+        Store::derived_node_id(NodeType::Finding, &loom::signal::smell_det_key(&identity));
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    assert!(!loom::signal::smell_is_justified(&store, &identity).unwrap());
+    assert_eq!(excellent_state(&store), RungState::Unmet);
+
+    store
+        .record_finding_verdict(&finding_id, "justified", "accepted cross-cut")
+        .unwrap();
+    assert!(loom::signal::smell_is_justified(&store, &identity).unwrap());
+    assert_eq!(excellent_state(&store), RungState::Met);
+
+    store
+        .record_finding_verdict(&finding_id, "needed", "must split")
+        .unwrap();
+    assert!(!loom::signal::smell_is_justified(&store, &identity).unwrap());
+    assert_eq!(workitem::graph_state(&store).unwrap().untriaged, 0);
+    assert_eq!(excellent_state(&store), RungState::Unmet);
+
+    store
+        .record_finding_verdict(&finding_id, "blocked", "upstream")
+        .unwrap();
+    assert_eq!(workitem::graph_state(&store).unwrap().untriaged, 0);
+    assert_eq!(excellent_state(&store), RungState::Unmet);
 }
 
 #[test]

@@ -966,9 +966,22 @@ fn add_adapter_rejects_duplicate_names_and_bad_map_regex() {
     // named file/line groups.
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    scan::add_adapter(&store, "fake", "printf 'src/a.rs:1: boom\\n'", None).unwrap();
+    scan::add_adapter(
+        &store,
+        "fake",
+        "printf 'src/a.rs:1: boom\\n'",
+        None,
+        scan::ScanFormat::Lines,
+    )
+    .unwrap();
 
-    let dup = scan::add_adapter(&store, "fake", "printf 'src/a.rs:1: boom\\n'", None);
+    let dup = scan::add_adapter(
+        &store,
+        "fake",
+        "printf 'src/a.rs:1: boom\\n'",
+        None,
+        scan::ScanFormat::Lines,
+    );
     assert!(
         dup.is_err(),
         "contract 6: add_adapter rejects a duplicate adapter name"
@@ -980,6 +993,7 @@ fn add_adapter_rejects_duplicate_names_and_bad_map_regex() {
         "other",
         "printf 'src/a.rs:1: boom\\n'",
         Some(r"^(?P<line>\d+):\s*(?P<msg>.+)$"),
+        scan::ScanFormat::Lines,
     );
     assert!(
         bad_map.is_err(),
@@ -992,6 +1006,7 @@ fn add_adapter_rejects_duplicate_names_and_bad_map_regex() {
         "other",
         "printf 'src/a.rs:1: boom\\n'",
         Some(r"^(?P<file>[^:]+):\s*(?P<msg>.+)$"),
+        scan::ScanFormat::Lines,
     );
     assert!(
         bad_line.is_err(),
@@ -1017,7 +1032,14 @@ fn scan_run_with_fake_adapter_creates_visible_finding_and_resolves_on_empty_reru
             serde_json::json!({}),
         )
         .unwrap();
-    scan::add_adapter(&store, "fake", "printf 'src/lib.rs:1: boom\\n'", None).unwrap();
+    scan::add_adapter(
+        &store,
+        "fake",
+        "printf 'src/lib.rs:1: boom\\n'",
+        None,
+        scan::ScanFormat::Lines,
+    )
+    .unwrap();
 
     let first = scan::run(&store, root, Some("fake")).unwrap();
     assert_eq!(
@@ -1045,7 +1067,7 @@ fn scan_run_with_fake_adapter_creates_visible_finding_and_resolves_on_empty_reru
 
     // Re-run with empty output: the finding is resolved (removed).
     scan::remove_adapter(&store, "fake").unwrap();
-    scan::add_adapter(&store, "fake", "printf ''", None).unwrap();
+    scan::add_adapter(&store, "fake", "printf ''", None, scan::ScanFormat::Lines).unwrap();
     let second = scan::run(&store, root, Some("fake")).unwrap();
     assert_eq!(
         second.diagnostics, 0,
@@ -1069,7 +1091,14 @@ fn scan_adapter_config_appears_in_snapshot_and_survives_export_round_trip() {
     // round trip.
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    scan::add_adapter(&store, "fake", "printf 'src/lib.rs:1: boom\\n'", None).unwrap();
+    scan::add_adapter(
+        &store,
+        "fake",
+        "printf 'src/lib.rs:1: boom\\n'",
+        None,
+        scan::ScanFormat::Lines,
+    )
+    .unwrap();
 
     let snap = store.snapshot().unwrap();
     let cfg = snap

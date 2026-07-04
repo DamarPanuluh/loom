@@ -14,6 +14,7 @@
 use crate::extract::{extract, Extraction, Role};
 use crate::model::{EdgeKind, GroundingRole, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
+use crate::thresholds::Thresholds;
 use crate::Result;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -62,21 +63,37 @@ const BUILTIN_RULES: &[BuiltinRule] = &[
         category: "safety",
         description: "production source should not panic at a boundary (unwrap/panic!)",
     },
+    BuiltinRule {
+        key: "large-symbol",
+        name: "large-symbol",
+        category: "size",
+        description: "a function should stay below a maintainable line count",
+    },
+    BuiltinRule {
+        key: "deep-nesting",
+        name: "deep-nesting",
+        category: "complexity",
+        description: "a function should not nest control flow beyond a readable depth",
+    },
+    BuiltinRule {
+        key: "excess-args",
+        name: "excess-args",
+        category: "design",
+        description: "a function should take a bounded number of arguments",
+    },
 ];
-
-const MAX_FILE_LOC: usize = 600;
-const MAX_COMPLEXITY: u32 = 20;
 
 /// Run a full sync against the graph rooted at `root`.
 pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     let mut report = SyncReport::default();
     let rules = ensure_builtin_rules(store)?;
+    let thresholds = crate::thresholds::load(store)?;
     let codefiles = store.codefiles()?;
     let changed_intents = sync_structural(store, root, &codefiles, &mut report)?;
     ripple_changed_intents(store, &changed_intents, &mut report)?;
     ripple_artifact_drift(store, root, &mut report)?;
     ripple_runner_drift(store, root, &mut report)?;
-    rebuild_findings(store, root, &codefiles, &rules, &mut report)?;
+    rebuild_findings(store, root, &codefiles, &rules, &thresholds, &mut report)?;
     rebuild_smell_findings(store, &mut report)?;
     Ok(report)
 }
@@ -494,6 +511,7 @@ fn rebuild_findings(
     root: &Path,
     codefiles: &[Node],
     rules: &std::collections::HashMap<&'static str, String>,
+    thresholds: &Thresholds,
     report: &mut SyncReport,
 ) -> Result<()> {
     store.wipe_structural_findings()?;
@@ -504,7 +522,7 @@ fn rebuild_findings(
             Err(_) => continue,
         };
         let ex = extract(&cf.name, &content);
-        for f in derive_findings(&cf.name, &ex) {
+        for f in derive_findings(&cf.name, &ex, thresholds) {
             let rule_id = match rules.get(f.rule) {
                 Some(id) => id,
                 None => continue,
@@ -588,28 +606,65 @@ struct FindingDesc {
     rule: &'static str,
 }
 
-fn derive_findings(path: &str, ex: &Extraction) -> Vec<FindingDesc> {
+/// Derive the built-in structural findings of one file. Symbol-level detectors
+/// apply to production callables only (functions/methods in `Role::Source`);
+/// every gate is a strict `>` on the configured [`Thresholds`].
+fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDesc> {
     let mut out = Vec::new();
     // oversized_file — language-agnostic, loc based.
-    if ex.loc > MAX_FILE_LOC {
+    if ex.loc > t.max_file_loc {
         out.push(FindingDesc {
             kind: "oversized_file",
             symbol: String::new(),
             title: format!("{path} is oversized"),
-            detail: format!("{} lines (> {MAX_FILE_LOC})", ex.loc),
+            detail: format!("{} lines (> {})", ex.loc, t.max_file_loc),
             rule: "max-file-size",
         });
     }
-    // complex_symbol — per function over the threshold (source files only).
+    // Per-callable detectors (source files only).
     if ex.role == Role::Source {
         for s in &ex.symbols {
-            if s.complexity > MAX_COMPLEXITY {
+            if !matches!(s.kind.as_str(), "function" | "method") {
+                continue;
+            }
+            if s.complexity > t.max_symbol_complexity {
                 out.push(FindingDesc {
                     kind: "complex_symbol",
                     symbol: s.name.clone(),
                     title: format!("{}::{} is complex", path, s.name),
-                    detail: format!("complexity ~{} (> {MAX_COMPLEXITY})", s.complexity),
+                    detail: format!(
+                        "complexity ~{} (> {})",
+                        s.complexity, t.max_symbol_complexity
+                    ),
                     rule: "complex-symbol",
+                });
+            }
+            let sym_loc = s.line_end.saturating_sub(s.line_start) + 1;
+            if sym_loc > t.max_symbol_loc {
+                out.push(FindingDesc {
+                    kind: "large_symbol",
+                    symbol: s.name.clone(),
+                    title: format!("{}::{} is long", path, s.name),
+                    detail: format!("{} lines (> {})", sym_loc, t.max_symbol_loc),
+                    rule: "large-symbol",
+                });
+            }
+            if s.max_nesting > t.max_nesting {
+                out.push(FindingDesc {
+                    kind: "deep_nesting",
+                    symbol: s.name.clone(),
+                    title: format!("{}::{} nests deeply", path, s.name),
+                    detail: format!("nesting depth {} (> {})", s.max_nesting, t.max_nesting),
+                    rule: "deep-nesting",
+                });
+            }
+            if s.arg_count > t.max_args {
+                out.push(FindingDesc {
+                    kind: "excess_args",
+                    symbol: s.name.clone(),
+                    title: format!("{}::{} takes many arguments", path, s.name),
+                    detail: format!("{} args (> {})", s.arg_count, t.max_args),
+                    rule: "excess-args",
                 });
             }
         }

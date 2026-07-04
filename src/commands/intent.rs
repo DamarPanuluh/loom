@@ -2,7 +2,8 @@
 
 use super::{node_json, open, pulse, require_lane};
 use crate::cli::{IntentCmd, IntentTagCmd};
-use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass};
+use crate::store::Store;
 use crate::Result;
 use anyhow::bail;
 use std::path::Path;
@@ -72,15 +73,15 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
     }
 }
 
-struct IntentAddArgs {
-    name: String,
-    description: String,
-    level: String,
-    lifecycle: String,
-    visibility: Option<String>,
-    layer: Option<String>,
-    aspect: Option<String>,
-    allow_symbol_name: bool,
+pub(crate) struct IntentAddArgs {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) level: String,
+    pub(crate) lifecycle: String,
+    pub(crate) visibility: Option<String>,
+    pub(crate) layer: Option<String>,
+    pub(crate) aspect: Option<String>,
+    pub(crate) allow_symbol_name: bool,
 }
 
 /// Validate a scenario aspect label.
@@ -128,50 +129,45 @@ fn check_visibility(visibility: &str) -> Result<()> {
     Ok(())
 }
 
-fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
-    let IntentAddArgs {
-        name,
-        description,
-        level,
-        lifecycle,
-        visibility,
-        layer,
-        aspect,
-        allow_symbol_name,
-    } = args;
+/// Create an intent node with all its asserted facets, enforcing the
+/// command-layer gates (symbol-name rejection, level/lifecycle/visibility/aspect
+/// validation). The single source of these rules: both `loom intent add` and the
+/// `loom apply` batch call it, so neither can drift from the other. Store-only —
+/// no output — so it composes inside a batch transaction.
+pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node> {
     // INV-ATOM: symbols are locators, not intents.
-    if looks_like_symbol(&name) {
-        if !allow_symbol_name {
+    if looks_like_symbol(&args.name) {
+        if !args.allow_symbol_name {
             bail!(
-                "intent name '{name}' looks like a code symbol. Intents are behaviors, \
+                "intent name '{}' looks like a code symbol. Intents are behaviors, \
                  not functions. Use a behavioral name, or pass --allow-symbol-name with \
-                 a behavioral --description if this is a deliberate symbol-level intent."
+                 a behavioral --description if this is a deliberate symbol-level intent.",
+                args.name
             );
         }
-        if description.trim().is_empty() {
+        if args.description.trim().is_empty() {
             bail!(
                 "--allow-symbol-name requires a non-empty --description carrying a \
                  behavioral criterion"
             );
         }
     }
-    check_level(&level)?;
-    check_lifecycle(&lifecycle, false)?;
-    if let Some(v) = &visibility {
+    check_level(&args.level)?;
+    check_lifecycle(&args.lifecycle, false)?;
+    if let Some(v) = &args.visibility {
         check_visibility(v)?;
     }
-    if let Some(a) = &aspect {
+    if let Some(a) = &args.aspect {
         check_aspect(a)?;
     }
-    let store = open(graph)?;
     let node = store.add_node(
         NodeType::Intent,
-        &name,
-        &description,
-        &lifecycle,
-        serde_json::json!({ "level": level }),
+        &args.name,
+        &args.description,
+        &args.lifecycle,
+        serde_json::json!({ "level": args.level }),
     )?;
-    if allow_symbol_name && looks_like_symbol(&name) {
+    if args.allow_symbol_name && looks_like_symbol(&args.name) {
         store.set_facet(
             &node.id,
             TargetKind::Node,
@@ -184,10 +180,10 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<(
         &node.id,
         TargetKind::Node,
         "level",
-        &level,
+        &args.level,
         TruthClass::Asserted,
     )?;
-    if let Some(v) = &visibility {
+    if let Some(v) = &args.visibility {
         store.set_facet(
             &node.id,
             TargetKind::Node,
@@ -196,10 +192,10 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<(
             TruthClass::Asserted,
         )?;
     }
-    if let Some(l) = &layer {
+    if let Some(l) = &args.layer {
         store.set_facet(&node.id, TargetKind::Node, "layer", l, TruthClass::Asserted)?;
     }
-    if let Some(a) = &aspect {
+    if let Some(a) = &args.aspect {
         store.set_facet(
             &node.id,
             TargetKind::Node,
@@ -208,16 +204,22 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<(
             TruthClass::Asserted,
         )?;
     }
+    Ok(node)
+}
+
+fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let node = create_intent(&store, &args)?;
     pulse::emit_line(
         &store,
         json,
         serde_json::json!({
             "intent": node_json(&node),
-            "level": level,
-            "visibility": visibility,
-            "layer": layer,
-            "aspect": aspect,
-            "allow_symbol_name": allow_symbol_name,
+            "level": args.level,
+            "visibility": args.visibility,
+            "layer": args.layer,
+            "aspect": args.aspect,
+            "allow_symbol_name": args.allow_symbol_name,
         }),
         "loom status",
         format!("added intent '{}' [{}]", node.name, &node.id[..8]),

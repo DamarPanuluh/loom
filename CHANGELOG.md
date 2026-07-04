@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.16.0] - 2026-07-04
+- Detector deepening: per-symbol metrics (arg count, nesting depth; complexity now computed for Python/Go/JS/TS), new large_symbol/deep_nesting/excess_args findings, thresholds as portable config with loom calibrate (repo-fitted gates from the worst-tail quantile), scan adapters gain --format json (field=path maps, dotted paths, items= envelopes — pulse/qualirs-ready)
+
 ## [0.15.0] - 2026-07-03
 - Convergence release: one verdict grammar (positional outcomes on rule verdict / validation verdict / hypothesis prove), validation run replaces top-level validate, remove/unlink replace delete/ungovern, intent update absorbs set+mark (ripple decided by fields, uniform --reason), intent tag typed, surface gaps absorbs interface gaps, value-enum next --mode and guide --role, intake routing taught by guide/session/door, smells materialize as adjudicable findings (durable loom finding verdict across syncs); legacy stripped: saga alias/type/spec key, --status/--result/--verdict flags, mark/delete/ungovern spellings
 

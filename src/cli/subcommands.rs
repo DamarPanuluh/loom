@@ -821,6 +821,25 @@ pub enum JourneyInvariantCmd {
     },
 }
 
+/// Output format for a scan adapter (`--format`).
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+pub enum ScanFormatArg {
+    /// Line-oriented text parsed by a regex map (GCC-style default).
+    Lines,
+    /// A JSON array/JSONL of finding objects; `--map` renames looked-up
+    /// fields (`items=…,file=…,line=…,msg=…,code=…`, dotted paths allowed).
+    Json,
+}
+
+impl From<ScanFormatArg> for crate::scan::ScanFormat {
+    fn from(arg: ScanFormatArg) -> Self {
+        match arg {
+            ScanFormatArg::Lines => Self::Lines,
+            ScanFormatArg::Json => Self::Json,
+        }
+    }
+}
+
 #[derive(Subcommand, Debug)]
 pub enum ScanCmd {
     /// Register an external diagnostic tool (any language's linter/checker).
@@ -829,19 +848,27 @@ pub enum ScanCmd {
         name: String,
         /// The command to run, e.g. "cargo clippy --message-format=short".
         command: String,
-        /// Custom parse regex with named groups `file` and `line` (optional
-        /// `msg`, `code`). Default: GCC-style `file:line[:col]: message`.
+        /// Parser map. `lines`: regex with named groups `file` and `line`
+        /// (optional `msg`, `code`); default GCC-style `file:line[:col]:
+        /// message`. `json`: comma-separated `field=path` lookups
+        /// (`items|file|line|msg|code`, dotted paths allowed).
         #[arg(long)]
         map: Option<String>,
+        /// Output format (default: lines).
+        #[arg(long, value_enum, default_value_t = ScanFormatArg::Lines)]
+        format: ScanFormatArg,
     },
     /// Edit a registered adapter in place. Use this when the command or parser
-    /// regex changed; run scan afterwards to refresh derived findings.
+    /// map changed; run scan afterwards to refresh derived findings.
     Update {
         name: String,
         #[arg(long)]
         command: Option<String>,
         #[arg(long)]
         map: Option<String>,
+        /// Switch the output format (lines | json).
+        #[arg(long, value_enum)]
+        format: Option<ScanFormatArg>,
     },
     /// List registered adapters.
     List,

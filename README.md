@@ -32,12 +32,13 @@ This is the v2 spine: derived facts are reproducible, asserted facts persist unt
 
 ## Current feature spine
 
-- **External diagnostics:** `loom scan add/list/remove/run` wraps any language's linter, type-checker, or custom diagnostic command. GCC-style `file:line[:col]: message` output works by default, as do two-line diagnostics (a bare `file:line[:col]` location line with the message on the immediately following line, as svelte-check emits); custom named-group regex maps (`file`, `line`, optional `msg`, `code`) are supported and stay strictly per-line. Parsed diagnostics become derived findings and converge on re-run when diagnostics disappear.
+- **External diagnostics:** `loom scan add/list/remove/run` wraps any language's linter, type-checker, or custom diagnostic command. GCC-style `file:line[:col]: message` output works by default, as do two-line diagnostics (a bare `file:line[:col]` location line with the message on the immediately following line, as svelte-check emits); custom named-group regex maps (`file`, `line`, optional `msg`, `code`) are supported and stay strictly per-line. `--format json` consumes JSON/JSONL finding arrays instead (pulse, qualirs, and similar tools), with `field=path` lookups, dotted paths, and `items=<path>` for envelope objects. Parsed diagnostics become derived findings and converge on re-run when diagnostics disappear.
 - **Pattern pre-screening:** seeded quality packs can carry regex `patterns[]`. Quality packets embed computed `pre_screened_hits` (`path`, `line`, `pattern`, `excerpt`) at packet-build time so the LLM can confirm or refute every candidate before writing the verdict.
 - **Definition-of-Complete:** `loom completeness [intent]` scores user-visible feature intents across scenarios, prerequisites, boundary, proof, journey, and questions. `loom next --mode elaborate` serves the most-incomplete feature and embeds the scorecard.
 - **Scenario families:** `loom intent add/set --aspect happy|sad|fallback|edge_case` plus `scenario-of` edges model happy paths, sad paths, fallbacks, and edge cases without inventing a separate scenario node type.
 - **Question loop:** product questions are captured with `loom inbox add "..." --source question --link intent:<id>` and surface through `loom session` / `graph_state.open_questions` for batched human answers.
-- **Portable configuration:** `loom.graph.json` carries the `config` map (`layer_order`, `ignores`, `codefile_globs`, `scan_adapters`) so imports keep the graph's routing and scan setup.
+- **Calibrated structural detectors:** sync's built-in findings (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) run on configurable thresholds; `loom calibrate [--write]` proposes gates from the repo's own metric distribution (worst-5% tail, floored) so detection fits the codebase instead of a universal constant.
+- **Portable configuration:** `loom.graph.json` carries the `config` map (`layer_order`, `ignores`, `codefile_globs`, `scan_adapters`, `thresholds`) so imports keep the graph's routing, scan, and detector setup.
 
 ## Storage
 
@@ -144,6 +145,7 @@ guide       Role/lane guidance
 find        Keyword search over graph facts
 detect      Repo language detection and quality pack recommendation
 scan        External diagnostic adapters to derived findings
+calibrate   Derive structural finding thresholds from the repo
 completeness  Definition-of-Complete scorecard
 schema      Print the data model
 rule        Quality rule commands

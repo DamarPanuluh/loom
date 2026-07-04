@@ -413,10 +413,37 @@ pub(crate) fn whoami_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
 /// output becomes derived findings in the ordinary triage lifecycle.
 pub(crate) fn scan_cmd(graph: Option<&Path>, cmd: crate::cli::ScanCmd, json: bool) -> Result<()> {
     use crate::cli::ScanCmd;
+    // `scan run` must not hold the store while adapter commands execute (up to
+    // 120s each): it manages its own short-lived opens (a shared read for config,
+    // a brief exclusive write to reconcile) so other agents keep working. Every
+    // other subcommand is a quick config read/write under one store.
+    if let ScanCmd::Run { name } = &cmd {
+        let root = resolve_root(graph)?;
+        let report = crate::scan::run_unlocked(&root, name.as_deref())?;
+        let store = open_read(graph)?;
+        return pulse::emit_line(
+            &store,
+            json,
+            serde_json::json!({ "scan": report }),
+            "loom next --mode triage",
+            format!(
+                "scan: {} adapter(s), {} diagnostic(s) → {} new finding(s), {} resolved",
+                report.adapters_run,
+                report.diagnostics,
+                report.new_findings,
+                report.resolved_findings
+            ),
+        );
+    }
     let store = open(graph)?;
     match cmd {
-        ScanCmd::Add { name, command, map } => {
-            crate::scan::add_adapter(&store, &name, &command, map.as_deref())?;
+        ScanCmd::Add {
+            name,
+            command,
+            map,
+            format,
+        } => {
+            crate::scan::add_adapter(&store, &name, &command, map.as_deref(), format.into())?;
             pulse::emit_line(
                 &store,
                 json,
@@ -425,8 +452,19 @@ pub(crate) fn scan_cmd(graph: Option<&Path>, cmd: crate::cli::ScanCmd, json: boo
                 format!("registered scan adapter '{name}'"),
             )
         }
-        ScanCmd::Update { name, command, map } => {
-            crate::scan::update_adapter(&store, &name, command.as_deref(), map.as_deref())?;
+        ScanCmd::Update {
+            name,
+            command,
+            map,
+            format,
+        } => {
+            crate::scan::update_adapter(
+                &store,
+                &name,
+                command.as_deref(),
+                map.as_deref(),
+                format.map(Into::into),
+            )?;
             pulse::emit_line(
                 &store,
                 json,
@@ -459,23 +497,7 @@ pub(crate) fn scan_cmd(graph: Option<&Path>, cmd: crate::cli::ScanCmd, json: boo
                 format!("removed scan adapter '{name}'"),
             )
         }
-        ScanCmd::Run { name } => {
-            let root = store.root().to_path_buf();
-            let report = crate::scan::run(&store, &root, name.as_deref())?;
-            pulse::emit_line(
-                &store,
-                json,
-                serde_json::json!({ "scan": report }),
-                "loom next --mode triage",
-                format!(
-                    "scan: {} adapter(s), {} diagnostic(s) → {} new finding(s), {} resolved",
-                    report.adapters_run,
-                    report.diagnostics,
-                    report.new_findings,
-                    report.resolved_findings
-                ),
-            )
-        }
+        ScanCmd::Run { .. } => unreachable!("scan run is handled before the store open"),
     }
 }
 
@@ -523,4 +545,56 @@ pub(crate) fn completeness_cmd(graph: Option<&Path>, key: Option<&str>, json: bo
         println!("drain open axes: loom next --mode elaborate");
     }
     Ok(())
+}
+
+/// `loom calibrate` — derive structural finding thresholds from the repo's own
+/// distribution (the worst-tail quantile per metric, floored). Preview by
+/// default; `--write` persists the proposal as portable config.
+pub(crate) fn calibrate_cmd(graph: Option<&Path>, write: bool, json: bool) -> Result<()> {
+    let root = resolve_root(graph)?;
+    let store = if write {
+        open(graph)?
+    } else {
+        open_read(graph)?
+    };
+    let cal = crate::thresholds::calibrate(&store, &root)?;
+    if write {
+        crate::thresholds::save(&store, &cal.proposed)?;
+        return pulse::emit_line(
+            &store,
+            json,
+            serde_json::json!({ "calibration": cal, "written": true }),
+            "loom sync",
+            format!(
+                "thresholds calibrated from {} file(s) / {} symbol(s): {}",
+                cal.files_sampled,
+                cal.symbols_sampled,
+                threshold_line(&cal.proposed)
+            ),
+        );
+    }
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(
+                &serde_json::json!({ "calibration": cal, "written": false })
+            )?
+        );
+    } else {
+        println!(
+            "calibration over {} file(s), {} callable symbol(s):",
+            cal.files_sampled, cal.symbols_sampled
+        );
+        println!("  current:  {}", threshold_line(&cal.current));
+        println!("  proposed: {}", threshold_line(&cal.proposed));
+        println!("next: loom calibrate --write   (persist; travels in the export)");
+    }
+    Ok(())
+}
+
+fn threshold_line(t: &crate::thresholds::Thresholds) -> String {
+    format!(
+        "file loc {} | symbol complexity {} | symbol loc {} | nesting {} | args {}",
+        t.max_file_loc, t.max_symbol_complexity, t.max_symbol_loc, t.max_nesting, t.max_args
+    )
 }

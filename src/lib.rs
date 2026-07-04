@@ -24,6 +24,7 @@ pub mod scan;
 pub mod signal;
 pub mod store;
 pub mod sync;
+pub mod thresholds;
 pub mod travel;
 pub mod truth;
 pub mod workitem;

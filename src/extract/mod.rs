@@ -7,6 +7,7 @@
 
 use std::path::Path;
 mod langs;
+mod metrics;
 mod rust;
 
 /// Source language, detected from extension.
@@ -134,6 +135,11 @@ pub struct Symbol {
     /// Complexity proxy (branch/loop points; a match counts once, not per arm).
     /// 0 for non-callable symbols.
     pub complexity: u32,
+    /// Deepest branch-nesting level inside the body. 0 for non-callables.
+    pub max_nesting: u32,
+    /// Declared arguments, receiver (`self`/`cls`/`this`) excluded. 0 for
+    /// non-callables.
+    pub arg_count: u32,
 }
 
 /// The derived facts of one file.
@@ -241,6 +247,65 @@ struct Thing;
         assert_eq!(simple.complexity, 1);
         assert!(branchy.complexity > simple.complexity);
         assert!(ex.imports.iter().any(|i| i.contains("std::fmt")));
+    }
+
+    #[test]
+    fn rust_import_normalization() {
+        let src = r#"
+use crate::{principal::{Principal}, delivery::deliver};
+use crate::principal::{self, Principal as P2};
+pub use crate::x::Y;
+pub(crate) use crate::z::W;
+use ::ext::api::C;
+use crate::glob::*;
+
+pub fn f() {}
+"#;
+        let ex = extract("src/a.rs", src);
+
+        for expected in [
+            "crate::principal::Principal",
+            "crate::delivery::deliver",
+            "crate::principal",
+            "crate::x::Y",
+            "crate::z::W",
+            "ext::api::C",
+            "crate::glob",
+        ] {
+            assert!(
+                ex.imports.iter().any(|i| i == expected),
+                "expected import {expected:?} in {:?}",
+                ex.imports
+            );
+        }
+
+        for i in &ex.imports {
+            assert!(
+                !i.contains("pub "),
+                "import should not include visibility: {i:?}; imports: {:?}",
+                ex.imports
+            );
+            assert!(
+                !i.contains('{'),
+                "import should not include raw groups: {i:?}; imports: {:?}",
+                ex.imports
+            );
+            assert!(
+                !i.contains('*'),
+                "import should not include glob marker: {i:?}; imports: {:?}",
+                ex.imports
+            );
+            assert!(
+                !i.contains(" as "),
+                "import should not include aliases: {i:?}; imports: {:?}",
+                ex.imports
+            );
+            assert!(
+                !i.starts_with(':'),
+                "import should not start with a colon: {i:?}; imports: {:?}",
+                ex.imports
+            );
+        }
     }
 
     #[test]
@@ -408,5 +473,208 @@ class TokenStore {
         assert!(names.contains(&"Token"), "got {names:?}");
         assert!(names.contains(&"Id"), "got {names:?}");
         assert!(ex.imports.iter().any(|i| i.contains("crypto")));
+    }
+
+    // ---- per-symbol extraction metrics (complexity / nesting / arg_count) -
+
+    #[test]
+    fn rust_arg_count_free_fn_excludes_nothing() {
+        // A free function with no receiver: every declared parameter counts.
+        let src = "fn seven(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32) -> i32 { 0 }";
+        let s = extract("src/a.rs", src).symbols[0].clone();
+        assert_eq!(s.arg_count, 7, "7 declared params, no self -> arg_count 7");
+        // A bare function carries no branches.
+        assert_eq!(s.complexity, 1);
+    }
+
+    #[test]
+    fn rust_arg_count_impl_method_excludes_self() {
+        // `&self` is a `self_parameter`, which is not in the Rust param_kinds,
+        // so the receiver is dropped by kind — only the two named params count.
+        let src = "struct S;\nimpl S {\n    fn m(&self, a: i32, b: i32) -> i32 { 0 }\n}";
+        let m = extract("src/a.rs", src)
+            .symbols
+            .into_iter()
+            .find(|s| s.name == "m")
+            .expect("method m extracted");
+        assert_eq!(m.arg_count, 2, "&self dropped, two named params remain");
+    }
+
+    #[test]
+    fn rust_nested_named_fn_is_a_complexity_boundary() {
+        // The parent is flat except for a nested named `fn` whose body holds five
+        // nested ifs. Because `function_item` is a boundary kind, the walk stops at
+        // `inner` — the parent's complexity stays at its own base (1) and does not
+        // absorb the nested body, while `inner` gets its own symbol with >1.
+        let src = "\
+fn outer() {
+    let _ = 1;
+    fn inner() {
+        if a { if b { if c { if d { if e { } } } } }
+    }
+}
+";
+        let syms = extract("src/a.rs", src).symbols;
+        let outer = syms.iter().find(|s| s.name == "outer").unwrap();
+        let inner = syms.iter().find(|s| s.name == "inner").unwrap();
+        // parent is flat (only a `let`); the nested fn does not leak into it.
+        assert_eq!(
+            outer.complexity, 1,
+            "nested named fn must not inflate parent complexity"
+        );
+        assert_eq!(
+            outer.max_nesting, 0,
+            "nested named fn must not inflate parent nesting"
+        );
+        // the nested symbol carries its own five nested branches.
+        assert!(
+            inner.complexity > 1,
+            "inner should have branchy complexity, got {}",
+            inner.complexity
+        );
+        assert!(
+            inner.max_nesting > 0,
+            "inner should have nesting depth, got {}",
+            inner.max_nesting
+        );
+    }
+
+    #[test]
+    fn rust_closure_body_counts_toward_parent() {
+        // A closure is deliberately NOT a boundary — only `function_item` is. So
+        // the closure's `if` is attributed to the enclosing symbol, lifting its
+        // complexity above the bare base.
+        let src = "fn with_closure(x: bool) -> i32 { let f = || { if x { 1 } }; 0 }";
+        let s = extract("src/a.rs", src).symbols[0].clone();
+        assert_eq!(s.name, "with_closure");
+        assert_eq!(
+            s.complexity, 2,
+            "closure's single if must count toward the enclosing fn (base 1 + 1)"
+        );
+    }
+
+    #[test]
+    fn rust_max_nesting_counts_branch_depth_not_count() {
+        // Three nested ifs form a depth-3 chain; three flat ifs at the same level
+        // are each depth 1. This pins that max_nesting tracks nesting, not count.
+        let nested = "fn n3(a: bool, b: bool, c: bool) { if a { if b { if c { } } } }";
+        let flat = "fn nf(a: bool, b: bool, c: bool) { if a { } if b { } if c { } }";
+        let n = extract("src/a.rs", nested).symbols[0].clone();
+        let f = extract("src/a.rs", flat).symbols[0].clone();
+        assert_eq!(n.max_nesting, 3, "three nested ifs -> depth 3");
+        assert_eq!(f.max_nesting, 1, "flat ifs stay at depth 1");
+        // Note: complexity counts branches, not nesting, so 3 nested ifs and
+        // 3 flat ifs both add 3 branch points — complexity need not differ.
+    }
+    #[test]
+    fn python_branchy_complexity_now_nonzero_and_self_excluded() {
+        // Complexity used to be hardwired 0 for Python; now the metric walk runs,
+        // so a branchy function scores above the base.
+        let branchy =
+            "def branchy(x):\n    if x:\n        if y:\n            return 1\n    return 0\n";
+        let b = extract("svc/a.py", branchy).symbols[0].clone();
+        assert_eq!(b.name, "branchy");
+        assert!(
+            b.complexity > 1,
+            "Python branchy fn must now have complexity > 1, got {}",
+            b.complexity
+        );
+        assert!(b.max_nesting > 0);
+
+        // `self` is named in receiver_names and dropped from the count: only the
+        // two real args remain.
+        let src = "class C:\n    def m(self, a, b):\n        return 0\n";
+        let m = extract("svc/a.py", src)
+            .symbols
+            .into_iter()
+            .find(|s| s.name == "m")
+            .unwrap();
+        assert_eq!(m.arg_count, 2, "self dropped from a Python method's args");
+    }
+
+    #[test]
+    fn python_nested_def_is_a_boundary() {
+        // `function_definition` is a boundary kind, so a nested `def` does not
+        // inflate its enclosing function — the outer stays at its own base.
+        let src = "def outer():\n    def inner():\n        if a:\n            if b:\n                return 1\n    return 0\n";
+        let syms = extract("svc/a.py", src).symbols;
+        let outer = syms.iter().find(|s| s.name == "outer").unwrap();
+        let inner = syms.iter().find(|s| s.name == "inner").unwrap();
+        assert_eq!(
+            outer.complexity, 1,
+            "nested Python def must not inflate the enclosing fn"
+        );
+        assert!(inner.complexity > 1, "inner carries its own branches");
+    }
+
+    #[test]
+    fn go_arg_count_counts_parameter_declarations_and_branches_score() {
+        // `a, b int` is ONE `parameter_declaration` (conservative by design, see
+        // GO_METRICS docs); `c string` is a second. arg_count counts declarations,
+        // not names — so this is 2, not 3.
+        let src = "package svc\n\nfunc F(a, b int, c string) int {\n    if a {\n        return 1\n    }\n    return 0\n}\n";
+        let f = extract("svc/a.go", src).symbols[0].clone();
+        assert_eq!(f.name, "F");
+        assert_eq!(
+            f.arg_count, 2,
+            "Go counts parameter_declarations: `a, b int` is one decl"
+        );
+        assert!(f.complexity > 1, "branchy Go fn complexity > 1");
+        assert!(f.max_nesting > 0, "branchy Go fn nesting > 0");
+
+        // Two single-name declarations -> arg_count 2.
+        let g = extract(
+            "svc/a.go",
+            "package svc\n\nfunc G(x int, y int) int { return 0 }\n",
+        )
+        .symbols[0]
+            .clone();
+        assert_eq!(g.arg_count, 2);
+    }
+
+    #[test]
+    fn typescript_arg_count_and_branch_complexity() {
+        // Three `required_parameter` nodes -> arg_count 3; branchy body scores.
+        let src = "export function verify(a: string, b: number, c: boolean): boolean {\n    if (a) { return true; }\n    return false;\n}\n";
+        let v = extract("svc/a.ts", src).symbols[0].clone();
+        assert_eq!(v.name, "verify");
+        assert_eq!(v.arg_count, 3);
+        assert!(v.complexity > 1, "branchy TS fn complexity > 1");
+        assert!(v.max_nesting > 0);
+    }
+
+    #[test]
+    fn typescript_method_excludes_this_receiver() {
+        // `this` is named in TS receiver_names and dropped: only a, b remain.
+        let src = "class C {\n    m(this: C, a: number, b: number): number { return 0; }\n}\n";
+        let m = extract("svc/a.ts", src)
+            .symbols
+            .into_iter()
+            .find(|s| s.name == "m")
+            .unwrap();
+        assert_eq!(m.arg_count, 2, "this dropped from a TS method's args");
+    }
+
+    #[test]
+    fn non_callable_symbols_keep_zero_metrics() {
+        // Structs/enums/traits (and their peers in other languages) are not in
+        // the callables list, so they get the default-zero metrics.
+        let rust = extract("src/a.rs", "struct S;\nenum E { V }\ntrait T { fn f(); }");
+        for s in &rust.symbols {
+            assert_eq!(s.complexity, 0, "{} should be 0-complexity", s.name);
+            assert_eq!(s.max_nesting, 0, "{} should be 0-nesting", s.name);
+            assert_eq!(s.arg_count, 0, "{} should be 0-args", s.name);
+        }
+
+        // A TS class and interface are non-callable too.
+        let ts = extract(
+            "svc/a.ts",
+            "export interface Token { value: string; }\nclass TokenStore { x: number = 0; }\n",
+        );
+        for s in &ts.symbols {
+            assert_eq!(s.complexity, 0, "{} should be 0-complexity", s.name);
+            assert_eq!(s.max_nesting, 0, "{} should be 0-nesting", s.name);
+            assert_eq!(s.arg_count, 0, "{} should be 0-args", s.name);
+        }
     }
 }

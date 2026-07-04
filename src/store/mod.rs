@@ -15,7 +15,6 @@ use crate::model::*;
 use crate::registry;
 use crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION};
 use anyhow::{anyhow, bail, Context};
-use fs2::FileExt;
 use rusqlite::{params, Connection, OptionalExtension};
 use rusqlite_migration::{Migrations, M};
 use std::fs::{File, OpenOptions};
@@ -47,14 +46,21 @@ pub struct Snapshot {
 }
 
 /// Meta keys that travel with the export. Each is repo-portable configuration
-/// (what to track, what to ignore, the layer order, registered scan adapters) —
-/// without these an imported graph silently loses its coverage exclusions and
-/// detectors. Local-only or identity meta keys must NOT be added here.
-pub const PORTABLE_META_KEYS: &[&str] =
-    &["layer_order", "ignores", "codefile_globs", "scan_adapters"];
+/// (what to track, what to ignore, the layer order, registered scan adapters,
+/// structural finding thresholds) — without these an imported graph silently
+/// loses its coverage exclusions and detectors. Local-only or identity meta
+/// keys must NOT be added here.
+pub const PORTABLE_META_KEYS: &[&str] = &[
+    "layer_order",
+    "ignores",
+    "codefile_globs",
+    "scan_adapters",
+    "thresholds",
+];
 
-/// The SQLite-backed graph store. Holds an exclusive advisory lock for its
-/// lifetime so two processes never write the same graph concurrently.
+/// The SQLite-backed graph store. Holds an advisory lock for its lifetime —
+/// exclusive for a write open, shared for a read-only open — so writers never
+/// overlap and a reader never observes a half-migrated schema.
 pub struct Store {
     conn: Connection,
     root: PathBuf,
@@ -174,7 +180,7 @@ impl Store {
         std::fs::create_dir_all(&loom_dir)
             .with_context(|| format!("creating {}", loom_dir.display()))?;
         let db_path = loom_dir.join(GRAPH_DB);
-        let lock = acquire_lock(&loom_dir)?;
+        let lock = acquire_lock(&loom_dir, true)?;
         let fresh = !db_path.exists();
         let mut conn =
             Connection::open(&db_path).with_context(|| format!("opening {}", db_path.display()))?;
@@ -234,10 +240,46 @@ impl Store {
                 db_path.display()
             );
         }
-        let lock = acquire_lock(&loom_dir)?;
+        let lock = acquire_lock(&loom_dir, true)?;
         let mut conn = Connection::open(&db_path)?;
         configure(&conn)?;
         apply_schema_migrations(&mut conn)?;
+        Ok(Store {
+            conn,
+            root: root.to_path_buf(),
+            agent: std::cell::Cell::new(Agent::from_env()?),
+            _lock: lock,
+        })
+    }
+
+    /// Open an existing graph read-only. Takes a SHARED advisory lock, so many
+    /// readers proceed together and only wait while a writer holds the boundary,
+    /// and sets `query_only` so no read command can mutate the graph. Never
+    /// migrates: a schema behind `SCHEMA_VERSION` is reported, not silently
+    /// upgraded, because migration is a write and must go through a write open.
+    pub fn open_read(root: &Path) -> Result<Store> {
+        let loom_dir = root.join(LOOM_DIR);
+        let db_path = loom_dir.join(GRAPH_DB);
+        if !db_path.exists() {
+            bail!(
+                "no loom graph at {} — run `loom init` first",
+                db_path.display()
+            );
+        }
+        let lock = acquire_lock(&loom_dir, false)?;
+        let conn = Connection::open(&db_path)?;
+        configure_read(&conn)?;
+        // `user_version` is the migration stamp maintained by the write path
+        // (`apply_schema_migrations`); a read open must not migrate, so a mismatch
+        // is an explicit "run a write command first", never a silent read of an
+        // older shape.
+        let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        if user_version != SCHEMA_VERSION {
+            bail!(
+                "graph schema (v{user_version}) needs migration to v{SCHEMA_VERSION} — run a \
+                 write command (e.g. `loom sync`) once to migrate before read-only commands"
+            );
+        }
         Ok(Store {
             conn,
             root: root.to_path_buf(),
@@ -305,12 +347,19 @@ impl Store {
         })
     }
 
+    /// Begin an explicit transaction for a multi-mutation batch (`loom apply`).
+    /// Uses `unchecked_transaction` so it composes with the store's `&self`
+    /// write methods; drop it without `commit` to roll the whole batch back —
+    /// the atomicity guarantee behind `loom apply`.
+    pub fn begin(&self) -> Result<rusqlite::Transaction<'_>> {
+        Ok(self.conn.unchecked_transaction()?)
+    }
 }
 
-mod nodes;
+mod derived;
 mod edges;
 mod facets;
-mod derived;
+mod nodes;
 
 // ---- helpers -----------------------------------------------------------
 // ---- helpers -------------------------------------------------------------
@@ -370,7 +419,17 @@ fn configure(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-fn acquire_lock(loom_dir: &Path) -> Result<File> {
+/// Connection setup for a read-only open. Sets the busy timeout and enforces
+/// `query_only`, so a mis-routed read command fails loudly instead of writing.
+/// Deliberately does NOT set `journal_mode` (a write) or run migrations — a read
+/// open never mutates the file.
+fn configure_read(conn: &Connection) -> Result<()> {
+    conn.pragma_update(None, "busy_timeout", 5000)?;
+    conn.pragma_update(None, "query_only", true)?;
+    Ok(())
+}
+
+fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
     let lock_path = loom_dir.join("lock");
     let file = OpenOptions::new()
         .create(true)
@@ -380,10 +439,20 @@ fn acquire_lock(loom_dir: &Path) -> Result<File> {
         .with_context(|| format!("opening lock {}", lock_path.display()))?;
     // Retry briefly: a just-dropped lock from a prior open in this or another
     // process can lag a few ms before the OS releases it. WAL + busy_timeout
-    // handle real query concurrency; this flock only guards the open boundary.
+    // handle real query concurrency; this flock only guards the open boundary
+    // (schema migration above all). Writers take it exclusive; a read-only open
+    // takes it shared, so N readers proceed together and only wait while a writer
+    // actually holds the boundary.
     let mut wait = std::time::Duration::from_millis(5);
     for attempt in 0..40 {
-        match file.try_lock_exclusive() {
+        // Disambiguate from std's inherent `File::try_lock_shared`
+        // (`TryLockError`); we use fs2's `FileExt` throughout (`io::Error`).
+        let acquired = if exclusive {
+            fs2::FileExt::try_lock_exclusive(&file)
+        } else {
+            fs2::FileExt::try_lock_shared(&file)
+        };
+        match acquired {
             Ok(()) => return Ok(file),
             Err(_) if attempt < 39 => {
                 std::thread::sleep(wait);
@@ -394,7 +463,10 @@ fn acquire_lock(loom_dir: &Path) -> Result<File> {
             Err(_) => break,
         }
     }
-    bail!("graph is locked by another loom process")
+    bail!(
+        "graph is locked by another loom process (waiting for {} access)",
+        if exclusive { "write" } else { "read" }
+    )
 }
 
 /// Sentinel timestamp for derived rows. Derived data is recomputed by sync, so

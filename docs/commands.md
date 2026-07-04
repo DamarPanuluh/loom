@@ -108,7 +108,7 @@ Creates `.loom/` and initializes `graph.sqlite`. `--observed` maps code the driv
 loom sync [--json]
 ```
 
-Recomputes the structural plane from disk. Content-hash based — mtime churn never false-flags. Sync now stales Targets (`hypothesis -> intent`) edges, records `stale_cause` facets on every staled edge, deterministically resets validations, downgrades never-reached previously-passing journey steps to `needs_reverification` when a journey run fails earlier, fully reopens realizing `implements` groundings on changed files, and reopens non-realizing `implements` groundings only when their seam locator drifts.
+Recomputes the structural plane from disk. Content-hash based — mtime churn never false-flags. Sync now stales Targets (`hypothesis -> intent`) edges, records `stale_cause` facets on every staled edge, deterministically resets validations, downgrades never-reached previously-passing journey steps to `needs_reverification` when a journey run fails earlier, fully reopens realizing `implements` groundings on changed files, and reopens non-realizing `implements` groundings only when their seam locator drifts. As a byproduct it refreshes `loom.graph.json` when — and only when — the file already exists and has drifted, so the committed export stays fresh without a separate `loom export` call (it never creates an untracked file, and a fresh export is left byte-identical).
 
 ```text
 loom export [--check] [--json]
@@ -123,22 +123,58 @@ loom import <file> [--json]
 Restores an export into a fresh store. Import is validate-then-write and never leaves a partial graph.
 
 ```text
+loom apply <file> [--json]
+```
+
+Applies one atomic batch of mutations from a JSON (default) or YAML (`.yaml`/`.yml`) file, collapsing the per-mutation call storm of a work session (intent add ×N, edge implement ×N, edge verdict ×N, edge relate) into a single call. Every mutation goes through the same write boundary the individual commands use — the intent gates (symbol-name rejection, level/lifecycle/visibility/aspect), the edge-kind registry and lane gate, and the evidence gates (INV-4/6) plus the asserted/derived wall (INV-5) — so a batch can never accept what the per-verb command would reject. The whole batch is one transaction: any rejected item rolls every prior mutation in the batch back (the two-phase-import discipline), and output is emitted only after commit. Like `sync`, a tracked+drifted `loom.graph.json` is refreshed as a byproduct.
+
+Sections (all optional, applied in order so later ones may reference intents created earlier in the same batch by name):
+
+```jsonc
+{
+  "intents":       [ { "name": "...", "description": "...", "level": "feature", "lifecycle": "planned",
+                       "visibility": null, "layer": null, "aspect": null, "allow_symbol_name": false } ],
+  "groundings":    [ { "intent": "<name/key>", "codefile": "<path/key>", "locator": "sym", "role": "realizes",
+                       "verdict": { "verdict": "ground", "criterion": "...", "evidence": "...", "confidence": 0.9 } } ],
+  "relationships": [ { "kind": "requires", "from": "<intent>", "to": "<intent>",
+                       "verdict": { "verdict": "ground", "criterion": "...", "evidence": "..." } } ],
+  "verdicts":      [ { "edge": "<edge id or prefix>", "verdict": "ground", "criterion": "...", "evidence": "..." } ]
+}
+```
+
+`verdict` verbs match `loom edge verdict`: `ground` | `issue` | `independent`. Groundings and relationships are find-or-create (idempotent — an existing edge is reused, never duplicated); intent creation is create-only (re-declaring an existing name is rejected, and the atomic rollback leaves the graph unchanged). A re-recorded identical verdict is a boundary-level no-op, so re-applying an unchanged batch does not churn exported timestamps.
+
+### Concurrency
+
+Read commands (`loom status`, `loom next`) open the graph under a **shared** advisory lock with SQLite `query_only`, so several agents can query one graph at the same time and never block each other. Writers still take the lock exclusive, but only for their (short) transaction. `loom scan` runs its external adapter commands with **no** lock held — reading adapter config under a shared lock, executing the subprocesses lock-free, then reopening for a brief exclusive write to reconcile findings — so one long scan no longer freezes every other agent for the duration of its subprocesses.
+
+```text
 loom detect [--json]
 ```
 
 Detects repo languages and recommends seedable quality packs only. Available packs are: `iso5055`, `service`, `web-ui`, `data`, `concurrency`, `docker` (29 rules total across the shipped pack set).
 
 ```text
-loom scan add <name> "<command>" [--map <regex>] [--json]
+loom scan add <name> "<command>" [--map <map>] [--format lines|json] [--json]
 loom scan list [--json]
-loom scan update <name> [--command "<cmd>"] [--map <regex>] [--json]
+loom scan update <name> [--command "<cmd>"] [--map <map>] [--format lines|json] [--json]
 loom scan remove <name> [--json]
 loom scan run [<name>] [--json]
 ```
 
 External diagnostic adapters can wrap any language's linter, type-checker, static analyzer, or bespoke script. `scan add` stores the adapter command in graph config; `scan list` shows registered adapters; `scan remove` deletes one; `scan run [<name>]` runs one adapter or all adapters and converts parsed diagnostics into derived `Finding` nodes for ordinary `triage`.
 
-The default parse map is GCC-style `file:line[:col]: message`. The default parser also pairs a bare `file:line[:col]` location line with the message on the immediately following line (svelte-check-style two-line output; a blank line in between drops the pair). `--map` accepts a custom regex with named groups `file` and `line`, plus optional `msg` and `code`; a custom map is strictly per-line. Only diagnostics whose `file` resolves to a registered `CodeFile` become findings. Re-running an adapter converges: findings for diagnostics still present stay active, new diagnostics create findings, and findings whose diagnostics disappeared are resolved. Scan adapters travel with `loom export` in `config.scan_adapters`.
+Under the default `--format lines`, the parse map is GCC-style `file:line[:col]: message`. The default parser also pairs a bare `file:line[:col]` location line with the message on the immediately following line (svelte-check-style two-line output; a blank line in between drops the pair). `--map` accepts a custom regex with named groups `file` and `line`, plus optional `msg` and `code`; a custom map is strictly per-line.
+
+`--format json` parses the output as a JSON array of finding objects (JSONL also works, and noise before/after the document is tolerated). The default field lookups are `file`, `line`, `message`, `code`; `--map` renames them as comma-separated `field=path` entries with dotted paths for nested objects, plus `items=<path>` when the array lives inside an envelope object. Examples: pulse (`loom scan add pulse "pulse check -a --json" --format json --map "line=start_line,msg=detail"`), qualirs (`--map "items=smells,file=location.file,line=location.line_start,msg=message"`). A number or numeric string works as `line`; a missing/null line records a whole-file diagnostic (line 0).
+
+In both formats, only diagnostics whose `file` resolves to a registered `CodeFile` become findings. Re-running an adapter converges: findings for diagnostics still present stay active, new diagnostics create findings, and findings whose diagnostics disappeared are resolved. Scan adapters travel with `loom export` in `config.scan_adapters`.
+
+```text
+loom calibrate [--write] [--json]
+```
+
+Derives structural finding thresholds (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) from the repo's own distribution: each gate is proposed at the worst-5% quantile of the registered codefiles' metrics, rounded up and clamped to sane floors, so sync flags today's tail without flooding triage. Default is a preview (current vs proposed); `--write` persists the proposal to graph config. Thresholds travel with `loom export` in `config.thresholds`; absent config means the shipped defaults (file loc 600, symbol complexity 20, symbol loc 120, nesting 5, args 6). Every gate is a strict `>` bound.
 
 ```text
 loom completeness [<intent>] [--json]

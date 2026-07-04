@@ -1,10 +1,14 @@
 //! Generic tree-sitter extraction for non-Rust languages (Python, Go, JS, TS).
 
+use super::metrics::{measure, MetricSpec, GO_METRICS, JS_METRICS, PYTHON_METRICS, TS_METRICS};
 use super::{child_name, Language, Symbol};
 
 struct LangSpec {
     symbols: &'static [(&'static str, &'static str)],
     imports: &'static [&'static str],
+    /// Node kinds measured as callables (complexity / nesting / args).
+    callables: &'static [&'static str],
+    metrics: &'static MetricSpec,
 }
 
 const PYTHON_SPEC: LangSpec = LangSpec {
@@ -13,6 +17,8 @@ const PYTHON_SPEC: LangSpec = LangSpec {
         ("class_definition", "class"),
     ],
     imports: &["import_statement", "import_from_statement"],
+    callables: &["function_definition"],
+    metrics: &PYTHON_METRICS,
 };
 
 const GO_SPEC: LangSpec = LangSpec {
@@ -22,6 +28,8 @@ const GO_SPEC: LangSpec = LangSpec {
         ("type_spec", "type"),
     ],
     imports: &["import_declaration"],
+    callables: &["function_declaration", "method_declaration"],
+    metrics: &GO_METRICS,
 };
 
 const JS_SPEC: LangSpec = LangSpec {
@@ -32,6 +40,12 @@ const JS_SPEC: LangSpec = LangSpec {
         ("method_definition", "method"),
     ],
     imports: &["import_statement"],
+    callables: &[
+        "function_declaration",
+        "generator_function_declaration",
+        "method_definition",
+    ],
+    metrics: &JS_METRICS,
 };
 
 const TS_SPEC: LangSpec = LangSpec {
@@ -45,11 +59,15 @@ const TS_SPEC: LangSpec = LangSpec {
         ("enum_declaration", "enum"),
     ],
     imports: &["import_statement"],
+    callables: &["function_declaration", "method_definition"],
+    metrics: &TS_METRICS,
 };
 
 /// Walk a parsed tree and pull named declarations (via the `name` field) and
-/// import statements. Deterministic (sorted) like `rust_extract`, so the derived
-/// plane stays rebuildable (INV-2). complexity = 0 and panic_sites = 0 here.
+/// import statements. Callable declarations additionally get the shared metric
+/// walk (complexity / nesting / args). Deterministic (sorted) like
+/// `rust_extract`, so the derived plane stays rebuildable (INV-2).
+/// panic_sites = 0 here (Rust-only signal).
 fn generic_extract(
     content: &str,
     language: &tree_sitter::Language,
@@ -71,12 +89,19 @@ fn generic_extract(
         let kind = node.kind();
         if let Some((_, sym_kind)) = spec.symbols.iter().find(|(nk, _)| *nk == kind) {
             if let Some(name) = child_name(&node, bytes) {
+                let m = if spec.callables.contains(&kind) {
+                    measure(&node, bytes, spec.metrics)
+                } else {
+                    Default::default()
+                };
                 symbols.push(Symbol {
                     name,
                     kind: (*sym_kind).into(),
                     line_start: node.start_position().row + 1,
                     line_end: node.end_position().row + 1,
-                    complexity: 0,
+                    complexity: m.complexity,
+                    max_nesting: m.max_nesting,
+                    arg_count: m.arg_count,
                 });
             }
         }

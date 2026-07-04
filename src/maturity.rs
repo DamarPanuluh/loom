@@ -131,7 +131,17 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     }
 
     let smells = crate::signal::smells(store)?;
-    let open_smells = smells.len();
+    // A `justified` adjudication is an accepted exception and no longer counts
+    // as open — honoring the close-out contract "open smells fixed *or
+    // adjudicated*". `needed`/`blocked`/untriaged smells still count. (Journey
+    // proof gaps below deliberately count every smell: a proof gap is not
+    // waivable by verdict.)
+    let mut open_smells = 0usize;
+    for s in &smells {
+        if !crate::signal::smell_is_justified(store, &s.identity)? {
+            open_smells += 1;
+        }
+    }
     let open_journey_proof_smells = smells
         .iter()
         .filter(|s| s.kind == "missing_journey_proof" || s.kind == "proof_too_shallow_for_intent")

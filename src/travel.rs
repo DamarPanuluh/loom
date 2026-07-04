@@ -113,6 +113,20 @@ pub fn export_is_fresh(store: &Store) -> Result<bool> {
     Ok(committed == live)
 }
 
+/// Refresh the committed export ONLY if it already exists and has drifted from
+/// the live graph. Returns whether it was rewritten. This makes a fresh
+/// `loom.graph.json` a byproduct of `loom sync` (one fewer command in the loop)
+/// without ever creating an artifact a repo chose not to track, and without
+/// rewriting a fresh one (so determinism and clean diffs hold).
+pub fn refresh_export_if_tracked(store: &Store) -> Result<bool> {
+    let path = store.root().join(crate::GRAPH_EXPORT);
+    if !path.exists() || export_is_fresh(store)? {
+        return Ok(false);
+    }
+    export_to_file(store)?;
+    Ok(true)
+}
+
 /// Read an export file from disk and parse it (phase 1 of import).
 pub fn read_export(path: &Path) -> Result<Export> {
     let text =
