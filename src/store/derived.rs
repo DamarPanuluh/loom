@@ -509,6 +509,14 @@ impl Store {
         Ok(())
     }
 
+    /// Remove a meta key if present. Used by config resets so the key reverts to
+    /// its "absent = shipped default" fallback rather than a pinned value.
+    pub fn remove_meta(&self, key: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM meta WHERE key=?1", params![key])?;
+        Ok(())
+    }
+
     /// Read a meta key.
     pub fn get_meta(&self, key: &str) -> Result<Option<String>> {
         self.conn

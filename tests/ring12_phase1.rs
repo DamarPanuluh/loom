@@ -741,6 +741,7 @@ fn symbol_findings_fire_and_are_gated_by_thresholds() {
         max_symbol_loc: 500,
         max_nesting: 10,
         max_args: 10,
+        max_file_owners: 2,
     };
     loom::thresholds::save(&store, &loose).unwrap();
     sync::run(&store, root).expect("contract 10: second sync under loose thresholds");
@@ -918,4 +919,299 @@ fn offending_fn() -> String {
     s.push_str("    0\n");
     s.push_str("}\n");
     s
+}
+
+#[test]
+fn apply_batch_adjudicates_findings() {
+    // Contract: a single apply batch can adjudicate multiple durable Findings.
+    // Two unrelated pairs co-own two different files, yielding two independent
+    // overlapping_ownership findings that are both triaged by one dispatch.
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    tmp.write("src/one.rs", "pub fn one() {}\n");
+    tmp.write("src/two.rs", "pub fn two() {}\n");
+
+    let store = Store::init(root, Some("t"), false).unwrap();
+    let one = seed_codefile(&store, "src/one.rs");
+    let two = seed_codefile(&store, "src/two.rs");
+    let one_a = store
+        .add_node(NodeType::Intent, "one alpha", "", "implemented", json!({}))
+        .unwrap();
+    let one_b = store
+        .add_node(NodeType::Intent, "one beta", "", "implemented", json!({}))
+        .unwrap();
+    let two_a = store
+        .add_node(NodeType::Intent, "two alpha", "", "implemented", json!({}))
+        .unwrap();
+    let two_b = store
+        .add_node(NodeType::Intent, "two beta", "", "implemented", json!({}))
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Implements, &one_a.id, &one, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Implements, &one_b.id, &one, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Implements, &two_a.id, &two, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Implements, &two_b.id, &two, TruthClass::Asserted)
+        .unwrap();
+
+    let mut finding_ids = loom::signal::smells(&store)
+        .unwrap()
+        .into_iter()
+        .filter(|smell| smell.kind == "overlapping_ownership")
+        .map(|smell| {
+            Store::derived_node_id(
+                NodeType::Finding,
+                &loom::signal::smell_det_key(&smell.identity),
+            )
+        })
+        .collect::<Vec<_>>();
+    finding_ids.sort();
+    assert_eq!(
+        finding_ids.len(),
+        2,
+        "apply adjudication batch setup: expected two overlapping ownership smells"
+    );
+
+    loom::sync::run(&store, root)
+        .expect("apply adjudication batch setup: sync materializes findings");
+    assert!(store.get_node(&finding_ids[0]).unwrap().is_some());
+    assert!(store.get_node(&finding_ids[1]).unwrap().is_some());
+    drop(store);
+
+    let batch = root.join("adjudications.json");
+    std::fs::write(
+        &batch,
+        serde_json::to_string(&json!({
+            "adjudications": [
+                {
+                    "finding": finding_ids[0],
+                    "verdict": "justified",
+                    "reason": "cohesive co-owners"
+                },
+                {
+                    "finding": finding_ids[1],
+                    "verdict": "needed",
+                    "reason": "split these"
+                }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    apply_batch(root, &batch).expect("apply adjudication batch: both adjudications apply");
+
+    let store = Store::open(root).unwrap();
+    assert_eq!(
+        loom::signal::adjudication_of(&store, &finding_ids[0]).unwrap(),
+        Some(("justified".into(), "cohesive co-owners".into())),
+        "apply adjudication batch: first finding was adjudicated"
+    );
+    assert_eq!(
+        loom::signal::adjudication_of(&store, &finding_ids[1]).unwrap(),
+        Some(("needed".into(), "split these".into())),
+        "apply adjudication batch: second finding was adjudicated"
+    );
+}
+
+#[test]
+fn apply_adjudication_batch_is_atomic_and_gated() {
+    // Contract: adjudications use the same gate as `loom finding verdict` and
+    // stay inside the batch transaction. A later invalid verdict vocabulary
+    // rolls back an earlier valid adjudication from the same file.
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    tmp.write("src/pair.rs", "pub fn pair() {}\n");
+
+    let store = Store::init(root, Some("t"), false).unwrap();
+    let codefile = seed_codefile(&store, "src/pair.rs");
+    let alpha = store
+        .add_node(NodeType::Intent, "alpha pair", "", "implemented", json!({}))
+        .unwrap();
+    let beta = store
+        .add_node(NodeType::Intent, "beta pair", "", "implemented", json!({}))
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &alpha.id,
+            &codefile,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &beta.id,
+            &codefile,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let smell = loom::signal::smells(&store)
+        .unwrap()
+        .into_iter()
+        .find(|smell| smell.kind == "overlapping_ownership")
+        .expect("apply adjudication atomic setup: overlapping ownership smell exists");
+    let finding_id = Store::derived_node_id(
+        NodeType::Finding,
+        &loom::signal::smell_det_key(&smell.identity),
+    );
+    loom::sync::run(&store, root)
+        .expect("apply adjudication atomic setup: sync materializes finding");
+    assert_eq!(
+        loom::signal::adjudication_of(&store, &finding_id).unwrap(),
+        None,
+        "apply adjudication atomic setup: finding starts unadjudicated"
+    );
+    drop(store);
+
+    let batch = root.join("bad_adjudications.json");
+    std::fs::write(
+        &batch,
+        serde_json::to_string(&json!({
+            "adjudications": [
+                {
+                    "finding": finding_id,
+                    "verdict": "justified",
+                    "reason": "shared implementation seam"
+                },
+                {
+                    "finding": finding_id,
+                    "verdict": "bogus",
+                    "reason": "bad verdict vocabulary"
+                }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let res = apply_batch(root, &batch);
+    assert!(
+        res.is_err(),
+        "apply adjudication atomic: bogus finding verdict must reject the batch"
+    );
+
+    let store = Store::open(root).unwrap();
+    assert_eq!(
+        loom::signal::adjudication_of(&store, &finding_id).unwrap(),
+        None,
+        "apply adjudication atomic: valid earlier adjudication rolled back"
+    );
+}
+
+#[test]
+fn apply_batch_registers_vocab_and_tags() {
+    // Contract: vocab registration runs before tag application inside the same
+    // batch, so a newly registered term can immediately tag an intent.
+    let tmp = Tmp::new();
+    let root = tmp.path();
+
+    let store = Store::init(root, Some("t"), false).unwrap();
+    store
+        .add_node(NodeType::Intent, "checkout", "", "implemented", json!({}))
+        .unwrap();
+    drop(store);
+
+    let batch = root.join("vocab_tags.json");
+    std::fs::write(
+        &batch,
+        serde_json::to_string(&json!({
+            "vocab": [
+                {
+                    "term": "payments",
+                    "why": "payment domain"
+                }
+            ],
+            "tags": [
+                {
+                    "intent": "checkout",
+                    "terms": ["payments"]
+                }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    apply_batch(root, &batch).expect("apply vocab/tag batch: vocab then tag apply");
+
+    let store = Store::open(root).unwrap();
+    assert!(
+        store.vocab_has("payments").unwrap(),
+        "apply vocab/tag batch: vocab term persisted"
+    );
+    let checkout = store
+        .resolve_node("checkout", Some(NodeType::Intent))
+        .expect("apply vocab/tag batch: checkout intent resolves");
+    let tags = store.snapshot().unwrap().tags;
+    assert!(
+        tags.iter().any(|tag| {
+            tag.target_id == checkout.id
+                && tag.term == "payments"
+                && tag.target_kind == loom::model::TargetKind::Node
+        }),
+        "apply vocab/tag batch: checkout carries the newly registered payments tag"
+    );
+}
+
+#[test]
+fn apply_tags_batch_is_atomic_on_unregistered_term() {
+    // Contract: tag application is gated on registered vocab terms, and a tag
+    // failure rolls back earlier vocab registration from the same batch.
+    let tmp = Tmp::new();
+    let root = tmp.path();
+
+    let store = Store::init(root, Some("t"), false).unwrap();
+    store
+        .add_node(NodeType::Intent, "refund", "", "implemented", json!({}))
+        .unwrap();
+    drop(store);
+
+    let batch = root.join("bad_tags.json");
+    std::fs::write(
+        &batch,
+        serde_json::to_string(&json!({
+            "vocab": [
+                {
+                    "term": "money",
+                    "why": ""
+                }
+            ],
+            "tags": [
+                {
+                    "intent": "refund",
+                    "terms": ["ghost_term"]
+                }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let res = apply_batch(root, &batch);
+    assert!(
+        res.is_err(),
+        "apply tag atomic: unregistered tag term must reject the batch"
+    );
+
+    let store = Store::open(root).unwrap();
+    assert!(
+        !store.vocab_has("money").unwrap(),
+        "apply tag atomic: earlier vocab registration rolled back"
+    );
+    let refund = store
+        .resolve_node("refund", Some(NodeType::Intent))
+        .expect("apply tag atomic: refund intent resolves");
+    let tags = store.snapshot().unwrap().tags;
+    assert!(
+        !tags.iter().any(|tag| tag.target_id == refund.id),
+        "apply tag atomic: failing tag batch left refund untagged"
+    );
 }

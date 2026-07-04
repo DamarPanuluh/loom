@@ -496,12 +496,26 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "879 lines (> 600)",
+      "description": "898 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
         "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d032daa88d799810a",
+      "type": "finding",
+      "name": "src/maturity.rs::ladder is long",
+      "description": "127 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "ladder"
       },
       "created_at": "",
       "updated_at": ""
@@ -679,7 +693,7 @@
       "id": "d3bc2007c9d21f3a3",
       "type": "finding",
       "name": "src/extract/mod.rs is oversized",
-      "description": "621 lines (> 600)",
+      "description": "680 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -876,7 +890,7 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "1036 lines (> 600)",
+      "description": "1196 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -910,6 +924,20 @@
       "body": {
         "kind": "excess_args",
         "symbol": "coverage_update"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d824dc670b049b437",
+      "type": "finding",
+      "name": "src/commands/diagnostics_cmd.rs is oversized",
+      "description": "699 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
       },
       "created_at": "",
       "updated_at": ""
@@ -1079,6 +1107,20 @@
       "updated_at": ""
     },
     {
+      "id": "dafc4fbbc65e24fb6",
+      "type": "finding",
+      "name": "src/commands/apply_cmd.rs::apply_tx is long",
+      "description": "133 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "apply_tx"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "db151dbcf04edb8e7",
       "type": "finding",
       "name": "src/commands/domain_cmd.rs::hypothesis is long",
@@ -1204,7 +1246,7 @@
       "id": "dd263e1d1d65128e4",
       "type": "finding",
       "name": "src/commands/intent.rs is oversized",
-      "description": "670 lines (> 600)",
+      "description": "679 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1584,14 +1626,14 @@
       "to_id": "eafe79c4df0964351f505f7ea4251a9a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "an implemented parent intent with grounded children is not reported ungrounded",
       "evidence": "maturity.rs ladder collects parent ids from hierarchy edges and continues past them when counting ungrounded leaves",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.790Z",
-      "updated_at": "2026-07-03T08:17:02.837Z"
+      "updated_at": "2026-07-04T04:35:17.134Z"
     },
     {
       "id": "4f2739f224330033d37a14c9dcfed389",
@@ -1894,6 +1936,21 @@
       "updated_at": ""
     },
     {
+      "id": "d1033fe10be7d82c3",
+      "from_id": "d824dc670b049b437",
+      "to_id": "f22d80bc9a087badf93704a7d425de28",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d12de6933d155f1ca",
       "from_id": "d3ff8101e1dfa4913",
       "to_id": "dd371408af4da502b",
@@ -1943,6 +2000,21 @@
       "from_id": "d4d2a8e8624b4e00a",
       "to_id": "d9b35a203478bd583",
       "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d22e8360ea5666a99",
+      "from_id": "dafc4fbbc65e24fb6",
+      "to_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -2299,6 +2371,21 @@
       "updated_at": ""
     },
     {
+      "id": "d7a172a18d03318ca",
+      "from_id": "d032daa88d799810a",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d7afa02b49be97cc6",
       "from_id": "d2228150595d32891",
       "to_id": "4ea96a0eb7525e00baf28938e2ed569b",
@@ -2464,6 +2551,21 @@
       "updated_at": ""
     },
     {
+      "id": "da8833ed059a00207",
+      "from_id": "dafc4fbbc65e24fb6",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dae05a64920de9795",
       "from_id": "d03e6ab228ff10a8a",
       "to_id": "f1511e2f67a80d5e629e88a4b0dc9e93",
@@ -2498,6 +2600,21 @@
       "from_id": "d160c383b0cbfdb3e",
       "to_id": "d2fcf6c1e25f78a67",
       "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db84b27a2e7f59490",
+      "from_id": "d032daa88d799810a",
+      "to_id": "eafe79c4df0964351f505f7ea4251a9a",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -2809,6 +2926,21 @@
       "updated_at": ""
     },
     {
+      "id": "dec0baf08740943d4",
+      "from_id": "d824dc670b049b437",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "deed0b0563e947950",
       "from_id": "d50a4490590dba276",
       "to_id": "d2fcf6c1e25f78a67",
@@ -3049,14 +3181,14 @@
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "59f4f2e147f643e7",
+      "value": "1c3b62c056ab371f",
       "truth_class": "derived"
     },
     {
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::{IntentCmd, IntentTagCmd}\",\"crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"std::path::Path\",\"super::{node_json, open, pulse, require_lane}\"]",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::IntentCmd\",\"crate::cli::IntentTagCmd\",\"crate::model::EdgeKind\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"std::path::Path\",\"super::node_json\",\"super::open\",\"super::pulse\",\"super::require_lane\"]",
       "truth_class": "derived"
     },
     {
@@ -3070,7 +3202,7 @@
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "loc",
-      "value": "670",
+      "value": "679",
       "truth_class": "derived"
     },
     {
@@ -3084,7 +3216,7 @@
       "target_id": "11b1d78a7895942cf141968e04b5bcf1",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "20",
+      "value": "21",
       "truth_class": "derived"
     },
     {
@@ -3147,7 +3279,7 @@
       "target_id": "1a00968d12fb3207003a014c1aa9c1d0",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "1947d01f62cfdb88",
+      "value": "c53a5a735d99b876",
       "truth_class": "derived"
     },
     {
@@ -3168,7 +3300,7 @@
       "target_id": "1a00968d12fb3207003a014c1aa9c1d0",
       "target_kind": "node",
       "key": "loc",
-      "value": "621",
+      "value": "680",
       "truth_class": "derived"
     },
     {
@@ -3212,6 +3344,13 @@
       "key": "locator",
       "value": "ladder:39 (parents from hierarchy from_id; skip in ungrounded count)",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "296dc9b5eba6e7014e42b7c7e9dbf260",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "2c0120f06e6409eba2b46d7f15aacfde",
@@ -3301,14 +3440,14 @@
       "target_id": "2f6ec071d6dfb3e333a35a202b849d6b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "abcb76d091577e32",
+      "value": "191f51c756eea1e2",
       "truth_class": "derived"
     },
     {
       "target_id": "2f6ec071d6dfb3e333a35a202b849d6b",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"super::*\"]",
+      "value": "[\"super\"]",
       "truth_class": "derived"
     },
     {
@@ -3322,7 +3461,7 @@
       "target_id": "2f6ec071d6dfb3e333a35a202b849d6b",
       "target_kind": "node",
       "key": "loc",
-      "value": "541",
+      "value": "549",
       "truth_class": "derived"
     },
     {
@@ -3336,7 +3475,7 @@
       "target_id": "2f6ec071d6dfb3e333a35a202b849d6b",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "28",
+      "value": "29",
       "truth_class": "derived"
     },
     {
@@ -3385,14 +3524,14 @@
       "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "822f3c041cfb555d",
+      "value": "075b4707741b249a",
       "truth_class": "derived"
     },
     {
       "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::extract::{extract, Role}\",\"crate::store::Store\",\"serde::{Deserialize, Serialize}\",\"std::path::Path\"]",
+      "value": "[\"anyhow::anyhow\",\"anyhow::bail\",\"crate::Result\",\"crate::extract::Role\",\"crate::extract::extract\",\"crate::store::Store\",\"serde::Deserialize\",\"serde::Serialize\",\"std::path::Path\"]",
       "truth_class": "derived"
     },
     {
@@ -3406,7 +3545,7 @@
       "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
       "target_kind": "node",
       "key": "loc",
-      "value": "287",
+      "value": "575",
       "truth_class": "derived"
     },
     {
@@ -3420,7 +3559,7 @@
       "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "7",
+      "value": "11",
       "truth_class": "derived"
     },
     {
@@ -3651,14 +3790,14 @@
       "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e9aa9ee7c5a59370",
+      "value": "c2dfac8038812190",
       "truth_class": "derived"
     },
     {
       "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, Context}\",\"crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{workitem, Result}\",\"serde::{Deserialize, Serialize}\",\"std::path::Path\",\"super::intent::{create_intent, IntentAddArgs}\",\"super::{open, pulse, verdict_status}\"]",
+      "value": "[\"anyhow::Context\",\"anyhow::anyhow\",\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::GroundingRole\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"crate::workitem\",\"serde::Deserialize\",\"serde::Serialize\",\"std::path::Path\",\"super::intent::IntentAddArgs\",\"super::intent::create_intent\",\"super::open\",\"super::pulse\",\"super::verdict_status\"]",
       "truth_class": "derived"
     },
     {
@@ -3672,7 +3811,7 @@
       "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
       "target_kind": "node",
       "key": "loc",
-      "value": "359",
+      "value": "429",
       "truth_class": "derived"
     },
     {
@@ -3686,7 +3825,7 @@
       "target_id": "4cd0fc828c9b331d7b505d7a5ce4f98d",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "16",
+      "value": "19",
       "truth_class": "derived"
     },
     {
@@ -3826,14 +3965,14 @@
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "7f5b6108925c5865",
+      "value": "d0773766bc49b93a",
       "truth_class": "derived"
     },
     {
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::{anyhow, bail}\",\"crate::Result\",\"crate::cli::{\\n    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, LayerCmd, NoteCmd,\\n    RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,\\n}\",\"crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass}\",\"crate::store::Store\",\"crate::{travel, workitem}\",\"pub use intent::looks_like_symbol\",\"pub(crate) use status_cmd::require_lane\",\"std::path::{Path, PathBuf}\"]",
+      "value": "[\"anyhow::anyhow\",\"anyhow::bail\",\"crate::Result\",\"crate::cli::Cli\",\"crate::cli::CodefileCmd\",\"crate::cli::Command\",\"crate::cli::FindingCmd\",\"crate::cli::HypothesisCmd\",\"crate::cli::IgnoreCmd\",\"crate::cli::InboxCmd\",\"crate::cli::LayerCmd\",\"crate::cli::NoteCmd\",\"crate::cli::RuleCmd\",\"crate::cli::SurfaceCmd\",\"crate::cli::TaskCmd\",\"crate::cli::ValidationCmd\",\"crate::cli::VocabCmd\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"crate::travel\",\"crate::workitem\",\"intent::looks_like_symbol\",\"status_cmd::require_lane\",\"std::path::Path\",\"std::path::PathBuf\"]",
       "truth_class": "derived"
     },
     {
@@ -3847,7 +3986,7 @@
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "loc",
-      "value": "320",
+      "value": "323",
       "truth_class": "derived"
     },
     {
@@ -4008,14 +4147,14 @@
       "target_id": "736226be9513d0c8bfdcff2f37caad92",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "638b05018a438a9d",
+      "value": "7446aa08af638ed2",
       "truth_class": "derived"
     },
     {
       "target_id": "736226be9513d0c8bfdcff2f37caad92",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"clap::{Parser, Subcommand}\",\"pub use subcommands::*\",\"std::path::PathBuf\"]",
+      "value": "[\"clap::Parser\",\"clap::Subcommand\",\"std::path::PathBuf\",\"subcommands\"]",
       "truth_class": "derived"
     },
     {
@@ -4029,7 +4168,7 @@
       "target_id": "736226be9513d0c8bfdcff2f37caad92",
       "target_kind": "node",
       "key": "loc",
-      "value": "255",
+      "value": "262",
       "truth_class": "derived"
     },
     {
@@ -4512,14 +4651,14 @@
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "6c1a9e59fcefa065",
+      "value": "fcb19c343bc44fd8",
       "truth_class": "derived"
     },
     {
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"super::metrics::{measure, RUST_METRICS}\",\"super::{child_name, Symbol}\"]",
+      "value": "[\"super::Symbol\",\"super::child_name\",\"super::metrics::RUST_METRICS\",\"super::metrics::measure\"]",
       "truth_class": "derived"
     },
     {
@@ -4533,7 +4672,7 @@
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "loc",
-      "value": "137",
+      "value": "214",
       "truth_class": "derived"
     },
     {
@@ -4547,7 +4686,7 @@
       "target_id": "c27616b98002cd38ec17b70690b31bce",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "3",
+      "value": "6",
       "truth_class": "derived"
     },
     {
@@ -4624,7 +4763,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "25854beb3ae3f65e",
+      "value": "e9a1fef6949fa1a5",
       "truth_class": "derived"
     },
     {
@@ -4645,7 +4784,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "loc",
-      "value": "879",
+      "value": "898",
       "truth_class": "derived"
     },
     {
@@ -4659,7 +4798,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "23",
+      "value": "24",
       "truth_class": "derived"
     },
     {
@@ -4876,14 +5015,14 @@
       "target_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d0bf5c8f8ce27357",
+      "value": "48c6f7147b71fa61",
       "truth_class": "derived"
     },
     {
       "target_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::Context\",\"crate::Result\",\"crate::model::{\\n    Edge, EdgeKind, Facet, GroundingRole, InspectionStatus, Node, NodeType, TargetKind, TruthClass,\\n}\",\"crate::registry\",\"crate::store::{Snapshot, Store}\",\"petgraph::algo::tarjan_scc\",\"petgraph::graph::{DiGraph, NodeIndex}\",\"serde::{Deserialize, Serialize}\",\"std::collections::{BTreeMap, BTreeSet}\"]",
+      "value": "[\"anyhow::Context\",\"crate::Result\",\"crate::model::Edge\",\"crate::model::EdgeKind\",\"crate::model::Facet\",\"crate::model::GroundingRole\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::registry\",\"crate::store::Snapshot\",\"crate::store::Store\",\"petgraph::algo::tarjan_scc\",\"petgraph::graph::DiGraph\",\"petgraph::graph::NodeIndex\",\"serde::Deserialize\",\"serde::Serialize\",\"std::collections::BTreeMap\",\"std::collections::BTreeSet\"]",
       "truth_class": "derived"
     },
     {
@@ -4897,7 +5036,7 @@
       "target_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
       "target_kind": "node",
       "key": "loc",
-      "value": "1036",
+      "value": "1196",
       "truth_class": "derived"
     },
     {
@@ -4911,7 +5050,7 @@
       "target_id": "e2fe05e6cb4deeb735b881d5ac412a4b",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "38",
+      "value": "46",
       "truth_class": "derived"
     },
     {
@@ -4988,14 +5127,14 @@
       "target_id": "eafe79c4df0964351f505f7ea4251a9a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "446b5a457a1d2cb2",
+      "value": "f28c4e770e6e55d3",
       "truth_class": "derived"
     },
     {
       "target_id": "eafe79c4df0964351f505f7ea4251a9a",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::model::{EdgeKind, InspectionStatus, NodeType, TruthClass}\",\"crate::store::Store\",\"serde::Serialize\"]",
+      "value": "[\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::NodeType\",\"crate::model::TruthClass\",\"crate::store::Store\",\"serde::Serialize\"]",
       "truth_class": "derived"
     },
     {
@@ -5009,7 +5148,7 @@
       "target_id": "eafe79c4df0964351f505f7ea4251a9a",
       "target_kind": "node",
       "key": "loc",
-      "value": "385",
+      "value": "395",
       "truth_class": "derived"
     },
     {
@@ -5114,14 +5253,14 @@
       "target_id": "f22d80bc9a087badf93704a7d425de28",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "22c10bbc37ccd43a",
+      "value": "aae763b101973fc4",
       "truth_class": "derived"
     },
     {
       "target_id": "f22d80bc9a087badf93704a7d425de28",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::cli::ScanCmd\",\"super::*\"]",
+      "value": "[\"crate::cli::ScanCmd\",\"crate::cli::ThresholdCmd\",\"super\"]",
       "truth_class": "derived"
     },
     {
@@ -5135,7 +5274,7 @@
       "target_id": "f22d80bc9a087badf93704a7d425de28",
       "target_kind": "node",
       "key": "loc",
-      "value": "600",
+      "value": "699",
       "truth_class": "derived"
     },
     {
@@ -5149,7 +5288,7 @@
       "target_id": "f22d80bc9a087badf93704a7d425de28",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "15",
+      "value": "17",
       "truth_class": "derived"
     },
     {

@@ -877,3 +877,22 @@ pub enum ScanCmd {
     /// Run one adapter (or all) and convert diagnostics into derived findings.
     Run { name: Option<String> },
 }
+
+#[derive(Subcommand, Debug)]
+pub enum ThresholdCmd {
+    /// Show the current gates (configured values, or shipped defaults if unset).
+    List,
+    /// Hand-set one gate (e.g. `max_args 8`); persists to config.thresholds.
+    Set {
+        /// Gate name: max_file_loc | max_symbol_complexity | max_symbol_loc |
+        /// max_nesting | max_args | max_file_owners.
+        gate: String,
+        /// The new threshold (strict `>` bound; must be >= 1).
+        value: u64,
+    },
+    /// Reset one gate to its shipped default, or all gates when omitted.
+    Reset {
+        /// Gate name; omit to reset every gate.
+        gate: Option<String>,
+    },
+}

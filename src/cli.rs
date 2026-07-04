@@ -59,9 +59,10 @@ pub enum Command {
     /// Restore a graph from an export into a fresh store.
     Import { file: PathBuf },
     /// Apply one atomic batch of mutations from a JSON/YAML file — intents,
-    /// groundings, relationships, and verdicts in a single transaction. Collapses
-    /// the per-mutation call storm of a work session into one call; any rejected
-    /// item rolls the whole batch back.
+    /// groundings, relationships, verdicts, finding adjudications, vocab terms,
+    /// and intent tags in a single transaction. Collapses the per-mutation call
+    /// storm of a work session into one call; any rejected item rolls the whole
+    /// batch back.
     Apply { file: PathBuf },
     /// Recompute the structural plane and ripple staleness.
     Sync,
@@ -126,6 +127,12 @@ pub enum Command {
         /// Persist the proposed thresholds (they travel in the export).
         #[arg(long)]
         write: bool,
+    },
+    /// Hand-set the structural finding thresholds (the manual counterpart to
+    /// `calibrate`; persists to portable config).
+    Threshold {
+        #[command(subcommand)]
+        cmd: ThresholdCmd,
     },
     /// The Definition-of-Complete scorecard: per-intent axes met/open/waived.
     Completeness {

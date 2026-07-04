@@ -128,7 +128,7 @@ loom apply <file> [--json]
 
 Applies one atomic batch of mutations from a JSON (default) or YAML (`.yaml`/`.yml`) file, collapsing the per-mutation call storm of a work session (intent add ×N, edge implement ×N, edge verdict ×N, edge relate) into a single call. Every mutation goes through the same write boundary the individual commands use — the intent gates (symbol-name rejection, level/lifecycle/visibility/aspect), the edge-kind registry and lane gate, and the evidence gates (INV-4/6) plus the asserted/derived wall (INV-5) — so a batch can never accept what the per-verb command would reject. The whole batch is one transaction: any rejected item rolls every prior mutation in the batch back (the two-phase-import discipline), and output is emitted only after commit. Like `sync`, a tracked+drifted `loom.graph.json` is refreshed as a byproduct.
 
-Sections (all optional, applied in order so later ones may reference intents created earlier in the same batch by name):
+Sections (all optional, applied in dependency order — `vocab` first, then `intents`, then `groundings`/`relationships`/`verdicts`/`adjudications`, and `tags` last — so a later section may reference an intent or term the same batch created):
 
 ```jsonc
 {
@@ -138,11 +138,16 @@ Sections (all optional, applied in order so later ones may reference intents cre
                        "verdict": { "verdict": "ground", "criterion": "...", "evidence": "...", "confidence": 0.9 } } ],
   "relationships": [ { "kind": "requires", "from": "<intent>", "to": "<intent>",
                        "verdict": { "verdict": "ground", "criterion": "...", "evidence": "..." } } ],
-  "verdicts":      [ { "edge": "<edge id or prefix>", "verdict": "ground", "criterion": "...", "evidence": "..." } ]
+  "verdicts":      [ { "edge": "<edge id or prefix>", "verdict": "ground", "criterion": "...", "evidence": "..." } ],
+  "adjudications": [ { "finding": "<finding id or prefix>", "verdict": "justified", "reason": "..." } ],
+  "vocab":         [ { "term": "payments", "why": "..." } ],
+  "tags":          [ { "intent": "<name/key>", "terms": ["payments"] } ]
 }
 ```
 
 `verdict` verbs match `loom edge verdict`: `ground` | `issue` | `independent`. Groundings and relationships are find-or-create (idempotent — an existing edge is reused, never duplicated); intent creation is create-only (re-declaring an existing name is rejected, and the atomic rollback leaves the graph unchanged). A re-recorded identical verdict is a boundary-level no-op, so re-applying an unchanged batch does not churn exported timestamps.
+
+`adjudications` records a durable finding verdict (`justified` | `needed` | `blocked` with a substantive reason) — the same gate as `loom finding verdict`, on a finding materialized by a prior `sync`. `vocab` registers terms (idempotent) and `tags` tags an intent with registered terms (same gate as `loom intent tag add`); list a term under `vocab` earlier in the same batch to register and apply it in one call — collapsing the per-intent "arm the duplicate detector" churn, just as `adjudications` collapses per-finding triage.
 
 ### Concurrency
 
@@ -174,7 +179,15 @@ In both formats, only diagnostics whose `file` resolves to a registered `CodeFil
 loom calibrate [--write] [--json]
 ```
 
-Derives structural finding thresholds (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) from the repo's own distribution: each gate is proposed at the worst-5% quantile of the registered codefiles' metrics, rounded up and clamped to sane floors, so sync flags today's tail without flooding triage. Default is a preview (current vs proposed); `--write` persists the proposal to graph config. Thresholds travel with `loom export` in `config.thresholds`; absent config means the shipped defaults (file loc 600, symbol complexity 20, symbol loc 120, nesting 5, args 6). Every gate is a strict `>` bound.
+Derives structural finding thresholds (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) from the repo's own distribution: each gate is proposed at the worst-5% quantile of the registered codefiles' metrics, rounded up and clamped to sane floors, so sync flags today's tail without flooding triage. Default is a preview (current vs proposed); `--write` persists the proposal to graph config. Thresholds travel with `loom export` in `config.thresholds`; absent config means the shipped defaults (file loc 600, symbol complexity 20, symbol loc 120, nesting 5, args 6, file owners 2). Every gate is a strict `>` bound. `config.thresholds` also carries `max_file_owners` (default 2), the gate for the `tangled_file` smell — set it by hand; `calibrate` never fits it (owner counts are too small a distribution for a stable quantile) and preserves the current value.
+
+```text
+loom threshold list [--json]
+loom threshold set <gate> <value>
+loom threshold reset [<gate>]
+```
+
+The manual counterpart to `calibrate`: hand-set a single gate instead of fitting the whole set from the distribution. `<gate>` is one of the `config.thresholds` keys (`max_file_loc`, `max_symbol_complexity`, `max_symbol_loc`, `max_nesting`, `max_args`, `max_file_owners`); `<value>` must be ≥ 1. `set` persists to `config.thresholds` (portable — travels in the export). `reset <gate>` restores one gate to its shipped default; `reset` with no gate drops the whole `thresholds` config so every gate reverts to "absent = shipped default" (not a pinned snapshot — a later change to the defaults still takes effect). `max_file_owners` is set only this way; `calibrate` never fits it.
 
 ```text
 loom completeness [<intent>] [--json]

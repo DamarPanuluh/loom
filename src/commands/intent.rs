@@ -588,15 +588,24 @@ fn intent_confirm(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     Ok(())
 }
 
+/// Tag an intent with a registered vocab term, through the one gate the CLI
+/// enforces — the term must already be in the vocab registry. Returns the
+/// resolved intent. Shared by `loom intent tag add` and the `loom apply` tags
+/// batch so the batch can never accept what the per-verb command rejects.
+pub(crate) fn tag_intent(store: &Store, key: &str, term: &str) -> Result<crate::model::Node> {
+    let n = store.resolve_node(key, Some(NodeType::Intent))?;
+    if !store.vocab_has(term)? {
+        bail!("'{term}' is not a registered vocab term; add it with `loom vocab add`");
+    }
+    store.set_tag(&n.id, TargetKind::Node, term)?;
+    Ok(n)
+}
+
 fn intent_tag(graph: Option<&Path>, cmd: IntentTagCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
         IntentTagCmd::Add { key, term } => {
-            let n = store.resolve_node(&key, Some(NodeType::Intent))?;
-            if !store.vocab_has(&term)? {
-                bail!("'{term}' is not a registered vocab term; add it with `loom vocab add`");
-            }
-            store.set_tag(&n.id, TargetKind::Node, &term)?;
+            let n = tag_intent(&store, &key, &term)?;
             pulse::emit_line(
                 &store,
                 json,

@@ -53,6 +53,66 @@ fn smells_detect_tangle_and_overlap() {
     assert!(smells.iter().any(|s| s.kind == "overlapping_ownership"));
 }
 
+/// Contract: the `tangled_file` smell's owner-count gate is configurable via
+/// `Thresholds::max_file_owners` (a strict `>` bound). Under the DEFAULT config
+/// (`max_file_owners == 2`) a file realized by exactly 3 asserted `Implements`
+/// owners fires the smell (3 > 2). Saving `max_file_owners: 3` silences that
+/// same 3-owner file (3 is not > 3) — proving the gate reads the configured
+/// value, not a hardcoded const — while a 4-owner file still fires (4 > 3).
+#[test]
+fn tangled_file_owner_gate_is_configurable() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    // A file realized by exactly 3 asserted Implements owners.
+    let cf3 = codefile(&store, "src/god.rs");
+    for i in 0..3 {
+        let id = intent(&store, &format!("behavior {i}"), "implemented");
+        store
+            .add_edge(EdgeKind::Implements, &id, &cf3, TruthClass::Asserted)
+            .unwrap();
+    }
+
+    // Default config (max_file_owners == 2): 3 owners > 2 → tangled_file fires.
+    let smells = loom::signal::smells(&store).unwrap();
+    assert!(
+        smells
+            .iter()
+            .any(|s| s.kind == "tangled_file" && s.message.contains("src/god.rs")),
+        "default gate (2) fires tangled_file for a 3-owner file"
+    );
+
+    // Raise the gate to 3: the 3-owner file falls silent (3 is not > 3).
+    let t = loom::thresholds::Thresholds {
+        max_file_owners: 3,
+        ..Default::default()
+    };
+    loom::thresholds::save(&store, &t).unwrap();
+    let smells = loom::signal::smells(&store).unwrap();
+    assert!(
+        !smells
+            .iter()
+            .any(|s| s.kind == "tangled_file" && s.message.contains("src/god.rs")),
+        "max_file_owners: 3 silences the 3-owner file (3 is not > 3)"
+    );
+
+    // A 4-owner file still fires under max_file_owners: 3 (4 > 3).
+    let cf4 = codefile(&store, "src/mega.rs");
+    for i in 0..4 {
+        let id = intent(&store, &format!("mega behavior {i}"), "implemented");
+        store
+            .add_edge(EdgeKind::Implements, &id, &cf4, TruthClass::Asserted)
+            .unwrap();
+    }
+    let smells = loom::signal::smells(&store).unwrap();
+    assert!(
+        smells
+            .iter()
+            .any(|s| s.kind == "tangled_file" && s.message.contains("src/mega.rs")),
+        "max_file_owners: 3 still fires for a 4-owner file (4 > 3)"
+    );
+}
+
 #[test]
 fn sync_materializes_smell_finding_adjudication_and_convergence() {
     let tmp = Tmp::new();
@@ -2715,5 +2775,112 @@ fn layering_resolves_extern_in_nested_workspace() {
             "crates/pulse-machine/src/client.rs (layer storage) imports crates/pulse-http/src/api.rs (layer http) — points up the declared order"
                 .to_string()
         ]
+    );
+}
+// ---- threshold CLI (hand-set structural finding gates) ---------------------
+//
+// The feature is the CLI, not just the API: these exercise `loom threshold
+// set/list/reset` end-to-end through the binary — process startup, the open/
+// save/clear wiring, and the snapshot().config surface a downstream consumer
+// (export) sees. The error paths (value 0, unknown gate) must exit non-zero
+// with a message naming the offender; the happy paths must persist to portable
+// config and, after `reset`, drop the key entirely (absent = defaults, not a
+// pinned snapshot).
+
+/// Run `loom` with arbitrary args (no --graph) and return (status, stdout,
+/// stderr) without asserting on exit code — for `init` and error-path cases.
+fn run_loom_raw(args: &[&str]) -> (std::process::ExitStatus, String, String) {
+    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    cmd.args(args);
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom {:?}: {e}", args));
+    (
+        out.status,
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+/// Contract: the `loom threshold` command persists gates to portable config
+/// (`config.thresholds` appears in the snapshot after `set`), reports them via
+/// `threshold list --json`, and — after `threshold reset` (all) — drops the
+/// config key so `load` reverts to the shipped defaults (absent = defaults,
+/// never a pinned snapshot). The CLI's `>= 1` guard and unknown-gate rejection
+/// must exit non-zero with a message naming the offender.
+#[test]
+fn threshold_cli_persists_lists_resets_and_rejects_bad_input() {
+    let tmp = Tmp::new();
+    let graph = tmp.path();
+
+    // Init the graph via the BINARY (Command::Init takes a positional path,
+    // not --graph) — exercising the same init wiring a real operator runs.
+    let (status, _stdout, stderr) = run_loom_raw(&["init", graph.to_str().unwrap()]);
+    assert!(
+        status.success(),
+        "loom init <path> must succeed: {status:?}\n--stderr--\n{stderr}"
+    );
+
+    // set max_args to a non-default value (default is 6) via the binary.
+    run_cli(graph, &["threshold", "set", "max_args", "8"]);
+
+    // threshold list --json reflects the set value.
+    let listed = run_cli_json(graph, &["threshold", "list"]);
+    assert_eq!(
+        listed["max_args"], 8,
+        "threshold list --json reports the persisted max_args=8: {listed}"
+    );
+
+    // The portable config key appears in the snapshot after set. Open the store
+    // in a short block and drop it before the next CLI call — Store::open takes
+    // the write lock, and holding it across a child `threshold reset` would
+    // make the CLI contend on the locked graph.
+    {
+        let store = Store::open(graph).expect("open the graph the binary inited");
+        let snap = store.snapshot().expect("snapshot reads the live config");
+        assert!(
+            snap.config.contains_key("thresholds"),
+            "snapshot().config carries the 'thresholds' portable key after set: {:?}",
+            snap.config.keys().collect::<Vec<_>>()
+        );
+    }
+
+    // threshold reset (all gates) drops the config entirely — absent = defaults,
+    // not a pinned snapshot of today's values. A regression that wrote the
+    // default values instead of removing the key would leave it present here.
+    run_cli(graph, &["threshold", "reset"]);
+
+    {
+        let store = Store::open(graph).expect("open the graph after reset");
+        let snap = store.snapshot().expect("snapshot after reset");
+        assert!(
+            !snap.config.contains_key("thresholds"),
+            "after `threshold reset` the 'thresholds' key is gone (absent = defaults), \
+             still present: {:?}",
+            snap.config.get("thresholds")
+        );
+    }
+
+    // The CLI's `>= 1` guard (lives in the handler, not the API) rejects 0 with
+    // a non-zero exit — 0 would flag every symbol/file.
+    let (status, _stdout, stderr) = run_cli_raw(graph, &["threshold", "set", "max_args", "0"]);
+    assert!(
+        !status.success(),
+        "threshold set max_args 0 must exit non-zero, got {status:?}\n--stderr--\n{stderr}"
+    );
+    assert!(
+        stderr.contains(">= 1") || stderr.contains("must be >= 1"),
+        "the zero-value error names the >= 1 guard: {stderr}"
+    );
+
+    // An unknown gate must exit non-zero with a message naming the gate.
+    let (status, _stdout, stderr) = run_cli_raw(graph, &["threshold", "set", "max_bogus", "3"]);
+    assert!(
+        !status.success(),
+        "threshold set max_bogus 3 must exit non-zero, got {status:?}\n--stderr--\n{stderr}"
+    );
+    assert!(
+        stderr.contains("max_bogus"),
+        "the unknown-gate error names the offending gate: {stderr}"
     );
 }

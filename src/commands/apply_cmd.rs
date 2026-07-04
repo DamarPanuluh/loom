@@ -2,13 +2,15 @@
 //!
 //! Plane: orchestration. Collapses the many single-mutation CLI calls an agent
 //! makes per work session (intent add ×N, edge implement ×N, edge relate, edge
-//! verdict ×N) into ONE transaction, so maintaining the graph costs one call,
-//! not N — the churn the whole exercise is aimed at.
+//! verdict ×N, finding verdict ×N, vocab add ×N, intent tag ×N) into ONE
+//! transaction, so maintaining the graph costs one call, not N — the churn the
+//! whole exercise is aimed at.
 //!
-//! Every mutation goes through the SAME store write boundary the individual
-//! commands use: the intent gates in `create_intent`, the edge-kind registry and
-//! lane gate in `add_edge`, and the evidence gates (INV-4/6) plus the
-//! asserted/derived wall (INV-5) in `record_verdict`. Nothing here re-implements
+//! Every mutation goes through the SAME write boundary the individual commands
+//! use: the intent gates in `create_intent`, the edge-kind registry and lane
+//! gate in `add_edge`, the evidence gates (INV-4/6) plus the asserted/derived
+//! wall (INV-5) in `record_verdict`, and the shared `adjudicate_finding` /
+//! `tag_intent` gates for finding verdicts and tags. Nothing here re-implements
 //! a check, so a batch can never accept what the per-verb command would reject.
 //!
 //! Atomicity: the whole batch runs inside one `store.begin()` transaction. A
@@ -39,9 +41,10 @@ fn default_confidence() -> f64 {
     0.9
 }
 
-/// One batch. Every section is optional and applied in order — intents first,
-/// so groundings/relationships/verdicts later in the same batch can reference an
-/// intent this batch just created (by name).
+/// One batch. Every section is optional and applied in dependency order — vocab
+/// first, then intents, then groundings/relationships/verdicts/adjudications,
+/// and tags last — so a later section can reference an intent or term (by name)
+/// that an earlier section in the same batch created.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ApplyTx {
@@ -53,6 +56,12 @@ struct ApplyTx {
     relationships: Vec<RelationSpec>,
     #[serde(default)]
     verdicts: Vec<VerdictSpec>,
+    #[serde(default)]
+    adjudications: Vec<AdjudicationSpec>,
+    #[serde(default)]
+    vocab: Vec<VocabSpec>,
+    #[serde(default)]
+    tags: Vec<TagSpec>,
 }
 
 /// Mirrors `loom intent add` (same defaults: level=feature, lifecycle=planned).
@@ -138,6 +147,40 @@ struct VerdictBody {
     confidence: f64,
 }
 
+/// A durable adjudication on a materialized finding (a smell or scan finding),
+/// addressed by id or unique id-prefix. Mirrors `loom finding verdict`: the same
+/// gate (verdict ∈ justified|needed|blocked, substantive reason) runs in
+/// `adjudicate_finding`, so a batch can never accept what the CLI would reject.
+/// The finding must already exist (materialized by a prior `loom sync`).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AdjudicationSpec {
+    finding: String,
+    verdict: String,
+    reason: String,
+}
+
+/// A vocabulary term to register (idempotent), mirroring `loom vocab add`.
+/// `why` is the optional term description.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct VocabSpec {
+    term: String,
+    #[serde(default)]
+    why: String,
+}
+
+/// Tag an intent (by name or id) with registered vocab terms, mirroring
+/// `loom intent tag add`. The same gate (term must be registered) runs in
+/// `tag_intent`; list the term in a `vocab` entry earlier in the same batch to
+/// register and apply it in one call — the "arm the duplicate detector" flow.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TagSpec {
+    intent: String,
+    terms: Vec<String>,
+}
+
 /// What a batch did. Emitted as the JSON result; `intent_ids` hands the agent
 /// the ids of intents it just created so a follow-up need not re-resolve them.
 #[derive(Debug, Default, Serialize)]
@@ -146,6 +189,9 @@ struct ApplyReport {
     groundings: usize,
     relationships: usize,
     verdicts: usize,
+    adjudications: usize,
+    vocab: usize,
+    tags: usize,
     intent_ids: std::collections::BTreeMap<String, String>,
 }
 
@@ -170,8 +216,14 @@ pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()>
     payload["reexported"] = serde_json::json!(reexported);
     pulse::emit(&store, json, payload, "loom sync", || {
         println!(
-            "applied: {} intent(s), {} grounding(s), {} relationship(s), {} verdict(s)",
-            report.intents_added, report.groundings, report.relationships, report.verdicts
+            "applied: {} intent(s), {} grounding(s), {} relationship(s), {} verdict(s), {} adjudication(s), {} vocab term(s), {} tag(s)",
+            report.intents_added,
+            report.groundings,
+            report.relationships,
+            report.verdicts,
+            report.adjudications,
+            report.vocab,
+            report.tags
         );
         for (name, id) in &report.intent_ids {
             println!("  + intent '{}' [{}]", name, &id[..8.min(id.len())]);
@@ -191,6 +243,12 @@ pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()>
 /// rolled-back batch tells the agent exactly which entry to fix.
 fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
     let mut report = ApplyReport::default();
+    for v in &spec.vocab {
+        store
+            .add_vocab_term(&v.term, &v.why)
+            .with_context(|| format!("vocab term '{}'", v.term))?;
+        report.vocab += 1;
+    }
 
     for i in &spec.intents {
         let args = IntentAddArgs {
@@ -301,6 +359,18 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
         .with_context(|| format!("verdict on edge '{}'", v.edge))?;
         report.verdicts += 1;
     }
+    for a in &spec.adjudications {
+        super::diagnostics_cmd::adjudicate_finding(store, &a.finding, &a.verdict, &a.reason)
+            .with_context(|| format!("adjudication for finding '{}'", a.finding))?;
+        report.adjudications += 1;
+    }
+    for t in &spec.tags {
+        for term in &t.terms {
+            super::intent::tag_intent(store, &t.intent, term)
+                .with_context(|| format!("tag '{}' on intent '{}'", term, t.intent))?;
+            report.tags += 1;
+        }
+    }
 
     Ok(report)
 }
@@ -345,13 +415,13 @@ fn read_apply(path: &Path) -> Result<ApplyTx> {
     match path.extension().and_then(|e| e.to_str()) {
         Some("yaml") | Some("yml") => serde_yaml::from_str(&text).with_context(|| {
             format!(
-                "parsing apply batch {} (YAML: keys intents/groundings/relationships/verdicts)",
+                "parsing apply batch {} (YAML: keys intents/groundings/relationships/verdicts/adjudications/vocab/tags)",
                 path.display()
             )
         }),
         _ => serde_json::from_str(&text).with_context(|| {
             format!(
-                "parsing apply batch {} (JSON: keys intents/groundings/relationships/verdicts)",
+                "parsing apply batch {} (JSON: keys intents/groundings/relationships/verdicts/adjudications/vocab/tags)",
                 path.display()
             )
         }),

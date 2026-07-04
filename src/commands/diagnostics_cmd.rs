@@ -149,6 +149,25 @@ fn finding_list(
     }
     Ok(())
 }
+/// Validate, resolve, and record a finding adjudication through the single gate
+/// the CLI enforces — verdict vocabulary (`justified|needed|blocked`) plus a
+/// substantive (non-placeholder) reason — returning the resolved finding.
+/// Shared by `loom finding verdict` and the `loom apply` adjudications batch so
+/// the batch can never accept what the per-verb command would reject.
+pub(crate) fn adjudicate_finding(
+    store: &Store,
+    id: &str,
+    verdict: &str,
+    reason: &str,
+) -> Result<crate::model::Node> {
+    validate_finding_verdict(verdict)?;
+    if crate::model::is_placeholder(reason) {
+        bail!("finding verdict requires a substantive reason (not a placeholder like '…' or '<reason>')");
+    }
+    let finding = store.resolve_finding(id)?;
+    store.record_finding_verdict(&finding.id, verdict, reason)?;
+    Ok(finding)
+}
 fn finding_verdict(
     graph: Option<&Path>,
     id: &str,
@@ -156,13 +175,8 @@ fn finding_verdict(
     reason: &str,
     json: bool,
 ) -> Result<()> {
-    validate_finding_verdict(verdict)?;
-    if crate::model::is_placeholder(reason) {
-        bail!("finding verdict requires a substantive --reason (not a placeholder like '…' or '<reason>')");
-    }
     let store = open(graph)?;
-    let finding = store.resolve_finding(id)?;
-    store.record_finding_verdict(&finding.id, verdict, reason)?;
+    let finding = adjudicate_finding(&store, id, verdict, reason)?;
     pulse::emit_line(
         &store,
         json,
@@ -594,7 +608,92 @@ pub(crate) fn calibrate_cmd(graph: Option<&Path>, write: bool, json: bool) -> Re
 
 fn threshold_line(t: &crate::thresholds::Thresholds) -> String {
     format!(
-        "file loc {} | symbol complexity {} | symbol loc {} | nesting {} | args {}",
-        t.max_file_loc, t.max_symbol_complexity, t.max_symbol_loc, t.max_nesting, t.max_args
+        "file loc {} | symbol complexity {} | symbol loc {} | nesting {} | args {} | file owners {}",
+        t.max_file_loc,
+        t.max_symbol_complexity,
+        t.max_symbol_loc,
+        t.max_nesting,
+        t.max_args,
+        t.max_file_owners
     )
+}
+
+/// `loom threshold` — hand-set the structural finding gates (the manual
+/// counterpart to `calibrate`). Values persist to portable `config.thresholds`;
+/// `reset` drops the config so the gate reverts to the shipped default.
+pub(crate) fn threshold_cmd(
+    graph: Option<&Path>,
+    cmd: crate::cli::ThresholdCmd,
+    json: bool,
+) -> Result<()> {
+    use crate::cli::ThresholdCmd;
+    match cmd {
+        ThresholdCmd::List => {
+            let store = open_read(graph)?;
+            let t = crate::thresholds::load(&store)?;
+            if json {
+                let obj: serde_json::Map<String, serde_json::Value> = t
+                    .pairs()
+                    .into_iter()
+                    .map(|(k, v)| (k.to_string(), serde_json::json!(v)))
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&obj)?);
+            } else {
+                for (gate, value) in t.pairs() {
+                    println!("{gate:<24} {value}");
+                }
+            }
+            Ok(())
+        }
+        ThresholdCmd::Set { gate, value } => {
+            if value == 0 {
+                bail!("threshold value must be >= 1 (0 would flag every symbol/file)");
+            }
+            let store = open(graph)?;
+            let mut t = crate::thresholds::load(&store)?;
+            t.set_gate(&gate, value)?;
+            crate::thresholds::save(&store, &t)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "gate": gate, "value": value }),
+                "loom sync",
+                format!("threshold {gate} = {value}"),
+            )
+        }
+        ThresholdCmd::Reset { gate } => {
+            let store = open(graph)?;
+            match gate {
+                Some(gate) => {
+                    let mut t = crate::thresholds::load(&store)?;
+                    t.reset_gate(&gate)?;
+                    // If every gate is back to default, drop the config entirely
+                    // so it reverts to "absent = shipped default" rather than a
+                    // pinned snapshot.
+                    if t == crate::thresholds::Thresholds::default() {
+                        crate::thresholds::clear(&store)?;
+                    } else {
+                        crate::thresholds::save(&store, &t)?;
+                    }
+                    pulse::emit_line(
+                        &store,
+                        json,
+                        serde_json::json!({ "reset": gate }),
+                        "loom sync",
+                        format!("threshold {gate} reset to default"),
+                    )
+                }
+                None => {
+                    crate::thresholds::clear(&store)?;
+                    pulse::emit_line(
+                        &store,
+                        json,
+                        serde_json::json!({ "reset": "all" }),
+                        "loom sync",
+                        "all thresholds reset to shipped defaults".to_string(),
+                    )
+                }
+            }
+        }
+    }
 }

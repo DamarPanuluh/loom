@@ -34,6 +34,10 @@ pub struct Thresholds {
     pub max_nesting: u32,
     /// `excess_args`: declared arguments per callable (receiver excluded).
     pub max_args: u32,
+    /// `tangled_file`: realizing owners per file (graph-shape gate). Hand-set
+    /// only — not part of the `calibrate` fit (owner counts are too small a
+    /// distribution for a stable quantile).
+    pub max_file_owners: usize,
 }
 
 impl Default for Thresholds {
@@ -44,6 +48,7 @@ impl Default for Thresholds {
             max_symbol_loc: 120,
             max_nesting: 5,
             max_args: 6,
+            max_file_owners: 2,
         }
     }
 }
@@ -60,6 +65,79 @@ pub fn load(store: &Store) -> Result<Thresholds> {
 /// Persist thresholds as portable meta.
 pub fn save(store: &Store, t: &Thresholds) -> Result<()> {
     store.set_meta(THRESHOLDS_META_KEY, &serde_json::to_string(t)?)
+}
+
+/// Reset all thresholds by dropping the config, so a later change to the
+/// shipped defaults still takes effect (absence = defaults — never a pinned
+/// snapshot of today's values).
+pub fn clear(store: &Store) -> Result<()> {
+    store.remove_meta(THRESHOLDS_META_KEY)
+}
+
+/// Canonical gate names — the `config.thresholds` JSON keys, in display order.
+pub const GATES: &[&str] = &[
+    "max_file_loc",
+    "max_symbol_complexity",
+    "max_symbol_loc",
+    "max_nesting",
+    "max_args",
+    "max_file_owners",
+];
+
+impl Thresholds {
+    /// Current `(gate, value)` pairs in [`GATES`] order — for display and JSON.
+    pub fn pairs(&self) -> Vec<(&'static str, u64)> {
+        vec![
+            ("max_file_loc", self.max_file_loc as u64),
+            (
+                "max_symbol_complexity",
+                u64::from(self.max_symbol_complexity),
+            ),
+            ("max_symbol_loc", self.max_symbol_loc as u64),
+            ("max_nesting", u64::from(self.max_nesting)),
+            ("max_args", u64::from(self.max_args)),
+            ("max_file_owners", self.max_file_owners as u64),
+        ]
+    }
+
+    /// Set one gate by its canonical name; errors on an unknown gate or a value
+    /// too large for the gate's type (user input, so never a silent truncation).
+    pub fn set_gate(&mut self, gate: &str, value: u64) -> Result<()> {
+        let too_big = || anyhow!("value {value} is too large for gate '{gate}'");
+        let as_u32 = || u32::try_from(value).map_err(|_| too_big());
+        let as_usize = || usize::try_from(value).map_err(|_| too_big());
+        match gate {
+            "max_file_loc" => self.max_file_loc = as_usize()?,
+            "max_symbol_complexity" => self.max_symbol_complexity = as_u32()?,
+            "max_symbol_loc" => self.max_symbol_loc = as_usize()?,
+            "max_nesting" => self.max_nesting = as_u32()?,
+            "max_args" => self.max_args = as_u32()?,
+            "max_file_owners" => self.max_file_owners = as_usize()?,
+            other => bail!(
+                "unknown threshold gate '{other}' — one of: {}",
+                GATES.join(", ")
+            ),
+        }
+        Ok(())
+    }
+
+    /// Reset one gate to its shipped default; errors on an unknown gate.
+    pub fn reset_gate(&mut self, gate: &str) -> Result<()> {
+        let d = Self::default();
+        match gate {
+            "max_file_loc" => self.max_file_loc = d.max_file_loc,
+            "max_symbol_complexity" => self.max_symbol_complexity = d.max_symbol_complexity,
+            "max_symbol_loc" => self.max_symbol_loc = d.max_symbol_loc,
+            "max_nesting" => self.max_nesting = d.max_nesting,
+            "max_args" => self.max_args = d.max_args,
+            "max_file_owners" => self.max_file_owners = d.max_file_owners,
+            other => bail!(
+                "unknown threshold gate '{other}' — one of: {}",
+                GATES.join(", ")
+            ),
+        }
+        Ok(())
+    }
 }
 
 /// A calibration proposal: current gates, repo-fitted values, sample sizes.
@@ -144,6 +222,9 @@ pub fn calibrate(store: &Store, root: &Path) -> Result<Calibration> {
             f64::from(current.max_nesting),
         ) as u32,
         max_args: fitted(&mut args, MIN_ARGS, 1.0, f64::from(current.max_args)) as u32,
+        // Not fitted: owner counts are too small a distribution for a stable
+        // quantile. Preserve the operator's setting (or the default) verbatim.
+        max_file_owners: current.max_file_owners,
     };
     Ok(Calibration {
         current,
@@ -231,6 +312,7 @@ mod tests {
         assert_eq!(t.max_symbol_loc, 120, "default max_symbol_loc is 120");
         assert_eq!(t.max_nesting, 5, "default max_nesting is 5");
         assert_eq!(t.max_args, 6, "default max_args is 6");
+        assert_eq!(t.max_file_owners, 2, "default max_file_owners is 2");
     }
 
     #[test]
@@ -244,6 +326,7 @@ mod tests {
             max_symbol_loc: 88,
             max_nesting: 3,
             max_args: 9,
+            max_file_owners: 4,
         };
         save(&store, &t).expect("save persists thresholds");
         let back = load(&store).expect("load reads saved thresholds");
@@ -283,5 +366,210 @@ mod tests {
             msg.contains("max_argz") || msg.contains("unknown field"),
             "error surfaces the offending field: {msg}"
         );
+    }
+    // Contract 1: set_gate on a default Thresholds sets the named gate to the
+    // given value AND leaves every other gate at its default — proving the
+    // match arm touched exactly one field, not a neighbor by mistake. Covers all
+    // 6 gates (both u32 and usize arms) with distinct non-default values; a
+    // flipped match arm (e.g. setting max_nesting when handed "max_args") or a
+    // dropped arm reddens the whole-struct equality.
+    #[test]
+    fn set_gate_sets_one_field_and_leaves_the_rest_at_default() {
+        let d = Thresholds::default();
+
+        type Case = (&'static str, u64, fn(&Thresholds) -> Thresholds);
+        let cases: &[Case] = &[
+            ("max_file_loc", 999, |t| Thresholds {
+                max_file_loc: 999,
+                ..*t
+            }),
+            ("max_symbol_complexity", 33, |t| Thresholds {
+                max_symbol_complexity: 33,
+                ..*t
+            }),
+            ("max_symbol_loc", 250, |t| Thresholds {
+                max_symbol_loc: 250,
+                ..*t
+            }),
+            ("max_nesting", 11, |t| Thresholds {
+                max_nesting: 11,
+                ..*t
+            }),
+            ("max_args", 8, |t| Thresholds { max_args: 8, ..*t }),
+            ("max_file_owners", 7, |t| Thresholds {
+                max_file_owners: 7,
+                ..*t
+            }),
+        ];
+        for &(gate, value, mutate) in cases {
+            let mut t = Thresholds::default();
+            t.set_gate(gate, value)
+                .unwrap_or_else(|e| panic!("set_gate({gate}, {value}) should be Ok: {e}"));
+            assert_eq!(
+                t,
+                mutate(&d),
+                "only {gate} moves; every other gate keeps its default"
+            );
+        }
+    }
+
+    // Contract 2: an unknown gate name errors AND leaves the struct untouched —
+    // a typo must never mutate a field or silently succeed. The error must name
+    // the offending gate so the operator can correct it.
+    #[test]
+    fn set_gate_unknown_gate_errors_and_leaves_struct_unchanged() {
+        let mut t = Thresholds::default();
+        let before = t;
+        let err = t
+            .set_gate("max_bogus", 5)
+            .expect_err("an unknown gate must error, not silently no-op");
+        assert_eq!(t, before, "failed set must not mutate any field");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("max_bogus"),
+            "error names the offending gate: {msg}"
+        );
+    }
+
+    // Contract 3: the per-type checked conversion rejects a value too large for
+    // a u32 gate (no silent truncation), while the SAME value fits a 64-bit usize
+    // gate on this target — pinning that the bound is per-type, not a blanket
+    // rejection of large values. A blanket `value > u32::MAX` guard reddens the
+    // usize Ok branch; dropping the `try_from` reddens the u32 Err branch.
+    #[test]
+    fn set_gate_overflow_is_per_type_not_blanket() {
+        let over_u32 = u64::from(u32::MAX) + 1;
+
+        let mut t = Thresholds::default();
+        let before = t;
+        t.set_gate("max_args", over_u32)
+            .expect_err("u32 gate rejects u32::MAX + 1 (no silent truncation)");
+        assert_eq!(t, before, "failed overflow set must not mutate any field");
+
+        let mut t = Thresholds::default();
+        t.set_gate("max_file_loc", over_u32)
+            .expect("on a 64-bit target usize accepts u32::MAX + 1");
+        assert_eq!(
+            t.max_file_loc, over_u32 as usize,
+            "usize gate stores the large value unchanged"
+        );
+    }
+
+    // Contract 4: reset_gate restores one gate to its shipped default (not zero,
+    // not the current value), and errors on an unknown gate without mutating.
+    #[test]
+    fn reset_gate_restores_default_and_errors_on_unknown() {
+        let d = Thresholds::default();
+
+        let mut t = Thresholds { max_args: 99, ..d };
+        t.reset_gate("max_args")
+            .expect("reset_gate on a known gate");
+        assert_eq!(t.max_args, d.max_args, "reset returns the shipped default");
+        assert_eq!(t, d, "after reset the struct equals the full default");
+
+        let mut t = Thresholds {
+            max_file_loc: 1,
+            ..d
+        };
+        let before = t;
+        let err = t
+            .reset_gate("max_bogus")
+            .expect_err("reset_gate on an unknown gate must error");
+        assert_eq!(t, before, "failed reset must not mutate any field");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("max_bogus"),
+            "error names the offending gate: {msg}"
+        );
+    }
+
+    // Contract 5: pairs() returns exactly the 6 canonical gates in GATES order,
+    // and the values reflect the live struct — a mutated gate shows through.
+    // A reordered/shortened/lengthened vec, or a stale value, reddens this.
+    #[test]
+    fn pairs_match_gates_order_and_reflect_mutations() {
+        let d = Thresholds::default();
+        let pairs = d.pairs();
+        let names: Vec<&str> = pairs.iter().map(|(k, _)| *k).collect();
+        assert_eq!(names, GATES, "pairs() emits GATES in order");
+        assert_eq!(
+            pairs.len(),
+            GATES.len(),
+            "pairs() emits exactly the 6 gates"
+        );
+
+        let mut t = d;
+        t.set_gate("max_args", 42).unwrap();
+        let pairs = t.pairs();
+        let args = pairs
+            .iter()
+            .find(|(k, _)| *k == "max_args")
+            .expect("max_args pair present");
+        assert_eq!(args.1, 42, "pairs() reflects the mutated value");
+        // the other five pairs still carry their defaults
+        for (gate, val) in pairs.iter().filter(|(k, _)| *k != "max_args") {
+            let expected = match *gate {
+                "max_file_loc" => d.max_file_loc as u64,
+                "max_symbol_complexity" => u64::from(d.max_symbol_complexity),
+                "max_symbol_loc" => d.max_symbol_loc as u64,
+                "max_nesting" => u64::from(d.max_nesting),
+                "max_file_owners" => d.max_file_owners as u64,
+                _ => panic!("unexpected gate in pairs(): {gate}"),
+            };
+            assert_eq!(*val, expected, "untouched gate {gate} keeps its default");
+        }
+    }
+
+    // Contract 6: clear() drops the thresholds meta key so load() falls back to
+    // the shipped defaults — a true fallback, not a pinned snapshot of the values
+    // that were saved. A clear that wrote `default` instead of removing the key
+    // would still pass load()==default today but would pin the values forever;
+    // this test asserts the KEY is gone (absent = defaults), not just the values.
+    #[test]
+    fn clear_drops_meta_key_so_load_falls_back_to_default() {
+        let (_tmp, store) = fresh_store();
+        let non_default = Thresholds {
+            max_args: 17,
+            ..Thresholds::default()
+        };
+        save(&store, &non_default).expect("save persists a non-default config");
+        let back = load(&store).expect("load reads the saved config");
+        assert_eq!(back, non_default, "save then load round-trips before clear");
+
+        clear(&store).expect("clear drops the thresholds meta key");
+        // Directly assert the KEY is gone — a clear that wrote `default` JSON
+        // instead of removing the key would still pass load()==default but
+        // would pin the values forever (a future default change would not take
+        // effect). Absence is the contract; this reddens a "write default"
+        // regression that the load()==default assertion alone would miss.
+        assert!(
+            store
+                .get_meta(THRESHOLDS_META_KEY)
+                .expect("get_meta reads the thresholds key")
+                .is_none(),
+            "clear removes the thresholds key (absent = defaults), not writes default JSON"
+        );
+        let after = load(&store).expect("load after clear yields defaults");
+        assert_eq!(
+            after,
+            Thresholds::default(),
+            "clear reverts to the shipped defaults via absence"
+        );
+    }
+
+    // Contract 7: the equality the CLI relies on to decide clear-vs-save —
+    // after reset_gate on the one gate that was away from default, the struct
+    // equals Thresholds::default(). A reset_gate that set the field to zero (or
+    // left it) instead of the shipped default reddens this.
+    #[test]
+    fn reset_gate_to_default_equals_full_default() {
+        let d = Thresholds::default();
+        let mut t = Thresholds {
+            max_nesting: 99,
+            ..d
+        };
+        t.reset_gate("max_nesting")
+            .expect("reset the one non-default gate");
+        assert_eq!(t, d, "after reset the struct equals Thresholds::default()");
     }
 }

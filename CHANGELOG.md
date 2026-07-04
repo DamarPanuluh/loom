@@ -8,6 +8,15 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.17.0] - 2026-07-04
+- loom apply gains adjudications/vocab/tags batch sections — durable finding verdicts, vocab registration, and intent tagging in one atomic transaction, each through the same gate as loom finding verdict / vocab add / intent tag add (shared adjudicate_finding + tag_intent); applied in dependency order (vocab first, tags last)
+
+## [0.16.2] - 2026-07-04
+- Add loom threshold list/set/reset — hand-set the structural finding gates as portable config.thresholds (manual counterpart to calibrate); reset drops the key so gates revert to shipped defaults rather than a pinned snapshot; checked value conversions, calibrate output now shows max_file_owners
+
+## [0.16.1] - 2026-07-04
+- Make the tangled_file owner-count gate configurable: TANGLE_OWNERS const becomes Thresholds.max_file_owners (default 2, strict > — behavior-identical to the old >=3), portable in config.thresholds; calibrate preserves it rather than fitting owner counts
+
 ## [0.16.0] - 2026-07-04
 - Detector deepening: per-symbol metrics (arg count, nesting depth; complexity now computed for Python/Go/JS/TS), new large_symbol/deep_nesting/excess_args findings, thresholds as portable config with loom calibrate (repo-fitted gates from the worst-tail quantile), scan adapters gain --format json (field=path maps, dotted paths, items= envelopes — pulse/qualirs-ready)
 

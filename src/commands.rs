@@ -115,6 +115,9 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Calibrate { write } => {
             diagnostics_cmd::calibrate_cmd(cli.graph.as_deref(), write, cli.json)
         }
+        Command::Threshold { cmd } => {
+            diagnostics_cmd::threshold_cmd(cli.graph.as_deref(), cmd, cli.json)
+        }
         Command::Completeness { key } => {
             diagnostics_cmd::completeness_cmd(cli.graph.as_deref(), key.as_deref(), cli.json)
         }

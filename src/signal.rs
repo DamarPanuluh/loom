@@ -97,8 +97,6 @@ pub fn smell_is_justified(store: &Store, identity: &str) -> Result<bool> {
     Ok(matches!(adjudication_of(store, &id)?, Some((v, _)) if v == "justified"))
 }
 
-const TANGLE_OWNERS: usize = 3;
-
 // ---- smells ----------------------------------------------------------------
 
 pub fn smells(store: &Store) -> Result<Vec<Smell>> {
@@ -135,8 +133,9 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         .collect();
     let tags_by_intent = tags_by_node(&snap);
 
+    let thresholds = crate::thresholds::load(store)?;
     let mut out = Vec::new();
-    out.extend(ownership_smells(&snap, &owners));
+    out.extend(ownership_smells(&snap, &owners, thresholds.max_file_owners));
     out.extend(consumer_owned_file_smells(&snap, &owners));
     out.extend(undeclared_coupling_smells(
         &snap,
@@ -206,15 +205,16 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
         .collect()
 }
 
-/// tangled files (>= N owners) and overlapping ownership (exactly 2 owners with
-/// no relationship recorded between them).
+/// tangled files (more than `max_owners` realizing owners) and overlapping
+/// ownership (exactly 2 owners with no relationship recorded between them).
 fn ownership_smells<'a>(
     snap: &'a Snapshot,
     owners: &BTreeMap<&'a str, Vec<&'a str>>,
+    max_owners: usize,
 ) -> Vec<Smell> {
     let mut out = Vec::new();
     for (cf, ids) in owners {
-        if ids.len() >= TANGLE_OWNERS {
+        if ids.len() > max_owners {
             out.push(Smell {
                 kind: "tangled_file".into(),
                 message: format!(
