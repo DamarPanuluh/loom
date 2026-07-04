@@ -347,3 +347,64 @@ fn resolve_edge_by_prefix_or_errors() {
         .unwrap();
     assert!(store.resolve_edge("").is_err());
 }
+
+#[test]
+fn build_queue_serves_prerequisites_before_dependents() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // Names chosen so the DEPENDENT sorts FIRST by name — proving readiness,
+    // not alphabetical rank, decides what the build lane serves.
+    let dependent = intent(&store, "aaa dependent behavior");
+    let prereq = intent(&store, "zzz base prerequisite");
+    store
+        .add_edge(
+            EdgeKind::Requires,
+            &dependent,
+            &prereq,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    // The prerequisite is served first, even though the dependent sorts earlier.
+    let item = workitem::next(&store, Some(Mode::Build))
+        .unwrap()
+        .expect("a build item");
+    assert_eq!(
+        item.target.id, prereq,
+        "build lane serves the prerequisite before the intent that requires it"
+    );
+
+    // Once the prerequisite is implemented, the dependent becomes ready.
+    store.set_node_status(&prereq, "implemented").unwrap();
+    let item = workitem::next(&store, Some(Mode::Build))
+        .unwrap()
+        .expect("a build item");
+    assert_eq!(
+        item.target.id, dependent,
+        "the dependent is served once its prerequisite is implemented"
+    );
+}
+
+#[test]
+fn build_queue_does_not_stall_on_a_requires_cycle() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = intent(&store, "alpha ring");
+    let b = intent(&store, "beta ring");
+    store
+        .add_edge(EdgeKind::Requires, &a, &b, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Requires, &b, &a, TruthClass::Asserted)
+        .unwrap();
+    // Neither is ready (each requires the other), but the lane must not stall:
+    // it serves the top-ranked candidate carrying a blocked reason.
+    let item = workitem::next(&store, Some(Mode::Build))
+        .unwrap()
+        .expect("a build item even under a requires cycle");
+    assert!(
+        item.reason.starts_with("blocked: requires"),
+        "a fully-blocked candidate is served with a blocked reason, got: {}",
+        item.reason
+    );
+}

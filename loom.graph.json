@@ -2099,7 +2099,7 @@
       "id": "d50a4490590dba276",
       "type": "finding",
       "name": "src/workitem/queues.rs is oversized",
-      "description": "728 lines (> 600)",
+      "description": "769 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2136,7 +2136,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.475Z",
-      "updated_at": "2026-07-04T10:14:59.367Z"
+      "updated_at": "2026-07-04T12:44:49.835Z"
     },
     {
       "id": "d54ef797dcd2aaf2b",
@@ -4080,7 +4080,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.476Z",
-      "updated_at": "2026-07-04T10:05:13.911Z"
+      "updated_at": "2026-07-04T12:44:49.834Z"
     },
     {
       "id": "38803977942c36aa0ea17e5ea141d64d",
@@ -4749,13 +4749,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the intent's behavior still lives in this file after the refactor; the locator resolves to a live symbol performing it",
-      "evidence": "'the next router serves the highest-priority asserted residue with a prompt contract' still realized by src/workitem/queues.rs: behavior preserved across the fmt/seam refactor, 329 tests green",
+      "criterion": "the next-router behavior still lives in queues.rs and the locator resolves to a live symbol performing it",
+      "evidence": "src/workitem/queues.rs build_item + per-lane selectors realize the router; the requires-aware prerequisite ordering is additive (serve prereq first / blocked reason); ring3 build_queue tests + next-router proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.606Z",
-      "updated_at": "2026-07-04T09:55:40.722Z"
+      "updated_at": "2026-07-04T12:44:50.664Z"
     },
     {
       "id": "9d9507c0c1747716a3158a538fb6660d",
@@ -7742,7 +7742,7 @@
       "target_id": "47918106bbfae818082856d855e11154",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "dbf6bf72ebcb2913",
+      "value": "d854618e611551bf",
       "truth_class": "derived"
     },
     {
@@ -7763,7 +7763,7 @@
       "target_id": "47918106bbfae818082856d855e11154",
       "target_kind": "node",
       "key": "loc",
-      "value": "728",
+      "value": "769",
       "truth_class": "derived"
     },
     {
@@ -7777,7 +7777,7 @@
       "target_id": "47918106bbfae818082856d855e11154",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "16",
+      "value": "17",
       "truth_class": "derived"
     },
     {
@@ -9786,7 +9786,7 @@
       "target_id": "d50a4490590dba276",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-04T10:22:08.775Z\",\"hash\":\"dbf6bf72ebcb2913\",\"reason\":\"src/workitem/queues.rs is the work-item queue routing (one router, per-lane selectors); its length is intentional (declarative/cohesive family), a single responsibility — not tangled logic to split\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T12:44:50.703Z\",\"hash\":\"d854618e611551bf\",\"reason\":\"src/workitem/queues.rs is the work-item queue routing (one router with a per-lane selector each); its length is intentional cohesion, not tangled logic to split\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {

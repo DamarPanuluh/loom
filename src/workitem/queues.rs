@@ -12,6 +12,22 @@ use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 
+/// Prerequisites (`requires` targets) of `intent_id` that are not yet realized.
+/// Matches the completeness prerequisites axis exactly — a target is unmet
+/// unless its status is `implemented` — so the build lane and the scorecard
+/// agree on when a dependent is ready to build.
+fn unmet_prerequisites(store: &Store, intent_id: &str) -> Result<Vec<String>> {
+    let mut unmet = Vec::new();
+    for e in store.edges_with(Some(EdgeKind::Requires), Some(intent_id), None)? {
+        if let Some(target) = store.get_node(&e.to_id)? {
+            if target.status != "implemented" {
+                unmet.push(format!("'{}' ({})", target.name, target.status));
+            }
+        }
+    }
+    Ok(unmet)
+}
+
 pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
     let mut intents = store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
     // needs_change before planned; then stable by name.
@@ -20,10 +36,35 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
             .cmp(&rank_lifecycle(&b.status))
             .then(a.name.cmp(&b.name))
     });
-    let Some(intent) = intents.into_iter().next() else {
-        return Ok(None);
+    // Serve a prerequisite before the intent that `requires` it: prefer the
+    // highest-ranked candidate whose prerequisites are all implemented. If every
+    // candidate is blocked (a requires cycle, or all deps still pending), fall
+    // back to the top-ranked one carrying a blocked reason — never stall the lane.
+    let mut blocked: Option<(Node, String)> = None;
+    let mut ready: Option<Node> = None;
+    for intent in intents {
+        let unmet = unmet_prerequisites(store, &intent.id)?;
+        if unmet.is_empty() {
+            ready = Some(intent);
+            break;
+        } else if blocked.is_none() {
+            let reason = format!(
+                "blocked: requires {} — build the prerequisite(s) first, or break the requires cycle",
+                unmet.join(", ")
+            );
+            blocked = Some((intent, reason));
+        }
+    }
+    let (intent, reason) = match ready {
+        Some(i) => {
+            let reason = format!("intent is {} and not yet realized", i.status);
+            (i, reason)
+        }
+        None => match blocked {
+            Some(pair) => pair,
+            None => return Ok(None),
+        },
     };
-    let reason = format!("intent is {} and not yet realized", intent.status);
     Ok(Some(WorkItem {
         mode: "build".into(),
         owner_role: "builder".into(),

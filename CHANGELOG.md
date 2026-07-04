@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.19.0] - 2026-07-04
+- Build lane is requires-aware: serve a prerequisite before the intent that requires it (unmet = a requires target not yet implemented, matching the completeness prerequisites axis); a fully-blocked candidate is served with a blocked reason so a requires cycle never stalls the lane
+
 ## [0.18.0] - 2026-07-04
 - Domain-blind engine core: extraction+scan behind a Deriver seam (sync orchestrates seed derivers), proofs behind a ProofRunner seam, exports behind a Projection seam, code files behind an ArtifactClass ground-artifact contract, truth-class membership as declared registry data, evidence policy as portable config with the new loom policy command, and a derived-floor balance surfaced in loom status
 
