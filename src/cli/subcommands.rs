@@ -927,3 +927,39 @@ pub enum PolicyCmd {
     /// Reset the whole policy to the shipped defaults (drops the config).
     Reset,
 }
+
+#[derive(Subcommand, Debug)]
+pub enum WikiCmd {
+    /// Plan (create or re-ground) a draft wiki page and the intents it will
+    /// document. Leaves it `draft` for `wiki next`; write the prose, then
+    /// `wiki record`.
+    Plan {
+        /// Page title (its stable name).
+        title: String,
+        /// Output path for the authored markdown (e.g. docs/wiki/architecture.md).
+        #[arg(long)]
+        path: String,
+        /// An intent this page documents (repeatable: --covers A --covers B).
+        #[arg(long = "covers")]
+        covers: Vec<String>,
+    },
+    /// Mark an authored page fresh — stamp the scope fingerprint of everything it
+    /// documents (the prose must already be written at the page's path).
+    Record {
+        /// Page title.
+        title: String,
+    },
+    /// Emit a brief for the next page that needs writing (a draft, or a stale
+    /// page whose documented scope drifted).
+    Next,
+    /// List wiki pages and their freshness.
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+    /// Remove a wiki page by title.
+    Remove {
+        /// Page title.
+        title: String,
+    },
+}

@@ -16,7 +16,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.177Z",
-      "updated_at": "2026-07-04T10:14:29.427Z"
+      "updated_at": "2026-07-04T14:20:47.969Z"
     },
     {
       "id": "0652b3fa5729d559d29b79973e43fb71",
@@ -430,6 +430,17 @@
       "updated_at": "2026-07-03T21:47:11.103Z"
     },
     {
+      "id": "3ec823838ef43828ed20cd680f074dc0",
+      "type": "codefile",
+      "name": "src/commands/wiki.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-04T14:16:19.761Z",
+      "updated_at": "2026-07-04T14:16:19.761Z"
+    },
+    {
       "id": "408967614e3d396966799356a6bb195b",
       "type": "codefile",
       "name": "src/commands/edge.rs",
@@ -817,7 +828,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.459Z",
-      "updated_at": "2026-07-04T10:14:58.158Z"
+      "updated_at": "2026-07-04T14:20:48.255Z"
     },
     {
       "id": "7175976eaa4a9b3756aec88828525b4b",
@@ -831,7 +842,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.311Z",
-      "updated_at": "2026-07-04T10:14:38.394Z"
+      "updated_at": "2026-07-04T14:20:49.828Z"
     },
     {
       "id": "72319b76e4265fa8cd4b721b11db8cbf",
@@ -1141,6 +1152,19 @@
       "updated_at": "2026-07-04T09:20:06.178Z"
     },
     {
+      "id": "9609feb0dd75e1726ad48c74e2e74d93",
+      "type": "intent",
+      "name": "the wiki command projects reader-first docs and tracks freshness",
+      "description": "loom wiki plan/next/record/list/remove ground a page in the intents it documents, emit a verified brief for the writer, and mark it fresh; sync stales a page when a documented intent, its code, or its proof drifts. The graph governs truth and freshness; an agent writes the reader-first prose.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-04T14:19:18.498Z",
+      "updated_at": "2026-07-04T14:19:18.498Z"
+    },
+    {
       "id": "96f73dcbb8d368d76e5ff0504cb815a6",
       "type": "codefile",
       "name": "src/extract/metrics.rs",
@@ -1212,7 +1236,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.353Z",
-      "updated_at": "2026-07-04T13:37:07.587Z"
+      "updated_at": "2026-07-04T14:20:51.802Z"
     },
     {
       "id": "a10348b450a4ef8d27f013cf92b95328",
@@ -1536,7 +1560,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "929 lines (> 600)",
+      "description": "965 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1645,6 +1669,20 @@
       },
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d16ef3b991b6890a9962cda7d4db66be",
+      "type": "validation",
+      "name": "proof: the wiki command projects reader-first docs",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring5 wiki",
+        "type": "test"
+      },
+      "created_at": "2026-07-04T14:20:46.208Z",
+      "updated_at": "2026-07-04T14:20:46.836Z"
     },
     {
       "id": "d1a19480125aba8ca",
@@ -2047,6 +2085,21 @@
       "body": {
         "kind": "excess_args",
         "symbol": "invariant_add"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4be971da18e29837",
+      "type": "finding",
+      "name": "src/commands/wiki.rs imports src/cli.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:3ec823838ef43828ed20cd680f074dc0:736226be9513d0c8bfdcff2f37caad92",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -3250,7 +3303,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.277Z",
-      "updated_at": "2026-07-04T10:14:36.706Z"
+      "updated_at": "2026-07-04T14:20:52.026Z"
     },
     {
       "id": "dff34aed8e72a96dc",
@@ -3327,7 +3380,7 @@
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.243Z",
-      "updated_at": "2026-07-04T10:14:34.005Z"
+      "updated_at": "2026-07-04T14:20:53.199Z"
     },
     {
       "id": "e8f0b8bb5d27149044ce1ae66151ce6f",
@@ -3669,13 +3722,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the intent's behavior still lives in this file after the refactor; the locator resolves to a live symbol performing it",
-      "evidence": "'changing a file re-opens the asserted edges grounded in it' still realized by src/sync.rs: behavior preserved across the fmt/seam refactor, 329 tests green",
+      "criterion": "sync still re-opens asserted edges grounded in a changed file; the locator resolves to the live ripple",
+      "evidence": "src/sync.rs ripple + run intact; the wiki-staled drift pass is additive (ripple_wiki_drift), ring2 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.082Z",
-      "updated_at": "2026-07-04T09:55:40.720Z"
+      "updated_at": "2026-07-04T14:19:18.503Z"
     },
     {
       "id": "14080d48e5da5f92643f7aa9b2df954e",
@@ -3691,6 +3744,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:58:06.149Z",
       "updated_at": "2026-07-04T09:58:06.150Z"
+    },
+    {
+      "id": "147c8cd9b178bf08fbcc8e4c9ee58885",
+      "from_id": "d16ef3b991b6890a9962cda7d4db66be",
+      "to_id": "9609feb0dd75e1726ad48c74e2e74d93",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring5 wiki` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-04T14:20:46.209Z",
+      "updated_at": "2026-07-04T14:20:46.835Z"
     },
     {
       "id": "175c05b4fc8bf77fe9201743cffae3fc",
@@ -3885,7 +3953,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.278Z",
-      "updated_at": "2026-07-04T10:13:23.940Z"
+      "updated_at": "2026-07-04T14:20:52.026Z"
     },
     {
       "id": "284fdd0787529577231c5651fbbd3b85",
@@ -3969,13 +4037,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
-      "evidence": "src/commands.rs: fn run + fn open + fn unowned_codefiles — run() matches each Command to its handler and defines the shared store-open/coverage helpers",
+      "criterion": "the binary still dispatches each command to its handler",
+      "evidence": "src/commands.rs run() gains one Wiki arm + a wiki module; dispatch otherwise intact, ring11 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.348Z",
-      "updated_at": "2026-07-04T09:44:12.348Z"
+      "updated_at": "2026-07-04T14:19:18.504Z"
     },
     {
       "id": "2dc5a1b4d091c966e6109a36d697762b",
@@ -4239,13 +4307,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
-      "evidence": "src/model.rs: macro str_enum! + struct Node/Edge/Facet + fn is_placeholder — the node/edge/facet types, canonical enums, and placeholder guard live here",
+      "criterion": "the model is still one canonical string-backed vocabulary",
+      "evidence": "src/model.rs adds WikiPage NodeType + Documents EdgeKind via the same str_enum macro; canonical as_str intact, ring1 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.355Z",
-      "updated_at": "2026-07-04T09:44:12.355Z"
+      "updated_at": "2026-07-04T14:19:18.504Z"
     },
     {
       "id": "4f2739f224330033d37a14c9dcfed389",
@@ -4305,7 +4373,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.354Z",
-      "updated_at": "2026-07-04T13:37:07.586Z"
+      "updated_at": "2026-07-04T14:20:51.801Z"
     },
     {
       "id": "5c59e4b76d364c52152f69b51c2448ab",
@@ -4575,7 +4643,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.311Z",
-      "updated_at": "2026-07-04T10:05:17.328Z"
+      "updated_at": "2026-07-04T14:20:49.827Z"
     },
     {
       "id": "826084bfb736b3fb5e4e7617ed3e2206",
@@ -4899,13 +4967,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the CLI subcommand schema still lives in cli/subcommands.rs; the locator resolves to the live enums",
-      "evidence": "src/cli/subcommands.rs JourneyCmd gains a Remove{id} variant; the declarative *Cmd argument schema is otherwise unchanged, ring11 proof green",
+      "criterion": "the CLI subcommand schema still lives in cli/subcommands.rs",
+      "evidence": "src/cli/subcommands.rs adds the WikiCmd enum; declarative *Cmd schema otherwise unchanged, ring11 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.348Z",
-      "updated_at": "2026-07-04T13:38:32.039Z"
+      "updated_at": "2026-07-04T14:19:18.504Z"
     },
     {
       "id": "a697696cd174bac1550b5fd3b7e39836",
@@ -5034,13 +5102,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "a fact kind's truth class is read from a declared mapping at write time, not a hardcoded literal per constructor",
-      "evidence": "src/registry.rs NODE_TRUTH_CLASSES + node_truth_class() declare node classes as data (edge classes already in REGISTRY); src/store/nodes.rs add_node and src/store/derived.rs add_derived_node read node_truth_class() and reject the wrong constructor; node_registry_is_total test guards totality",
+      "criterion": "truth-class membership is still declared registry data read at write time",
+      "evidence": "src/registry.rs adds Documents edge spec + WikiPage node truth-class (Asserted) to the declared tables; totality tests green, ring1 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:23:19.655Z",
-      "updated_at": "2026-07-04T09:23:19.657Z"
+      "updated_at": "2026-07-04T14:19:18.504Z"
     },
     {
       "id": "b2b206c43780c6d2d2af1e6a34a17bc5",
@@ -5235,7 +5303,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.460Z",
-      "updated_at": "2026-07-04T10:04:53.398Z"
+      "updated_at": "2026-07-04T14:20:48.254Z"
     },
     {
       "id": "c45d366763cd60b9cfd1e66de1e83073",
@@ -5385,7 +5453,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.243Z",
-      "updated_at": "2026-07-04T10:13:20.989Z"
+      "updated_at": "2026-07-04T14:20:53.198Z"
     },
     {
       "id": "d067c523b66da3f56",
@@ -6363,6 +6431,21 @@
       "updated_at": ""
     },
     {
+      "id": "dc919121123d772023f11331cd78de0b",
+      "from_id": "dee5b82cf2a0f9cfb402478c2b69f6ee",
+      "to_id": "9609feb0dd75e1726ad48c74e2e74d93",
+      "kind": "hierarchy",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the wiki projection is a behavior within the loom system umbrella's scope",
+      "evidence": "'the wiki command projects reader-first docs and tracks freshness' is a component behavior of the loom falsifiable-graph engine; the parent rolls it up",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-04T14:19:18.503Z",
+      "updated_at": "2026-07-04T14:20:46.173Z"
+    },
+    {
       "id": "dca0388f9b6cecb30",
       "from_id": "d6e14fbb52d4aa2fb",
       "to_id": "d9b35a203478bd583",
@@ -6678,6 +6761,21 @@
       "updated_at": ""
     },
     {
+      "id": "dfd5539ea42ab724a8c84420d94b895a",
+      "from_id": "9609feb0dd75e1726ad48c74e2e74d93",
+      "to_id": "3ec823838ef43828ed20cd680f074dc0",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "the wiki command family lives here: plan grounds a draft page in Documents edges, next emits the verified brief, record gates on the prose existing then stamps the scope fingerprint fresh",
+      "evidence": "src/commands/wiki.rs wiki_plan (reject empty covers, reconcile Documents edges, draft), wiki_next (brief from documented intents' groundings/proofs), wiki_record (prose-exists gate + crate::sync::wiki_scope_hash + fresh); freshness drift in crate::sync::ripple_wiki_drift; ring5 wiki tests green",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-04T14:19:18.502Z",
+      "updated_at": "2026-07-04T14:19:18.503Z"
+    },
+    {
       "id": "e36f65f44f35fd3de67904b692f5486f",
       "from_id": "dee5b82cf2a0f9cfb402478c2b69f6ee",
       "to_id": "456df0ca6bc1db326858653a579fb1f2",
@@ -6735,7 +6833,7 @@
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.177Z",
-      "updated_at": "2026-07-04T10:13:16.528Z"
+      "updated_at": "2026-07-04T14:20:47.969Z"
     },
     {
       "id": "ef48955bb0248edc3361065fd393240e",
@@ -6834,13 +6932,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
-      "evidence": "src/cli.rs: struct Cli + enum Command + enum ModeArg — the top-level command verbs and global flags are declared here",
+      "criterion": "the top-level CLI still enumerates every command verb",
+      "evidence": "src/cli.rs adds the Wiki command variant; Cli/Command otherwise unchanged, ring11 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.347Z",
-      "updated_at": "2026-07-04T09:44:12.347Z"
+      "updated_at": "2026-07-04T14:19:18.504Z"
     },
     {
       "id": "faa11988d5feea645ae59c0e06cb1859",
@@ -6909,13 +7007,13 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
-      "evidence": "src/commands/status_cmd.rs: fn status + fn export_cmd + fn sync_cmd — the status/next/sync/export/import command renderers live here",
+      "criterion": "the status/sync/export commands still render state and route",
+      "evidence": "src/commands/status_cmd.rs sync_cmd adds a wiki_staled field + conditional hint; status/export/import otherwise intact, ring4 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.351Z",
-      "updated_at": "2026-07-04T09:44:12.351Z"
+      "updated_at": "2026-07-04T14:19:18.504Z"
     }
   ],
   "facets": [
@@ -7077,7 +7175,7 @@
       "target_id": "15079355d7d1d5fdf3406fbf027fdbed",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5260ab7eaf6fd3d0",
+      "value": "1f836ebd4181db8c",
       "truth_class": "derived"
     },
     {
@@ -7098,7 +7196,7 @@
       "target_id": "15079355d7d1d5fdf3406fbf027fdbed",
       "target_kind": "node",
       "key": "loc",
-      "value": "446",
+      "value": "453",
       "truth_class": "derived"
     },
     {
@@ -7592,6 +7690,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "3ec823838ef43828ed20cd680f074dc0",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "50f3a2aee250f00c",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3ec823838ef43828ed20cd680f074dc0",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::cli::WikiCmd\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::NodeType\",\"serde_json::Value\",\"serde_json::json\",\"std::path::Path\",\"super::open\",\"super::pulse\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3ec823838ef43828ed20cd680f074dc0",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3ec823838ef43828ed20cd680f074dc0",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "270",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3ec823838ef43828ed20cd680f074dc0",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3ec823838ef43828ed20cd680f074dc0",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "7",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "408967614e3d396966799356a6bb195b",
       "target_kind": "node",
       "key": "content_hash",
@@ -8029,7 +8169,7 @@
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c8273a3a1d51c64f",
+      "value": "eb735ead2744912f",
       "truth_class": "derived"
     },
     {
@@ -8050,7 +8190,7 @@
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "loc",
-      "value": "324",
+      "value": "326",
       "truth_class": "derived"
     },
     {
@@ -8288,7 +8428,7 @@
       "target_id": "736226be9513d0c8bfdcff2f37caad92",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "496e2b0cd5e6e331",
+      "value": "3b95ed9399b42081",
       "truth_class": "derived"
     },
     {
@@ -8309,7 +8449,7 @@
       "target_id": "736226be9513d0c8bfdcff2f37caad92",
       "target_kind": "node",
       "key": "loc",
-      "value": "268",
+      "value": "274",
       "truth_class": "derived"
     },
     {
@@ -8330,7 +8470,7 @@
       "target_id": "75605fb05dc5d2704d552e2ccf8f0bec",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "df1dd29de3382c20",
+      "value": "bd899622d616f6f9",
       "truth_class": "derived"
     },
     {
@@ -8351,7 +8491,7 @@
       "target_id": "75605fb05dc5d2704d552e2ccf8f0bec",
       "target_kind": "node",
       "key": "loc",
-      "value": "319",
+      "value": "328",
       "truth_class": "derived"
     },
     {
@@ -8768,6 +8908,27 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "9609feb0dd75e1726ad48c74e2e74d93",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "happy",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "9609feb0dd75e1726ad48c74e2e74d93",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "9609feb0dd75e1726ad48c74e2e74d93",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "96f73dcbb8d368d76e5ff0504cb815a6",
       "target_kind": "node",
       "key": "content_hash",
@@ -8813,14 +8974,14 @@
       "target_id": "983fbfe52123ec95d1498fed04cf7908",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "142a2f1bc5e61093",
+      "value": "638f8dac7baaf9d7",
       "truth_class": "derived"
     },
     {
       "target_id": "983fbfe52123ec95d1498fed04cf7908",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::GroundingRole\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::collections::BTreeSet\",\"std::path::Path\"]",
+      "value": "[\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::GroundingRole\",\"crate::model::InspectionStatus\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::collections::BTreeSet\",\"std::path::Path\"]",
       "truth_class": "derived"
     },
     {
@@ -8834,7 +8995,7 @@
       "target_id": "983fbfe52123ec95d1498fed04cf7908",
       "target_kind": "node",
       "key": "loc",
-      "value": "401",
+      "value": "464",
       "truth_class": "derived"
     },
     {
@@ -8848,7 +9009,7 @@
       "target_id": "983fbfe52123ec95d1498fed04cf7908",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "8",
+      "value": "10",
       "truth_class": "derived"
     },
     {
@@ -9450,7 +9611,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "9e416892fbccfc98",
+      "value": "b4919516aec6458c",
       "truth_class": "derived"
     },
     {
@@ -9471,7 +9632,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "loc",
-      "value": "929",
+      "value": "965",
       "truth_class": "derived"
     },
     {
@@ -9485,7 +9646,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "25",
+      "value": "26",
       "truth_class": "derived"
     },
     {
@@ -9562,7 +9723,7 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-04T13:38:32.040Z\",\"hash\":\"9e416892fbccfc98\",\"reason\":\"src/cli/subcommands.rs is the declarative clap subcommand-argument tables; its length is intentional (one enum per verb family), not tangled logic to split\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T14:19:18.505Z\",\"hash\":\"b4919516aec6458c\",\"reason\":\"src/cli/subcommands.rs is the declarative clap subcommand-argument tables (one enum per verb family); length is intentional, not tangled logic\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -9625,7 +9786,7 @@
       "target_id": "d1c536c18da49cd39",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-04T10:22:08.782Z\",\"hash\":\"5260ab7eaf6fd3d0\",\"reason\":\"src/commands/status_cmd.rs::status is long: length is a flat sequence of cases/fields (match arms, struct literal, contract text), not nested logic — splitting would fragment one unit\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T14:19:18.505Z\",\"hash\":\"1f836ebd4181db8c\",\"reason\":\"status_cmd::status renders the full status view (maturity rungs, derived floor, queues, ownership) as a flat sequence of prints; length is presentation, not nested logic\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -9759,6 +9920,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-04T10:22:08.779Z\",\"hash\":\"b2d286fc8170549b\",\"reason\":\"src/commands/journey/invariants.rs::invariant_add takes many arguments: the parameters are the distinct inputs this builder/ripple needs; bundling them into a struct would only move the coupling, not remove it\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d4be971da18e29837",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-04T14:22:49.997Z\",\"hash\":\"\",\"reason\":\"expected layered dependency: the wiki command handler uses the shared CLI command enums (src/cli.rs WikiCmd); normal engine wiring on a foundation module, the same as every other commands/*.rs handler, not a hidden coupling\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -10227,7 +10395,7 @@
       "target_id": "dd02ddceb33aeff05",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-04T10:22:08.784Z\",\"hash\":\"142a2f1bc5e61093\",\"reason\":\"src/sync.rs::ripple_codefile takes many arguments: the parameters are the distinct inputs this builder/ripple needs; bundling them into a struct would only move the coupling, not remove it\",\"verdict\":\"justified\"}",
+      "value": "{\"at\":\"2026-07-04T14:19:18.505Z\",\"hash\":\"638f8dac7baaf9d7\",\"reason\":\"ripple_codefile threads the distinct inputs the codefile ripple needs (store, target, cause, content, the changed-intent accumulator, seen surfaces, report); bundling them would only move the coupling, not remove it\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -10333,6 +10501,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-04T10:22:08.784Z\",\"hash\":\"\",\"reason\":\"expected layered dependency: src/thresholds.rs uses src/extract/mod.rs (the code-seed extraction); this is normal engine wiring on a shared foundation, not a hidden cross-cutting coupling between two peer behaviors\",\"verdict\":\"justified\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "dfd5539ea42ab724a8c84420d94b895a",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn dispatch + wiki_plan/wiki_record/wiki_next",
       "truth_class": "asserted"
     },
     {
@@ -10472,14 +10647,14 @@
       "target_id": "e8f0b8bb5d27149044ce1ae66151ce6f",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "795686aeaf9a1947",
+      "value": "f0347d8cb3951a18",
       "truth_class": "derived"
     },
     {
       "target_id": "e8f0b8bb5d27149044ce1ae66151ce6f",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"serde::{Deserialize, Serialize}\",\"std::fmt\",\"std::str::FromStr\"]",
+      "value": "[\"serde::Deserialize\",\"serde::Serialize\",\"std::fmt\",\"std::str::FromStr\"]",
       "truth_class": "derived"
     },
     {
@@ -10493,7 +10668,7 @@
       "target_id": "e8f0b8bb5d27149044ce1ae66151ce6f",
       "target_kind": "node",
       "key": "loc",
-      "value": "395",
+      "value": "397",
       "truth_class": "derived"
     },
     {

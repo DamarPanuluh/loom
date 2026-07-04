@@ -207,6 +207,12 @@ pub enum Command {
         #[command(subcommand)]
         cmd: JourneyCmd,
     },
+    /// Reader-first wiki pages, tracked as a projection of the graph: record a
+    /// page's documented intents, get the next page to write, list, or remove.
+    Wiki {
+        #[command(subcommand)]
+        cmd: WikiCmd,
+    },
 }
 
 /// Queue names for `loom next --mode`; `--help` is the enumeration.

@@ -187,6 +187,7 @@ str_enum! {
         Proposal => "proposal",
         JourneyCoverage => "journey_coverage",
         JourneyInvariantPoint => "journey_invariant_point",
+        WikiPage => "wiki_page",
     }
 }
 
@@ -258,6 +259,7 @@ str_enum! {
         Relates => "relates",
         Covers => "covers",
         Asserts => "asserts",
+        Documents => "documents",
     }
 }
 

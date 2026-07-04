@@ -26,6 +26,7 @@ mod proof_cmd;
 mod proposal_cmd;
 mod pulse;
 mod status_cmd;
+mod wiki;
 pub use intent::looks_like_symbol;
 pub(crate) use status_cmd::require_lane;
 
@@ -111,6 +112,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Whoami => diagnostics_cmd::whoami_cmd(cli.graph.as_deref(), cli.json),
         Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Wiki { cmd } => wiki::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Scan { cmd } => diagnostics_cmd::scan_cmd(cli.graph.as_deref(), cmd, cli.json),
         Command::Calibrate { write } => {
             diagnostics_cmd::calibrate_cmd(cli.graph.as_deref(), write, cli.json)

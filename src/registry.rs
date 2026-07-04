@@ -200,6 +200,14 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         owner: OwnerRole::Builder,
         description: "an internal domain invariant point marks this intent",
     },
+    EdgeKindSpec {
+        kind: EdgeKind::Documents,
+        from: WikiPage,
+        to: Intent,
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Builder,
+        description: "a wiki page draws on (documents) this intent",
+    },
 ];
 
 /// Look up the spec for an edge kind. Infallible by construction once
@@ -234,6 +242,7 @@ pub const NODE_TRUTH_CLASSES: &[(NodeType, TruthClass)] = &[
     (Proposal, Asserted),
     (JourneyCoverage, Asserted),
     (JourneyInvariantPoint, Asserted),
+    (WikiPage, Asserted),
 ];
 
 /// The declared truth class of a node kind. Infallible by construction once

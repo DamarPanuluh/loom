@@ -1,6 +1,8 @@
 //! Ring 5 tests — quality, validation, hypothesis, journey model, vocab/layer.
 
-use loom::cli::{Cli, CodefileCmd, Command, EdgeCmd, IntentCmd, JourneyCmd, ValidationCmd};
+use loom::cli::{
+    Cli, CodefileCmd, Command, EdgeCmd, IntentCmd, JourneyCmd, ValidationCmd, WikiCmd,
+};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::workitem::{self, Mode};
@@ -3633,4 +3635,173 @@ fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
         .unwrap();
     assert_eq!(a.status, "passed", "sibling A proof must stay passed");
     assert_eq!(b.status, "not_run", "artifact-matched B proof must reset");
+}
+
+// ---- wiki: reader-first docs as a tracked projection -----------------------
+
+#[test]
+fn wiki_scope_hash_tracks_documented_intent_state() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let page = store
+        .add_node(NodeType::WikiPage, "P", "", "draft", serde_json::json!({}))
+        .unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "x behaves",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Documents, &page.id, &intent.id)
+        .unwrap();
+    let h1 = loom::sync::wiki_scope_hash(&store, &page.id).unwrap();
+    assert_eq!(
+        h1,
+        loom::sync::wiki_scope_hash(&store, &page.id).unwrap(),
+        "deterministic"
+    );
+    // A documented intent's lifecycle change shifts the page's scope fingerprint.
+    store.set_node_status(&intent.id, "needs_change").unwrap();
+    assert_ne!(h1, loom::sync::wiki_scope_hash(&store, &page.id).unwrap());
+}
+
+#[test]
+fn wiki_plan_record_loop_and_stale_on_documented_change() {
+    let tmp = Tmp::new();
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(tmp.path().join("src/w.rs"), "pub fn render(){}\n").unwrap();
+    {
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "the widget renders",
+                "",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let cf = store
+            .add_node(
+                NodeType::CodeFile,
+                "src/w.rs",
+                "",
+                "",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        loom::sync::run(&store, tmp.path()).unwrap(); // extract → content_hash facet
+        store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &cf.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+    // plan → draft
+    run(
+        tmp.path(),
+        Command::Wiki {
+            cmd: WikiCmd::Plan {
+                title: "Architecture".into(),
+                path: "docs/a.md".into(),
+                covers: vec!["the widget renders".into()],
+            },
+        },
+    );
+    {
+        let store = Store::open_read(tmp.path()).unwrap();
+        assert_eq!(
+            store
+                .resolve_node("Architecture", Some(NodeType::WikiPage))
+                .unwrap()
+                .status,
+            "draft"
+        );
+    }
+    // the brief path (wiki next serves the draft) must not panic
+    run(tmp.path(), Command::Wiki { cmd: WikiCmd::Next });
+    // record before the prose exists must fail (the freshness gate)
+    assert!(
+        loom::commands::run(Cli {
+            graph: Some(tmp.path().to_path_buf()),
+            json: false,
+            command: Command::Wiki {
+                cmd: WikiCmd::Record {
+                    title: "Architecture".into()
+                },
+            },
+        })
+        .is_err(),
+        "record must fail when the page's prose is not written"
+    );
+    // write the prose, then record → fresh
+    std::fs::create_dir_all(tmp.path().join("docs")).unwrap();
+    std::fs::write(tmp.path().join("docs/a.md"), "# Architecture\n\nprose\n").unwrap();
+    run(
+        tmp.path(),
+        Command::Wiki {
+            cmd: WikiCmd::Record {
+                title: "Architecture".into(),
+            },
+        },
+    );
+    {
+        let store = Store::open_read(tmp.path()).unwrap();
+        assert_eq!(
+            store
+                .resolve_node("Architecture", Some(NodeType::WikiPage))
+                .unwrap()
+                .status,
+            "fresh"
+        );
+    }
+    // change the documented file → sync marks the page stale
+    std::fs::write(
+        tmp.path().join("src/w.rs"),
+        "pub fn render(){ /* changed */ }\n",
+    )
+    .unwrap();
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let report = loom::sync::run(&store, tmp.path()).unwrap();
+        assert_eq!(
+            report.wiki_staled, 1,
+            "a documented file change stales the page"
+        );
+        assert_eq!(
+            store
+                .resolve_node("Architecture", Some(NodeType::WikiPage))
+                .unwrap()
+                .status,
+            "stale"
+        );
+    }
+}
+
+#[test]
+fn wiki_plan_rejects_empty_covers() {
+    let tmp = Tmp::new();
+    Store::init(tmp.path(), Some("t"), false).unwrap();
+    assert!(
+        loom::commands::run(Cli {
+            graph: Some(tmp.path().to_path_buf()),
+            json: false,
+            command: Command::Wiki {
+                cmd: WikiCmd::Plan {
+                    title: "P".into(),
+                    path: "d.md".into(),
+                    covers: vec![],
+                },
+            },
+        })
+        .is_err(),
+        "a wiki page must document at least one intent"
+    );
 }

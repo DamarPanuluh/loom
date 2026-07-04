@@ -11,7 +11,7 @@
 //! byte-identical derived plane (deterministic ids + sentinel timestamps + a
 //! pure extraction), and ripples nothing because no prior hashes remain.
 
-use crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, GroundingRole, InspectionStatus, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
 use std::collections::{BTreeMap, BTreeSet};
@@ -31,6 +31,9 @@ pub struct SyncReport {
     /// Contracts (validations exercising an affected surface) reset to `not_run`.
     pub contracts_reset: usize,
     pub findings: usize,
+    /// Wiki pages marked stale because a documented intent's meaning, code, or
+    /// proof drifted since the page was last recorded.
+    pub wiki_staled: usize,
     pub missing: Vec<String>,
 }
 
@@ -59,6 +62,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     ripple_changed_intents(store, &changed_intents, &mut report)?;
     ripple_artifact_drift(store, root, &mut report)?;
     ripple_runner_drift(store, root, &mut report)?;
+    ripple_wiki_drift(store, &mut report)?;
     rebuild_smell_findings(store, &mut report)?;
     Ok(report)
 }
@@ -375,6 +379,65 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
             }
             store.reset_validation_status_for_sync(&val.id)?;
             report.validations_reset += 1;
+        }
+    }
+    Ok(())
+}
+
+/// The freshness fingerprint of a wiki page's scope: a hash over every intent
+/// the page `documents` — the intent's meaning (lifecycle + updated_at), the
+/// content of the files that realize it, and whether it is proven. It changes
+/// iff something the page describes changed, so a recorded page stays fresh
+/// exactly until its subject drifts. The page's prose/layout is never hashed —
+/// the graph governs freshness, not form.
+pub fn wiki_scope_hash(store: &Store, page_id: &str) -> Result<String> {
+    let mut parts: Vec<String> = Vec::new();
+    let mut docs = store.edges_with(Some(EdgeKind::Documents), Some(page_id), None)?;
+    docs.sort_by(|a, b| a.to_id.cmp(&b.to_id));
+    for d in docs {
+        let Some(intent) = store.get_node(&d.to_id)? else {
+            continue;
+        };
+        parts.push(format!(
+            "i:{}:{}:{}",
+            intent.id, intent.status, intent.updated_at
+        ));
+        let mut files: Vec<String> = Vec::new();
+        for g in store.realizing_groundings(&intent.id)? {
+            let hash = store
+                .get_facet(&g.to_id, TargetKind::Node, "content_hash")?
+                .unwrap_or_default();
+            files.push(format!("{}={hash}", g.to_id));
+        }
+        files.sort();
+        parts.push(format!("f:[{}]", files.join(",")));
+        let proven = store
+            .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?
+            .iter()
+            .any(|v| v.status == InspectionStatus::Passing);
+        parts.push(format!("p:{proven}"));
+    }
+    Ok(crate::artifact::fingerprint(&parts.join("|")))
+}
+
+/// Pass 2d: mark a wiki page stale when its documented scope drifted since it was
+/// recorded. Mirrors the artifact/runner drift gates — a recorded page's stored
+/// `scope_hash` is compared to the live one; a `draft` page (never recorded
+/// fresh) is left alone. loom curates freshness; an agent rewrites the prose.
+fn ripple_wiki_drift(store: &Store, report: &mut SyncReport) -> Result<()> {
+    for page in store.list_nodes(Some(NodeType::WikiPage), usize::MAX)? {
+        if page.status == "draft" || page.status == "stale" {
+            continue;
+        }
+        let current = wiki_scope_hash(store, &page.id)?;
+        let stored = page
+            .body
+            .get("scope_hash")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        if current != stored {
+            store.set_node_status(&page.id, "stale")?;
+            report.wiki_staled += 1;
         }
     }
     Ok(())

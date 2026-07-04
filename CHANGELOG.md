@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.20.0] - 2026-07-04
+- loom wiki — reader-first documentation as a tracked projection: wiki plan grounds a draft page in the intents it documents, wiki next emits a verified brief (documented intents' descriptions, groundings, proof status) for an agent to write reader-first prose, wiki record marks it fresh (gated on the prose existing), and sync stales a page precisely when a documented intent, its code, or its proof drifts; adds a WikiPage node + Documents edge — the graph governs truth and freshness, never layout
+
 ## [0.19.1] - 2026-07-04
 - Fix: loom journey add is idempotent — upsert by journey_id (dedupe duplicate validation nodes, reset proof to not_run on spec change, reconcile step Validates edges); journey run tolerates and repairs existing duplicates by merging their links instead of failing 'add it first'; add loom journey remove <id>
 

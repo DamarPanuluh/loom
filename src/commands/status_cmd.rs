@@ -82,6 +82,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                 "surfaces_affected": report.surfaces_affected,
                 "files_deleted": report.files_deleted,
                 "missing": report.missing,
+                "wiki_staled": report.wiki_staled,
                 "reexported": reexported,
             }))?
         );
@@ -121,6 +122,12 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         for m in report.missing.iter().take(10) {
             println!("    {m}");
         }
+    }
+    if report.wiki_staled > 0 {
+        println!(
+            "  {} wiki page(s) went stale — a documented intent, its code, or its proof changed   [loom wiki next]",
+            report.wiki_staled
+        );
     }
     Ok(())
 }
