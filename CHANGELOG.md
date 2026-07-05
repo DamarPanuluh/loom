@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.21.1] - 2026-07-05
+- Maturity ladder display honors bottom-up order: rungs above the lowest unmet rung render as blocked (derived blocked/blocked_by fields) instead of showing a higher rung as satisfied above an open lower rung; each rung's own state is unchanged
+
 ## [0.21.0] - 2026-07-05
 - PoC/experiment evidence reaches the build packet: hypothesis adopt copies proposal+prediction+proof-evidence onto the spawned intent, task add --target lands close/abandon outcomes as notes on the target intent, node/edge packets inline the adjudication trail via Store::notes_for (cap 6 + overflow read), and the prove lane self-teaches the supported->adopt->build handoff (prove command next_step, prove packet, build purpose names notes as prior record) so a proven idea is never stranded
 

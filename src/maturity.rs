@@ -24,6 +24,13 @@ pub struct Rung {
     pub name: String,
     pub state: RungState,
     pub detail: String,
+    /// Derived: this rung sits above the lowest Unmet rung, so it is unreachable
+    /// until that gate is met. Presentation-only — `state` still reports this
+    /// rung's own per-concern truth.
+    #[serde(default)]
+    pub blocked: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocked_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -317,6 +324,8 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             RungState::Met
         },
         detail: format!("{} active intent(s)", c.active),
+        blocked: false,
+        blocked_by: None,
     });
     // Realized: nothing planned, every implemented leaf grounded, every
     // registered CodeFile owned by at least one intent (or removed/ignored).
@@ -334,6 +343,8 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             "{} unrealized, {} ungrounded, {} unowned codefile(s)",
             c.planned, c.ungrounded, c.unowned_codefiles
         ),
+        blocked: false,
+        blocked_by: None,
     });
     rungs.push(Rung {
         name: "proven".into(),
@@ -367,6 +378,8 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
                 String::new()
             }
         ),
+        blocked: false,
+        blocked_by: None,
     });
     rungs.push(Rung {
         name: "hardened".into(),
@@ -381,6 +394,8 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             "{} stale/failing, {} uninspected, {} doctor issue(s)",
             c.stale, c.uninspected, c.doctor_issues
         ),
+        blocked: false,
+        blocked_by: None,
     });
     rungs.push(Rung {
         name: "excellent".into(),
@@ -399,6 +414,8 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
                 c.open_smells, c.untriaged, c.stale_findings
             )
         },
+        blocked: false,
+        blocked_by: None,
     });
     rungs.push(Rung {
         name: "exported".into(),
@@ -416,6 +433,20 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         } else {
             "loom.graph.json missing or stale".into()
         },
+        blocked: false,
+        blocked_by: None,
     });
+
+    // Gate = the lowest Unmet rung; NotApplicable is transparent (its machinery
+    // doesn't exist yet, so it can't be a prerequisite). Every rung above the
+    // gate is unreachable until the gate is met — mark it blocked so the display
+    // never shows a higher rung as satisfied above an unmet lower rung.
+    if let Some(g) = rungs.iter().position(|r| r.state == RungState::Unmet) {
+        let gate = rungs[g].name.clone();
+        for r in rungs.iter_mut().skip(g + 1) {
+            r.blocked = true;
+            r.blocked_by = Some(gate.clone());
+        }
+    }
     rungs
 }

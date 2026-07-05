@@ -215,6 +215,11 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     println!("  maturity:");
     for r in &ladder.rungs {
+        if r.blocked {
+            let by = r.blocked_by.as_deref().unwrap_or("");
+            println!("    ⊘ {:<12} (blocked by {by})", r.name);
+            continue;
+        }
         let mark = match r.state {
             crate::maturity::RungState::Met => "✓",
             crate::maturity::RungState::Unmet => "·",

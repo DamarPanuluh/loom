@@ -489,17 +489,8 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         .sum();
     let ladder = crate::maturity::ladder(&store)?;
     if json {
-        let rungs: Vec<_> = ladder
-            .rungs
-            .iter()
-            .map(|r| {
-                serde_json::json!({
-                    "name": r.name,
-                    "state": r.state,
-                    "detail": r.detail,
-                })
-            })
-            .collect();
+        // Serialize the rungs directly so the derived `blocked`/`blocked_by`
+        // fields stay in sync with `loom status` and can't drift.
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
@@ -510,7 +501,7 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
                 "phase": ladder.phase,
                 "recommended": ladder.next_command,
                 "capture_entry": "loom door \"<utterance>\" — capture-first entry for a new topic/story/change",
-                "rungs": rungs,
+                "rungs": ladder.rungs,
             }))?
         );
         return Ok(());

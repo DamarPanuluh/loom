@@ -89,6 +89,56 @@ fn planned_intent_routes_to_build() {
 }
 
 #[test]
+fn rungs_above_the_lowest_unmet_rung_are_marked_blocked() {
+    // A single planned intent: `seeded` Met, `realized` Unmet (the gate). Higher
+    // rungs may be independently Met (e.g. `excellent` — no findings/smells yet),
+    // but the display must not present them as satisfied above an unmet lower
+    // rung: they are blocked by the gate. `state` itself is untouched.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .add_node(
+            NodeType::Intent,
+            "payment can be captured",
+            "",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let l = ladder(&store).unwrap();
+
+    // The gate is the lowest Unmet rung: `realized` at index 1.
+    let gate = l.rungs.iter().position(|r| r.state == RungState::Unmet);
+    assert_eq!(gate, Some(1), "realized is the lowest unmet rung");
+
+    // Gate and everything below it are never blocked.
+    assert!(!l.rungs[0].blocked, "seeded (below gate) is not blocked");
+    assert!(!l.rungs[1].blocked, "the gate rung itself is not blocked");
+    assert_eq!(l.rungs[1].blocked_by, None);
+
+    // Every rung above the gate is blocked by it — including `excellent`, which
+    // is independently Met but must not read as satisfied above unmet `realized`.
+    for r in &l.rungs[2..] {
+        assert!(
+            r.blocked,
+            "{} sits above the gate and must be blocked",
+            r.name
+        );
+        assert_eq!(r.blocked_by.as_deref(), Some("realized"));
+    }
+    let excellent = l.rungs.iter().find(|r| r.name == "excellent").unwrap();
+    assert_eq!(
+        excellent.state,
+        RungState::Met,
+        "excellent's own truth is unchanged"
+    );
+    assert!(
+        excellent.blocked,
+        "but it is displayed as blocked by realized"
+    );
+}
+
+#[test]
 fn stale_edge_routes_to_fix() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();

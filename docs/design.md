@@ -328,6 +328,12 @@ Decision: **(α) — Finding as a derived node.** Locked. Rationale: structural 
 `Seeded → Realized → Proven → Hardened → Production-ready → Excellent`, each a rung in a vector
 (not a scalar), with the lowest unmet rung as the routing focus.
 
+Each rung's `state` is its own per-concern truth, computed independently, so the ladder never
+lies by counting absent machinery as failure. But the **display** honors bottom-up order: any
+rung above the lowest *unmet* rung is shown as blocked (`⊘ … (blocked by <gate>)`) rather than
+satisfied, so a higher rung never reads as reached while a lower one is still open.
+`NotApplicable` rungs are transparent — they never act as the gate.
+
 The v2 fix baked in from the start: **Excellent gates on triaged statistical clusters, not raw
 instance count.** Excellent is `Met` when every cluster above an impact threshold is adjudicated
 (confirmed → work, or dismissed → decision note), `NotApplicable` when none cross it. No 18k cliff.
