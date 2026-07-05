@@ -473,6 +473,142 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
         }
     }
 }
+/// Plain-English, jargon-free orientation for a human first landing on loom
+/// (also what bare `loom` prints). A translation layer over the compass — never
+/// new logic — so it can't drift from what `loom status`/`loom next` route to.
+pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
+    // A missing graph is not an error here — the human simply hasn't started.
+    let store = match super::open_read(graph) {
+        Ok(s) => s,
+        Err(_) => {
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "initialized": false,
+                        "intro": WELCOME_INTRO,
+                        "get_started": [
+                            "loom init",
+                            "loom door \"what this codebase should do\""
+                        ],
+                    }))?
+                );
+            } else {
+                print_welcome_intro();
+                println!();
+                println!("  No loom graph here yet.");
+                println!("  → Get started:  loom init");
+                println!("                  then  loom door \"what this codebase should do\"");
+                println!();
+                println!("  Go deeper:  loom guide");
+            }
+            return Ok(());
+        }
+    };
+
+    let active = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)?
+        .iter()
+        .filter(|n| n.status != "deprecated")
+        .count();
+    let ladder = crate::maturity::ladder(&store)?;
+    let (headline, why) = phase_in_plain_english(&ladder.phase);
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "initialized": true,
+                "intro": WELCOME_INTRO,
+                "intents": active,
+                "phase": ladder.phase,
+                "state": headline,
+                "next_command": ladder.next_command,
+                "why": why,
+            }))?
+        );
+        return Ok(());
+    }
+
+    print_welcome_intro();
+    println!();
+    println!("  Where you are now:");
+    println!("    {active} intent(s).  {headline}");
+    println!();
+    println!("  → Do this next:  {}", ladder.next_command);
+    println!("    {why}");
+    println!();
+    println!("  Go deeper:  loom status (the ladder)   loom guide (full protocol)");
+    println!("  New idea?   loom door \"what you want the code to do\"");
+    println!();
+    println!("  (run `loom --help` to see every command)");
+    Ok(())
+}
+
+const WELCOME_INTRO: &str = "loom — a living map of what your code is meant to do.";
+
+fn print_welcome_intro() {
+    println!("{WELCOME_INTRO}");
+    println!();
+    println!("  Every \"intent\" is one thing the codebase should do. Loom links each to the");
+    println!("  code that does it, tracks what's proven vs. still owed, and always points you");
+    println!("  at the single next thing worth doing. You climb a ladder:");
+    println!();
+    println!("    seed what it should do → build it → prove it → keep it clean");
+}
+
+/// Translate a compass phase into a human headline + the reason to act. The
+/// phase strings are owned by `maturity::compass`; keep this in step with them.
+fn phase_in_plain_english(phase: &str) -> (&'static str, &'static str) {
+    match phase {
+        "seed" => (
+            "Nothing's defined yet.",
+            "Tell loom what this codebase is supposed to do — one intent at a time.",
+        ),
+        "fix" => (
+            "Something that was true has broken.",
+            "Repair the failing claim first — everything downstream leans on it.",
+        ),
+        "build" => (
+            "Some intents have no working code yet.",
+            "Build the next one; loom hands you the intent and what it needs.",
+        ),
+        "coverage" => (
+            "Some code isn't tied to any intent.",
+            "Connect each unowned file to the intent it serves (or ignore it).",
+        ),
+        "validate" => (
+            "Some code is written but not yet proven to work.",
+            "Pick up an implemented intent and confirm it actually does what it claims.",
+        ),
+        "quality" => (
+            "The build is proven; now hold it against your quality rules.",
+            "Judge the next rule against the intent it applies to.",
+        ),
+        "analyze" => (
+            "There are relationships worth understanding.",
+            "Inspect the next pair and record what the code actually shows.",
+        ),
+        "audit" => (
+            "There are open issues or code smells to look at.",
+            "Work through what loom flagged — fix each, or consciously accept it.",
+        ),
+        "triage" => (
+            "There are findings waiting on a decision.",
+            "Confirm each into work, or dismiss it with a reason.",
+        ),
+        "export" => (
+            "Your graph has changes that aren't in the shareable snapshot yet.",
+            "Export it so the committed graph matches reality.",
+        ),
+        "complete" => (
+            "You're all caught up — built, proven, and clean.",
+            "Keep coding; run `loom sync` after changes and loom will surface what's next.",
+        ),
+        _ => ("", "Run `loom status` to see the full ladder."),
+    }
+}
+
 pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     // One source of truth for the counts: the same pulse every work item and

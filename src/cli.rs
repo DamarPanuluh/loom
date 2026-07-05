@@ -24,12 +24,15 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
+    /// The subcommand; omit for a plain-English orientation (`loom welcome`).
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Plain-English orientation: what loom is + the one thing to do next.
+    Welcome,
     /// Initialize a graph store at the given path (default: cwd).
     Init {
         path: Option<PathBuf>,

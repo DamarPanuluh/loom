@@ -32,7 +32,12 @@ pub(crate) use status_cmd::require_lane;
 
 /// Dispatch a parsed CLI invocation.
 pub fn run(cli: Cli) -> Result<()> {
-    match cli.command {
+    // Bare `loom` (no subcommand) lands a confused human on the orientation.
+    let Some(command) = cli.command else {
+        return misc_cmd::welcome(cli.graph.as_deref(), cli.json);
+    };
+    match command {
+        Command::Welcome => misc_cmd::welcome(cli.graph.as_deref(), cli.json),
         Command::Init {
             path,
             name,

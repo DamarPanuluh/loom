@@ -19,7 +19,7 @@ fn run(graph: &Path, command: Command) {
     loom::commands::run(Cli {
         graph: Some(graph.to_path_buf()),
         json: false,
-        command,
+        command: Some(command),
     })
     .unwrap_or_else(|e| panic!("command {debug_command} failed: {e}"));
 }
@@ -955,14 +955,14 @@ fn validation_mark_passed_without_evidence_is_atomic() {
     let res = loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: false,
-        command: Command::Validation {
+        command: Some(Command::Validation {
             cmd: ValidationCmd::Verdict {
                 key: "probe".into(),
                 outcome: "passed".into(),
                 evidence: "".into(),
                 reason: "".into(),
             },
-        },
+        }),
     });
     assert!(res.is_err(), "passing without evidence must be rejected");
     let store = Store::open(tmp.path()).unwrap();
@@ -1071,9 +1071,9 @@ fn intent_list_json_runs_clean() {
     loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: true,
-        command: Command::Intent {
+        command: Some(Command::Intent {
             cmd: IntentCmd::List { limit: 50 },
-        },
+        }),
     })
     .unwrap();
 }
@@ -3733,11 +3733,11 @@ fn wiki_plan_record_loop_and_stale_on_documented_change() {
         loom::commands::run(Cli {
             graph: Some(tmp.path().to_path_buf()),
             json: false,
-            command: Command::Wiki {
+            command: Some(Command::Wiki {
                 cmd: WikiCmd::Record {
                     title: "Architecture".into()
                 },
-            },
+            }),
         })
         .is_err(),
         "record must fail when the page's prose is not written"
@@ -3794,13 +3794,13 @@ fn wiki_plan_rejects_empty_covers() {
         loom::commands::run(Cli {
             graph: Some(tmp.path().to_path_buf()),
             json: false,
-            command: Command::Wiki {
+            command: Some(Command::Wiki {
                 cmd: WikiCmd::Plan {
                     title: "P".into(),
                     path: "d.md".into(),
                     covers: vec![],
                 },
-            },
+            }),
         })
         .is_err(),
         "a wiki page must document at least one intent"

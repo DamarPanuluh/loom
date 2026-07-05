@@ -290,6 +290,52 @@ fn malformed_import_is_rejected_loudly() {
     assert!(Export::from_json(r#"{"format":1}"#).is_err()); // missing required fields
 }
 
+// ---- welcome : bare `loom` must orient, never error ------------------------
+
+#[test]
+fn welcome_tolerates_a_missing_graph() {
+    // A confused human's most likely first move is running loom in a directory
+    // that has no graph yet. `welcome` (and bare `loom`, which routes to it)
+    // must orient them, not bail with "no loom graph — run loom init".
+    let tmp = Tmp::new();
+    // No init: the directory has no `.loom` store.
+    loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: false,
+        command: Some(Command::Welcome),
+    })
+    .expect("welcome must succeed with no graph");
+    // The bare-`loom` path (no subcommand) resolves to the same orientation.
+    loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: None,
+    })
+    .expect("bare loom must succeed with no graph");
+}
+
+#[test]
+fn welcome_orients_on_a_real_graph() {
+    let tmp = Tmp::new();
+    loom::commands::run(Cli {
+        graph: None,
+        json: false,
+        command: Some(Command::Init {
+            path: Some(tmp.path().to_path_buf()),
+            name: Some("t".into()),
+            observed: false,
+        }),
+    })
+    .unwrap();
+    // With a graph present, welcome reads it and routes without error.
+    loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Welcome),
+    })
+    .expect("welcome must succeed on a real graph");
+}
+
 // ---- INV-ATOM : symbols are locators, not intents (CLI guard) ---------------
 
 #[test]
@@ -299,11 +345,11 @@ fn inv_atom_rejects_symbol_named_intent() {
     loom::commands::run(Cli {
         graph: None,
         json: false,
-        command: Command::Init {
+        command: Some(Command::Init {
             path: Some(tmp.path().to_path_buf()),
             name: Some("t".into()),
             observed: false,
-        },
+        }),
     })
     .unwrap();
 
@@ -311,7 +357,7 @@ fn inv_atom_rejects_symbol_named_intent() {
     let err = loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: false,
-        command: Command::Intent {
+        command: Some(Command::Intent {
             cmd: IntentCmd::Add {
                 name: "capture_payment".into(),
                 description: "".into(),
@@ -322,7 +368,7 @@ fn inv_atom_rejects_symbol_named_intent() {
                 aspect: None,
                 allow_symbol_name: false,
             },
-        },
+        }),
     });
     assert!(err.is_err(), "symbol-named intent must be rejected");
 
@@ -330,7 +376,7 @@ fn inv_atom_rejects_symbol_named_intent() {
     let err2 = loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: false,
-        command: Command::Intent {
+        command: Some(Command::Intent {
             cmd: IntentCmd::Add {
                 name: "capture_payment".into(),
                 description: "".into(),
@@ -341,7 +387,7 @@ fn inv_atom_rejects_symbol_named_intent() {
                 aspect: None,
                 allow_symbol_name: true,
             },
-        },
+        }),
     });
     assert!(
         err2.is_err(),
@@ -352,7 +398,7 @@ fn inv_atom_rejects_symbol_named_intent() {
     loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: false,
-        command: Command::Intent {
+        command: Some(Command::Intent {
             cmd: IntentCmd::Add {
                 name: "capture_payment".into(),
                 description: "payment is captured and inventory reserved before fulfillment".into(),
@@ -363,7 +409,7 @@ fn inv_atom_rejects_symbol_named_intent() {
                 aspect: None,
                 allow_symbol_name: true,
             },
-        },
+        }),
     })
     .unwrap();
 
@@ -371,7 +417,7 @@ fn inv_atom_rejects_symbol_named_intent() {
     loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: false,
-        command: Command::Intent {
+        command: Some(Command::Intent {
             cmd: IntentCmd::Add {
                 name: "payment can be captured".into(),
                 description: "".into(),
@@ -382,7 +428,7 @@ fn inv_atom_rejects_symbol_named_intent() {
                 aspect: None,
                 allow_symbol_name: false,
             },
-        },
+        }),
     })
     .unwrap();
 }
@@ -454,12 +500,12 @@ fn edge_remove_refuses_derived_edges() {
     let res = loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: false,
-        command: Command::Edge {
+        command: Some(Command::Edge {
             cmd: loom::cli::EdgeCmd::Remove {
                 edge_id: e.id.clone(),
                 reason: None,
             },
-        },
+        }),
     });
     assert!(
         res.is_err(),

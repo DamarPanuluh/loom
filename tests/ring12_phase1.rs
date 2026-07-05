@@ -49,9 +49,9 @@ fn apply_batch(root: &std::path::Path, file: &std::path::Path) -> anyhow::Result
     commands::run(Cli {
         graph: Some(root.to_path_buf()),
         json: false,
-        command: Command::Apply {
+        command: Some(Command::Apply {
             file: file.to_path_buf(),
-        },
+        }),
     })
 }
 
