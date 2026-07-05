@@ -76,7 +76,7 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
         context: node_context(
             store,
             &intent,
-            "Understand the behavior and likely implementation files before coding.",
+            "Understand the behavior and likely implementation files before coding. Any inlined `note` entities are the prior record — adopted PoC/experiment evidence and past decisions — read them first; they say what was already tried and why.",
         )?,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Implementation.gap(),
@@ -445,7 +445,10 @@ pub(super) fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
         )?,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Verdict.gap(),
-        next_step: "after proving/refuting, run `loom status`".into(),
+        next_step: format!(
+            "supported → loom hypothesis adopt {} (spawns a planned build intent); refuted → the record stands; then loom status",
+            super::q(&h.name)
+        ),
     }))
 }
 

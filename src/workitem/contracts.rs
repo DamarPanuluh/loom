@@ -479,6 +479,9 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
         allowed_actions: vec![
             "read the targeted code".into(),
             format!("loom hypothesis prove {name} supported|refuted --evidence '…'"),
+            format!(
+                "if SUPPORTED: loom hypothesis adopt {name} — promotes the proven idea to a planned build intent (nothing else re-queues it)"
+            ),
         ],
         forbidden_actions: vec![
             "adopt the hypothesis before proving it".into(),
@@ -489,7 +492,7 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
         examples: None,
         pre_screened_hits: Vec::new(),
         write_back: format!("loom hypothesis prove {name} <supported|refuted> --evidence '…'"),
-        stop_condition: "after the verdict, return to loom status".into(),
+        stop_condition: "a SUPPORTED verdict is not work until adopted (loom hypothesis adopt) — adopt it to spawn build work; a REFUTED verdict stands as an honest record. Then return to loom status.".into(),
         human_gate: None,
     }
 }

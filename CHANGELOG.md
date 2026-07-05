@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.21.0] - 2026-07-05
+- PoC/experiment evidence reaches the build packet: hypothesis adopt copies proposal+prediction+proof-evidence onto the spawned intent, task add --target lands close/abandon outcomes as notes on the target intent, node/edge packets inline the adjudication trail via Store::notes_for (cap 6 + overflow read), and the prove lane self-teaches the supported->adopt->build handoff (prove command next_step, prove packet, build purpose names notes as prior record) so a proven idea is never stranded
+
 ## [0.20.0] - 2026-07-04
 - loom wiki — reader-first documentation as a tracked projection: wiki plan grounds a draft page in the intents it documents, wiki next emits a verified brief (documented intents' descriptions, groundings, proof status) for an agent to write reader-first prose, wiki record marks it fresh (gated on the prose existing), and sync stales a page precisely when a documented intent, its code, or its proof drifts; adds a WikiPage node + Documents edge — the graph governs truth and freshness, never layout
 

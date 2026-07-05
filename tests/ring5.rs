@@ -1,7 +1,8 @@
 //! Ring 5 tests — quality, validation, hypothesis, journey model, vocab/layer.
 
 use loom::cli::{
-    Cli, CodefileCmd, Command, EdgeCmd, IntentCmd, JourneyCmd, ValidationCmd, WikiCmd,
+    Cli, CodefileCmd, Command, EdgeCmd, HypothesisCmd, IntentCmd, JourneyCmd, ValidationCmd,
+    WikiCmd,
 };
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
@@ -3803,5 +3804,716 @@ fn wiki_plan_rejects_empty_covers() {
         })
         .is_err(),
         "a wiki page must document at least one intent"
+    );
+}
+
+// ---- PoC / experiment evidence reaches the build packet --------------------
+//
+// These defend the wiring that carries hypothesis/task learnings into the
+// `loom next --mode build` packet a coding LLM receives. Before it, evidence
+// was recorded (notes on the hypothesis, task results) but unreachable at
+// coding time: adopt copied only the claim, tasks were inert, and notes never
+// appeared in any packet. Each test fails if its wiring is reverted.
+
+#[test]
+fn notes_for_filters_by_target_newest_first() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = store
+        .add_node(
+            NodeType::Intent,
+            "intent a",
+            "d",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let b = store
+        .add_node(
+            NodeType::Intent,
+            "intent b",
+            "d",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    // 10ms gaps guarantee distinct millisecond timestamps (created_at is %f).
+    store.add_note(&a.id, "context", "a-note-1").unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    store.add_note(&a.id, "context", "a-note-2").unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    store.add_note(&a.id, "decision", "a-note-3").unwrap();
+    store.add_note(&b.id, "context", "b-note").unwrap();
+
+    let notes = store.notes_for(&a.id).unwrap();
+    assert_eq!(notes.len(), 3, "notes_for returns only notes on the target");
+    assert!(
+        notes.iter().all(|n| n.description.starts_with("a-note")),
+        "no cross-target leak"
+    );
+    assert_eq!(notes[0].description, "a-note-3", "newest first");
+    assert_eq!(notes[2].description, "a-note-1", "oldest last");
+
+    let bn = store.notes_for(&b.id).unwrap();
+    assert_eq!(bn.len(), 1, "the other target is isolated");
+    assert_eq!(bn[0].description, "b-note");
+
+    // Untargeted listing sees every note across targets.
+    assert_eq!(
+        store
+            .list_nodes(Some(NodeType::Note), usize::MAX)
+            .unwrap()
+            .len(),
+        4,
+        "all four notes exist graph-wide"
+    );
+}
+
+#[test]
+fn adopt_copies_experiment_record_to_spawned_intent() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("adopt-rec"));
+    loom_json_out(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout",
+            "--description",
+            "user buys",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "PoC batch",
+            "--claim",
+            "writes slow",
+            "--proposal",
+            "BATCHPROP batch per txn",
+            "--predicted-outcome",
+            "PREDOUT 50pct fewer fsyncs",
+            "--target",
+            "checkout",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "prove",
+            "PoC batch",
+            "supported",
+            "--evidence",
+            "EVIDENCE 1.9ms to 0.8ms bench",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "adopt",
+            "PoC batch",
+            "--spawned",
+            "batch writes",
+            "--json",
+        ],
+    );
+
+    // The spawned intent (not just the hypothesis) carries proposal +
+    // prediction + evidence — none of which lived in the intent description.
+    let notes = loom_json_out(tmp.path(), &["note", "list", "batch writes", "--json"]);
+    let joined: String = notes
+        .as_array()
+        .expect("note list --json is an array")
+        .iter()
+        .map(|n| n["text"].as_str().unwrap_or("").to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        joined.contains("BATCHPROP"),
+        "proposal reaches spawned intent: {joined}"
+    );
+    assert!(
+        joined.contains("PREDOUT"),
+        "prediction reaches spawned intent: {joined}"
+    );
+    assert!(
+        joined.contains("EVIDENCE"),
+        "proof evidence reaches spawned intent: {joined}"
+    );
+}
+
+#[test]
+fn build_packet_surfaces_adopted_evidence_note() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("build-note"));
+    loom_json_out(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout",
+            "--description",
+            "user buys",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "PoC batch",
+            "--claim",
+            "writes slow",
+            "--proposal",
+            "batch per txn",
+            "--predicted-outcome",
+            "fewer fsyncs",
+            "--target",
+            "checkout",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "prove",
+            "PoC batch",
+            "supported",
+            "--evidence",
+            "EVIDENCE bench numbers",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "adopt",
+            "PoC batch",
+            "--spawned",
+            "batch writes",
+            "--json",
+        ],
+    );
+
+    let next = loom_json_out(tmp.path(), &["next", "--mode", "build", "--json"]);
+    let wi = &next["work_item"];
+    assert_eq!(
+        wi["target"]["name"], "batch writes",
+        "build serves the spawned intent (alphabetically before 'checkout')"
+    );
+    let les = wi["context"]["linked_entities"]
+        .as_array()
+        .expect("linked_entities is an array");
+    let note = les
+        .iter()
+        .find(|e| e["role"] == "note")
+        .expect("build packet inlines a note linked entity");
+    assert!(
+        note["description"]
+            .as_str()
+            .unwrap_or("")
+            .contains("EVIDENCE"),
+        "the adopted evidence reaches the build packet: {note}"
+    );
+}
+
+#[test]
+fn build_packet_caps_notes_and_flags_overflow() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "cache",
+            "cache reads",
+            "planned",
+            serde_json::json!({ "level": "feature" }),
+        )
+        .unwrap();
+    for i in 0..7 {
+        store
+            .add_note(&intent.id, "context", &format!("SENTINEL-note-{i}"))
+            .unwrap();
+    }
+    let wi = workitem::next(&store, Some(Mode::Build))
+        .unwrap()
+        .expect("a build item for the planned intent");
+    // Tight-loop insertion means same-millisecond timestamps; id tiebreak is
+    // non-deterministic, so we cannot predict which 6 of 7 are inlined.
+    // Assert the count cap AND that every inlined description carries its
+    // sentinel (not empty, not fabricated).
+    let inlined: Vec<&str> = wi
+        .context
+        .linked_entities
+        .iter()
+        .filter(|e| e.role == "note")
+        .map(|e| e.description.as_deref().unwrap_or(""))
+        .collect();
+    assert_eq!(inlined.len(), 6, "at most 6 notes inline in a packet");
+    let sentinels: Vec<String> = (0..7).map(|i| format!("SENTINEL-note-{i}")).collect();
+    for desc in &inlined {
+        assert!(
+            sentinels.iter().any(|s| desc.contains(s.as_str())),
+            "inlined note description must carry sentinel payload, got: {desc}"
+        );
+    }
+    assert!(
+        wi.context
+            .suggested_reads
+            .iter()
+            .any(|r| r.command.contains("note list")),
+        "overflow adds a `note list` suggested read"
+    );
+}
+
+#[test]
+fn task_target_writes_note_and_targetless_is_diary_only() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("task-note"));
+    loom_json_out(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "ranking",
+            "--description",
+            "rank results",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+    );
+    // Targeted experiment: close lands a note on the intent.
+    loom_json_out(
+        tmp.path(),
+        &[
+            "task",
+            "add",
+            "try BM25",
+            "--kind",
+            "experiment",
+            "--target",
+            "ranking",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "task",
+            "close",
+            "try BM25",
+            "--result",
+            "RESULTTOK BM25 won",
+            "--json",
+        ],
+    );
+    let notes = loom_json_out(tmp.path(), &["note", "list", "ranking", "--json"]);
+    let arr = notes.as_array().expect("note list --json is an array");
+    assert_eq!(arr.len(), 1, "targeted task close writes exactly one note");
+    let txt = arr[0]["text"].as_str().unwrap_or("");
+    assert!(txt.contains("RESULTTOK"), "result text in note: {txt}");
+    assert!(txt.contains("experiment"), "task kind in note: {txt}");
+
+    // Targetless task: no note anywhere.
+    let before = loom_json_out(tmp.path(), &["note", "list", "--json"])
+        .as_array()
+        .unwrap()
+        .len();
+    loom_json_out(
+        tmp.path(),
+        &["task", "add", "poke index", "--kind", "spike", "--json"],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "task",
+            "close",
+            "poke index",
+            "--result",
+            "nothing conclusive",
+            "--json",
+        ],
+    );
+    let after = loom_json_out(tmp.path(), &["note", "list", "--json"])
+        .as_array()
+        .unwrap()
+        .len();
+    assert_eq!(
+        before, after,
+        "a targetless task writes no note (diary-only)"
+    );
+}
+
+#[test]
+fn task_abandon_writes_outcome_note() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("task-abandon"));
+    loom_json_out(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "cache",
+            "--description",
+            "cache reads",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "task",
+            "add",
+            "spike LRU",
+            "--kind",
+            "spike",
+            "--target",
+            "cache",
+            "--json",
+        ],
+    );
+    loom_json_out(
+        tmp.path(),
+        &[
+            "task",
+            "abandon",
+            "spike LRU",
+            "--reason",
+            "REASONTOK thrashes on scan",
+            "--json",
+        ],
+    );
+    let notes = loom_json_out(tmp.path(), &["note", "list", "cache", "--json"]);
+    let arr = notes.as_array().expect("note list --json is an array");
+    assert_eq!(arr.len(), 1, "abandon writes one note on the target intent");
+    let txt = arr[0]["text"].as_str().unwrap_or("");
+    assert!(txt.contains("abandoned"), "outcome marked abandoned: {txt}");
+    assert!(txt.contains("REASONTOK"), "reason text in note: {txt}");
+}
+
+#[test]
+fn adopt_without_proof_note_uses_unavailable_fallback() {
+    // Contract 3 fallback: when a hypothesis is force-promoted to "supported"
+    // without going through `hypothesis prove` (so no "supported: " decision
+    // note exists), `hypothesis adopt` must write "(proof evidence unavailable)"
+    // into the spawned intent's note rather than silently omitting it.
+    let tmp = Tmp::new();
+    // Setup: init store, create hypothesis, force to "supported" WITHOUT going
+    // through `hypothesis prove` — so no "supported: " decision note is written.
+    // The store is dropped at the end of this block, releasing the exclusive lock
+    // before `run()` tries to acquire it.
+    let h_name = {
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let h = store
+            .add_node(
+                NodeType::Hypothesis,
+                "no-proof-hyp",
+                "the claim",
+                "proposed",
+                serde_json::json!({ "proposal": "", "predicted_outcome": "" }),
+            )
+            .unwrap();
+        store.set_node_status(&h.id, "supported").unwrap();
+        h.name.clone()
+    };
+
+    // Adopt through the full in-process dispatcher; the evidence lookup finds
+    // no "supported: " note and must fall back to the sentinel string.
+    run(
+        tmp.path(),
+        Command::Hypothesis {
+            cmd: HypothesisCmd::Adopt {
+                key: h_name.clone(),
+                spawned: Some("spawned-no-proof".into()),
+            },
+        },
+    );
+
+    // Reopen (lock was released above) to verify the spawned intent's note.
+    let store = Store::open(tmp.path()).unwrap();
+    let intents = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap();
+    let spawned = intents
+        .iter()
+        .find(|n| n.name == "spawned-no-proof")
+        .expect("adopt creates the spawned intent");
+    let notes = store.notes_for(&spawned.id).unwrap();
+    assert_eq!(
+        notes.len(),
+        1,
+        "adopt writes exactly one note on the spawned intent"
+    );
+    let txt = &notes[0].description;
+    assert!(
+        txt.contains("(proof evidence unavailable)"),
+        "fallback text in note when no 'supported:' proof note exists: {txt}"
+    );
+}
+
+// ---- self-teaching: guidance strings keep the LLM on the PoC lifecycle ------
+//
+// These pin the wording of `loom`'s self-teaching `next_step`,
+// `allowed_actions`, and `stop_condition` strings. The failure mode they
+// guard: after `hypothesis prove <h> supported`, nothing tells the LLM to run
+// `hypothesis adopt`, and no queue re-serves the hypothesis — the proven idea
+// dies silently. Each test fails if its pinned guidance string is reverted or
+// reworded away from teaching the lifecycle.
+
+/// Contract: `hypothesis prove <h> supported --json` `next_step` CONTAINS
+/// "hypothesis adopt", directing the LLM to the exact adopt command.
+/// Also guards that the string does NOT embed the literal placeholder
+/// `<planned intent>` — `--spawned` must be presented as optional, not a
+/// required fill-in (a copy/paste of that placeholder would re-strand the LLM).
+/// Fails if the supported branch is reworded to drop the adopt pointer.
+#[test]
+fn prove_supported_next_step_points_at_adopt() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("prove-sup"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "speed up checkout",
+            "--description",
+            "reduce latency",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "batch-writes-poc",
+            "--claim",
+            "batching writes halves fsync count",
+            "--proposal",
+            "batch per txn",
+            "--predicted-outcome",
+            "50pct fewer fsyncs",
+            "--target",
+            "speed up checkout",
+        ],
+    );
+    let v = loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "prove",
+            "batch-writes-poc",
+            "supported",
+            "--evidence",
+            "bench shows writes improved from 1.9ms to 0.8ms",
+            "--json",
+        ],
+    );
+    let next_step = v["next_step"].as_str().expect("next_step is a string");
+    assert!(
+        next_step.contains("hypothesis adopt"),
+        "supported proof must point at `loom hypothesis adopt`: {next_step}"
+    );
+    assert!(
+        !next_step.contains("<planned intent>"),
+        "--spawned must be optional; `<planned intent>` placeholder must not appear: {next_step}"
+    );
+}
+
+/// Contract: `hypothesis prove <h> refuted --json` `next_step` does NOT contain
+/// "hypothesis adopt" — the refuted record stands, no adoption step follows.
+/// Also asserts the LLM is returned to `loom status` as the next action.
+/// Uses a separate graph from the supported test so state is clean.
+/// Fails if the refuted branch is accidentally reworded to recommend adopt.
+#[test]
+fn prove_refuted_next_step_does_not_adopt() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("prove-ref"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "reduce memory usage",
+            "--description",
+            "lower heap footprint",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "gc-tuning-poc",
+            "--claim",
+            "tuning GC knobs reduces heap",
+            "--proposal",
+            "adjust GC params",
+            "--predicted-outcome",
+            "20pct heap reduction",
+            "--target",
+            "reduce memory usage",
+        ],
+    );
+    let v = loom_json_out(
+        tmp.path(),
+        &[
+            "hypothesis",
+            "prove",
+            "gc-tuning-poc",
+            "refuted",
+            "--evidence",
+            "profiling shows GC tuning had no measurable heap impact",
+            "--json",
+        ],
+    );
+    let next_step = v["next_step"].as_str().expect("next_step is a string");
+    assert!(
+        !next_step.contains("hypothesis adopt"),
+        "refuted proof must NOT recommend `hypothesis adopt`: {next_step}"
+    );
+    assert!(
+        next_step.contains("loom status"),
+        "refuted proof must return LLM to `loom status`: {next_step}"
+    );
+}
+
+/// Contract: the prove-queue work item (`workitem::next(Mode::Prove)`) teaches
+/// the full PoC lifecycle in three places:
+///   • `next_step` names both "adopt" and the concrete hypothesis name
+///   • `prompt_contract.allowed_actions` has an entry containing "adopt"
+///   • `prompt_contract.stop_condition` contains "adopt"
+/// Fails if any wiring point is removed or reworded to drop the adopt pointer,
+/// which would leave a supported hypothesis with no queue re-serving it.
+#[test]
+fn prove_packet_teaches_adopt_lifecycle() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("prove-pkt"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "ship batch writes",
+            "reduce fsync overhead",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let hyp = store
+        .add_node(
+            NodeType::Hypothesis,
+            "batch-poc",
+            "batching halves fsyncs",
+            "proposed",
+            serde_json::json!({ "proposal": "batch per txn", "predicted_outcome": "50pct fewer" }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Targets, &hyp.id, &intent.id)
+        .unwrap();
+
+    let wi = workitem::next(&store, Some(Mode::Prove))
+        .unwrap()
+        .expect("prove queue must serve the proposed hypothesis");
+
+    assert!(
+        wi.next_step.contains("adopt"),
+        "prove packet next_step must teach adopt lifecycle: {}",
+        wi.next_step
+    );
+    assert!(
+        wi.next_step.contains("batch-poc"),
+        "prove packet next_step must name the concrete hypothesis: {}",
+        wi.next_step
+    );
+    assert!(
+        wi.prompt_contract
+            .allowed_actions
+            .iter()
+            .any(|a| a.contains("adopt")),
+        "prove packet allowed_actions must include an adopt entry: {:?}",
+        wi.prompt_contract.allowed_actions
+    );
+    assert!(
+        wi.prompt_contract.stop_condition.contains("adopt"),
+        "prove packet stop_condition must reference adopt: {}",
+        wi.prompt_contract.stop_condition
+    );
+}
+
+/// Contract: the build-queue work item (`workitem::next(Mode::Build)`)
+/// `context.purpose` names `note` entities as the prior record, so an LLM
+/// receiving the packet knows to read them before coding. Substrings checked:
+/// "note" AND "prior". No notes need to exist — the purpose string is
+/// unconditional. Fails if the build packet's purpose wording is reworded to
+/// drop either marker, which would sever the LLM's awareness of prior evidence.
+#[test]
+fn build_packet_purpose_names_notes_as_prior_record() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("build-pkt"), false).unwrap();
+    store
+        .add_node(
+            NodeType::Intent,
+            "implement batch writes",
+            "batch db writes to reduce fsyncs",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    let wi = workitem::next(&store, Some(Mode::Build))
+        .unwrap()
+        .expect("build queue must serve the planned intent");
+
+    assert!(
+        wi.context.purpose.contains("note"),
+        "build packet purpose must name `note` entities as the prior record: {}",
+        wi.context.purpose
+    );
+    assert!(
+        wi.context.purpose.contains("prior"),
+        "build packet purpose must say 'prior' (prior record of PoC evidence): {}",
+        wi.context.purpose
     );
 }

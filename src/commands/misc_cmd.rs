@@ -51,7 +51,7 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
     menu.push(serde_json::json!({
         "landing": "spike",
         "why": "the utterance needs investigation before it can land anywhere",
-        "command": "loom task add '<question>' --kind investigation",
+        "command": "loom task add '<question>' --kind investigation --target '<intent>'   # --target lands the outcome as a note on the intent; omit it for a diary-only record",
     }));
     for (score, _, name, id) in &weak_matches {
         menu.push(serde_json::json!({
@@ -298,20 +298,17 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
             )
         }
         NoteCmd::List { target, limit } => {
-            let target_id = target
-                .map(|t| resolve_note_target(&store, &t))
-                .transpose()?
-                .map(|(id, _)| id);
-            let notes: Vec<_> = store
-                .list_nodes(Some(NodeType::Note), usize::MAX)?
-                .into_iter()
-                .filter(|n| {
-                    target_id
-                        .as_deref()
-                        .is_none_or(|t| n.body.get("target_id").and_then(|v| v.as_str()) == Some(t))
-                })
-                .take(limit)
-                .collect();
+            let notes: Vec<_> = match target {
+                Some(t) => {
+                    let (id, _) = resolve_note_target(&store, &t)?;
+                    store.notes_for(&id)?.into_iter().take(limit).collect()
+                }
+                None => store
+                    .list_nodes(Some(NodeType::Note), usize::MAX)?
+                    .into_iter()
+                    .take(limit)
+                    .collect(),
+            };
             if json {
                 let rows: Vec<_> = notes
                     .iter()
@@ -339,21 +336,62 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
     }
 }
 
+/// A finished task's outcome lands as a note on its target intent: packets
+/// surface notes, so the result reaches future work on that intent unprompted.
+/// A task without a target (or whose target was since removed) stays a plain
+/// diary entry — that is its documented contract.
+fn task_outcome_note(
+    store: &crate::store::Store,
+    task: &crate::model::Node,
+    outcome: &str,
+    text: &str,
+) -> Result<()> {
+    let Some(target_id) = task.body.get("target_id").and_then(|v| v.as_str()) else {
+        return Ok(());
+    };
+    if store.get_node(target_id)?.is_none() {
+        return Ok(());
+    }
+    let kind = task
+        .body
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or("task");
+    store.add_note(
+        target_id,
+        "context",
+        &format!(
+            "{kind} '{}' [{}] {outcome}: {text}",
+            task.name,
+            &task.id[..8]
+        ),
+    )?;
+    Ok(())
+}
+
 pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
-        TaskCmd::Add { title, kind } => {
-            let t = store.add_node(
-                NodeType::TaskRecord,
-                &title,
-                "",
-                "proposed",
-                serde_json::json!({ "kind": kind }),
-            )?;
+        TaskCmd::Add {
+            title,
+            kind,
+            target,
+        } => {
+            let target = target
+                .map(|t| store.resolve_node(&t, Some(NodeType::Intent)))
+                .transpose()?;
+            let mut body = serde_json::json!({ "kind": kind });
+            if let Some(t) = &target {
+                body["target_id"] = serde_json::json!(t.id);
+            }
+            let t = store.add_node(NodeType::TaskRecord, &title, "", "proposed", body)?;
             pulse::emit_line(
                 &store,
                 json,
-                serde_json::json!({ "task": node_json(&t) }),
+                serde_json::json!({
+                    "task": node_json(&t),
+                    "target": target.as_ref().map(|n| serde_json::json!({ "id": n.id, "name": n.name })),
+                }),
                 "loom status",
                 format!("task [{}] {}", &t.id[..8], t.name),
             )
@@ -372,6 +410,7 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
         TaskCmd::Close { key, result } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
             let t = store.update_node(&t.id, None, Some(&result), Some("completed"))?;
+            task_outcome_note(&store, &t, "completed", &result)?;
             pulse::emit_line(
                 &store,
                 json,
@@ -383,6 +422,7 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
         TaskCmd::Abandon { key, reason } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
             let t = store.update_node(&t.id, None, Some(&reason), Some("abandoned"))?;
+            task_outcome_note(&store, &t, "abandoned", &reason)?;
             pulse::emit_line(
                 &store,
                 json,
@@ -654,7 +694,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "raw_thought": "loom door \"<utterance>\" — capture first, route later (inbox mark closes it)",
                     "structured_plan": "loom proposal add --title '…' (--file <path> | --text '…') — decompose into adoptable items",
                     "falsifiable_design_claim": "loom hypothesis add --name '…' --claim '…' --target <intent> — prove supported|refuted before it becomes work",
-                    "timeboxed_activity": "loom task add '<title>' --kind spike — close with a result; promote durable outcomes to graph facts"
+                    "timeboxed_activity": "loom task add '<title>' --kind spike --target '<intent>' — close with a result (lands as a note on the target intent); targetless stays diary-only"
                 },
                 "roles": ["builder", "analyzer", "fixer", "validator", "quality", "monitor"],
                 "rung_gates": ["seeded", "realized", "proven", "hardened", "excellent", "exported"],
@@ -677,7 +717,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             println!("  raw thought / finding / question   loom door \"<utterance>\"        capture first; route via inbox mark");
             println!("  structured plan / RFC              loom proposal add               decompose into adoptable items");
             println!("  falsifiable design claim           loom hypothesis add             prove supported|refuted, then adopt");
-            println!("  timeboxed activity                 loom task add                   close with a result; promote outcomes to graph facts");
+            println!("  timeboxed activity                 loom task add --target          close with a result; lands as a note on the target intent (targetless = diary-only)");
             println!(
                 "Closeout gates: loom coverage; loom doctor; loom next --all; loom export --check."
             );

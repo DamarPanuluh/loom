@@ -273,6 +273,20 @@ impl Store {
         )
     }
 
+    /// Notes attached to a target, newest first — the adjudication trail.
+    /// Single owner of the body `target_id` lookup (notes link through their
+    /// body, not facets or edges); `note list` and packet assembly both go
+    /// through here.
+    pub fn notes_for(&self, target_id: &str) -> Result<Vec<Node>> {
+        let mut notes: Vec<Node> = self
+            .list_nodes(Some(NodeType::Note), usize::MAX)?
+            .into_iter()
+            .filter(|n| n.body.get("target_id").and_then(|v| v.as_str()) == Some(target_id))
+            .collect();
+        notes.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.id.cmp(&a.id)));
+        Ok(notes)
+    }
+
     /// Redefine an intent's description — the semantic twin of `sync`. Ripples
     /// one hop: every settled asserted verdict touching the intent re-opens to
     /// needs_reverification, linked validations reset to not_run, completeness

@@ -86,6 +86,18 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
             }
             store.set_node_status(&h.id, status)?;
             store.add_note(&h.id, "decision", &format!("{status}: {evidence}"))?;
+            // Teach the follow-through where it is most needed: a supported
+            // claim is not work until adopted (nothing re-queues it), so point
+            // straight at adoption; a refuted claim stands as an honest record.
+            let next_step = if status == "supported" {
+                format!(
+                    "loom hypothesis adopt {} — promotes the proven idea to build work (optionally add --spawned '<behavioral intent name>' to rename the spawned intent)",
+                    crate::workitem::q(&h.name)
+                )
+            } else {
+                "loom status  (the refuted claim stands as an honest record — no adoption)"
+                    .to_string()
+            };
             pulse::emit_line(
                 &store,
                 json,
@@ -97,7 +109,7 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                     },
                     "evidence": evidence,
                 }),
-                "loom status",
+                &next_step,
                 format!("hypothesis '{}' {status}", h.name),
             )?;
             Ok(())
@@ -120,6 +132,28 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                      requires a non-empty hypothesis description for symbol-like intent names."
                 );
             }
+            // The experiment record must survive the handoff: the spawned
+            // intent's build packet reaches notes, not the hypothesis body,
+            // so copy proposal/prediction/evidence onto the intent itself.
+            let proposal = h
+                .body
+                .get("proposal")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let predicted = h
+                .body
+                .get("predicted_outcome")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let evidence = store
+                .notes_for(&h.id)?
+                .into_iter()
+                .find_map(|n| {
+                    (n.status == "decision")
+                        .then_some(n.description)
+                        .and_then(|d| d.strip_prefix("supported: ").map(str::to_string))
+                })
+                .unwrap_or_else(|| "(proof evidence unavailable)".into());
             store.set_node_status(&h.id, "adopted")?;
             let intent = store.add_node(
                 NodeType::Intent,
@@ -134,6 +168,15 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                 "visibility",
                 "internal",
                 TruthClass::Asserted,
+            )?;
+            store.add_note(
+                &intent.id,
+                "decision",
+                &format!(
+                    "adopted from hypothesis '{}' [{}] — proposal: {proposal}; predicted: {predicted}; evidence: {evidence}",
+                    h.name,
+                    &h.id[..8]
+                ),
             )?;
             store.add_note(
                 &h.id,

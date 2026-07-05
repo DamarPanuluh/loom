@@ -1016,14 +1016,14 @@
       "type": "validation",
       "name": "proof: the store persists the graph behind a lo",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring1",
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.286Z",
-      "updated_at": "2026-07-04T10:14:36.956Z"
+      "updated_at": ""
     },
     {
       "id": "8d3e09594c67e4d86e4fd1c4b22e34cf",
@@ -1229,14 +1229,14 @@
       "type": "validation",
       "name": "proof: the cli surface declares every command v",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring11_roles",
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.353Z",
-      "updated_at": "2026-07-04T14:20:51.802Z"
+      "updated_at": ""
     },
     {
       "id": "a10348b450a4ef8d27f013cf92b95328",
@@ -1254,14 +1254,14 @@
       "type": "validation",
       "name": "proof: find surfaces each matched intent's grou",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring4",
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.427Z",
-      "updated_at": "2026-07-04T10:14:52.411Z"
+      "updated_at": ""
     },
     {
       "id": "aba77635c5b4c538441355020444b03d",
@@ -1560,7 +1560,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "965 lines (> 600)",
+      "description": "968 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2108,7 +2108,7 @@
       "id": "d4d2a8e8624b4e00a",
       "type": "finding",
       "name": "src/commands/domain_cmd.rs::hypothesis is complex",
-      "description": "complexity ~22 (> 20)",
+      "description": "complexity ~23 (> 20)",
       "status": "complex_symbol",
       "truth_class": "derived",
       "body": {
@@ -2152,7 +2152,7 @@
       "id": "d50a4490590dba276",
       "type": "finding",
       "name": "src/workitem/queues.rs is oversized",
-      "description": "769 lines (> 600)",
+      "description": "772 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2182,14 +2182,14 @@
       "type": "validation",
       "name": "proof: the next router serves the highest-prior",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring3",
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.475Z",
-      "updated_at": "2026-07-04T12:44:49.835Z"
+      "updated_at": ""
     },
     {
       "id": "d54ef797dcd2aaf2b",
@@ -2781,7 +2781,7 @@
       "id": "db151dbcf04edb8e7",
       "type": "finding",
       "name": "src/commands/domain_cmd.rs::hypothesis is long",
-      "description": "255 lines (> 120)",
+      "description": "298 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
@@ -2898,7 +2898,7 @@
       "id": "db589a2e0c605c5fd",
       "type": "finding",
       "name": "src/commands/misc_cmd.rs is oversized",
-      "description": "1083 lines (> 600)",
+      "description": "1123 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -3554,14 +3554,14 @@
       "type": "validation",
       "name": "proof: the domain commands manage hypotheses, s",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring5",
         "type": "test"
       },
       "created_at": "2026-07-04T10:04:05.451Z",
-      "updated_at": "2026-07-04T10:14:57.909Z"
+      "updated_at": ""
     }
   ],
   "edges": [
@@ -3811,14 +3811,14 @@
       "to_id": "cca334dcdb23278aa5f69374d006d147",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "a relates claim holds only if the two behaviors are genuinely coupled (shared logic/data/seam), not merely co-located",
       "evidence": "'a symbol-pattern name is refused as an intent' and 'find surfaces each matched intent's grounding' share only a module family / the edge table; they have no shared logic or data flow and neither depends on the other",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:03.023Z",
-      "updated_at": "2026-07-04T09:55:40.720Z"
+      "updated_at": "2026-07-05T07:11:52.197Z"
     },
     {
       "id": "1ac74fa63d6124723038c2461838e73b",
@@ -3856,14 +3856,14 @@
       "to_id": "62631ed3d4e43f1e6b921adf81b6a148",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
       "evidence": "src/workitem/context.rs: fn node_context + fn edge_context — the self-contained work-item traversal packet is built here",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.357Z",
-      "updated_at": "2026-07-04T09:44:12.357Z"
+      "updated_at": "2026-07-05T07:11:52.194Z"
     },
     {
       "id": "22788e3c4e659e19c97a912b5db3f804",
@@ -4141,14 +4141,14 @@
       "to_id": "faf0d5cbf2c4424d02d58fef8048b60c",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring3` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.476Z",
-      "updated_at": "2026-07-04T12:44:49.834Z"
+      "updated_at": "2026-07-05T07:11:52.198Z"
     },
     {
       "id": "38803977942c36aa0ea17e5ea141d64d",
@@ -4231,14 +4231,14 @@
       "to_id": "f6196682ec5da68a2ef5409a46cc30f5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
       "evidence": "src/workitem/contracts.rs: fn builder_contract + fn analyzer_contract + struct PromptContract — the lane-specific prompt contract with write-back is built here",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.357Z",
-      "updated_at": "2026-07-04T09:44:12.357Z"
+      "updated_at": "2026-07-05T09:40:18.370Z"
     },
     {
       "id": "416f9dff0ed8751e817e253d466c5943",
@@ -4321,14 +4321,14 @@
       "to_id": "eeb714b0189be16227cdcabc9cc80306",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the intent's behavior still lives in this file after the refactor; the locator resolves to a live symbol performing it",
       "evidence": "'find surfaces each matched intent's grounding' still realized by src/commands/misc_cmd.rs: behavior preserved across the fmt/seam refactor, 329 tests green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.973Z",
-      "updated_at": "2026-07-04T09:55:40.721Z"
+      "updated_at": "2026-07-05T07:11:52.193Z"
     },
     {
       "id": "53a7b71b9c94a3edf4e47e75b7ee36f1",
@@ -4336,14 +4336,14 @@
       "to_id": "d8428fc6c39cd0613765a5945b1dadde",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring5` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.452Z",
-      "updated_at": "2026-07-04T10:05:12.139Z"
+      "updated_at": "2026-07-05T07:11:52.197Z"
     },
     {
       "id": "5425a8e5b58d63a4f02c4ff8fbd8fabe",
@@ -4366,14 +4366,14 @@
       "to_id": "90d671f1a8be743eb49e2a3908045db1",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring11_roles` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.354Z",
-      "updated_at": "2026-07-04T14:20:51.801Z"
+      "updated_at": "2026-07-05T07:11:52.195Z"
     },
     {
       "id": "5c59e4b76d364c52152f69b51c2448ab",
@@ -4816,14 +4816,14 @@
       "to_id": "47918106bbfae818082856d855e11154",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the next-router behavior still lives in queues.rs and the locator resolves to a live symbol performing it",
       "evidence": "src/workitem/queues.rs build_item + per-lane selectors realize the router; the requires-aware prerequisite ordering is additive (serve prereq first / blocked reason); ring3 build_queue tests + next-router proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-03T08:17:02.606Z",
-      "updated_at": "2026-07-04T12:44:50.664Z"
+      "updated_at": "2026-07-05T09:40:18.373Z"
     },
     {
       "id": "9d9507c0c1747716a3158a538fb6660d",
@@ -4921,14 +4921,14 @@
       "to_id": "64831afb5f65cb5d733de8b29f53c49f",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring1` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.287Z",
-      "updated_at": "2026-07-04T10:05:17.546Z"
+      "updated_at": "2026-07-05T07:11:52.194Z"
     },
     {
       "id": "a2784996ba8e0247a7870a4be42b058d",
@@ -4936,14 +4936,14 @@
       "to_id": "dc204addd5fce77853a4d7fd33f18b4e",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
       "evidence": "src/store/nodes.rs: fn add_node/resolve_node/redefine_intent — asserted node lifecycle, ambiguity resolution, and redefine ripple live here",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.355Z",
-      "updated_at": "2026-07-04T09:44:12.355Z"
+      "updated_at": "2026-07-05T07:11:52.194Z"
     },
     {
       "id": "a5968e9c5f17c75a54f61bca1ef3ed1d",
@@ -4966,14 +4966,14 @@
       "to_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the CLI subcommand schema still lives in cli/subcommands.rs",
       "evidence": "src/cli/subcommands.rs adds the WikiCmd enum; declarative *Cmd schema otherwise unchanged, ring11 proof green",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.348Z",
-      "updated_at": "2026-07-04T14:19:18.504Z"
+      "updated_at": "2026-07-05T07:11:52.191Z"
     },
     {
       "id": "a697696cd174bac1550b5fd3b7e39836",
@@ -5266,14 +5266,14 @@
       "to_id": "b4922a47d6403ed6ff36b41be6b87ccc",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the named behavior lives in this file and is realized by the cited symbol, not merely referenced",
       "evidence": "src/commands/domain_cmd.rs: fn hypothesis + fn surface + fn vocab + fn layer_detector_state — the hypothesis/surface/vocab/layer command families live here",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T09:44:12.350Z",
-      "updated_at": "2026-07-04T09:44:12.350Z"
+      "updated_at": "2026-07-05T07:11:52.192Z"
     },
     {
       "id": "bfb9aab20c1ea2d20e326fc37aeb2b1b",
@@ -6811,14 +6811,14 @@
       "to_id": "cca334dcdb23278aa5f69374d006d147",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring4` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-04T10:04:05.427Z",
-      "updated_at": "2026-07-04T10:13:42.329Z"
+      "updated_at": "2026-07-05T07:11:52.196Z"
     },
     {
       "id": "e93c2123ad791d7ac770e94c517c6074",
@@ -7298,6 +7298,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "1a68f4b9b00b29c00edb0a397aeef4d2",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/misc_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "1bb4bc65ef2fd2cc8c45466af7b520b0",
       "target_kind": "edge",
       "key": "locator",
@@ -7310,6 +7317,13 @@
       "key": "locator",
       "value": "fn node_context + fn edge_context",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "1f2c2d6cf931e21ad46e6b5e45bfc844",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/context.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "1f5cbdf7cb73cb6b5e5bb585f4222bf0",
@@ -7578,6 +7592,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "353480fa14d1f0b7ea9f55283e327d66",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/context.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "3573095c312928cee9385a611bab9457",
       "target_kind": "node",
       "key": "content_hash",
@@ -7646,6 +7667,13 @@
       "key": "locator",
       "value": "fn builder_contract + fn analyzer_contract + struct PromptContract",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "3cb6135a110c33bb16c07d7fc475c204",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/contracts.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "3d01e32c1ad5820adc5396ac13c9d732",
@@ -7882,7 +7910,7 @@
       "target_id": "47918106bbfae818082856d855e11154",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d854618e611551bf",
+      "value": "884a988179f019c0",
       "truth_class": "derived"
     },
     {
@@ -7903,7 +7931,7 @@
       "target_id": "47918106bbfae818082856d855e11154",
       "target_kind": "node",
       "key": "loc",
-      "value": "769",
+      "value": "772",
       "truth_class": "derived"
     },
     {
@@ -8061,6 +8089,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "4f2739f224330033d37a14c9dcfed389",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/misc_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "4f2d492b711051511bdf6519984f408c",
       "target_kind": "node",
       "key": "aspect",
@@ -8166,6 +8201,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "53a7b71b9c94a3edf4e47e75b7ee36f1",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/domain_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "58702f43401cc2219fedb08ba0ca3f0d",
       "target_kind": "node",
       "key": "content_hash",
@@ -8205,6 +8247,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "12",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5b249342ae0cfd9d664f68ac5bd80716",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/cli/subcommands.rs changed",
       "truth_class": "derived"
     },
     {
@@ -8323,14 +8372,14 @@
       "target_id": "62631ed3d4e43f1e6b921adf81b6a148",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c7b45a4a3979fbf4",
+      "value": "c96ff63cb1b6b0f7",
       "truth_class": "derived"
     },
     {
       "target_id": "62631ed3d4e43f1e6b921adf81b6a148",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::model::{Edge, EdgeKind, GroundingRole, Node, NodeType}\",\"crate::store::Store\",\"super::{FileRead, LinkedEntity, SuggestedRead, TraversalContext}\"]",
+      "value": "[\"crate::Result\",\"crate::model::Edge\",\"crate::model::EdgeKind\",\"crate::model::GroundingRole\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::store::Store\",\"super::FileRead\",\"super::LinkedEntity\",\"super::SuggestedRead\",\"super::TraversalContext\"]",
       "truth_class": "derived"
     },
     {
@@ -8344,7 +8393,7 @@
       "target_id": "62631ed3d4e43f1e6b921adf81b6a148",
       "target_kind": "node",
       "key": "loc",
-      "value": "290",
+      "value": "338",
       "truth_class": "derived"
     },
     {
@@ -8358,7 +8407,7 @@
       "target_id": "62631ed3d4e43f1e6b921adf81b6a148",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "11",
+      "value": "12",
       "truth_class": "derived"
     },
     {
@@ -9083,6 +9132,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "9d5a86beb4b8bcbff8b960d2e4cf7b7a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9d9507c0c1747716a3158a538fb6660d",
       "target_kind": "edge",
       "key": "locator",
@@ -9109,6 +9165,13 @@
       "key": "locator",
       "value": "fn adjudicate_finding + threshold_cmd + policy_cmd",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "a09df012dbf5de9e634af9ad620ebc21",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/nodes.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "a10348b450a4ef8d27f013cf92b95328",
@@ -9160,11 +9223,25 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "a2784996ba8e0247a7870a4be42b058d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/nodes.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a68a7ea5a81df2a063ff9a815b3900ee",
       "target_kind": "edge",
       "key": "locator",
       "value": "the nested *Cmd subcommand enums",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "a68a7ea5a81df2a063ff9a815b3900ee",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/cli/subcommands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "a697696cd174bac1550b5fd3b7e39836",
@@ -9261,14 +9338,14 @@
       "target_id": "b4922a47d6403ed6ff36b41be6b87ccc",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "7be56b9862e590f1",
+      "value": "6d557a3e56979907",
       "truth_class": "derived"
     },
     {
       "target_id": "b4922a47d6403ed6ff36b41be6b87ccc",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"super::*\"]",
+      "value": "[\"super\"]",
       "truth_class": "derived"
     },
     {
@@ -9282,7 +9359,7 @@
       "target_id": "b4922a47d6403ed6ff36b41be6b87ccc",
       "target_kind": "node",
       "key": "loc",
-      "value": "556",
+      "value": "599",
       "truth_class": "derived"
     },
     {
@@ -9389,6 +9466,13 @@
       "key": "locator",
       "value": "fn hypothesis + fn surface + fn vocab + fn layer_detector_state",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "bf46c142c2c24e54f204b6ca823aa050",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/domain_cmd.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "bfb9aab20c1ea2d20e326fc37aeb2b1b",
@@ -9611,7 +9695,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "b4919516aec6458c",
+      "value": "964178408605c6d1",
       "truth_class": "derived"
     },
     {
@@ -9632,7 +9716,7 @@
       "target_id": "cdf2b0031b47d568bb2bd133ebb047ef",
       "target_kind": "node",
       "key": "loc",
-      "value": "965",
+      "value": "968",
       "truth_class": "derived"
     },
     {
@@ -10339,7 +10423,7 @@
       "target_id": "dc204addd5fce77853a4d7fd33f18b4e",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e172c47d3fe621c2",
+      "value": "b9b2d4f743d621f8",
       "truth_class": "derived"
     },
     {
@@ -10360,7 +10444,7 @@
       "target_id": "dc204addd5fce77853a4d7fd33f18b4e",
       "target_kind": "node",
       "key": "loc",
-      "value": "385",
+      "value": "399",
       "truth_class": "derived"
     },
     {
@@ -10374,7 +10458,7 @@
       "target_id": "dc204addd5fce77853a4d7fd33f18b4e",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "13",
+      "value": "14",
       "truth_class": "derived"
     },
     {
@@ -10644,6 +10728,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "e757b710b7236ff1bb7f54af3c7bdf7a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/misc_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "e8f0b8bb5d27149044ce1ae66151ce6f",
       "target_kind": "node",
       "key": "content_hash",
@@ -10773,7 +10864,7 @@
       "target_id": "eeb714b0189be16227cdcabc9cc80306",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "7608ccafe4c098c9",
+      "value": "4b332152fc36047d",
       "truth_class": "derived"
     },
     {
@@ -10794,7 +10885,7 @@
       "target_id": "eeb714b0189be16227cdcabc9cc80306",
       "target_kind": "node",
       "key": "loc",
-      "value": "1083",
+      "value": "1123",
       "truth_class": "derived"
     },
     {
@@ -10808,7 +10899,7 @@
       "target_id": "eeb714b0189be16227cdcabc9cc80306",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "17",
+      "value": "18",
       "truth_class": "derived"
     },
     {
@@ -10906,7 +10997,7 @@
       "target_id": "f6196682ec5da68a2ef5409a46cc30f5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "78e64d056a17172a",
+      "value": "1f381009a7578615",
       "truth_class": "derived"
     },
     {
@@ -10927,7 +11018,7 @@
       "target_id": "f6196682ec5da68a2ef5409a46cc30f5",
       "target_kind": "node",
       "key": "loc",
-      "value": "546",
+      "value": "549",
       "truth_class": "derived"
     },
     {

@@ -48,6 +48,13 @@ pub(super) fn node_context(store: &Store, node: &Node, purpose: &str) -> Result<
             );
         }
     }
+    push_notes(
+        store,
+        &mut ctx,
+        &mut seen_entities,
+        &mut seen_reads,
+        &node.id,
+    )?;
 
     match node.node_type {
         // Build-lane packets start from the intent's grounded files.
@@ -110,6 +117,16 @@ pub(super) fn edge_context(store: &Store, edge: &Edge, purpose: &str) -> Result<
                 )?;
             }
         }
+    }
+    push_notes(
+        store,
+        &mut ctx,
+        &mut seen_entities,
+        &mut seen_reads,
+        &edge.id,
+    )?;
+    for id in [&edge.from_id, &edge.to_id] {
+        push_notes(store, &mut ctx, &mut seen_entities, &mut seen_reads, id)?;
     }
     Ok(ctx)
 }
@@ -200,7 +217,10 @@ fn push_node_entity(
     }
     // The behavioral criterion is the core input for primary entities; keep
     // peripheral entities lean so the packet stays small.
-    let primary = matches!(role, "target" | "from" | "to" | "grounded_codefile");
+    let primary = matches!(
+        role,
+        "target" | "from" | "to" | "grounded_codefile" | "note"
+    );
     ctx.linked_entities.push(LinkedEntity {
         role: role.into(),
         kind: node.node_type.as_str().into(),
@@ -212,6 +232,34 @@ fn push_node_entity(
         edge_status: None,
         locator: None,
     });
+}
+
+/// Inline the target's adjudication trail. Notes carry evidence no edge
+/// traversal can reach — proof evidence copied at hypothesis adoption,
+/// experiment task outcomes, up-dependency adjudications — so a packet
+/// without them silently drops recorded history.
+fn push_notes(
+    store: &Store,
+    ctx: &mut TraversalContext,
+    seen_entities: &mut std::collections::BTreeSet<String>,
+    seen_reads: &mut std::collections::BTreeSet<String>,
+    target_id: &str,
+) -> Result<()> {
+    const NOTE_CAP: usize = 6;
+    let notes = store.notes_for(target_id)?;
+    let overflow = notes.len() > NOTE_CAP;
+    for n in notes.iter().take(NOTE_CAP) {
+        push_node_entity(ctx, seen_entities, "note", n);
+    }
+    if overflow {
+        push_raw_read(
+            ctx,
+            seen_reads,
+            "full adjudication trail (older notes elided from this packet)",
+            &format!("loom note list {target_id}"),
+        );
+    }
+    Ok(())
 }
 
 fn push_edge_entity(

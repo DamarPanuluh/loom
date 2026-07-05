@@ -280,6 +280,9 @@ pub enum TaskCmd {
         title: String,
         #[arg(long, default_value = "spike")]
         kind: String,
+        /// Intent this task informs — the close/abandon outcome lands as a note on it.
+        #[arg(long)]
+        target: Option<String>,
     },
     /// Mark a task active.
     Start { key: String },
