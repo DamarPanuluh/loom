@@ -2,7 +2,7 @@ use super::*;
 
 pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Result<()> {
     match cmd {
-        CodefileCmd::Add { path } => {
+        CodefileCmd::Add { path, observed } => {
             let root = resolve_root(graph)?;
             let store = Store::open(&root)?;
             // Expand globs against the graph root; register each new file.
@@ -13,20 +13,35 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             } else {
                 matched
             };
-            let existing: std::collections::HashSet<String> =
-                store.codefiles()?.into_iter().map(|n| n.name).collect();
+            let existing: std::collections::HashMap<String, Node> = store
+                .codefiles()?
+                .into_iter()
+                .map(|n| (n.name.clone(), n))
+                .collect();
             let mut added = 0usize;
+            let mut marked_observed = 0usize;
             for t in &targets {
-                if existing.contains(t) {
-                    continue;
+                match existing.get(t) {
+                    Some(n) => {
+                        // Re-adding with --observed marks an already-registered
+                        // file observed (the flag never silently clears).
+                        if observed && !codefile_observed(n) {
+                            let mut body = n.body.clone();
+                            body["observed"] = serde_json::Value::Bool(true);
+                            store.set_node_body(&n.id, &body)?;
+                            marked_observed += 1;
+                        }
+                    }
+                    None => {
+                        store.add_node(NodeType::CodeFile, t, "", "", codefile_body(observed))?;
+                        added += 1;
+                    }
                 }
-                store.add_node(NodeType::CodeFile, t, "", "", serde_json::json!({}))?;
-                added += 1;
             }
             // Remember the glob so `codefile rescan` can pick up files that
             // appear later (e.g. a new endpoint in a vendored upstream).
             if path.contains('*') || path.contains('?') {
-                remember_glob(&store, &path)?;
+                remember_glob(&store, &path, observed)?;
             }
             pulse::emit_line(
                 &store,
@@ -35,14 +50,22 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                     "registered": added,
                     "matched": targets.len(),
                     "already_present": targets.len() - added,
+                    "observed": observed,
+                    "marked_observed": marked_observed,
                     "pattern": path,
                     "targets": targets,
                 }),
                 "loom sync",
                 format!(
-                    "registered {added} codefile(s) ({} matched, {} already present)",
+                    "registered {added}{} codefile(s) ({} matched, {} already present{})",
+                    if observed { " observed" } else { "" },
                     targets.len(),
-                    targets.len() - added
+                    targets.len() - added,
+                    if marked_observed > 0 {
+                        format!(", {marked_observed} marked observed")
+                    } else {
+                        String::new()
+                    }
                 ),
             )?;
             Ok(())
@@ -76,6 +99,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                             "id": n.id,
                             "path": n.name,
                             "status": n.status,
+                            "observed": codefile_observed(n),
                             "created_at": n.created_at,
                             "updated_at": n.updated_at,
                         })
@@ -87,24 +111,55 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                     println!("no codefiles");
                 }
                 for n in &files {
-                    println!("{} [{}]", n.name, &n.id[..8]);
+                    println!(
+                        "{} [{}]{}",
+                        n.name,
+                        &n.id[..8],
+                        if codefile_observed(n) {
+                            "  (observed)"
+                        } else {
+                            ""
+                        }
+                    );
                 }
             }
             Ok(())
         }
     }
 }
+fn codefile_body(observed: bool) -> serde_json::Value {
+    if observed {
+        serde_json::json!({"observed": true})
+    } else {
+        serde_json::json!({})
+    }
+}
 fn registered_globs(store: &Store) -> Result<Vec<String>> {
+    read_globs(store, "codefile_globs")
+}
+fn observed_globs(store: &Store) -> Result<Vec<String>> {
+    read_globs(store, "observed_globs")
+}
+fn read_globs(store: &Store, key: &str) -> Result<Vec<String>> {
     Ok(store
-        .get_meta("codefile_globs")?
+        .get_meta(key)?
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default())
 }
-fn remember_glob(store: &Store, pattern: &str) -> Result<()> {
+fn remember_glob(store: &Store, pattern: &str, observed: bool) -> Result<()> {
     let mut globs = registered_globs(store)?;
     if !globs.iter().any(|g| g == pattern) {
         globs.push(pattern.to_string());
         store.set_meta("codefile_globs", &serde_json::to_string(&globs)?)?;
+    }
+    // An observed glob is remembered separately so `rescan` registers files
+    // that appear under it later as observed too.
+    if observed {
+        let mut obs = observed_globs(store)?;
+        if !obs.iter().any(|g| g == pattern) {
+            obs.push(pattern.to_string());
+            store.set_meta("observed_globs", &serde_json::to_string(&obs)?)?;
+        }
     }
     Ok(())
 }
@@ -127,16 +182,28 @@ fn codefile_rescan(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     let existing: std::collections::HashSet<String> =
         store.codefiles()?.into_iter().map(|n| n.name).collect();
+    let observed = observed_globs(&store)?;
+    // Owned globs expand first: a file matched by both an owned and an
+    // observed glob registers as owned (obligations win).
+    let (owned_globs, obs_globs): (Vec<&String>, Vec<&String>) =
+        globs.iter().partition(|g| !observed.contains(g));
     let mut new_files: Vec<String> = Vec::new();
-    for g in &globs {
-        for t in crate::fsglob::expand(&root, g)? {
-            if existing.contains(&t) || new_files.contains(&t) {
-                continue;
+    let mut new_observed = 0usize;
+    for (pass_globs, as_observed) in [(owned_globs, false), (obs_globs, true)] {
+        for g in pass_globs {
+            for t in crate::fsglob::expand(&root, g)? {
+                if existing.contains(&t) || new_files.contains(&t) {
+                    continue;
+                }
+                store.add_node(NodeType::CodeFile, &t, "", "", codefile_body(as_observed))?;
+                if as_observed {
+                    new_observed += 1;
+                }
+                new_files.push(t);
             }
-            store.add_node(NodeType::CodeFile, &t, "", "", serde_json::json!({}))?;
-            new_files.push(t);
         }
     }
+    new_files.sort();
     let next_step = if new_files.is_empty() {
         "loom status"
     } else {
@@ -149,6 +216,7 @@ fn codefile_rescan(graph: Option<&Path>, json: bool) -> Result<()> {
             "rescanned": true,
             "globs": globs.len(),
             "new_files": new_files,
+            "new_observed": new_observed,
         }),
         next_step,
         || {
@@ -224,10 +292,12 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         .filter(|fv| flagged.contains(&fv.node.id))
         .collect();
 
+    let observed = codefile_observed(&n);
     if json {
         let out = serde_json::json!({
             "name": n.name,
             "id": n.id,
+            "observed": observed,
             "language": language,
             "role": role,
             "loc": loc.parse::<u64>().ok(),
@@ -243,7 +313,12 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} [{}]", n.name, &n.id[..8.min(n.id.len())]);
+    println!(
+        "{} [{}]{}",
+        n.name,
+        &n.id[..8.min(n.id.len())],
+        if observed { "  (observed)" } else { "" }
+    );
     let mut facets = Vec::new();
     if !language.is_empty() {
         facets.push(format!("language={language}"));
@@ -266,9 +341,13 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         owners.len()
     );
     if realizing == 0 {
-        println!(
-            "    (no realizing owner — coverage gap; consumes/configures/verifies do not own)"
-        );
+        if observed {
+            println!("    (observed — monitored upstream; no coverage obligation)");
+        } else {
+            println!(
+                "    (no realizing owner — coverage gap; consumes/configures/verifies do not own)"
+            );
+        }
     }
     for (name, locator, verdict, ev, role) in &owners {
         let at = if locator.is_empty() {

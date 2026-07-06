@@ -295,12 +295,14 @@ Verdict commands inspect relationship/grounding claims. `independent` means meas
 ## CodeFile and coverage exclusion commands
 
 ```text
-loom codefile add <path-or-glob> [--json]
+loom codefile add <path-or-glob> [--observed] [--json]
 loom codefile rescan [--json]
 loom codefile remove <path-or-key> [--json]
 loom codefile show <path-or-key> [--json]
 loom codefile list [--limit N] [--json]
 ```
+
+`--observed` registers files the graph monitors but does not own (vendored or upstream code): `loom sync` scans them and surface/contract staleness still ripples, but they carry no ownership, coverage, or build obligations — the per-file counterpart of the graph-level observed mode. Re-adding an already-registered file with `--observed` marks it observed. A glob added with `--observed` is remembered, so `codefile rescan` registers files that appear under it later as observed too; a file matched by both an owned and an observed glob registers as owned.
 
 `show` returns ownership, locators, imports/symbols/metrics, governing rules, findings, and stale-edge context.
 

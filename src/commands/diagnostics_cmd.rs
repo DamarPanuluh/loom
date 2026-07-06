@@ -248,7 +248,7 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
             ungrounded.push(n.name.clone());
         }
     }
-    let (registered_codefiles, owned, unowned) = code_ownership_summary(&store)?;
+    let (registered_codefiles, owned, unowned, observed) = code_ownership_summary(&store)?;
     if json {
         println!(
             "{}",
@@ -268,6 +268,7 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     "owned": owned,
                     "unowned": unowned.len(),
                     "unowned_files": unowned,
+                    "observed": observed,
                 }
             }))?
         );
@@ -295,8 +296,13 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         );
     }
     println!(
-        "  codefiles: {registered_codefiles} registered, {owned} owned, {} unowned",
-        unowned.len()
+        "  codefiles: {registered_codefiles} registered, {owned} owned, {} unowned{}",
+        unowned.len(),
+        if observed > 0 {
+            format!(", {observed} observed")
+        } else {
+            String::new()
+        }
     );
     for u in unowned.iter().take(20) {
         println!("    unowned: {u}");

@@ -114,7 +114,15 @@ pub enum IntentTagCmd {
 #[derive(Subcommand, Debug)]
 pub enum CodefileCmd {
     /// Register a codefile by path.
-    Add { path: String },
+    Add {
+        path: String,
+        /// Register as observed (monitored upstream code): sync scans it and
+        /// surface/contract staleness still ripples, but it carries no
+        /// ownership, coverage, or build obligations. Re-adding an existing
+        /// file with this flag marks it observed.
+        #[arg(long)]
+        observed: bool,
+    },
     /// Re-expand every glob ever registered and add any newly-appeared files
     /// (e.g. an endpoint an upstream just added). Run before `loom sync`.
     Rescan,

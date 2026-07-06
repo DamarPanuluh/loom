@@ -895,6 +895,160 @@ fn m7_unsupported_export_format_is_rejected() {
 }
 
 // =========================================================================
+// 15. Per-codefile observed flag: exempt from ownership/coverage/build
+// obligations, still in the sync/surface/contract plane.
+// =========================================================================
+#[test]
+fn observed_codefile_exempt_from_coverage_but_still_in_contract_plane() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    write_file(tmp.path(), "src/app.rs", "fn mount() {}");
+    write_file(
+        tmp.path(),
+        "vendor/tilde/module.rs",
+        "pub trait Module { fn prepare(&self); }",
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "engine mounts",
+            "--description",
+            "d",
+        ],
+    );
+    loom_ok(tmp.path(), &["codefile", "add", "src/app.rs"]);
+    loom_ok(
+        tmp.path(),
+        &["codefile", "add", "vendor/tilde/module.rs", "--observed"],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "edge",
+            "implement",
+            "engine mounts",
+            "src/app.rs",
+            "--role",
+            "realizes",
+        ],
+    );
+
+    // Exempt: the observed file is not a coverage gap and feeds no queue.
+    let cov = loom_json(tmp.path(), &["coverage"]);
+    let unowned = cov["codefiles"]["unowned_files"].as_array().unwrap();
+    assert!(
+        !unowned
+            .iter()
+            .any(|v| v.as_str() == Some("vendor/tilde/module.rs")),
+        "observed file must not be a coverage gap: {cov}"
+    );
+    assert_eq!(
+        cov["codefiles"]["observed"].as_i64().unwrap(),
+        1,
+        "observed bucket counts the monitored file: {cov}"
+    );
+    let status = loom_json(tmp.path(), &["status"]);
+    assert_eq!(
+        status["queues"]["coverage"].as_i64().unwrap(),
+        0,
+        "coverage queue must not serve the observed file: {status}"
+    );
+
+    // Still in the sync plane: a surface backed by the observed file resets
+    // its contract validation when the vendored content changes.
+    loom_ok(tmp.path(), &["sync"]);
+    loom_ok(
+        tmp.path(),
+        &[
+            "surface",
+            "add",
+            "--name",
+            "Module::prepare",
+            "--kind",
+            "sdk_method",
+            "--codefile",
+            "vendor/tilde/module.rs",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "add",
+            "--name",
+            "boots through prepare",
+            "--type",
+            "contract",
+            "--intent",
+            "engine mounts",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &["edge", "call", "boots through prepare", "Module::prepare"],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "validation",
+            "verdict",
+            "boots through prepare",
+            "passed",
+            "--evidence",
+            "booted against vendored tilde",
+        ],
+    );
+    write_file(
+        tmp.path(),
+        "vendor/tilde/module.rs",
+        "pub trait Module { fn prepare(&self, ctx: &Ctx); }",
+    );
+    loom_ok(tmp.path(), &["sync"]);
+    let val = loom_json(tmp.path(), &["validation", "show", "boots through prepare"]);
+    assert_eq!(
+        val["status"].as_str().unwrap(),
+        "not_run",
+        "upstream change must reset the contract validation: {val}"
+    );
+}
+
+/// Observed globs propagate: re-adding with --observed marks an existing file,
+/// and `rescan` registers files that appear under an observed glob later as
+/// observed too — never as coverage gaps.
+#[test]
+fn observed_glob_propagates_through_readd_and_rescan() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    write_file(tmp.path(), "vendor/tilde/a.rs", "fn a() {}");
+    // Registered owned first, then upgraded by the observed glob re-add.
+    loom_ok(tmp.path(), &["codefile", "add", "vendor/tilde/a.rs"]);
+    loom_ok(
+        tmp.path(),
+        &["codefile", "add", "vendor/tilde/**/*.rs", "--observed"],
+    );
+    // Upstream adds a file later; rescan registers it as observed.
+    write_file(tmp.path(), "vendor/tilde/b.rs", "fn b() {}");
+    loom_ok(tmp.path(), &["codefile", "rescan"]);
+
+    let cov = loom_json(tmp.path(), &["coverage"]);
+    assert_eq!(
+        cov["codefiles"]["observed"].as_i64().unwrap(),
+        2,
+        "both the upgraded and the rescanned file are observed: {cov}"
+    );
+    assert!(
+        cov["codefiles"]["unowned_files"]
+            .as_array()
+            .unwrap()
+            .is_empty(),
+        "no observed file is a coverage gap: {cov}"
+    );
+}
+
+// =========================================================================
 // CLI helpers (coverage --json is the only pub(crate)-gated surface here).
 // =========================================================================
 

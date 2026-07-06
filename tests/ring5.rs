@@ -1023,6 +1023,7 @@ fn codefile_rescan_picks_up_new_files() {
         Command::Codefile {
             cmd: CodefileCmd::Add {
                 path: "vendor/up/**/*.rs".into(),
+                observed: false,
             },
         },
     );

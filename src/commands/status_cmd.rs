@@ -143,7 +143,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let pulse = workitem::graph_state(&store)?;
     let queues = workitem::queue_counts(&store)?;
     let validation_summary = crate::maturity::validation_summary(&store)?;
-    let (registered_codefiles, owned_codefiles, unowned_codefiles) =
+    let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
         code_ownership_summary(&store)?;
     let layering = super::domain_cmd::layer_detector_state(&store)?;
     if json {
@@ -169,6 +169,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
                 "owned": owned_codefiles,
                 "unowned": unowned_codefiles.len(),
                 "unowned_files": unowned_codefiles,
+                "observed": observed_codefiles,
                 "blocking": !unowned_codefiles.is_empty(),
             },
             "detectors": {
@@ -195,8 +196,13 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         "blocks realized rung"
     };
     println!(
-        "  code ownership: {owned_codefiles}/{registered_codefiles} owned, {} unowned ({ownership_gate})",
-        unowned_codefiles.len()
+        "  code ownership: {owned_codefiles}/{registered_codefiles} owned, {} unowned ({ownership_gate}){}",
+        unowned_codefiles.len(),
+        if observed_codefiles > 0 {
+            format!(", {observed_codefiles} observed")
+        } else {
+            String::new()
+        }
     );
     if layering.get("armed").and_then(|v| v.as_bool()) == Some(false)
         && layering
