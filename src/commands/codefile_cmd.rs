@@ -5,10 +5,17 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
         CodefileCmd::Add { path, observed } => {
             let root = resolve_root(graph)?;
             let store = Store::open(&root)?;
+            let is_glob = path.contains('*') || path.contains('?');
             // Expand globs against the graph root; register each new file.
             let matched = crate::fsglob::expand(&root, &path)?;
-            let targets: Vec<String> = if matched.is_empty() {
-                // No glob match: treat as a literal path (may be a not-yet-existing file).
+            let targets: Vec<String> = if is_glob {
+                // A glob that matched nothing is not a literal path — it just
+                // means no files exist yet.  `remember_glob` below still
+                // records it so `rescan`/`sync` will pick up future arrivals.
+                matched
+            } else if matched.is_empty() {
+                // No glob metacharacters and no on-disk hit: treat as a literal
+                // path (may be a not-yet-existing file).
                 vec![path.replace('\\', "/")]
             } else {
                 matched
@@ -18,7 +25,16 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                 .into_iter()
                 .map(|n| (n.name.clone(), n))
                 .collect();
+            // Ignore gate: only new files discovered via glob expansion are
+            // checked — explicit literal paths and re-adds of existing files
+            // always go through (explicit intent overrides ignore).
+            let ignore = if is_glob {
+                Some(crate::fsglob::matcher(store.ignore_globs()?)?)
+            } else {
+                None
+            };
             let mut added = 0usize;
+            let mut ignored_count = 0usize;
             let mut marked_observed = 0usize;
             for t in &targets {
                 match existing.get(t) {
@@ -33,14 +49,20 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                         }
                     }
                     None => {
+                        if let Some(ign) = &ignore {
+                            if ign.is_match(t.as_str()) {
+                                ignored_count += 1;
+                                continue;
+                            }
+                        }
                         store.add_node(NodeType::CodeFile, t, "", "", codefile_body(observed))?;
                         added += 1;
                     }
                 }
             }
-            // Remember the glob so `codefile rescan` can pick up files that
-            // appear later (e.g. a new endpoint in a vendored upstream).
-            if path.contains('*') || path.contains('?') {
+            // Remember the glob so `codefile rescan` / `sync` can pick up
+            // files that appear later (e.g. a new endpoint in a vendored upstream).
+            if is_glob {
                 remember_glob(&store, &path, observed)?;
             }
             pulse::emit_line(
@@ -49,7 +71,8 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                 serde_json::json!({
                     "registered": added,
                     "matched": targets.len(),
-                    "already_present": targets.len() - added,
+                    "already_present": targets.len() - added - ignored_count,
+                    "ignored": ignored_count,
                     "observed": observed,
                     "marked_observed": marked_observed,
                     "pattern": path,
@@ -57,12 +80,17 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                 }),
                 "loom sync",
                 format!(
-                    "registered {added}{} codefile(s) ({} matched, {} already present{})",
+                    "registered {added}{} codefile(s) ({} matched, {} already present{}{})",
                     if observed { " observed" } else { "" },
                     targets.len(),
-                    targets.len() - added,
+                    targets.len() - added - ignored_count,
                     if marked_observed > 0 {
                         format!(", {marked_observed} marked observed")
+                    } else {
+                        String::new()
+                    },
+                    if ignored_count > 0 {
+                        format!(", {ignored_count} ignored")
                     } else {
                         String::new()
                     }
@@ -166,8 +194,8 @@ fn remember_glob(store: &Store, pattern: &str, observed: bool) -> Result<()> {
 fn codefile_rescan(graph: Option<&Path>, json: bool) -> Result<()> {
     let root = resolve_root(graph)?;
     let store = Store::open(&root)?;
-    let globs = registered_globs(&store)?;
-    if globs.is_empty() {
+    let outcome = rescan_globs(&store, &root)?;
+    if outcome.globs == 0 {
         return pulse::emit_line(
             &store,
             json,
@@ -180,19 +208,73 @@ fn codefile_rescan(graph: Option<&Path>, json: bool) -> Result<()> {
             "no globs remembered — register files with `loom codefile add '<glob>'` first",
         );
     }
+    let next_step = if outcome.new_files.is_empty() {
+        "loom status"
+    } else {
+        "loom sync"
+    };
+    pulse::emit(
+        &store,
+        json,
+        serde_json::json!({
+            "rescanned": true,
+            "globs": outcome.globs,
+            "new_files": outcome.new_files,
+            "new_observed": outcome.new_observed,
+        }),
+        next_step,
+        || {
+            println!(
+                "rescanned {} glob(s): {} new file(s) registered",
+                outcome.globs,
+                outcome.new_files.len()
+            );
+            for f in outcome.new_files.iter().take(10) {
+                println!("    + {f}");
+            }
+            if !outcome.new_files.is_empty() {
+                println!("  run `loom sync` to extract them");
+            }
+            Ok(())
+        },
+    )?;
+    Ok(())
+}
+
+/// Outcome of a glob-based rescan — used by both `codefile rescan` and `sync`.
+pub(crate) struct RescanOutcome {
+    pub globs: usize,
+    pub new_files: Vec<String>,
+    pub new_observed: usize,
+}
+
+/// Expand remembered globs, register any new files, skip ignored paths.
+/// Owned globs expand first so a file matched by both registers as owned.
+/// Files already registered are never touched (rescan never deletes nodes).
+pub(crate) fn rescan_globs(store: &Store, root: &Path) -> Result<RescanOutcome> {
+    let globs = registered_globs(store)?;
+    if globs.is_empty() {
+        return Ok(RescanOutcome {
+            globs: 0,
+            new_files: Vec::new(),
+            new_observed: 0,
+        });
+    }
     let existing: std::collections::HashSet<String> =
         store.codefiles()?.into_iter().map(|n| n.name).collect();
-    let observed = observed_globs(&store)?;
-    // Owned globs expand first: a file matched by both an owned and an
-    // observed glob registers as owned (obligations win).
+    let ignore = crate::fsglob::matcher(store.ignore_globs()?)?;
+    let observed = observed_globs(store)?;
     let (owned_globs, obs_globs): (Vec<&String>, Vec<&String>) =
         globs.iter().partition(|g| !observed.contains(g));
     let mut new_files: Vec<String> = Vec::new();
     let mut new_observed = 0usize;
     for (pass_globs, as_observed) in [(owned_globs, false), (obs_globs, true)] {
         for g in pass_globs {
-            for t in crate::fsglob::expand(&root, g)? {
+            for t in crate::fsglob::expand(root, g)? {
                 if existing.contains(&t) || new_files.contains(&t) {
+                    continue;
+                }
+                if ignore.is_match(&t) {
                     continue;
                 }
                 store.add_node(NodeType::CodeFile, &t, "", "", codefile_body(as_observed))?;
@@ -204,37 +286,11 @@ fn codefile_rescan(graph: Option<&Path>, json: bool) -> Result<()> {
         }
     }
     new_files.sort();
-    let next_step = if new_files.is_empty() {
-        "loom status"
-    } else {
-        "loom sync"
-    };
-    pulse::emit(
-        &store,
-        json,
-        serde_json::json!({
-            "rescanned": true,
-            "globs": globs.len(),
-            "new_files": new_files,
-            "new_observed": new_observed,
-        }),
-        next_step,
-        || {
-            println!(
-                "rescanned {} glob(s): {} new file(s) registered",
-                globs.len(),
-                new_files.len()
-            );
-            for f in new_files.iter().take(10) {
-                println!("    + {f}");
-            }
-            if !new_files.is_empty() {
-                println!("  run `loom sync` to extract them");
-            }
-            Ok(())
-        },
-    )?;
-    Ok(())
+    Ok(RescanOutcome {
+        globs: globs.len(),
+        new_files,
+        new_observed,
+    })
 }
 fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
     let store = open(graph)?;

@@ -63,6 +63,9 @@ pub(crate) fn import(graph: Option<&Path>, file: &Path, json: bool) -> Result<()
 pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let root = resolve_root(graph)?;
     let store = Store::open(&root)?;
+    // Discovery pass: expand remembered globs and register new files before
+    // the deriver loop runs, so newly-appeared files are included in this sync.
+    let rescan = super::codefile_cmd::rescan_globs(&store, &root)?;
     let report = crate::sync::run(&store, &root)?;
     // Keep the committed portable artifact fresh as a byproduct of sync, so a
     // separate `loom export` is not a required step in the loop. Only an export
@@ -73,6 +76,8 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
+                "new_files": rescan.new_files,
+                "new_observed": rescan.new_observed,
                 "files_scanned": report.files_scanned,
                 "files_changed": report.files_changed,
                 "edges_staled": report.edges_staled,
@@ -87,6 +92,23 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
             }))?
         );
         return Ok(());
+    }
+    if !rescan.new_files.is_empty() {
+        println!(
+            "discovery: {} new file(s) registered under remembered globs{}",
+            rescan.new_files.len(),
+            if rescan.new_observed > 0 {
+                format!(" ({} observed)", rescan.new_observed)
+            } else {
+                String::new()
+            }
+        );
+        for f in rescan.new_files.iter().take(10) {
+            println!("    + {f}");
+        }
+        if rescan.new_files.len() > 10 {
+            println!("    … +{} more", rescan.new_files.len() - 10);
+        }
     }
     println!(
         "sync: {} scanned, {} changed, {} edges staled, {} validations reset, {} findings",

@@ -119,7 +119,7 @@ Show or set the graph **mode**. `observed` maps code the driver does not own —
 loom sync [--json]
 ```
 
-Recomputes the structural plane from disk. Content-hash based — mtime churn never false-flags. Sync now stales Targets (`hypothesis -> intent`) edges, records `stale_cause` facets on every staled edge, deterministically resets validations, downgrades never-reached previously-passing journey steps to `needs_reverification` when a journey run fails earlier, fully reopens realizing `implements` groundings on changed files, and reopens non-realizing `implements` groundings only when their seam locator drifts. As a byproduct it refreshes `loom.graph.json` when — and only when — the file already exists and has drifted, so the committed export stays fresh without a separate `loom export` call (it never creates an untracked file, and a fresh export is left byte-identical).
+Runs a discovery pass then recomputes the structural plane from disk. The discovery pass expands all remembered codefile globs (from prior `codefile add '<glob>'` calls) and registers any new files that appeared since the last run, respecting `loom ignore` exclusions — so a single `loom sync` both discovers and extracts without a separate `codefile rescan`. The structural recompute is content-hash based — mtime churn never false-flags. Sync stales Targets (`hypothesis -> intent`) edges, records `stale_cause` facets on every staled edge, deterministically resets validations, downgrades never-reached previously-passing journey steps to `needs_reverification` when a journey run fails earlier, fully reopens realizing `implements` groundings on changed files, and reopens non-realizing `implements` groundings only when their seam locator drifts. As a byproduct it refreshes `loom.graph.json` when — and only when — the file already exists and has drifted, so the committed export stays fresh without a separate `loom export` call (it never creates an untracked file, and a fresh export is left byte-identical). JSON output includes `new_files` (list of discovered paths) and `new_observed` (count of observed-mode discoveries) alongside the structural counts.
 
 ```text
 loom export [--check] [--json]
@@ -302,7 +302,9 @@ loom codefile show <path-or-key> [--json]
 loom codefile list [--limit N] [--json]
 ```
 
-`--observed` registers files the graph monitors but does not own (vendored or upstream code): `loom sync` scans them and surface/contract staleness still ripples, but they carry no ownership, coverage, or build obligations — the per-file counterpart of the graph-level observed mode. Re-adding an already-registered file with `--observed` marks it observed. A glob added with `--observed` is remembered, so `codefile rescan` registers files that appear under it later as observed too; a file matched by both an owned and an observed glob registers as owned.
+`--observed` registers files the graph monitors but does not own (vendored or upstream code): `loom sync` scans them and surface/contract staleness still ripples, but they carry no ownership, coverage, or build obligations — the per-file counterpart of the graph-level observed mode. Re-adding an already-registered file with `--observed` marks it observed. A glob added with `--observed` is remembered, so `codefile rescan` and `loom sync` register files that appear under it later as observed too; a file matched by both an owned and an observed glob registers as owned.
+
+Glob-based registration (`codefile add '<glob>'`, `codefile rescan`, and the discovery pass inside `loom sync`) respects `loom ignore` exclusions: a file matching an ignore glob is silently skipped during glob expansion. Explicit literal adds (`codefile add path/to/file.rs`) always go through — explicit intent overrides ignore. Files already registered before an ignore glob is added stay registered (ignore never deletes nodes; it only gates future discovery).
 
 `show` returns ownership, locators, imports/symbols/metrics, governing rules, findings, and stale-edge context.
 
@@ -312,7 +314,7 @@ loom ignore remove '<glob>' [--json]
 loom ignore list [--json]
 ```
 
-Coverage exclusions live in the graph with a recorded reason. `loom coverage` honors them.
+Coverage exclusions live in the graph with a recorded reason. `loom coverage` honors them, and glob-based codefile discovery (rescan / sync) skips files matched by ignore globs.
 
 ---
 

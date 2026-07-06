@@ -1104,3 +1104,184 @@ fn loom_json(tmp: &std::path::Path, args: &[&str]) -> serde_json::Value {
         )
     })
 }
+
+// =========================================================================
+// 16. Rescan (and sync) skip files matched by `loom ignore` globs.
+// =========================================================================
+
+/// A file matched by an ignore glob must not be registered by `codefile rescan`
+/// even when it matches a remembered codefile glob.  Files already registered
+/// before the ignore was added stay (ignore never deletes nodes).
+#[test]
+fn rescan_skips_ignored_glob_matches() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    write_file(tmp.path(), "vendor/up/a.rs", "fn a() {}");
+    // Register a glob — captures `a.rs`.
+    loom_ok(tmp.path(), &["codefile", "add", "vendor/up/**/*.rs"]);
+    // Ignore a subset that will match `b.rs` but not `a.rs`.
+    loom_ok(
+        tmp.path(),
+        &[
+            "ignore",
+            "add",
+            "vendor/up/ignored/**/*.rs",
+            "--reason",
+            "third-party",
+        ],
+    );
+    // A new file appears under the ignored subtree.
+    write_file(tmp.path(), "vendor/up/ignored/b.rs", "fn b() {}");
+    // And one outside it.
+    write_file(tmp.path(), "vendor/up/c.rs", "fn c() {}");
+    loom_ok(tmp.path(), &["codefile", "rescan"]);
+
+    let store = Store::open(tmp.path()).unwrap();
+    let files: Vec<String> = store
+        .list_nodes(Some(NodeType::CodeFile), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .map(|n| n.name)
+        .collect();
+    assert!(
+        files.contains(&"vendor/up/a.rs".to_string()),
+        "pre-existing file stays: {files:?}"
+    );
+    assert!(
+        files.contains(&"vendor/up/c.rs".to_string()),
+        "non-ignored new file is registered: {files:?}"
+    );
+    assert!(
+        !files.contains(&"vendor/up/ignored/b.rs".to_string()),
+        "ignored file must NOT be registered by rescan: {files:?}"
+    );
+}
+
+/// `codefile add '<glob>'` must skip paths matched by ignore globs for new
+/// glob-discovered files, but explicit literal adds override the ignore.
+#[test]
+fn codefile_add_glob_skips_ignored_but_literal_overrides() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    write_file(tmp.path(), "gen/a.rs", "fn a() {}");
+    write_file(tmp.path(), "gen/b.rs", "fn b() {}");
+    loom_ok(
+        tmp.path(),
+        &["ignore", "add", "gen/b.rs", "--reason", "generated"],
+    );
+    // Glob add — b.rs should be skipped.
+    let j = loom_json(tmp.path(), &["codefile", "add", "gen/**/*.rs"]);
+    assert_eq!(j["registered"].as_i64().unwrap(), 1, "only a.rs: {j}");
+    assert_eq!(j["ignored"].as_i64().unwrap(), 1, "b.rs ignored: {j}");
+    // Explicit literal add — overrides the ignore.
+    loom_ok(tmp.path(), &["codefile", "add", "gen/b.rs"]);
+    let store = Store::open(tmp.path()).unwrap();
+    let files: Vec<String> = store
+        .list_nodes(Some(NodeType::CodeFile), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .map(|n| n.name)
+        .collect();
+    assert!(
+        files.contains(&"gen/b.rs".to_string()),
+        "literal add overrides ignore: {files:?}"
+    );
+}
+
+// =========================================================================
+// 17. Sync discovers new files under remembered globs and reports them.
+// =========================================================================
+
+/// `loom sync` must run the discovery pass (rescan remembered globs) before the
+/// deriver loop.  New files appear in the store AND in the sync JSON output
+/// (`new_files` list, `new_observed` count).
+#[test]
+fn sync_discovers_new_files_and_reports_them() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    write_file(tmp.path(), "src/alpha.rs", "fn alpha() {}");
+    // Register an owned glob + an observed glob.
+    loom_ok(tmp.path(), &["codefile", "add", "src/**/*.rs"]);
+    loom_ok(
+        tmp.path(),
+        &["codefile", "add", "vendor/**/*.rs", "--observed"],
+    );
+    // Initial sync to baseline.
+    loom_ok(tmp.path(), &["sync"]);
+    // New files appear after the baseline sync.
+    write_file(tmp.path(), "src/beta.rs", "fn beta() {}");
+    write_file(tmp.path(), "vendor/lib.rs", "fn lib() {}");
+    let j = loom_json(tmp.path(), &["sync"]);
+
+    // The new_files list must contain the discovered paths.
+    let new_files: Vec<String> = j["new_files"]
+        .as_array()
+        .expect("new_files is an array")
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(
+        new_files.contains(&"src/beta.rs".to_string()),
+        "owned discovery: {new_files:?}"
+    );
+    assert!(
+        new_files.contains(&"vendor/lib.rs".to_string()),
+        "observed discovery: {new_files:?}"
+    );
+    assert_eq!(
+        j["new_observed"].as_i64().unwrap(),
+        1,
+        "one observed file: {j}"
+    );
+
+    // The store must have registered both.
+    let store = Store::open(tmp.path()).unwrap();
+    let files: Vec<String> = store
+        .list_nodes(Some(NodeType::CodeFile), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .map(|n| n.name)
+        .collect();
+    assert!(
+        files.contains(&"src/beta.rs".to_string()),
+        "beta.rs in store: {files:?}"
+    );
+    assert!(
+        files.contains(&"vendor/lib.rs".to_string()),
+        "vendor/lib.rs in store: {files:?}"
+    );
+}
+
+/// Sync's discovery pass also respects ignore globs — an ignored file that
+/// matches a remembered glob must not appear in the sync JSON `new_files`.
+#[test]
+fn sync_discovery_respects_ignore_globs() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    write_file(tmp.path(), "src/keep.rs", "fn keep() {}");
+    loom_ok(tmp.path(), &["codefile", "add", "src/**/*.rs"]);
+    loom_ok(
+        tmp.path(),
+        &["ignore", "add", "src/gen/**/*.rs", "--reason", "generated"],
+    );
+    loom_ok(tmp.path(), &["sync"]);
+
+    // New files: one kept, one ignored.
+    write_file(tmp.path(), "src/new.rs", "fn new() {}");
+    write_file(tmp.path(), "src/gen/auto.rs", "fn auto() {}");
+    let j = loom_json(tmp.path(), &["sync"]);
+    let new_files: Vec<String> = j["new_files"]
+        .as_array()
+        .expect("new_files is an array")
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(
+        new_files.contains(&"src/new.rs".to_string()),
+        "non-ignored discovered: {new_files:?}"
+    );
+    assert!(
+        !new_files.contains(&"src/gen/auto.rs".to_string()),
+        "ignored file must NOT be discovered: {new_files:?}"
+    );
+}
