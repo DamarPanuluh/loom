@@ -275,12 +275,16 @@ pub(super) fn quality_item(store: &Store) -> Result<Option<WorkItem>> {
     unmeasured_pair_item(store)
 }
 
-fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
+/// Never-measured (rule × root implemented intent) pairs: every non-deprecated
+/// `QualityRule` crossed with every root `implemented` intent that has no
+/// `governs` edge yet. This is the SINGLE predicate shared by the work-item
+/// picker (`unmeasured_pair_item`), the queue roster (`unmeasured_pair_entries`),
+/// the queue count (`queue_counts`), and the maturity ladder (`hardened` rung)
+/// — so they can never disagree about what "unmeasured" means.
+pub(crate) fn unmeasured_quality_pairs(store: &Store) -> Result<Vec<(Node, Node)>> {
     let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
-    let measured: std::collections::BTreeSet<(&str, &str)> = governs
-        .iter()
-        .map(|e| (e.from_id.as_str(), e.to_id.as_str()))
-        .collect();
+    let measured: std::collections::BTreeSet<(String, String)> =
+        governs.into_iter().map(|e| (e.from_id, e.to_id)).collect();
     let children: std::collections::BTreeSet<String> = store
         .edges_with(Some(EdgeKind::Hierarchy), None, None)?
         .into_iter()
@@ -288,74 +292,82 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
         .collect();
     let rules = store.list_nodes(Some(NodeType::QualityRule), usize::MAX)?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
-    for rule in rules.iter().filter(|r| r.status != "deprecated") {
+    let mut out = Vec::new();
+    for rule in rules.into_iter().filter(|r| r.status != "deprecated") {
         for intent in intents
             .iter()
             .filter(|i| i.status == "implemented" && !children.contains(&i.id))
         {
-            if measured.contains(&(rule.id.as_str(), intent.id.as_str())) {
-                continue;
+            if !measured.contains(&(rule.id.clone(), intent.id.clone())) {
+                out.push((rule.clone(), intent.clone()));
             }
-            let effort = rule
-                .body
-                .get("effort")
-                .and_then(|v| v.as_str())
-                .unwrap_or("mid")
-                .to_string();
-            let mut context = node_context(
-                store,
-                intent,
-                "Read the rule's inspection guide, then measure the intent's grounded code against it.",
-            )?;
-            context.linked_entities.push(LinkedEntity {
-                role: "measuring_rule".into(),
-                kind: NodeType::QualityRule.as_str().into(),
-                id: rule.id.clone(),
-                name: rule.name.clone(),
-                description: Some(rule.description.clone()).filter(|d| !d.is_empty()),
-                status: None,
-                edge_kind: None,
-                edge_status: None,
-                locator: None,
-            });
-            context.suggested_reads.push(SuggestedRead {
-                reason: "the measuring stick — its inspection guide and examples".into(),
-                command: format!("loom rule show {}", rule.id),
-            });
-            return Ok(Some(WorkItem {
-                mode: "quality".into(),
-                owner_role: "quality".into(),
-                effort,
-                reason: format!(
-                    "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
-                    rule.name, intent.name
-                ),
-                target: Target {
-                    kind: "rule_intent_pair".into(),
-                    id: intent.id.clone(),
-                    name: format!("{} —governs?→ {}", rule.name, intent.name),
-                    from: Some(rule.name.clone()),
-                    to: Some(intent.name.clone()),
-                },
-                stale_causes: Vec::new(),
-                prompt_contract: quality_contract_body(
-                    Some(rule),
-                    &format!(
-                        "'{}' is seeded but unmeasured against this intent",
-                        rule.name
-                    ),
-                    &rule.name,
-                    &intent.name,
-                    prescreen_for(store, Some(rule), &intent.id)?,
-                ),
-                context,
-                scorecard: None,
-                truth_gap: crate::truth::TruthAxis::Verdict.gap(),
-                next_step: "after recording the verdict, run `loom status`".into(),
-            }));
         }
     }
-    Ok(None)
+    Ok(out)
+}
+
+fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
+    let pairs = unmeasured_quality_pairs(store)?;
+    let Some((rule, intent)) = pairs.into_iter().next() else {
+        return Ok(None);
+    };
+    let effort = rule
+        .body
+        .get("effort")
+        .and_then(|v| v.as_str())
+        .unwrap_or("mid")
+        .to_string();
+    let mut context = node_context(
+        store,
+        &intent,
+        "Read the rule's inspection guide, then measure the intent's grounded code against it.",
+    )?;
+    context.linked_entities.push(LinkedEntity {
+        role: "measuring_rule".into(),
+        kind: NodeType::QualityRule.as_str().into(),
+        id: rule.id.clone(),
+        name: rule.name.clone(),
+        description: Some(rule.description.clone()).filter(|d| !d.is_empty()),
+        status: None,
+        edge_kind: None,
+        edge_status: None,
+        locator: None,
+    });
+    context.suggested_reads.push(SuggestedRead {
+        reason: "the measuring stick — its inspection guide and examples".into(),
+        command: format!("loom rule show {}", rule.id),
+    });
+    Ok(Some(WorkItem {
+        mode: "quality".into(),
+        owner_role: "quality".into(),
+        effort,
+        reason: format!(
+            "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
+            rule.name, intent.name
+        ),
+        target: Target {
+            kind: "rule_intent_pair".into(),
+            id: intent.id.clone(),
+            name: format!("{} —governs?→ {}", rule.name, intent.name),
+            from: Some(rule.name.clone()),
+            to: Some(intent.name.clone()),
+        },
+        stale_causes: Vec::new(),
+        prompt_contract: quality_contract_body(
+            Some(&rule),
+            &format!(
+                "'{}' is seeded but unmeasured against this intent",
+                rule.name
+            ),
+            &rule.name,
+            &intent.name,
+            prescreen_for(store, Some(&rule), &intent.id)?,
+        ),
+        context,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Verdict.gap(),
+        next_step: "after recording the verdict, run `loom status`".into(),
+    }))
 }
 
 pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
@@ -738,31 +750,8 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
     let (stale_rel, stale_gov, stale_val) = split(&stale);
     let (unin_rel, unin_gov, unin_val) = split(&uninspected);
 
-    // Never-measured rule × root implemented intent pairs (the quality
-    // fallback's exact predicate).
-    let governs_all = store.edges_with(Some(EdgeKind::Governs), None, None)?;
-    let measured: std::collections::BTreeSet<(&str, &str)> = governs_all
-        .iter()
-        .map(|e| (e.from_id.as_str(), e.to_id.as_str()))
-        .collect();
-    let children: std::collections::BTreeSet<String> = store
-        .edges_with(Some(EdgeKind::Hierarchy), None, None)?
-        .into_iter()
-        .map(|e| e.to_id)
-        .collect();
-    let rules = store.list_nodes(Some(NodeType::QualityRule), usize::MAX)?;
-    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
-    let mut pairs = 0usize;
-    for rule in rules.iter().filter(|r| r.status != "deprecated") {
-        for intent in intents
-            .iter()
-            .filter(|i| i.status == "implemented" && !children.contains(&i.id))
-        {
-            if !measured.contains(&(rule.id.as_str(), intent.id.as_str())) {
-                pairs += 1;
-            }
-        }
-    }
+    // Never-measured rule × root implemented intent pairs — shared predicate.
+    let pairs = unmeasured_quality_pairs(store)?.len();
 
     let floor = crate::policy::load(store)?.review_confidence_floor;
     let review = store
@@ -1082,49 +1071,30 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
 /// Every never-measured (rule × root implemented intent) pair as a roster row —
 /// the enumerated form of `unmeasured_pair_item`'s single pick.
 fn unmeasured_pair_entries(store: &Store) -> Result<Vec<QueueEntry>> {
-    let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
-    let measured: std::collections::BTreeSet<(&str, &str)> = governs
-        .iter()
-        .map(|e| (e.from_id.as_str(), e.to_id.as_str()))
-        .collect();
-    let children: std::collections::BTreeSet<String> = store
-        .edges_with(Some(EdgeKind::Hierarchy), None, None)?
-        .into_iter()
-        .map(|e| e.to_id)
-        .collect();
-    let rules = store.list_nodes(Some(NodeType::QualityRule), usize::MAX)?;
-    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
+    let pairs = unmeasured_quality_pairs(store)?;
     let mut out = Vec::new();
-    for rule in rules.iter().filter(|r| r.status != "deprecated") {
-        for intent in intents
-            .iter()
-            .filter(|i| i.status == "implemented" && !children.contains(&i.id))
-        {
-            if measured.contains(&(rule.id.as_str(), intent.id.as_str())) {
-                continue;
-            }
-            let effort = rule
-                .body
-                .get("effort")
-                .and_then(|v| v.as_str())
-                .unwrap_or("mid")
-                .to_string();
-            out.push(QueueEntry {
-                mode: "quality".into(),
-                effort,
-                reason: format!(
-                    "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
-                    rule.name, intent.name
-                ),
-                target: Target {
-                    kind: "rule_intent_pair".into(),
-                    id: intent.id.clone(),
-                    name: format!("{} —governs?→ {}", rule.name, intent.name),
-                    from: Some(rule.name.clone()),
-                    to: Some(intent.name.clone()),
-                },
-            });
-        }
+    for (rule, intent) in &pairs {
+        let effort = rule
+            .body
+            .get("effort")
+            .and_then(|v| v.as_str())
+            .unwrap_or("mid")
+            .to_string();
+        out.push(QueueEntry {
+            mode: "quality".into(),
+            effort,
+            reason: format!(
+                "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
+                rule.name, intent.name
+            ),
+            target: Target {
+                kind: "rule_intent_pair".into(),
+                id: intent.id.clone(),
+                name: format!("{} —governs?→ {}", rule.name, intent.name),
+                from: Some(rule.name.clone()),
+                to: Some(intent.name.clone()),
+            },
+        });
     }
     Ok(out)
 }

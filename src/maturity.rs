@@ -165,6 +165,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     let unowned_codefiles = unowned_registered_codefiles(store)?;
     let doctor_issues = crate::signal::doctor(store)?.len();
     let export_fresh = crate::travel::export_is_fresh(store)?;
+    let unmeasured_quality_pairs = crate::workitem::unmeasured_quality_pairs(store)?.len();
     let rungs = build_rungs(&RungInputs {
         active: active.len(),
         planned,
@@ -181,6 +182,7 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         untriaged,
         stale_findings,
         export_fresh,
+        unmeasured_quality_pairs,
     });
 
     // Compass: lowest unmet rung → phase + next command. Routing follows the
@@ -305,6 +307,9 @@ struct RungInputs {
     untriaged: usize,
     stale_findings: usize,
     export_fresh: bool,
+    /// Never-measured (rule × root implemented intent) pairs — seeded rules
+    /// that have not yet produced a `governs` edge.
+    unmeasured_quality_pairs: usize,
 }
 
 /// Build the five maturity rungs from the gathered counts.
@@ -379,14 +384,18 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
         name: "hardened".into(),
         state: if c.active == 0 {
             RungState::NotApplicable
-        } else if c.stale == 0 && c.uninspected == 0 && c.doctor_issues == 0 {
+        } else if c.stale == 0
+            && c.uninspected == 0
+            && c.doctor_issues == 0
+            && c.unmeasured_quality_pairs == 0
+        {
             RungState::Met
         } else {
             RungState::Unmet
         },
         detail: format!(
-            "{} stale/failing, {} uninspected, {} doctor issue(s)",
-            c.stale, c.uninspected, c.doctor_issues
+            "{} stale/failing, {} uninspected, {} unmeasured quality pair(s), {} doctor issue(s)",
+            c.stale, c.uninspected, c.unmeasured_quality_pairs, c.doctor_issues
         ),
         blocked: false,
         blocked_by: None,

@@ -1116,3 +1116,127 @@ fn excellent_rung_when_not_applicable_hides_untriaged_count() {
     assert!(!excellent.detail.contains("untriaged"));
     assert_eq!(l.phase, "seed");
 }
+
+#[test]
+fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
+    // A fully grounded + proven graph with seeded quality rules must report
+    // hardened = Unmet until every rule × root implemented intent pair has a
+    // governs verdict. The detail string must mention unmeasured quality pairs.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    // One implemented root intent, grounded and proven.
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "user can pay",
+            "payment works",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/pay.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let imp = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(&imp.id, InspectionStatus::Passing, "c", "e", 0.9, "llm")
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "pay test",
+            "",
+            "passed",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let ve = store
+        .add_edge(
+            EdgeKind::Validates,
+            &val.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(&ve.id, InspectionStatus::Passing, "proof", "ok", 1.0, "llm")
+        .unwrap();
+
+    // Before seeding: hardened should be Met (no stale, no uninspected, no doctor, no pairs).
+    let l = ladder(&store).unwrap();
+    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    assert_eq!(
+        hardened.state,
+        RungState::Met,
+        "hardened is Met before any rules are seeded"
+    );
+
+    // Seed a pack — creates quality rules but no governs edges yet.
+    let n = loom::packs::seed(&store, "iso5055").unwrap();
+    assert!(n > 0, "iso5055 pack seeds at least one rule");
+
+    // Now hardened must be Unmet: unmeasured pairs block it.
+    let l = ladder(&store).unwrap();
+    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    assert_eq!(
+        hardened.state,
+        RungState::Unmet,
+        "hardened is Unmet when seeded rules have unmeasured pairs"
+    );
+    assert!(
+        hardened.detail.contains("unmeasured quality pair"),
+        "hardened detail mentions unmeasured quality pairs: {}",
+        hardened.detail
+    );
+
+    // Compass should route to quality (assuming earlier rungs are met).
+    assert_eq!(l.phase, "quality", "compass routes to quality lane");
+
+    // Measure every rule against the intent → all pairs satisfied.
+    let rules = store
+        .list_nodes(Some(NodeType::QualityRule), usize::MAX)
+        .unwrap();
+    for rule in &rules {
+        let ge = store
+            .add_edge(
+                EdgeKind::Governs,
+                &rule.id,
+                &intent.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .record_verdict(
+                &ge.id,
+                InspectionStatus::Passing,
+                "criterion",
+                "evidence",
+                0.9,
+                "llm",
+            )
+            .unwrap();
+    }
+
+    // Now hardened should be Met.
+    let l = ladder(&store).unwrap();
+    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    assert_eq!(
+        hardened.state,
+        RungState::Met,
+        "hardened is Met after all quality pairs are measured"
+    );
+}
