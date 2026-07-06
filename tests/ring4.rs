@@ -142,6 +142,52 @@ fn implemented_but_ungrounded_intent_routes_to_a_nonempty_build_queue() {
 }
 
 #[test]
+fn graph_mode_is_settable_after_init_and_takes_effect() {
+    // Regression (Bug 3): `observed` is a graph MODE, reachable after init via
+    // `loom mode` (Store::set_observed), not an orphaned flag. Setting it to
+    // observed disables the build lane; setting it back to owned re-enables it.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap(); // owned
+    assert!(!store.identity().unwrap().observed, "starts owned");
+
+    // An ungrounded implemented intent: build work while owned.
+    store
+        .add_node(
+            NodeType::Intent,
+            "the thing works",
+            "a user does the thing and it works",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    assert_eq!(
+        workitem::queue_counts(&store).unwrap().build,
+        1,
+        "owned graph serves the ungrounded intent as build work"
+    );
+
+    // Flip to observed: identity reflects it and the build lane goes dark.
+    assert!(store.set_observed(true).unwrap());
+    assert!(
+        store.identity().unwrap().observed,
+        "mode set to observed persists"
+    );
+    assert_eq!(
+        workitem::queue_counts(&store).unwrap().build,
+        0,
+        "observed graph disables the build lane"
+    );
+
+    // Flip back to owned: the lane returns.
+    assert!(!store.set_observed(false).unwrap());
+    assert!(
+        !store.identity().unwrap().observed,
+        "mode set back to owned"
+    );
+    assert_eq!(workitem::queue_counts(&store).unwrap().build, 1);
+}
+
+#[test]
 fn observed_graph_compass_never_routes_to_a_disabled_lane() {
     // Regression: on an observed graph the build/coverage/fix lanes are disabled
     // (`queue_counts` forces them to 0). An ungrounded implemented intent leaves

@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.22.0] - 2026-07-06
+- loom mode <owned|observed> sets the graph mode after init (build/fix/coverage/elaborate lanes on/off); sync never touches it, so the observed flag is reachable instead of orphaned. loom next --mode <m> --all lists a single queue's full depth — every item it would serve, in priority order, as lightweight rows — so a queue status reports as hundreds deep is pageable (the singular next still serves the full top packet)
+
 ## [0.21.2] - 2026-07-06
 - Compass never routes to an empty or disabled lane: implemented-but-ungrounded intents are now served by the build lane and counted in queues.build via a shared predicate with the realized rung; build/coverage route on queue counts so an observed graph is never pointed at a force-disabled lane; loom next --all surfaces per-queue depth ([n] markers + additive queue_counts in JSON)
 

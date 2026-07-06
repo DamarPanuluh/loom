@@ -348,6 +348,20 @@ impl Store {
         })
     }
 
+    /// Set the graph's mode: `observed` = maps code the driver does not own
+    /// (discovery-only; build/fix/coverage/elaborate lanes disabled), `owned` =
+    /// the normal build-and-prove mode. This is the post-init counterpart to
+    /// `loom init --observed`; `sync` never changes it, because scanning files
+    /// says nothing about who owns them. Returns the value actually set.
+    pub fn set_observed(&self, observed: bool) -> Result<bool> {
+        self.conn.execute(
+            "INSERT INTO meta(key,value) VALUES ('observed',?1)
+             ON CONFLICT(key) DO UPDATE SET value=?1",
+            params![if observed { "1" } else { "0" }],
+        )?;
+        Ok(observed)
+    }
+
     /// Begin an explicit transaction for a multi-mutation batch (`loom apply`).
     /// Uses `unchecked_transaction` so it composes with the store's `&self`
     /// write methods; drop it without `commit` to roll the whole batch back —

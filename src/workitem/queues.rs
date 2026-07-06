@@ -812,3 +812,319 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
         },
     })
 }
+
+/// One lightweight row in a queue roster: what/why/effort, without the full
+/// prompt contract or traversal context a served work item carries. This is the
+/// depth view behind `loom next --mode <m> --all` — enough to page and pick,
+/// cheap enough to list a queue that is hundreds deep. To actually WORK an item,
+/// `loom next --mode <m>` still compiles the full packet for the top of the
+/// queue.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct QueueEntry {
+    pub mode: String,
+    pub effort: String,
+    pub reason: String,
+    pub target: Target,
+}
+
+fn edge_entry(store: &Store, edge: &Edge, mode: &str, reason: &str) -> Result<QueueEntry> {
+    let from_name = store
+        .get_node(&edge.from_id)?
+        .map(|n| n.name)
+        .unwrap_or_default();
+    let to_name = store
+        .get_node(&edge.to_id)?
+        .map(|n| n.name)
+        .unwrap_or_default();
+    Ok(QueueEntry {
+        mode: mode.into(),
+        effort: effort_for(edge),
+        reason: reason.into(),
+        target: Target {
+            kind: "edge".into(),
+            id: edge.id.clone(),
+            name: format!("{} —{}→ {}", from_name, edge.kind, to_name),
+            from: Some(from_name),
+            to: Some(to_name),
+        },
+    })
+}
+
+fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEntry {
+    QueueEntry {
+        mode: mode.into(),
+        effort: effort.into(),
+        reason,
+        target: node_target(node),
+    }
+}
+
+/// The FULL roster of one queue: every item the lane would serve, in the exact
+/// order it serves them — entry 0 is what `loom next --mode <m>` returns. Entries
+/// are lightweight (see `QueueEntry`). Observed graphs disable the
+/// build/fix/coverage/elaborate lanes, so those roster empty here too, matching
+/// `next` and `queue_counts`.
+pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> {
+    use super::Mode;
+    use crate::model::TruthClass;
+    let observed = store.identity()?.observed;
+    if observed
+        && matches!(
+            mode,
+            Mode::Build | Mode::Fix | Mode::Coverage | Mode::Elaborate
+        )
+    {
+        return Ok(Vec::new());
+    }
+    let not_measured_lane = |e: &Edge| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates);
+    let mut out = Vec::new();
+    match mode {
+        Mode::Fix => {
+            for e in
+                store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
+            {
+                out.push(edge_entry(
+                    store,
+                    &e,
+                    "fix",
+                    "failing verdict — repair at root cause",
+                )?);
+            }
+        }
+        Mode::Analyze => {
+            for e in store
+                .live_edges_by_status(
+                    TruthClass::Asserted,
+                    &[InspectionStatus::NeedsReverification],
+                )?
+                .iter()
+                .filter(|e| not_measured_lane(e))
+            {
+                out.push(edge_entry(
+                    store,
+                    e,
+                    "analyze",
+                    "dependency changed — re-verify this claim",
+                )?);
+            }
+            for e in store
+                .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
+                .iter()
+                .filter(|e| not_measured_lane(e))
+            {
+                out.push(edge_entry(
+                    store,
+                    e,
+                    "analyze",
+                    "uninspected claim — inspect the code and record a verdict",
+                )?);
+            }
+        }
+        Mode::Validate => {
+            let validates = store.edges_with(Some(EdgeKind::Validates), None, None)?;
+            for e in validates
+                .iter()
+                .filter(|e| e.status == InspectionStatus::Uninspected)
+            {
+                out.push(edge_entry(store, e, "validate", "unrun proof")?);
+            }
+            for e in validates
+                .iter()
+                .filter(|e| e.status == InspectionStatus::NeedsReverification)
+            {
+                out.push(edge_entry(
+                    store,
+                    e,
+                    "validate",
+                    "proof went stale — a dependency changed; re-run it",
+                )?);
+            }
+        }
+        Mode::Quality => {
+            let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
+            for e in governs
+                .iter()
+                .filter(|e| e.status == InspectionStatus::Uninspected)
+            {
+                out.push(edge_entry(store, e, "quality", "unmeasured quality rule")?);
+            }
+            for e in governs
+                .iter()
+                .filter(|e| e.status == InspectionStatus::NeedsReverification)
+            {
+                out.push(edge_entry(
+                    store,
+                    e,
+                    "quality",
+                    "quality verdict went stale — a dependency changed; re-measure",
+                )?);
+            }
+            out.extend(unmeasured_pair_entries(store)?);
+        }
+        Mode::Build => {
+            let mut intents =
+                store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
+            intents.extend(ungrounded_implemented_intents(store)?);
+            intents.sort_by(|a, b| {
+                rank_lifecycle(&a.status)
+                    .cmp(&rank_lifecycle(&b.status))
+                    .then(a.name.cmp(&b.name))
+            });
+            // Prerequisite-ready candidates first (entry 0 is what the lane
+            // serves), then blocked ones carrying their blocked reason.
+            let mut blocked = Vec::new();
+            for intent in &intents {
+                let unmet = unmet_prerequisites(store, &intent.id)?;
+                if unmet.is_empty() {
+                    out.push(node_entry("build", "mid", intent, build_reason(intent)));
+                } else {
+                    blocked.push(node_entry(
+                        "build",
+                        "mid",
+                        intent,
+                        format!(
+                            "blocked: requires {} — build the prerequisite(s) first, or break the requires cycle",
+                            unmet.join(", ")
+                        ),
+                    ));
+                }
+            }
+            out.extend(blocked);
+        }
+        Mode::Coverage => {
+            for cf in crate::commands::unowned_codefiles(store)? {
+                let missing = !store.root().join(&cf.name).exists();
+                let reason = if missing {
+                    "no longer exists on disk — unregister it (or re-register its successor)"
+                } else {
+                    "no owning intent — ground it, or unregister the file"
+                };
+                out.push(node_entry("coverage", "low", &cf, reason.into()));
+            }
+        }
+        Mode::Prove => {
+            for h in store.nodes_by_status(NodeType::Hypothesis, &["proposed"])? {
+                out.push(node_entry(
+                    "prove",
+                    "high",
+                    &h,
+                    "unproven hypothesis — prove or refute the claim against the code".into(),
+                ));
+            }
+        }
+        Mode::Triage => {
+            for fv in crate::signal::triage_findings(store)? {
+                let reason = if fv.stale {
+                    "prior verdict is stale (file changed) — re-adjudicate"
+                } else {
+                    "untriaged finding — adjudicate it"
+                };
+                out.push(node_entry("triage", "low", &fv.node, reason.into()));
+            }
+            for item in store
+                .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
+                .into_iter()
+                .filter(|n| n.status == "new")
+            {
+                out.push(node_entry(
+                    "triage",
+                    "low",
+                    &item,
+                    "new inbox item — route it into graph work".into(),
+                ));
+            }
+        }
+        Mode::Review => {
+            let floor = crate::policy::load(store)?.review_confidence_floor;
+            let mut candidates: Vec<Edge> = store
+                .live_edges_by_status(
+                    TruthClass::Asserted,
+                    &[InspectionStatus::Passing, InspectionStatus::Independent],
+                )?
+                .into_iter()
+                .filter(|e| e.confidence > 0.0 && e.confidence < floor)
+                .collect();
+            candidates.sort_by(|a, b| {
+                a.confidence
+                    .partial_cmp(&b.confidence)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.id.cmp(&b.id))
+            });
+            for e in &candidates {
+                let reason = format!(
+                    "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
+                    e.confidence, floor
+                );
+                out.push(edge_entry(store, e, "review", &reason)?);
+            }
+        }
+        Mode::Elaborate => {
+            for card in crate::completeness::all_scorecards(store)?
+                .into_iter()
+                .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
+            {
+                let Some(intent) = store.get_node(&card.intent_id)? else {
+                    continue;
+                };
+                let open_names: Vec<&str> = card.open_axes().map(|a| a.axis.as_str()).collect();
+                let reason = format!(
+                    "user-visible idea with {} open completeness axis(es): {}",
+                    card.open,
+                    open_names.join(", ")
+                );
+                out.push(node_entry("elaborate", "high", &intent, reason));
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Every never-measured (rule × root implemented intent) pair as a roster row —
+/// the enumerated form of `unmeasured_pair_item`'s single pick.
+fn unmeasured_pair_entries(store: &Store) -> Result<Vec<QueueEntry>> {
+    let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
+    let measured: std::collections::BTreeSet<(&str, &str)> = governs
+        .iter()
+        .map(|e| (e.from_id.as_str(), e.to_id.as_str()))
+        .collect();
+    let children: std::collections::BTreeSet<String> = store
+        .edges_with(Some(EdgeKind::Hierarchy), None, None)?
+        .into_iter()
+        .map(|e| e.to_id)
+        .collect();
+    let rules = store.list_nodes(Some(NodeType::QualityRule), usize::MAX)?;
+    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
+    let mut out = Vec::new();
+    for rule in rules.iter().filter(|r| r.status != "deprecated") {
+        for intent in intents
+            .iter()
+            .filter(|i| i.status == "implemented" && !children.contains(&i.id))
+        {
+            if measured.contains(&(rule.id.as_str(), intent.id.as_str())) {
+                continue;
+            }
+            let effort = rule
+                .body
+                .get("effort")
+                .and_then(|v| v.as_str())
+                .unwrap_or("mid")
+                .to_string();
+            out.push(QueueEntry {
+                mode: "quality".into(),
+                effort,
+                reason: format!(
+                    "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
+                    rule.name, intent.name
+                ),
+                target: Target {
+                    kind: "rule_intent_pair".into(),
+                    id: intent.id.clone(),
+                    name: format!("{} —governs?→ {}", rule.name, intent.name),
+                    from: Some(rule.name.clone()),
+                    to: Some(intent.name.clone()),
+                },
+            });
+        }
+    }
+    Ok(out)
+}

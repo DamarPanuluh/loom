@@ -28,7 +28,12 @@ Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `-
 
 ```text
 --mode: build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate
---all:  closeout view: every queue at once
+--all:  closeout view — the top item of every queue at once
+--mode <m> --all:  the FULL depth of one queue — every item it would serve, in
+                   priority order (entry 1 is what `loom next --mode <m>` serves),
+                   as lightweight rows (target + reason + effort, no packet). Use
+                   it to page a queue that `loom status` reports as hundreds deep;
+                   work an item with the singular `loom next --mode <m>`.
 ```
 
 Queue partition is deliberately disjoint:
@@ -103,6 +108,12 @@ loom init [<path>] [--name <graph-name>] [--observed] [--json]
 ```
 
 Creates `.loom/` and initializes `graph.sqlite`. `--observed` maps code the driver does not own (discovery-only; build/fix lanes disabled).
+
+```text
+loom mode [owned|observed] [--json]
+```
+
+Show or set the graph **mode**. `observed` maps code the driver does not own — discovery/quality/validation only, with the build/fix/coverage/elaborate lanes disabled; `owned` is the normal build-and-prove mode. Omit the argument to print the current mode. This is the post-init counterpart to `init --observed`: a graph created one way can be switched later. `observed` is a mode, **not** a "has been scanned" flag — `loom sync` never changes it (scanning files says nothing about who owns them).
 
 ```text
 loom sync [--json]

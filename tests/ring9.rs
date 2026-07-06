@@ -52,6 +52,57 @@ fn passing_governs(
 }
 
 // ===========================================================================
+// 0. QUEUE ROSTER (loom next --mode <m> --all)
+// ===========================================================================
+
+#[test]
+fn queue_items_returns_full_depth_not_just_the_top() {
+    // Contract: `queue_items` lists EVERY item a queue would serve, in priority
+    // order, so `loom next --mode <m> --all` shows real depth (not one item like
+    // the singular `next`). Entry 0 is exactly what `loom next --mode <m>` serves.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // Three ungrounded implemented intents — all legitimate build work.
+    for name in ["alpha behavior", "bravo behavior", "charlie behavior"] {
+        implemented_intent(&store, name);
+    }
+
+    let roster = workitem::queue_items(&store, Mode::Build).unwrap();
+    assert_eq!(
+        roster.len(),
+        3,
+        "the roster lists every build item, not just the top"
+    );
+    // Matches the queue count reported by `loom status`.
+    assert_eq!(
+        roster.len(),
+        workitem::queue_counts(&store).unwrap().build,
+        "roster depth equals the queue count status reports"
+    );
+    // Entry 0 is the same target the singular lane serves — the roster is faithful.
+    let top = workitem::next(&store, Some(Mode::Build)).unwrap().unwrap();
+    assert_eq!(roster[0].target.name, top.target.name);
+    // Sorted by name (all same lifecycle rank), so the depth view is stable.
+    assert_eq!(roster[0].target.name, "alpha behavior");
+    assert_eq!(roster[2].target.name, "charlie behavior");
+}
+
+#[test]
+fn queue_items_empty_for_a_disabled_lane_on_an_observed_graph() {
+    // The build lane is off on an observed graph, so its roster is empty too —
+    // `--mode build --all` never lists work the lane would refuse to serve.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), true).unwrap(); // observed
+    implemented_intent(&store, "some behavior"); // ungrounded → would be build work
+    assert!(
+        workitem::queue_items(&store, Mode::Build)
+            .unwrap()
+            .is_empty(),
+        "observed graph: the build roster is empty (lane disabled)"
+    );
+}
+
+// ===========================================================================
 // 1. REVIEW QUEUE
 // ===========================================================================
 

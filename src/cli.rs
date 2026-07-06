@@ -71,12 +71,23 @@ pub enum Command {
     Sync,
     /// Print graph identity and counts.
     Status,
+    /// Show or set the graph mode — `owned` (build + prove) or `observed`
+    /// (maps code you don't own; build/fix lanes off). Omit the arg to print
+    /// the current mode. This is the post-init counterpart to `init --observed`;
+    /// `sync` never changes the mode.
+    Mode {
+        /// owned | observed. Omit to print the current mode.
+        #[arg(value_enum)]
+        mode: Option<GraphModeArg>,
+    },
     /// The next work item (asserted residue) with its prompt contract.
     Next {
         /// The queue to serve; omit for the highest-priority item overall.
         #[arg(long, value_enum)]
         mode: Option<ModeArg>,
-        /// Closeout view: every queue at once.
+        /// Closeout view: the top item of every queue at once. With `--mode
+        /// <m>`, instead list the FULL depth of that one queue (every item it
+        /// would serve, in priority order).
         #[arg(long)]
         all: bool,
     },
@@ -249,6 +260,22 @@ impl ModeArg {
             ModeArg::Review => "review",
             ModeArg::Elaborate => "elaborate",
         }
+    }
+}
+
+/// The graph mode for `loom mode`.
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+pub enum GraphModeArg {
+    /// Normal mode: build + prove; all lanes active.
+    Owned,
+    /// Monitoring mode: maps code the driver does not own; build/fix/coverage/
+    /// elaborate lanes disabled (discovery/quality/validation only).
+    Observed,
+}
+
+impl GraphModeArg {
+    pub fn is_observed(self) -> bool {
+        matches!(self, GraphModeArg::Observed)
     }
 }
 

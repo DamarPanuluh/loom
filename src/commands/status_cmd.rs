@@ -321,6 +321,81 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     Ok(())
 }
+/// `loom mode [owned|observed]`: show the graph mode, or set it. `observed`
+/// maps code the driver does not own (build/fix/coverage/elaborate lanes off);
+/// `owned` is the normal build-and-prove mode. Setting it is the post-init
+/// counterpart to `init --observed`; `sync` never touches it. `set` is `None`
+/// to just show, `Some(observed)` to set.
+pub(crate) fn mode_cmd(graph: Option<&Path>, set: Option<bool>, json: bool) -> Result<()> {
+    let observed = match set {
+        Some(want) => open(graph)?.set_observed(want)?,
+        None => open_read(graph)?.identity()?.observed,
+    };
+    let mode = if observed { "observed" } else { "owned" };
+    let changed = set.is_some();
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "mode": mode,
+                "observed": observed,
+                "changed": changed,
+            }))?
+        );
+        return Ok(());
+    }
+    let lanes = if observed {
+        "discovery/quality/validation only — build/fix/coverage/elaborate lanes off"
+    } else {
+        "all lanes active (build + prove)"
+    };
+    if changed {
+        println!("mode set to '{mode}' — {lanes}");
+    } else {
+        println!("mode: {mode} — {lanes}");
+    }
+    Ok(())
+}
+
+/// `loom next --mode <m> --all`: the full roster of one queue — every item it
+/// would serve, in priority order (entry 1 is what `loom next --mode <m>`
+/// serves), as lightweight rows. The depth view behind a queue `status` reports
+/// as hundreds deep.
+pub(crate) fn queue_list(graph: Option<&Path>, mode: &str, json: bool) -> Result<()> {
+    let store = open_read(graph)?;
+    let parsed = workitem::Mode::parse(mode).ok_or_else(|| anyhow!("unknown mode '{mode}'"))?;
+    let items = workitem::queue_items(&store, parsed)?;
+    if json {
+        let out = serde_json::json!({
+            "mode": mode,
+            "count": items.len(),
+            "items": items,
+        });
+        println!("{}", serde_json::to_string_pretty(&out)?);
+        return Ok(());
+    }
+    if items.is_empty() {
+        println!("{mode}: (empty queue)");
+        return Ok(());
+    }
+    println!(
+        "{mode}: {} item(s) — full queue depth (work the top with `loom next --mode {mode}`)",
+        items.len()
+    );
+    let width = items.len().to_string().len();
+    for (i, it) in items.iter().enumerate() {
+        println!(
+            "  {:>width$}. [{}] {} — {}",
+            i + 1,
+            it.effort,
+            it.target.name,
+            it.reason,
+            width = width
+        );
+    }
+    Ok(())
+}
+
 pub(crate) fn require_lane(store: &Store, owner: crate::registry::OwnerRole) -> Result<()> {
     match store.agent() {
         crate::store::Agent::Solo => Ok(()),

@@ -79,17 +79,23 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Apply { file } => apply_cmd::apply(cli.graph.as_deref(), &file, cli.json),
         Command::Sync => status_cmd::sync_cmd(cli.graph.as_deref(), cli.json),
         Command::Status => status_cmd::status(cli.graph.as_deref(), cli.json),
-        Command::Next { mode, all } => {
-            if all {
-                status_cmd::next_all(cli.graph.as_deref(), cli.json)
-            } else {
-                status_cmd::next_cmd(
-                    cli.graph.as_deref(),
-                    mode.map(crate::cli::ModeArg::as_str),
-                    cli.json,
-                )
-            }
-        }
+        Command::Mode { mode } => status_cmd::mode_cmd(
+            cli.graph.as_deref(),
+            mode.map(crate::cli::GraphModeArg::is_observed),
+            cli.json,
+        ),
+        Command::Next { mode, all } => match (mode, all) {
+            // `--mode <m> --all`: the full roster of that one queue (depth view).
+            (Some(m), true) => status_cmd::queue_list(cli.graph.as_deref(), m.as_str(), cli.json),
+            // `--all` alone: the closeout — top item of every queue.
+            (_, true) => status_cmd::next_all(cli.graph.as_deref(), cli.json),
+            // Default: the single next work item (full packet).
+            (m, false) => status_cmd::next_cmd(
+                cli.graph.as_deref(),
+                m.map(crate::cli::ModeArg::as_str),
+                cli.json,
+            ),
+        },
         Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Door { utterance } => misc_cmd::door(cli.graph.as_deref(), &utterance, cli.json),
         Command::Inbox { cmd } => misc_cmd::inbox(cli.graph.as_deref(), cmd, cli.json),
