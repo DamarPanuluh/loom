@@ -114,16 +114,9 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
         .into_iter()
         .map(|e| e.from_id)
         .collect();
-    let mut ungrounded = 0usize;
-    for n in &implemented {
-        if parents.contains(&n.id) {
-            continue; // roll-up parent — realized via children
-        }
-        let impls = store.realizing_groundings(&n.id)?;
-        if impls.is_empty() {
-            ungrounded += 1;
-        }
-    }
+    // Single source of truth with the build lane: the same predicate the build
+    // queue serves, so `ungrounded > 0` in the compass always has a work item.
+    let ungrounded = crate::workitem::ungrounded_implemented_intents(store)?.len();
 
     let stale = store
         .live_edges_by_status(
@@ -196,9 +189,6 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     let queues = crate::workitem::queue_counts(store)?;
     let (phase, next_command) = compass(
         active.len(),
-        planned,
-        ungrounded,
-        unowned_codefiles,
         implemented.len(),
         unproven_implemented,
         &validations,
@@ -235,9 +225,6 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
 #[allow(clippy::too_many_arguments)]
 fn compass(
     active: usize,
-    planned: usize,
-    ungrounded: usize,
-    unowned_codefiles: usize,
     implemented: usize,
     unproven_implemented: usize,
     validations: &ValidationSummary,
@@ -258,10 +245,17 @@ fn compass(
     if queues.fix > 0 {
         return ("fix".into(), "loom next --mode fix".into());
     }
-    if planned > 0 || ungrounded > 0 {
+    // Build and coverage route on the QUEUE count, not the raw rung inputs
+    // (planned/ungrounded/unowned): `queue_counts` forces these lanes to 0 on an
+    // observed graph, where they are disabled. For an owned graph the counts are
+    // exactly equivalent to the rung inputs (build == planned + needs_change +
+    // ungrounded; coverage == unowned), so this is behavior-identical there and
+    // simply stops the compass pointing an observed graph at a lane that
+    // `loom next --mode build`/`coverage` would never serve.
+    if queues.build > 0 {
         return ("build".into(), "loom next --mode build".into());
     }
-    if unowned_codefiles > 0 {
+    if queues.coverage > 0 {
         return ("coverage".into(), "loom coverage".into());
     }
     if queues.validate > 0

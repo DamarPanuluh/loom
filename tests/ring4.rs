@@ -89,6 +89,110 @@ fn planned_intent_routes_to_build() {
 }
 
 #[test]
+fn implemented_but_ungrounded_intent_routes_to_a_nonempty_build_queue() {
+    // Regression: an `implemented` intent with no realizing grounding leaves the
+    // `realized` rung Unmet, so the compass routes to `build`. The build queue
+    // MUST serve it — otherwise the compass points `loom next --mode build` at an
+    // empty queue (a dead end). The compass's stated invariant is that routing
+    // follows the exact queue partition; this defends it for the ungrounded case.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .add_node(
+            NodeType::Intent,
+            "the widget renders on load",
+            "a user sees the widget appear on first paint",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    // Compass routes to build (realized rung Unmet: 1 ungrounded).
+    let l = ladder(&store).unwrap();
+    assert_eq!(
+        l.phase, "build",
+        "ungrounded implemented intent routes to build"
+    );
+    assert_eq!(l.next_command, "loom next --mode build");
+
+    // The build queue is non-empty and serves exactly that intent — the compass
+    // and the queue partition agree.
+    let counts = workitem::queue_counts(&store).unwrap();
+    assert_eq!(
+        counts.build, 1,
+        "the ungrounded intent is counted in the build queue"
+    );
+    let item = workitem::next(&store, Some(Mode::Build))
+        .unwrap()
+        .expect("build queue must serve the ungrounded implemented intent, not return None");
+    assert_eq!(item.mode, "build");
+    assert_eq!(item.target.name, "the widget renders on load");
+    assert!(
+        item.reason.contains("ungrounded"),
+        "the reason steers to grounding, got: {}",
+        item.reason
+    );
+
+    // Default `loom next` (no mode) reaches the same work — compass and default
+    // routing never disagree.
+    let default_item = workitem::next(&store, None)
+        .unwrap()
+        .expect("default next serves it");
+    assert_eq!(default_item.mode, "build");
+}
+
+#[test]
+fn observed_graph_compass_never_routes_to_a_disabled_lane() {
+    // Regression: on an observed graph the build/coverage/fix lanes are disabled
+    // (`queue_counts` forces them to 0). An ungrounded implemented intent leaves
+    // the `realized` rung Unmet, but the compass must NOT route to `build` — that
+    // lane returns nothing here, a pure dead end. It routes to `validate` instead
+    // (which IS enabled on observed graphs), matching what the queues can serve.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), true).unwrap(); // observed = true
+    store
+        .add_node(
+            NodeType::Intent,
+            "the upstream emits an event we map",
+            "an external service fires an event this graph observes",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    let counts = workitem::queue_counts(&store).unwrap();
+    assert_eq!(
+        counts.build, 0,
+        "build lane is disabled on an observed graph"
+    );
+    assert_eq!(
+        counts.coverage, 0,
+        "coverage lane is disabled on an observed graph"
+    );
+
+    let l = ladder(&store).unwrap();
+    assert_ne!(
+        l.phase, "build",
+        "compass must not route to the disabled build lane"
+    );
+    assert_ne!(
+        l.phase, "coverage",
+        "compass must not route to the disabled coverage lane"
+    );
+    assert_ne!(
+        l.phase, "fix",
+        "compass must not route to the disabled fix lane"
+    );
+    // The compass never points at a `loom next --mode <m>` that is force-disabled:
+    // whatever phase it picks, that mode's queue count is > 0 or it is a
+    // non-lane phase (validate's proven-rung signal, audit, export, complete).
+    assert_eq!(
+        l.phase, "validate",
+        "an unproven observed intent routes to validate (enabled on observed graphs)"
+    );
+}
+
+#[test]
 fn rungs_above_the_lowest_unmet_rung_are_marked_blocked() {
     // A single planned intent: `seeded` Met, `realized` Unmet (the gate). Higher
     // rungs may be independently Met (e.g. `excellent` — no findings/smells yet),

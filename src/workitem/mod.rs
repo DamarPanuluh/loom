@@ -12,6 +12,7 @@ mod queues;
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
+pub(crate) use queues::ungrounded_implemented_intents;
 use queues::{
     analyze_item, build_item, coverage_item, elaborate_item, fix_item, prove_item, quality_item,
     review_item, triage_item, validate_item,

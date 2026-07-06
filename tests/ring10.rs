@@ -782,8 +782,7 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
         "contract 4: default next serves the fix queue before elaborate when a failing verdict exists"
     );
 
-    // Resolve the failure (passing verdict) so the fix queue drains. With no
-    // rules/codefiles/validations, every other queue is empty too.
+    // Resolve the failure (passing verdict) so the fix queue drains.
     store
         .record_verdict(
             &rel.id,
@@ -794,6 +793,41 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
             "llm",
         )
         .unwrap();
+
+    // Both intents are `implemented` but ungrounded — that is legitimate BUILD
+    // work (the build lane grounds implemented-but-unlinked intents so the
+    // compass never routes `build` at an empty queue). Ground each and inspect
+    // the grounding so the build AND analyze queues drain; only then is
+    // elaborate genuinely the last remaining queue.
+    let codefile = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/auth.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    for intent in [&a, &b] {
+        let impl_edge = store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &codefile.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .record_verdict(
+                &impl_edge.id,
+                loom::model::InspectionStatus::Passing,
+                "grounded and inspected",
+                "src/auth.rs:1",
+                0.9,
+                "llm",
+            )
+            .unwrap();
+    }
 
     // Now elaborate should surface (both intents still have open scenarios/
     // proof/journey axes, and no other queue has work).

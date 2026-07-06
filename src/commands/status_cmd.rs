@@ -262,39 +262,45 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open_read(graph)?;
     let ladder = crate::maturity::ladder(&store)?;
     let pulse = workitem::graph_state(&store)?;
+    // Queue depths: `--all` serves the TOP item of each queue, not every item.
+    // Surface the depth alongside so "one line per queue" never reads as "this
+    // queue holds one item" (the counts also live in `loom status`).
+    let counts = workitem::queue_counts(&store)?;
     let modes = [
-        ("fix", workitem::Mode::Fix),
-        ("validate", workitem::Mode::Validate),
-        ("build", workitem::Mode::Build),
-        ("coverage", workitem::Mode::Coverage),
-        ("quality", workitem::Mode::Quality),
-        ("prove", workitem::Mode::Prove),
-        ("analyze", workitem::Mode::Analyze),
-        ("triage", workitem::Mode::Triage),
-        ("review", workitem::Mode::Review),
-        ("elaborate", workitem::Mode::Elaborate),
+        ("fix", workitem::Mode::Fix, counts.fix),
+        ("validate", workitem::Mode::Validate, counts.validate),
+        ("build", workitem::Mode::Build, counts.build),
+        ("coverage", workitem::Mode::Coverage, counts.coverage),
+        ("quality", workitem::Mode::Quality, counts.quality),
+        ("prove", workitem::Mode::Prove, counts.prove),
+        ("analyze", workitem::Mode::Analyze, counts.analyze),
+        ("triage", workitem::Mode::Triage, counts.triage),
+        ("review", workitem::Mode::Review, counts.review),
+        ("elaborate", workitem::Mode::Elaborate, counts.elaborate),
     ];
     if json {
         let mut queues = serde_json::Map::new();
-        for (name, m) in modes {
+        for (name, m, _) in modes {
             let item = workitem::next(&store, Some(m))?;
             queues.insert(name.to_string(), serde_json::to_value(item)?);
         }
         let out = serde_json::json!({
             "compass": { "phase": ladder.phase, "next_command": ladder.next_command },
             "graph_state": pulse,
+            // Top item per queue (the closeout view). Depths are in `queue_counts`.
             "queues": queues,
+            "queue_counts": counts,
         });
         println!("{}", serde_json::to_string_pretty(&out)?);
     } else {
         println!(
-            "closeout — compass phase={} → {}",
+            "closeout — compass phase={} → {} (top of each queue; depths in [n])",
             ladder.phase, ladder.next_command
         );
-        for (name, m) in modes {
+        for (name, m, depth) in modes {
             match workitem::next(&store, Some(m))? {
-                Some(w) => println!("  {name:<8} → {}", w.target.name),
-                None => println!("  {name:<8} → (empty)"),
+                Some(w) => println!("  {name:<8} [{depth}] → {}", w.target.name),
+                None => println!("  {name:<8} [{depth}] → (empty)"),
             }
         }
         println!(

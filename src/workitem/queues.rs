@@ -28,9 +28,50 @@ fn unmet_prerequisites(store: &Store, intent_id: &str) -> Result<Vec<String>> {
     Ok(unmet)
 }
 
+/// Implemented leaf intents that carry no realizing grounding. A hierarchy
+/// parent is realized through its children, so it is exempt. This is the EXACT
+/// predicate the `realized` maturity rung uses for its `ungrounded` count — the
+/// single source of truth shared by the ladder, the compass, `queue_counts`, and
+/// the build lane, so the compass never routes `build` at work `build_item`
+/// would not serve (the invariant in `maturity::ladder`).
+pub(crate) fn ungrounded_implemented_intents(store: &Store) -> Result<Vec<Node>> {
+    let parents: std::collections::HashSet<String> = store
+        .list_edges(Some(EdgeKind::Hierarchy), usize::MAX)?
+        .into_iter()
+        .map(|e| e.from_id)
+        .collect();
+    let mut out = Vec::new();
+    for n in store.nodes_by_status(NodeType::Intent, &["implemented"])? {
+        if parents.contains(&n.id) {
+            continue; // roll-up parent — realized via children
+        }
+        if store.realizing_groundings(&n.id)?.is_empty() {
+            out.push(n);
+        }
+    }
+    Ok(out)
+}
+
+/// Why this intent is build work: planned/needs_change intents are unwritten;
+/// an `implemented` candidate reached the build lane only because it is
+/// ungrounded — the realizing code is unlinked (or unwritten), so the move is to
+/// add the `implements` edge, not to re-plan it.
+fn build_reason(intent: &Node) -> String {
+    if intent.status == "implemented" {
+        "intent is implemented but ungrounded — add the implements edge to the code that realizes it (or reclassify it)".into()
+    } else {
+        format!("intent is {} and not yet realized", intent.status)
+    }
+}
+
 pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
     let mut intents = store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
-    // needs_change before planned; then stable by name.
+    // Implemented-but-ungrounded intents block the `realized` rung exactly like
+    // planned ones, and the compass routes them to `build`; serve them here (after
+    // planned/needs_change work — `rank_lifecycle` sorts `implemented` last) so
+    // that routing never lands on an empty queue.
+    intents.extend(ungrounded_implemented_intents(store)?);
+    // needs_change before planned before ungrounded-implemented; then stable by name.
     intents.sort_by(|a, b| {
         rank_lifecycle(&a.status)
             .cmp(&rank_lifecycle(&b.status))
@@ -57,7 +98,7 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
     }
     let (intent, reason) = match ready {
         Some(i) => {
-            let reason = format!("intent is {} and not yet realized", i.status);
+            let reason = build_reason(&i);
             (i, reason)
         }
         None => match blocked {
@@ -745,6 +786,7 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
             store
                 .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
                 .len()
+                + ungrounded_implemented_intents(store)?.len()
         },
         coverage: if observed {
             0

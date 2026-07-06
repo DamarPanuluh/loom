@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.21.2] - 2026-07-06
+- Compass never routes to an empty or disabled lane: implemented-but-ungrounded intents are now served by the build lane and counted in queues.build via a shared predicate with the realized rung; build/coverage route on queue counts so an observed graph is never pointed at a force-disabled lane; loom next --all surfaces per-queue depth ([n] markers + additive queue_counts in JSON)
+
 ## [0.21.1] - 2026-07-05
 - Maturity ladder display honors bottom-up order: rungs above the lowest unmet rung render as blocked (derived blocked/blocked_by fields) instead of showing a higher rung as satisfied above an open lower rung; each rung's own state is unchanged
 
