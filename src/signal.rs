@@ -761,6 +761,28 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
         }
     }
     issues.extend(hierarchy_cycle_issues(&snap));
+    // Orphaned upstream intents: shadows whose alias no longer matches any
+    // linked upstream (after `graph unlink`). The node persists deliberately
+    // (never auto-deleted), but the unlinked state is worth flagging.
+    if let Ok(entries) = crate::federation::read_upstream_entries(store) {
+        let linked_aliases: std::collections::BTreeSet<&str> =
+            entries.iter().map(|e| e.alias.as_str()).collect();
+        for n in &snap.nodes {
+            if n.node_type != NodeType::UpstreamIntent {
+                continue;
+            }
+            let alias = n.body.get("alias").and_then(|v| v.as_str()).unwrap_or("");
+            if !linked_aliases.contains(alias) {
+                issues.push(DoctorIssue {
+                    kind: "orphaned_upstream_intent".into(),
+                    message: format!(
+                        "upstream intent '{}' has no linked upstream (alias '{}' not in registry)",
+                        n.name, alias
+                    ),
+                });
+            }
+        }
+    }
     Ok(issues)
 }
 

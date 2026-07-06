@@ -227,6 +227,11 @@ pub enum Command {
         #[command(subcommand)]
         cmd: WikiCmd,
     },
+    /// Cross-graph federation: link/unlink/list upstream graphs.
+    Graph {
+        #[command(subcommand)]
+        cmd: GraphCmd,
+    },
 }
 
 /// Queue names for `loom next --mode`; `--help` is the enumeration.

@@ -188,6 +188,7 @@ str_enum! {
         JourneyCoverage => "journey_coverage",
         JourneyInvariantPoint => "journey_invariant_point",
         WikiPage => "wiki_page",
+        UpstreamIntent => "upstream_intent",
     }
 }
 
@@ -260,6 +261,7 @@ str_enum! {
         Covers => "covers",
         Asserts => "asserts",
         Documents => "documents",
+        DependsOn => "depends_on",
     }
 }
 

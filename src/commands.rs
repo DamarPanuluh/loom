@@ -19,6 +19,7 @@ mod codefile_cmd;
 mod diagnostics_cmd;
 mod domain_cmd;
 mod edge;
+mod graph_cmd;
 mod intent;
 mod journey;
 mod misc_cmd;
@@ -135,6 +136,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Completeness { key } => {
             diagnostics_cmd::completeness_cmd(cli.graph.as_deref(), key.as_deref(), cli.json)
         }
+        Command::Graph { cmd } => graph_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
     }
 }
 

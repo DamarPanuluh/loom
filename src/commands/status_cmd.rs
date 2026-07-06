@@ -66,6 +66,8 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     // Discovery pass: expand remembered globs and register new files before
     // the deriver loop runs, so newly-appeared files are included in this sync.
     let rescan = super::codefile_cmd::rescan_globs(&store, &root)?;
+    // Federation pass: reconcile linked upstream graphs (shadow nodes + staleness).
+    let federation = crate::federation::run(&store, &root)?;
     let report = crate::sync::run(&store, &root)?;
     // Keep the committed portable artifact fresh as a byproduct of sync, so a
     // separate `loom export` is not a required step in the loop. Only an export
@@ -78,6 +80,12 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
             serde_json::to_string_pretty(&serde_json::json!({
                 "new_files": rescan.new_files,
                 "new_observed": rescan.new_observed,
+                "federation": {
+                    "upstreams_checked": federation.upstreams_checked,
+                    "shadows_created": federation.shadows_created,
+                    "shadows_updated": federation.shadows_updated,
+                    "edges_staled": federation.edges_staled,
+                },
                 "files_scanned": report.files_scanned,
                 "files_changed": report.files_changed,
                 "edges_staled": report.edges_staled,
@@ -149,6 +157,15 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         println!(
             "  {} wiki page(s) went stale — a documented intent, its code, or its proof changed   [loom wiki next]",
             report.wiki_staled
+        );
+    }
+    if federation.shadows_updated > 0 || federation.shadows_created > 0 {
+        println!(
+            "  federation: {} upstream(s) checked, {} shadow(s) created, {} updated, {} edge(s) staled",
+            federation.upstreams_checked,
+            federation.shadows_created,
+            federation.shadows_updated,
+            federation.edges_staled
         );
     }
     Ok(())

@@ -58,6 +58,7 @@ pub const PORTABLE_META_KEYS: &[&str] = &[
     "scan_adapters",
     "thresholds",
     "evidence_policy",
+    "upstream_graphs",
 ];
 
 /// The SQLite-backed graph store. Holds an advisory lock for its lifetime —

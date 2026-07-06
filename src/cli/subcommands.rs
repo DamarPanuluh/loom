@@ -224,6 +224,13 @@ pub enum EdgeCmd {
         #[arg(long)]
         reason: String,
     },
+    /// Declare that a local intent depends on an upstream (federated) intent.
+    DependsOn {
+        /// Local intent (name, id, or fragment).
+        intent: String,
+        /// Upstream shadow (name like upstream/<alias>/..., id, or fragment).
+        upstream: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -973,4 +980,23 @@ pub enum WikiCmd {
         /// Page title.
         title: String,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum GraphCmd {
+    /// Link an upstream graph via its committed export (loom.graph.json).
+    Link {
+        /// Path to the upstream `loom.graph.json`.
+        path: PathBuf,
+        /// Human alias for this upstream (default: the upstream graph's name).
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Unlink an upstream graph by alias or graph-id.
+    Unlink {
+        /// Alias or graph-id of the upstream to remove.
+        key: String,
+    },
+    /// List linked upstream graphs.
+    List,
 }

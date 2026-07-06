@@ -56,12 +56,36 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
         } => edge_rehome(&store, edge_id, to, reason, json),
         EdgeCmd::Show { edge_id } => edge_show(&store, edge_id, json),
         EdgeCmd::List { limit } => edge_list(&store, limit, json),
+        EdgeCmd::DependsOn { intent, upstream } => edge_depends_on(&store, intent, upstream, json),
     }
 }
 
 fn parse_grounding_role(s: &str) -> Result<GroundingRole> {
     s.parse::<GroundingRole>()
         .map_err(|_| anyhow!("unknown role '{s}' (use realizes|consumes|configures|verifies)"))
+}
+
+fn edge_depends_on(store: &Store, intent: String, upstream: String, json: bool) -> Result<()> {
+    let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
+    let u = store.resolve_node(&upstream, Some(NodeType::UpstreamIntent))?;
+    let e = store.add_edge(EdgeKind::DependsOn, &i.id, &u.id, TruthClass::Asserted)?;
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge_id": e.id,
+            "kind": "depends_on",
+            "from": { "id": i.id, "name": i.name },
+            "to": { "id": u.id, "name": u.name },
+        }),
+        "loom sync",
+        format!(
+            "depends_on: '{}' → upstream '{}' [{}]",
+            i.name,
+            u.name,
+            &e.id[..8.min(e.id.len())]
+        ),
+    )
 }
 
 fn edge_implement(

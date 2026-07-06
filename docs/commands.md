@@ -133,6 +133,28 @@ loom import <file> [--json]
 
 Restores an export into a fresh store. Import is validate-then-write and never leaves a partial graph.
 
+### Cross-graph federation
+
+```text
+loom graph link <path-to-loom.graph.json> [--name <alias>] [--json]
+loom graph unlink <alias-or-graph-id> [--json]
+loom graph list [--json]
+```
+
+Link an upstream graph via its committed `loom.graph.json` export. `link` reads the export, registers the upstream in portable config (`upstream_graphs` meta key), and creates `UpstreamIntent` shadow nodes for each intent in the upstream graph. The `--name` alias defaults to the upstream graph's name; aliases must be unique. Shadow nodes are named `upstream/<alias>/<intent-name>`.
+
+`UpstreamIntent` is a distinct node type — invisible to all local intent queries (status counts, maturity ladder, completeness scorecards, work queues, coverage gates). It follows the CodeFile truth-class pattern: the node itself is asserted (created by `graph link`, body carries provenance `{graph_id, node_id, alias}`), while live upstream state (`upstream_description`, `upstream_status`, `upstream_content_hash`) lives as derived facets rebuilt every sync from the upstream export. `wipe_derived + sync` converges (INV-2).
+
+`loom sync` runs a federation pass after the codefile discovery pass: for each linked upstream, it reads the export file, compares a content hash against a cached value, and on change parses the export, diffs against shadow nodes, creates new shadows for new upstream intents, updates derived facets on changed ones, marks deleted upstream intents with `upstream_missing=true`, and stales all `DependsOn` edges whose upstream target changed. An unchanged upstream adds only one `stat()` + hash comparison — negligible overhead.
+
+`unlink` removes the upstream registration but intentionally leaves shadow nodes orphaned (never auto-deleted). `loom doctor` flags orphaned upstream intents (`orphaned_upstream_intent` issue kind).
+
+```text
+loom edge depends-on <intent> <upstream-shadow> [--json]
+```
+
+Declare that a local intent depends on an upstream (federated) intent. Creates an asserted `DependsOn` edge (Intent → UpstreamIntent). When the upstream intent changes and sync stales the edge, the local intent's dependents are re-flagged for verification.
+
 ```text
 loom apply <file> [--json]
 ```
@@ -264,6 +286,7 @@ loom edge set-role <edge-id> realizes|consumes|configures|verifies --reason "<wh
 loom edge rehome <edge-id> --to "<successor intent>" --reason "<why>" [--json]
 loom edge show <edge-id> [--json]
 loom edge list [--limit N] [--json]
+loom edge depends-on <intent> <upstream-shadow> [--json]
 ```
 
 `edge implement` defaults to `--role realizes`; only realizing groundings own coverage. Use `consumes` when a file calls behavior across a seam, `configures` when it supplies configuration, and `verifies` when it checks behavior elsewhere. `edge set-role` records a decision note and reopens a settled edge with `stale_cause=role_changed...` when the role changes. `edge rehome` supersedes the old grounding with a `superseded_by` facet, creates or reuses the successor grounding with the old locator and role, and reopens it with `stale_cause=rehomed...`. `edge show` prints edge facets; JSON includes a `facets` object. `edge remove` refuses derived edges. `edge call` records that a validation exercises an interface surface; sync resets that contract when the code behind the surface changes.

@@ -1,0 +1,444 @@
+//! Ring 12 — cross-graph federation contracts.
+//!
+//! Real SQLite, two separate Tmp graphs, no mocks. Each test defends one
+//! observable contract of the federation system: linking, sync-time
+//! reconciliation, staleness propagation, upstream invisibility to local
+//! queues, unlink orphaning, and wipe_derived convergence.
+
+use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};
+use loom::store::Store;
+
+mod common;
+use common::*;
+
+/// Path to the compiled `loom` binary, provided by Cargo at build time.
+fn loom_bin() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom"))
+}
+
+fn loom_init(tmp: &std::path::Path, name: Option<&str>) {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("init").arg(tmp);
+    if let Some(n) = name {
+        cmd.arg("--name").arg(n);
+    }
+    let out = cmd.output().unwrap();
+    assert!(
+        out.status.success(),
+        "init failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+fn loom_ok(tmp: &std::path::Path, args: &[&str]) {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args);
+    let out = cmd.output().unwrap();
+    assert!(
+        out.status.success(),
+        "loom {:?} failed: {}\n{}",
+        args,
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout),
+    );
+}
+
+fn loom_json(tmp: &std::path::Path, args: &[&str]) -> serde_json::Value {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args).arg("--json");
+    let out = cmd.output().unwrap();
+    assert!(
+        out.status.success(),
+        "loom {:?} failed: {}\n{}",
+        args,
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout),
+    );
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+        panic!(
+            "loom {:?} stdout not JSON: {e}\n{}",
+            args,
+            String::from_utf8_lossy(&out.stdout)
+        )
+    })
+}
+
+fn write_file(root: &std::path::Path, rel: &str, content: &str) {
+    let p = root.join(rel);
+    std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+    std::fs::write(p, content).unwrap();
+}
+
+// =========================================================================
+// 1. Two-graph E2E: link + sync, upstream change stales DependsOn edges.
+// =========================================================================
+
+#[test]
+fn federation_link_sync_and_upstream_change_stales_edges() {
+    // --- upstream graph ---
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("platform"));
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "auth-flow",
+            "--description",
+            "user authentication",
+        ],
+    );
+    write_file(upstream.path(), "src/auth.rs", "fn auth() {}");
+    loom_ok(upstream.path(), &["codefile", "add", "src/auth.rs"]);
+    loom_ok(
+        upstream.path(),
+        &["edge", "implement", "auth-flow", "src/auth.rs"],
+    );
+    loom_ok(upstream.path(), &["sync"]);
+    loom_ok(upstream.path(), &["export"]);
+    let upstream_export = upstream.path().join("loom.graph.json");
+
+    // --- downstream graph ---
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("app"));
+
+    // Link upstream.
+    let link_j = loom_json(
+        downstream.path(),
+        &["graph", "link", upstream_export.to_str().unwrap()],
+    );
+    assert_eq!(link_j["linked"], true, "link succeeded: {link_j}");
+    assert!(
+        link_j["shadow_nodes"].as_i64().unwrap() >= 1,
+        "shadows created: {link_j}"
+    );
+
+    // Create a local intent and a DependsOn edge.
+    loom_ok(
+        downstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "login-page",
+            "--description",
+            "login UI",
+        ],
+    );
+    loom_ok(
+        downstream.path(),
+        &[
+            "edge",
+            "depends-on",
+            "login-page",
+            "upstream/platform/auth-flow",
+        ],
+    );
+
+    // First sync — edge stays clean (nothing changed upstream).
+    loom_ok(downstream.path(), &["sync"]);
+    {
+        let store = Store::open(downstream.path()).unwrap();
+        let edges = store
+            .edges_with(Some(EdgeKind::DependsOn), None, None)
+            .unwrap();
+        assert_eq!(edges.len(), 1);
+        // Edge should be uninspected (just created), not staled.
+        assert_eq!(edges[0].status, InspectionStatus::Uninspected);
+    }
+
+    // Verdict the edge so staleness is observable.
+    let edge_id = {
+        let store = Store::open(downstream.path()).unwrap();
+        let edges = store
+            .edges_with(Some(EdgeKind::DependsOn), None, None)
+            .unwrap();
+        edges[0].id.clone()
+    };
+    loom_ok(
+        downstream.path(),
+        &[
+            "edge",
+            "verdict",
+            &edge_id,
+            "ground",
+            "--criterion",
+            "auth-flow exists",
+            "--evidence",
+            "linked upstream",
+        ],
+    );
+
+    // --- upstream changes ---
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "update",
+            "auth-flow",
+            "--description",
+            "user authentication v2",
+            "--reason",
+            "testing federation staleness",
+        ],
+    );
+    loom_ok(upstream.path(), &["sync"]);
+    loom_ok(upstream.path(), &["export"]);
+
+    // Sync downstream — the DependsOn edge must be staled.
+    let sync_j = loom_json(downstream.path(), &["sync"]);
+    let fed = &sync_j["federation"];
+    assert!(
+        fed["shadows_updated"].as_i64().unwrap() >= 1,
+        "shadow updated: {sync_j}"
+    );
+    assert!(
+        fed["edges_staled"].as_i64().unwrap() >= 1,
+        "edge staled: {sync_j}"
+    );
+
+    // Verify edge status in the store.
+    let store = Store::open(downstream.path()).unwrap();
+    let edges = store
+        .edges_with(Some(EdgeKind::DependsOn), None, None)
+        .unwrap();
+    assert_eq!(edges[0].status, InspectionStatus::NeedsReverification);
+
+    // Verify the stale_cause facet was set.
+    let cause = store
+        .get_facet(&edges[0].id, TargetKind::Edge, "stale_cause")
+        .unwrap();
+    assert!(
+        cause.is_some(),
+        "stale_cause facet must be set on the staled edge"
+    );
+}
+
+// =========================================================================
+// 2. Upstream shadows are invisible to local intent queries/queues.
+// =========================================================================
+
+#[test]
+fn upstream_shadows_invisible_to_local_queues() {
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("lib"));
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "core-fn",
+            "--description",
+            "core function",
+        ],
+    );
+    loom_ok(upstream.path(), &["export"]);
+    let upstream_export = upstream.path().join("loom.graph.json");
+
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("app"));
+    loom_ok(
+        downstream.path(),
+        &["graph", "link", upstream_export.to_str().unwrap()],
+    );
+    loom_ok(
+        downstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "local-feat",
+            "--description",
+            "a local feature",
+        ],
+    );
+    loom_ok(downstream.path(), &["sync"]);
+
+    // Status should count only the local intent.
+    let status_j = loom_json(downstream.path(), &["status"]);
+    assert_eq!(
+        status_j["counts"]["intents"].as_i64().unwrap(),
+        1,
+        "only local intent counted in status: {status_j}"
+    );
+
+    // Maturity ladder uses list_nodes(Intent) — shadows must not inflate it.
+    let store = Store::open(downstream.path()).unwrap();
+    let intents = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap();
+    assert_eq!(intents.len(), 1, "only local intent in Intent list");
+    let upstream_intents = store
+        .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+        .unwrap();
+    assert!(
+        !upstream_intents.is_empty(),
+        "upstream shadow exists as UpstreamIntent"
+    );
+}
+
+// =========================================================================
+// 3. Unlink leaves shadow nodes orphaned (no deletion).
+// =========================================================================
+
+#[test]
+fn unlink_orphans_shadows_for_doctor() {
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("svc"));
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "endpoint-a",
+            "--description",
+            "an endpoint",
+        ],
+    );
+    loom_ok(upstream.path(), &["export"]);
+    let upstream_export = upstream.path().join("loom.graph.json");
+
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("client"));
+    loom_ok(
+        downstream.path(),
+        &["graph", "link", upstream_export.to_str().unwrap()],
+    );
+
+    // Shadow exists.
+    {
+        let store = Store::open(downstream.path()).unwrap();
+        let shadows = store
+            .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+            .unwrap();
+        assert_eq!(shadows.len(), 1, "one shadow after link");
+    }
+
+    // Unlink.
+    loom_ok(downstream.path(), &["graph", "unlink", "svc"]);
+
+    // Shadow is still there (orphaned, not deleted).
+    let store = Store::open(downstream.path()).unwrap();
+    let shadows = store
+        .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+        .unwrap();
+    assert_eq!(
+        shadows.len(),
+        1,
+        "shadow survives unlink (orphan, not deleted)"
+    );
+
+    // No upstream registrations remain.
+    let entries = loom::federation::read_upstream_entries(&store).unwrap();
+    assert!(entries.is_empty(), "no upstreams registered after unlink");
+    drop(store);
+
+    // Doctor flags the orphaned shadow (exits non-zero with issues).
+    let out = {
+        let mut cmd = std::process::Command::new(loom_bin());
+        cmd.arg("--graph")
+            .arg(downstream.path())
+            .args(["doctor", "--json"]);
+        cmd.output().unwrap()
+    };
+    // Doctor exits non-zero when issues exist — that's expected.
+    assert!(
+        !out.status.success(),
+        "doctor should exit non-zero with orphaned shadow"
+    );
+    let issues: Vec<serde_json::Value> =
+        serde_json::from_slice(&out.stdout).expect("doctor JSON array");
+    assert!(
+        issues
+            .iter()
+            .any(|i| i["kind"] == "orphaned_upstream_intent"),
+        "doctor must flag orphaned upstream intent: {issues:?}"
+    );
+}
+
+// =========================================================================
+// 4. wipe_derived + sync converges: derived facets on shadows are rebuilt.
+// =========================================================================
+
+#[test]
+fn wipe_derived_then_sync_restores_upstream_facets() {
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("plat"));
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "pay",
+            "--description",
+            "payments",
+        ],
+    );
+    loom_ok(upstream.path(), &["export"]);
+    let upstream_export = upstream.path().join("loom.graph.json");
+
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("shop"));
+    loom_ok(
+        downstream.path(),
+        &["graph", "link", upstream_export.to_str().unwrap()],
+    );
+    loom_ok(downstream.path(), &["sync"]);
+
+    // Verify facets exist.
+    let store = Store::open(downstream.path()).unwrap();
+    let shadows = store
+        .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+        .unwrap();
+    assert_eq!(shadows.len(), 1);
+    let shadow_id = &shadows[0].id;
+    assert!(
+        store
+            .get_facet(shadow_id, TargetKind::Node, "upstream_content_hash")
+            .unwrap()
+            .is_some(),
+        "facet exists before wipe"
+    );
+
+    // Wipe derived data.
+    store.wipe_derived().unwrap();
+
+    // Facets are gone.
+    assert!(
+        store
+            .get_facet(shadow_id, TargetKind::Node, "upstream_content_hash")
+            .unwrap()
+            .is_none(),
+        "facet gone after wipe"
+    );
+
+    // Shadow node itself survives (asserted).
+    assert!(
+        store.get_node(shadow_id).unwrap().is_some(),
+        "shadow node survives wipe (asserted)"
+    );
+    drop(store);
+
+    // Sync restores the facets.
+    loom_ok(downstream.path(), &["sync"]);
+
+    let store = Store::open(downstream.path()).unwrap();
+    assert!(
+        store
+            .get_facet(shadow_id, TargetKind::Node, "upstream_content_hash")
+            .unwrap()
+            .is_some(),
+        "facet restored after sync (INV-2 convergence)"
+    );
+    assert!(
+        store
+            .get_facet(shadow_id, TargetKind::Node, "upstream_description")
+            .unwrap()
+            .is_some(),
+        "upstream_description facet restored"
+    );
+}

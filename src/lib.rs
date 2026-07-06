@@ -15,6 +15,7 @@ pub mod commands;
 pub mod completeness;
 pub mod deriver;
 pub mod extract;
+pub mod federation;
 pub mod fsglob;
 pub mod journey;
 pub mod maturity;

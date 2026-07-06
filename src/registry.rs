@@ -208,6 +208,14 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         owner: OwnerRole::Builder,
         description: "a wiki page draws on (documents) this intent",
     },
+    EdgeKindSpec {
+        kind: EdgeKind::DependsOn,
+        from: Intent,
+        to: UpstreamIntent,
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Builder,
+        description: "local intent depends on upstream (federated) intent",
+    },
 ];
 
 /// Look up the spec for an edge kind. Infallible by construction once
@@ -243,6 +251,7 @@ pub const NODE_TRUTH_CLASSES: &[(NodeType, TruthClass)] = &[
     (JourneyCoverage, Asserted),
     (JourneyInvariantPoint, Asserted),
     (WikiPage, Asserted),
+    (UpstreamIntent, Asserted),
 ];
 
 /// The declared truth class of a node kind. Infallible by construction once
