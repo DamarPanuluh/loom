@@ -54,8 +54,11 @@ while read -r fid fpath; do
     src/scan.rs)               why="the diagnostic-adapter plane: config, parse maps and finding convergence are one adapter lifecycle" ;;
     src/cli/subcommands.rs)    why="the clap declaration table: one enum per command family; declarative surface, no logic" ;;
     src/commands/misc_cmd.rs)  why="the orientation surface: door/session/guide/find/detect handlers share the keyword scorer and menu builders" ;;
+    src/extract/mod.rs)       why="the tree-sitter extraction pipeline plus the per-rule fixture functions tested by the extraction suite; cohesive extract test surface" ;;
+    src/store/mod.rs)         why="the SQLite store facade: schema migrations, lock acquisition, row parsing and derived-id hashing share the persistence lifecycle" ;;
     src/commands/proof_cmd.rs) why="the proof command family: validation and rule handlers share the verdict/evidence plumbing" ;;
     src/commands/intent.rs)    why="the intent command family: lifecycle/update/retire handlers share resolution, ripple and guard helpers" ;;
+    src/commands/diagnostics_cmd.rs) why="the diagnostic command family: smells/debt/finding/doctor/coverage/ignore/scan/calibrate/threshold/policy handlers share the adjudication and signal-routing plumbing" ;;
     src/workitem/queues.rs)    why="the 'loom next' queue builders: one work-item builder per mode, cohesive by the queue partition" ;;
     *)
       echo "dogfood: untriaged oversized finding '$fpath' has no recorded judgment — triage it (justified|needed|blocked) before dogfood can complete" >&2
