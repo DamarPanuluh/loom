@@ -55,7 +55,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
             reason,
         } => edge_rehome(&store, edge_id, to, reason, json),
         EdgeCmd::Show { edge_id } => edge_show(&store, edge_id, json),
-        EdgeCmd::List { limit } => edge_list(&store, limit, json),
+        EdgeCmd::List { limit, offset } => edge_list(&store, limit, offset, json),
         EdgeCmd::DependsOn { intent, upstream } => edge_depends_on(&store, intent, upstream, json),
     }
 }
@@ -473,12 +473,12 @@ fn edge_show(store: &Store, edge_id: String, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn edge_list(store: &Store, limit: usize, json: bool) -> Result<()> {
-    let edges = store.list_edges(None, limit)?;
+fn edge_list(store: &Store, limit: usize, offset: usize, json: bool) -> Result<()> {
+    let edges = store.list_edges_page(None, limit, offset)?;
     if json {
         println!("{}", serde_json::to_string_pretty(&edges)?);
     } else {
-        if edges.is_empty() {
+        if edges.is_empty() && offset == 0 {
             println!("no edges");
         }
         for e in &edges {
@@ -489,6 +489,9 @@ fn edge_list(store: &Store, limit: usize, json: bool) -> Result<()> {
                 e.status,
                 &e.id[..8]
             );
+        }
+        if let Some(footer) = super::page_footer(edges.len(), offset, store.count_edges(None)?) {
+            println!("{footer}");
         }
     }
     Ok(())

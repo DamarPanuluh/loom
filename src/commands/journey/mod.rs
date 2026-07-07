@@ -28,7 +28,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()>
     match cmd {
         JourneyCmd::Add { spec } => journey_add(graph, spec, json),
         JourneyCmd::Remove { id } => journey_remove(graph, &id, json),
-        JourneyCmd::List { limit } => journey_list(graph, limit, json),
+        JourneyCmd::List { limit, offset } => journey_list(graph, limit, offset, json),
         JourneyCmd::Map => journey_map(graph, json),
         JourneyCmd::Run { spec, base_url } => journey_run(graph, spec, base_url.as_deref(), json),
         JourneyCmd::Diagnose { spec, base_url } => {
@@ -167,18 +167,26 @@ fn journey_remove(graph: Option<&Path>, id: &str, json: bool) -> Result<()> {
     )
 }
 
-fn journey_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
+fn journey_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let journeys: Vec<_> = store
-        .list_nodes(Some(NodeType::Validation), limit)?
+    // Journeys are the subset of Validation nodes that pass the filter, so page
+    // over the filtered set (fetch all, filter, then skip/take) — a store-level
+    // limit would count non-journey validations against the page.
+    let all: Vec<_> = store
+        .list_nodes(Some(NodeType::Validation), usize::MAX)?
         .into_iter()
         .filter(is_journey_validation)
         .collect();
+    let total = all.len();
+    let journeys: Vec<_> = all.into_iter().skip(offset).take(limit).collect();
     if json {
         println!("{}", serde_json::to_string_pretty(&journeys)?);
     } else {
         for n in &journeys {
             println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+        }
+        if let Some(footer) = crate::commands::page_footer(journeys.len(), offset, total) {
+            println!("{footer}");
         }
     }
     Ok(())

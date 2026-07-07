@@ -49,6 +49,8 @@ pub enum IntentCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// One mutation verb for an intent. --description redefines (ripples one
     /// hop; --reword: same concept, no ripple). --name relabels, --level /
@@ -135,6 +137,8 @@ pub enum CodefileCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
 }
 
@@ -202,6 +206,8 @@ pub enum EdgeCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// Reclassify a grounding edge's role (realizes|consumes|configures|verifies).
     /// Keeps the edge + verdict history; a changed role re-opens the claim
@@ -248,6 +254,8 @@ pub enum InboxCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
         /// Filter by disposition (new|routed|rejected|duplicate|deferred).
         #[arg(long)]
         status: Option<String>,
@@ -285,6 +293,8 @@ pub enum NoteCmd {
         target: Option<String>,
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
 }
 
@@ -321,6 +331,8 @@ pub enum TaskCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
 }
 #[derive(Subcommand, Debug)]
@@ -362,6 +374,8 @@ pub enum RuleCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// Show one rule with its guidance fields.
     Show { key: String },
@@ -472,6 +486,8 @@ pub enum ValidationCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
 }
 
@@ -531,6 +547,8 @@ pub enum HypothesisCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
 }
 
@@ -566,6 +584,8 @@ pub enum SurfaceCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// Report surface-plane gaps: unexposed surfaces and surfaces never
     /// called by a validation.
@@ -635,6 +655,8 @@ pub enum ProposalCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// Show a proposal by id, name, or unique fragment.
     Show { key: String },
@@ -701,6 +723,8 @@ pub enum JourneyCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// Joined map: every journey validation with its step intents (via
     /// Validates edges), plus every active intent no journey exercises.
@@ -787,6 +811,8 @@ pub enum JourneyCoverageCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// Discover coverage gaps: user-visible implemented intents with no passing
     /// L5 journey proof and no journey_coverage node. Graph-derived (from
@@ -842,6 +868,8 @@ pub enum JourneyInvariantCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
 }
 
@@ -974,6 +1002,8 @@ pub enum WikiCmd {
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
     },
     /// Remove a wiki page by title.
     Remove {

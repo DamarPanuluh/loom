@@ -35,7 +35,12 @@ pub(crate) fn export(graph: Option<&Path>, check: bool, json: bool) -> Result<()
         Ok(())
     }
 }
-pub(crate) fn import(graph: Option<&Path>, file: &Path, json: bool) -> Result<()> {
+pub(crate) fn import(
+    graph: Option<&Path>,
+    file: &Path,
+    repair_orphans: bool,
+    json: bool,
+) -> Result<()> {
     let root = if let Some(g) = graph {
         g.to_path_buf()
     } else {
@@ -43,7 +48,12 @@ pub(crate) fn import(graph: Option<&Path>, file: &Path, json: bool) -> Result<()
     };
     let export = travel::read_export(file)?;
     let mut store = Store::init(&root, None, false)?;
-    store.restore(&export.into_snapshot())?;
+    let report = if repair_orphans {
+        store.restore_repairing(&export.into_snapshot())?
+    } else {
+        store.restore(&export.into_snapshot())?;
+        crate::store::RestoreReport::default()
+    };
     let id = store.identity()?;
     if json {
         println!(
@@ -53,10 +63,40 @@ pub(crate) fn import(graph: Option<&Path>, file: &Path, json: bool) -> Result<()
                 "name": id.name,
                 "graph_id": id.graph_id,
                 "file": file,
+                "repaired": repair_orphans,
+                "preserved_soft_refs": report.preserved_soft_refs,
+                "dropped_facets": report.dropped_facets
+                    .iter()
+                    .map(|(kind, id, key)| serde_json::json!({
+                        "target_kind": kind, "target_id": id, "key": key,
+                    }))
+                    .collect::<Vec<_>>(),
+                "dropped_tags": report.dropped_tags
+                    .iter()
+                    .map(|(kind, id, term)| serde_json::json!({
+                        "target_kind": kind, "target_id": id, "term": term,
+                    }))
+                    .collect::<Vec<_>>(),
             }))?
         );
     } else {
         println!("imported graph '{}' from {}", id.name, file.display());
+        if report.preserved_soft_refs > 0 {
+            println!(
+                "  preserved {} adjudication verdict(s) on not-yet-materialized findings (re-attach on next sync)",
+                report.preserved_soft_refs
+            );
+        }
+        for (kind, id, key) in &report.dropped_facets {
+            println!("  dropped orphan facet '{key}' on {kind} {id}");
+        }
+        for (kind, id, term) in &report.dropped_tags {
+            println!("  dropped orphan tag '{term}' on {kind} {id}");
+        }
+        let dropped = report.dropped_facets.len() + report.dropped_tags.len();
+        if dropped > 0 {
+            println!("  ({dropped} dangling reference(s) dropped by --repair-orphans)");
+        }
     }
     Ok(())
 }

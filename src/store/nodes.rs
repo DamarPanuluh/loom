@@ -68,8 +68,17 @@ impl Store {
                 .expect("exact.len() == 1 checked above"));
         }
         if exact.len() > 1 {
+            // Actionable ambiguity: list every colliding node with its short id
+            // so the caller can address one directly (show/remove it by id)
+            // instead of being told only a count. A bare count is what forced a
+            // blind, substring-based dedup during recovery.
+            let list = exact
+                .iter()
+                .map(|n| format!("[{}] {}", &n.id[..8.min(n.id.len())], n.name))
+                .collect::<Vec<_>>()
+                .join("; ");
             bail!(
-                "ambiguous name '{key}': {} nodes match exactly",
+                "ambiguous name '{key}': {} nodes match exactly — address one by id: {list}",
                 exact.len()
             );
         }
@@ -91,10 +100,14 @@ impl Store {
             0 => bail!("no node matches '{key}'"),
             1 => Ok(matches.into_iter().next().expect("len == 1 by match arm")),
             n => {
-                let names: Vec<_> = matches.iter().take(8).map(|m| m.name.clone()).collect();
+                let names: Vec<_> = matches
+                    .iter()
+                    .take(8)
+                    .map(|m| format!("[{}] {}", &m.id[..8.min(m.id.len())], m.name))
+                    .collect();
                 bail!(
                     "ambiguous fragment '{key}': {n} candidates: {}",
-                    names.join(", ")
+                    names.join("; ")
                 )
             }
         }
@@ -123,21 +136,57 @@ impl Store {
     }
 
     pub fn list_nodes(&self, node_type: Option<NodeType>, limit: usize) -> Result<Vec<Node>> {
+        self.list_nodes_page(node_type, limit, 0)
+    }
+
+    /// Page a node listing (ordered by name). `offset` skips that many rows
+    /// before taking `limit`. Offset-0 is the full/first-page case every
+    /// internal caller uses via [`list_nodes`]; a non-zero offset backs the
+    /// `--offset` flag on the `list` commands so a caller can walk past the
+    /// first page instead of being permanently capped at it. A negative i64
+    /// `limit` (from `usize::MAX`) means "no bound" in SQLite, so the
+    /// full-scan callers keep their unlimited behavior.
+    pub fn list_nodes_page(
+        &self,
+        node_type: Option<NodeType>,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<Node>> {
         let mut stmt;
         let rows = if let Some(t) = node_type {
             stmt = self.conn.prepare(
                 "SELECT id,node_type,name,description,status,truth_class,body,created_at,updated_at
-                 FROM node WHERE node_type=?1 ORDER BY name LIMIT ?2",
+                 FROM node WHERE node_type=?1 ORDER BY name LIMIT ?2 OFFSET ?3",
             )?;
-            stmt.query_map(params![t.as_str(), limit as i64], row_to_node)?
+            stmt.query_map(
+                params![t.as_str(), limit as i64, offset as i64],
+                row_to_node,
+            )?
         } else {
             stmt = self.conn.prepare(
                 "SELECT id,node_type,name,description,status,truth_class,body,created_at,updated_at
-                 FROM node ORDER BY name LIMIT ?1",
+                 FROM node ORDER BY name LIMIT ?1 OFFSET ?2",
             )?;
-            stmt.query_map(params![limit as i64], row_to_node)?
+            stmt.query_map(params![limit as i64, offset as i64], row_to_node)?
         };
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    /// Total node count of a type (or all types). Backs the "showing N–M of
+    /// TOTAL" page footer so a `list` caller knows more rows exist beyond the
+    /// current page — the signal whose absence hid duplicates during recovery.
+    pub fn count_nodes(&self, node_type: Option<NodeType>) -> Result<usize> {
+        let n: i64 = if let Some(t) = node_type {
+            self.conn.query_row(
+                "SELECT COUNT(*) FROM node WHERE node_type=?1",
+                params![t.as_str()],
+                |r| r.get(0),
+            )?
+        } else {
+            self.conn
+                .query_row("SELECT COUNT(*) FROM node", [], |r| r.get(0))?
+        };
+        Ok(n as usize)
     }
 
     /// Update a node's mutable fields. Touches `updated_at`.

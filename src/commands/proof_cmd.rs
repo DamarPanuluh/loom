@@ -48,12 +48,13 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             )?;
             Ok(())
         }
-        RuleCmd::List { limit } => {
-            let rules = store.list_nodes(Some(NodeType::QualityRule), limit)?;
+        RuleCmd::List { limit, offset } => {
+            let rules = store.list_nodes_page(Some(NodeType::QualityRule), limit, offset)?;
             if json {
                 let rows: Vec<_> = rules.iter().map(node_json).collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
+                let shown = rules.len();
                 for n in rules {
                     let cat = n
                         .body
@@ -61,6 +62,13 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
                         .and_then(|c| c.as_str())
                         .unwrap_or("");
                     println!("{:<14} {} [{}]", cat, n.name, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(
+                    shown,
+                    offset,
+                    store.count_nodes(Some(NodeType::QualityRule))?,
+                ) {
+                    println!("{footer}");
                 }
             }
             Ok(())
@@ -425,8 +433,8 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             )?;
             Ok(())
         }
-        ValidationCmd::List { limit } => {
-            let vals = store.list_nodes(Some(NodeType::Validation), limit)?;
+        ValidationCmd::List { limit, offset } => {
+            let vals = store.list_nodes_page(Some(NodeType::Validation), limit, offset)?;
             if json {
                 let rows: Vec<_> = vals
                     .iter()
@@ -443,8 +451,16 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                     .collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
+                let shown = vals.len();
                 for n in vals {
                     println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(
+                    shown,
+                    offset,
+                    store.count_nodes(Some(NodeType::Validation))?,
+                ) {
+                    println!("{footer}");
                 }
             }
             Ok(())

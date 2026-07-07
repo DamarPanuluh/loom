@@ -76,10 +76,10 @@ Quality fallback: if no `governs` edge needs work, `loom next --mode quality` pr
 ```
 
 ```text
-loom find [--limit N] "<query>" [--json]
+loom find [--limit N] [--exact] "<query>" [--json]
 ```
 
-Keyword-substring search over intents, codefiles, surfaces, rules, and validations. It is not BM25.
+Keyword-substring search over intents, codefiles, and quality rules. It is not BM25. Fuzzy hits that match the query as a whole name (case-insensitive) are tagged `(exact)` so an existence check never rests on reading a score. `--exact` restricts output to those whole-name matches only — the reliable "does a node named exactly this exist?" check, and it lists every id when duplicates share a name.
 
 ```text
 loom door "<utterance>" [--json]
@@ -128,10 +128,10 @@ loom export [--check] [--json]
 Writes deterministic `loom.graph.json`. `--check` exits non-zero if committed export drifts from the live graph. The export includes a portable `config` map for `layer_order`, `ignores`, `codefile_globs`, and `scan_adapters`, so import no longer silently loses layer/ignore/glob/adapter setup.
 
 ```text
-loom import <file> [--json]
+loom import <file> [--repair-orphans] [--json]
 ```
 
-Restores an export into a fresh store. Import is validate-then-write and never leaves a partial graph.
+Restores an export into a fresh store. Import is validate-then-write and never leaves a partial graph. A facet/tag whose target node/edge is absent from the export is rejected — with one exception: an asserted `adjudication` verdict on a derived Finding id is a valid soft reference (the finding re-materializes on the next `sync`), so it is kept, and an export carrying only such references round-trips cleanly. `--repair-orphans` is the recovery path for a legacy or cross-version export with genuinely dangling references: it drops the orphan facets/tags (never the soft-ref verdicts) and reports each one dropped.
 
 ### Cross-graph federation
 
@@ -266,7 +266,7 @@ loom intent remove <intent> --reason "<why>" [--json]   (mistakes only; refuses 
 loom intent reactivate <intent> --reason "<why>" [--json]
 loom intent waive <intent> scenarios|prerequisites|boundary|proof|journey --reason "<why>" [--json]
 loom intent show <intent> [--json]
-loom intent list [--limit N] [--json]
+loom intent list [--limit N] [--offset N] [--json]
 loom intent tag add <intent> <term> [--json]
 loom intent tag remove <intent> <term> [--json]
 ```
@@ -285,7 +285,7 @@ loom edge set-locator <edge-id> <locator> [--json]
 loom edge set-role <edge-id> realizes|consumes|configures|verifies --reason "<why>" [--json]
 loom edge rehome <edge-id> --to "<successor intent>" --reason "<why>" [--json]
 loom edge show <edge-id> [--json]
-loom edge list [--limit N] [--json]
+loom edge list [--limit N] [--offset N] [--json]
 loom edge depends-on <intent> <upstream-shadow> [--json]
 ```
 
@@ -322,7 +322,7 @@ loom codefile add <path-or-glob> [--observed] [--json]
 loom codefile rescan [--json]
 loom codefile remove <path-or-key> [--json]
 loom codefile show <path-or-key> [--json]
-loom codefile list [--limit N] [--json]
+loom codefile list [--limit N] [--offset N] [--json]
 ```
 
 `--observed` registers files the graph monitors but does not own (vendored or upstream code): `loom sync` scans them and surface/contract staleness still ripples, but they carry no ownership, coverage, or build obligations — the per-file counterpart of the graph-level observed mode. Re-adding an already-registered file with `--observed` marks it observed. A glob added with `--observed` is remembered, so `codefile rescan` and `loom sync` register files that appear under it later as observed too; a file matched by both an owned and an observed glob registers as owned.
@@ -367,7 +367,7 @@ loom validation update <validation> [--type <type>] [--command "<cmd>"] [--json]
 loom validation unlink <validation> <intent> [--json]
 loom validation remove <validation> [--json]
 loom validation show <validation> [--json]
-loom validation list [--limit N] [--json]
+loom validation list [--limit N] [--offset N] [--json]
 loom validation run [<intent>] [--all] [--json]
 ```
 
@@ -390,7 +390,7 @@ Findings are derived structural signals — sync's code detectors, `scan run` di
 
 ```text
 loom journey add <spec.json|spec.yaml|http-contract.json> [--json]
-loom journey list [--limit N] [--json]
+loom journey list [--limit N] [--offset N] [--json]
 loom journey run <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--json]
 loom journey diagnose <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--json]
 ```
@@ -432,7 +432,7 @@ loom journey coverage update <coverage> --reason "<why>"
   [--runner-ref <path-or-symbol>] [--test-ref <path-or-symbol>] [--contract-artifact <path>]
   [--json]
 loom journey coverage remove <coverage> [--json]
-loom journey coverage list [--limit N] [--json]
+loom journey coverage list [--limit N] [--offset N] [--json]
 loom journey coverage discover [--spawn-missing] [--json]
 loom journey coverage drift [--json]
 ```
@@ -449,7 +449,7 @@ loom journey invariant update <invariant> --reason "<why>"
   [--field <field>] [--assertion <assertion>] [--asserts <intent>] [--reason-text <reason>]
   [--json]
 loom journey invariant remove <invariant> [--json]
-loom journey invariant list [--limit N] [--json]
+loom journey invariant list [--limit N] [--offset N] [--json]
 ```
 
 Invariant points mark internal domain assertions that a journey should verify. `update --asserts <intent>` re-points the invariant at a different intent by replacing its `asserts` edge in place — the node, its history, and its notes stay intact, and the move is recorded as a decision note.
@@ -484,7 +484,7 @@ loom rule update <rule> --reason "<why>"
   [--json]
 loom rule remove <rule> [--json]
 loom rule unlink <rule> <intent> [--json]
-loom rule list [--limit N] [--json]
+loom rule list [--limit N] [--offset N] [--json]
 loom rule show <rule> [--json]
 ```
 
@@ -527,7 +527,7 @@ loom hypothesis adopt <hypothesis> [--spawned <planned-intent>] [--json]
 loom hypothesis reject <hypothesis> --reason "<why>" [--json]
 loom hypothesis remove <hypothesis> [--json]
 loom hypothesis show <hypothesis> [--json]
-loom hypothesis list [--limit N] [--json]
+loom hypothesis list [--limit N] [--offset N] [--json]
 ```
 
 Hypotheses are invisible to coverage and maturity until adopted. Speculation never counts as graph truth.
@@ -538,7 +538,7 @@ Hypotheses are invisible to coverage and maturity until adopted. Speculation nev
 
 ```text
 loom inbox add "<raw text>" [--source <source>] [--link <ref>] [--json]
-loom inbox list [--status new|routed|rejected|duplicate|deferred] [--limit N] [--json]
+loom inbox list [--status new|routed|rejected|duplicate|deferred] [--limit N] [--offset N] [--json]
 loom inbox show <key> [--json]
 loom inbox mark <key> routed|rejected|duplicate|deferred [--reason "<why>"] [--json]
 loom inbox remove <key> [--json]
@@ -557,7 +557,7 @@ loom task close <task> --result "<summary>" [--json]
 loom task abandon <task> --reason "<why>" [--json]
 loom task remove <task> [--json]
 loom task show <task> [--json]
-loom task list [--limit N] [--json]
+loom task list [--limit N] [--offset N] [--json]
 ```
 
 TaskRecords guide work but do not certify truth. Durable outcomes must be promoted to graph facts.
@@ -568,7 +568,7 @@ TaskRecords guide work but do not certify truth. Durable outcomes must be promot
 
 ```text
 loom proposal add --title "<title>" (--file <path> | --text "<raw proposal>") [--json]
-loom proposal list [--limit N] [--json]
+loom proposal list [--limit N] [--offset N] [--json]
 loom proposal show <proposal> [--json]
 loom proposal remove <proposal> [--json]
 
@@ -592,7 +592,7 @@ loom surface add --name "<name>" [--kind http|cli|ui_route|message_topic|sdk_met
 loom surface show <surface> [--json]
 loom surface update <surface> [--kind <kind>] [--identity "<identity>"] [--codefile <codefile>] [--json]
 loom surface remove <surface> [--json]
-loom surface list [--limit N] [--json]
+loom surface list [--limit N] [--offset N] [--json]
 ```
 
 ```text
@@ -629,7 +629,7 @@ loom whoami [--json]
 
 ```text
 loom note add <target> --text "<text>" [--kind decision|context|warning] [--json]
-loom note list [<target>] [--limit N] [--json]
+loom note list [<target>] [--limit N] [--offset N] [--json]
 loom note remove <id> [--json]
 ```
 
@@ -685,4 +685,4 @@ In text mode the human summary ends with:
 next: <step>
 ```
 
-List commands bound output with `--limit` where the binary exposes it. Ambiguous name fragments error with candidates instead of silently guessing.
+List commands bound output with `--limit` and page with `--offset` (0-based) where the binary exposes it (`intent`, `codefile`, `edge`, `rule`, `validation`, `hypothesis`, `surface`, `proposal`, `task`, `note`, `inbox`, `wiki`, `journey`, `journey coverage`, `journey invariant`). Text output prints a footer — `… showing N–M of TOTAL; --offset M for the next page` — so rows past the first page are never silently hidden; JSON output stays a bare array (page it via `--limit`/`--offset`). Resolving a node by an ambiguous name or fragment errors with the full candidate list, each as `[<short-id>] <name>`, so a duplicate is addressable by id (`show`/`remove`) instead of leaving a bare count to guess from.

@@ -132,7 +132,39 @@ impl Store {
 
     /// Restore a snapshot into a freshly-initialized store. Refuses to overwrite
     /// a non-empty graph. Two-phase: validate fully, then write in one txn.
+    ///
+    /// Strict by default: a facet/tag whose target node/edge is absent from the
+    /// snapshot is an error (M-14 — an orphan would otherwise import silently),
+    /// with ONE deliberate exception — asserted `adjudication` verdicts on a
+    /// derived Finding id. That target re-materializes (deterministic id) on the
+    /// next `sync`, so the verdict is a valid soft reference, not corruption;
+    /// keeping it is what lets an export round-trip through import. Rejecting it
+    /// was the version-incompatibility that made committed exports unimportable.
+    /// For genuinely dangling orphans use [`Store::restore_repairing`].
     pub fn restore(&mut self, snap: &Snapshot) -> Result<()> {
+        self.restore_inner(snap, false).map(|_| ())
+    }
+
+    /// Like [`Store::restore`], but instead of refusing a true orphan facet/tag
+    /// it drops the orphan and records it in the returned [`RestoreReport`].
+    /// The recovery path (`loom import --repair-orphans`) for a legacy or
+    /// cross-version export whose targets no longer resolve. Soft refs are still
+    /// preserved — repair only removes references that can never re-attach.
+    pub fn restore_repairing(&mut self, snap: &Snapshot) -> Result<RestoreReport> {
+        self.restore_inner(snap, true)
+    }
+
+    fn restore_inner(&mut self, snap: &Snapshot, repair: bool) -> Result<RestoreReport> {
+        /// A facet that may legitimately reference a not-yet-materialized target:
+        /// an asserted `adjudication` verdict on a derived Finding id. Sync
+        /// re-creates the finding and the verdict re-attaches, so importing it
+        /// against an absent target is correct behavior, never corruption.
+        fn is_soft_ref_facet(f: &Facet) -> bool {
+            f.target_kind == TargetKind::Node
+                && f.truth_class == TruthClass::Asserted
+                && f.key == "adjudication"
+        }
+
         let count: i64 = self
             .conn
             .query_row("SELECT COUNT(*) FROM node", [], |r| r.get(0))?;
@@ -171,27 +203,53 @@ impl Store {
         }
         // Facets/tags reference a node or edge by (target_id, target_kind), but
         // the schema has no FK on target_id — an orphaned facet/tag would import
-        // silently (M-14). Validate every target against the imported nodes/edges.
+        // silently (M-14). Partition against the imported nodes/edges: valid
+        // targets and preserved soft refs are written; true orphans are an error
+        // under the strict default and dropped-with-report under repair.
+        let mut report = RestoreReport::default();
         let edge_ids: std::collections::HashSet<&str> =
             snap.edges.iter().map(|e| e.id.as_str()).collect();
         let has_target = |id: &str, kind: TargetKind| match kind {
             TargetKind::Node => node_types.contains_key(id),
             TargetKind::Edge => edge_ids.contains(id),
         };
+        let mut facets: Vec<&Facet> = Vec::with_capacity(snap.facets.len());
         for f in &snap.facets {
-            if !has_target(&f.target_id, f.target_kind) {
+            if has_target(&f.target_id, f.target_kind) {
+                facets.push(f);
+            } else if is_soft_ref_facet(f) {
+                report.preserved_soft_refs += 1;
+                facets.push(f);
+            } else if repair {
+                report.dropped_facets.push((
+                    f.target_kind.as_str().to_string(),
+                    f.target_id.clone(),
+                    f.key.clone(),
+                ));
+            } else {
                 bail!(
-                    "import: facet '{}' on {} '{}' references a missing target",
+                    "import: facet '{}' on {} '{}' references a missing target \
+                     (re-run `loom import --repair-orphans` to drop dangling facets/tags)",
                     f.key,
                     f.target_kind,
                     f.target_id
                 );
             }
         }
+        let mut tags: Vec<&Tag> = Vec::with_capacity(snap.tags.len());
         for t in &snap.tags {
-            if !has_target(&t.target_id, t.target_kind) {
+            if has_target(&t.target_id, t.target_kind) {
+                tags.push(t);
+            } else if repair {
+                report.dropped_tags.push((
+                    t.target_kind.as_str().to_string(),
+                    t.target_id.clone(),
+                    t.term.clone(),
+                ));
+            } else {
                 bail!(
-                    "import: tag '{}' on {} '{}' references a missing target",
+                    "import: tag '{}' on {} '{}' references a missing target \
+                     (re-run `loom import --repair-orphans` to drop dangling facets/tags)",
                     t.term,
                     t.target_kind,
                     t.target_id
@@ -247,7 +305,7 @@ impl Store {
                 ],
             )?;
         }
-        for f in &snap.facets {
+        for f in &facets {
             tx.execute(
                 "INSERT INTO facet(target_id,target_kind,key,value,truth_class)
                  VALUES (?1,?2,?3,?4,?5)",
@@ -260,7 +318,7 @@ impl Store {
                 ],
             )?;
         }
-        for t in &snap.tags {
+        for t in &tags {
             tx.execute(
                 "INSERT INTO tag(target_id,target_kind,term) VALUES (?1,?2,?3)",
                 params![t.target_id, t.target_kind.as_str(), t.term],
@@ -277,6 +335,6 @@ impl Store {
             )?;
         }
         tx.commit()?;
-        Ok(())
+        Ok(report)
     }
 }

@@ -42,7 +42,7 @@ pub(super) fn invariant(
             json,
         ),
         JourneyInvariantCmd::Remove { key } => invariant_remove(graph, &key, json),
-        JourneyInvariantCmd::List { limit } => invariant_list(graph, limit, json),
+        JourneyInvariantCmd::List { limit, offset } => invariant_list(graph, limit, offset, json),
     }
 }
 
@@ -98,9 +98,14 @@ fn invariant_add(
     )
 }
 
-fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> Result<()> {
+fn invariant_list(
+    graph: Option<&std::path::Path>,
+    limit: usize,
+    offset: usize,
+    json: bool,
+) -> Result<()> {
     let store = open(graph)?;
-    let nodes = store.list_nodes(Some(NodeType::JourneyInvariantPoint), limit)?;
+    let nodes = store.list_nodes_page(Some(NodeType::JourneyInvariantPoint), limit, offset)?;
     let mut rows: Vec<Value> = Vec::new();
     for n in &nodes {
         let asserts = store
@@ -131,6 +136,12 @@ fn invariant_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> 
     }
     if json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
+    } else if let Some(footer) = crate::commands::page_footer(
+        nodes.len(),
+        offset,
+        store.count_nodes(Some(NodeType::JourneyInvariantPoint))?,
+    ) {
+        println!("{footer}");
     }
     Ok(())
 }

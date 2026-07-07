@@ -53,7 +53,7 @@ pub(super) fn coverage(
             json,
         ),
         JourneyCoverageCmd::Remove { key } => coverage_remove(graph, &key, json),
-        JourneyCoverageCmd::List { limit } => coverage_list(graph, limit, json),
+        JourneyCoverageCmd::List { limit, offset } => coverage_list(graph, limit, offset, json),
         JourneyCoverageCmd::Discover { spawn_missing } => {
             coverage_discover(graph, spawn_missing, json)
         }
@@ -126,9 +126,14 @@ fn coverage_add(
     )
 }
 
-fn coverage_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> Result<()> {
+fn coverage_list(
+    graph: Option<&std::path::Path>,
+    limit: usize,
+    offset: usize,
+    json: bool,
+) -> Result<()> {
     let store = open(graph)?;
-    let nodes = store.list_nodes(Some(NodeType::JourneyCoverage), limit)?;
+    let nodes = store.list_nodes_page(Some(NodeType::JourneyCoverage), limit, offset)?;
     let mut rows: Vec<Value> = Vec::new();
     for n in &nodes {
         let covers = store
@@ -170,6 +175,12 @@ fn coverage_list(graph: Option<&std::path::Path>, limit: usize, json: bool) -> R
     }
     if json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
+    } else if let Some(footer) = crate::commands::page_footer(
+        nodes.len(),
+        offset,
+        store.count_nodes(Some(NodeType::JourneyCoverage))?,
+    ) {
+        println!("{footer}");
     }
     Ok(())
 }

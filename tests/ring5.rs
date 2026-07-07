@@ -1073,7 +1073,10 @@ fn intent_list_json_runs_clean() {
         graph: Some(tmp.path().to_path_buf()),
         json: true,
         command: Some(Command::Intent {
-            cmd: IntentCmd::List { limit: 50 },
+            cmd: IntentCmd::List {
+                limit: 50,
+                offset: 0,
+            },
         }),
     })
     .unwrap();

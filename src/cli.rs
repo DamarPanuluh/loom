@@ -60,7 +60,14 @@ pub enum Command {
         check: bool,
     },
     /// Restore a graph from an export into a fresh store.
-    Import { file: PathBuf },
+    Import {
+        file: PathBuf,
+        /// Drop dangling facets/tags (targets absent from the export) instead of
+        /// refusing the import — the recovery path for a legacy or cross-version
+        /// export. Durable adjudication verdicts are preserved regardless.
+        #[arg(long)]
+        repair_orphans: bool,
+    },
     /// Apply one atomic batch of mutations from a JSON/YAML file — intents,
     /// groundings, relationships, verdicts, finding adjudications, vocab terms,
     /// and intent tags in a single transaction. Collapses the per-mutation call
@@ -121,11 +128,16 @@ pub enum Command {
         #[arg(long, value_enum)]
         role: Option<RoleArg>,
     },
-    /// Search the graph for intents/codefiles by keyword.
+    /// Search the graph for intents/codefiles by keyword (fuzzy), or by whole
+    /// name with --exact.
     Find {
         query: String,
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        /// Whole-name (case-insensitive) matches only — a reliable existence
+        /// check, with no fuzzy substring scoring.
+        #[arg(long)]
+        exact: bool,
     },
     /// Detect repo languages and recommend quality packs.
     Detect,

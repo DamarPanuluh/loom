@@ -116,9 +116,9 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             Ok(())
         }
         CodefileCmd::Show { key } => codefile_show(graph, &key, json),
-        CodefileCmd::List { limit } => {
+        CodefileCmd::List { limit, offset } => {
             let store = open(graph)?;
-            let files = store.list_nodes(Some(NodeType::CodeFile), limit)?;
+            let files = store.list_nodes_page(Some(NodeType::CodeFile), limit, offset)?;
             if json {
                 let rows: Vec<_> = files
                     .iter()
@@ -135,7 +135,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                     .collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
-                if files.is_empty() {
+                if files.is_empty() && offset == 0 {
                     println!("no codefiles");
                 }
                 for n in &files {
@@ -149,6 +149,13 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                             ""
                         }
                     );
+                }
+                if let Some(footer) = super::page_footer(
+                    files.len(),
+                    offset,
+                    store.count_nodes(Some(NodeType::CodeFile))?,
+                ) {
+                    println!("{footer}");
                 }
             }
             Ok(())

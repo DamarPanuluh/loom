@@ -4,7 +4,7 @@
 //! ring-2 invariant because it requires `sync`; it is verified there.
 
 use loom::cli::{Cli, Command, IntentCmd};
-use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
+use loom::model::{EdgeKind, Facet, InspectionStatus, NodeType, Tag, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::travel::Export;
 mod common;
@@ -288,6 +288,219 @@ fn import_refuses_nonempty_graph() {
 fn malformed_import_is_rejected_loudly() {
     assert!(Export::from_json("{ not valid json").is_err());
     assert!(Export::from_json(r#"{"format":1}"#).is_err()); // missing required fields
+}
+
+// ---- import soft-ref + repair -------------------------------------------
+
+#[test]
+fn restore_preserves_soft_ref_adjudication_by_default() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("demo"), false).unwrap();
+    seed_intent(&store, "some behavior");
+
+    let mut snap = store.snapshot().unwrap();
+    // Push an asserted adjudication facet whose target_id is absent from the
+    // snapshot's nodes. This is a soft ref: the Finding re-materializes on the
+    // next sync. Strict restore must accept it without error.
+    snap.facets.push(Facet {
+        target_id: "d006b0dbff045baf".into(),
+        target_kind: TargetKind::Node,
+        key: "adjudication".into(),
+        value: r#"{"verdict":"justified","reason":"x","hash":"h","at":"2026-01-01T00:00:00Z"}"#
+            .into(),
+        truth_class: TruthClass::Asserted,
+    });
+
+    let tmp2 = Tmp::new();
+    let mut store2 = Store::init(tmp2.path(), None, false).unwrap();
+    store2.restore(&snap).unwrap(); // must not error
+
+    // The soft-ref facet must be present in the imported store.
+    let val = store2
+        .get_facet("d006b0dbff045baf", TargetKind::Node, "adjudication")
+        .unwrap();
+    assert!(
+        val.is_some(),
+        "soft-ref adjudication facet must survive strict restore"
+    );
+
+    // export -> import -> export: soft ref must survive byte-identical.
+    let json_a = Export::from_snapshot(store2.snapshot().unwrap())
+        .to_json()
+        .unwrap();
+    let tmp3 = Tmp::new();
+    let mut store3 = Store::init(tmp3.path(), None, false).unwrap();
+    store3
+        .restore(&Export::from_json(&json_a).unwrap().into_snapshot())
+        .unwrap();
+    // Direct state check: soft ref must be present in store3's graph, not just
+    // reflected in bytes. This rules out export silently omitting it from both
+    // sides, which would yield equal-but-empty bytes and mask the bug.
+    assert!(
+        store3
+            .get_facet("d006b0dbff045baf", TargetKind::Node, "adjudication")
+            .unwrap()
+            .is_some(),
+        "soft-ref adjudication facet must be present in store3 after second restore",
+    );
+    let json_b = Export::from_snapshot(store3.snapshot().unwrap())
+        .to_json()
+        .unwrap();
+    assert_eq!(
+        json_a, json_b,
+        "soft ref must survive export -> import -> export unchanged",
+    );
+}
+
+#[test]
+fn restore_rejects_genuine_orphan_facet() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("demo"), false).unwrap();
+    seed_intent(&store, "some behavior");
+
+    let mut snap = store.snapshot().unwrap();
+    // A non-adjudication facet on an absent target is a true orphan.
+    snap.facets.push(Facet {
+        target_id: "d006b0dbff045baf".into(),
+        target_kind: TargetKind::Node,
+        key: "visibility".into(),
+        value: "internal".into(),
+        truth_class: TruthClass::Asserted,
+    });
+
+    let tmp2 = Tmp::new();
+    let mut store2 = Store::init(tmp2.path(), None, false).unwrap();
+    let err = store2.restore(&snap).unwrap_err();
+    assert!(
+        err.to_string().contains("repair-orphans"),
+        "error must mention --repair-orphans; got: {err}",
+    );
+}
+
+#[test]
+fn restore_rejects_orphan_tag() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("demo"), false).unwrap();
+    seed_intent(&store, "some behavior");
+
+    let mut snap = store.snapshot().unwrap();
+    // A tag whose target_id is absent from the snapshot's nodes/edges is an orphan.
+    snap.tags.push(Tag {
+        target_id: "beadfeedbeadfeed".into(),
+        target_kind: TargetKind::Node,
+        term: "orphan".into(),
+    });
+
+    let tmp2 = Tmp::new();
+    let mut store2 = Store::init(tmp2.path(), None, false).unwrap();
+    let err = store2.restore(&snap).unwrap_err();
+    assert!(
+        err.to_string().contains("repair-orphans"),
+        "error must mention --repair-orphans; got: {err}",
+    );
+}
+
+#[test]
+fn restore_repairing_drops_orphans_keeps_soft_refs() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("demo"), false).unwrap();
+    seed_intent(&store, "some behavior");
+
+    let mut snap = store.snapshot().unwrap();
+    // Soft-ref adjudication — must be kept, counted in preserved_soft_refs.
+    snap.facets.push(Facet {
+        target_id: "d006b0dbff045baf".into(),
+        target_kind: TargetKind::Node,
+        key: "adjudication".into(),
+        value: r#"{"verdict":"justified","reason":"x","hash":"h","at":"2026-01-01T00:00:00Z"}"#
+            .into(),
+        truth_class: TruthClass::Asserted,
+    });
+    // Genuine orphan facet — must be dropped and reported.
+    snap.facets.push(Facet {
+        target_id: "d006b0dbff045baf".into(),
+        target_kind: TargetKind::Node,
+        key: "visibility".into(),
+        value: "internal".into(),
+        truth_class: TruthClass::Asserted,
+    });
+    // Orphan tag — must be dropped and reported.
+    snap.tags.push(Tag {
+        target_id: "beadfeedbeadfeed".into(),
+        target_kind: TargetKind::Node,
+        term: "orphan".into(),
+    });
+
+    let tmp2 = Tmp::new();
+    let mut store2 = Store::init(tmp2.path(), None, false).unwrap();
+    let report = store2.restore_repairing(&snap).unwrap();
+
+    assert_eq!(
+        report.preserved_soft_refs, 1,
+        "one soft-ref adjudication must be preserved"
+    );
+    assert_eq!(
+        report.dropped_facets.len(),
+        1,
+        "one genuine orphan facet must be dropped"
+    );
+    assert_eq!(
+        report.dropped_facets[0],
+        (
+            "node".to_string(),
+            "d006b0dbff045baf".to_string(),
+            "visibility".to_string(),
+        ),
+        "dropped_facets entry must carry (target_kind, target_id, key)",
+    );
+    assert_eq!(
+        report.dropped_tags.len(),
+        1,
+        "one orphan tag must be dropped"
+    );
+    assert_eq!(
+        report.dropped_tags[0],
+        (
+            "node".to_string(),
+            "beadfeedbeadfeed".to_string(),
+            "orphan".to_string(),
+        ),
+        "dropped_tags entry must carry (target_kind, target_id, term)",
+    );
+
+    // Verify the repaired graph: soft ref present, orphan facet/tag absent.
+    let repaired = store2.snapshot().unwrap();
+    assert!(
+        repaired
+            .facets
+            .iter()
+            .any(|f| f.target_id == "d006b0dbff045baf" && f.key == "adjudication"),
+        "soft-ref adjudication must be in the repaired store",
+    );
+    assert!(
+        !repaired
+            .facets
+            .iter()
+            .any(|f| f.target_id == "d006b0dbff045baf" && f.key == "visibility"),
+        "orphan facet must NOT be in the repaired store",
+    );
+    assert!(
+        !repaired
+            .tags
+            .iter()
+            .any(|t| t.target_id == "beadfeedbeadfeed" && t.term == "orphan"),
+        "orphan tag must NOT be in the repaired store",
+    );
+}
+
+#[test]
+fn restore_repairing_still_refuses_nonempty_graph() {
+    let tmp = Tmp::new();
+    let mut store = Store::init(tmp.path(), Some("demo"), false).unwrap();
+    seed_intent(&store, "some behavior");
+    let snap = store.snapshot().unwrap();
+    // The non-empty guard must not be bypassed by the repair path.
+    assert!(store.restore_repairing(&snap).is_err());
 }
 
 // ---- welcome : bare `loom` must orient, never error ------------------------

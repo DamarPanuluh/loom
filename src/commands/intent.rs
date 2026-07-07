@@ -36,7 +36,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
         IntentCmd::Show { key } => intent_show(graph, key, json),
         IntentCmd::Waive { key, axis, reason } => intent_waive(graph, key, axis, reason, json),
         IntentCmd::Reactivate { key, reason } => intent_reactivate(graph, key, reason, json),
-        IntentCmd::List { limit } => intent_list(graph, limit, json),
+        IntentCmd::List { limit, offset } => intent_list(graph, limit, offset, json),
         IntentCmd::Update {
             key,
             description,
@@ -342,9 +342,9 @@ fn intent_reactivate(graph: Option<&Path>, key: String, reason: String, json: bo
     Ok(())
 }
 
-fn intent_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
+fn intent_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let intents = store.list_nodes(Some(NodeType::Intent), limit)?;
+    let intents = store.list_nodes_page(Some(NodeType::Intent), limit, offset)?;
     if json {
         let rows: Vec<_> = intents
             .iter()
@@ -359,11 +359,18 @@ fn intent_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&rows)?);
         return Ok(());
     }
-    if intents.is_empty() {
+    if intents.is_empty() && offset == 0 {
         println!("no intents");
     }
     for n in &intents {
         println!("{:<12} {} [{}]", n.status, n.name, &n.id[..8]);
+    }
+    if let Some(footer) = super::page_footer(
+        intents.len(),
+        offset,
+        store.count_nodes(Some(NodeType::Intent))?,
+    ) {
+        println!("{footer}");
     }
     Ok(())
 }

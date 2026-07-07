@@ -135,21 +135,33 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
                 format!("inbox item [{}]", &item.id[..8]),
             )
         }
-        InboxCmd::List { limit, status } => {
-            let items: Vec<_> = store
-                .list_nodes(Some(NodeType::InboxItem), limit)?
+        InboxCmd::List {
+            limit,
+            offset,
+            status,
+        } => {
+            // Status filter runs before paging, so page over the filtered set
+            // (fetch all, filter, then skip/take) rather than the raw store
+            // window — otherwise offset would count filtered-out rows.
+            let filtered: Vec<_> = store
+                .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
                 .into_iter()
                 .filter(|n| status.as_deref().is_none_or(|s| n.status == s))
                 .collect();
+            let total = filtered.len();
+            let items: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
             if json {
                 let rows: Vec<_> = items.iter().map(inbox_json).collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
-                if items.is_empty() {
+                if items.is_empty() && offset == 0 {
                     println!("inbox empty");
                 }
                 for n in &items {
                     println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(items.len(), offset, total) {
+                    println!("{footer}");
                 }
             }
             Ok(())
@@ -297,18 +309,20 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
                 ),
             )
         }
-        NoteCmd::List { target, limit } => {
-            let notes: Vec<_> = match target {
+        NoteCmd::List {
+            target,
+            limit,
+            offset,
+        } => {
+            let all: Vec<_> = match target {
                 Some(t) => {
                     let (id, _) = resolve_note_target(&store, &t)?;
-                    store.notes_for(&id)?.into_iter().take(limit).collect()
+                    store.notes_for(&id)?
                 }
-                None => store
-                    .list_nodes(Some(NodeType::Note), usize::MAX)?
-                    .into_iter()
-                    .take(limit)
-                    .collect(),
+                None => store.list_nodes(Some(NodeType::Note), usize::MAX)?,
             };
+            let total = all.len();
+            let notes: Vec<_> = all.into_iter().skip(offset).take(limit).collect();
             if json {
                 let rows: Vec<_> = notes
                     .iter()
@@ -324,11 +338,14 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
                     .collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
-                if notes.is_empty() {
+                if notes.is_empty() && offset == 0 {
                     println!("no notes");
                 }
                 for n in &notes {
                     println!("{:<9} {} [{}]", n.status, n.description, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(notes.len(), offset, total) {
+                    println!("{footer}");
                 }
             }
             Ok(())
@@ -456,17 +473,24 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
             }
             Ok(())
         }
-        TaskCmd::List { limit } => {
-            let tasks = store.list_nodes(Some(NodeType::TaskRecord), limit)?;
+        TaskCmd::List { limit, offset } => {
+            let tasks = store.list_nodes_page(Some(NodeType::TaskRecord), limit, offset)?;
             if json {
                 let rows: Vec<_> = tasks.iter().map(node_json).collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
-                if tasks.is_empty() {
+                if tasks.is_empty() && offset == 0 {
                     println!("no tasks");
                 }
                 for n in &tasks {
                     println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(
+                    tasks.len(),
+                    offset,
+                    store.count_nodes(Some(NodeType::TaskRecord))?,
+                ) {
+                    println!("{footer}");
                 }
             }
             Ok(())
@@ -989,14 +1013,19 @@ fn keyword_hits(
     Ok(hits)
 }
 
-pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bool) -> Result<()> {
+pub(crate) fn find_cmd(
+    graph: Option<&Path>,
+    query: &str,
+    limit: usize,
+    exact: bool,
+    json: bool,
+) -> Result<()> {
     let store = open(graph)?;
-    let limited = keyword_hits(
-        &store,
-        query,
-        &[NodeType::Intent, NodeType::CodeFile, NodeType::QualityRule],
-        limit,
-    )?;
+    let kinds = [NodeType::Intent, NodeType::CodeFile, NodeType::QualityRule];
+    if exact {
+        return find_exact(&store, query, &kinds, json);
+    }
+    let limited = keyword_hits(&store, query, &kinds, limit)?;
     if json {
         let mut rows = Vec::new();
         for (s, kind, name, id) in &limited {
@@ -1038,8 +1067,16 @@ pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bo
                 "no match for '{query}' — try `loom status` to see coverage, or it may not exist"
             );
         }
+        let needle = query.trim();
         for (s, kind, name, id) in limited {
-            println!("{:<10} {} [{}] (score {s})", kind, name, &id[..8]);
+            // Flag a whole-name (case-insensitive) hit so an existence check
+            // never rests on interpreting the fuzzy score of a substring match.
+            let mark = if name.eq_ignore_ascii_case(needle) {
+                " (exact)"
+            } else {
+                ""
+            };
+            println!("{:<10} {} [{}] (score {s}){mark}", kind, name, &id[..8]);
             if kind == "intent" {
                 let grounds = store.edges_with(Some(EdgeKind::Implements), Some(&id), None)?;
                 if store.realizing_groundings(&id)?.is_empty() {
@@ -1073,6 +1110,46 @@ pub(crate) fn find_cmd(graph: Option<&Path>, query: &str, limit: usize, json: bo
                     );
                 }
             }
+        }
+    }
+    Ok(())
+}
+
+/// `loom find --exact`: whole-name (case-insensitive) matches only, no scoring.
+/// Fuzzy `find` ranks by substring, so a partial hit can read as a match that
+/// isn't there — the false positive that seeded a bad dedup. This answers
+/// "does a node named exactly this exist?" deterministically, and lists every
+/// colliding id when duplicates share the name.
+fn find_exact(store: &Store, query: &str, kinds: &[NodeType], json: bool) -> Result<()> {
+    let needle = query.trim();
+    let mut hits: Vec<(String, String, String)> = Vec::new();
+    for nt in kinds {
+        for n in store.list_nodes(Some(*nt), usize::MAX)? {
+            if n.status == "deprecated" {
+                continue;
+            }
+            if n.name.eq_ignore_ascii_case(needle) {
+                hits.push((nt.as_str().to_string(), n.name.clone(), n.id.clone()));
+            }
+        }
+    }
+    hits.sort_by(|a, b| a.1.cmp(&b.1).then(a.2.cmp(&b.2)));
+    if json {
+        let rows: Vec<_> = hits
+            .iter()
+            .map(|(kind, name, id)| {
+                serde_json::json!({ "kind": kind, "name": name, "id": id, "exact": true })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&rows)?);
+    } else if hits.is_empty() {
+        println!(
+            "no exact match for '{query}' — nothing named exactly this exists \
+             (drop --exact for fuzzy matches)"
+        );
+    } else {
+        for (kind, name, id) in &hits {
+            println!("{:<10} {} [{}] (exact)", kind, name, &id[..8.min(id.len())]);
         }
     }
     Ok(())

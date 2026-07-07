@@ -45,6 +45,25 @@ pub struct Snapshot {
     pub config: std::collections::BTreeMap<String, String>,
 }
 
+/// What a [`Store::restore`] did with facets/tags whose target node/edge is not
+/// present in the imported snapshot. Two disjoint outcomes:
+///
+/// - **Soft refs** — asserted `adjudication` verdicts on a derived Finding id.
+///   The finding re-materializes (same deterministic id) on the next `sync`,
+///   so the verdict is a valid dangling reference, not corruption. Always
+///   kept, counted in `preserved_soft_refs`.
+/// - **True orphans** — any other facet/tag with an absent target. A strict
+///   `restore` refuses them; `restore_repairing` drops and reports them here.
+#[derive(Debug, Default, Clone)]
+pub struct RestoreReport {
+    /// Soft-ref facets kept despite an absent target (durable adjudications).
+    pub preserved_soft_refs: usize,
+    /// Orphan facets dropped by repair, as `(target_kind, target_id, key)`.
+    pub dropped_facets: Vec<(String, String, String)>,
+    /// Orphan tags dropped by repair, as `(target_kind, target_id, term)`.
+    pub dropped_tags: Vec<(String, String, String)>,
+}
+
 /// Meta keys that travel with the export. Each is repo-portable configuration
 /// (what to track, what to ignore, the layer order, registered scan adapters,
 /// structural finding thresholds) — without these an imported graph silently

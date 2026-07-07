@@ -404,23 +404,53 @@ impl Store {
     }
 
     pub fn list_edges(&self, kind: Option<EdgeKind>, limit: usize) -> Result<Vec<Edge>> {
+        self.list_edges_page(kind, limit, 0)
+    }
+
+    /// Page an edge listing (ordered by id). Mirror of [`list_nodes_page`]:
+    /// `offset` skips rows before `limit`, backing `edge list --offset` so
+    /// relationship cleanup on a large graph is not capped at the first page.
+    pub fn list_edges_page(
+        &self,
+        kind: Option<EdgeKind>,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<Edge>> {
         let mut stmt;
         let rows = if let Some(k) = kind {
             stmt = self.conn.prepare(
                 "SELECT id,from_id,to_id,kind,truth_class,status,criterion,evidence,
                         confidence,depends_on,inspected_by,created_at,updated_at
-                 FROM edge WHERE kind=?1 ORDER BY id LIMIT ?2",
+                 FROM edge WHERE kind=?1 ORDER BY id LIMIT ?2 OFFSET ?3",
             )?;
-            stmt.query_map(params![k.as_str(), limit as i64], row_to_edge)?
+            stmt.query_map(
+                params![k.as_str(), limit as i64, offset as i64],
+                row_to_edge,
+            )?
         } else {
             stmt = self.conn.prepare(
                 "SELECT id,from_id,to_id,kind,truth_class,status,criterion,evidence,
                         confidence,depends_on,inspected_by,created_at,updated_at
-                 FROM edge ORDER BY id LIMIT ?1",
+                 FROM edge ORDER BY id LIMIT ?1 OFFSET ?2",
             )?;
-            stmt.query_map(params![limit as i64], row_to_edge)?
+            stmt.query_map(params![limit as i64, offset as i64], row_to_edge)?
         };
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    /// Total edge count of a kind (or all kinds), for the `edge list` footer.
+    pub fn count_edges(&self, kind: Option<EdgeKind>) -> Result<usize> {
+        let n: i64 = if let Some(k) = kind {
+            self.conn.query_row(
+                "SELECT COUNT(*) FROM edge WHERE kind=?1",
+                params![k.as_str()],
+                |r| r.get(0),
+            )?
+        } else {
+            self.conn
+                .query_row("SELECT COUNT(*) FROM edge", [], |r| r.get(0))?
+        };
+        Ok(n as usize)
     }
 
     /// Edges of a given truth class whose status is in `statuses`. The asserted

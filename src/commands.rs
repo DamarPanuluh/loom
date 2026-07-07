@@ -76,7 +76,10 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Intent { cmd } => intent::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Codefile { cmd } => codefile_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Export { check } => status_cmd::export(cli.graph.as_deref(), check, cli.json),
-        Command::Import { file } => status_cmd::import(cli.graph.as_deref(), &file, cli.json),
+        Command::Import {
+            file,
+            repair_orphans,
+        } => status_cmd::import(cli.graph.as_deref(), &file, repair_orphans, cli.json),
         Command::Apply { file } => apply_cmd::apply(cli.graph.as_deref(), &file, cli.json),
         Command::Sync => status_cmd::sync_cmd(cli.graph.as_deref(), cli.json),
         Command::Status => status_cmd::status(cli.graph.as_deref(), cli.json),
@@ -104,9 +107,11 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Note { cmd } => misc_cmd::note(cli.graph.as_deref(), cmd, cli.json),
         Command::Session => misc_cmd::session(cli.graph.as_deref(), cli.json),
         Command::Guide { role } => misc_cmd::guide(role.map(crate::cli::RoleArg::as_str), cli.json),
-        Command::Find { query, limit } => {
-            misc_cmd::find_cmd(cli.graph.as_deref(), &query, limit, cli.json)
-        }
+        Command::Find {
+            query,
+            limit,
+            exact,
+        } => misc_cmd::find_cmd(cli.graph.as_deref(), &query, limit, exact, cli.json),
         Command::Detect => misc_cmd::detect_cmd(cli.graph.as_deref(), cli.json),
         Command::Schema => misc_cmd::schema_cmd(cli.json),
         Command::Rule { cmd } => proof_cmd::rule(cli.graph.as_deref(), cmd, cli.json),
@@ -260,6 +265,30 @@ pub(crate) fn truncate(s: &str, max: usize) -> String {
         let t: String = s.chars().take(max).collect();
         format!("{t}…")
     }
+}
+
+/// Text-mode page footer for a `list` command. Given how many rows were
+/// `shown` starting at `offset` out of `total`, returns the hint to fetch the
+/// next page — or, when `offset` overshoots the end, says so. Returns `None`
+/// when the current page already reaches the end. JSON output stays a bare
+/// array (no footer) so machine parsers are unaffected; the offset alone lets a
+/// caller walk every page. The absent "more exist" signal is what hid rows
+/// past the first page during recovery.
+pub(crate) fn page_footer(shown: usize, offset: usize, total: usize) -> Option<String> {
+    let end = offset + shown;
+    if shown == 0 {
+        if offset > 0 && total > 0 {
+            return Some(format!("(offset {offset} is past the end — {total} total)"));
+        }
+        return None;
+    }
+    if end < total {
+        return Some(format!(
+            "… showing {}–{end} of {total}; --offset {end} for the next page",
+            offset + 1
+        ));
+    }
+    None
 }
 
 /// Distinctive search terms from a natural-language query: lowercased, stripped

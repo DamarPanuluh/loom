@@ -31,7 +31,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: WikiCmd, json: bool) -> Result<()> {
         } => wiki_plan(graph, &title, &path, &covers, json),
         WikiCmd::Record { title } => wiki_record(graph, &title, json),
         WikiCmd::Next => wiki_next(graph, json),
-        WikiCmd::List { limit } => wiki_list(graph, limit, json),
+        WikiCmd::List { limit, offset } => wiki_list(graph, limit, offset, json),
         WikiCmd::Remove { title } => wiki_remove(graph, &title, json),
     }
 }
@@ -239,15 +239,22 @@ fn page_rank(status: &str) -> u8 {
     }
 }
 
-fn wiki_list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
+fn wiki_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let pages: Vec<_> = store.list_nodes(Some(NodeType::WikiPage), limit)?;
+    let pages: Vec<_> = store.list_nodes_page(Some(NodeType::WikiPage), limit, offset)?;
     if json {
         println!("{}", serde_json::to_string_pretty(&pages)?);
     } else {
         for p in &pages {
             let path = p.body.get("path").and_then(|v| v.as_str()).unwrap_or("");
             println!("{:<8} {} [{}]  {path}", p.status, p.name, &p.id[..8]);
+        }
+        if let Some(footer) = super::page_footer(
+            pages.len(),
+            offset,
+            store.count_nodes(Some(NodeType::WikiPage))?,
+        ) {
+            println!("{footer}");
         }
     }
     Ok(())

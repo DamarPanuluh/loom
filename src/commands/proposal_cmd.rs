@@ -19,7 +19,7 @@ use std::path::Path;
 pub fn dispatch(graph: Option<&Path>, cmd: ProposalCmd, json: bool) -> Result<()> {
     match cmd {
         ProposalCmd::Add { title, file, text } => add(graph, title, file, text, json),
-        ProposalCmd::List { limit } => list(graph, limit, json),
+        ProposalCmd::List { limit, offset } => list(graph, limit, offset, json),
         ProposalCmd::Show { key } => show(graph, key, json),
         ProposalCmd::Remove { key } => remove(graph, key, json),
         ProposalCmd::Item { cmd } => item(graph, cmd, json),
@@ -75,9 +75,9 @@ fn add(
     Ok(())
 }
 
-fn list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
+fn list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let proposals = store.list_nodes(Some(NodeType::Proposal), limit)?;
+    let proposals = store.list_nodes_page(Some(NodeType::Proposal), limit, offset)?;
     if json {
         let rows: Vec<Value> = proposals
             .iter()
@@ -93,7 +93,7 @@ fn list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
             .collect();
         println!("{}", serde_json::to_string_pretty(&rows)?);
     } else {
-        if proposals.is_empty() {
+        if proposals.is_empty() && offset == 0 {
             println!("no proposals");
         }
         for n in &proposals {
@@ -110,6 +110,13 @@ fn list(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
                 &n.id[..8],
                 count
             );
+        }
+        if let Some(footer) = super::page_footer(
+            proposals.len(),
+            offset,
+            store.count_nodes(Some(NodeType::Proposal))?,
+        ) {
+            println!("{footer}");
         }
     }
     Ok(())

@@ -322,14 +322,22 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
             }
             Ok(())
         }
-        HypothesisCmd::List { limit } => {
-            let hypotheses = store.list_nodes(Some(NodeType::Hypothesis), limit)?;
+        HypothesisCmd::List { limit, offset } => {
+            let hypotheses = store.list_nodes_page(Some(NodeType::Hypothesis), limit, offset)?;
             if json {
                 let rows: Vec<_> = hypotheses.iter().map(node_json).collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
+                let shown = hypotheses.len();
                 for n in hypotheses {
                     println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(
+                    shown,
+                    offset,
+                    store.count_nodes(Some(NodeType::Hypothesis))?,
+                ) {
+                    println!("{footer}");
                 }
             }
             Ok(())
@@ -437,14 +445,23 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
             )?;
             Ok(())
         }
-        SurfaceCmd::List { limit } => {
-            let surfaces = store.list_nodes(Some(NodeType::InterfaceSurface), limit)?;
+        SurfaceCmd::List { limit, offset } => {
+            let surfaces =
+                store.list_nodes_page(Some(NodeType::InterfaceSurface), limit, offset)?;
             if json {
                 let rows: Vec<_> = surfaces.iter().map(node_json).collect();
                 println!("{}", serde_json::to_string_pretty(&rows)?);
             } else {
+                let shown = surfaces.len();
                 for n in surfaces {
                     println!("{} [{}]", n.name, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(
+                    shown,
+                    offset,
+                    store.count_nodes(Some(NodeType::InterfaceSurface))?,
+                ) {
+                    println!("{footer}");
                 }
             }
             Ok(())
