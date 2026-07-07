@@ -1,3 +1,12 @@
+//! Derived-plane persistence primitives — the store half of `sync`.
+//!
+//! Plane: engine (persistence), owning the derived truth class. Derived nodes
+//! and edges get deterministic content-addressed ids and sentinel timestamps,
+//! so `wipe_derived` + rebuild is byte-identical (INV-2). `stale_edge` is the
+//! ripple's only way to re-open a settled asserted verdict — it records the
+//! cause and writes no verdict of its own. Nothing here mints random ids for
+//! derived data or touches asserted statuses (INV-5).
+
 use super::*;
 
 impl Store {

@@ -1,3 +1,11 @@
+//! `loom graph` command family — linking upstream graphs (federation).
+//!
+//! Plane: CLI surface over the engine's federation layer. Owns the upstream
+//! registry (link/unlink/list against another graph's export, with graph-id
+//! and alias uniqueness enforced at link time) and the shadow UpstreamIntent
+//! nodes that stand in for upstream intents locally. It never imports upstream
+//! truth wholesale — shadows reference, they do not copy verdicts or edges.
+
 use super::*;
 use crate::federation::{read_upstream_entries, write_upstream_entries, UpstreamEntry};
 

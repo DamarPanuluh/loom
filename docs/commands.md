@@ -7,6 +7,12 @@ Status: **shipped CLI surface** — this page follows the compiled `target/debug
 ## Orientation
 
 ```text
+loom welcome [--json]
+```
+
+Plain-English orientation: what loom is plus the one thing to do next. This is also the default — a bare `loom` with no subcommand routes here.
+
+```text
 loom status [--json]
 ```
 
@@ -221,6 +227,16 @@ loom threshold reset [<gate>]
 ```
 
 The manual counterpart to `calibrate`: hand-set a single gate instead of fitting the whole set from the distribution. `<gate>` is one of the `config.thresholds` keys (`max_file_loc`, `max_symbol_complexity`, `max_symbol_loc`, `max_nesting`, `max_args`, `max_file_owners`); `<value>` must be ≥ 1. `set` persists to `config.thresholds` (portable — travels in the export). `reset <gate>` restores one gate to its shipped default; `reset` with no gate drops the whole `thresholds` config so every gate reverts to "absent = shipped default" (not a pinned snapshot — a later change to the defaults still takes effect). `max_file_owners` is set only this way; `calibrate` never fits it.
+
+```text
+loom policy show [--json]
+loom policy set-floor <fraction> [--json]
+loom policy gate-add <lane> [--json]
+loom policy gate-remove <lane> [--json]
+loom policy reset [--json]
+```
+
+Read or set the evidence policy. `set-floor` sets the review-confidence floor (a fraction in `[0.0, 1.0]`) below which a recorded verdict is routed to `loom next --mode review`; `gate-add`/`gate-remove` move an owner lane (`builder | analyzer | fixer | validator | quality`) in or out of the human-gated set described in `llm-driver.md`. The policy persists to portable `config.evidence_policy` and travels with the export; absent config means the shipped defaults, and `reset` drops the config to restore them.
 
 ```text
 loom completeness [<intent>] [--json]
@@ -656,14 +672,41 @@ Layer order arms layering-violation detection. Vocab terms support duplicated-re
 
 ---
 
+## Wiki commands
+
+```text
+loom wiki plan <title> --path <path> [--covers <intent>]... [--json]
+loom wiki next [--json]
+loom wiki record <title> [--json]
+loom wiki list [--json]
+loom wiki remove <title> [--json]
+```
+
+Reader-first wiki pages tracked as a projection of the graph: the graph governs **truth and freshness**, never layout, and an agent (not loom) writes the prose. `plan` creates or re-grounds a draft page and the intents it documents (`Documents` edges); `next` emits a verified brief — the documented intents' descriptions, groundings, and proof status — for the next page that needs writing (a draft, or a stale page whose documented scope drifted); `record` marks an authored page fresh by stamping the scope fingerprint of everything it documents (gated on the prose actually existing at the page's path). `sync` stales a page precisely when a documented intent, its code, or its proof drifts.
+
+---
+
+## Federation commands
+
+```text
+loom graph link <path-to-loom.graph.json> [--name <alias>] [--json]
+loom graph unlink <alias-or-graph-id> [--json]
+loom graph list [--json]
+```
+
+Cross-graph federation over committed exports; see "Graph init and travel" for the `UpstreamIntent` shadow-node model and `loom edge depends-on` for cross-graph claims.
+
+---
+
 ## Removed / deferred names
 
 These are **not** current shipped commands or flags. Do not emit them from prompts or examples unless explicitly discussing absence:
 
 - removed/deferred from `next`: `--take`, `--compact`, `--slice`
-- removed/deferred command families: batch writes, impact preview, hotspots, dig, wiki projection, delegate/federation
+- removed/deferred command families: impact preview, hotspots, dig
 - removed/deferred subcommands: intent context, edge unimplement, vocab merge, inbox normalize
 - removed/deferred flags: `guide --mode`, `import --as-planned`
+- shipped since this list was written (do **not** treat as deferred): batch writes (`loom apply`), wiki projection (`loom wiki`, with the verb set above — the older `generate/verify/publish/update` design in `wiki-projection.md` was superseded), and federation (`loom graph link/unlink/list`, `loom edge depends-on`)
 - removed legacy (grammar convergence): top-level `loom validate` (→ `loom validation run`), `validation mark --result` (→ `validation verdict <outcome>`), `rule verdict --status` (→ positional outcome), `hypothesis prove --verdict` (→ positional outcome), `validation delete`/`surface delete` (→ `remove`), `rule ungovern` (→ `rule unlink`), the `loom saga` alias, the `saga` validation type, and the `saga:` spec name key
 
 ---

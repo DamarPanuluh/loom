@@ -481,22 +481,25 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
     // actually holds the boundary.
     let mut wait = std::time::Duration::from_millis(5);
     for attempt in 0..40 {
-        // Disambiguate from std's inherent `File::try_lock_shared`
-        // (`TryLockError`); we use fs2's `FileExt` throughout (`io::Error`).
         let acquired = if exclusive {
-            fs2::FileExt::try_lock_exclusive(&file)
+            file.try_lock()
         } else {
-            fs2::FileExt::try_lock_shared(&file)
+            file.try_lock_shared()
         };
         match acquired {
             Ok(()) => return Ok(file),
-            Err(_) if attempt < 39 => {
+            // A held lock may release any moment — retry with backoff.
+            Err(std::fs::TryLockError::WouldBlock) if attempt < 39 => {
                 std::thread::sleep(wait);
                 if wait < std::time::Duration::from_millis(50) {
                     wait *= 2;
                 }
             }
-            Err(_) => break,
+            Err(std::fs::TryLockError::WouldBlock) => break,
+            // A real I/O error will not heal by waiting.
+            Err(std::fs::TryLockError::Error(e)) => {
+                return Err(e).with_context(|| format!("locking {}", lock_path.display()));
+            }
         }
     }
     bail!(

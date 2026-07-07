@@ -1,6 +1,6 @@
 # loom v2 — Wiki Projection
 
-Status: canonical draft. This describes how loom generates, verifies, and publishes human/agent-readable documentation from the graph. Terminology follows `terminology.md`; graph model follows `graph-model.md`.
+Status: **historical design reference.** The wiki shipped in v0.20.0 with a deliberately smaller surface than this doc designs: `loom wiki plan/next/record/list/remove` (see `commands.md`), where an agent writes the prose and loom governs only truth and freshness — there is no generate/verify/publish run pipeline, no `.loom/wiki-runs/` isolation, and no WikiManifest. The **Core rule** below (the wiki is a projection; the graph is the source) is what shipped and remains canonical; the run/manifest/citation machinery in the rest of this doc is the fuller design it was distilled from, kept as reference for a future deepening.
 
 ---
 

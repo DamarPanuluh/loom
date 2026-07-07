@@ -1,3 +1,12 @@
+//! Capture and orientation command family — door, inbox, notes, tasks,
+//! welcome, session, guide, find, detect, schema.
+//!
+//! Plane: CLI surface over asserted capture plus read-only orientation.
+//! `door`/`inbox` record raw utterances and offer a routing menu of prefilled
+//! commands — nothing is decided or auto-run here; the caller picks one landing
+//! and marks the capture routed. Notes and tasks are asserted records. No
+//! derived truth and no verdicts are written from this module.
+
 use super::*;
 
 pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<()> {

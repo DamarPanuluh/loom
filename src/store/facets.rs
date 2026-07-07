@@ -1,3 +1,11 @@
+//! Facet/tag persistence plus whole-graph snapshot and restore.
+//!
+//! Plane: engine (persistence). Facets are keyed key/value annotations that
+//! carry their own truth class; tags are plain terms. Snapshot reads the whole
+//! graph as deterministically sorted collections (stable export bytes), and
+//! restore replays one atomically — neither invents, filters, or re-derives
+//! truth on the way through (derived rebuild is `sync`'s job, INV-2).
+
 use super::*;
 
 impl Store {

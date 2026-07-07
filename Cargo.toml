@@ -1,6 +1,6 @@
 [package]
 name = "loom"
-version = "0.22.0"
+version = "0.23.0"
 edition = "2021"
 description = "A falsifiable graph of what a codebase should do, where it lives, and how it is proven."
 
@@ -14,20 +14,21 @@ path = "src/lib.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.9"
-fs2 = "0.4"
+serde_norway = "0.9"
 anyhow = "1"
-tree-sitter = "0.25"
+tree-sitter = "0.26"
 tree-sitter-rust = "0.24"
-tree-sitter-python = "0.23"
-tree-sitter-go = "0.23"
-tree-sitter-javascript = "0.23"
+tree-sitter-python = "0.25"
+tree-sitter-go = "0.25"
+tree-sitter-javascript = "0.25"
 tree-sitter-typescript = "0.23"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
-rusqlite_migration = "1.2.0"
+# reqwest 0.13 renamed the TLS features (`rustls-tls` → `rustls`) and moved
+# RequestBuilder::query behind the `query` feature
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "query", "rustls"] }
+rusqlite_migration = "2.6"
 process_control = "5"
 ignore = "0.4"
 globset = "0.4"

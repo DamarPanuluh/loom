@@ -1,3 +1,11 @@
+//! Queue partition — one candidate work item per lane.
+//!
+//! Plane: judgment-plane routing (pure reads over the store). Each `*_item`
+//! function selects the single next candidate for its lane using the SAME
+//! predicates the maturity ladder and completeness scorecard use — the compass
+//! must never route a lane at work its queue would not serve. Selection only:
+//! nothing here writes to the graph or decides verdicts.
+
 use super::context::{edge_context, node_context};
 use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, elaborator_contract, fixer_contract,

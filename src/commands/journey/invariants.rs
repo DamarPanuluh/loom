@@ -1,4 +1,7 @@
 //! Journey invariant-point commands.
+//!
+//! Plane: CLI surface over the judgment plane — asserted invariant points and
+//! `Asserts` links; whether a point is verified is derived, never stored.
 
 use super::{open, pulse};
 use crate::cli::JourneyInvariantCmd;

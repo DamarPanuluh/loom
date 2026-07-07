@@ -1,3 +1,11 @@
+//! `loom codefile` command family — registering files and globs with the graph.
+//!
+//! Plane: CLI surface over asserted file registration (the roster the
+//! structural plane extracts from). Owns glob expansion, the ignore gate
+//! (explicit literal paths always override ignore rules), and the remembered
+//! globs `rescan`/`sync` replay for future arrivals. Registration only —
+//! content extraction and derived facets belong to `sync`, never here.
+
 use super::*;
 
 pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Result<()> {

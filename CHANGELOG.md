@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.23.0] - 2026-07-07
+- docs-reality reconciliation (wiki/federation/apply/policy shipped surfaces, hardened-grid + INV-5 invalidation design notes), INV-1 + INV-3 gate/queue invariant tests, plane/contract doc headers on all modules, dependency modernization (rusqlite 0.40, tree-sitter 0.26, reqwest 0.13, std file locking replaces fs2, serde_norway replaces deprecated serde_yaml), honest journey non-JSON-body failures, dogfood graph completed to the full maturity ladder (34 intents, 54/54 files owned, 35 passing proofs, all six rungs met)
+
 ## [0.22.0] - 2026-07-06
 - loom mode <owned|observed> sets the graph mode after init (build/fix/coverage/elaborate lanes on/off); sync never touches it, so the observed flag is reachable instead of orphaned. loom next --mode <m> --all lists a single queue's full depth — every item it would serve, in priority order, as lightweight rows — so a queue status reports as hundreds deep is pageable (the singular next still serves the full top packet)
 

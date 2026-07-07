@@ -1,3 +1,11 @@
+//! Proof command family — quality rules, validations, and their verdicts.
+//!
+//! Plane: CLI surface over the judgment plane. Every settled state written
+//! here flows through `Store::record_verdict`, so the evidence gates
+//! (INV-4/5/6) and the role gate (INV-7) apply unchanged — this module shapes
+//! arguments, resolves names to nodes/edges, and renders output; it must never
+//! offer a path around the store's write boundary.
+
 use super::*;
 
 pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()> {

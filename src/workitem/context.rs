@@ -1,3 +1,11 @@
+//! Work-packet context — the read set handed to the LLM with each item.
+//!
+//! Plane: judgment-plane routing (pure reads over the store). Builds the
+//! `TraversalContext` for a node or edge: linked entities, suggested reads,
+//! and the grounded-file read set, deterministically ordered and bounded.
+//! Context is evidence to read, never a conclusion — this module writes
+//! nothing and asserts nothing.
+
 use super::{FileRead, LinkedEntity, SuggestedRead, TraversalContext};
 use crate::model::{Edge, EdgeKind, GroundingRole, Node, NodeType};
 use crate::store::Store;

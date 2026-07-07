@@ -1,6 +1,6 @@
 # loom v2 — Build Plan
 
-Status: canonical draft. This is the implementation sequencing plan: MVP rings, milestone 2 scope, test invariants, and dogfood milestone. Follows `design.md §9` locked decisions. All design is settled in the preceding docs before a line of code is written.
+Status: canonical, with the MVP rings (1–7) **shipped** and the sequencing continued past this plan: rings 8–12 (findings triage, review queue + work packets, sensors + Definition-of-Complete, grounding roles, apply-batch + federation — see the addendum at the end and `CHANGELOG.md`) landed after ring 7, and most of "Milestone 2" shipped with them. The ring definitions below are kept as the record of what each ring was required to prove; `commands.md` and the compiled `--help` describe the current surface.
 
 ---
 
@@ -26,7 +26,7 @@ rusqlite        SQLite graph store (bundled — no system SQLite dependency)
 tree-sitter     code extraction (+ grammars: rust, python, go, typescript, javascript)
 reqwest         HTTP for journey runner (rustls, blocking)
 serde / serde_json  serialization
-fs2             cross-process file lock for concurrent access
+std::fs::File locking  cross-process file lock for concurrent access (was fs2; std stabilized locking in Rust 1.89)
 ```
 
 v1 (`../../loom`) is a **read-only reference oracle**. Read it for:
@@ -269,15 +269,15 @@ Never copy v1 code. Re-derive clean.
 
 ---
 
-## Milestone 2 (deferred)
+## Milestone 2 (originally deferred — mostly shipped since)
 
-Genuinely deferred: significant new subsystems or niche capabilities not needed for MVP dogfood.
+These were deferred from the MVP as significant new subsystems. Their eventual fate:
 
-| Feature | Why deferred |
+| Feature | Status |
 |---|---|
-| Wiki projection (`loom wiki plan/generate/verify/publish/update`) | Significant standalone generation surface; depends on a stable, dogfooded graph |
-| Federation (`loom delegate`, observed graphs) | Cross-repo graph composition; only needed for monorepos |
-| Personas | Niche; no pressing model demand in MVP scope |
+| Wiki projection | **Shipped** (v0.20.0) as `loom wiki plan/next/record/list/remove` — smaller than the `wiki-projection.md` design (no generate/verify/publish pipeline; the graph governs truth + freshness, an agent writes prose) |
+| Federation | **Shipped** (v0.22 line) as `loom graph link/unlink/list` + `loom edge depends-on` over committed exports; observed graph mode via `loom mode` / `init --observed` |
+| Personas | Still deferred — niche; no pressing model demand |
 
 ---
 
@@ -299,16 +299,16 @@ ring 7: all invariants, export/import round-trip
 
 ### Invariant tests
 
-The 7 invariants from `graph-model.md` are first-class tests, not assertions buried in unit tests. Each must be independently runnable and named clearly.
+The 7 invariants from `graph-model.md` are first-class tests, not assertions buried in unit tests. Each is independently runnable and named for its invariant. Where they live:
 
 ```text
-test_inv1_no_grid_materialization
-test_inv2_derived_rebuildable
-test_inv3_statistical_never_stored
-test_inv4_independent_requires_evidence
-test_inv5_class_partitioned_writes
-test_inv6_evidence_gate_rejects_empty
-test_inv7_role_gate_rejects_wrong_lane
+INV-1  tests/ring3.rs   inv1_no_grid_materialization (O(N) edges for N unrelated intents)
+INV-2  tests/ring2.rs   inv2_derived_plane_rebuildable (+ wipe/rebuild variants in ring8, ring12)
+INV-3  tests/ring6.rs   debt_size_outlier_is_not_stored, inv3_debt_never_gates_or_queues
+INV-4  tests/ring1.rs   inv4_independent_requires_evidence
+INV-5  tests/ring1.rs   inv5_verdict_path_rejects_derived_edge / inv5_derived_path_rejects_asserted_edge
+INV-6  tests/ring1.rs   inv6_passing_requires_criterion_and_evidence
+INV-7  tests/ring3.rs   inv7_wrong_lane_rejected_right_lane_allowed / inv7_verdict_lane_enforced
 ```
 
 ### Dogfood as integration test
@@ -344,6 +344,25 @@ The dogfood milestone is the exit condition for the full MVP. It is defined as:
 When the dogfood milestone passes, the binary is ready to be used as a companion on other codebases.
 
 ---
+
+## Addendum — rings shipped after this plan (8–12)
+
+The plan above ends at ring 7. Development continued ring-by-ring under the same green-before-next principle; each later ring has its own integration suite under `tests/`:
+
+```text
+ring 8   findings triage: durable adjudication verdicts across syncs, smells materialized as findings
+ring 9   weak-worker fidelity: review queue (confidence floor), disjoint queue partition,
+         self-contained work packets, door landing, quality packs with pre-screening
+ring 10  sensors + Definition-of-Complete: scan adapters, completeness scorecard + waivers,
+         elaborate lane, calibrated thresholds, portable config
+ring 11  grounding roles on implements edges (realizes|consumes|configures|verifies),
+         coverage ownership, seam drift, observed-graph lane gating
+ring 12  loom apply atomic batches; cross-graph federation (graph link, UpstreamIntent
+         shadows, depends-on edges); wiki projection (v0.20); prove→adopt→build handoff (v0.21);
+         queue depth views + graph mode (v0.22)
+```
+
+`CHANGELOG.md` is the authoritative per-release record for this period.
 
 ## What the build plan does not contain
 

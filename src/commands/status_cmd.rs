@@ -1,3 +1,11 @@
+//! Driver-loop command family — status, next, queue, mode, sync, export/import.
+//!
+//! Plane: CLI surface over the engine's orchestration: recompute (`sync`),
+//! portability (`travel`), and routing (`workitem`/`maturity`). This module
+//! resolves the target graph, dispatches, and renders — the compass and queue
+//! decisions it prints are computed elsewhere and must not be second-guessed
+//! or reordered here.
+
 use super::*;
 
 pub(crate) fn export(graph: Option<&Path>, check: bool, json: bool) -> Result<()> {

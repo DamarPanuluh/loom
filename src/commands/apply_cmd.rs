@@ -413,7 +413,7 @@ fn read_apply(path: &Path) -> Result<ApplyTx> {
     // Format follows the file extension so error messages point at the right
     // grammar; JSON is the default (the export dialect), YAML for .yaml/.yml.
     match path.extension().and_then(|e| e.to_str()) {
-        Some("yaml") | Some("yml") => serde_yaml::from_str(&text).with_context(|| {
+        Some("yaml") | Some("yml") => serde_norway::from_str(&text).with_context(|| {
             format!(
                 "parsing apply batch {} (YAML: keys intents/groundings/relationships/verdicts/adjudications/vocab/tags)",
                 path.display()

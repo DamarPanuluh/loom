@@ -6,6 +6,9 @@
 //! Adoption marks an item `adopted` and optionally spawns an Intent or
 //! TaskRecord node, recording the source proposal/item id in the spawned
 //! node's body for traceability.
+//!
+//! Plane: CLI surface over asserted capture (judgment-plane inputs) — adoption
+//! spawns asserted nodes; nothing here is derived or evidence-gated.
 
 use super::{looks_like_symbol, node_json, open, pulse};
 use crate::cli::{ProposalCmd, ProposalItemCmd};
@@ -360,7 +363,10 @@ fn item_adopt(
                     task_body,
                 )?
             }
-            _ => unreachable!(),
+            // Guarded by the --as validation above; kept as an error rather
+            // than a panic so a future spawn kind fails the command, not the
+            // process.
+            other => bail!("unsupported spawn kind '{other}' (use intent or task)"),
         };
         // Record the spawned id on the item.
         item["spawned"] = json!(spawned_node.id.clone());

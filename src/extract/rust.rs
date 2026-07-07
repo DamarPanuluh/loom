@@ -1,4 +1,7 @@
 //! Rust-specific extraction via tree-sitter-rust (symbols, imports, panic sites, complexity).
+//!
+//! Plane: structural (derived) — a pure function of file content; no store
+//! access, deterministic so the derived plane stays rebuildable (INV-2).
 
 use super::metrics::{measure, RUST_METRICS};
 use super::{child_name, Symbol};
@@ -76,7 +79,7 @@ pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
             "mod_item" if is_cfg_test_mod(&node, bytes) => continue,
             _ => {}
         }
-        for i in 0..node.child_count() {
+        for i in 0..node.child_count() as u32 {
             if let Some(c) = node.child(i) {
                 stack.push(c);
             }
@@ -200,7 +203,7 @@ fn is_cfg_test_mod(node: &tree_sitter::Node, bytes: &[u8]) -> bool {
         }
         sib = s.prev_sibling();
     }
-    for i in 0..node.child_count() {
+    for i in 0..node.child_count() as u32 {
         if let Some(c) = node.child(i) {
             if has_cfg_test(&c) {
                 return true;

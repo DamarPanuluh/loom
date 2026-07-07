@@ -13,6 +13,9 @@
 //! alone. It is linked via an `Asserts` edge to the Intent it concerns. The
 //! invariant's `assertion` is a design claim about the flow, not a truth claim
 //! about proof; whether it is verified is derived from validations, not stored.
+//!
+//! Plane: CLI surface over the judgment plane — asserted journey nodes and
+//! links; covered/verified state is always derived on read, never stored.
 
 use super::{open, pulse};
 use crate::cli::JourneyCmd;

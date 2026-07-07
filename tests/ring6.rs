@@ -382,6 +382,85 @@ fn debt_size_outlier_is_not_stored() {
     assert_eq!(edges_before, edges_after, "debt must never store edges");
 }
 
+/// INV-3, remaining clauses: a statistical signal is never a *gate input*
+/// (maturity ladder) and never a *required item* (`loom next` / queue counts).
+/// The debt feed appearing or growing must leave routing and maturity
+/// byte-identical.
+#[test]
+fn inv3_debt_never_gates_or_queues() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    for (p, loc) in [("a.rs", 40), ("b.rs", 50), ("c.rs", 45)] {
+        let id = codefile(&store, p);
+        store
+            .set_facet(
+                &id,
+                TargetKind::Node,
+                "loc",
+                &loc.to_string(),
+                TruthClass::Derived,
+            )
+            .unwrap();
+    }
+    assert!(loom::signal::debt(&store).unwrap().is_empty());
+
+    // Introduce a statistical outlier → the debt feed becomes non-empty.
+    let big = codefile(&store, "big.rs");
+    store
+        .set_facet(&big, TargetKind::Node, "loc", "5000", TruthClass::Derived)
+        .unwrap();
+    let debt = loom::signal::debt(&store).unwrap();
+    assert!(
+        debt.iter().any(|d| d.kind == "size_outlier"),
+        "setup must produce a debt cluster: {debt:?}"
+    );
+
+    // The new codefile legitimately adds coverage work; neutralize that one
+    // honest delta (the shape written by `loom ignore add`) so the only
+    // remaining difference could be the debt signal.
+    store
+        .set_meta(
+            "ignores",
+            &serde_json::to_string(&serde_json::json!([
+                {"glob": "*.rs", "reason": "test: exclude coverage work to isolate the debt signal"},
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+    let ladder_isolated = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
+    let queues_isolated =
+        serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+
+    // Grow the outlier tenfold: a *pure* statistical change. Nothing routed,
+    // nothing gated may move.
+    store
+        .set_facet(&big, TargetKind::Node, "loc", "50000", TruthClass::Derived)
+        .unwrap();
+    assert!(loom::signal::debt(&store)
+        .unwrap()
+        .iter()
+        .any(|d| d.kind == "size_outlier"));
+    let ladder_after = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
+    let queues_after = serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+    assert_eq!(
+        ladder_isolated, ladder_after,
+        "a statistical signal must never be a maturity gate input"
+    );
+    assert_eq!(
+        queues_isolated, queues_after,
+        "a statistical signal must never change what loom next serves"
+    );
+
+    // And no served work item may carry the statistical signal.
+    if let Some(item) = loom::workitem::next(&store, None).unwrap() {
+        let rendered = serde_json::to_string(&item).unwrap();
+        assert!(
+            !rendered.contains("size_outlier"),
+            "loom next must never serve a debt cluster: {rendered}"
+        );
+    }
+}
+
 // ---- doctor ----------------------------------------------------------------
 
 #[test]

@@ -338,8 +338,17 @@ The v2 fix baked in from the start: **Excellent gates on triaged statistical clu
 instance count.** Excellent is `Met` when every cluster above an impact threshold is adjudicated
 (confirmed → work, or dismissed → decision note), `NotApplicable` when none cross it. No 18k cliff.
 
-`Hardened` gates on the **asserted coupling residue** (stale/uninspected asserted relationships),
-never on a grid denominator.
+`Hardened` gates on the **asserted coupling residue** (stale/uninspected asserted relationships)
+plus — a deliberate 2026-07 revision — the **unmeasured quality pairs**: every non-deprecated
+`QualityRule` crossed with every **root** implemented intent that has no `governs` verdict yet.
+This is not the v1 grid coming back: it is bounded (roots only — a component verdict covers
+descendants unless a leaf needs its own), computed on read, never stored as rows, and every pair
+is served as real work by `loom next --mode quality`. The original "never on a grid denominator"
+rule guarded against an *unbounded, un-adjudicable* denominator; a seeded rule nobody is ever
+asked to measure is the opposite failure (a dead norm), so the ladder now refuses Hardened until
+each seeded rule has been measured at least at root altitude. The single shared predicate lives
+in `workitem::unmeasured_quality_pairs` so the ladder, the queue count, and the served work can
+never disagree.
 
 ---
 
@@ -352,6 +361,22 @@ These are the properties the test suite must guard from the first commit:
 - **INV-3 — Statistical never required.** No statistical signal is ever a stored edge, a gate input, or a `loom next` required item.
 - **INV-4 — Absence is default.** `independent` rows exist only with non-empty evidence.
 - **INV-5 — Class-partitioned authorship.** Derived status is written only by sync; asserted only by a verdict path. No function writes both.
+
+Two more joined the contract during the build (the "7 invariants" of `build-plan.md` and
+`graph-model.md`):
+
+- **INV-6 — Evidence gate.** A `passing`/`failing`/`independent` verdict with an empty criterion
+  or evidence is rejected at the write boundary.
+- **INV-7 — Role gate.** A write from the wrong lane (per `LOOM_AGENT`) is rejected; unknown
+  agent strings fail closed.
+
+**Precision on INV-5 — invalidation vs authorship.** Sync never *authors* asserted truth, but it
+does *invalidate* it: staling an asserted edge to `needs_reverification`, resetting an asserted
+`Validation`'s result to `not_run`, or marking a `WikiPage` stale when its documented scope
+drifts. Invalidation moves a fact to an "unknown, needs re-judgment" state and is exactly sync's
+job; what is partitioned is the authoring of *settled* states (verdicts, evidence, adoption),
+which only the judgment paths may write. Tests that assert "sync never writes asserted facts"
+mean settled states, not invalidation.
 
 ---
 
@@ -370,7 +395,7 @@ These are the properties the test suite must guard from the first commit:
 | v1 mechanism | v2 treatment | reference value |
 |---|---|---|
 | tree-sitter extraction (`repo.rs`, `ts_imports.rs`) | re-derive clean; same crates | HIGH — the language quirks are hard-won |
-| SQLite store + cross-process flock (`db/sqlite*`) | re-derive clean; same `rusqlite`/`fs2` | HIGH — WAL + locking patterns |
+| SQLite store + cross-process flock (`db/sqlite*`) | re-derive clean; same `rusqlite` (std file locking replaced `fs2` once Rust 1.89 stabilized it) | HIGH — WAL + locking patterns |
 | sync ripple (`commands/sync.rs`) | re-derive on the three-plane model | HIGH — staleness edge cases |
 | sagas / HTTP proofs (`saga/`) | port the *spec format*; rebuild the runner if the proof plane is in scope | MEDIUM |
 | maturity/compass/stats | rebuild clean (this is what was tangled) | LOW — reference the gate *intent*, not the code |
@@ -406,7 +431,8 @@ second milestone. **Locked: rings 1–7 — see §10.**
    coverage/export). Sagas/personas/hypotheses/federation/wiki = milestone 2.
 3. **`depends_on` → column designed in, single-hop (endpoints only)** until a traversal layer lands.
 4. **Language → Rust**, same proven crates (clap, rusqlite bundled, tree-sitter, reqwest rustls,
-   serde + serde_json, fs2) — keeps `../../loom` a directly usable reference oracle. Plus
+   serde + serde_json; std file locking replaced fs2, serde_norway replaced the deprecated
+   serde_yaml) — keeps `../../loom` a directly usable reference oracle. Plus
    `anyhow` for error handling (required by the repo's `rs-result-type` rule: `Result` aliases
    default `E = anyhow::Error`).
 5. **Identity → binary stays `loom`**, built in `loom_new`, **fresh graph** (no v1 `loom.graph.json`

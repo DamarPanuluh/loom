@@ -1,4 +1,7 @@
 //! Generic tree-sitter extraction for non-Rust languages (Python, Go, JS, TS).
+//!
+//! Plane: structural (derived) — a pure function of file content; no store
+//! access, deterministic so the derived plane stays rebuildable (INV-2).
 
 use super::metrics::{measure, MetricSpec, GO_METRICS, JS_METRICS, PYTHON_METRICS, TS_METRICS};
 use super::{child_name, Language, Symbol};
@@ -113,7 +116,7 @@ fn generic_extract(
                 }
             }
         }
-        for i in 0..node.child_count() {
+        for i in 0..node.child_count() as u32 {
             if let Some(c) = node.child(i) {
                 stack.push(c);
             }

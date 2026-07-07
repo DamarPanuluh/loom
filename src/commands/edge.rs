@@ -1,4 +1,7 @@
 //! `loom edge` command family.
+//!
+//! Plane: CLI surface over the judgment plane — asserted relationships and
+//! verdicts; every settled write goes through the store's evidence gates.
 
 use super::{open, pulse, verdict_status};
 use crate::cli::EdgeCmd;

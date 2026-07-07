@@ -446,11 +446,11 @@ A validation that cannot currently run because of an explicit external prerequis
 
 ---
 
-## Wiki terminology `[deferred/not current CLI]`
+## Wiki terminology
 
 ### WikiProjection
 
-Deferred generated human/agent-readable documentation derived from graph facts.
+Reader-first documentation tracked as a projection of graph facts — the graph governs each page's truth and freshness (`loom wiki`, shipped v0.20.0); an agent writes the prose.
 
 Preferred term: wiki projection.
 
@@ -458,27 +458,27 @@ Avoid: wiki truth.
 
 ### WikiPage
 
-One generated page in a wiki projection.
+One tracked page in a wiki projection: a node carrying the page's path and freshness, linked to the intents it documents by `documents` edges. Created by `loom wiki plan`, marked fresh by `loom wiki record`, staled by `sync` when a documented intent, its code, or its proof drifts.
 
-### WikiManifest
+### WikiManifest `[historical design/not current]`
 
-The run manifest: page plan, nav tree, graph export hash, git commit, page dependencies, and citations.
+The run manifest: page plan, nav tree, graph export hash, git commit, page dependencies, and citations. Part of the fuller `wiki-projection.md` design; the shipped wiki tracks freshness per page via its scope fingerprint instead.
 
 ### citation
 
-A reference from generated prose/table/diagram to graph evidence, code locators, validation results, source contracts, or decision notes.
+A reference from authored prose to graph evidence, code locators, validation results, source contracts, or decision notes.
 
 ### page dependency
 
 A graph/code/proof fact that a wiki page relies on. If the dependency changes, the page becomes stale.
 
-### preview run
+### preview run `[historical design/not current]`
 
-A deferred isolated wiki generation under `.loom/wiki-runs/<run-id>/` before publishing.
+An isolated wiki generation under `.loom/wiki-runs/<run-id>/` before publishing — part of the fuller `wiki-projection.md` design; the shipped wiki has no run pipeline (an agent authors the page in place, then `loom wiki record` stamps it fresh).
 
-### publish
+### publish `[historical design/not current]`
 
-Deferred promotion of a verified wiki preview into `docs/loom/**`.
+Promotion of a verified wiki preview into `docs/loom/**` — same status as preview run above.
 
 ---
 
@@ -520,10 +520,10 @@ Current WorkItem owner roles:
 - validator,
 - quality.
 
-Human-protocol/deferred roles:
+Human-protocol/implicit roles:
 
 - interviewer (implemented as door/inbox routing protocol, not a current WorkItem owner role),
-- wiki_author / wiki_reviewer (deferred wiki projection roles; not current CLI roles).
+- wiki author (the agent driving `loom wiki next`/`record`; not a gated WorkItem owner role — wiki work is served by `loom wiki next`, not `loom next`).
 
 ### mindset
 

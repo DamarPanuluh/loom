@@ -38,7 +38,9 @@ This is the v2 spine: derived facts are reproducible, asserted facts persist unt
 - **Scenario families:** `loom intent add/set --aspect happy|sad|fallback|edge_case` plus `scenario-of` edges model happy paths, sad paths, fallbacks, and edge cases without inventing a separate scenario node type.
 - **Question loop:** product questions are captured with `loom inbox add "..." --source question --link intent:<id>` and surface through `loom session` / `graph_state.open_questions` for batched human answers.
 - **Calibrated structural detectors:** sync's built-in findings (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) run on configurable thresholds; `loom calibrate [--write]` proposes gates from the repo's own metric distribution (worst-5% tail, floored) so detection fits the codebase instead of a universal constant.
-- **Portable configuration:** `loom.graph.json` carries the `config` map (`layer_order`, `ignores`, `codefile_globs`, `scan_adapters`, `thresholds`) so imports keep the graph's routing, scan, and detector setup.
+- **Portable configuration:** `loom.graph.json` carries the `config` map (`layer_order`, `ignores`, `codefile_globs`, `scan_adapters`, `thresholds`, `evidence_policy`) so imports keep the graph's routing, scan, detector, and policy setup.
+- **Wiki projection:** `loom wiki plan/next/record/list/remove` tracks reader-first documentation pages as graph citizens — an agent writes the prose, the graph governs truth and freshness, and `loom sync` stales a page precisely when a documented intent, its code, or its proof drifts.
+- **Federation:** `loom graph link` composes graphs across repositories via committed exports; upstream intents appear as shadow nodes that ripple staleness locally without ever entering local queues or gates.
 
 ## Storage
 
@@ -127,13 +129,16 @@ loom --help
 Current top-level commands:
 
 ```text
+welcome     Plain-English orientation (also the bare `loom` default)
 init        Initialize a graph store
 intent      Intent commands
 codefile    CodeFile commands
 export      Write loom.graph.json
 import      Restore from loom.graph.json
+apply       Apply one atomic batch of mutations from a JSON/YAML file
 sync        Recompute structural facts and ripple staleness
 status      Print graph identity and counts
+mode        Show or set the graph mode (owned | observed)
 next        Return the next routed work item
 edge        Edge commands
 door        Capture free-form input as an inbox item
@@ -146,16 +151,16 @@ find        Keyword search over graph facts
 detect      Repo language detection and quality pack recommendation
 scan        External diagnostic adapters to derived findings
 calibrate   Derive structural finding thresholds from the repo
+threshold   Hand-set structural finding thresholds
+policy      Evidence policy (review floor + human gates)
 completeness  Definition-of-Complete scorecard
 schema      Print the data model
 rule        Quality rule commands
 validation  Proof commands
-validate    Run pending proofs
 hypothesis  Hypothesis commands
 surface     Interface surface commands
 vocab       Vocabulary commands
 layer       Architecture layer-order commands
-interface   Interface-plane gap report
 smells      Structural smell report
 debt        Statistical debt feed
 finding     Derived finding adjudication
@@ -164,7 +169,9 @@ coverage    Vertical-spine coverage report
 ignore      Coverage exclusion commands
 whoami      Acting-agent/lane report
 proposal    Proposal capture and item adoption
-journey     Journey proof, coverage, invariant, and prompt commands
+journey     Journey proof, coverage, and invariant commands
+wiki        Reader-first wiki pages tracked as a graph projection
+graph       Cross-graph federation (link/unlink/list upstreams)
 ```
 
 `docs/commands.md` describes the shipped CLI surface plus explicitly marked removed/deferred names. Treat the compiled CLI help as the source of truth for what is implemented now.
@@ -194,7 +201,7 @@ loom export
 loom export --check
 ```
 
-If you wire this into a user-created pre-commit hook, keep the hook defensive: prefer `loom export --check`, and feature-detect any optional command before invoking it (for example `loom wiki ...` surfaces are not part of the implemented CLI listed above).
+If you wire this into a user-created pre-commit hook, keep the hook defensive: prefer `loom export --check`, and feature-detect any optional command before invoking it (older loom binaries may not have newer surfaces such as `loom wiki` or `loom graph`).
 
 ## Documentation map
 

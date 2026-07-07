@@ -1,4 +1,7 @@
 //! `loom intent` command family.
+//!
+//! Plane: CLI surface over the judgment plane — the asserted intent lifecycle
+//! (add/update/waive/reactivate); it writes assertions, never derived truth.
 
 use super::{node_json, open, pulse, require_lane};
 use crate::cli::{IntentCmd, IntentTagCmd};

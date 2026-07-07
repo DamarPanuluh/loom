@@ -1,3 +1,12 @@
+//! Edge persistence — the asserted write gates of the graph.
+//!
+//! Plane: engine (persistence). This is where the asserted truth class is
+//! defended: `add_edge` is asserted-only and registry-validated under the role
+//! gate (INV-7); `record_verdict` is the ONLY path that writes asserted
+//! statuses and enforces the evidence gates (INV-4/6); `set_derived_status`
+//! is the ONLY derived-status path and accepts nothing but `current` (INV-5).
+//! No caller may cross the truth-class line through this module.
+
 use super::*;
 
 impl Store {

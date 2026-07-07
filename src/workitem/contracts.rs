@@ -1,3 +1,11 @@
+//! Role contracts — the PromptContract text for every work-item lane.
+//!
+//! Plane: judgment-plane routing (text assembly only). Each contract states
+//! the role, mindset, allowed and forbidden actions, required evidence, and
+//! the exact prefilled write-back command for one lane — the write-back must
+//! target the store's gated paths, so a contract can never instruct a way
+//! around INV-4/5/6. No store writes happen here.
+
 use super::queues::prescreen_for;
 use super::{q, PromptContract};
 use crate::model::{Edge, EdgeKind, Node};

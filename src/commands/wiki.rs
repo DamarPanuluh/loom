@@ -13,6 +13,9 @@
 //! `wiki record <title>` stamps the scope fingerprint and marks it fresh. When a
 //! documented intent's meaning, code, or proof drifts, `sync` flips the page back
 //! to stale and it re-enters `wiki next`.
+//!
+//! Plane: CLI surface over the judgment plane — asserted page scope and
+//! freshness stamps; staleness itself is derived by `sync`, never asserted here.
 
 use super::{open, pulse};
 use crate::cli::WikiCmd;

@@ -165,7 +165,7 @@ pub fn parse_with_kind(path: &Path) -> Result<(JourneySpec, SpecKind)> {
         Err(json_err) => {
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             if ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml") {
-                serde_yaml::from_str(&text).with_context(|| {
+                serde_norway::from_str(&text).with_context(|| {
                     format!("parsing journey spec as YAML (JSON failed: {json_err})")
                 })?
             } else {
@@ -449,7 +449,7 @@ fn check_response(
     diagnose_style: bool,
 ) -> StepOutcome {
     let status = resp.status().as_u16();
-    let body: serde_json::Value = resp.json().unwrap_or(serde_json::Value::Null);
+    let body_parse: Result<serde_json::Value, _> = resp.json();
     let status_ok = if diagnose_style {
         status == step.expect.status.unwrap_or(200)
     } else {
@@ -474,6 +474,23 @@ fn check_response(
             detail,
         };
     }
+    // A step that never reads the body (status-only check) tolerates a
+    // non-JSON response; a step that checks fields or captures variables
+    // must fail honestly instead of matching against a silent Null.
+    let needs_body =
+        !step.expect.body.is_empty() || !step.expect.exists.is_empty() || !step.capture.is_empty();
+    let body = match body_parse {
+        Ok(v) => v,
+        Err(e) if needs_body => {
+            return StepOutcome {
+                name: step.name.clone(),
+                intent: step.intent.clone(),
+                passed: false,
+                detail: format!("response body is not valid JSON ({e}); status {status}"),
+            };
+        }
+        Err(_) => serde_json::Value::Null,
+    };
     for (path, want) in &step.expect.body {
         let want_resolved = interpolate_json(want, vars);
         let got = jsonpath(&body, path);

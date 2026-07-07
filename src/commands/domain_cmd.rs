@@ -1,3 +1,11 @@
+//! Domain command family — hypotheses, interface surfaces, vocabulary, layers.
+//!
+//! Plane: CLI surface over asserted domain knowledge (judgment-plane inputs).
+//! Owns the human-declared vocabulary the detectors read: hypothesis lifecycle,
+//! surface registration, vocab terms, and the layer order that arms the
+//! layering detector. Declarations only — this module never records verdicts
+//! on behalf of a declaration and never writes derived truth.
+
 use super::*;
 
 pub(crate) fn layer_detector_state(store: &Store) -> Result<serde_json::Value> {

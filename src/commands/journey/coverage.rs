@@ -1,4 +1,7 @@
 //! Journey coverage commands.
+//!
+//! Plane: CLI surface over the judgment plane — asserted coverage nodes and
+//! `Covers` links; effective coverage is derived from passing journey proofs.
 
 use super::{is_journey_validation, open, pulse};
 use crate::cli::JourneyCoverageCmd;

@@ -1,3 +1,12 @@
+//! Diagnostics command family — smells, debt, doctor, findings, coverage,
+//! completeness, scan, calibrate, thresholds, policy, ignore, whoami.
+//!
+//! Plane: CLI surface over the signal plane. Renders advisory reads computed
+//! live from the graph (INV-3: smells/debt are feeds, never stored as required
+//! work or edges). Graph writes here are limited to durable finding
+//! adjudications (`record_finding_verdict`) and configuration (ignore globs,
+//! thresholds, policy) — never structural or derived truth.
+
 use super::*;
 
 pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {

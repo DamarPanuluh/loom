@@ -1,5 +1,7 @@
 //! Shared per-symbol metric walk — complexity, nesting depth, argument count.
 //!
+//! Plane: structural (derived) — pure functions of the parse tree; no store access.
+//!
 //! One traversal grammar for every language: a [`MetricSpec`] names the node
 //! kinds that branch, the kinds that begin a NESTED declaration (the walk stops
 //! there — a nested callable gets its own `Symbol` and must not inflate its
@@ -164,7 +166,7 @@ pub(super) fn measure(node: &tree_sitter::Node, bytes: &[u8], spec: &MetricSpec)
                 m.complexity += bool_ops(&n);
             }
         }
-        for i in 0..n.child_count() {
+        for i in 0..n.child_count() as u32 {
             if let Some(c) = n.child(i) {
                 stack.push((c, child_depth));
             }
@@ -222,7 +224,7 @@ fn named_child_of_kind<'t>(
     node: &tree_sitter::Node<'t>,
     kind: &str,
 ) -> Option<tree_sitter::Node<'t>> {
-    for i in 0..node.named_child_count() {
+    for i in 0..node.named_child_count() as u32 {
         if let Some(c) = node.named_child(i) {
             if c.kind() == kind {
                 return Some(c);

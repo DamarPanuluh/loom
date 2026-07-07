@@ -1,3 +1,9 @@
+//! Subcommand argument shapes for every `loom` command family.
+//!
+//! Plane: surface — argument shape only. These enums declare flag names,
+//! defaults, and help text; every handler lives in `crate::commands`. Nothing
+//! here opens a store, resolves a graph, or contains logic beyond clap parsing.
+
 use clap::Subcommand;
 use std::path::PathBuf;
 

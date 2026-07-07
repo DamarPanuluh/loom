@@ -39,7 +39,7 @@ Every fact type has a canonical owner. A change to one expression of truth must 
 | Quality judgment | `governs` edge verdict | quality role |
 | Interface contract | `InterfaceSurface` / contract artifact | sync (derived) / builder (asserted) |
 | Rationale / decision | `Note` | any role |
-| Generated docs | deferred wiki projection (not current CLI) | routed through InboxItem today |
+| Documentation freshness | `WikiPage` + `documents` edges (`loom wiki`) | agent authors prose; sync stales pages |
 | Statistical suspicion | `DebtCluster` (computed, not stored) | computed on demand |
 | Raw input | `InboxItem` | capture before routing |
 | Operational work | `TaskRecord` | any role |
@@ -110,7 +110,7 @@ CodeFile content hash changed
   → governs edges whose intent grounds this file through a realizing edge → needs_reverification
   → Validation.last_result → not_run; linked validates edges → needs_reverification
   → relates/requires/triggers/sequence edges between intents realizing this file → needs_reverification
-  → documentation items depending on this file should be captured/routed through InboxItem (wiki projection deferred)
+  → WikiPages documenting an intent grounded in this file → stale (served by loom wiki next)
 ```
 
 ### Grounding role changed or rehomed
@@ -136,7 +136,7 @@ Intent description changed (redefinition)
   → relates/requires/etc edges touching this intent → needs_reverification
   → completeness waiver facets are cleared so waived axes re-open under the new meaning
   → old wording and waiver reopening are preserved in decision Notes
-  → documentation items depending on this intent should be captured/routed through InboxItem (wiki projection deferred)
+  → WikiPages documenting this intent → stale (served by loom wiki next)
 
 Intent name changed only
   → no ripple (cosmetic); documentation references may need InboxItem routing
@@ -189,10 +189,11 @@ Import source graph
 
 Porting import that drops groundings and proof results as planned work is deferred; the current binary does not expose `import --as-planned`.
 
-### Documentation edited `[deferred wiki projection]`
+### Documentation edited
 
 ```text
 Documentation prose-only change
+  → if it is a tracked WikiPage, re-stamp freshness with loom wiki record
   → if it is merely explanatory, no graph change
   → if it contradicts or extends graph truth, capture as InboxItem
 

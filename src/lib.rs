@@ -1,6 +1,9 @@
 //! loom v2 — a falsifiable graph of what a codebase should do, where it lives,
 //! and how it is proven.
 //!
+//! Plane: crate root — module wiring and shared vocabulary (`Result`, schema
+//! and path constants) only; each module below states its own plane.
+//!
 //! Architecture (rings, see docs/build-plan.md):
 //! - `model`    — graph vocabulary: nodes, edges, facets, canonical enums.
 //! - `registry` — the edge-kind type system (endpoint + truth-class rules).

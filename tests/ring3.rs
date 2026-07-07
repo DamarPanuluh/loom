@@ -1,6 +1,6 @@
-//! Ring 3 invariant tests — judgment plane lane gates (INV-7), asserted
-//! residue routing, prompt contracts, and intent-redefinition ripple.
-//! INV-1 O(N) hierarchy coverage is not present in rings 1-3 and remains a gap.
+//! Ring 3 invariant tests — judgment plane lane gates (INV-7), no grid
+//! materialization (INV-1), asserted residue routing, prompt contracts, and
+//! intent-redefinition ripple.
 
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
 use loom::registry::OwnerRole;
@@ -84,6 +84,45 @@ fn inv7_verdict_lane_enforced() {
             "llm"
         )
         .is_ok());
+}
+
+// ---- INV-1 : no grid materialization ---------------------------------------
+
+#[test]
+fn inv1_no_grid_materialization() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    const N: usize = 50;
+
+    // N unrelated intents create ZERO relationship rows — absence is the
+    // default; a pair with no relationship has no row.
+    let ids: Vec<String> = (0..N)
+        .map(|i| intent(&store, &format!("behavior number {i}")))
+        .collect();
+    assert_eq!(
+        store.list_edges(None, usize::MAX).unwrap().len(),
+        0,
+        "unrelated intents must not materialize any relationship rows"
+    );
+
+    // Parenting all of them under one root adds exactly O(N) hierarchy
+    // edges — never an O(N^2) pairwise grid.
+    let root = intent(&store, "the product works end to end");
+    for id in &ids {
+        store
+            .add_edge(EdgeKind::Hierarchy, &root, id, TruthClass::Asserted)
+            .unwrap();
+    }
+    let edges = store.list_edges(None, usize::MAX).unwrap();
+    assert_eq!(
+        edges.len(),
+        N,
+        "N parented intents must create exactly N hierarchy edges"
+    );
+    assert!(
+        edges.iter().all(|e| e.kind == EdgeKind::Hierarchy),
+        "no non-hierarchy rows may appear as a byproduct of adding intents"
+    );
 }
 
 #[test]

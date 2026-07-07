@@ -500,9 +500,9 @@ When that file is missing from disk, the packet is a dedicated missing-file cont
 
 If a grounded file mentioned in another lane's `read_set` is deleted, the read_set entry carries a `GONE from disk` annotation so the worker knows the locator is stale before trying to read it.
 
-### wiki_author / wiki_reviewer `[deferred — not current CLI]`
+### wiki author (served by `loom wiki next`, not `loom next`)
 
-The wiki roles remain the intended mindset if wiki projection returns, but the current binary does not expose wiki commands. Today, route documentation drift through `loom inbox add ... --source wiki` (or `--source code_audit` when found during code review) and continue the current WorkItem.
+Wiki work is not a gated WorkItem lane: `loom wiki next` emits a verified brief — the documented intents' descriptions, groundings, and proof status — and the agent writes reader-first prose at the page's path, then stamps it fresh with `loom wiki record <title>`. The mindset: explain the graph, never contradict it; a claim the brief cannot support is documentation drift — route it through `loom inbox add ... --source wiki` (or `--source code_audit` when found during code review) instead of writing it.
 
 ---
 

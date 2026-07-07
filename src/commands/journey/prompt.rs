@@ -1,4 +1,7 @@
 //! Typed runner prompt context command.
+//!
+//! Plane: CLI surface, read-only — emits extracted structural facts for the
+//! LLM to classify; loom asserts no architecture and writes nothing here.
 
 use super::{coverage::effective_coverage, open};
 use crate::model::{EdgeKind, NodeType, TargetKind};
