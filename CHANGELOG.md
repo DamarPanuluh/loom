@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.24.0] - 2026-07-08
+- Operator-feedback precision release: symbol-scoped staleness (sync keeps a per-symbol fingerprint map per codefile and spares realizing groundings whose locator symbol the change did not touch — reported as edges_spared; same-named symbols fold into one fingerprint, and no-locator/unresolvable-locator groundings stale file-scoped as before), evidence anchoring (every verdict stamps a fingerprint of each cited file:line span as an asserted evidence_spans facet; sync grades re-opens 'cited evidence intact, cheap re-confirm' vs 'cited evidence rewritten, full re-inspection', a rewritten cited span re-opens even an unchanged-symbol grounding, and citing lines that never existed fails closed at record time), and the vague_intent smell (an active intent whose description hedges without one observable outcome materializes as an adjudicable finding)
+
 ## [0.23.0] - 2026-07-07
 - docs-reality reconciliation (wiki/federation/apply/policy shipped surfaces, hardened-grid + INV-5 invalidation design notes), INV-1 + INV-3 gate/queue invariant tests, plane/contract doc headers on all modules, dependency modernization (rusqlite 0.40, tree-sitter 0.26, reqwest 0.13, std file locking replaces fs2, serde_norway replaces deprecated serde_yaml), honest journey non-JSON-body failures, dogfood graph completed to the full maturity ladder (34 intents, 54/54 files owned, 35 passing proofs, all six rungs met)
 

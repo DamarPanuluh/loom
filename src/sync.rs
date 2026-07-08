@@ -11,6 +11,7 @@
 //! byte-identical derived plane (deterministic ids + sentinel timestamps + a
 //! pure extraction), and ripples nothing because no prior hashes remain.
 
+use crate::deriver::RegionDiff;
 use crate::model::{EdgeKind, GroundingRole, InspectionStatus, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
@@ -25,6 +26,10 @@ pub struct SyncReport {
     /// Registered files that previously had content and have now disappeared.
     pub files_deleted: usize,
     pub edges_staled: usize,
+    /// Realizing groundings NOT re-opened by a file change because the change
+    /// did not touch the symbol their locator names (and no cited evidence in
+    /// the file was rewritten) — the payoff of symbol-scoped staleness.
+    pub edges_spared: usize,
     pub validations_reset: usize,
     /// Interface surfaces whose backing code changed this run (integration monitoring).
     pub surfaces_affected: usize,
@@ -52,6 +57,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
                 &change.artifact_id,
                 &change.cause,
                 change.content.as_deref(),
+                change.regions.as_ref(),
                 &mut changed_intents,
                 &mut seen_surfaces,
                 &mut report,
@@ -71,35 +77,74 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
 /// it: the `implements` groundings (seeding the pass-2 intent ripple), and the
 /// interface surfaces it backed → the contracts that exercise them. Idempotent
 /// on already-stale edges, so a still-missing file re-rippling is harmless.
+///
+/// When the deriver reports a region diff, a realizing grounding whose locator
+/// resolves to an UNCHANGED symbol is spared instead of staled — unless the
+/// verdict's stamped evidence spans in this file were rewritten, which re-opens
+/// the claim regardless (the recorded justification no longer exists). A
+/// changed symbol always stales; evidence status only refines the cause.
+#[allow(clippy::too_many_arguments)]
 fn ripple_codefile(
     store: &Store,
     cf_id: &str,
     cause: &str,
     content: Option<&str>,
+    regions: Option<&RegionDiff>,
     changed_intents: &mut BTreeMap<String, BTreeSet<String>>,
     seen_surfaces: &mut BTreeSet<String>,
     report: &mut SyncReport,
 ) -> Result<()> {
+    let cf_name = store
+        .get_node(cf_id)?
+        .map(|n| n.name)
+        .unwrap_or_else(|| cf_id.to_string());
     for e in store.edges_with(Some(EdgeKind::Implements), None, Some(cf_id))? {
         if store.edge_superseded(&e.id)? {
             continue; // a superseded (rehomed) grounding is history — never rippled
         }
+        let locator = store.get_facet(&e.id, TargetKind::Edge, "locator")?;
         if store.grounding_role(&e.id)? == GroundingRole::Realizes {
-            // The behavior lives here: any real change re-opens the claim AND
-            // ripples to the intent's other dependents.
-            if store.stale_edge(&e.id, cause)? {
+            // The behavior lives here: a real change re-opens the claim AND
+            // ripples to the intent's other dependents — but only symbol-scoped
+            // when the deriver could diff regions and the locator resolves.
+            let evidence = evidence_span_status(store, &e.id, &cf_name, content)?;
+            let precise_cause = match locator_scope(regions, locator.as_deref()) {
+                Scope::Changed(sym) => Some(format!("symbol '{sym}' in {cf_name} changed")),
+                Scope::Unchanged(sym) => match evidence {
+                    // The locator's symbol is untouched, but the verdict's own
+                    // cited justification was rewritten: re-open.
+                    Some(false) => Some(format!(
+                        "cited evidence in {cf_name} rewritten (symbol '{sym}' unchanged)"
+                    )),
+                    _ => {
+                        report.edges_spared += 1;
+                        continue;
+                    }
+                },
+                Scope::Unknown => Some(cause.to_string()),
+            };
+            let mut full_cause = precise_cause.expect("non-spared branches carry a cause");
+            match evidence {
+                Some(true) => {
+                    full_cause.push_str(" — cited evidence intact, cheap re-confirm");
+                }
+                Some(false) if !full_cause.contains("cited evidence") => {
+                    full_cause.push_str(" — cited evidence rewritten, full re-inspection");
+                }
+                _ => {}
+            }
+            if store.stale_edge(&e.id, &full_cause)? {
                 report.edges_staled += 1;
             }
             changed_intents
                 .entry(e.from_id.clone())
                 .or_default()
-                .insert(cause.to_string());
+                .insert(full_cause);
         } else {
             // A consumer/config/verify grounding: the behavior lives elsewhere,
             // so a content edit does NOT invalidate it and does NOT ripple to the
             // consumed intent. Re-open ONLY if the seam locator drifted — the
             // file vanished, or the locator symbol/route/key is gone from it.
-            let locator = store.get_facet(&e.id, TargetKind::Edge, "locator")?;
             let drifted = match (content, locator.as_deref()) {
                 (None, _) => true,        // the consumer surface itself is gone
                 (Some(_), None) => false, // no seam locator to track
@@ -161,6 +206,77 @@ fn seam_present(src: &str, locator: &str) -> bool {
         Some(tok) if !tok.is_empty() => src.contains(tok),
         _ => false,
     }
+}
+
+/// How a grounding's locator relates to the reported region diff.
+enum Scope {
+    /// The locator resolves to a known region whose fingerprint changed
+    /// (edited, added, or removed) — the claim re-opens, named precisely.
+    Changed(String),
+    /// The locator resolves to a known region that did NOT change.
+    Unchanged(String),
+    /// No diff available, no locator, or the locator names nothing the
+    /// extractor knows — fall back to file-scoped staling, exactly as before.
+    Unknown,
+}
+
+/// Resolve a grounding locator against the region diff. Tries, in order: the
+/// verbatim locator; its last whitespace token with any `:line` suffix
+/// stripped (`"fn capture_payment"`, `"capture_payment:88"`); that token's
+/// last `::` segment (`"Store::open"` → `"open"`). Region keys fold same-named
+/// symbols into one fingerprint, so an ambiguous name is only ever Unchanged
+/// when NONE of its candidates changed.
+fn locator_scope(regions: Option<&RegionDiff>, locator: Option<&str>) -> Scope {
+    let (Some(diff), Some(loc)) = (regions, locator) else {
+        return Scope::Unknown;
+    };
+    let mut candidates: Vec<&str> = vec![loc.trim()];
+    if let Some(tok) = loc.split_whitespace().last() {
+        let tok = match tok.rsplit_once(':') {
+            Some((head, tail)) if !tail.is_empty() && tail.bytes().all(|b| b.is_ascii_digit()) => {
+                head
+            }
+            _ => tok,
+        };
+        candidates.push(tok);
+        if let Some(seg) = tok.rsplit("::").next() {
+            candidates.push(seg);
+        }
+    }
+    for c in candidates {
+        if diff.known.contains(c) {
+            return if diff.changed.contains(c) {
+                Scope::Changed(c.to_string())
+            } else {
+                Scope::Unchanged(c.to_string())
+            };
+        }
+    }
+    Scope::Unknown
+}
+
+/// How the verdict's stamped evidence spans citing `file` fared against its
+/// new content: `None` when nothing in this file was cited (or the file is
+/// gone), `Some(true)` all intact, `Some(false)` at least one rewritten.
+fn evidence_span_status(
+    store: &Store,
+    edge_id: &str,
+    file: &str,
+    content: Option<&str>,
+) -> Result<Option<bool>> {
+    let Some(content) = content else {
+        return Ok(None);
+    };
+    let Some(raw) = store.get_facet(
+        edge_id,
+        TargetKind::Edge,
+        crate::evidence::EVIDENCE_SPANS_KEY,
+    )?
+    else {
+        return Ok(None);
+    };
+    let spans: Vec<crate::evidence::SpanStamp> = serde_json::from_str(&raw).unwrap_or_default();
+    Ok(crate::evidence::spans_status(&spans, file, content))
 }
 
 /// Pass 2: ripple staleness from changed intents to the edges that depend on

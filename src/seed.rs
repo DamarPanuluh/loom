@@ -7,7 +7,7 @@
 //! [`sync_derivers`] and ripples the [`ArtifactChange`]s they report. Adding a
 //! second domain would mean a second seed, not a change to the engine.
 
-use crate::deriver::{ArtifactChange, Deriver};
+use crate::deriver::{ArtifactChange, Deriver, RegionDiff};
 use crate::extract::{extract, Extraction, Role};
 use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
@@ -128,6 +128,7 @@ impl Deriver for StructuralDeriver {
                             artifact_id: cf.id.clone(),
                             cause: format!("registered codefile {} disappeared", cf.name),
                             content: None,
+                            regions: None,
                         });
                         if had_hash {
                             store.clear_facet(&cf.id, TargetKind::Node, "content_hash")?;
@@ -148,7 +149,14 @@ impl Deriver for StructuralDeriver {
             store.clear_facet(&cf.id, TargetKind::Node, "missing_rippled")?;
             let prior = store.get_facet(&cf.id, TargetKind::Node, "content_hash")?;
             if prior.as_deref() != Some(ex.content_hash.as_str()) {
-                write_facets(store, &cf.id, &ex)?;
+                // Read the prior per-symbol fingerprints BEFORE write_facets
+                // overwrites them — they are the only basis for symbol-scoped
+                // (instead of file-scoped) staling of this file's groundings.
+                let prior_regions: Option<std::collections::BTreeMap<String, String>> = store
+                    .get_facet(&cf.id, TargetKind::Node, SYMBOL_FINGERPRINTS_KEY)?
+                    .and_then(|raw| serde_json::from_str(&raw).ok());
+                let new_regions = region_fingerprints(&content, &ex);
+                write_facets(store, &cf.id, &ex, &new_regions)?;
                 // Ripple only on a REAL change (prior hash existed and differs).
                 if prior.is_some() {
                     report.files_changed += 1;
@@ -156,8 +164,23 @@ impl Deriver for StructuralDeriver {
                         artifact_id: cf.id.clone(),
                         cause: format!("content hash of {} changed", cf.name),
                         content: Some(content.clone()),
+                        regions: prior_regions.map(|prev| diff_regions(&prev, &new_regions)),
                     });
                 }
+            } else if store
+                .get_facet(&cf.id, TargetKind::Node, SYMBOL_FINGERPRINTS_KEY)?
+                .is_none()
+            {
+                // Backfill for graphs synced before symbol-scoped staleness
+                // existed: persist the map now so the NEXT change of this file
+                // already ripples symbol-scoped instead of file-scoped.
+                store.set_facet(
+                    &cf.id,
+                    TargetKind::Node,
+                    SYMBOL_FINGERPRINTS_KEY,
+                    &fingerprints_json(&region_fingerprints(&content, &ex)),
+                    TruthClass::Derived,
+                )?;
             }
             for f in derive_findings(&cf.name, &ex, &thresholds) {
                 let rule_id = match rules.get(f.rule) {
@@ -197,7 +220,74 @@ fn ensure_builtin_rules(store: &Store) -> Result<std::collections::HashMap<&'sta
     Ok(map)
 }
 
-fn write_facets(store: &Store, cf_id: &str, ex: &Extraction) -> Result<()> {
+/// The derived facet holding a CodeFile's per-symbol fingerprint map
+/// (symbol name → folded span-text hash). Sync diffs the prior map against
+/// the fresh extraction to stale groundings symbol-scoped instead of
+/// file-scoped. Deterministic (BTreeMap → sorted JSON keys), so the derived
+/// plane stays byte-rebuildable (INV-2).
+pub const SYMBOL_FINGERPRINTS_KEY: &str = "symbol_fingerprints";
+
+/// Per-symbol fingerprints of one extraction: symbol name → FNV fingerprint of
+/// the symbol's span text. Same-named symbols (e.g. `new` on two impl blocks)
+/// FOLD into one fingerprint in file order, so an edit to ANY of them changes
+/// the key's value — a locator that names an ambiguous symbol can then only
+/// ever be spared when none of its candidates changed.
+fn region_fingerprints(
+    content: &str,
+    ex: &Extraction,
+) -> std::collections::BTreeMap<String, String> {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut map = std::collections::BTreeMap::new();
+    for s in &ex.symbols {
+        let start = s.line_start.saturating_sub(1);
+        let end = s.line_end.min(lines.len());
+        if start >= end {
+            continue;
+        }
+        let span_hash = crate::artifact::fingerprint(&lines[start..end].join("\n"));
+        map.entry(s.name.clone())
+            .and_modify(|prev: &mut String| {
+                *prev = crate::artifact::fingerprint(&format!("{prev}\u{1}{span_hash}"));
+            })
+            .or_insert(span_hash);
+    }
+    map
+}
+
+/// Deterministic serialization of a fingerprint map (sorted keys via BTreeMap).
+fn fingerprints_json(map: &std::collections::BTreeMap<String, String>) -> String {
+    serde_json::to_string(map).unwrap_or_else(|_| "{}".into())
+}
+
+/// Diff two fingerprint maps into the engine's region vocabulary: `changed` =
+/// keys whose value differs or that exist on only one side; `known` = every
+/// key on either side.
+fn diff_regions(
+    prev: &std::collections::BTreeMap<String, String>,
+    new: &std::collections::BTreeMap<String, String>,
+) -> RegionDiff {
+    let mut diff = RegionDiff::default();
+    for (k, v) in prev {
+        diff.known.insert(k.clone());
+        if new.get(k) != Some(v) {
+            diff.changed.insert(k.clone());
+        }
+    }
+    for k in new.keys() {
+        diff.known.insert(k.clone());
+        if !prev.contains_key(k) {
+            diff.changed.insert(k.clone());
+        }
+    }
+    diff
+}
+
+fn write_facets(
+    store: &Store,
+    cf_id: &str,
+    ex: &Extraction,
+    regions: &std::collections::BTreeMap<String, String>,
+) -> Result<()> {
     let d = TruthClass::Derived;
     store.set_facet(cf_id, TargetKind::Node, "language", ex.language.as_str(), d)?;
     store.set_facet(cf_id, TargetKind::Node, "role", ex.role.as_str(), d)?;
@@ -212,6 +302,13 @@ fn write_facets(store: &Store, cf_id: &str, ex: &Extraction) -> Result<()> {
     )?;
     let imports = serde_json::to_string(&ex.imports).unwrap_or_else(|_| "[]".into());
     store.set_facet(cf_id, TargetKind::Node, "imports", &imports, d)?;
+    store.set_facet(
+        cf_id,
+        TargetKind::Node,
+        SYMBOL_FINGERPRINTS_KEY,
+        &fingerprints_json(regions),
+        d,
+    )?;
     Ok(())
 }
 

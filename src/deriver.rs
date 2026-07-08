@@ -9,6 +9,21 @@
 //! external scan adapters) live in the code seed (`crate::seed`), never in the
 //! engine — the contract here names nothing file-specific.
 
+/// Which named regions of an artifact changed, when the deriver can tell.
+/// Region keys are opaque to the engine (the code seed uses symbol names);
+/// the ripple logic only ever asks "does this claim's locator resolve to a
+/// known region, and did that region change?".
+#[derive(Debug, Clone, Default)]
+pub struct RegionDiff {
+    /// Region keys whose fingerprint differs between the prior and the new
+    /// extraction — including keys present in only one of the two (added or
+    /// removed regions count as changed).
+    pub changed: std::collections::BTreeSet<String>,
+    /// Every region key known on either side of the diff. A locator that
+    /// resolves to none of these gets file-scoped (conservative) staling.
+    pub known: std::collections::BTreeSet<String>,
+}
+
 /// One artifact change a deriver detected, for the engine to ripple. The engine
 /// never inspects `content` for meaning — it hands it to the ripple logic that
 /// checks whether asserted seam locators still resolve.
@@ -20,6 +35,10 @@ pub struct ArtifactChange {
     pub cause: String,
     /// The new content, or `None` when the artifact disappeared.
     pub content: Option<String>,
+    /// Region-scoped diff of the change, or `None` when the deriver cannot
+    /// compare (artifact gone, no prior fingerprints, unsupported format).
+    /// `None` means dependents ripple file-scoped, exactly as before.
+    pub regions: Option<RegionDiff>,
 }
 
 /// A deriver recomputes one slice of the derived plane from the artifacts on

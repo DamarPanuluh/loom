@@ -29,6 +29,20 @@
       "updated_at": "2026-07-06T16:54:40.256Z"
     },
     {
+      "id": "08d6624d792cf0bd53ca7abe07941121",
+      "type": "inbox_item",
+      "name": "Feedback #6 packet leasing for concurrent agents: .loom/lock…",
+      "description": "Feedback #6 packet leasing for concurrent agents: .loom/lock is a per-process-open advisory lock only (store/mod.rs:468 acquire_lock, RAII on Store drop) — no reservation semantics; zero lease/claim machinery exists. Design: claim records (target_id, worker_id, claimed_at, ttl_secs) as meta or a facet; loom next --claim writes the claim before returning the packet (status_cmd.rs next_cmd); new top-level loom release <id>; lazy TTL expiry skip in next_inner (workitem/mod.rs:198-246); plus a sync barrier — verdicts blocked while a sync younger than X is unprocessed — so a housekeeper cannot record against transient mid-refactor states.",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "link": "file:src/workitem/mod.rs",
+        "source": "operator_feedback"
+      },
+      "created_at": "2026-07-07T17:13:55.794Z",
+      "updated_at": "2026-07-07T17:13:55.794Z"
+    },
+    {
       "id": "0c14c9d55d31179cb9fc8ae9198df4f4",
       "type": "intent",
       "name": "find surfaces each matched intent's grounding",
@@ -79,6 +93,20 @@
       },
       "created_at": "2026-07-06T16:54:40.363Z",
       "updated_at": "2026-07-06T16:54:40.363Z"
+    },
+    {
+      "id": "0fabdf36d9017a619d659a8ca8cd3bfc",
+      "type": "inbox_item",
+      "name": "Feedback #7 export merge (team-adoption unlock): loom import…",
+      "description": "Feedback #7 export merge (team-adoption unlock): loom import restores into a fresh init only (status_cmd.rs import; store/facets.rs restore_inner two-phase validate-then-write) — two branches touching loom.graph.json git-conflict with no semantic path. Design: loom merge <base> <theirs> three-way on the export artifact — entity-keyed by stable node/edge ids (export is deterministic, travel.rs), newest-verdict-wins with the losing verdict retained as history (superseded_by facet / notes pattern, store/edges.rs rehome precedent), conflicting intent descriptions surfaced as inbox items (misc_cmd.rs inbox add path) rather than resolved silently; asserted adjudication soft-refs already round-trip (the one legit orphan class), derived plane never merges (rebuilt by sync, INV-2).",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "link": "file:src/travel.rs",
+        "source": "operator_feedback"
+      },
+      "created_at": "2026-07-07T17:13:55.806Z",
+      "updated_at": "2026-07-07T17:13:55.806Z"
     },
     {
       "id": "102131845debc78186a19e6b46a444b9",
@@ -137,14 +165,25 @@
       "type": "validation",
       "name": "ring2 content-hash ripple",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring2 ripple",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.818Z",
-      "updated_at": "2026-07-07T07:40:06.865Z"
+      "updated_at": ""
+    },
+    {
+      "id": "16017169384d7386467a111d47e775ed",
+      "type": "codefile",
+      "name": "src/evidence.rs",
+      "description": "",
+      "status": "",
+      "truth_class": "asserted",
+      "body": {},
+      "created_at": "2026-07-07T17:30:24.874Z",
+      "updated_at": "2026-07-07T17:30:24.874Z"
     },
     {
       "id": "16a653296842770590a2a1c0c93a6e41",
@@ -495,6 +534,20 @@
       "updated_at": "2026-07-07T07:27:17.501Z"
     },
     {
+      "id": "59284175821fc2ee901ee43afd0a97c5",
+      "type": "inbox_item",
+      "name": "Feedback #3 routing_hint on work packets: emit routing_hint …",
+      "description": "Feedback #3 routing_hint on work packets: emit routing_hint mechanical|judgment so orchestrators can route packets across model tiers. Design: Option<String> field on WorkItem (src/workitem/mod.rs ~173, serde skip_serializing_if None); compute in edge_work (src/workitem/queues.rs ~655) after the contract match (write_back known) and edge_context (read_set len known); inputs already in scope: edge.kind, stamped criterion non-empty, read_set size, write_back fully prefilled vs templated, journey-pinned expectation. Node items (build/coverage/elaborate) compute after node_context.",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "link": "file:src/workitem/queues.rs",
+        "source": "operator_feedback"
+      },
+      "created_at": "2026-07-07T17:13:35.374Z",
+      "updated_at": "2026-07-07T17:13:35.374Z"
+    },
+    {
       "id": "5968dc41ed3f4fadbd0372b4957e968c",
       "type": "codefile",
       "name": "src/store/mod.rs",
@@ -510,14 +563,14 @@
       "type": "validation",
       "name": "cargo test suite",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test -q",
         "type": "test"
       },
       "created_at": "2026-07-06T16:54:41.191Z",
-      "updated_at": "2026-07-07T07:36:55.424Z"
+      "updated_at": ""
     },
     {
       "id": "5d82bc6c976bf45b513ac42ba6f51d7a",
@@ -625,6 +678,20 @@
       "body": {},
       "created_at": "2026-07-06T16:54:38.016Z",
       "updated_at": "2026-07-06T16:54:38.016Z"
+    },
+    {
+      "id": "69c1274b70f970dc00c0e61f289ddb7c",
+      "type": "inbox_item",
+      "name": "Feedback #4 verdict provenance + recorder calibration: edge.…",
+      "description": "Feedback #4 verdict provenance + recorder calibration: edge.inspected_by column exists and travels in the export, but every CLI caller hardcodes 'llm' (commands/edge.rs:389,426, proof_cmd.rs:41,523, apply_cmd.rs:406; journey.rs:381 uses 'journey'). Step a: derive inspected_by from Store.agent (LOOM_AGENT lane) or a --recorded-by flag inside record_verdict and drop the param from all 7 call sites. Step b: on review overturn keep (recorder, claimed confidence, outcome) pairs. Step c: per-recorder calibration weighting review-queue admission (policy.rs review_confidence_floor becomes per-recorder). Step d: loom next --mode audit sampling N% of HIGH-confidence verdicts — invert the review filter (queues.rs:417 confidence >= floor), reuse edge_work with mode audit.",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "link": "file:src/store/edges.rs",
+        "source": "operator_feedback"
+      },
+      "created_at": "2026-07-07T17:13:35.360Z",
+      "updated_at": "2026-07-07T17:13:35.360Z"
     },
     {
       "id": "6cfba631c62d90354f9a24ca92d80160",
@@ -879,14 +946,14 @@
       "type": "validation",
       "name": "ring7 dogfood status export",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring7",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:54.024Z",
-      "updated_at": "2026-07-07T07:40:16.506Z"
+      "updated_at": ""
     },
     {
       "id": "948cc4e25bb1dffd027807809efa0fe3",
@@ -1293,7 +1360,7 @@
       "id": "d00c5be28d003021b",
       "type": "finding",
       "name": "src/commands/status_cmd.rs is oversized",
-      "description": "632 lines (> 600)",
+      "description": "639 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1817,7 +1884,7 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "1218 lines (> 600)",
+      "description": "1321 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2048,6 +2115,21 @@
       "updated_at": ""
     },
     {
+      "id": "da4f4f7fec9085278",
+      "type": "finding",
+      "name": "src/evidence.rs imports src/artifact.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:16017169384d7386467a111d47e775ed:2b2a6174d8b551cddde5dda5f9214ab2",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dafc4fbbc65e24fb6",
       "type": "finding",
       "name": "src/commands/apply_cmd.rs::apply_tx is long",
@@ -2176,7 +2258,7 @@
       "id": "dd02ddceb33aeff05",
       "type": "finding",
       "name": "src/sync.rs::ripple_codefile takes many arguments",
-      "description": "7 args (> 6)",
+      "description": "8 args (> 6)",
       "status": "excess_args",
       "truth_class": "derived",
       "body": {
@@ -2287,7 +2369,7 @@
       "id": "dfe03799171524433",
       "type": "finding",
       "name": "src/store/mod.rs is oversized",
-      "description": "705 lines (> 600)",
+      "description": "704 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2356,14 +2438,14 @@
       "type": "validation",
       "name": "ring1 store write gates",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring1 inv",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:54.073Z",
-      "updated_at": "2026-07-07T07:40:03.310Z"
+      "updated_at": ""
     },
     {
       "id": "e3b2e9cc790516cfc9f0f70d520ba7eb",
@@ -2431,28 +2513,28 @@
       "type": "validation",
       "name": "ring6 debt never stored or gating",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring6 inv3",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.859Z",
-      "updated_at": "2026-07-07T07:40:14.770Z"
+      "updated_at": ""
     },
     {
       "id": "eed271b029dee7cdd8619e8d3ab77c6c",
       "type": "validation",
       "name": "ring2 deriver seam sync",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring2 inv2",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:54.033Z",
-      "updated_at": "2026-07-07T07:40:07.067Z"
+      "updated_at": ""
     },
     {
       "id": "effb89825e809684222c862ebb73ff9b",
@@ -2477,6 +2559,19 @@
       "body": {},
       "created_at": "2026-07-06T16:54:38.033Z",
       "updated_at": "2026-07-06T16:54:38.033Z"
+    },
+    {
+      "id": "f7456e195190bd68ee057ab511c6a2e6",
+      "type": "intent",
+      "name": "verdict evidence anchors to cited bytes",
+      "description": "record_verdict stamps a fingerprint of every file:line span the evidence cites (asserted evidence_spans facet); sync grades a re-opened grounding's stale_cause as cited-evidence-intact vs rewritten, and a citation into lines beyond the cited file's EOF rejects the verdict at the write boundary",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "component"
+      },
+      "created_at": "2026-07-07T17:33:05.349Z",
+      "updated_at": "2026-07-07T17:33:05.349Z"
     },
     {
       "id": "f804bce26cde9d10e04a094744dcfcaa",
@@ -2614,14 +2709,14 @@
       "to_id": "5968dc41ed3f4fadbd0372b4957e968c",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "open/init/lock/migration and row mapping live here; corruption errors instead of masking",
       "evidence": "src/store/mod.rs acquire_lock (std file locking) + apply_schema_migrations + row_to_node error path",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.541Z",
-      "updated_at": "2026-07-07T07:27:17.541Z"
+      "updated_at": "2026-07-07T17:30:25.425Z"
     },
     {
       "id": "0c23a396de53ea6490c0ae8e622c45d4",
@@ -2659,14 +2754,14 @@
       "to_id": "778d926298362536a6b7c57082e7e63e",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these behaviors are cohesive",
       "evidence": "re-verified after facets.rs doc-header-only change: both remain store-module persistence-correctness guarantees over the same edge table",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:39.897Z",
-      "updated_at": "2026-07-07T07:37:43.079Z"
+      "updated_at": "2026-07-07T17:30:25.434Z"
     },
     {
       "id": "1550b134767c8752135b1aef895b6b10",
@@ -2749,14 +2844,14 @@
       "to_id": "c3dfb39c97d7f9cc57b4cccc38a7acf4",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring2 ripple` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.819Z",
-      "updated_at": "2026-07-07T07:40:06.865Z"
+      "updated_at": "2026-07-07T17:30:25.432Z"
     },
     {
       "id": "19bff524e36fe341e11fcf8ea172f7ad",
@@ -2809,14 +2904,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the pulse reads graph state through the store",
       "evidence": "src/commands/pulse.rs imports crate::store",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.801Z",
-      "updated_at": "2026-07-07T07:30:13.801Z"
+      "updated_at": "2026-07-07T17:30:25.428Z"
     },
     {
       "id": "21a5ae01dc000f50fdfcde668f3cdd16",
@@ -2869,14 +2964,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/sync.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.587Z",
-      "updated_at": "2026-07-07T07:31:15.587Z"
+      "updated_at": "2026-07-07T17:30:25.428Z"
     },
     {
       "id": "25a6713ed95fdfcda3508e472a40187e",
@@ -2944,14 +3039,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/intent.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:16.430Z",
-      "updated_at": "2026-07-07T07:31:16.430Z"
+      "updated_at": "2026-07-07T17:30:25.428Z"
     },
     {
       "id": "2cf478a7c9a993c013df76d7d8981f2a",
@@ -2959,14 +3054,14 @@
       "to_id": "8060d83063e9913c02baf49e09303ab8",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "status/sync/mode/export/import/doctor render engine results without re-deciding them",
       "evidence": "src/commands/status_cmd.rs resolves, dispatches, renders; compass computed by maturity",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.547Z",
-      "updated_at": "2026-07-07T07:27:17.547Z"
+      "updated_at": "2026-07-07T17:30:25.424Z"
     },
     {
       "id": "2dae987e906ed14e9cf7102856442b0b",
@@ -3244,14 +3339,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/workitem/mod.rs imports src/store/mod.rs; src/workitem/queues.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.592Z",
-      "updated_at": "2026-07-07T07:31:15.592Z"
+      "updated_at": "2026-07-07T17:30:25.428Z"
     },
     {
       "id": "432defb53cf3309fd51457b984199d4e",
@@ -3327,6 +3422,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.968Z",
       "updated_at": "2026-07-07T07:40:19.910Z"
+    },
+    {
+      "id": "46321af8ab3040bc378517f1af3c6035",
+      "from_id": "f7456e195190bd68ee057ab511c6a2e6",
+      "to_id": "16017169384d7386467a111d47e775ed",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "stamp() rejects citations whose start<1, end<start, or end>EOF for an existing file, skips paths that do not resolve under the root, and records a per-span fingerprint; spans_status() reports intact for exact-position or verbatim-moved spans and rewritten otherwise",
+      "evidence": "src/evidence.rs:68-113 — stamp() existence-gated parse with the fail-closed EOF bail at 89-99; src/evidence.rs:131-140 — span_intact exact-position check then verbatim window re-anchor; behavior proven in tests/ring13_precision.rs (evidence_stamped_and_integrity, evidence_refines_cause)",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-07T17:33:05.352Z",
+      "updated_at": "2026-07-07T17:33:05.361Z"
     },
     {
       "id": "46474e95ffdc2aa4f66226555488f8b9",
@@ -3409,14 +3519,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/seed.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.591Z",
-      "updated_at": "2026-07-07T07:31:15.591Z"
+      "updated_at": "2026-07-07T17:30:25.428Z"
     },
     {
       "id": "4caf42913f50706885bb488f5bdfe004",
@@ -3454,14 +3564,14 @@
       "to_id": "d52849a6ddcc4b034468cad771c0fbfb",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "loom debt emits clusters but writes no nodes or edges to the graph",
       "evidence": "signal.rs debt builds DebtCluster from a read-only snapshot; no INSERT; the statistical truth-class is computed-only",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:40.322Z",
-      "updated_at": "2026-07-06T16:54:40.346Z"
+      "updated_at": "2026-07-07T17:30:25.425Z"
     },
     {
       "id": "4e28a87a46a602a0b452e9d7f06814b8",
@@ -3499,14 +3609,14 @@
       "to_id": "ae8398372d05666cf20620e4231ded6a",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the structural deriver delegates to extraction",
       "evidence": "src/seed.rs imports crate::extract",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.802Z",
-      "updated_at": "2026-07-07T07:30:13.802Z"
+      "updated_at": "2026-07-07T17:30:25.431Z"
     },
     {
       "id": "543e6963ca7609e1a3c3db8cdf354eb8",
@@ -3529,14 +3639,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/scan.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.588Z",
-      "updated_at": "2026-07-07T07:31:15.589Z"
+      "updated_at": "2026-07-07T17:30:25.428Z"
     },
     {
       "id": "598ad0a56e14d94725c66b81a34a69c6",
@@ -3604,14 +3714,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/signal.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.588Z",
-      "updated_at": "2026-07-07T07:31:15.588Z"
+      "updated_at": "2026-07-07T17:30:25.426Z"
     },
     {
       "id": "606b24a8983cfb684a4863335d00588a",
@@ -3724,14 +3834,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/federation.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.590Z",
-      "updated_at": "2026-07-07T07:31:15.590Z"
+      "updated_at": "2026-07-07T17:30:25.429Z"
     },
     {
       "id": "6910dec72d79481a6aae61b6522c2f7e",
@@ -3844,14 +3954,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/thresholds.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.589Z",
-      "updated_at": "2026-07-07T07:31:15.589Z"
+      "updated_at": "2026-07-07T17:30:25.429Z"
     },
     {
       "id": "71e0fa0ebe2c489c2ea034750ccdccca",
@@ -3889,14 +3999,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/maturity.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.590Z",
-      "updated_at": "2026-07-07T07:31:15.590Z"
+      "updated_at": "2026-07-07T17:30:25.429Z"
     },
     {
       "id": "74ce0ca5b328c2abedee7fb369e5cd1b",
@@ -3934,14 +4044,14 @@
       "to_id": "fb8df4e722379a0c358f1cfb49ec6ac7",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:41.192Z",
-      "updated_at": "2026-07-07T07:36:55.423Z"
+      "updated_at": "2026-07-07T17:30:25.434Z"
     },
     {
       "id": "79ee299ec6a185866fb5f9eebc86d576",
@@ -4114,14 +4224,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "signal computations read typed graph facts",
       "evidence": "src/signal.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.798Z",
-      "updated_at": "2026-07-07T07:30:13.798Z"
+      "updated_at": "2026-07-07T17:30:25.426Z"
     },
     {
       "id": "88dfc4b898c103a9cbb370cf1c8618a1",
@@ -4249,14 +4359,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.588Z",
-      "updated_at": "2026-07-07T07:31:15.588Z"
+      "updated_at": "2026-07-07T17:30:25.429Z"
     },
     {
       "id": "92f2adad845f8e8e84201ccd131738a7",
@@ -4384,14 +4494,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring1 inv` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:54.074Z",
-      "updated_at": "2026-07-07T07:40:03.309Z"
+      "updated_at": "2026-07-07T17:30:25.427Z"
     },
     {
       "id": "a6bd645f2b639f65641b52e319fb79c7",
@@ -4459,14 +4569,14 @@
       "to_id": "fb8df4e722379a0c358f1cfb49ec6ac7",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no credentials, keys or tokens embedded in the write-boundary code",
       "evidence": "re-measured after std-locking migration: src/store/edges.rs and store/mod.rs contain no secret literals; the only token-like strings are SQL and error text",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:41.178Z",
-      "updated_at": "2026-07-07T07:38:24.690Z"
+      "updated_at": "2026-07-07T17:30:25.434Z"
     },
     {
       "id": "af1f51addabd115e367917c5f2c96097",
@@ -4489,14 +4599,14 @@
       "to_id": "c3dfb39c97d7f9cc57b4cccc38a7acf4",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/seed.rs imports src/sync.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:16.431Z",
-      "updated_at": "2026-07-07T07:31:16.431Z"
+      "updated_at": "2026-07-07T17:30:25.431Z"
     },
     {
       "id": "b003f678092fae29cfe5eb79b7dd93b8",
@@ -4519,14 +4629,14 @@
       "to_id": "c29b3691a2aa414642357c71a7577148",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the shipped deriver set is declared data the engine iterates",
       "evidence": "src/seed.rs fn derivers/sync_derivers return Box<dyn Deriver> list incl. StructuralDeriver",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.538Z",
-      "updated_at": "2026-07-07T07:27:17.538Z"
+      "updated_at": "2026-07-07T17:30:25.424Z"
     },
     {
       "id": "b1ce25e04af0160348a7f3a88c1eac5f",
@@ -4564,14 +4674,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/travel.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.591Z",
-      "updated_at": "2026-07-07T07:31:15.592Z"
+      "updated_at": "2026-07-07T17:30:25.429Z"
     },
     {
       "id": "b4b45c21f5993343df53eda17ad9e40f",
@@ -4624,14 +4734,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/journey/coverage.rs imports src/store/mod.rs; src/commands/journey/mod.rs imports src/store/mod.rs; src/commands/journey/prompt.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.589Z",
-      "updated_at": "2026-07-07T07:31:15.589Z"
+      "updated_at": "2026-07-07T17:30:25.429Z"
     },
     {
       "id": "b8a0b84e5a0b3eec83041f03b41d5877",
@@ -4669,14 +4779,14 @@
       "to_id": "084aa695303d0bdee09c0000017d6d29",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring6 inv3` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.860Z",
-      "updated_at": "2026-07-07T07:40:14.769Z"
+      "updated_at": "2026-07-07T17:30:25.426Z"
     },
     {
       "id": "bb15a4e6fb6fd703452a06d1e4ed5d1d",
@@ -4684,14 +4794,14 @@
       "to_id": "fa7e3626667e2dead1a8e628182fb719",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring7` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:54.024Z",
-      "updated_at": "2026-07-07T07:40:16.506Z"
+      "updated_at": "2026-07-07T17:30:25.433Z"
     },
     {
       "id": "bd2a5aed30e7c1be927a9328ebb8268f",
@@ -4759,14 +4869,14 @@
       "to_id": "4177f651c1ca9e238156bd14c5f93471",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/seed.rs imports src/thresholds.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:17.241Z",
-      "updated_at": "2026-07-07T07:31:17.241Z"
+      "updated_at": "2026-07-07T17:30:25.431Z"
     },
     {
       "id": "bf6b5ab3c2e14d3de4c0b0f30474a24a",
@@ -4849,14 +4959,14 @@
       "to_id": "a1fd630d7988d355bb695880eeaca3a5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the seam trait carries artifact changes to derived facts",
       "evidence": "src/deriver.rs pub trait Deriver + ArtifactChange",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.538Z",
-      "updated_at": "2026-07-07T07:27:17.538Z"
+      "updated_at": "2026-07-07T17:30:25.424Z"
     },
     {
       "id": "cc2e65ef66b3dc2d02ad1ed805a11ac4",
@@ -5239,14 +5349,14 @@
       "to_id": "a82e87aef63db6aa5fd0babb62eeed06",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "editing a grounded file's content moves its settled verdicts to needs_reverification; an unchanged file does not, and a never-seen file does not",
       "evidence": "sync.rs recomputes content_hash, skips on equal (86), ripples via stale_edge only when a prior hash existed and differs (90)",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:40.132Z",
-      "updated_at": "2026-07-06T16:54:40.156Z"
+      "updated_at": "2026-07-07T17:30:25.426Z"
     },
     {
       "id": "d42974f0010af9ac2",
@@ -6079,14 +6189,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the deriver seam speaks the typed model",
       "evidence": "src/artifact.rs and src/seed.rs import crate::model types",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.793Z",
-      "updated_at": "2026-07-07T07:30:13.794Z"
+      "updated_at": "2026-07-07T17:30:25.432Z"
     },
     {
       "id": "dd81b48328b700423",
@@ -6514,14 +6624,14 @@
       "to_id": "23246bfd609aad920f3b90c10e392b8c",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring2 inv2` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:54.033Z",
-      "updated_at": "2026-07-07T07:40:07.066Z"
+      "updated_at": "2026-07-07T17:30:25.431Z"
     },
     {
       "id": "e36d23bca4120855b4e47cb8272fe04e",
@@ -6559,14 +6669,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "ripple selects edges by typed kind",
       "evidence": "src/sync.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.799Z",
-      "updated_at": "2026-07-07T07:30:13.799Z"
+      "updated_at": "2026-07-07T17:30:25.432Z"
     },
     {
       "id": "e4724195c4f8c24f0f1894f059037174",
@@ -6574,14 +6684,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "policy persists through store config meta",
       "evidence": "src/policy.rs imports crate::store",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.802Z",
-      "updated_at": "2026-07-07T07:30:13.802Z"
+      "updated_at": "2026-07-07T17:30:25.429Z"
     },
     {
       "id": "e4d48156d2529a97e9b737686fc19d08",
@@ -6664,14 +6774,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/workitem/context.rs imports src/store/mod.rs; src/workitem/contracts.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.592Z",
-      "updated_at": "2026-07-07T07:31:15.592Z"
+      "updated_at": "2026-07-07T17:30:25.430Z"
     },
     {
       "id": "ec4e3df5df45b9aa7d4d13a184668f6a",
@@ -6679,14 +6789,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/completeness.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.588Z",
-      "updated_at": "2026-07-07T07:31:15.588Z"
+      "updated_at": "2026-07-07T17:30:25.430Z"
     },
     {
       "id": "ecf2a773b733bff5504bed2655a11c08",
@@ -6694,14 +6804,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "row mapping produces typed nodes and edges",
       "evidence": "src/store/mod.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.798Z",
-      "updated_at": "2026-07-07T07:30:13.799Z"
+      "updated_at": "2026-07-07T17:30:25.427Z"
     },
     {
       "id": "efe592f5e1f1114a31ad0b3d475a7469",
@@ -6739,14 +6849,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/apply_cmd.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.587Z",
-      "updated_at": "2026-07-07T07:31:15.587Z"
+      "updated_at": "2026-07-07T17:30:25.430Z"
     },
     {
       "id": "f200ef5c271854cb1ad63b12e8298079",
@@ -6874,14 +6984,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/edge.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:16.431Z",
-      "updated_at": "2026-07-07T07:31:16.431Z"
+      "updated_at": "2026-07-07T17:30:25.430Z"
     },
     {
       "id": "f9cb5fca277b6ee9303f1d6af04885d9",
@@ -6934,14 +7044,14 @@
       "to_id": "2135385b70a486c7644b5d95261bee45",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/packs.rs imports src/store/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.591Z",
-      "updated_at": "2026-07-07T07:31:15.591Z"
+      "updated_at": "2026-07-07T17:30:25.430Z"
     },
     {
       "id": "fcca88dbe052e008ce2af68975c8d1ca",
@@ -6964,14 +7074,14 @@
       "to_id": "97da9fbf52812f74bfcf24463bc29494",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "a passing/failing verdict with empty OR placeholder criterion/evidence is rejected; independent without evidence is rejected; a derived edge is rejected; a wrong-lane agent is rejected; and the column CHECK rejects any truth_class outside {derived,asserted}",
       "evidence": "re-verified after store/mod.rs std-file-locking migration: record_verdict gates and schema CHECK untouched; inv4/inv5/inv6/inv7 and placeholder tests pass on rusqlite 0.40",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:39.736Z",
-      "updated_at": "2026-07-07T07:37:43.140Z"
+      "updated_at": "2026-07-07T17:30:25.425Z"
     },
     {
       "id": "ff941259302b91e3c9fa871d4ceab568",
@@ -7033,6 +7143,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "06f3606ffa252310045386fdbe4cbb9e",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"edge_context\":\"60cfd5d89efd8427\",\"node_context\":\"1368d1417db77ebf\",\"node_read_command\":\"31207273f21233b5\",\"ordered_groundings\":\"fd589431c0542824\",\"push_edge_entity\":\"34e49a691d98f773\",\"push_edge_read\":\"1d2362b385628e9a\",\"push_grounded_codefiles\":\"71deefdd1bf78a6f\",\"push_intent_read_set\":\"f1bc5b01729eac8d\",\"push_node_entity\":\"ae00c7b6633791db\",\"push_node_read\":\"21779e81a0d90e3b\",\"push_notes\":\"2b7ef3b76631567a\",\"push_raw_read\":\"5b9d7fe7c215e728\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "0800390fd09bf400ab519ce15e33d354",
       "target_kind": "edge",
       "key": "locator",
@@ -7066,6 +7183,13 @@
       "key": "locator",
       "value": "fn init",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "0c0fb7761bd5653f27d37b1b50638399",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "0c14c9d55d31179cb9fc8ae9198df4f4",
@@ -7173,6 +7297,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "102131845debc78186a19e6b46a444b9",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"FileRead\":\"658e0244c9b72688\",\"GraphState\":\"72edc0899e080d3b\",\"LinkedEntity\":\"f7688dbb03fec3bb\",\"Mode\":\"4f1ff7234a9b208f\",\"NextOutput\":\"8adb331b77c4b044\",\"PromptContract\":\"6396b272dace8038\",\"SuggestedRead\":\"203698fa42d908cd\",\"Target\":\"bb97e05844e594cd\",\"TraversalContext\":\"53634f1d2e6ba8e9\",\"WorkItem\":\"d1857f04f5c1b539\",\"axis_for_role\":\"739dd85198657884\",\"effort_for\":\"7986ca15ae1c43e9\",\"graph_state\":\"9704268c652b8db2\",\"next\":\"b1fc59e622c96255\",\"next_inner\":\"545ee482442abe2a\",\"node_target\":\"97f4f3dbbb4b94e4\",\"parse\":\"7e319d051661bf3f\",\"q\":\"3221f1b3e74bf063\",\"rank_lifecycle\":\"849afed7d2adb712\",\"relationship_kind\":\"c1103005044ea26a\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "11b5961d4fbf4c6e45da8181778d9758",
       "target_kind": "node",
       "key": "level",
@@ -7185,6 +7316,62 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "11c0b9cecbd1934ebbb5784a84d7d631",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "16017169384d7386467a111d47e775ed",
+      "target_kind": "node",
+      "key": "content_hash",
+      "value": "33e6c8aeef676b2b",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "16017169384d7386467a111d47e775ed",
+      "target_kind": "node",
+      "key": "imports",
+      "value": "[\"anyhow::bail\",\"crate::Result\",\"crate::artifact::fingerprint\",\"regex::Regex\",\"serde::Deserialize\",\"serde::Serialize\",\"std::collections::BTreeSet\",\"std::path::Path\",\"std::sync::LazyLock\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "16017169384d7386467a111d47e775ed",
+      "target_kind": "node",
+      "key": "language",
+      "value": "rust",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "16017169384d7386467a111d47e775ed",
+      "target_kind": "node",
+      "key": "loc",
+      "value": "184",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "16017169384d7386467a111d47e775ed",
+      "target_kind": "node",
+      "key": "role",
+      "value": "source",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "16017169384d7386467a111d47e775ed",
+      "target_kind": "node",
+      "key": "symbol_count",
+      "value": "4",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "16017169384d7386467a111d47e775ed",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"SpanStamp\":\"b7f256e392c9c325\",\"span_intact\":\"1bbe24af4ce31682\",\"spans_status\":\"4d4ee793966593f4\",\"stamp\":\"963407c9473bdc4a\"}",
+      "truth_class": "derived"
     },
     {
       "target_id": "17a9ca562d1a1d0252ecfaa9c03a321e",
@@ -7229,6 +7416,20 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "17a9ca562d1a1d0252ecfaa9c03a321e",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Calibration\":\"4f819594dfb99548\",\"Thresholds\":\"fa9caa7aac8ab854\",\"calibrate\":\"37aeb7e8224f2b0d\",\"clear\":\"45f848c225e8db13\",\"default\":\"b0069ae587b2a733\",\"fitted\":\"96b8e264c16114cf\",\"load\":\"63e02146bd6be2ca\",\"pairs\":\"4b829e6f1e1a3dbb\",\"reset_gate\":\"1702402abe211ca8\",\"save\":\"ad5157087d4dd6b6\",\"set_gate\":\"e740e13860f503bd\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "1814c61d1a131aa847eff3088851bb40",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/sync.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "1af04c31999286274d26314b94725cf8",
       "target_kind": "edge",
       "key": "locator",
@@ -7241,6 +7442,13 @@
       "key": "locator",
       "value": "struct Thresholds",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "1cc46d029124480415edda8633cfbaf7",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "20e2fd37d4d45759db6871151ea84777",
@@ -7282,6 +7490,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "14",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "20e2fd37d4d45759db6871151ea84777",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"AxisState\":\"bde655d35654845b\",\"Scorecard\":\"6b578674adbdb7ec\",\"all_scorecards\":\"217cda723283fc1e\",\"apply_waiver\":\"b6e223bfd4b72bbf\",\"axis\":\"609ecb2d259ae760\",\"boundary_axis\":\"474b709c86764525\",\"check_axis\":\"d3bc1ba33775f8e3\",\"journey_axis\":\"25fa43872ee5817a\",\"open_axes\":\"4413e381a8e7707e\",\"prerequisites_axis\":\"d6310f90c40ad583\",\"proof_axis\":\"349fe651cb00c0d2\",\"questions_axis\":\"cc5b616fefc75a8f\",\"scenarios_axis\":\"62130107c0fdd74c\",\"scorecard\":\"3127b82bb4d27889\"}",
       "truth_class": "derived"
     },
     {
@@ -7327,6 +7542,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "20fa072ab6da8c34e8a4b52b1c9a55d8",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"analyzer_contract\":\"bf1ee9b7203e2850\",\"builder_contract\":\"4e4bb019dc871128\",\"coverage_contract\":\"70806b3b48c78816\",\"elaborator_contract\":\"8317b4798b4e0c40\",\"fixer_contract\":\"98f4e75222d70001\",\"inbox_triage_contract\":\"6f711eb92443fe90\",\"missing_codefile_contract\":\"0b428704ee7c62cc\",\"prove_contract\":\"52cc2e9618f879f3\",\"quality_contract\":\"00ed386ff9263deb\",\"quality_contract_body\":\"43afc82a359ee89e\",\"reviewer_contract\":\"aa8e22fbe0353bb6\",\"triage_contract\":\"416175097bfa8ef9\",\"validator_contract\":\"00adebc382f07ad3\",\"verdict_write_back\":\"89adbc85e9113d57\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "2135385b70a486c7644b5d95261bee45",
       "target_kind": "node",
       "key": "level",
@@ -7353,6 +7575,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "22c3fc385952fb1e11ff61126a3ef200",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "2318c0334d250ccf72c341053c168165",
@@ -7394,6 +7623,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "3",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "2318c0334d250ccf72c341053c168165",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"PreScreenHit\":\"5b9b58fab0410746\",\"prescreen\":\"51445008d3d5aa3e\",\"truncate_excerpt\":\"6ca83964350ebc1d\"}",
       "truth_class": "derived"
     },
     {
@@ -7453,6 +7689,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "2563f5cc645889f56889383e897fd794",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"InvariantUpdate\":\"ec8a38a90d7fa33b\",\"invariant\":\"efa1ac8562dda369\",\"invariant_add\":\"0c1804e0c890a12a\",\"invariant_list\":\"f0259ddaacf4bb80\",\"invariant_remove\":\"59d0754d7921def0\",\"invariant_update\":\"993dfdf086102f90\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "264c3f0467f588466dfd8bdfcc01943b",
       "target_kind": "node",
       "key": "content_hash",
@@ -7495,6 +7738,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "264c3f0467f588466dfd8bdfcc01943b",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Extraction\":\"493107092c308576\",\"Language\":\"1e18f732e18aa3e1\",\"Role\":\"4bc0cdcce998b06d\",\"Symbol\":\"0efdd0814d221325\",\"as_str\":\"ab0f38444fd4e10d\",\"child_name\":\"2d0a277f75147c5e\",\"detect\":\"e0ceee5e2f377230\",\"extract\":\"d1d9f8b2495ce983\",\"fnv1a\":\"f9ddbeda12ad6d6a\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "28a8dd5ae46a04c49f4317579e5285fd",
       "target_kind": "node",
       "key": "content_hash",
@@ -7534,6 +7784,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "16",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "28a8dd5ae46a04c49f4317579e5285fd",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"add_node\":\"79fa7d6efb8993e3\",\"add_note\":\"8f488622bbebe949\",\"count_nodes\":\"a6fd50059e0c4c96\",\"delete_edge\":\"17a4202f81381754\",\"delete_node\":\"548c9dd41671dee4\",\"find_nodes_by\":\"3c51f14e136ee773\",\"get_node\":\"d8286c51385ab8f9\",\"list_nodes\":\"025cebf002b2dff5\",\"list_nodes_page\":\"eb0563607d0166bc\",\"notes_for\":\"90767b06d17a86be\",\"redefine_intent\":\"3c93b219c24b0118\",\"remove_vocab_term\":\"b22fdc8b69a2d7e9\",\"resolve_node\":\"5fb6704d9bd667ce\",\"retire_intent\":\"da07301e500ef6c5\",\"set_node_body\":\"3ee18e1da68e12f6\",\"update_node\":\"194f7fd92eaa8135\"}",
       "truth_class": "derived"
     },
     {
@@ -7586,6 +7843,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "2b2a6174d8b551cddde5dda5f9214ab2",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"ArtifactClass\":\"58ca20fad5ca3b04\",\"CodeFileArtifact\":\"03ec33c461c65e8b\",\"class_for\":\"8b7643a781bce116\",\"classes\":\"466dbbd206ba0616\",\"fingerprint\":\"ce1508dc243859d6\",\"name\":\"9caa3ccf2643dff5\",\"node_type\":\"74acd8fab93c70d1\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "2b5f1a79dfc065c8c3aa4b8dfe02bfe4",
       "target_kind": "node",
       "key": "level",
@@ -7600,11 +7864,25 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "2bbabd08c38007e28d55f851a3967a65",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "2cf478a7c9a993c013df76d7d8981f2a",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn dispatch",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "2cf478a7c9a993c013df76d7d8981f2a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/status_cmd.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "381f21c520f30b0f78f606ae5c956933",
@@ -7646,6 +7924,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "37",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "381f21c520f30b0f78f606ae5c956933",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Adapter\":\"7e1461646feea873\",\"AdapterOutput\":\"0123258d7d2d0dea\",\"JsonFieldMap\":\"c60f764cf70c3d60\",\"ParsedDiagnostic\":\"e76114dd5226b7b7\",\"ScanFormat\":\"fc31994997fdcfe8\",\"ScanReport\":\"5e9503429725e019\",\"adapter_finding_ids\":\"2b679484d8468a24\",\"adapter_regex\":\"2d280e9583a1347c\",\"add_adapter\":\"acbd96d801e3ab4f\",\"diagnostic_det_key\":\"d6a873a7714a454e\",\"ensure_adapter_rule\":\"97e0cfb9d45ca841\",\"execute_adapters\":\"b74783f55b596d3c\",\"is_lines\":\"6a0f78134461d33f\",\"json_diagnostic\":\"1bf7063984f61700\",\"json_field_map\":\"d8dc7330cfdff555\",\"json_lookup\":\"5c00b62652c1724d\",\"json_records\":\"14fe764779883bc6\",\"json_root\":\"f11af163a985e7aa\",\"list_adapters\":\"4e54b84b363b1dc8\",\"normalize_path\":\"5fde3e99d0cac8ee\",\"normalize_relative\":\"24c917e8fb4e4e54\",\"parse_diagnostic\":\"0ce05b29dd41bf31\",\"parse_json_output\":\"5c2e9965b7f1852c\",\"parse_output\":\"a4e95a24934324d2\",\"registered_codefiles\":\"5a6d5d5e1f992f50\",\"remove_adapter\":\"dde80155e6ec992a\",\"run\":\"40e0d0f3d12914c4\",\"run_adapter_command\":\"9f9e63e8f82c121f\",\"run_unlocked\":\"201cd830bb2da7f3\",\"select_adapters\":\"498dccd0dd141561\",\"truncate_chars\":\"5952e4b503392512\",\"update_adapter\":\"76f582c019886748\",\"upsert_diagnostic\":\"d1cf8ebd1401f095\",\"validate_map\":\"3866761c8fd22064\",\"validate_map_regex\":\"dba5b8f73dfd7f9f\",\"write_adapters\":\"1352d1fd80bf32be\",\"write_results\":\"cb6343e76e5c8719\"}",
       "truth_class": "derived"
     },
     {
@@ -7698,6 +7983,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "422b3dbfada7794829cccfe6d5222af3",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "432defb53cf3309fd51457b984199d4e",
       "target_kind": "edge",
       "key": "locator",
@@ -7747,10 +8039,31 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "44309f0bed49067f6e381f2346bec119",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"TruthAxis\":\"8d987496290167e9\",\"TruthGap\":\"bacf5462e8067b45\",\"as_str\":\"ef379b3726a53a43\",\"axis_for_phase\":\"37c3f1766701bd9d\",\"gap\":\"991436a5c81e296e\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "45bc4d9ad99cfe563132e9aa6f5dad14",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn check_response",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "46321af8ab3040bc378517f1af3c6035",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/evidence.rs\",\"start\":68,\"end\":113,\"hash\":\"963407c9473bdc4a\"},{\"file\":\"src/evidence.rs\",\"start\":131,\"end\":140,\"hash\":\"1bbe24af4ce31682\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "46321af8ab3040bc378517f1af3c6035",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn stamp",
       "truth_class": "asserted"
     },
     {
@@ -7773,6 +8086,13 @@
       "key": "locator",
       "value": "fn coverage",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "4bbc45d459527733e308c85241faca38",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "4c18b30dcd7d53c54a587b915c2bb5f2",
@@ -7831,6 +8151,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "4d32cc842e4cd6c8d9bbc3c7c04a116b",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Edge\":\"df74257210c21293\",\"Facet\":\"ce61eeabc04bd4b5\",\"Node\":\"a79e4f51f0004819\",\"ParseEnumError\":\"643b5817b180ce7b\",\"Tag\":\"9f189c5c395e12ce\",\"default_asserted\":\"0e16f4fbd3086d19\",\"empty_array\":\"212afb48d50ec08b\",\"empty_object\":\"8e0ac3c81eb611ff\",\"fmt\":\"dce66b54e17f1442\",\"is_placeholder\":\"4346cb67d81b3045\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "4dbf65acb91f8811317d0f02ec9dceda",
       "target_kind": "edge",
       "key": "locator",
@@ -7838,11 +8165,25 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "4dbf65acb91f8811317d0f02ec9dceda",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/signal.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "4e28a87a46a602a0b452e9d7f06814b8",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn dispatch",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "5110b7e553dda45ee0a6cc07743a01dd",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/deriver.rs changed; content hash of src/seed.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "5239e70eaa58102f34769c7731586844",
@@ -7880,6 +8221,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "54c998105c8be2e65571916c10beb566",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "5720e3db79503d23a4d0e698774080e0",
       "target_kind": "node",
       "key": "level",
@@ -7897,7 +8245,7 @@
       "target_id": "5968dc41ed3f4fadbd0372b4957e968c",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "c2da82a53ea0a1b6",
+      "value": "4fa6b12d19d97f94",
       "truth_class": "derived"
     },
     {
@@ -7918,7 +8266,7 @@
       "target_id": "5968dc41ed3f4fadbd0372b4957e968c",
       "target_kind": "node",
       "key": "loc",
-      "value": "705",
+      "value": "704",
       "truth_class": "derived"
     },
     {
@@ -7933,6 +8281,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "31",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5968dc41ed3f4fadbd0372b4957e968c",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Agent\":\"dd509ca5159c1f48\",\"Identity\":\"887a6258277f40e6\",\"RestoreReport\":\"7f21840cb6f748c3\",\"Snapshot\":\"6e3b4b6e0337f910\",\"Store\":\"21e461ef69c40b07\",\"acquire_lock\":\"e6cc83ef7bd8b7a5\",\"adopt_legacy_schema_version\":\"ccd156781e6f7993\",\"agent\":\"cfea727201b13656\",\"apply_schema_migrations\":\"c0274811c64c8f1a\",\"begin\":\"187351503bef04cb\",\"check_lane\":\"ea76e811430273d8\",\"configure\":\"16b35302cbcdeb07\",\"configure_read\":\"1e6a6ea964e05b61\",\"derived_id\":\"c433307c7c85f1bb\",\"find_root\":\"9b0f6586ec703cd9\",\"from_env\":\"1ddc40f01ad8b1ba\",\"id_and_now\":\"7e0c842011dcfb57\",\"identity\":\"ed434fab64a5def9\",\"init\":\"875fc34aeceaec9d\",\"now\":\"eee868f05fae4e8f\",\"open\":\"ab80d9d2b347c078\",\"open_read\":\"73ce9aaa72a0f064\",\"parse\":\"092c51ac11a95914\",\"parse_col\":\"ed07ce54ed11ea1c\",\"parse_named\":\"74f06a6f3737f31d\",\"root\":\"d54a6afdf2221887\",\"row_to_edge\":\"e7099f98d8b7e44a\",\"row_to_node\":\"2516b5504252b96a\",\"schema_migrations\":\"4a21884d726fd6b5\",\"set_agent\":\"bed3953b96797fb5\",\"set_observed\":\"0d9d08bc7307baf4\"}",
       "truth_class": "derived"
     },
     {
@@ -7985,6 +8340,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "5d82bc6c976bf45b513ac42ba6f51d7a",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"b7ad81f44fdd9440\",\"Rung\":\"90c669477b3cf962\",\"RungInputs\":\"f7601506c1a558fa\",\"RungState\":\"9d3a185544cf9967\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"8baecf90e03e5a87\",\"compass\":\"b7adc08ebb4485bd\",\"ladder\":\"b96dcbfb9d4a0ef1\",\"unowned_registered_codefiles\":\"edff69a996ad0a76\",\"validation_summary\":\"5ffa551b4d011d1b\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "target_kind": "node",
       "key": "level",
@@ -7997,6 +8359,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "6046a6d46f46235a2d65f82117710529",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/signal.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "631a7b25e5acbfe2bc0b88f256f440d6",
@@ -8038,6 +8407,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "18",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "631a7b25e5acbfe2bc0b88f256f440d6",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"adjudicate_finding\":\"ffe0d6ff0b5944f6\",\"calibrate_cmd\":\"7c9ec7bf89f3635b\",\"completeness_cmd\":\"42a60a28a2bb9917\",\"coverage_cmd\":\"2816714465aae66d\",\"debt_cmd\":\"d3ab5006dcc259e6\",\"doctor_cmd\":\"96ad3a961bd71c36\",\"finding\":\"e5fca044982eee3d\",\"finding_list\":\"d7774df5535de718\",\"finding_verdict\":\"18c2c195eb926866\",\"ignore_cmd\":\"148bccf143d32942\",\"policy_cmd\":\"49a5a92b1dcfee31\",\"scan_cmd\":\"fc976eb83e0e6c6b\",\"smells_cmd\":\"2d020e893e48de40\",\"threshold_cmd\":\"f77fe6b79ae7a1dc\",\"threshold_line\":\"8e4c60dbe88319ee\",\"validate_finding_filter_state\":\"4e799d66e6a43450\",\"validate_finding_verdict\":\"9102985830321630\",\"whoami_cmd\":\"2a4d3c4b5c4e44b5\"}",
       "truth_class": "derived"
     },
     {
@@ -8083,6 +8459,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "65b7abaa924a9db1aaefb2174ef0546a",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"dispatch\":\"8d45426976715095\",\"edge_call\":\"febb7500fec935a5\",\"edge_depends_on\":\"5d0117820400a432\",\"edge_explore\":\"5443c520882eb36a\",\"edge_implement\":\"4ae4f7b25633f2a7\",\"edge_list\":\"4f45255280d73e93\",\"edge_rehome\":\"cfb444fd29c7f605\",\"edge_relate\":\"16e4047bfb5ca24d\",\"edge_remove\":\"9ca5c2a46b154277\",\"edge_set_locator\":\"dfe1910e47b5503c\",\"edge_set_role\":\"ee2e1a72ce4c3810\",\"edge_show\":\"6f05f07a76cb9690\",\"edge_verdict\":\"1ef62bdd18524cf7\",\"parse_grounding_role\":\"8cfd1df30fa10462\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "65d5e93218cd8e0e14f47a5850f54323",
       "target_kind": "node",
       "key": "content_hash",
@@ -8122,6 +8505,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "6",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "65d5e93218cd8e0e14f47a5850f54323",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"EdgeKindSpec\":\"82e400205b93d49d\",\"OwnerRole\":\"fdeba9ca53d2d823\",\"allows_truth_class\":\"0472312680e7b878\",\"as_str\":\"d0773cbfd250f813\",\"node_truth_class\":\"140791099fd5ea1f\",\"spec\":\"26efd16e70689502\"}",
       "truth_class": "derived"
     },
     {
@@ -8181,6 +8571,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "665ac5bdd024e9fd25703f71991994e0",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"EvidencePolicy\":\"7a8651e621f9f86f\",\"clear\":\"78c2950f61f70a6d\",\"default\":\"8fc599e5899a501a\",\"gates_role\":\"8350f7365d8f4bfd\",\"load\":\"75081512e486f407\",\"save\":\"ca92da2bc648c0fc\",\"validate\":\"330de3bebf4cda24\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "68a901335aaab4f4d9339cca56f0983e",
       "target_kind": "node",
       "key": "content_hash",
@@ -8220,6 +8617,20 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "14",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "68a901335aaab4f4d9339cca56f0983e",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"code_ownership_summary\":\"59f23a949921d232\",\"codefile_observed\":\"7dc024e9c264667e\",\"layer\":\"a0e8242a1f517dd5\",\"node_json\":\"ad7bf234fd67f095\",\"norm\":\"88b25c6dc96574c0\",\"open\":\"82ca9c1000cac04a\",\"open_read\":\"6655f55b41faff9c\",\"page_footer\":\"61b7adf5730ce26c\",\"query_terms\":\"c983f3950a1fc4ff\",\"resolve_root\":\"f81a036ca82c9a5a\",\"run\":\"585994bde6286321\",\"truncate\":\"d6fb077a5af9ea3b\",\"unowned_codefiles\":\"42390ba97eb762cb\",\"verdict_status\":\"168e3030db8acdba\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "68c2798c65cb2ffd2e5d4cf3b8f55469",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
       "truth_class": "derived"
     },
     {
@@ -8279,6 +8690,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "6cfba631c62d90354f9a24ca92d80160",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Export\":\"1e98eb8a796cb92f\",\"GraphJsonProjection\":\"a6ead17ab6944297\",\"Projection\":\"af7ff8ad21865c31\",\"artifact_path\":\"78198bf7c5a60996\",\"export_is_fresh\":\"550abd4d239118d6\",\"export_to_file\":\"8d9d040e25b499d6\",\"from_json\":\"68bb650e3e459443\",\"from_snapshot\":\"21bbeac177b60b63\",\"graph_projection\":\"d2fb8ee65261a717\",\"into_snapshot\":\"4ab09fc804383228\",\"name\":\"3867b5ecd5de23e4\",\"projection\":\"27019907c295760f\",\"projections\":\"b3519fc577b3d5ed\",\"read_export\":\"829c0f8c4655dee8\",\"refresh_export_if_tracked\":\"b8e7cfd3c83a3223\",\"render\":\"798447c6dc1c6cf2\",\"to_json\":\"3dec1452277ad764\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "6d1129f4595fb06e7cde2ab90ba7a43f",
       "target_kind": "edge",
       "key": "locator",
@@ -8335,6 +8753,27 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "6fc3cb36ed6ccbf6996dd286b1691bc6",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"main\":\"924ab2865fa31534\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "703b080e842163a371ab2619716f6fdc",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "73e07db53c03015932b559edd1f33247",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "74ce0ca5b328c2abedee7fb369e5cd1b",
       "target_kind": "edge",
       "key": "locator",
@@ -8384,6 +8823,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "753b7e7626e37c2ed39d50a8ddd2c139",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"MetricSpec\":\"fe1ae1b2f7e017c1\",\"SymbolMetrics\":\"5c5b0c8ac8466b50\",\"arg_count\":\"166625d901f0b6b7\",\"bool_ops\":\"10ec30b1d901ef92\",\"is_receiver_param\":\"7c51e126fb2260d3\",\"measure\":\"928a4c2ba8d5eaae\",\"named_child_of_kind\":\"d147299a44e8bb24\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "770bdb118b027e621257b9e0de240d48",
       "target_kind": "node",
       "key": "level",
@@ -8424,6 +8870,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "783239521f9009a94130b91cc0a29499",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "7a0ba297f46ca43a507c404f38d92945",
@@ -8472,6 +8925,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "3",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7b3935a299aa065919eef314329707c0",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"LangSpec\":\"dc28d74f8d2c5af5\",\"extract\":\"c30dc21abeddcc58\",\"generic_extract\":\"ecc28bef90392ea3\"}",
       "truth_class": "derived"
     },
     {
@@ -8538,6 +8998,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "7ce7687dbe81896da6f42310c701795e",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"add_derived_edge\":\"d0e6e9e92667140a\",\"add_derived_node\":\"fc3bb792f1a734a1\",\"add_vocab_term\":\"6b2ec2fefe4bec59\",\"codefiles\":\"c92ab7b6b0cd8b8e\",\"derived_node_id\":\"7e97f4bf9221fa23\",\"edges_with\":\"586cf784a1ae80c4\",\"facets_of\":\"5a61399922cb3cb8\",\"finding_codefile_hash\":\"0797658a7dddcb4f\",\"finding_owner_intents\":\"04ffe937a2729f39\",\"get_facet\":\"be1fea9e45deb6fa\",\"get_meta\":\"5b33bb6a107db1eb\",\"ignore_globs\":\"ebfd8cbaea3e6b66\",\"list_vocab\":\"10d8543023bef399\",\"record_finding_verdict\":\"dbc40f2bcdc1bce7\",\"remove_derived_findings\":\"bb9ac6bafb542bda\",\"remove_meta\":\"dcf35fe7a2db031b\",\"reset_validation_status_for_sync\":\"e1180fd8c3aca972\",\"resolve_finding\":\"ae38e64db863c286\",\"set_meta\":\"a82b9299ceb7c5da\",\"set_node_status\":\"5f33652894ab1a74\",\"stale_edge\":\"fcf0c854d3255055\",\"stale_passing_edge\":\"15548dc3b6f30e10\",\"truth_class_census\":\"4de08fe007e02bfe\",\"upsert_builtin_node\":\"76ef9399e984efa2\",\"validate_edge_endpoints\":\"b4edb9e1d1b65cce\",\"vocab_has\":\"6c679aa8bae556fd\",\"wipe_derived\":\"648c41fb0e77d243\",\"wipe_derived_facets\":\"71eb094b3f7544a5\",\"wipe_derived_graph\":\"4a3fc227a740bf8f\",\"wipe_structural_findings\":\"4acac6da6b5bbb0e\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "7f44a80e8b925bd88f380c019a766a81",
       "target_kind": "node",
       "key": "content_hash",
@@ -8580,10 +9047,17 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "7f44a80e8b925bd88f380c019a766a81",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"count_exts\":\"6e3ad0f3e7ac38cc\",\"detect_cmd\":\"6eab98f50b3fdb37\",\"door\":\"27ef42c4aaef60e6\",\"find_cmd\":\"ef138ffa548b378f\",\"find_exact\":\"202ba6323a0050d4\",\"guide\":\"5f72409c8df7359a\",\"guide_monitor\":\"27771e3c933bee65\",\"inbox\":\"0bccd9b968fafa6c\",\"inbox_json\":\"2590d02b8805d4e3\",\"keyword_hits\":\"60516c455b216053\",\"note\":\"4358575254290127\",\"operator_loops\":\"3ce46549a3c1f5a6\",\"phase_in_plain_english\":\"d933f736e6c93c1d\",\"print_operator_loops\":\"e7b73bf071354121\",\"print_welcome_intro\":\"acf05f0f5ed14c55\",\"resolve_note_target\":\"1b8fafa274c75f69\",\"schema_cmd\":\"385f77ece135d3f2\",\"session\":\"f8df6ce250fb4843\",\"task\":\"b8c70c92f11938a1\",\"task_outcome_note\":\"8406b08fc788ad0b\",\"truth_axis_matrix\":\"1fc932e00b41f0cd\",\"welcome\":\"074f311856f9d540\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "8060d83063e9913c02baf49e09303ab8",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "48d9ea1028c4aa16",
+      "value": "6786d82103069eea",
       "truth_class": "derived"
     },
     {
@@ -8604,7 +9078,7 @@
       "target_id": "8060d83063e9913c02baf49e09303ab8",
       "target_kind": "node",
       "key": "loc",
-      "value": "632",
+      "value": "639",
       "truth_class": "derived"
     },
     {
@@ -8619,6 +9093,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "10",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8060d83063e9913c02baf49e09303ab8",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"export\":\"4d3cdfee8573ed61\",\"import\":\"468c36bbf3131d68\",\"mode_cmd\":\"4e56052f65710538\",\"next_all\":\"14a256c5b2a73d7e\",\"next_cmd\":\"09968597134f8346\",\"print_work_item\":\"91ddf4305a3e9a91\",\"queue_list\":\"35d56511118e7197\",\"require_lane\":\"6abd179a4fa54fc8\",\"status\":\"18e4b82c8261ffd2\",\"sync_cmd\":\"56f7b0721a6b0323\"}",
       "truth_class": "derived"
     },
     {
@@ -8661,6 +9142,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "13",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "81aaea4845a7ece1e330bbb96ad0878e",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"clear_facet\":\"c6c26233bc00d879\",\"is_soft_ref_facet\":\"c68b264a3e7803a6\",\"list_all_facets\":\"24bac6a53e9e70e0\",\"list_all_nodes\":\"4a096029e2be7f7d\",\"list_all_tags\":\"a09a5a48080554ba\",\"remove_tag\":\"90935107370cb005\",\"restore\":\"8177287df4778e52\",\"restore_inner\":\"df6ba27de9a2ba6c\",\"restore_repairing\":\"a3fba707331f381f\",\"set_facet\":\"7a8000b3814e51ff\",\"set_tag\":\"8a6e51071769794e\",\"snapshot\":\"6769d42c19bff78e\",\"tags_of\":\"96efe89802174a99\"}",
       "truth_class": "derived"
     },
     {
@@ -8727,6 +9215,20 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "8549792eed930ff717a45c1e0c02a168",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"create_shadow_nodes\":\"a3538e6aa439972b\",\"dispatch\":\"693ebb2d2809e35b\",\"link\":\"8721e22579b69258\",\"list\":\"b6f40cac34f9e6c5\",\"unlink\":\"7d538f44b0d76b2d\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8721ae55c598e8bba5a4e646d8e15df1",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/signal.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9100654292e70a2f477f72f21379052f",
       "target_kind": "node",
       "key": "level",
@@ -8753,6 +9255,13 @@
       "key": "locator",
       "value": "enum EdgeKind",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "92dc3a88b6e6cb1f7b9c7cd001015e3c",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "92f2adad845f8e8e84201ccd131738a7",
@@ -8804,10 +9313,17 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "948cc4e25bb1dffd027807809efa0fe3",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Expect\":\"5d673dc7802d175b\",\"HttpAuth\":\"a100aea7f356f430\",\"HttpContract\":\"21a0a0a6f2cd1f00\",\"HttpExtract\":\"7d23b2124db6ccb7\",\"HttpRoute\":\"20de6870e8245315\",\"JourneySpec\":\"c11817d178be3201\",\"Request\":\"176915d221051ddc\",\"SpecKind\":\"62d611e37c0690b6\",\"Step\":\"9d3d3bdf12e0999f\",\"StepOutcome\":\"002f7d7e200e72d4\",\"as_str\":\"dd23de725b155344\",\"authorization\":\"31db3a054725e27f\",\"bail_no_usable_base\":\"96fb50fc6a6c1f97\",\"check_response\":\"e44ba79f457f06d3\",\"default\":\"680ec452a7c4af27\",\"diagnose_hints\":\"fb3e77c6fdcf88e9\",\"env_value\":\"957f6477feebaec1\",\"execute\":\"5032309665470e7e\",\"field_path\":\"0e1d112194a1310b\",\"get\":\"3dfa7e909f296b15\",\"http_contract_to_journey\":\"007ae431bb1e4e8f\",\"interpolate\":\"0dd3617533fae246\",\"interpolate_json\":\"a1327d1959843d46\",\"journey_status_rank\":\"335b5c06ea74822c\",\"journey_validations\":\"756d124017157682\",\"jsonpath\":\"8f4a915373310c5c\",\"normalize_path_params\":\"74920757c398291f\",\"parse\":\"d99e4e550167f5cc\",\"parse_with_kind\":\"87ad0217c7c787a3\",\"require\":\"63ad8fdab38b2e6c\",\"resolve_validation\":\"bb7f5b0170f24f1d\",\"stale_unreached_passing_steps\":\"158cbefb6bf94ff5\",\"value_to_string\":\"7f1e2b8c8189b785\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "97da9fbf52812f74bfcf24463bc29494",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "1b2093f11998cafd",
+      "value": "c2a0ae6150c2b3d6",
       "truth_class": "derived"
     },
     {
@@ -8828,7 +9344,7 @@
       "target_id": "97da9fbf52812f74bfcf24463bc29494",
       "target_kind": "node",
       "key": "loc",
-      "value": "500",
+      "value": "522",
       "truth_class": "derived"
     },
     {
@@ -8843,6 +9359,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "19",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "97da9fbf52812f74bfcf24463bc29494",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"add_edge\":\"6292e1dde82a4077\",\"count_edges\":\"abc65888daf7613f\",\"edge_superseded\":\"5b1e840bd014016f\",\"edges_by_status\":\"a1cb99d3e46190d1\",\"ensure_edge\":\"93926b9a3d101d9e\",\"get_edge\":\"2206a97642a6adf2\",\"grounding_role\":\"d00d16845fc8a7aa\",\"list_edges\":\"d09150ad0941fc73\",\"list_edges_page\":\"af25d0f3c5579c48\",\"live_edges_by_status\":\"55c347352357b77d\",\"nodes_by_status\":\"c957bc728cf2541a\",\"realizing_groundings\":\"63d4722fbd7839fa\",\"realizing_implementers\":\"178e3ad289a66b15\",\"reclassify_grounding\":\"e943d5a4798e7524\",\"record_verdict\":\"643d87a7caeb334b\",\"rehome_grounding\":\"cd692c75cb1d05d5\",\"resolve_edge\":\"a7d7191652c7f338\",\"set_derived_status\":\"b6ed9091d4022571\",\"set_grounding_role\":\"e3337c8a66f4a2db\"}",
       "truth_class": "derived"
     },
     {
@@ -8895,6 +9418,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "9d30a67b219e08647db9222997164369",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"QueueCounts\":\"eb1cb843dd5bf77e\",\"QueueEntry\":\"90c92e6994cf9e4a\",\"analyze_item\":\"4d1d5fd453bd6bf2\",\"build_item\":\"3755bccdbe953eea\",\"build_reason\":\"efd92d263fd6245e\",\"coverage_item\":\"544f83d76ce38e83\",\"edge_entry\":\"8fb86f5df08a4fbd\",\"edge_work\":\"f3e32a051612ce76\",\"elaborate_item\":\"8a034e5fe1ac5c39\",\"fix_item\":\"b556185436892c99\",\"inbox_triage_item\":\"9577ba95c3c31818\",\"node_entry\":\"29e9a5b19afa62ec\",\"prescreen_for\":\"53b25b80d6483252\",\"prove_item\":\"202e4beca2e3b2dd\",\"quality_item\":\"297500d0c2600653\",\"queue_counts\":\"c8b678c397bf15a3\",\"queue_items\":\"981782ff2225b9ca\",\"review_item\":\"ed43d8567923718a\",\"triage_item\":\"67dc895062c62d8d\",\"ungrounded_implemented_intents\":\"ecb6035146dc0c04\",\"unmeasured_pair_entries\":\"f5edfa4d8fd34244\",\"unmeasured_pair_item\":\"492c0854ddcf64a1\",\"unmeasured_quality_pairs\":\"6992e0d960d59de0\",\"unmet_prerequisites\":\"81265becce10990d\",\"validate_item\":\"7ab8e3a026a0c970\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9d9249cace133c419b46e552dd53c8b7",
       "target_kind": "edge",
       "key": "locator",
@@ -8944,6 +9474,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "9dcb35805bdee249ec83b9f19e1a604d",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"FederationReport\":\"d9c379b77fc8a5ac\",\"UpstreamEntry\":\"e1c1fcb49d2b2b89\",\"content_hash\":\"5ff1b3d74036eefd\",\"intent_hash\":\"d2d469a3a82cf829\",\"read_upstream_entries\":\"d2243674e83922f6\",\"reconcile_shadows\":\"eea5aec2e640686b\",\"run\":\"e2b2bec61c7eda8f\",\"shadows_have_facets\":\"3c903224e91d9b96\",\"write_upstream_entries\":\"ec6ba5f3c3f9cde9\",\"write_upstream_facets\":\"9ebd3617e5cb80e7\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9f852cf2ca863f2d6aba68b969764aea",
       "target_kind": "node",
       "key": "content_hash",
@@ -8986,10 +9523,17 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "9f852cf2ca863f2d6aba68b969764aea",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Cli\":\"9c476851921a1a2f\",\"Command\":\"6e488b6a32ee08ec\",\"GraphModeArg\":\"6e5be64d068ee04c\",\"ModeArg\":\"d1f9e728faa4e5f4\",\"RoleArg\":\"cd9c823be04dc74f\",\"as_str\":\"9193d6c914fc3f86\",\"is_observed\":\"f2502f29e76bdf49\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a1fd630d7988d355bb695880eeaca3a5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "fdd857014e9acee3",
+      "value": "9fea378b4849c2ce",
       "truth_class": "derived"
     },
     {
@@ -9010,7 +9554,7 @@
       "target_id": "a1fd630d7988d355bb695880eeaca3a5",
       "target_kind": "node",
       "key": "loc",
-      "value": "42",
+      "value": "61",
       "truth_class": "derived"
     },
     {
@@ -9024,7 +9568,14 @@
       "target_id": "a1fd630d7988d355bb695880eeaca3a5",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "2",
+      "value": "3",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a1fd630d7988d355bb695880eeaca3a5",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"ArtifactChange\":\"6db89b3cd894973e\",\"Deriver\":\"f3d6636a2b711f02\",\"RegionDiff\":\"5f35c71ee253b8b9\"}",
       "truth_class": "derived"
     },
     {
@@ -9040,6 +9591,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "a5d1b510ac8b5b40f3d3c770778031d3",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "a6bd645f2b639f65641b52e319fb79c7",
@@ -9059,14 +9617,14 @@
       "target_id": "a82e87aef63db6aa5fd0babb62eeed06",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "638f8dac7baaf9d7",
+      "value": "d49cfda07d2df4d6",
       "truth_class": "derived"
     },
     {
       "target_id": "a82e87aef63db6aa5fd0babb62eeed06",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::GroundingRole\",\"crate::model::InspectionStatus\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::collections::BTreeSet\",\"std::path::Path\"]",
+      "value": "[\"crate::Result\",\"crate::deriver::RegionDiff\",\"crate::model::EdgeKind\",\"crate::model::GroundingRole\",\"crate::model::InspectionStatus\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::collections::BTreeSet\",\"std::path::Path\"]",
       "truth_class": "derived"
     },
     {
@@ -9080,7 +9638,7 @@
       "target_id": "a82e87aef63db6aa5fd0babb62eeed06",
       "target_kind": "node",
       "key": "loc",
-      "value": "464",
+      "value": "580",
       "truth_class": "derived"
     },
     {
@@ -9094,7 +9652,14 @@
       "target_id": "a82e87aef63db6aa5fd0babb62eeed06",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "10",
+      "value": "13",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a82e87aef63db6aa5fd0babb62eeed06",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Scope\":\"82381c45c759535a\",\"SyncReport\":\"daac1a027b18a6a3\",\"evidence_span_status\":\"4e3e4a06f65053f3\",\"locator_scope\":\"bd45a679261e366e\",\"rebuild_smell_findings\":\"7fbd43c4312b440f\",\"ripple_artifact_drift\":\"8fd5b4d36e558515\",\"ripple_changed_intents\":\"085b463112871294\",\"ripple_codefile\":\"31bf8dd3cd90e4d2\",\"ripple_runner_drift\":\"6c5fe919871ae556\",\"ripple_wiki_drift\":\"c8cdf186a40c6149\",\"run\":\"8b1675945da8f22a\",\"seam_present\":\"dc0f9a15ddc22641\",\"wiki_scope_hash\":\"fc53d9cc61725849\"}",
       "truth_class": "derived"
     },
     {
@@ -9137,6 +9702,20 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "7",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a95d52ddd31879ab255c459d4f0613ff",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"dispatch\":\"7a132d7ed6e1f06a\",\"page_rank\":\"1ee3fa719ade33df\",\"wiki_list\":\"d64157c7a9effe35\",\"wiki_next\":\"c850be00b0368106\",\"wiki_plan\":\"602227c68bb8ce7b\",\"wiki_record\":\"f512364b39817584\",\"wiki_remove\":\"dec85010dd3d87f3\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ac664f9c4390d3de86cb4c33966b7727",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
       "truth_class": "derived"
     },
     {
@@ -9196,6 +9775,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "addae8229065705551fde385f41538c1",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"emit\":\"c7782cfc2ccc948a\",\"emit_line\":\"3ca1e062091ab1be\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "ae8398372d05666cf20620e4231ded6a",
       "target_kind": "node",
       "key": "level",
@@ -9217,11 +9803,32 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "af536b7b7e81fd693bb1473774197e30",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/deriver.rs changed; content hash of src/seed.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "b15de02177919151d68b00cb275cbd1f",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn derivers",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "b15de02177919151d68b00cb275cbd1f",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/seed.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "b487ccacac2c207f22ca5465c3b0625d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "b4b45c21f5993343df53eda17ad9e40f",
@@ -9273,6 +9880,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "b4bf1c141780bc3ccc3376a3c4dc9064",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"CommandProofRunner\":\"493ea6197937b3a5\",\"JourneyProofRunner\":\"8a16ce6a61878c50\",\"ManualProofRunner\":\"4af2613e7a13e6e8\",\"ProofOutcome\":\"6581a2c7f1fab999\",\"ProofRunner\":\"7dfe8e761a033178\",\"output_excerpt\":\"c5998dca6ccd906e\",\"run\":\"2c5ab885fa828e3f\",\"run_validation_command\":\"8e867a3802c5d2be\",\"runner_for\":\"7aef86b564ae019e\",\"validation_output_json\":\"a5c56537b2945657\",\"validation_timeout_secs\":\"e1a51b4b68bdd5ee\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "b608a6f40ac5d124ebc644df12151661",
       "target_kind": "node",
       "key": "content_hash",
@@ -9312,6 +9926,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "4",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "b608a6f40ac5d124ebc644df12151661",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"hypothesis\":\"d6ae951ef162288f\",\"layer_detector_state\":\"cfa92fd0589d3f16\",\"surface\":\"16f87a0116751e39\",\"vocab\":\"23d50179fa2ae925\"}",
       "truth_class": "derived"
     },
     {
@@ -9357,11 +9978,39 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "b6432dc09d24cf267127974c8625f49f",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"expand\":\"12b0bf3a9d0a0d8a\",\"matcher\":\"0d99b4201c28576d\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "b6d5e3e9f864dcd7784b3ae33470e404",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "b8a793437d3428f7903a067b9c31b94f",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn prescreen",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "b8fc2f752be790bc2c627950c870f715",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/signal.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bb15a4e6fb6fd703452a06d1e4ed5d1d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/status_cmd.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "bd9bce82e1916baf04c75c201c47c8f8",
@@ -9410,6 +10059,20 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "12",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bf2ab4f977b0de9c1f56069394e1431a",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"dispatch\":\"7a79afcef54780ee\",\"is_journey_validation\":\"1f03121a9eed1345\",\"journey_add\":\"8633819ffd4d10d5\",\"journey_applicability\":\"377f2b6ff212ddc1\",\"journey_diagnose\":\"f28c3c227533b6e7\",\"journey_list\":\"610d7cc8cd26bd24\",\"journey_map\":\"2db5351e1305138f\",\"journey_proof_status\":\"083f6bbffac89d36\",\"journey_remove\":\"6d696e0062c63a1d\",\"journey_run\":\"9cf6e44ea833aa46\",\"outcome_json\":\"1cede86fba3c845d\",\"proof_gap_reason\":\"2cacee729f97672e\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bf3942ead609464e7bd51795a60f30a0",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/deriver.rs changed; content hash of src/seed.rs changed",
       "truth_class": "derived"
     },
     {
@@ -9462,6 +10125,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "c119b24e295cadc92792152a60143b55",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"RescanOutcome\":\"30c89e9901bd6a41\",\"codefile_body\":\"4ee80337d0ae2a72\",\"codefile_rescan\":\"17da824a7cc309cc\",\"codefile_show\":\"7ec3cef11bf20a03\",\"dispatch\":\"286c42095881f0e7\",\"observed_globs\":\"cf10cd41f80ab6fb\",\"read_globs\":\"97ae57ad375ff63c\",\"registered_globs\":\"34321ff815f03084\",\"remember_glob\":\"c5c80c4d19ee87fb\",\"rescan_globs\":\"6f6f0957f7190cd5\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "c11a3ad7d2c4eba1b03aff693ab65fa5",
       "target_kind": "node",
       "key": "content_hash",
@@ -9504,17 +10174,24 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "c11a3ad7d2c4eba1b03aff693ab65fa5",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"mark_validation\":\"366e0ce9626be7be\",\"rule\":\"05253843b7cc309b\",\"validate_cmd\":\"4682e984be781da9\",\"validation\":\"ec332f254f1260d7\",\"validation_targets\":\"f2385f08d97be082\",\"verdict_status_quality\":\"c06ecb72032c456a\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "c29b3691a2aa414642357c71a7577148",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "429bc0e44e0ed345",
+      "value": "cd6d59a3cf6f0aa8",
       "truth_class": "derived"
     },
     {
       "target_id": "c29b3691a2aa414642357c71a7577148",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::deriver::ArtifactChange\",\"crate::deriver::Deriver\",\"crate::extract::Extraction\",\"crate::extract::Role\",\"crate::extract::extract\",\"crate::model::EdgeKind\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"crate::sync::SyncReport\",\"crate::thresholds::Thresholds\",\"std::path::Path\"]",
+      "value": "[\"crate::Result\",\"crate::deriver::ArtifactChange\",\"crate::deriver::Deriver\",\"crate::deriver::RegionDiff\",\"crate::extract::Extraction\",\"crate::extract::Role\",\"crate::extract::extract\",\"crate::model::EdgeKind\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"crate::sync::SyncReport\",\"crate::thresholds::Thresholds\",\"std::path::Path\"]",
       "truth_class": "derived"
     },
     {
@@ -9528,7 +10205,7 @@
       "target_id": "c29b3691a2aa414642357c71a7577148",
       "target_kind": "node",
       "key": "loc",
-      "value": "354",
+      "value": "451",
       "truth_class": "derived"
     },
     {
@@ -9542,7 +10219,14 @@
       "target_id": "c29b3691a2aa414642357c71a7577148",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "15",
+      "value": "18",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c29b3691a2aa414642357c71a7577148",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"BuiltinRule\":\"a32047f574181f03\",\"FindingDesc\":\"6c134ba454c0f002\",\"ScanDeriver\":\"0502249f39ac545a\",\"StructuralDeriver\":\"a92542d25f529fb8\",\"derive\":\"649f727ef5d4c846\",\"derive_findings\":\"92d4800d26b7ddab\",\"derivers\":\"59efaa1dd3996208\",\"diff_regions\":\"2ba3ec9b8ec943df\",\"ensure_builtin_rules\":\"c5aaf52c8b7cc19f\",\"fingerprints_json\":\"868a44bf4668a068\",\"name\":\"ca30cf2b85d912b6\",\"region_fingerprints\":\"8cedac8ccb6326b2\",\"runs_on_sync\":\"1d65a60381a07025\",\"sync_derivers\":\"0f565e2520d0c1b9\",\"write_facets\":\"660b74be5672d8dd\"}",
       "truth_class": "derived"
     },
     {
@@ -9585,6 +10269,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "13",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c2c8b3334ee340088fded78ad6278b38",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"CoverageAddArgs\":\"62d106e0fce69bc0\",\"coverage\":\"a991d0d5648dce01\",\"coverage_add\":\"f87a8b5a6c65546f\",\"coverage_context\":\"900056046c51652e\",\"coverage_discover\":\"02ced957106261d7\",\"coverage_drift\":\"9efa2c9c9dd3a260\",\"coverage_intent\":\"b94d90a7f174db8c\",\"coverage_list\":\"2e14178b88836ac4\",\"coverage_remove\":\"362c296c509b53bc\",\"coverage_update\":\"2e8fca622d77273d\",\"current_l5_journey_validations\":\"7ecd20b31c1ce28f\",\"effective_coverage\":\"39fb511c3c1ab93a\",\"repo_ref_exists\":\"5ee383656b28b8f2\"}",
       "truth_class": "derived"
     },
     {
@@ -9644,6 +10335,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "c4a8cdd58b6fe594384aeb7ef40f5b8d",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"IntentAddArgs\":\"2c6b9893bd9fce91\",\"IntentUpdateArgs\":\"00c8129e85ea0ab0\",\"check_aspect\":\"0b466d548e3c8606\",\"check_level\":\"0aa882ed7f792ec1\",\"check_lifecycle\":\"ccca8bfb48a23b58\",\"check_visibility\":\"9f7309e9cd70b488\",\"create_intent\":\"07272d65574fce18\",\"dispatch\":\"3ae5293a30a05895\",\"has_internal_caps\":\"0f5901a49030dbfe\",\"intent_add\":\"d17c7ded5cb4850c\",\"intent_confirm\":\"b76bcdb43ecb55ed\",\"intent_list\":\"16d8c47a2f568698\",\"intent_reactivate\":\"6a0a68566971bdba\",\"intent_remove\":\"8cd7f18132a83613\",\"intent_retire\":\"79c644668586bb34\",\"intent_show\":\"fa0d3cac0e697b11\",\"intent_tag\":\"192715568686afbe\",\"intent_update\":\"7d3f418eaf6892b7\",\"intent_waive\":\"cd065c8b02ae98db\",\"looks_like_symbol\":\"8d062440583584f2\",\"tag_intent\":\"80e3d9f4dd36a493\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "c6b57381c75b01d30399dc3022d3eddb",
       "target_kind": "node",
       "key": "content_hash",
@@ -9686,6 +10384,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "c6b57381c75b01d30399dc3022d3eddb",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"add\":\"8fb3957070eeab94\",\"dispatch\":\"e644bb26a7dea075\",\"item\":\"136c879d7ae7dcdc\",\"item_add\":\"298c7bbc25e32113\",\"item_adopt\":\"fa564a69e0264409\",\"item_defer\":\"912a6badc95f0e88\",\"item_dispose\":\"e659c89004fba8e4\",\"item_reject\":\"c0908878f70bd048\",\"list\":\"748e879d82dd555c\",\"remove\":\"046ccc48a7617a4b\",\"show\":\"97d2a706de790930\",\"summary\":\"22e5f932350e60a5\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "c6be80aef0a4881a98be2307b94d4636",
       "target_kind": "node",
       "key": "level",
@@ -9712,6 +10417,13 @@
       "key": "locator",
       "value": "trait Deriver",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "c9a75e4cb0aa644bcbf9ab5703c374dc",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/deriver.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "cbc7745021b1a82a6024d3a66f356530",
@@ -9840,6 +10552,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "d237e5f1be404d92693101ab64c8f4e3",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Example\":\"4da1c2b710fde20a\",\"PackRule\":\"c98dd8c9721ce76a\",\"pack\":\"feff83b8cae2c063\",\"rule_body\":\"863fd962ff5dede8\",\"seed\":\"bc118ab92e3de3ec\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "d247f48b5ef8f0833",
       "target_kind": "node",
       "key": "adjudication",
@@ -9894,6 +10613,13 @@
       "key": "locator",
       "value": "run:65 (compare 85; ripple only when prior.is_some 90-98)",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "d4126e49a16fdfae03908b17f0063d35",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/sync.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "d41e84da431a76593",
@@ -9952,6 +10678,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "d441b46e33cdab20d98f6cc84cb13504",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"classification_signals\":\"2971a442cea61eab\",\"prompt\":\"78a572e5da7d847a\",\"prompt_rules\":\"cb2f5ff08f281522\",\"render_prompt\":\"47c12970570fba03\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "d4673e0ba4975b09a",
       "target_kind": "node",
       "key": "adjudication",
@@ -9983,7 +10716,7 @@
       "target_id": "d52849a6ddcc4b034468cad771c0fbfb",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "f5f66afb9cdff9cc",
+      "value": "d306d91d2826217d",
       "truth_class": "derived"
     },
     {
@@ -10004,7 +10737,7 @@
       "target_id": "d52849a6ddcc4b034468cad771c0fbfb",
       "target_kind": "node",
       "key": "loc",
-      "value": "1218",
+      "value": "1321",
       "truth_class": "derived"
     },
     {
@@ -10018,7 +10751,14 @@
       "target_id": "d52849a6ddcc4b034468cad771c0fbfb",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "46",
+      "value": "47",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "d52849a6ddcc4b034468cad771c0fbfb",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Adjudication\":\"8afc1f305d3db147\",\"DebtCluster\":\"c2866b9d0f29d2fe\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication_of\":\"c20ca0c6c73a7807\",\"consumer_owned_file_smells\":\"c1d960efa4dbcea5\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"debt\":\"7348a9bcb1b09767\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"445f82044d4ca98a\",\"duplicated_responsibility_smells\":\"a96fe63898ac4de1\",\"edge_between\":\"a2b06485d9724169\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"ffb77f7a6db033b4\",\"hierarchy_cycle_issues\":\"bc73433a09381558\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"9e1fb026842e0bbd\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_proof_smells\":\"846bca31c5815211\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"node_name\":\"7f49570215d4f5a7\",\"ownership_smells\":\"0de410bea2ff212b\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"quantile\":\"c14d11c29d4c1114\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"self_dir\":\"cc099cf5d4a21388\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_is_justified\":\"0429c4de910c072f\",\"smells\":\"5def712822f12b9d\",\"stale_findings\":\"b9bd1abf6df97a44\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"fbfbc38738e584cf\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
       "truth_class": "derived"
     },
     {
@@ -10190,6 +10930,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "dce82ee94e33452e2a5816b1daa88cb5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/deriver.rs changed; content hash of src/seed.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "dd02ddceb33aeff05",
       "target_kind": "node",
       "key": "adjudication",
@@ -10253,10 +11000,31 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "e35355f184c6c3e2c58988647f2b4554",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/deriver.rs changed; content hash of src/seed.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e464ce286c7ae08b7013db700f5bf77d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/sync.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e4724195c4f8c24f0f1894f059037174",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "e472e7771e065e3282844a150e2f173f",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e51695471edd72fd",
+      "value": "17d587b57ae3b2f0",
       "truth_class": "derived"
     },
     {
@@ -10277,7 +11045,7 @@
       "target_id": "e472e7771e065e3282844a150e2f173f",
       "target_kind": "node",
       "key": "loc",
-      "value": "57",
+      "value": "58",
       "truth_class": "derived"
     },
     {
@@ -10292,6 +11060,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "1",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e472e7771e065e3282844a150e2f173f",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"Result\":\"d775841306ddb839\"}",
       "truth_class": "derived"
     },
     {
@@ -10334,6 +11109,13 @@
       "target_kind": "node",
       "key": "symbol_count",
       "value": "27",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e4b92d8915c60bb0fd7d2bf6d40c2fd7",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"CodefileCmd\":\"c223817d7265c2fb\",\"EdgeCmd\":\"71260bab4e379cf7\",\"FindingCmd\":\"beb96a06aa863221\",\"GraphCmd\":\"c6d9e9720781c938\",\"HypothesisCmd\":\"bcc2206e7257bc7f\",\"IgnoreCmd\":\"f9c39cc52fcc57fa\",\"InboxCmd\":\"b997abc467ae3cf8\",\"IntentCmd\":\"54b1dc16f0066e4d\",\"IntentTagCmd\":\"2fd96d64a986e780\",\"JourneyCmd\":\"f575bb4296f6e748\",\"JourneyCoverageCmd\":\"05c37118ef4bb96c\",\"JourneyInvariantCmd\":\"d764bb7cb40fc699\",\"LayerCmd\":\"2177d28d2dd26cb2\",\"NoteCmd\":\"56ab85f4437638a2\",\"PolicyCmd\":\"c61c52fa11d3659e\",\"ProposalCmd\":\"079bec33ddce4e30\",\"ProposalItemCmd\":\"6a7205b69eb23e74\",\"RuleCmd\":\"ee8bb1c371b35252\",\"ScanCmd\":\"d77d05fdc1f6d3c9\",\"ScanFormatArg\":\"984d1856f8a626dc\",\"SurfaceCmd\":\"e44ef76f57090617\",\"TaskCmd\":\"d7fdf74b6556bfd7\",\"ThresholdCmd\":\"3eff5a090e78038d\",\"ValidationCmd\":\"e2f62893faa9a56a\",\"VocabCmd\":\"4b46bd49495a2ccf\",\"WikiCmd\":\"510c47fb12b1d4fa\",\"from\":\"5ec721d732f248d6\"}",
       "truth_class": "derived"
     },
     {
@@ -10393,11 +11175,39 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "e81bc23589889eeadfae23dd33257807",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"AdjudicationSpec\":\"782251553c988169\",\"ApplyReport\":\"4214070126979398\",\"ApplyTx\":\"0b795c8f48502837\",\"GroundingSpec\":\"1b042e6b9d124362\",\"IntentSpec\":\"79519101def0a3c5\",\"RelationSpec\":\"15e259c7740dfe3c\",\"TagSpec\":\"a243392c076dc50c\",\"VerdictBody\":\"62bbe6d3aa9982f4\",\"VerdictSpec\":\"7103570e6e07fafb\",\"VocabSpec\":\"acaf9e785e6c0b82\",\"apply\":\"3f915ad98c6a391f\",\"apply_tx\":\"58aa50b2c3e0f987\",\"default_confidence\":\"71fef47960697282\",\"default_level\":\"beaa5586c8e41377\",\"default_lifecycle\":\"428d87b08749f831\",\"default_role\":\"bb9ff1a1661ebef4\",\"read_apply\":\"35e950f22513bc5e\",\"record_body\":\"61aca279a9b37b6a\",\"record_parts\":\"87bba26bfca1a4ff\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "e92657c3369c8b28fd9d5ff353100230",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn dispatch",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "ebb59642f5dc9c8d3a036e3c3843ece8",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ec4e3df5df45b9aa7d4d13a184668f6a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ecf2a773b733bff5504bed2655a11c08",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "effb89825e809684222c862ebb73ff9b",
@@ -10456,10 +11266,38 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "f006cb65fe13a4135d41b183f3e2d1fe",
+      "target_kind": "node",
+      "key": "symbol_fingerprints",
+      "value": "{\"collect_use_paths\":\"42bd92936e788d29\",\"is_cfg_test_mod\":\"ddd709a323a181a5\",\"is_panic_site\":\"b5bc904ed51ec7e9\",\"join_mod\":\"29f9231c5bf34d9e\",\"push_mod\":\"0fd5696864d42435\",\"rust_extract\":\"7691f39be4501063\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "f09ffda3d7f15bc45c52b5f0507144da",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "f5b123fa5669179735c574d0c75c17c3",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn expand",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f7456e195190bd68ee057ab511c6a2e6",
+      "target_kind": "node",
+      "key": "level",
+      "value": "component",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f7456e195190bd68ee057ab511c6a2e6",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -10475,6 +11313,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "f9ae96feac3c653db1f204c62f7b63c2",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "fa7e3626667e2dead1a8e628182fb719",
@@ -10512,6 +11357,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "fc192d8d78b85721d820a396b9eac78b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/mod.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "fcca88dbe052e008ce2af68975c8d1ca",
       "target_kind": "edge",
       "key": "locator",
@@ -10524,6 +11376,13 @@
       "key": "locator",
       "value": "fn record_verdict (evidence/lane/derived gate) + is_placeholder gate; schema CHECK in store/mod.rs",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "fd0eea5d8ffc68cfcccbbc04a0b6ec6e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/edges.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "ff941259302b91e3c9fa871d4ceab568",

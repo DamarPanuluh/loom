@@ -156,6 +156,13 @@ impl Store {
         {
             return Ok(edge);
         }
+        // Evidence anchoring: stamp a fingerprint of every file:line span the
+        // evidence cites, so sync can tell "cited span untouched" from
+        // "rewritten" — and a citation into lines that never existed fails
+        // closed HERE, before anything is written (integrity gate on the
+        // recorder). Runs after the idempotence check so a byte-identical
+        // re-record stays a no-op even when the cited file drifted since.
+        let stamps = crate::evidence::stamp(&self.root, evidence)?;
         let now = now(&self.conn)?;
         self.conn.execute(
             "UPDATE edge SET status=?2,criterion=?3,evidence=?4,confidence=?5,
@@ -171,6 +178,21 @@ impl Store {
             ],
         )?;
         self.clear_facet(edge_id, TargetKind::Edge, "stale_cause")?;
+        if stamps.is_empty() {
+            self.clear_facet(
+                edge_id,
+                TargetKind::Edge,
+                crate::evidence::EVIDENCE_SPANS_KEY,
+            )?;
+        } else {
+            self.set_facet(
+                edge_id,
+                TargetKind::Edge,
+                crate::evidence::EVIDENCE_SPANS_KEY,
+                &serde_json::to_string(&stamps)?,
+                TruthClass::Asserted,
+            )?;
+        }
         self.get_edge(edge_id)?
             .ok_or_else(|| anyhow!("edge vanished after verdict"))
     }

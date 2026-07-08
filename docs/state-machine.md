@@ -369,7 +369,7 @@ These must hold at all times and be enforced at every write boundary.
 
 ### Structural smells
 
-The `loom smells` surface reports derived graph-shape signals, each with a remedy. One such smell is `pack_drift`: a quality rule that originated from a seeded pack has been edited in the graph, so its current body no longer matches the shipped pack definition. Another is `consumer_owned_file`: a file whose sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster. Remedies name the concrete edge or pack command; `pack_drift` is resolved either by `loom rule seed <pack>` to re-baseline (idempotent) or by accepting the customization and letting it remain surfaced as a recorded divergence.
+The `loom smells` surface reports derived graph-shape signals, each with a remedy. One such smell is `pack_drift`: a quality rule that originated from a seeded pack has been edited in the graph, so its current body no longer matches the shipped pack definition. Another is `consumer_owned_file`: a file whose sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster. Another is `vague_intent`: an active intent whose description hedges (`handles`, `properly`, `correctly`, …) without one observable outcome — unfalsifiable meaning caps every verdict recorded against it, so the remedy is a `--reword` toward observable behavior, or a `justified` adjudication for a deliberate summary-level intent. Remedies name the concrete edge or pack command; `pack_drift` is resolved either by `loom rule seed <pack>` to re-baseline (idempotent) or by accepting the customization and letting it remain surfaced as a recorded divergence.
 
 ---
 

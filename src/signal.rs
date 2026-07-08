@@ -160,6 +160,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
     )?);
     out.extend(disclosure_smells(&intents, &tags_by_intent));
     out.extend(journey_proof_smells(&snap, &intents));
+    out.extend(vague_intent_smells(&intents));
     out.extend(pack_drift_smells(&snap));
     Ok(out)
 }
@@ -519,6 +520,108 @@ fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
                 "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome"
                     .into(),
             identity: format!("{kind}:{}", intent.id),
+        });
+    }
+    out
+}
+
+/// Hedge terms that assert quality without naming an observable outcome. A
+/// description leaning on these is unfalsifiable — every verdict recorded
+/// against it is judgment theater, so the graph's ceiling drops to prose.
+const HEDGE_TERMS: &[&str] = &[
+    "handle",
+    "handles",
+    "handled",
+    "handling",
+    "properly",
+    "correctly",
+    "robustly",
+    "gracefully",
+    "appropriately",
+    "sanely",
+];
+
+/// Signals that a description names something observable: an ACTION verb,
+/// stem-matched against word starts ("returns"/"returning", "rejects"/
+/// "rejected"). Deliberately excludes bare nouns ("error", "failure",
+/// "timeout") and bare conditionals ("when", "if") — "handles errors when
+/// they occur" names no outcome; "returns an error" does.
+const OUTCOME_STEMS: &[&str] = &[
+    "return",
+    "emit",
+    "exit",
+    "write",
+    "wrote",
+    "read",
+    "reject",
+    "refuse",
+    "accept",
+    "retr",
+    "produce",
+    "print",
+    "send",
+    "sent",
+    "persist",
+    "record",
+    "render",
+    "redirect",
+    "respond",
+    "display",
+    "creat",
+    "delet",
+    "insert",
+    "remov",
+    "updat",
+    "append",
+    "increment",
+    "rais",
+    "throw",
+    "sav",
+    "load",
+    "pars",
+    "notif",
+    "report",
+];
+
+/// Intents whose description hedges ("handles errors correctly") without one
+/// observable outcome. Falsifiability lint, not a style gate: it fires only on
+/// hedge + nothing checkable, and is adjudicable like every smell — a
+/// deliberate summary-level intent gets a `justified` finding verdict.
+fn vague_intent_smells(intents: &[&Node]) -> Vec<Smell> {
+    let mut out = Vec::new();
+    for intent in intents {
+        let desc = intent.description.to_lowercase();
+        let words: Vec<&str> = desc
+            .split(|c: char| !c.is_ascii_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .collect();
+        let Some(hedge) = words.iter().find(|w| HEDGE_TERMS.contains(*w)) else {
+            continue;
+        };
+        let concrete = desc.chars().any(|c| c.is_ascii_digit())
+            || ['`', '"', '\''].iter().any(|q| desc.contains(*q))
+            || desc.contains("::")
+            || desc.contains('/')
+            || desc.contains("()")
+            || words
+                .iter()
+                .any(|w| OUTCOME_STEMS.iter().any(|s| w.starts_with(s)))
+            // "… by <doing something>": an outcome named as a gerund.
+            || words
+                .windows(2)
+                .any(|p| p[0] == "by" && p[1].ends_with("ing"));
+        if concrete {
+            continue;
+        }
+        out.push(Smell {
+            kind: "vague_intent".into(),
+            message: format!(
+                "intent '{}' hedges ('{hedge}') without an observable outcome — nothing in its description can be falsified",
+                intent.name
+            ),
+            remedy: "state what an observer could check (inputs → outputs, emitted errors, side effects) via loom intent update --description --reword; or adjudicate the finding justified"
+                .into(),
+            identity: format!("vague_intent:{}", intent.id),
         });
     }
     out

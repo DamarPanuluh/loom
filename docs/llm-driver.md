@@ -80,7 +80,10 @@ WorkItem
   effort:          low | mid | high
   reason:          why this item is next
   target:          { kind, id, name, from?, to? }
-  stale_causes:    [] typed stale_cause facets recorded by sync
+  stale_causes:    [] typed stale_cause facets recorded by sync — symbol-scoped where the
+                   grounding locator resolves ("symbol 'x' in <file> changed"), graded by
+                   evidence anchoring ("cited evidence intact, cheap re-confirm" vs
+                   "cited evidence rewritten, full re-inspection")
   prompt_contract: PromptContract
   context:
     purpose

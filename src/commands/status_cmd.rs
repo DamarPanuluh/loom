@@ -137,6 +137,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                 "files_scanned": report.files_scanned,
                 "files_changed": report.files_changed,
                 "edges_staled": report.edges_staled,
+                "edges_spared": report.edges_spared,
                 "validations_reset": report.validations_reset,
                 "findings": report.findings,
                 "contracts_reset": report.contracts_reset,
@@ -174,6 +175,12 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         report.validations_reset,
         report.findings
     );
+    if report.edges_spared > 0 {
+        println!(
+            "  precision: {} grounding(s) kept fresh — the change did not touch their locator symbol",
+            report.edges_spared
+        );
+    }
     if reexported {
         println!(
             "  refreshed {} (portable export kept fresh)",
