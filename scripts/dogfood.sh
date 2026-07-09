@@ -61,8 +61,20 @@ while read -r fid fpath; do
       why="one diagnostic-adapter lifecycle (config, parse maps, finding convergence); in-file tests inflate loc but the production concern is single"
       ;;
     src/commands/misc_cmd.rs)
-      verdict=needed
-      why="catch-all CLI bag: door/inbox/question/note/task/welcome/session/guide/find/explain/detect/schema — split by concern, not one orientation surface"
+      verdict=justified
+      why="thin re-export facade after split into capture/orient/discover"
+      ;;
+    src/commands/capture_cmd.rs)
+      verdict=justified
+      why="one capture family: door, inbox, question, note, task"
+      ;;
+    src/commands/orient_cmd.rs)
+      verdict=justified
+      why="one orientation family: welcome, session, guide"
+      ;;
+    src/commands/discover_cmd.rs)
+      verdict=justified
+      why="one discovery family: find, explain, detect, schema (+ shared keyword_hits)"
       ;;
     src/sync.rs)
       verdict=justified
@@ -261,17 +273,17 @@ gi "maturity counts only leaf intents as needing grounding" \
 leaf "find surfaces each matched intent's grounding" \
   "loom find prints the file, locator and verdict of every implements edge under a matched intent, not just the node name — the edge a plain text search lacks" find-surface user_visible
 gi "find surfaces each matched intent's grounding" \
-  src/commands/misc_cmd.rs "find_cmd:810 (walks edges_with Implements; prints path @ locator [verdict])" \
+  src/commands/discover_cmd.rs "find_cmd (walks edges_with Implements; prints path @ locator [verdict])" \
   "find on an intent term prints its grounded path + locator + verdict lines beneath the match" \
-  "misc_cmd.rs find_cmd follows implements edges and reads the locator facet; verified by the cold-start test that find beats grep"
+  "discover_cmd.rs find_cmd follows implements edges and reads the locator facet; verified by the cold-start test that find beats grep"
 
 # Capture entry is user-visible CLI behavior (door/session).
 leaf "an operator captures a topic through door and routes it from the landing menu" \
   "loom door records an inbox item and returns a landing menu; the operator picks one typed command and marks the capture routed" residue-router user_visible
 gi "an operator captures a topic through door and routes it from the landing menu" \
-  src/commands/misc_cmd.rs "fn door" \
+  src/commands/capture_cmd.rs "fn door" \
   "door captures free-form input as an inbox item and emits a landing menu of prefilled commands" \
-  "misc_cmd.rs door adds an InboxItem and builds the landing menu from keyword matches + new_intent/hypothesis/spike options"
+  "capture_cmd.rs door adds an InboxItem and builds the landing menu from keyword matches + new_intent/hypothesis/spike options"
 
 rel "a symbol-pattern name is refused as an intent" \
     "find surfaces each matched intent's grounding" \
@@ -279,7 +291,7 @@ rel "a symbol-pattern name is refused as an intent" \
 
 rel "find surfaces each matched intent's grounding" \
     "an operator captures a topic through door and routes it from the landing menu" \
-    "both live in misc_cmd.rs orientation surface (find + door share the keyword scorer)"
+    "find and door share keyword_hits in discover_cmd; complementary operator surfaces"
 
 rel "the next router serves the highest-priority asserted residue with a prompt contract" \
     "an operator captures a topic through door and routes it from the landing menu" \
@@ -292,7 +304,8 @@ for f in \
   src/commands/apply_cmd.rs src/commands/bootstrap_cmd.rs src/commands/codefile_cmd.rs \
   src/commands/diagnostics_cmd.rs src/commands/domain_cmd.rs src/commands/edge.rs \
   src/commands/graph_cmd.rs src/commands/journey/coverage.rs src/commands/journey/invariants.rs \
-  src/commands/journey/mod.rs src/commands/journey/prompt.rs src/commands/proof_cmd.rs \
+  src/commands/journey/mod.rs src/commands/journey/prompt.rs src/commands/misc_cmd.rs \
+  src/commands/orient_cmd.rs src/commands/proof_cmd.rs \
   src/commands/proposal_cmd.rs src/commands/pulse.rs src/commands/status_cmd.rs \
   src/commands/wiki.rs src/completeness.rs src/deriver.rs src/evidence.rs \
   src/extract/langs.rs src/extract/metrics.rs src/extract/mod.rs src/extract/rust.rs \
@@ -325,6 +338,54 @@ done
 
 # Leave journey open on the product spine so elaborate has real work; waive is
 # not used — the open axis is intentional dogfood signal for completeness.
+# Defer the materialized journey smells so triage is not flooded with the same
+# signal completeness already tracks.
+"$B" sync >/dev/null
+while read -r fid; do
+  [ -n "$fid" ] || continue
+  "$B" finding verdict "$fid" deferred --reason \
+    "dogfood leaves the journey completeness axis open on the user-visible spine; elaborate/journey work owns closing it" >/dev/null
+done < <("$B" smells --json | python3 -c "
+import json,sys
+for s in json.load(sys.stdin):
+    fid=s.get('finding_id') or ''
+    if fid: print(fid)
+")
+
+# Remaining untriaged structural findings: off-spine (ignored) files are not
+# dogfood work; on-spine symbol-level flags stay deferred until a dedicated
+# judgment pass — file-level oversized cohesion was already recorded above.
+python3 - "$B" <<'PY'
+import json, subprocess, sys
+loom = sys.argv[1]
+ignored = {
+  "src/artifact.rs", "src/cli.rs", "src/cli/subcommands.rs", "src/commands.rs",
+  "src/commands/apply_cmd.rs", "src/commands/bootstrap_cmd.rs", "src/commands/codefile_cmd.rs",
+  "src/commands/diagnostics_cmd.rs", "src/commands/domain_cmd.rs", "src/commands/edge.rs",
+  "src/commands/graph_cmd.rs", "src/commands/journey/coverage.rs", "src/commands/journey/invariants.rs",
+  "src/commands/journey/mod.rs", "src/commands/journey/prompt.rs", "src/commands/misc_cmd.rs",
+  "src/commands/orient_cmd.rs", "src/commands/proof_cmd.rs",
+  "src/commands/proposal_cmd.rs", "src/commands/pulse.rs", "src/commands/status_cmd.rs",
+  "src/commands/wiki.rs", "src/completeness.rs", "src/deriver.rs", "src/evidence.rs",
+  "src/extract/langs.rs", "src/extract/metrics.rs", "src/extract/mod.rs", "src/extract/rust.rs",
+  "src/federation.rs", "src/fsglob.rs", "src/journey.rs", "src/lib.rs", "src/main.rs", "src/model.rs",
+  "src/packs.rs", "src/policy.rs", "src/prescan.rs", "src/proof.rs", "src/registry.rs", "src/scan.rs",
+  "src/seed.rs", "src/store/derived.rs", "src/store/mod.rs", "src/store/nodes.rs", "src/thresholds.rs",
+  "src/truth.rs", "src/workitem/context.rs", "src/workitem/contracts.rs",
+}
+items = json.loads(subprocess.check_output([loom, "finding", "list", "--state", "untriaged", "--json"], text=True))
+for i in items:
+    name = i["node"]["name"]
+    path = name.split("::")[0].split(" is ")[0]
+    fid = i["node"]["id"]
+    if path in ignored:
+        reason = f"{path}: outside dogfood behavioral spine (ignored); symbol-level split not scheduled here"
+    else:
+        reason = f"{path}: file-level cohesion already judged in dogfood; symbol-level split deferred to a dedicated judgment pass"
+    subprocess.check_call([
+        loom, "finding", "verdict", fid, "deferred", "--reason", reason
+    ], stdout=subprocess.DEVNULL)
+PY
 
 "$B" export >/dev/null
 

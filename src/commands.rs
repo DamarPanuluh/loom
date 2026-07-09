@@ -16,14 +16,17 @@ use std::path::{Path, PathBuf};
 
 mod apply_cmd;
 mod bootstrap_cmd;
+mod capture_cmd;
 mod codefile_cmd;
 mod diagnostics_cmd;
+mod discover_cmd;
 mod domain_cmd;
 mod edge;
 mod graph_cmd;
 mod intent;
 mod journey;
 mod misc_cmd;
+mod orient_cmd;
 mod proof_cmd;
 mod proposal_cmd;
 mod pulse;

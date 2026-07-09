@@ -9,7 +9,7 @@
 //! This module names those axes once. Three seams consume it:
 //! - `maturity::compass` labels the current phase with its axis,
 //! - `workitem` stamps each served item with its `TruthGap`,
-//! - `commands::misc_cmd::guide` teaches the adaptive per-axis moves.
+//! - `commands::orient_cmd::guide` teaches the adaptive per-axis moves.
 //!
 //! Keeping the mapping here (not duplicated per caller) means there is exactly
 //! one place that answers "for this axis, what is the authoritative write, what
