@@ -280,6 +280,42 @@ pub enum InboxCmd {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum QuestionCmd {
+    /// Open a product question for an intent.
+    Add {
+        text: String,
+        #[arg(long)]
+        intent: String,
+    },
+    /// List product questions.
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
+        #[arg(long)]
+        status: Option<String>,
+    },
+    /// Show one product question.
+    Show { key: String },
+    /// Answer a product question.
+    Answer {
+        key: String,
+        #[arg(long)]
+        answer: String,
+    },
+    /// Close a product question without an answer.
+    Close {
+        key: String,
+        status: String,
+        #[arg(long)]
+        reason: String,
+    },
+    /// Remove an accidental product question.
+    Remove { key: String },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum NoteCmd {
     /// Attach a durable note to any node or edge (adjudications, context, warnings).
     Add {
@@ -343,14 +379,32 @@ pub enum TaskCmd {
 }
 #[derive(Subcommand, Debug)]
 pub enum FindingCmd {
-    /// List derived findings with their adjudication state.
+    /// Add an asserted evidence-backed finding for triage.
+    Add {
+        text: String,
+        #[arg(long, default_value = "code_audit")]
+        source: String,
+        #[arg(long, default_value = "code_audit")]
+        kind: String,
+        #[arg(long)]
+        evidence: String,
+        #[arg(long)]
+        impact: String,
+        #[arg(long, default_value_t = 0.7)]
+        confidence: f64,
+        #[arg(long)]
+        file: Option<String>,
+        #[arg(long)]
+        link: Option<String>,
+    },
+    /// List findings with their adjudication state.
     List {
         #[arg(long)]
         kind: Option<String>,
         #[arg(long)]
         state: Option<String>,
     },
-    /// Record a judgment on a finding: justified | needed | blocked.
+    /// Record a judgment on a finding.
     Verdict {
         id: String,
         verdict: String,

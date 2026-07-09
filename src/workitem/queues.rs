@@ -550,7 +550,10 @@ pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
     } else {
         ""
     };
-    let reason = format!("{}{}{}", fv.node.name, stale, cohesion);
+    let reason = format!(
+        "adjudicate evidence-backed finding: {}{}{}",
+        fv.node.name, stale, cohesion
+    );
     Ok(Some(WorkItem {
         mode: "triage".into(),
         owner_role: "analyzer".into(),
@@ -583,7 +586,7 @@ fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort: "low".into(),
-        reason: format!("inbox item '{}' is new and needs routing", item.description),
+        reason: format!("route raw human/external input: '{}'", item.description),
         target: node_target(&item),
         stale_causes: Vec::new(),
         prompt_contract: inbox_triage_contract(short),
@@ -1012,9 +1015,9 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
         Mode::Triage => {
             for fv in crate::signal::triage_findings(store)? {
                 let reason = if fv.stale {
-                    "prior verdict is stale (file changed) — re-adjudicate"
+                    "stale evidence-backed finding — re-adjudicate it"
                 } else {
-                    "untriaged finding — adjudicate it"
+                    "adjudicate evidence-backed finding"
                 };
                 out.push(node_entry("triage", "low", &fv.node, reason.into()));
             }
@@ -1027,7 +1030,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                     "triage",
                     "low",
                     &item,
-                    "new inbox item — route it into graph work".into(),
+                    "route raw human/external input".into(),
                 ));
             }
         }

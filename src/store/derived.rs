@@ -146,10 +146,12 @@ impl Store {
         status: &str,
         body: serde_json::Value,
     ) -> Result<Node> {
-        let tc = registry::node_truth_class(node_type);
-        if tc != TruthClass::Derived {
-            bail!("'{node_type}' is a {tc} node kind — use add_node, not add_derived_node");
+        if !registry::node_allows_truth_class(node_type, TruthClass::Derived) {
+            bail!(
+                "'{node_type}' does not allow derived nodes — use add_node, not add_derived_node"
+            );
         }
+        let tc = TruthClass::Derived;
         let id = derived_id(&[node_type.as_str(), det_key]);
         self.conn.execute(
             "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)
@@ -386,29 +388,54 @@ impl Store {
 
     /// Current content hash of the codefile flagged by a finding.
     pub fn finding_codefile_hash(&self, finding_id: &str) -> Result<Option<String>> {
-        let Some(flags) = self
+        if let Some(flags) = self
             .edges_with(Some(EdgeKind::Flags), Some(finding_id), None)?
             .into_iter()
             .next()
-        else {
+        {
+            return self.get_facet(&flags.to_id, TargetKind::Node, "content_hash");
+        }
+        let Some(finding) = self.get_node(finding_id)? else {
             return Ok(None);
         };
-        self.get_facet(&flags.to_id, TargetKind::Node, "content_hash")
+        if finding.node_type != NodeType::Finding || finding.truth_class != TruthClass::Asserted {
+            return Ok(None);
+        }
+        let Some(file) = finding.body.get("file").and_then(|v| v.as_str()) else {
+            return Ok(None);
+        };
+        let codefile = self.resolve_node(file, Some(NodeType::CodeFile))?;
+        self.get_facet(&codefile.id, TargetKind::Node, "content_hash")
     }
 
     /// Intents that own (implement) the codefile a finding flags. Cohesion
     /// evidence for triage: one or two cohesive intents reads as justified
     /// length; many unrelated ones reads as a file that needs splitting.
     pub fn finding_owner_intents(&self, finding_id: &str) -> Result<Vec<Node>> {
-        let Some(flags) = self
+        let codefile_id = if let Some(flags) = self
             .edges_with(Some(EdgeKind::Flags), Some(finding_id), None)?
             .into_iter()
             .next()
-        else {
+        {
+            Some(flags.to_id)
+        } else {
+            let Some(finding) = self.get_node(finding_id)? else {
+                return Ok(Vec::new());
+            };
+            if finding.node_type != NodeType::Finding || finding.truth_class != TruthClass::Asserted
+            {
+                None
+            } else if let Some(file) = finding.body.get("file").and_then(|v| v.as_str()) {
+                Some(self.resolve_node(file, Some(NodeType::CodeFile))?.id)
+            } else {
+                None
+            }
+        };
+        let Some(codefile_id) = codefile_id else {
             return Ok(Vec::new());
         };
         let mut out = Vec::new();
-        for e in self.realizing_implementers(&flags.to_id)? {
+        for e in self.realizing_implementers(&codefile_id)? {
             if let Some(n) = self.get_node(&e.from_id)? {
                 if n.node_type == NodeType::Intent {
                     out.push(n);

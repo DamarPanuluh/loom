@@ -23,10 +23,12 @@ impl Store {
         if name.trim().is_empty() {
             bail!("node name must not be empty");
         }
-        let tc = registry::node_truth_class(node_type);
-        if tc != TruthClass::Asserted {
-            bail!("'{node_type}' is a {tc} node kind — use add_derived_node, not add_node");
+        if !registry::node_allows_truth_class(node_type, TruthClass::Asserted) {
+            bail!(
+                "'{node_type}' does not allow asserted nodes — use add_derived_node, not add_node"
+            );
         }
+        let tc = TruthClass::Asserted;
         let (id, now) = id_and_now(&self.conn)?;
         self.conn.execute(
             "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)

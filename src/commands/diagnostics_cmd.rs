@@ -39,7 +39,7 @@ pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     "reason": adj.as_ref().map(|(_, r)| r.as_str()).unwrap_or(""),
                     "adjudicate": if *materialized {
                         format!(
-                            "loom finding verdict {} <justified|needed|blocked> --reason '…'",
+                            "loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate> --reason '…'",
                             &id[..8.min(id.len())]
                         )
                     } else {
@@ -63,7 +63,7 @@ pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     println!("    remedy: {}", s.remedy);
                     if *materialized {
                         println!(
-                            "    adjudicate: loom finding verdict {} <justified|needed|blocked> --reason '…'",
+                            "    adjudicate: loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate> --reason '…'",
                             &id[..8.min(id.len())]
                         );
                     } else {
@@ -97,6 +97,27 @@ pub(crate) fn debt_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
 }
 pub(crate) fn finding(graph: Option<&Path>, cmd: FindingCmd, json: bool) -> Result<()> {
     match cmd {
+        FindingCmd::Add {
+            text,
+            source,
+            kind,
+            evidence,
+            impact,
+            confidence,
+            file,
+            link,
+        } => finding_add(
+            graph,
+            &text,
+            &source,
+            &kind,
+            &evidence,
+            &impact,
+            confidence,
+            file.as_deref(),
+            link.as_deref(),
+            json,
+        ),
         FindingCmd::List { kind, state } => finding_list(graph, kind, state, json),
         FindingCmd::Verdict {
             id,
@@ -104,6 +125,64 @@ pub(crate) fn finding(graph: Option<&Path>, cmd: FindingCmd, json: bool) -> Resu
             reason,
         } => finding_verdict(graph, &id, &verdict, &reason, json),
     }
+}
+fn finding_add(
+    graph: Option<&Path>,
+    text: &str,
+    source: &str,
+    kind: &str,
+    evidence: &str,
+    impact: &str,
+    confidence: f64,
+    file: Option<&str>,
+    link: Option<&str>,
+    json: bool,
+) -> Result<()> {
+    match source {
+        "code_audit" | "wiki" | "validation" | "llm" => {}
+        "human" | "external" | "support" | "import" => {
+            bail!("human/external input belongs in inbox; use loom door or loom inbox add")
+        }
+        "question" => bail!("product questions belong in loom question add"),
+        other => bail!("unknown finding source '{other}' (use code_audit|wiki|validation|llm)"),
+    }
+    for (field, value) in [("text", text), ("evidence", evidence), ("impact", impact)] {
+        if crate::model::is_placeholder(value) {
+            bail!("finding add requires substantive {field} (not a placeholder like '…' or '<{field}>')");
+        }
+    }
+    if !(0.0..=1.0).contains(&confidence) {
+        bail!("finding add confidence must be between 0.0 and 1.0");
+    }
+    if file.is_none() && link.is_none() {
+        bail!("finding add requires --file <registered codefile> or --link <ref>");
+    }
+    let store = open(graph)?;
+    let codefile = match file {
+        Some(path) => Some(store.resolve_node(path, Some(NodeType::CodeFile))?),
+        None => None,
+    };
+    let mut body = serde_json::json!({
+        "kind": kind,
+        "source": source,
+        "evidence": evidence,
+        "impact": impact,
+        "confidence": confidence,
+    });
+    if let Some(cf) = &codefile {
+        body["file"] = serde_json::Value::String(cf.name.clone());
+    }
+    if let Some(l) = link {
+        body["link"] = serde_json::Value::String(l.to_string());
+    }
+    let finding = store.add_node(NodeType::Finding, text, impact, kind, body)?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({ "finding": node_json(&finding) }),
+        "loom next --mode triage",
+        format!("finding [{}] captured for triage", &finding.id[..8]),
+    )
 }
 fn finding_list(
     graph: Option<&Path>,
@@ -159,10 +238,10 @@ fn finding_list(
     Ok(())
 }
 /// Validate, resolve, and record a finding adjudication through the single gate
-/// the CLI enforces — verdict vocabulary (`justified|needed|blocked`) plus a
-/// substantive (non-placeholder) reason — returning the resolved finding.
+/// the CLI enforces — verdict vocabulary
+/// (`needed|justified|rejected|deferred|blocked|duplicate`) plus a substantive
+/// (non-placeholder) reason — returning the resolved finding.
 /// Shared by `loom finding verdict` and the `loom apply` adjudications batch so
-/// the batch can never accept what the per-verb command would reject.
 pub(crate) fn adjudicate_finding(
     store: &Store,
     id: &str,
@@ -201,16 +280,19 @@ fn finding_verdict(
 }
 fn validate_finding_filter_state(state: &str) -> Result<()> {
     match state {
-        "untriaged" | "stale" | "justified" | "needed" | "blocked" => Ok(()),
+        "untriaged" | "stale" | "needed" | "justified" | "rejected" | "deferred" | "blocked"
+        | "duplicate" => Ok(()),
         other => {
-            bail!("unknown finding state '{other}' (use untriaged|stale|justified|needed|blocked)")
+            bail!("unknown finding state '{other}' (use untriaged|stale|needed|justified|rejected|deferred|blocked|duplicate)")
         }
     }
 }
 fn validate_finding_verdict(verdict: &str) -> Result<()> {
     match verdict {
-        "justified" | "needed" | "blocked" => Ok(()),
-        other => bail!("unknown verdict '{other}' (use justified|needed|blocked)"),
+        "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate" => Ok(()),
+        other => bail!(
+            "unknown verdict '{other}' (use needed|justified|rejected|deferred|blocked|duplicate)"
+        ),
     }
 }
 pub(crate) fn doctor_cmd(graph: Option<&Path>, json: bool) -> Result<()> {

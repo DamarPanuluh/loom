@@ -125,6 +125,16 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
     let store = open(graph)?;
     match cmd {
         InboxCmd::Add { text, source, link } => {
+            match source.as_str() {
+                "human" | "external" | "support" | "import" => {}
+                "code_audit" | "wiki" | "validation" | "llm" => {
+                    bail!("evidence-backed observations belong in loom finding add")
+                }
+                "question" => bail!("product questions belong in loom question add"),
+                other => {
+                    bail!("unknown inbox source '{other}' (use human|external|support|import)")
+                }
+            }
             let mut body = serde_json::json!({ "source": source });
             if let Some(l) = &link {
                 body["link"] = serde_json::Value::String(l.clone());
@@ -237,6 +247,163 @@ fn inbox_json(n: &crate::model::Node) -> serde_json::Value {
         "created_at": n.created_at,
         "updated_at": n.updated_at,
     })
+}
+
+pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    match cmd {
+        QuestionCmd::Add { text, intent } => {
+            if crate::model::is_placeholder(&text) {
+                bail!("question add requires substantive text");
+            }
+            let intent = store.resolve_node(&intent, Some(NodeType::Intent))?;
+            require_lane(&store, crate::registry::OwnerRole::Builder)?;
+            let question = store.add_node(
+                NodeType::Question,
+                &truncate(&text, 60),
+                &text,
+                "open",
+                serde_json::json!({ "intent": intent.id }),
+            )?;
+            store.add_edge(
+                EdgeKind::Questions,
+                &question.id,
+                &intent.id,
+                TruthClass::Asserted,
+            )?;
+            let next_step = format!(
+                "ask the human, then loom question answer {} --answer '…'",
+                &question.id[..8.min(question.id.len())]
+            );
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({
+                    "question": node_json(&question),
+                    "intent": node_json(&intent),
+                }),
+                &next_step,
+                format!(
+                    "question [{}] opened for '{}'",
+                    &question.id[..8.min(question.id.len())],
+                    intent.name
+                ),
+            )
+        }
+        QuestionCmd::List {
+            limit,
+            offset,
+            status,
+        } => {
+            let filtered: Vec<_> = store
+                .list_nodes(Some(NodeType::Question), usize::MAX)?
+                .into_iter()
+                .filter(|n| status.as_deref().is_none_or(|s| n.status == s))
+                .collect();
+            let total = filtered.len();
+            let items: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
+            if json {
+                let rows: Result<Vec<_>> = items.iter().map(|n| question_json(&store, n)).collect();
+                println!("{}", serde_json::to_string_pretty(&rows?)?);
+            } else {
+                if items.is_empty() && offset == 0 {
+                    println!("questions empty");
+                }
+                for n in &items {
+                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                }
+                if let Some(footer) = super::page_footer(items.len(), offset, total) {
+                    println!("{footer}");
+                }
+            }
+            Ok(())
+        }
+        QuestionCmd::Show { key } => {
+            let n = store.resolve_node(&key, Some(NodeType::Question))?;
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&question_json(&store, &n)?)?
+                );
+            } else {
+                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                println!("{}", n.description);
+            }
+            Ok(())
+        }
+        QuestionCmd::Answer { key, answer } => {
+            if crate::model::is_placeholder(&answer) {
+                bail!("question answer requires a substantive answer");
+            }
+            let n = store.resolve_node(&key, Some(NodeType::Question))?;
+            store.set_node_status(&n.id, "answered")?;
+            store.add_note(&n.id, "decision", &format!("answered: {answer}"))?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "id": n.id, "status": "answered", "answer": answer }),
+                "loom status",
+                format!("question [{}] answered", &n.id[..8]),
+            )
+        }
+        QuestionCmd::Close {
+            key,
+            status,
+            reason,
+        } => {
+            const STATUSES: &[&str] = &["withdrawn", "duplicate", "deferred"];
+            if !STATUSES.contains(&status.as_str()) {
+                bail!(
+                    "unknown question close status '{status}' (use withdrawn|duplicate|deferred)"
+                );
+            }
+            if crate::model::is_placeholder(&reason) {
+                bail!("question close requires a substantive reason");
+            }
+            let n = store.resolve_node(&key, Some(NodeType::Question))?;
+            store.set_node_status(&n.id, &status)?;
+            store.add_note(&n.id, "decision", &format!("{status}: {reason}"))?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "id": n.id, "status": status, "reason": reason }),
+                "loom status",
+                format!("question [{}] → {status}", &n.id[..8]),
+            )
+        }
+        QuestionCmd::Remove { key } => {
+            let n = store.resolve_node(&key, Some(NodeType::Question))?;
+            store.delete_node(&n.id)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "removed": n.id }),
+                "loom status",
+                format!("removed question [{}]", &n.id[..8]),
+            )
+        }
+    }
+}
+
+fn question_json(store: &crate::store::Store, n: &crate::model::Node) -> Result<serde_json::Value> {
+    let edge = store
+        .edges_with(Some(EdgeKind::Questions), Some(&n.id), None)?
+        .into_iter()
+        .next();
+    let intent = match edge {
+        Some(e) => store.get_node(&e.to_id)?,
+        None => None,
+    };
+    Ok(serde_json::json!({
+        "id": n.id,
+        "status": n.status,
+        "title": n.name,
+        "text": n.description,
+        "body": n.body,
+        "created_at": n.created_at,
+        "updated_at": n.updated_at,
+        "intent": intent.as_ref().map(node_json),
+    }))
 }
 /// Resolve a note target: any node (name/id/fragment) or, failing that, any
 /// edge (id/prefix) — adjudications attach to claims, and claims live on
@@ -721,14 +888,14 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     if pulse.open_questions > 0 {
         println!(
-            "  - {} question(s) waiting for YOUR answer  [loom inbox list --status new]",
+            "  - {} question(s) waiting for YOUR answer  [loom question list --status open]",
             pulse.open_questions
         );
     }
-    if pulse.inbox > pulse.open_questions {
+    if pulse.inbox > 0 {
         println!(
             "  - {} inbox item(s) to triage          [loom inbox list --status new]",
-            pulse.inbox - pulse.open_questions
+            pulse.inbox
         );
     }
     if pulse.low_confidence > 0 {
@@ -849,9 +1016,11 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "role": role,
-                "commands": ["loom sync", "loom next --all", "loom status", "loom coverage", "loom doctor", "loom export --check", "loom door"],
+                "commands": ["loom sync", "loom next --all", "loom status", "loom coverage", "loom doctor", "loom export --check", "loom door", "loom finding add", "loom question add"],
                 "intake": {
-                    "raw_thought": "loom door \"<utterance>\" — capture first, route later (inbox mark closes it)",
+                    "human_or_external_input": "loom door \"<utterance>\" — capture raw input, route later with inbox mark",
+                    "evidence_backed_observation": "loom finding add \"<claim>\" --source code_audit --file <codefile> --evidence \"…\" --impact \"…\" --confidence <n>",
+                    "product_question": "loom question add \"<question>\" --intent <intent>",
                     "structured_plan": "loom proposal add --title '…' (--file <path> | --text '…') — decompose into adoptable items",
                     "falsifiable_design_claim": "loom hypothesis add --name '…' --claim '…' --target <intent> — prove supported|refuted before it becomes work",
                     "timeboxed_activity": "loom task add '<title>' --kind spike --target '<intent>' — close with a result (lands as a note on the target intent); targetless stays diary-only"
@@ -874,7 +1043,9 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             println!("  loom status     rung ladder + the single next move");
             println!("  loom door       capture a raw utterance before routing it");
             println!("Capture routing — pick the entrance by input shape:");
-            println!("  raw thought / finding / question   loom door \"<utterance>\"        capture first; route via inbox mark");
+            println!("  human/external input             loom door \"<utterance>\"        capture raw input; route via inbox mark");
+            println!("  evidence-backed code/tool smell  loom finding add \"<claim>\" ... capture for finding triage");
+            println!("  product decision needed          loom question add \"<question>\" --intent <intent>");
             println!("  structured plan / RFC              loom proposal add               decompose into adoptable items");
             println!("  falsifiable design claim           loom hypothesis add             prove supported|refuted, then adopt");
             println!("  timeboxed activity                 loom task add --target          close with a result; lands as a note on the target intent (targetless = diary-only)");
@@ -908,8 +1079,8 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     crate::truth::TruthAxis::Implementation,
                 ),
                 "analyzer" => (
-                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record justified/needed/blocked with a reason. Serves the review queue too: re-inspect low-confidence verdicts independently before reading the recorded evidence.",
-                    "loom edge explore <a> <b> ground|issue|independent; loom edge verdict <edge_id> ground|issue|independent (non-relates claims); loom finding verdict <id> justified|needed|blocked --reason '…'",
+                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record needed/justified/rejected/deferred/blocked/duplicate with a reason. Serves the review queue too: re-inspect low-confidence verdicts independently before reading the recorded evidence.",
+                    "loom edge explore <a> <b> ground|issue|independent; loom edge verdict <edge_id> ground|issue|independent (non-relates claims); loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate --reason '…'",
                     "edit code; verdict from name similarity; inheriting a prior verdict's confidence",
                     crate::truth::TruthAxis::Verdict,
                 ),
@@ -1286,7 +1457,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
                 "inspection_statuses": InspectionStatus::ALL.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
                 "intent_lifecycle": IntentLifecycle::ALL.iter().map(|l| l.as_str()).collect::<Vec<_>>(),
                 "truth_classes": TruthClass::ALL.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
-                "finding_verdicts": ["justified", "needed", "blocked"],
+                "finding_verdicts": ["needed", "justified", "rejected", "deferred", "blocked", "duplicate"],
             }))?
         );
         return Ok(());
@@ -1329,8 +1500,8 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
             .join(" ")
     );
     println!("finding verdicts:");
-    println!("  justified | needed | blocked");
-    println!("  stored as asserted adjudication facets on stable derived Finding ids");
+    println!("  needed | justified | rejected | deferred | blocked | duplicate");
+    println!("  stored as asserted adjudication facets on stable Finding ids");
     println!("  verdicts go stale when the flagged codefile content hash changes");
     Ok(())
 }

@@ -378,16 +378,18 @@ fn journey_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<Axis
     }
 }
 
-/// Unanswered questions raised for the human: new inbox items linked to this
-/// intent with source `question`.
+/// Unanswered questions raised for the human: open Question nodes linked to
+/// this intent by a live asserted `questions` edge.
 fn questions_axis(store: &Store, intent: &Node) -> Result<AxisState> {
-    let link = format!("intent:{}", intent.id);
-    let open = store
-        .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
+    let mut linked = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Questions), None, Some(&intent.id))? {
+        if let Some(question) = store.get_node(&edge.from_id)? {
+            linked.push(question);
+        }
+    }
+    let open = linked
         .into_iter()
-        .filter(|n| n.status == "new")
-        .filter(|n| n.body.get("source").and_then(|v| v.as_str()) == Some("question"))
-        .filter(|n| n.body.get("link").and_then(|v| v.as_str()) == Some(link.as_str()))
+        .filter(|n| n.node_type == NodeType::Question && n.status == "open")
         .count();
     if open == 0 {
         Ok(axis("questions", "met", "no unanswered questions".into()))

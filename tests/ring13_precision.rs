@@ -6,7 +6,7 @@
 
 use loom::evidence::{SpanStamp, EVIDENCE_SPANS_KEY};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
-use loom::signal::{smell_det_key, smell_is_justified, smells};
+use loom::signal::{smell_det_key, smell_has_resolving_adjudication, smells};
 use loom::store::Store;
 use loom::sync;
 
@@ -494,7 +494,7 @@ fn unchanged_symbol_rewritten_evidence() {
 /// `vague_intent` fires when a description hedges without an observable outcome.
 /// It does NOT fire when digits, a "by <gerund>" clause, or an outcome-verb stem
 /// defuse the hedge. After `sync`, the Finding is materialized; a "justified"
-/// adjudication makes `smell_is_justified` return true.
+/// adjudication makes `smell_has_resolving_adjudication` return true.
 #[test]
 fn vague_intent_smell() {
     let tmp = Tmp::new();
@@ -572,8 +572,8 @@ fn vague_intent_smell() {
 
     // Before adjudication: not justified.
     assert!(
-        !smell_is_justified(&store, &identity).unwrap(),
-        "smell must not be justified before adjudication"
+        !smell_has_resolving_adjudication(&store, &identity).unwrap(),
+        "smell must not have a resolving adjudication before any verdict"
     );
 
     // Adjudicate as justified.
@@ -585,9 +585,9 @@ fn vague_intent_smell() {
         )
         .unwrap();
 
-    // After adjudication: smell_is_justified reads the durable asserted facet.
+    // After adjudication: smell_has_resolving_adjudication reads the durable asserted facet.
     assert!(
-        smell_is_justified(&store, &identity).unwrap(),
-        "smell_is_justified must return true after a 'justified' adjudication"
+        smell_has_resolving_adjudication(&store, &identity).unwrap(),
+        "smell_has_resolving_adjudication must return true after a 'justified' adjudication"
     );
 }

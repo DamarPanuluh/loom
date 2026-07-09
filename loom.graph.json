@@ -124,14 +124,14 @@
       "type": "validation",
       "name": "ring1 import two-phase restore",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring1 restore",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.930Z",
-      "updated_at": "2026-07-07T07:40:02.926Z"
+      "updated_at": ""
     },
     {
       "id": "1157d776366e21f0f46241b20f833671",
@@ -382,14 +382,14 @@
       "type": "validation",
       "name": "ring12 apply batch atomicity",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring12_phase1 apply",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.808Z",
-      "updated_at": "2026-07-07T07:40:05.274Z"
+      "updated_at": ""
     },
     {
       "id": "4177f651c1ca9e238156bd14c5f93471",
@@ -588,14 +588,14 @@
       "type": "validation",
       "name": "ring9 packet self-containment",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring9 packet",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:54.103Z",
-      "updated_at": "2026-07-07T07:40:18.326Z"
+      "updated_at": ""
     },
     {
       "id": "5f61fcfaf2e9945fe9bd821b1f79489f",
@@ -720,14 +720,14 @@
       "type": "validation",
       "name": "ring9 find grounding surfacing",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring9",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.886Z",
-      "updated_at": "2026-07-07T07:40:17.843Z"
+      "updated_at": ""
     },
     {
       "id": "753b7e7626e37c2ed39d50a8ddd2c139",
@@ -745,14 +745,14 @@
       "type": "validation",
       "name": "ring5 CLI surface drive",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring5",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.838Z",
-      "updated_at": "2026-07-07T07:40:10.838Z"
+      "updated_at": ""
     },
     {
       "id": "770bdb118b027e621257b9e0de240d48",
@@ -894,14 +894,14 @@
       "type": "validation",
       "name": "ring4 maturity ladder",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring4",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.959Z",
-      "updated_at": "2026-07-07T07:40:08.122Z"
+      "updated_at": ""
     },
     {
       "id": "8549792eed930ff717a45c1e0c02a168",
@@ -1319,14 +1319,14 @@
       "type": "validation",
       "name": "ring1 registry endpoint typing",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring1 registry",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:53.868Z",
-      "updated_at": "2026-07-07T07:40:03.110Z"
+      "updated_at": ""
     },
     {
       "id": "cea648d651c9d9d0da65fa8df4d49947",
@@ -1374,7 +1374,7 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "1038 lines (> 600)",
+      "description": "1092 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1408,6 +1408,20 @@
       "body": {
         "kind": "excess_args",
         "symbol": "item_adopt"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d0ba94fe3e0d132a2",
+      "type": "finding",
+      "name": "src/store/derived.rs is oversized",
+      "description": "610 lines (> 600)",
+      "status": "oversized_file",
+      "truth_class": "derived",
+      "body": {
+        "kind": "oversized_file",
+        "symbol": ""
       },
       "created_at": "",
       "updated_at": ""
@@ -1608,6 +1622,20 @@
       "updated_at": ""
     },
     {
+      "id": "d2e2c92880134e969",
+      "type": "finding",
+      "name": "src/commands/misc_cmd.rs::question is long",
+      "description": "135 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "symbol": "question"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d2fcf6c1e25f78a67",
       "type": "code_rule",
       "name": "max-file-size",
@@ -1616,6 +1644,20 @@
       "truth_class": "asserted",
       "body": {
         "category": "size"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d306fc75f519784bd",
+      "type": "finding",
+      "name": "src/store/facets.rs::restore_inner is complex",
+      "description": "complexity ~22 (> 20)",
+      "status": "complex_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "complex_symbol",
+        "symbol": "restore_inner"
       },
       "created_at": "",
       "updated_at": ""
@@ -1789,7 +1831,7 @@
       "id": "d50a4490590dba276",
       "type": "finding",
       "name": "src/workitem/queues.rs is oversized",
-      "description": "1108 lines (> 600)",
+      "description": "1111 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1884,7 +1926,7 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "1321 lines (> 600)",
+      "description": "1329 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -1926,7 +1968,7 @@
       "id": "d824dc670b049b437",
       "type": "finding",
       "name": "src/commands/diagnostics_cmd.rs is oversized",
-      "description": "806 lines (> 600)",
+      "description": "888 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2189,7 +2231,7 @@
       "id": "db589a2e0c605c5fd",
       "type": "finding",
       "name": "src/commands/misc_cmd.rs is oversized",
-      "description": "1336 lines (> 600)",
+      "description": "1507 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
@@ -2296,6 +2338,20 @@
       "updated_at": ""
     },
     {
+      "id": "dd742b1b4ea8e7e3b",
+      "type": "finding",
+      "name": "src/commands/diagnostics_cmd.rs::finding_add takes many arguments",
+      "description": "10 args (> 6)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "symbol": "finding_add"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dd8a66484aee46a9f",
       "type": "finding",
       "name": "src/maturity.rs::build_rungs is complex",
@@ -2341,7 +2397,7 @@
       "id": "df0c493b2fe97f7ec",
       "type": "finding",
       "name": "src/store/facets.rs::restore_inner is long",
-      "description": "183 lines (> 120)",
+      "description": "193 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
@@ -2356,14 +2412,14 @@
       "type": "validation",
       "name": "ring3 router asserted residue",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring3",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:54.063Z",
-      "updated_at": "2026-07-07T07:40:07.598Z"
+      "updated_at": ""
     },
     {
       "id": "dfe03799171524433",
@@ -2488,14 +2544,14 @@
       "type": "validation",
       "name": "ring8 finding adjudication",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --quiet --test ring8",
         "type": "test"
       },
       "created_at": "2026-07-07T07:39:54.006Z",
-      "updated_at": "2026-07-07T07:40:16.765Z"
+      "updated_at": ""
     },
     {
       "id": "e81bc23589889eeadfae23dd33257807",
@@ -2634,14 +2690,14 @@
       "to_id": "3dc69ba738706bed707f569eaff3e558",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the edge family receives its typed subcommand values from the CLI",
       "evidence": "src/commands/edge.rs imports crate::cli",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.800Z",
-      "updated_at": "2026-07-07T07:30:13.800Z"
+      "updated_at": "2026-07-08T19:49:16.352Z"
     },
     {
       "id": "07c7a143d650a38b939a95ea6a38eadd",
@@ -2664,14 +2720,14 @@
       "to_id": "631a7b25e5acbfe2bc0b88f256f440d6",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "smells/debt/finding/coverage/calibrate/threshold read computed signals; only adjudications and config write",
       "evidence": "src/commands/diagnostics_cmd.rs advisory reads honor INV-3; finding verdict is the durable write",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.547Z",
-      "updated_at": "2026-07-07T07:27:17.547Z"
+      "updated_at": "2026-07-08T19:49:16.337Z"
     },
     {
       "id": "0919e10d15a40f77e58744928f78d946",
@@ -2679,14 +2735,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "search renders typed nodes and edges",
       "evidence": "src/commands/misc_cmd.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.796Z",
-      "updated_at": "2026-07-07T07:30:13.796Z"
+      "updated_at": "2026-07-08T19:49:16.346Z"
     },
     {
       "id": "0b6dc75c16005c6804f25a4fd8023876",
@@ -2739,14 +2795,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/proposal_cmd.rs imports src/model.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.590Z",
-      "updated_at": "2026-07-07T07:31:15.590Z"
+      "updated_at": "2026-07-08T19:49:16.353Z"
     },
     {
       "id": "11c0b9cecbd1934ebbb5784a84d7d631",
@@ -2829,14 +2885,14 @@
       "to_id": "770bdb118b027e621257b9e0de240d48",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring8` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:54.006Z",
-      "updated_at": "2026-07-07T07:40:16.764Z"
+      "updated_at": "2026-07-08T19:49:16.356Z"
     },
     {
       "id": "1814c61d1a131aa847eff3088851bb40",
@@ -2859,14 +2915,14 @@
       "to_id": "0f836046deb40613d04d088088da6aae",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/workitem/contracts.rs imports src/workitem/queues.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:16.432Z",
-      "updated_at": "2026-07-07T07:31:16.432Z"
+      "updated_at": "2026-07-08T19:49:16.348Z"
     },
     {
       "id": "1af04c31999286274d26314b94725cf8",
@@ -2874,14 +2930,14 @@
       "to_id": "5d82bc6c976bf45b513ac42ba6f51d7a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "an implemented parent intent with grounded children is not reported ungrounded",
       "evidence": "maturity.rs ladder collects parent ids from hierarchy edges and continues past them when counting ungrounded leaves",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:40.779Z",
-      "updated_at": "2026-07-06T16:54:40.824Z"
+      "updated_at": "2026-07-08T19:49:16.337Z"
     },
     {
       "id": "1c1a4ffb1d648e818c3c4d5944dd7064",
@@ -2919,14 +2975,14 @@
       "to_id": "3dc69ba738706bed707f569eaff3e558",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the proposal family receives its typed subcommand values from the CLI",
       "evidence": "src/commands/proposal_cmd.rs imports crate::cli",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.801Z",
-      "updated_at": "2026-07-07T07:30:13.801Z"
+      "updated_at": "2026-07-08T19:49:16.352Z"
     },
     {
       "id": "21f6667587a496e1ee804ad6b813c200",
@@ -2994,14 +3050,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "rung inputs are typed node/edge queries",
       "evidence": "src/maturity.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.797Z",
-      "updated_at": "2026-07-07T07:30:13.797Z"
+      "updated_at": "2026-07-08T19:49:16.354Z"
     },
     {
       "id": "2926a21dcd20aca9cff2dbb61e934759",
@@ -3024,14 +3080,14 @@
       "to_id": "81aaea4845a7ece1e330bbb96ad0878e",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "importing a graph never inserts an edge before its endpoint nodes exist",
       "evidence": "re-verified: restore_inner still validates fully then writes nodes before edges in one txn (facets.rs change was a module doc header); ring1 restore tests pass",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:39.847Z",
-      "updated_at": "2026-07-07T07:37:43.092Z"
+      "updated_at": "2026-07-08T19:49:16.338Z"
     },
     {
       "id": "2bbabd08c38007e28d55f851a3967a65",
@@ -3129,14 +3185,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring1 registry` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.869Z",
-      "updated_at": "2026-07-07T07:40:03.110Z"
+      "updated_at": "2026-07-08T19:49:16.353Z"
     },
     {
       "id": "3687235070f0ad45cdaec1b9bddac8e3",
@@ -3219,14 +3275,14 @@
       "to_id": "9d30a67b219e08647db9222997164369",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "an analyze packet serves a stale settled claim before a merely uninspected one",
       "evidence": "re-verified: queues.rs analyze_item still takes needs_reverification non-governs/non-validates edges first (change was a module doc header); ring3/ring9 queue tests pass",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:40.506Z",
-      "updated_at": "2026-07-07T07:37:43.103Z"
+      "updated_at": "2026-07-08T19:49:16.345Z"
     },
     {
       "id": "3c614b1b6871d39d3144deea57d55a19",
@@ -3234,14 +3290,14 @@
       "to_id": "3dc69ba738706bed707f569eaff3e558",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the intent family receives its typed subcommand values from the CLI",
       "evidence": "src/commands/intent.rs imports crate::cli",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.800Z",
-      "updated_at": "2026-07-07T07:30:13.800Z"
+      "updated_at": "2026-07-08T19:49:16.352Z"
     },
     {
       "id": "3c625cc769c33e27e721d12f652f43e1",
@@ -3264,14 +3320,14 @@
       "to_id": "e13269d99408b7cb0dae549e8d68a564",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/apply_cmd.rs imports src/commands/intent.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:17.240Z",
-      "updated_at": "2026-07-07T07:31:17.240Z"
+      "updated_at": "2026-07-08T19:49:16.359Z"
     },
     {
       "id": "3eb4702d40467066113c7869fa10c271",
@@ -3279,14 +3335,14 @@
       "to_id": "778d926298362536a6b7c57082e7e63e",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring1 restore` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.930Z",
-      "updated_at": "2026-07-07T07:40:02.925Z"
+      "updated_at": "2026-07-08T19:49:16.357Z"
     },
     {
       "id": "3fa8c22394030e638e8827028645849e",
@@ -3294,14 +3350,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "journey verdicts are typed edge writes",
       "evidence": "src/journey.rs and src/commands/journey/prompt.rs import crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.795Z",
-      "updated_at": "2026-07-07T07:30:13.795Z"
+      "updated_at": "2026-07-08T19:49:16.354Z"
     },
     {
       "id": "408b2d453aa878bcd0861115f8e25aca",
@@ -3324,14 +3380,14 @@
       "to_id": "3dc69ba738706bed707f569eaff3e558",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the journey family receives its typed subcommand values from the CLI",
       "evidence": "src/commands/journey/{mod,coverage,invariants}.rs import crate::cli; src/proof.rs imports crate::commands",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.801Z",
-      "updated_at": "2026-07-07T07:30:13.801Z"
+      "updated_at": "2026-07-08T19:49:16.352Z"
     },
     {
       "id": "422b3dbfada7794829cccfe6d5222af3",
@@ -3354,14 +3410,14 @@
       "to_id": "20fa072ab6da8c34e8a4b52b1c9a55d8",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "each lane's prompt contract prefills the exact evidence-gated write-back",
       "evidence": "src/workitem/contracts.rs per-lane PromptContract text targeting gated store paths",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.543Z",
-      "updated_at": "2026-07-07T07:27:17.543Z"
+      "updated_at": "2026-07-08T19:49:16.345Z"
     },
     {
       "id": "43bfdab89ed72441b68e11d3ad8b34bc",
@@ -3444,14 +3500,14 @@
       "to_id": "0c14c9d55d31179cb9fc8ae9198df4f4",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring9` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.887Z",
-      "updated_at": "2026-07-07T07:40:17.842Z"
+      "updated_at": "2026-07-08T19:49:16.346Z"
     },
     {
       "id": "46655c095b6abb1e6ed91b6efa5fa054",
@@ -3489,14 +3545,14 @@
       "to_id": "0c561b3d5d05e79ca2704b69cac5cf16",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands.rs imports src/travel.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:16.430Z",
-      "updated_at": "2026-07-07T07:31:16.430Z"
+      "updated_at": "2026-07-08T19:49:16.351Z"
     },
     {
       "id": "4b5757bdb12085cbdc73250ffbc88d70",
@@ -3624,14 +3680,14 @@
       "to_id": "e81bc23589889eeadfae23dd33257807",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "batch sections apply in dependency order inside one transaction through the normal gates",
       "evidence": "src/commands/apply_cmd.rs ApplySpec {vocab,intents,groundings,relationships,verdicts,adjudications,tags}; rejection rolls back",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.535Z",
-      "updated_at": "2026-07-07T07:27:17.535Z"
+      "updated_at": "2026-07-08T19:49:16.336Z"
     },
     {
       "id": "54c998105c8be2e65571916c10beb566",
@@ -3654,14 +3710,14 @@
       "to_id": "acb8cd25e9786133ad89fdde4290342d",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring4` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.959Z",
-      "updated_at": "2026-07-07T07:40:08.122Z"
+      "updated_at": "2026-07-08T19:49:16.357Z"
     },
     {
       "id": "5ae35f7c9b3d25d352b01e6302927d97",
@@ -3684,14 +3740,14 @@
       "to_id": "0f836046deb40613d04d088088da6aae",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/edge.rs imports src/workitem/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:17.241Z",
-      "updated_at": "2026-07-07T07:31:17.241Z"
+      "updated_at": "2026-07-08T19:49:16.348Z"
     },
     {
       "id": "5f909e370cfabc97774e43724b7daa33",
@@ -3759,14 +3815,14 @@
       "to_id": "0f836046deb40613d04d088088da6aae",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/pulse.rs imports src/workitem/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.590Z",
-      "updated_at": "2026-07-07T07:31:15.590Z"
+      "updated_at": "2026-07-08T19:49:16.348Z"
     },
     {
       "id": "65dbf57b5028f37e750434c939452cb5",
@@ -3864,14 +3920,14 @@
       "to_id": "3dc69ba738706bed707f569eaff3e558",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the diagnostics family receives its typed subcommand values from the CLI",
       "evidence": "src/commands/diagnostics_cmd.rs imports crate::cli",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.800Z",
-      "updated_at": "2026-07-07T07:30:13.800Z"
+      "updated_at": "2026-07-08T19:49:16.352Z"
     },
     {
       "id": "6c4709e4cb905f7bb23cce65a620ccd0",
@@ -3924,14 +3980,14 @@
       "to_id": "28a8dd5ae46a04c49f4317579e5285fd",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "node CRUD is asserted-only and resolution is exact-or-unique-fragment",
       "evidence": "src/store/nodes.rs add_node/resolve_node/redefine ripple incl. implements",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.541Z",
-      "updated_at": "2026-07-07T07:27:17.541Z"
+      "updated_at": "2026-07-08T19:49:16.338Z"
     },
     {
       "id": "6fd932a158b6050d61e1136eb395bec3",
@@ -3984,14 +4040,14 @@
       "to_id": "3dc69ba738706bed707f569eaff3e558",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the wiki family receives its typed subcommand values from the CLI",
       "evidence": "src/commands/wiki.rs imports crate::cli",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.801Z",
-      "updated_at": "2026-07-07T07:30:13.801Z"
+      "updated_at": "2026-07-08T19:49:16.353Z"
     },
     {
       "id": "73e07db53c03015932b559edd1f33247",
@@ -4014,14 +4070,14 @@
       "to_id": "7f44a80e8b925bd88f380c019a766a81",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "find on an intent term prints its grounded path + locator + verdict lines beneath the match",
       "evidence": "re-verified: misc_cmd.rs find_cmd still walks implements edges and reads the locator facet (change was a module doc header)",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:40.969Z",
-      "updated_at": "2026-07-07T07:37:43.112Z"
+      "updated_at": "2026-07-08T19:49:16.337Z"
     },
     {
       "id": "776ab467ee0167b19f39a1a5a52915a7",
@@ -4059,14 +4115,14 @@
       "to_id": "0f836046deb40613d04d088088da6aae",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/apply_cmd.rs imports src/workitem/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:16.430Z",
-      "updated_at": "2026-07-07T07:31:16.430Z"
+      "updated_at": "2026-07-08T19:49:16.348Z"
     },
     {
       "id": "7a0ba297f46ca43a507c404f38d92945",
@@ -4119,14 +4175,14 @@
       "to_id": "4c18b30dcd7d53c54a587b915c2bb5f2",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/diagnostics_cmd.rs imports src/policy.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.591Z",
-      "updated_at": "2026-07-07T07:31:15.591Z"
+      "updated_at": "2026-07-08T19:49:16.356Z"
     },
     {
       "id": "81302921ee8347243dcbdd391490af1f",
@@ -4149,14 +4205,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "packet context is built from typed graph facts",
       "evidence": "src/workitem/context.rs and contracts.rs import crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.799Z",
-      "updated_at": "2026-07-07T07:30:13.800Z"
+      "updated_at": "2026-07-08T19:49:16.349Z"
     },
     {
       "id": "82e448437272bac088ce5c02620fa1ae",
@@ -4194,14 +4250,14 @@
       "to_id": "9f852cf2ca863f2d6aba68b969764aea",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the full top-level surface parses into one typed Command enum",
       "evidence": "src/cli.rs pub struct Cli + pub enum Command (43 variants), argument shape only",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.531Z",
-      "updated_at": "2026-07-07T07:27:17.531Z"
+      "updated_at": "2026-07-08T19:49:16.335Z"
     },
     {
       "id": "8580e3820ac0f2784eb0c5c1c4d9818f",
@@ -4239,14 +4295,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/wiki.rs imports src/model.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.592Z",
-      "updated_at": "2026-07-07T07:31:15.592Z"
+      "updated_at": "2026-07-08T19:49:16.354Z"
     },
     {
       "id": "89de53e9682def55b08f305b8b389b8c",
@@ -4269,14 +4325,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "queue predicates select by typed kind and status",
       "evidence": "src/workitem/mod.rs and queues.rs import crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.800Z",
-      "updated_at": "2026-07-07T07:30:13.800Z"
+      "updated_at": "2026-07-08T19:49:16.347Z"
     },
     {
       "id": "8d58f20019daf676876e0a42abab7aaa",
@@ -4284,14 +4340,14 @@
       "to_id": "effb89825e809684222c862ebb73ff9b",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/apply_cmd.rs imports src/commands/pulse.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:18.032Z",
-      "updated_at": "2026-07-07T07:31:18.032Z"
+      "updated_at": "2026-07-08T19:49:16.359Z"
     },
     {
       "id": "8ed42b3069cc3c468f9f9872fdf60dc2",
@@ -4314,14 +4370,14 @@
       "to_id": "0c14c9d55d31179cb9fc8ae9198df4f4",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these behaviors are cohesive",
       "evidence": "re-verified after misc_cmd.rs doc-header-only change: both remain command-surface behaviors in the src/commands/ family",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:41.117Z",
-      "updated_at": "2026-07-07T07:37:43.121Z"
+      "updated_at": "2026-07-08T19:49:16.346Z"
     },
     {
       "id": "91d235133466a957ac2637a7515289b8",
@@ -4329,14 +4385,14 @@
       "to_id": "68a901335aaab4f4d9339cca56f0983e",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "each Command variant maps to exactly one handler call",
       "evidence": "src/commands.rs fn run matches all Command variants exhaustively; compiler enforces no orphan",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.533Z",
-      "updated_at": "2026-07-07T07:27:17.533Z"
+      "updated_at": "2026-07-08T19:49:16.336Z"
     },
     {
       "id": "9215b71e0d27a85dc42d5c0ac15d7611",
@@ -4344,14 +4400,14 @@
       "to_id": "4d32cc842e4cd6c8d9bbc3c7c04a116b",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "the shared vocabulary is typed enums, not strings, at the API layer",
       "evidence": "src/model.rs NodeType/EdgeKind/TruthClass/InspectionStatus/ValidationType + is_placeholder",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.542Z",
-      "updated_at": "2026-07-07T07:27:17.542Z"
+      "updated_at": "2026-07-08T19:49:16.338Z"
     },
     {
       "id": "92dc3a88b6e6cb1f7b9c7cd001015e3c",
@@ -4389,14 +4445,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "shadow nodes are typed UpstreamIntent values",
       "evidence": "src/federation.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.797Z",
-      "updated_at": "2026-07-07T07:30:13.797Z"
+      "updated_at": "2026-07-08T19:49:16.354Z"
     },
     {
       "id": "9962b00c6c8f285f4bee39e56c105711",
@@ -4434,14 +4490,14 @@
       "to_id": "c6be80aef0a4881a98be2307b94d4636",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring12_phase1 apply` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.808Z",
-      "updated_at": "2026-07-07T07:40:05.274Z"
+      "updated_at": "2026-07-08T19:49:16.358Z"
     },
     {
       "id": "9cc5e8e8ba21444787ea6d897a081463",
@@ -4464,14 +4520,14 @@
       "to_id": "102131845debc78186a19e6b46a444b9",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "with a failing and an uninspected edge present, next returns the failing one first, with its contract",
       "evidence": "workitem/mod.rs next walks the fixed queue priority so failing claims (fix_item) are served before anything else; each item carries a PromptContract",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-06T16:54:40.445Z",
-      "updated_at": "2026-07-06T16:54:40.475Z"
+      "updated_at": "2026-07-08T19:49:16.345Z"
     },
     {
       "id": "a0a4ab10d5990dd6be3e09006ad6cdcc",
@@ -4479,14 +4535,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "export serializes typed nodes and edges deterministically",
       "evidence": "src/travel.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.799Z",
-      "updated_at": "2026-07-07T07:30:13.799Z"
+      "updated_at": "2026-07-08T19:49:16.354Z"
     },
     {
       "id": "a5d1b510ac8b5b40f3d3c770778031d3",
@@ -4539,14 +4595,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "axis checks read typed nodes and edge kinds",
       "evidence": "src/completeness.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.796Z",
-      "updated_at": "2026-07-07T07:30:13.796Z"
+      "updated_at": "2026-07-08T19:49:16.354Z"
     },
     {
       "id": "a85b93269a8c2db850c50e777b44dddf",
@@ -4704,14 +4760,14 @@
       "to_id": "3dc69ba738706bed707f569eaff3e558",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring5` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:53.838Z",
-      "updated_at": "2026-07-07T07:40:10.837Z"
+      "updated_at": "2026-07-08T19:49:16.351Z"
     },
     {
       "id": "b6302d1438adfe6d1706b2ec075b1c64",
@@ -4809,14 +4865,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "scan writes typed derived Finding nodes",
       "evidence": "src/scan.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.798Z",
-      "updated_at": "2026-07-07T07:30:13.798Z"
+      "updated_at": "2026-07-08T19:49:16.355Z"
     },
     {
       "id": "bd9bce82e1916baf04c75c201c47c8f8",
@@ -4824,14 +4880,14 @@
       "to_id": "44309f0bed49067f6e381f2346bec119",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "each packet names the truth axis and gap it is closing",
       "evidence": "src/truth.rs TruthAxis/TruthGap + axis_for_phase wired into packets",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:27:17.543Z",
-      "updated_at": "2026-07-07T07:27:17.543Z"
+      "updated_at": "2026-07-08T19:49:16.339Z"
     },
     {
       "id": "bdf422554ed40a776201c613c9f9c1a6",
@@ -4944,14 +5000,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/edge.rs imports src/model.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.589Z",
-      "updated_at": "2026-07-07T07:31:15.589Z"
+      "updated_at": "2026-07-08T19:49:16.355Z"
     },
     {
       "id": "c9a75e4cb0aa644bcbf9ab5703c374dc",
@@ -5107,6 +5163,21 @@
       "id": "d12de6933d155f1ca",
       "from_id": "d3ff8101e1dfa4913",
       "to_id": "dd371408af4da502b",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d15744792064ed999",
+      "from_id": "d306fc75f519784bd",
+      "to_id": "d9b35a203478bd583",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -5419,6 +5490,21 @@
       "updated_at": ""
     },
     {
+      "id": "d4c9f0943c2618b0a",
+      "from_id": "d0ba94fe3e0d132a2",
+      "to_id": "7ce7687dbe81896da6f42310c701795e",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d4ddf6163e793a160",
       "from_id": "d6ecc6915d64bc284",
       "to_id": "c2c8b3334ee340088fded78ad6278b38",
@@ -5572,6 +5658,21 @@
       "id": "d69ec8ffc7f59150d",
       "from_id": "d2228150595d32891",
       "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d6a35e67d419b8fb9",
+      "from_id": "dd742b1b4ea8e7e3b",
+      "to_id": "dd371408af4da502b",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -5869,6 +5970,21 @@
       "updated_at": ""
     },
     {
+      "id": "d97448d4b6c1c1806",
+      "from_id": "dd742b1b4ea8e7e3b",
+      "to_id": "631a7b25e5acbfe2bc0b88f256f440d6",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d97fba6c97537aff8",
       "from_id": "d3e4d58c3c9e094a9",
       "to_id": "d2fcf6c1e25f78a67",
@@ -5886,6 +6002,21 @@
     {
       "id": "d9e3586c911340694",
       "from_id": "d59ea450b0ce7b5a8",
+      "to_id": "d105a1509d6314d8e",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "da0a02e1da264b506",
+      "from_id": "d2e2c92880134e969",
       "to_id": "d105a1509d6314d8e",
       "kind": "assesses",
       "truth_class": "derived",
@@ -5933,6 +6064,21 @@
       "from_id": "dafc4fbbc65e24fb6",
       "to_id": "d105a1509d6314d8e",
       "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "db149b01eabb12a11",
+      "from_id": "d306fc75f519784bd",
+      "to_id": "81aaea4845a7ece1e330bbb96ad0878e",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -6096,6 +6242,21 @@
     {
       "id": "dc423d0e5ec1b1006",
       "from_id": "db7778b8fa80c53e9",
+      "to_id": "d2fcf6c1e25f78a67",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dc4c8afce3ed772f3",
+      "from_id": "d0ba94fe3e0d132a2",
       "to_id": "d2fcf6c1e25f78a67",
       "kind": "assesses",
       "truth_class": "derived",
@@ -6324,14 +6485,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands/intent.rs imports src/model.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:15.586Z",
-      "updated_at": "2026-07-07T07:31:15.587Z"
+      "updated_at": "2026-07-08T19:49:16.355Z"
     },
     {
       "id": "de7719ff0e611cdfb",
@@ -6589,6 +6750,21 @@
       "updated_at": ""
     },
     {
+      "id": "dfba370c1f523ab0d",
+      "from_id": "d2e2c92880134e969",
+      "to_id": "7f44a80e8b925bd88f380c019a766a81",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dfd470d2c863110c5",
       "from_id": "d76631ff740131229",
       "to_id": "d2fcf6c1e25f78a67",
@@ -6639,14 +6815,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "batch sections deserialize into typed model values",
       "evidence": "src/commands/apply_cmd.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.795Z",
-      "updated_at": "2026-07-07T07:30:13.795Z"
+      "updated_at": "2026-07-08T19:49:16.355Z"
     },
     {
       "id": "e42537df469fb0ec3fe18c0bc6d6666c",
@@ -6654,14 +6830,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "dispatch converts CLI values into typed model values",
       "evidence": "src/commands.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.794Z",
-      "updated_at": "2026-07-07T07:30:13.794Z"
+      "updated_at": "2026-07-08T19:49:16.351Z"
     },
     {
       "id": "e464ce286c7ae08b7013db700f5bf77d",
@@ -6729,14 +6905,14 @@
       "to_id": "5f61fcfaf2e9945fe9bd821b1f79489f",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "pack rules seed typed QualityRule nodes",
       "evidence": "src/packs.rs imports crate::model",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:30:13.797Z",
-      "updated_at": "2026-07-07T07:30:13.798Z"
+      "updated_at": "2026-07-08T19:49:16.355Z"
     },
     {
       "id": "e92657c3369c8b28fd9d5ff353100230",
@@ -6864,14 +7040,14 @@
       "to_id": "0f836046deb40613d04d088088da6aae",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/commands.rs imports src/workitem/mod.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:17.240Z",
-      "updated_at": "2026-07-07T07:31:17.240Z"
+      "updated_at": "2026-07-08T19:49:16.348Z"
     },
     {
       "id": "f3941dc3a8788ec1a389b21641559ded",
@@ -6894,14 +7070,14 @@
       "to_id": "11b5961d4fbf4c6e45da8181778d9758",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "compile-time dependency between the components",
       "evidence": "src/workitem/queues.rs imports src/workitem/context.rs",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:31:16.431Z",
-      "updated_at": "2026-07-07T07:31:16.432Z"
+      "updated_at": "2026-07-08T19:49:16.347Z"
     },
     {
       "id": "f5b123fa5669179735c574d0c75c17c3",
@@ -6939,14 +7115,14 @@
       "to_id": "0f836046deb40613d04d088088da6aae",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring3` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:54.064Z",
-      "updated_at": "2026-07-07T07:40:07.597Z"
+      "updated_at": "2026-07-08T19:49:16.347Z"
     },
     {
       "id": "f73c9e1f771e50c60323c1ece34f2a8d",
@@ -6969,14 +7145,14 @@
       "to_id": "11b5961d4fbf4c6e45da8181778d9758",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --quiet --test ring9 packet` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-07T07:39:54.103Z",
-      "updated_at": "2026-07-07T07:40:18.326Z"
+      "updated_at": "2026-07-08T19:49:16.349Z"
     },
     {
       "id": "f9ae96feac3c653db1f204c62f7b63c2",
@@ -7101,6 +7277,13 @@
   ],
   "facets": [
     {
+      "target_id": "04be02a023c8ac0f1e804e4bda2eebbb",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "06f3606ffa252310045386fdbe4cbb9e",
       "target_kind": "node",
       "key": "content_hash",
@@ -7157,6 +7340,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "0800390fd09bf400ab519ce15e33d354",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/diagnostics_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "084aa695303d0bdee09c0000017d6d29",
       "target_kind": "node",
       "key": "level",
@@ -7169,6 +7359,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "0919e10d15a40f77e58744928f78d946",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/misc_cmd.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "0b6dc75c16005c6804f25a4fd8023876",
@@ -7241,6 +7438,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "0dc5ac15f0b7f3c2f2edb48d4371a9e3",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "0f836046deb40613d04d088088da6aae",
       "target_kind": "node",
       "key": "level",
@@ -7258,7 +7462,7 @@
       "target_id": "102131845debc78186a19e6b46a444b9",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5eed9dca8a2b8147",
+      "value": "2f002c86eba727dc",
       "truth_class": "derived"
     },
     {
@@ -7300,7 +7504,7 @@
       "target_id": "102131845debc78186a19e6b46a444b9",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"FileRead\":\"658e0244c9b72688\",\"GraphState\":\"72edc0899e080d3b\",\"LinkedEntity\":\"f7688dbb03fec3bb\",\"Mode\":\"4f1ff7234a9b208f\",\"NextOutput\":\"8adb331b77c4b044\",\"PromptContract\":\"6396b272dace8038\",\"SuggestedRead\":\"203698fa42d908cd\",\"Target\":\"bb97e05844e594cd\",\"TraversalContext\":\"53634f1d2e6ba8e9\",\"WorkItem\":\"d1857f04f5c1b539\",\"axis_for_role\":\"739dd85198657884\",\"effort_for\":\"7986ca15ae1c43e9\",\"graph_state\":\"9704268c652b8db2\",\"next\":\"b1fc59e622c96255\",\"next_inner\":\"545ee482442abe2a\",\"node_target\":\"97f4f3dbbb4b94e4\",\"parse\":\"7e319d051661bf3f\",\"q\":\"3221f1b3e74bf063\",\"rank_lifecycle\":\"849afed7d2adb712\",\"relationship_kind\":\"c1103005044ea26a\"}",
+      "value": "{\"FileRead\":\"658e0244c9b72688\",\"GraphState\":\"3dd44d98b7b8c118\",\"LinkedEntity\":\"f7688dbb03fec3bb\",\"Mode\":\"4f1ff7234a9b208f\",\"NextOutput\":\"8adb331b77c4b044\",\"PromptContract\":\"6396b272dace8038\",\"SuggestedRead\":\"203698fa42d908cd\",\"Target\":\"bb97e05844e594cd\",\"TraversalContext\":\"53634f1d2e6ba8e9\",\"WorkItem\":\"d1857f04f5c1b539\",\"axis_for_role\":\"739dd85198657884\",\"effort_for\":\"7986ca15ae1c43e9\",\"graph_state\":\"914f214ccf7fdcea\",\"next\":\"b1fc59e622c96255\",\"next_inner\":\"545ee482442abe2a\",\"node_target\":\"97f4f3dbbb4b94e4\",\"parse\":\"7e319d051661bf3f\",\"q\":\"3221f1b3e74bf063\",\"rank_lifecycle\":\"849afed7d2adb712\",\"relationship_kind\":\"c1103005044ea26a\"}",
       "truth_class": "derived"
     },
     {
@@ -7423,10 +7627,24 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "180a9a61e400667f200619832d52dfc0",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/diagnostics_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "1814c61d1a131aa847eff3088851bb40",
       "target_kind": "edge",
       "key": "stale_cause",
       "value": "content hash of src/sync.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "19bff524e36fe341e11fcf8ea172f7ad",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
       "truth_class": "derived"
     },
     {
@@ -7435,6 +7653,13 @@
       "key": "locator",
       "value": "ladder:39 (parents from hierarchy from_id; skip in ungrounded count)",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "1af04c31999286274d26314b94725cf8",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "1c1a4ffb1d648e818c3c4d5944dd7064",
@@ -7454,7 +7679,7 @@
       "target_id": "20e2fd37d4d45759db6871151ea84777",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "9789f308157a7f34",
+      "value": "d90bbbea50be4cd2",
       "truth_class": "derived"
     },
     {
@@ -7475,7 +7700,7 @@
       "target_id": "20e2fd37d4d45759db6871151ea84777",
       "target_kind": "node",
       "key": "loc",
-      "value": "401",
+      "value": "403",
       "truth_class": "derived"
     },
     {
@@ -7496,14 +7721,14 @@
       "target_id": "20e2fd37d4d45759db6871151ea84777",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"AxisState\":\"bde655d35654845b\",\"Scorecard\":\"6b578674adbdb7ec\",\"all_scorecards\":\"217cda723283fc1e\",\"apply_waiver\":\"b6e223bfd4b72bbf\",\"axis\":\"609ecb2d259ae760\",\"boundary_axis\":\"474b709c86764525\",\"check_axis\":\"d3bc1ba33775f8e3\",\"journey_axis\":\"25fa43872ee5817a\",\"open_axes\":\"4413e381a8e7707e\",\"prerequisites_axis\":\"d6310f90c40ad583\",\"proof_axis\":\"349fe651cb00c0d2\",\"questions_axis\":\"cc5b616fefc75a8f\",\"scenarios_axis\":\"62130107c0fdd74c\",\"scorecard\":\"3127b82bb4d27889\"}",
+      "value": "{\"AxisState\":\"bde655d35654845b\",\"Scorecard\":\"6b578674adbdb7ec\",\"all_scorecards\":\"217cda723283fc1e\",\"apply_waiver\":\"b6e223bfd4b72bbf\",\"axis\":\"609ecb2d259ae760\",\"boundary_axis\":\"474b709c86764525\",\"check_axis\":\"d3bc1ba33775f8e3\",\"journey_axis\":\"25fa43872ee5817a\",\"open_axes\":\"4413e381a8e7707e\",\"prerequisites_axis\":\"d6310f90c40ad583\",\"proof_axis\":\"349fe651cb00c0d2\",\"questions_axis\":\"bbbd03f2784f2ac8\",\"scenarios_axis\":\"62130107c0fdd74c\",\"scorecard\":\"3127b82bb4d27889\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "20fa072ab6da8c34e8a4b52b1c9a55d8",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "fd7c3689c5cf36f1",
+      "value": "9ea4f97c99de6a44",
       "truth_class": "derived"
     },
     {
@@ -7524,7 +7749,7 @@
       "target_id": "20fa072ab6da8c34e8a4b52b1c9a55d8",
       "target_kind": "node",
       "key": "loc",
-      "value": "557",
+      "value": "567",
       "truth_class": "derived"
     },
     {
@@ -7545,7 +7770,7 @@
       "target_id": "20fa072ab6da8c34e8a4b52b1c9a55d8",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"analyzer_contract\":\"bf1ee9b7203e2850\",\"builder_contract\":\"4e4bb019dc871128\",\"coverage_contract\":\"70806b3b48c78816\",\"elaborator_contract\":\"8317b4798b4e0c40\",\"fixer_contract\":\"98f4e75222d70001\",\"inbox_triage_contract\":\"6f711eb92443fe90\",\"missing_codefile_contract\":\"0b428704ee7c62cc\",\"prove_contract\":\"52cc2e9618f879f3\",\"quality_contract\":\"00ed386ff9263deb\",\"quality_contract_body\":\"43afc82a359ee89e\",\"reviewer_contract\":\"aa8e22fbe0353bb6\",\"triage_contract\":\"416175097bfa8ef9\",\"validator_contract\":\"00adebc382f07ad3\",\"verdict_write_back\":\"89adbc85e9113d57\"}",
+      "value": "{\"analyzer_contract\":\"0557e257b22e7ed9\",\"builder_contract\":\"2f3a03b475fb5bf9\",\"coverage_contract\":\"70806b3b48c78816\",\"elaborator_contract\":\"9d5274c2316a419d\",\"fixer_contract\":\"c896aa8a1079bd00\",\"inbox_triage_contract\":\"dcd98efc65f79dd8\",\"missing_codefile_contract\":\"0b428704ee7c62cc\",\"prove_contract\":\"52cc2e9618f879f3\",\"quality_contract\":\"00ed386ff9263deb\",\"quality_contract_body\":\"448a78d02ab91806\",\"reviewer_contract\":\"bd8fae3e47844039\",\"triage_contract\":\"455fbc66c0fcca1b\",\"validator_contract\":\"74e479ead6c87765\",\"verdict_write_back\":\"89adbc85e9113d57\"}",
       "truth_class": "derived"
     },
     {
@@ -7561,6 +7786,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "21a5ae01dc000f50fdfcde668f3cdd16",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "21e3e570ae51283fc8080efb279f634f",
@@ -7696,6 +7928,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "25d952e25b8d859623b2445aae1bfc33",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "264c3f0467f588466dfd8bdfcc01943b",
       "target_kind": "node",
       "key": "content_hash",
@@ -7748,7 +7987,7 @@
       "target_id": "28a8dd5ae46a04c49f4317579e5285fd",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "291d6859008b5412",
+      "value": "f44b1c01fa7ef436",
       "truth_class": "derived"
     },
     {
@@ -7769,7 +8008,7 @@
       "target_id": "28a8dd5ae46a04c49f4317579e5285fd",
       "target_kind": "node",
       "key": "loc",
-      "value": "456",
+      "value": "458",
       "truth_class": "derived"
     },
     {
@@ -7790,7 +8029,7 @@
       "target_id": "28a8dd5ae46a04c49f4317579e5285fd",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"add_node\":\"79fa7d6efb8993e3\",\"add_note\":\"8f488622bbebe949\",\"count_nodes\":\"a6fd50059e0c4c96\",\"delete_edge\":\"17a4202f81381754\",\"delete_node\":\"548c9dd41671dee4\",\"find_nodes_by\":\"3c51f14e136ee773\",\"get_node\":\"d8286c51385ab8f9\",\"list_nodes\":\"025cebf002b2dff5\",\"list_nodes_page\":\"eb0563607d0166bc\",\"notes_for\":\"90767b06d17a86be\",\"redefine_intent\":\"3c93b219c24b0118\",\"remove_vocab_term\":\"b22fdc8b69a2d7e9\",\"resolve_node\":\"5fb6704d9bd667ce\",\"retire_intent\":\"da07301e500ef6c5\",\"set_node_body\":\"3ee18e1da68e12f6\",\"update_node\":\"194f7fd92eaa8135\"}",
+      "value": "{\"add_node\":\"cfa7cf1263157a43\",\"add_note\":\"8f488622bbebe949\",\"count_nodes\":\"a6fd50059e0c4c96\",\"delete_edge\":\"17a4202f81381754\",\"delete_node\":\"548c9dd41671dee4\",\"find_nodes_by\":\"3c51f14e136ee773\",\"get_node\":\"d8286c51385ab8f9\",\"list_nodes\":\"025cebf002b2dff5\",\"list_nodes_page\":\"eb0563607d0166bc\",\"notes_for\":\"90767b06d17a86be\",\"redefine_intent\":\"3c93b219c24b0118\",\"remove_vocab_term\":\"b22fdc8b69a2d7e9\",\"resolve_node\":\"5fb6704d9bd667ce\",\"retire_intent\":\"da07301e500ef6c5\",\"set_node_body\":\"3ee18e1da68e12f6\",\"update_node\":\"194f7fd92eaa8135\"}",
       "truth_class": "derived"
     },
     {
@@ -7799,6 +8038,13 @@
       "key": "locator",
       "value": "fn restore (validate fully; nodes before edges in one txn)",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "295753269b6015dcd79b53b7518bee0c",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/facets.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "2b2a6174d8b551cddde5dda5f9214ab2",
@@ -7885,6 +8131,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "36450d1d6ec4f1bdc7f6a3094a787ef9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "381f21c520f30b0f78f606ae5c956933",
       "target_kind": "node",
       "key": "content_hash",
@@ -7955,6 +8208,27 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "3a07edee46677b9153f60dcbe40dec19",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3c614b1b6871d39d3144deea57d55a19",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3cd6bec8b85cb232980a2449960b143e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/apply_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "3dc69ba738706bed707f569eaff3e558",
       "target_kind": "node",
       "key": "level",
@@ -7969,6 +8243,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "3eb4702d40467066113c7869fa10c271",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/store/facets.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3fa8c22394030e638e8827028645849e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "4177f651c1ca9e238156bd14c5f93471",
       "target_kind": "node",
       "key": "level",
@@ -7981,6 +8269,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "41e0486d6bdb6df6711a9fcf332a64dc",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "422b3dbfada7794829cccfe6d5222af3",
@@ -7997,10 +8292,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "432defb53cf3309fd51457b984199d4e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/contracts.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "44309f0bed49067f6e381f2346bec119",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "24272da9d5df2d4a",
+      "value": "4c76be5e47aea0f9",
       "truth_class": "derived"
     },
     {
@@ -8042,7 +8344,7 @@
       "target_id": "44309f0bed49067f6e381f2346bec119",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"TruthAxis\":\"8d987496290167e9\",\"TruthGap\":\"bacf5462e8067b45\",\"as_str\":\"ef379b3726a53a43\",\"axis_for_phase\":\"37c3f1766701bd9d\",\"gap\":\"991436a5c81e296e\"}",
+      "value": "{\"TruthAxis\":\"1d376261c6f8735c\",\"TruthGap\":\"bacf5462e8067b45\",\"as_str\":\"ef379b3726a53a43\",\"axis_for_phase\":\"37c3f1766701bd9d\",\"gap\":\"8cb8c64cee875e52\"}",
       "truth_class": "derived"
     },
     {
@@ -8067,6 +8369,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "46474e95ffdc2aa4f66226555488f8b9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/misc_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "48699852442625bb3ec91bad3dd2ab70",
       "target_kind": "node",
       "key": "level",
@@ -8086,6 +8395,13 @@
       "key": "locator",
       "value": "fn coverage",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "4b38ea421187b758e187eb4b4316c4de",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "4bbc45d459527733e308c85241faca38",
@@ -8112,7 +8428,7 @@
       "target_id": "4d32cc842e4cd6c8d9bbc3c7c04a116b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ab071ae357888000",
+      "value": "4f13ade5db0fa0ea",
       "truth_class": "derived"
     },
     {
@@ -8133,7 +8449,7 @@
       "target_id": "4d32cc842e4cd6c8d9bbc3c7c04a116b",
       "target_kind": "node",
       "key": "loc",
-      "value": "399",
+      "value": "402",
       "truth_class": "derived"
     },
     {
@@ -8154,7 +8470,7 @@
       "target_id": "4d32cc842e4cd6c8d9bbc3c7c04a116b",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Edge\":\"df74257210c21293\",\"Facet\":\"ce61eeabc04bd4b5\",\"Node\":\"a79e4f51f0004819\",\"ParseEnumError\":\"643b5817b180ce7b\",\"Tag\":\"9f189c5c395e12ce\",\"default_asserted\":\"0e16f4fbd3086d19\",\"empty_array\":\"212afb48d50ec08b\",\"empty_object\":\"8e0ac3c81eb611ff\",\"fmt\":\"dce66b54e17f1442\",\"is_placeholder\":\"4346cb67d81b3045\"}",
+      "value": "{\"Edge\":\"df74257210c21293\",\"Facet\":\"ce61eeabc04bd4b5\",\"Node\":\"d6adc5ebf14ba9bd\",\"ParseEnumError\":\"643b5817b180ce7b\",\"Tag\":\"9f189c5c395e12ce\",\"default_asserted\":\"0e16f4fbd3086d19\",\"empty_array\":\"212afb48d50ec08b\",\"empty_object\":\"8e0ac3c81eb611ff\",\"fmt\":\"dce66b54e17f1442\",\"is_placeholder\":\"4346cb67d81b3045\"}",
       "truth_class": "derived"
     },
     {
@@ -8205,6 +8521,13 @@
       "key": "locator",
       "value": "fn dispatch",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "543e6963ca7609e1a3c3db8cdf354eb8",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/apply_cmd.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "54c55c2b1430d49bb668da69f87bf089",
@@ -8291,6 +8614,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "598ad0a56e14d94725c66b81a34a69c6",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "5ae35f7c9b3d25d352b01e6302927d97",
       "target_kind": "edge",
       "key": "locator",
@@ -8298,10 +8628,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "5ae9525c488ecad6cd907ff76f5522d2",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "5d82bc6c976bf45b513ac42ba6f51d7a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "98b6054950ef36a7",
+      "value": "ed6d6bed848ae985",
       "truth_class": "derived"
     },
     {
@@ -8343,7 +8680,7 @@
       "target_id": "5d82bc6c976bf45b513ac42ba6f51d7a",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"b7ad81f44fdd9440\",\"Rung\":\"90c669477b3cf962\",\"RungInputs\":\"f7601506c1a558fa\",\"RungState\":\"9d3a185544cf9967\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"8baecf90e03e5a87\",\"compass\":\"b7adc08ebb4485bd\",\"ladder\":\"b96dcbfb9d4a0ef1\",\"unowned_registered_codefiles\":\"edff69a996ad0a76\",\"validation_summary\":\"5ffa551b4d011d1b\"}",
+      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"b7ad81f44fdd9440\",\"Rung\":\"90c669477b3cf962\",\"RungInputs\":\"f7601506c1a558fa\",\"RungState\":\"9d3a185544cf9967\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"8baecf90e03e5a87\",\"compass\":\"b7adc08ebb4485bd\",\"ladder\":\"aa89caea70000b23\",\"unowned_registered_codefiles\":\"edff69a996ad0a76\",\"validation_summary\":\"5ffa551b4d011d1b\"}",
       "truth_class": "derived"
     },
     {
@@ -8368,10 +8705,17 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "61ff31487bdd9da8774099db9d88a473",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "631a7b25e5acbfe2bc0b88f256f440d6",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5b3907c6d7977ead",
+      "value": "861c31980d92fe73",
       "truth_class": "derived"
     },
     {
@@ -8392,7 +8736,7 @@
       "target_id": "631a7b25e5acbfe2bc0b88f256f440d6",
       "target_kind": "node",
       "key": "loc",
-      "value": "806",
+      "value": "888",
       "truth_class": "derived"
     },
     {
@@ -8406,14 +8750,14 @@
       "target_id": "631a7b25e5acbfe2bc0b88f256f440d6",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "18",
+      "value": "19",
       "truth_class": "derived"
     },
     {
       "target_id": "631a7b25e5acbfe2bc0b88f256f440d6",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"adjudicate_finding\":\"ffe0d6ff0b5944f6\",\"calibrate_cmd\":\"7c9ec7bf89f3635b\",\"completeness_cmd\":\"42a60a28a2bb9917\",\"coverage_cmd\":\"2816714465aae66d\",\"debt_cmd\":\"d3ab5006dcc259e6\",\"doctor_cmd\":\"96ad3a961bd71c36\",\"finding\":\"e5fca044982eee3d\",\"finding_list\":\"d7774df5535de718\",\"finding_verdict\":\"18c2c195eb926866\",\"ignore_cmd\":\"148bccf143d32942\",\"policy_cmd\":\"49a5a92b1dcfee31\",\"scan_cmd\":\"fc976eb83e0e6c6b\",\"smells_cmd\":\"2d020e893e48de40\",\"threshold_cmd\":\"f77fe6b79ae7a1dc\",\"threshold_line\":\"8e4c60dbe88319ee\",\"validate_finding_filter_state\":\"4e799d66e6a43450\",\"validate_finding_verdict\":\"9102985830321630\",\"whoami_cmd\":\"2a4d3c4b5c4e44b5\"}",
+      "value": "{\"adjudicate_finding\":\"ffe0d6ff0b5944f6\",\"calibrate_cmd\":\"7c9ec7bf89f3635b\",\"completeness_cmd\":\"42a60a28a2bb9917\",\"coverage_cmd\":\"2816714465aae66d\",\"debt_cmd\":\"d3ab5006dcc259e6\",\"doctor_cmd\":\"96ad3a961bd71c36\",\"finding\":\"868f63c3ee1ca356\",\"finding_add\":\"ed8f19f4e8f4fc60\",\"finding_list\":\"d7774df5535de718\",\"finding_verdict\":\"18c2c195eb926866\",\"ignore_cmd\":\"148bccf143d32942\",\"policy_cmd\":\"49a5a92b1dcfee31\",\"scan_cmd\":\"fc976eb83e0e6c6b\",\"smells_cmd\":\"34ebb4fbcd13eb94\",\"threshold_cmd\":\"f77fe6b79ae7a1dc\",\"threshold_line\":\"8e4c60dbe88319ee\",\"validate_finding_filter_state\":\"e4e781d27de7435e\",\"validate_finding_verdict\":\"125650c99b0f6752\",\"whoami_cmd\":\"2a4d3c4b5c4e44b5\"}",
       "truth_class": "derived"
     },
     {
@@ -8469,7 +8813,7 @@
       "target_id": "65d5e93218cd8e0e14f47a5850f54323",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "56c176da4e70b622",
+      "value": "0d59e286027802b1",
       "truth_class": "derived"
     },
     {
@@ -8490,7 +8834,7 @@
       "target_id": "65d5e93218cd8e0e14f47a5850f54323",
       "target_kind": "node",
       "key": "loc",
-      "value": "337",
+      "value": "340",
       "truth_class": "derived"
     },
     {
@@ -8504,14 +8848,14 @@
       "target_id": "65d5e93218cd8e0e14f47a5850f54323",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "6",
+      "value": "7",
       "truth_class": "derived"
     },
     {
       "target_id": "65d5e93218cd8e0e14f47a5850f54323",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"EdgeKindSpec\":\"82e400205b93d49d\",\"OwnerRole\":\"fdeba9ca53d2d823\",\"allows_truth_class\":\"0472312680e7b878\",\"as_str\":\"d0773cbfd250f813\",\"node_truth_class\":\"140791099fd5ea1f\",\"spec\":\"26efd16e70689502\"}",
+      "value": "{\"EdgeKindSpec\":\"82e400205b93d49d\",\"OwnerRole\":\"fdeba9ca53d2d823\",\"allows_truth_class\":\"0472312680e7b878\",\"as_str\":\"d0773cbfd250f813\",\"node_allows_truth_class\":\"256bd33cd43c06eb\",\"node_default_truth_class\":\"b10458abc0165355\",\"spec\":\"26efd16e70689502\"}",
       "truth_class": "derived"
     },
     {
@@ -8581,14 +8925,14 @@
       "target_id": "68a901335aaab4f4d9339cca56f0983e",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "4e8679be883aea17",
+      "value": "9a2eded75911f12b",
       "truth_class": "derived"
     },
     {
       "target_id": "68a901335aaab4f4d9339cca56f0983e",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::anyhow\",\"anyhow::bail\",\"crate::Result\",\"crate::cli::Cli\",\"crate::cli::CodefileCmd\",\"crate::cli::Command\",\"crate::cli::FindingCmd\",\"crate::cli::HypothesisCmd\",\"crate::cli::IgnoreCmd\",\"crate::cli::InboxCmd\",\"crate::cli::LayerCmd\",\"crate::cli::NoteCmd\",\"crate::cli::RuleCmd\",\"crate::cli::SurfaceCmd\",\"crate::cli::TaskCmd\",\"crate::cli::ValidationCmd\",\"crate::cli::VocabCmd\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"crate::travel\",\"crate::workitem\",\"intent::looks_like_symbol\",\"status_cmd::require_lane\",\"std::path::Path\",\"std::path::PathBuf\"]",
+      "value": "[\"anyhow::anyhow\",\"anyhow::bail\",\"crate::Result\",\"crate::cli::Cli\",\"crate::cli::CodefileCmd\",\"crate::cli::Command\",\"crate::cli::FindingCmd\",\"crate::cli::HypothesisCmd\",\"crate::cli::IgnoreCmd\",\"crate::cli::InboxCmd\",\"crate::cli::LayerCmd\",\"crate::cli::NoteCmd\",\"crate::cli::QuestionCmd\",\"crate::cli::RuleCmd\",\"crate::cli::SurfaceCmd\",\"crate::cli::TaskCmd\",\"crate::cli::ValidationCmd\",\"crate::cli::VocabCmd\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"crate::travel\",\"crate::workitem\",\"intent::looks_like_symbol\",\"status_cmd::require_lane\",\"std::path::Path\",\"std::path::PathBuf\"]",
       "truth_class": "derived"
     },
     {
@@ -8602,7 +8946,7 @@
       "target_id": "68a901335aaab4f4d9339cca56f0983e",
       "target_kind": "node",
       "key": "loc",
-      "value": "389",
+      "value": "390",
       "truth_class": "derived"
     },
     {
@@ -8623,7 +8967,7 @@
       "target_id": "68a901335aaab4f4d9339cca56f0983e",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"code_ownership_summary\":\"59f23a949921d232\",\"codefile_observed\":\"7dc024e9c264667e\",\"layer\":\"a0e8242a1f517dd5\",\"node_json\":\"ad7bf234fd67f095\",\"norm\":\"88b25c6dc96574c0\",\"open\":\"82ca9c1000cac04a\",\"open_read\":\"6655f55b41faff9c\",\"page_footer\":\"61b7adf5730ce26c\",\"query_terms\":\"c983f3950a1fc4ff\",\"resolve_root\":\"f81a036ca82c9a5a\",\"run\":\"585994bde6286321\",\"truncate\":\"d6fb077a5af9ea3b\",\"unowned_codefiles\":\"42390ba97eb762cb\",\"verdict_status\":\"168e3030db8acdba\"}",
+      "value": "{\"code_ownership_summary\":\"59f23a949921d232\",\"codefile_observed\":\"7dc024e9c264667e\",\"layer\":\"a0e8242a1f517dd5\",\"node_json\":\"ad7bf234fd67f095\",\"norm\":\"88b25c6dc96574c0\",\"open\":\"82ca9c1000cac04a\",\"open_read\":\"6655f55b41faff9c\",\"page_footer\":\"61b7adf5730ce26c\",\"query_terms\":\"c983f3950a1fc4ff\",\"resolve_root\":\"f81a036ca82c9a5a\",\"run\":\"516a7383f5593707\",\"truncate\":\"d6fb077a5af9ea3b\",\"unowned_codefiles\":\"42390ba97eb762cb\",\"verdict_status\":\"168e3030db8acdba\"}",
       "truth_class": "derived"
     },
     {
@@ -8639,6 +8983,13 @@
       "key": "locator",
       "value": "fn dispatch",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "6b969fed1567dca4414ab08e5ffc56a9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "6ca45af935baecff31a317edfd78eb2c",
@@ -8711,6 +9062,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "6f8104fea8d7e279029b70a80ed3e06d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'add_node' in src/store/nodes.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "6fc3cb36ed6ccbf6996dd286b1691bc6",
       "target_kind": "node",
       "key": "content_hash",
@@ -8767,6 +9125,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "72db871c90ebf5ff25e76d72e1b16e43",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "73e07db53c03015932b559edd1f33247",
       "target_kind": "edge",
       "key": "stale_cause",
@@ -8779,6 +9144,13 @@
       "key": "locator",
       "value": "find_cmd:810 (walks edges_with Implements; prints path @ locator [verdict])",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "74ce0ca5b328c2abedee7fb369e5cd1b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/misc_cmd.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "753b7e7626e37c2ed39d50a8ddd2c139",
@@ -8879,6 +9251,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "79ee299ec6a185866fb5f9eebc86d576",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "7a0ba297f46ca43a507c404f38d92945",
       "target_kind": "edge",
       "key": "locator",
@@ -8959,7 +9338,7 @@
       "target_id": "7ce7687dbe81896da6f42310c701795e",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "f6cb3269f23af296",
+      "value": "6ff238837df14cf9",
       "truth_class": "derived"
     },
     {
@@ -8980,7 +9359,7 @@
       "target_id": "7ce7687dbe81896da6f42310c701795e",
       "target_kind": "node",
       "key": "loc",
-      "value": "583",
+      "value": "610",
       "truth_class": "derived"
     },
     {
@@ -9001,14 +9380,14 @@
       "target_id": "7ce7687dbe81896da6f42310c701795e",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"add_derived_edge\":\"d0e6e9e92667140a\",\"add_derived_node\":\"fc3bb792f1a734a1\",\"add_vocab_term\":\"6b2ec2fefe4bec59\",\"codefiles\":\"c92ab7b6b0cd8b8e\",\"derived_node_id\":\"7e97f4bf9221fa23\",\"edges_with\":\"586cf784a1ae80c4\",\"facets_of\":\"5a61399922cb3cb8\",\"finding_codefile_hash\":\"0797658a7dddcb4f\",\"finding_owner_intents\":\"04ffe937a2729f39\",\"get_facet\":\"be1fea9e45deb6fa\",\"get_meta\":\"5b33bb6a107db1eb\",\"ignore_globs\":\"ebfd8cbaea3e6b66\",\"list_vocab\":\"10d8543023bef399\",\"record_finding_verdict\":\"dbc40f2bcdc1bce7\",\"remove_derived_findings\":\"bb9ac6bafb542bda\",\"remove_meta\":\"dcf35fe7a2db031b\",\"reset_validation_status_for_sync\":\"e1180fd8c3aca972\",\"resolve_finding\":\"ae38e64db863c286\",\"set_meta\":\"a82b9299ceb7c5da\",\"set_node_status\":\"5f33652894ab1a74\",\"stale_edge\":\"fcf0c854d3255055\",\"stale_passing_edge\":\"15548dc3b6f30e10\",\"truth_class_census\":\"4de08fe007e02bfe\",\"upsert_builtin_node\":\"76ef9399e984efa2\",\"validate_edge_endpoints\":\"b4edb9e1d1b65cce\",\"vocab_has\":\"6c679aa8bae556fd\",\"wipe_derived\":\"648c41fb0e77d243\",\"wipe_derived_facets\":\"71eb094b3f7544a5\",\"wipe_derived_graph\":\"4a3fc227a740bf8f\",\"wipe_structural_findings\":\"4acac6da6b5bbb0e\"}",
+      "value": "{\"add_derived_edge\":\"d0e6e9e92667140a\",\"add_derived_node\":\"96caf1d2a131243f\",\"add_vocab_term\":\"6b2ec2fefe4bec59\",\"codefiles\":\"c92ab7b6b0cd8b8e\",\"derived_node_id\":\"7e97f4bf9221fa23\",\"edges_with\":\"586cf784a1ae80c4\",\"facets_of\":\"5a61399922cb3cb8\",\"finding_codefile_hash\":\"6202ae81aa756d73\",\"finding_owner_intents\":\"e67bd50bea4dbec6\",\"get_facet\":\"be1fea9e45deb6fa\",\"get_meta\":\"5b33bb6a107db1eb\",\"ignore_globs\":\"ebfd8cbaea3e6b66\",\"list_vocab\":\"10d8543023bef399\",\"record_finding_verdict\":\"dbc40f2bcdc1bce7\",\"remove_derived_findings\":\"bb9ac6bafb542bda\",\"remove_meta\":\"dcf35fe7a2db031b\",\"reset_validation_status_for_sync\":\"e1180fd8c3aca972\",\"resolve_finding\":\"ae38e64db863c286\",\"set_meta\":\"a82b9299ceb7c5da\",\"set_node_status\":\"5f33652894ab1a74\",\"stale_edge\":\"fcf0c854d3255055\",\"stale_passing_edge\":\"15548dc3b6f30e10\",\"truth_class_census\":\"4de08fe007e02bfe\",\"upsert_builtin_node\":\"76ef9399e984efa2\",\"validate_edge_endpoints\":\"b4edb9e1d1b65cce\",\"vocab_has\":\"6c679aa8bae556fd\",\"wipe_derived\":\"648c41fb0e77d243\",\"wipe_derived_facets\":\"71eb094b3f7544a5\",\"wipe_derived_graph\":\"4a3fc227a740bf8f\",\"wipe_structural_findings\":\"4acac6da6b5bbb0e\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "7f44a80e8b925bd88f380c019a766a81",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "b1967998d97484b9",
+      "value": "031692f3da41eddd",
       "truth_class": "derived"
     },
     {
@@ -9029,7 +9408,7 @@
       "target_id": "7f44a80e8b925bd88f380c019a766a81",
       "target_kind": "node",
       "key": "loc",
-      "value": "1336",
+      "value": "1507",
       "truth_class": "derived"
     },
     {
@@ -9043,14 +9422,21 @@
       "target_id": "7f44a80e8b925bd88f380c019a766a81",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "22",
+      "value": "24",
       "truth_class": "derived"
     },
     {
       "target_id": "7f44a80e8b925bd88f380c019a766a81",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"count_exts\":\"6e3ad0f3e7ac38cc\",\"detect_cmd\":\"6eab98f50b3fdb37\",\"door\":\"27ef42c4aaef60e6\",\"find_cmd\":\"ef138ffa548b378f\",\"find_exact\":\"202ba6323a0050d4\",\"guide\":\"5f72409c8df7359a\",\"guide_monitor\":\"27771e3c933bee65\",\"inbox\":\"0bccd9b968fafa6c\",\"inbox_json\":\"2590d02b8805d4e3\",\"keyword_hits\":\"60516c455b216053\",\"note\":\"4358575254290127\",\"operator_loops\":\"3ce46549a3c1f5a6\",\"phase_in_plain_english\":\"d933f736e6c93c1d\",\"print_operator_loops\":\"e7b73bf071354121\",\"print_welcome_intro\":\"acf05f0f5ed14c55\",\"resolve_note_target\":\"1b8fafa274c75f69\",\"schema_cmd\":\"385f77ece135d3f2\",\"session\":\"f8df6ce250fb4843\",\"task\":\"b8c70c92f11938a1\",\"task_outcome_note\":\"8406b08fc788ad0b\",\"truth_axis_matrix\":\"1fc932e00b41f0cd\",\"welcome\":\"074f311856f9d540\"}",
+      "value": "{\"count_exts\":\"6e3ad0f3e7ac38cc\",\"detect_cmd\":\"6eab98f50b3fdb37\",\"door\":\"27ef42c4aaef60e6\",\"find_cmd\":\"ef138ffa548b378f\",\"find_exact\":\"202ba6323a0050d4\",\"guide\":\"2e130fea80c50d10\",\"guide_monitor\":\"27771e3c933bee65\",\"inbox\":\"9b58e729cd09c0c1\",\"inbox_json\":\"2590d02b8805d4e3\",\"keyword_hits\":\"60516c455b216053\",\"note\":\"4358575254290127\",\"operator_loops\":\"3ce46549a3c1f5a6\",\"phase_in_plain_english\":\"d933f736e6c93c1d\",\"print_operator_loops\":\"e7b73bf071354121\",\"print_welcome_intro\":\"acf05f0f5ed14c55\",\"question\":\"d9f351df17582239\",\"question_json\":\"3d858284960dd8ce\",\"resolve_note_target\":\"1b8fafa274c75f69\",\"schema_cmd\":\"9898b59e21d97bed\",\"session\":\"7236b247298501fc\",\"task\":\"b8c70c92f11938a1\",\"task_outcome_note\":\"8406b08fc788ad0b\",\"truth_axis_matrix\":\"1fc932e00b41f0cd\",\"welcome\":\"074f311856f9d540\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7fea410f45a0106df6c88c5d10c6af0c",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/diagnostics_cmd.rs changed",
       "truth_class": "derived"
     },
     {
@@ -9106,7 +9492,7 @@
       "target_id": "81aaea4845a7ece1e330bbb96ad0878e",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "76650381ce68c035",
+      "value": "6b51ecb41e5dfb9b",
       "truth_class": "derived"
     },
     {
@@ -9127,7 +9513,7 @@
       "target_id": "81aaea4845a7ece1e330bbb96ad0878e",
       "target_kind": "node",
       "key": "loc",
-      "value": "348",
+      "value": "358",
       "truth_class": "derived"
     },
     {
@@ -9148,7 +9534,14 @@
       "target_id": "81aaea4845a7ece1e330bbb96ad0878e",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"clear_facet\":\"c6c26233bc00d879\",\"is_soft_ref_facet\":\"c68b264a3e7803a6\",\"list_all_facets\":\"24bac6a53e9e70e0\",\"list_all_nodes\":\"4a096029e2be7f7d\",\"list_all_tags\":\"a09a5a48080554ba\",\"remove_tag\":\"90935107370cb005\",\"restore\":\"8177287df4778e52\",\"restore_inner\":\"df6ba27de9a2ba6c\",\"restore_repairing\":\"a3fba707331f381f\",\"set_facet\":\"7a8000b3814e51ff\",\"set_tag\":\"8a6e51071769794e\",\"snapshot\":\"6769d42c19bff78e\",\"tags_of\":\"96efe89802174a99\"}",
+      "value": "{\"clear_facet\":\"c6c26233bc00d879\",\"is_soft_ref_facet\":\"c68b264a3e7803a6\",\"list_all_facets\":\"24bac6a53e9e70e0\",\"list_all_nodes\":\"4a096029e2be7f7d\",\"list_all_tags\":\"a09a5a48080554ba\",\"remove_tag\":\"90935107370cb005\",\"restore\":\"8177287df4778e52\",\"restore_inner\":\"ec6a351893adabfe\",\"restore_repairing\":\"a3fba707331f381f\",\"set_facet\":\"7a8000b3814e51ff\",\"set_tag\":\"8a6e51071769794e\",\"snapshot\":\"6769d42c19bff78e\",\"tags_of\":\"96efe89802174a99\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "81fbb913006257011100cd39596eac81",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/contracts.rs changed; symbol 'TruthAxis' in src/truth.rs changed",
       "truth_class": "derived"
     },
     {
@@ -9171,6 +9564,13 @@
       "key": "locator",
       "value": "enum Command",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "843c29df408f725485f8bbf4793fe66b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "8549792eed930ff717a45c1e0c02a168",
@@ -9229,6 +9629,34 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "88dfc4b898c103a9cbb370cf1c8618a1",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8ad0069d48317412a9caf943fc914165",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8d58f20019daf676876e0a42abab7aaa",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/apply_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8ff596909131408588cdec0d74c1b478",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/misc_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9100654292e70a2f477f72f21379052f",
       "target_kind": "node",
       "key": "level",
@@ -9250,11 +9678,25 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "91d235133466a957ac2637a7515289b8",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9215b71e0d27a85dc42d5c0ac15d7611",
       "target_kind": "edge",
       "key": "locator",
       "value": "enum EdgeKind",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "9215b71e0d27a85dc42d5c0ac15d7611",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "92dc3a88b6e6cb1f7b9c7cd001015e3c",
@@ -9320,6 +9762,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "97698f88e109068d428642c6320448f5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "97da9fbf52812f74bfcf24463bc29494",
       "target_kind": "node",
       "key": "content_hash",
@@ -9376,10 +9825,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "9b59bd83358f2b488d92e3a0822b23a5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/apply_cmd.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9d30a67b219e08647db9222997164369",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e3f72d77ad9046ef",
+      "value": "dda54eb09425fe3d",
       "truth_class": "derived"
     },
     {
@@ -9400,7 +9856,7 @@
       "target_id": "9d30a67b219e08647db9222997164369",
       "target_kind": "node",
       "key": "loc",
-      "value": "1108",
+      "value": "1111",
       "truth_class": "derived"
     },
     {
@@ -9421,7 +9877,7 @@
       "target_id": "9d30a67b219e08647db9222997164369",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"QueueCounts\":\"eb1cb843dd5bf77e\",\"QueueEntry\":\"90c92e6994cf9e4a\",\"analyze_item\":\"4d1d5fd453bd6bf2\",\"build_item\":\"3755bccdbe953eea\",\"build_reason\":\"efd92d263fd6245e\",\"coverage_item\":\"544f83d76ce38e83\",\"edge_entry\":\"8fb86f5df08a4fbd\",\"edge_work\":\"f3e32a051612ce76\",\"elaborate_item\":\"8a034e5fe1ac5c39\",\"fix_item\":\"b556185436892c99\",\"inbox_triage_item\":\"9577ba95c3c31818\",\"node_entry\":\"29e9a5b19afa62ec\",\"prescreen_for\":\"53b25b80d6483252\",\"prove_item\":\"202e4beca2e3b2dd\",\"quality_item\":\"297500d0c2600653\",\"queue_counts\":\"c8b678c397bf15a3\",\"queue_items\":\"981782ff2225b9ca\",\"review_item\":\"ed43d8567923718a\",\"triage_item\":\"67dc895062c62d8d\",\"ungrounded_implemented_intents\":\"ecb6035146dc0c04\",\"unmeasured_pair_entries\":\"f5edfa4d8fd34244\",\"unmeasured_pair_item\":\"492c0854ddcf64a1\",\"unmeasured_quality_pairs\":\"6992e0d960d59de0\",\"unmet_prerequisites\":\"81265becce10990d\",\"validate_item\":\"7ab8e3a026a0c970\"}",
+      "value": "{\"QueueCounts\":\"eb1cb843dd5bf77e\",\"QueueEntry\":\"90c92e6994cf9e4a\",\"analyze_item\":\"4d1d5fd453bd6bf2\",\"build_item\":\"3755bccdbe953eea\",\"build_reason\":\"efd92d263fd6245e\",\"coverage_item\":\"544f83d76ce38e83\",\"edge_entry\":\"8fb86f5df08a4fbd\",\"edge_work\":\"f3e32a051612ce76\",\"elaborate_item\":\"8a034e5fe1ac5c39\",\"fix_item\":\"b556185436892c99\",\"inbox_triage_item\":\"1bddab0d33106d6f\",\"node_entry\":\"29e9a5b19afa62ec\",\"prescreen_for\":\"53b25b80d6483252\",\"prove_item\":\"202e4beca2e3b2dd\",\"quality_item\":\"297500d0c2600653\",\"queue_counts\":\"c8b678c397bf15a3\",\"queue_items\":\"9ffb8676af361814\",\"review_item\":\"ed43d8567923718a\",\"triage_item\":\"920c2d917489b41c\",\"ungrounded_implemented_intents\":\"ecb6035146dc0c04\",\"unmeasured_pair_entries\":\"f5edfa4d8fd34244\",\"unmeasured_pair_item\":\"492c0854ddcf64a1\",\"unmeasured_quality_pairs\":\"6992e0d960d59de0\",\"unmet_prerequisites\":\"81265becce10990d\",\"validate_item\":\"7ab8e3a026a0c970\"}",
       "truth_class": "derived"
     },
     {
@@ -9430,6 +9886,13 @@
       "key": "locator",
       "value": "next:171 (priority: fix > validate > build > coverage > quality > analyze > triage > review > prove > elaborate)",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "9d9249cace133c419b46e552dd53c8b7",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "9dcb35805bdee249ec83b9f19e1a604d",
@@ -9484,7 +9947,7 @@
       "target_id": "9f852cf2ca863f2d6aba68b969764aea",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "3da42ba75d36029e",
+      "value": "048ede06848f6be0",
       "truth_class": "derived"
     },
     {
@@ -9505,7 +9968,7 @@
       "target_id": "9f852cf2ca863f2d6aba68b969764aea",
       "target_kind": "node",
       "key": "loc",
-      "value": "321",
+      "value": "326",
       "truth_class": "derived"
     },
     {
@@ -9526,7 +9989,14 @@
       "target_id": "9f852cf2ca863f2d6aba68b969764aea",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Cli\":\"9c476851921a1a2f\",\"Command\":\"6e488b6a32ee08ec\",\"GraphModeArg\":\"6e5be64d068ee04c\",\"ModeArg\":\"d1f9e728faa4e5f4\",\"RoleArg\":\"cd9c823be04dc74f\",\"as_str\":\"9193d6c914fc3f86\",\"is_observed\":\"f2502f29e76bdf49\"}",
+      "value": "{\"Cli\":\"9c476851921a1a2f\",\"Command\":\"de4a711ccbbd87c6\",\"GraphModeArg\":\"6e5be64d068ee04c\",\"ModeArg\":\"d1f9e728faa4e5f4\",\"RoleArg\":\"cd9c823be04dc74f\",\"as_str\":\"9193d6c914fc3f86\",\"is_observed\":\"f2502f29e76bdf49\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a0a4ab10d5990dd6be3e09006ad6cdcc",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
       "truth_class": "derived"
     },
     {
@@ -9612,6 +10082,13 @@
       "key": "locator",
       "value": "fn dispatch",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "a79c2101e2079f1835137c5ed9a52111",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "a82e87aef63db6aa5fd0babb62eeed06",
@@ -9887,6 +10364,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "b54383e43cf629a20ecc6b7421f87185",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "b608a6f40ac5d124ebc644df12151661",
       "target_kind": "node",
       "key": "content_hash",
@@ -10013,11 +10497,25 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "bd2a5aed30e7c1be927a9328ebb8268f",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "bd9bce82e1916baf04c75c201c47c8f8",
       "target_kind": "edge",
       "key": "locator",
       "value": "enum TruthAxis",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "bd9bce82e1916baf04c75c201c47c8f8",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'TruthAxis' in src/truth.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "bf2ab4f977b0de9c1f56069394e1431a",
@@ -10412,6 +10910,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "c8479e2e686d918c6437db2d1a3b5314",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "c9a75e4cb0aa644bcbf9ab5703c374dc",
       "target_kind": "edge",
       "key": "locator",
@@ -10716,7 +11221,7 @@
       "target_id": "d52849a6ddcc4b034468cad771c0fbfb",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d306d91d2826217d",
+      "value": "2c7f7f154b54f39a",
       "truth_class": "derived"
     },
     {
@@ -10737,7 +11242,7 @@
       "target_id": "d52849a6ddcc4b034468cad771c0fbfb",
       "target_kind": "node",
       "key": "loc",
-      "value": "1321",
+      "value": "1329",
       "truth_class": "derived"
     },
     {
@@ -10758,7 +11263,7 @@
       "target_id": "d52849a6ddcc4b034468cad771c0fbfb",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Adjudication\":\"8afc1f305d3db147\",\"DebtCluster\":\"c2866b9d0f29d2fe\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication_of\":\"c20ca0c6c73a7807\",\"consumer_owned_file_smells\":\"c1d960efa4dbcea5\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"debt\":\"7348a9bcb1b09767\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"445f82044d4ca98a\",\"duplicated_responsibility_smells\":\"a96fe63898ac4de1\",\"edge_between\":\"a2b06485d9724169\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"ffb77f7a6db033b4\",\"hierarchy_cycle_issues\":\"bc73433a09381558\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"9e1fb026842e0bbd\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_proof_smells\":\"846bca31c5815211\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"node_name\":\"7f49570215d4f5a7\",\"ownership_smells\":\"0de410bea2ff212b\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"quantile\":\"c14d11c29d4c1114\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"self_dir\":\"cc099cf5d4a21388\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_is_justified\":\"0429c4de910c072f\",\"smells\":\"5def712822f12b9d\",\"stale_findings\":\"b9bd1abf6df97a44\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"fbfbc38738e584cf\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
+      "value": "{\"Adjudication\":\"8afc1f305d3db147\",\"DebtCluster\":\"c2866b9d0f29d2fe\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication_of\":\"bfa0088cdea8dc25\",\"consumer_owned_file_smells\":\"c1d960efa4dbcea5\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"debt\":\"7348a9bcb1b09767\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"445f82044d4ca98a\",\"duplicated_responsibility_smells\":\"a96fe63898ac4de1\",\"edge_between\":\"a2b06485d9724169\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"540b5299a7e80a3e\",\"hierarchy_cycle_issues\":\"bc73433a09381558\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"9e1fb026842e0bbd\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_proof_smells\":\"846bca31c5815211\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"node_name\":\"7f49570215d4f5a7\",\"ownership_smells\":\"0de410bea2ff212b\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"quantile\":\"c14d11c29d4c1114\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"self_dir\":\"cc099cf5d4a21388\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_has_resolving_adjudication\":\"c2b8d814d0756d23\",\"smells\":\"5def712822f12b9d\",\"stale_findings\":\"b9bd1abf6df97a44\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"fbfbc38738e584cf\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
       "truth_class": "derived"
     },
     {
@@ -10965,6 +11470,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "de7626d2b2965842aa13b40d1d743feb",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "dee615a3c58247e84",
       "target_kind": "node",
       "key": "adjudication",
@@ -11004,6 +11516,20 @@
       "target_kind": "edge",
       "key": "stale_cause",
       "value": "content hash of src/deriver.rs changed; content hash of src/seed.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e36d23bca4120855b4e47cb8272fe04e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "e42537df469fb0ec3fe18c0bc6d6666c",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'Command' in src/cli.rs changed; symbol 'run' in src/commands.rs changed",
       "truth_class": "derived"
     },
     {
@@ -11073,7 +11599,7 @@
       "target_id": "e4b92d8915c60bb0fd7d2bf6d40c2fd7",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "a6328b82a39e84ff",
+      "value": "45d0493f06d052a2",
       "truth_class": "derived"
     },
     {
@@ -11094,7 +11620,7 @@
       "target_id": "e4b92d8915c60bb0fd7d2bf6d40c2fd7",
       "target_kind": "node",
       "key": "loc",
-      "value": "1038",
+      "value": "1092",
       "truth_class": "derived"
     },
     {
@@ -11108,14 +11634,14 @@
       "target_id": "e4b92d8915c60bb0fd7d2bf6d40c2fd7",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "27",
+      "value": "28",
       "truth_class": "derived"
     },
     {
       "target_id": "e4b92d8915c60bb0fd7d2bf6d40c2fd7",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"CodefileCmd\":\"c223817d7265c2fb\",\"EdgeCmd\":\"71260bab4e379cf7\",\"FindingCmd\":\"beb96a06aa863221\",\"GraphCmd\":\"c6d9e9720781c938\",\"HypothesisCmd\":\"bcc2206e7257bc7f\",\"IgnoreCmd\":\"f9c39cc52fcc57fa\",\"InboxCmd\":\"b997abc467ae3cf8\",\"IntentCmd\":\"54b1dc16f0066e4d\",\"IntentTagCmd\":\"2fd96d64a986e780\",\"JourneyCmd\":\"f575bb4296f6e748\",\"JourneyCoverageCmd\":\"05c37118ef4bb96c\",\"JourneyInvariantCmd\":\"d764bb7cb40fc699\",\"LayerCmd\":\"2177d28d2dd26cb2\",\"NoteCmd\":\"56ab85f4437638a2\",\"PolicyCmd\":\"c61c52fa11d3659e\",\"ProposalCmd\":\"079bec33ddce4e30\",\"ProposalItemCmd\":\"6a7205b69eb23e74\",\"RuleCmd\":\"ee8bb1c371b35252\",\"ScanCmd\":\"d77d05fdc1f6d3c9\",\"ScanFormatArg\":\"984d1856f8a626dc\",\"SurfaceCmd\":\"e44ef76f57090617\",\"TaskCmd\":\"d7fdf74b6556bfd7\",\"ThresholdCmd\":\"3eff5a090e78038d\",\"ValidationCmd\":\"e2f62893faa9a56a\",\"VocabCmd\":\"4b46bd49495a2ccf\",\"WikiCmd\":\"510c47fb12b1d4fa\",\"from\":\"5ec721d732f248d6\"}",
+      "value": "{\"CodefileCmd\":\"c223817d7265c2fb\",\"EdgeCmd\":\"71260bab4e379cf7\",\"FindingCmd\":\"1567b411c769996d\",\"GraphCmd\":\"c6d9e9720781c938\",\"HypothesisCmd\":\"bcc2206e7257bc7f\",\"IgnoreCmd\":\"f9c39cc52fcc57fa\",\"InboxCmd\":\"b997abc467ae3cf8\",\"IntentCmd\":\"54b1dc16f0066e4d\",\"IntentTagCmd\":\"2fd96d64a986e780\",\"JourneyCmd\":\"f575bb4296f6e748\",\"JourneyCoverageCmd\":\"05c37118ef4bb96c\",\"JourneyInvariantCmd\":\"d764bb7cb40fc699\",\"LayerCmd\":\"2177d28d2dd26cb2\",\"NoteCmd\":\"56ab85f4437638a2\",\"PolicyCmd\":\"c61c52fa11d3659e\",\"ProposalCmd\":\"079bec33ddce4e30\",\"ProposalItemCmd\":\"6a7205b69eb23e74\",\"QuestionCmd\":\"97939fb566387021\",\"RuleCmd\":\"ee8bb1c371b35252\",\"ScanCmd\":\"d77d05fdc1f6d3c9\",\"ScanFormatArg\":\"984d1856f8a626dc\",\"SurfaceCmd\":\"e44ef76f57090617\",\"TaskCmd\":\"d7fdf74b6556bfd7\",\"ThresholdCmd\":\"3eff5a090e78038d\",\"ValidationCmd\":\"e2f62893faa9a56a\",\"VocabCmd\":\"4b46bd49495a2ccf\",\"WikiCmd\":\"510c47fb12b1d4fa\",\"from\":\"5ec721d732f248d6\"}",
       "truth_class": "derived"
     },
     {
@@ -11133,10 +11659,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "e7ab5c1dd083e4c5a43393968ce41eb5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/model.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "e81bc23589889eeadfae23dd33257807",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "33d85eee55d32f6b",
+      "value": "82695167a5f7e7e3",
       "truth_class": "derived"
     },
     {
@@ -11280,6 +11813,20 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "f200ef5c271854cb1ad63b12e8298079",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "f4f53cb5c9c3c8a83d41f74b53554708",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "f5b123fa5669179735c574d0c75c17c3",
       "target_kind": "edge",
       "key": "locator",
@@ -11287,6 +11834,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "f6b1298ae57e71b27aa33bfcbef43f15",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/mod.rs changed; content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "f7456e195190bd68ee057ab511c6a2e6",
       "target_kind": "node",
       "key": "level",
@@ -11313,6 +11867,13 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "f8c54e00bf9bd596ab8e6377ab69e3d3",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/contracts.rs changed; symbol 'TruthAxis' in src/truth.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "f9ae96feac3c653db1f204c62f7b63c2",

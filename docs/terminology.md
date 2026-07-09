@@ -225,7 +225,7 @@ Durable prose attached to a graph target. Use for decisions, rationale, confirma
 
 ### InboxItem
 
-The single free-form input boundary. Raw human/LLM/wiki/code-audit text enters here before becoming graph truth.
+The free-form boundary for raw human/external unmapped input. Evidence-backed LLM/wiki/code-audit observations enter as `Finding`; product decisions enter as `Question`.
 
 Inbox items are candidates, not truth.
 
@@ -558,7 +558,7 @@ A reasoned facet written by `loom intent waive <intent> <axis> --reason "<why>"`
 
 ### open question
 
-An unanswered product/design question captured as an `InboxItem` with `--source question`, usually linked to an intent by `--link intent:<id>`. Open questions are counted in `graph_state.open_questions` and surfaced by `loom session`; the linked intent's `questions` axis stays open until the inbox item is answered, routed, rejected, duplicated, deferred, or otherwise withdrawn from the open question set.
+An unanswered product/design question captured as a first-class `Question` node and linked to an intent by a `questions` edge. Open questions are counted in `graph_state.open_questions` and surfaced by `loom session` / `loom question list --status open`; the linked intent's `questions` axis stays open until the question is answered or closed as withdrawn, duplicate, or deferred.
 
 ### elaborate queue
 

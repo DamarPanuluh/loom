@@ -185,6 +185,16 @@ impl Store {
             .iter()
             .map(|n| (n.id.as_str(), n.node_type))
             .collect();
+        for n in &snap.nodes {
+            if !registry::node_allows_truth_class(n.node_type, n.truth_class) {
+                bail!(
+                    "import: node '{}' type '{}' disallows truth_class '{}'",
+                    n.id,
+                    n.node_type,
+                    n.truth_class
+                );
+            }
+        }
         for e in &snap.edges {
             let spec = registry::spec(e.kind);
             if !spec.allows_truth_class(e.truth_class) {

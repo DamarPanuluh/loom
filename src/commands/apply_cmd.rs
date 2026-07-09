@@ -147,11 +147,11 @@ struct VerdictBody {
     confidence: f64,
 }
 
-/// A durable adjudication on a materialized finding (a smell or scan finding),
-/// addressed by id or unique id-prefix. Mirrors `loom finding verdict`: the same
-/// gate (verdict ∈ justified|needed|blocked, substantive reason) runs in
-/// `adjudicate_finding`, so a batch can never accept what the CLI would reject.
-/// The finding must already exist (materialized by a prior `loom sync`).
+/// A durable adjudication on a materialized finding (a smell, scan finding, or
+/// asserted manual finding), addressed by id or unique id-prefix. Mirrors
+/// `loom finding verdict`: the same expanded verdict gate and substantive
+/// reason check run in `adjudicate_finding`, so a batch can never accept what
+/// the CLI would reject. The finding must already exist.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct AdjudicationSpec {

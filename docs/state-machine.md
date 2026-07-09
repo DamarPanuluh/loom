@@ -41,10 +41,12 @@ Every fact type has a canonical owner. A change to one expression of truth must 
 | Rationale / decision | `Note` | any role |
 | Documentation freshness | `WikiPage` + `documents` edges (`loom wiki`) | agent authors prose; sync stales pages |
 | Statistical suspicion | `DebtCluster` (computed, not stored) | computed on demand |
-| Raw input | `InboxItem` | capture before routing |
+| Raw human/external input | `InboxItem` | capture before routing |
+| Evidence-backed observation | `Finding` | sync/scan derived producers or `loom finding add` asserted producer |
+| Product question | `Question` | builder / human answer |
 | Operational work | `TaskRecord` | any role |
 
-A documentation prose edit is not a change to behavior meaning unless it is routed as a graph delta through `InboxItem` and accepted.
+A documentation prose edit is not a change to behavior meaning unless it is routed as a typed graph delta and accepted. Raw human/external input enters through `InboxItem`; evidence-backed wiki/code observations enter through `Finding`.
 
 ---
 
@@ -195,11 +197,11 @@ Porting import that drops groundings and proof results as planned work is deferr
 Documentation prose-only change
   → if it is a tracked WikiPage, re-stamp freshness with loom wiki record
   → if it is merely explanatory, no graph change
-  → if it contradicts or extends graph truth, capture as InboxItem
+  → if it contradicts or extends graph truth with evidence, capture as an asserted Finding
 
 Documentation semantic claim differs from graph
-  → loom inbox add "<drift>" --source wiki --link <ref>
-  → route through door/inbox landing commands
+  → loom finding add "<drift>" --source wiki --kind wiki --link <ref> --evidence "…" --impact "…"
+  → triage through the finding lane
   → graph remains canonical until a typed graph write is accepted
 ```
 
@@ -211,7 +213,7 @@ Statistical cluster confirmed by human/LLM
   → needs_change Intent (if concrete known issue)
   → manual relates edge + Note (if indirect coupling)
   → decision Note dismissing it (if deliberate)
-  → never: raw Finding node (unless deterministic structural fact)
+  → never: raw human/external input directly as a Finding; evidence-backed code/tool/model observations enter via `loom finding add`
 ```
 
 ---
@@ -408,6 +410,6 @@ deprecated
 | `validate` | uninspected / stale `validates` edges only | validator |
 | `quality` | uninspected / stale `governs` edges only; or first never-measured rule × root implemented intent pair | quality |
 | `analyze` | uninspected non-`governs`/non-`validates` asserted relationships | analyzer |
-| `triage` | untriaged/stale derived findings, including external diagnostic findings, and new InboxItems needing routing | analyzer |
+| `triage` | untriaged/stale findings (derived or asserted), including external diagnostics, and new raw human/external InboxItems needing routing | analyzer |
 | `review` | asserted passing/independent verdicts with `0 < confidence < 0.7`, lowest first | edge kind's registry owner, with independent re-inspection mindset |
 | `prove` | proposed hypotheses | analyzer |

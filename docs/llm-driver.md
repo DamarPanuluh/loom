@@ -294,7 +294,7 @@ mindset:
     and add `implements --role consumes` edges for the consumer seams instead.
   If an intent name looks like a function name (snake_case, no spaces), challenge it:
     confirm a behavioral criterion exists in the description;
-    if the intent should be a locator instead, capture as InboxItem and propose
+    if the intent should be a locator instead, capture the modeling concern as a finding and propose
     the right model (behavioral intent + implements locator) rather than proceeding.
   Add a validation stub if none exists.
   Run sync after code changes.
@@ -306,7 +306,7 @@ allowed:
   loom edge implement --role realizes|consumes|configures|verifies
   loom validation add (stub only)
   loom sync
-  loom inbox add (for out-of-scope findings or suspect intents)
+  loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>
   loom intent add --allow-symbol-name (only when name is a known public symbol
     with a genuine behavioral criterion; must provide full --description)
 
@@ -335,7 +335,7 @@ mindset:
 allowed:
   loom edge explore ground / issue / independent
   loom hypothesis prove
-  loom inbox add (out-of-scope findings)
+  loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>
   read codefiles, notes, prior evidence
 
 forbidden:
@@ -363,7 +363,7 @@ allowed:
   loom sync
   loom edge implement --role realizes|consumes|configures|verifies (re-ground after fix)
   loom intent update <intent> --lifecycle implemented --reason '…' (after confirmed fix)
-  loom inbox add (out-of-scope findings)
+  loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>
 
 forbidden:
   loom intent update --description (unless evidence confirms meaning changed)
@@ -477,13 +477,13 @@ LLM proposes missing surroundings
   → add scenario intents with --aspect sad|fallback|edge_case and scenario-of edges
   → add prerequisite edges or proof/journey coverage where the answer is graph-derivable
   → raise product decisions as questions:
-       loom inbox add "<one crisp product question>" --source question --link intent:<id>
+       loom question add "<one crisp product question>" --intent <intent>
   → waive non-question axes only with a real reason:
        loom intent waive <intent> <axis> --reason "<why it deliberately does not apply>"
 
 human answers batched questions
   → surfaced by loom session and graph_state.open_questions
-  → route/answer the linked InboxItems before the questions axis closes
+  → answer or close the linked Question nodes before the questions axis closes
 ```
 
 The LLM must not answer product questions for the human. It either creates the missing graph artifact, records a non-question waiver with a reason, or raises one crisp linked question.
@@ -505,7 +505,7 @@ If a grounded file mentioned in another lane's `read_set` is deleted, the read_s
 
 ### wiki author (served by `loom wiki next`, not `loom next`)
 
-Wiki work is not a gated WorkItem lane: `loom wiki next` emits a verified brief — the documented intents' descriptions, groundings, and proof status — and the agent writes reader-first prose at the page's path, then stamps it fresh with `loom wiki record <title>`. The mindset: explain the graph, never contradict it; a claim the brief cannot support is documentation drift — route it through `loom inbox add ... --source wiki` (or `--source code_audit` when found during code review) instead of writing it.
+Wiki work is not a gated WorkItem lane: `loom wiki next` emits a verified brief — the documented intents' descriptions, groundings, and proof status — and the agent writes reader-first prose at the page's path, then stamps it fresh with `loom wiki record <title>`. The mindset: explain the graph, never contradict it; a claim the brief cannot support is documentation drift — capture it with `loom finding add ... --source wiki` (or `--source code_audit` when found during code review) instead of writing it.
 
 ---
 
@@ -548,13 +548,13 @@ dependency stale cause handled?
 
 While working a `WorkItem`, the LLM may encounter something outside the current task.
 
-**Do not silently fix it. Do not dismiss it. Capture it.**
+**Do not silently fix it. Do not silently dismiss it. Capture evidence-backed observations with `loom finding add`.**
 
 ```text
-loom inbox add "<finding>" --source code_audit --link <node-or-file>
+loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>
 ```
 
-Route after the current item is complete. The inbox is the holding area; the graph is the durable record.
+Non-blocking means do not detour into editing; it does not mean drop the observation. Return to the current WorkItem after capture; triage adjudicates it later.
 
 This applies to:
 
@@ -580,8 +580,8 @@ Canonical stop conditions:
 after recording verdict: run loom status
 after code change: run loom sync, then loom status
 after grounding: run loom sync, then loom status
-after capturing InboxItem: return to current WorkItem
-after routing InboxItem: mark routed/rejected/duplicate/deferred, then loom status
+after capturing Finding: return to current WorkItem
+after opening Question: ask/batch human answer, then `loom question answer` or `loom question close`; after routing InboxItem: mark routed/rejected/duplicate/deferred, then loom status
 after interview turn: wait for human response or run loom status
 ```
 
@@ -592,7 +592,7 @@ confidence < 0.7 after inspection:
   record verdict with actual confidence; review queue routes it
 
 out-of-scope product decision:
-  capture as InboxItem; do not decide; return to WorkItem
+  open a Question with `loom question add`; do not decide; return to WorkItem
 
 missing prerequisite for human gate:
   record blocked with reason; return to loom status
@@ -615,7 +615,7 @@ human-gated (requires human):
   major product decisions captured through InboxItem routing
 ```
 
-`loom session` and `graph_state.open_questions` surface the human-gated remainder so the LLM can batch questions for one conversation window instead of interrupting repeatedly.
+`loom session`, `loom question list --status open`, and `graph_state.open_questions` surface the human-gated remainder so the LLM can batch questions for one conversation window instead of interrupting repeatedly.
 
 ---
 

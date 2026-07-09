@@ -283,27 +283,56 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
 
     loom::sync::run(&store, tmp.path()).unwrap();
 
-    assert!(!loom::signal::smell_is_justified(&store, &identity).unwrap());
+    assert!(!loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Unmet);
 
+    // `justified` is a resolving adjudication — excellent rung becomes Met.
     store
         .record_finding_verdict(&finding_id, "justified", "accepted cross-cut")
         .unwrap();
-    assert!(loom::signal::smell_is_justified(&store, &identity).unwrap());
+    assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Met);
 
+    // `needed` is NOT resolving — excellent rung stays Unmet.
     store
         .record_finding_verdict(&finding_id, "needed", "must split")
         .unwrap();
-    assert!(!loom::signal::smell_is_justified(&store, &identity).unwrap());
+    assert!(!loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(workitem::graph_state(&store).unwrap().untriaged, 0);
     assert_eq!(excellent_state(&store), RungState::Unmet);
 
+    // `blocked` is NOT resolving — excellent rung stays Unmet.
     store
         .record_finding_verdict(&finding_id, "blocked", "upstream")
         .unwrap();
+    assert!(!loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(workitem::graph_state(&store).unwrap().untriaged, 0);
     assert_eq!(excellent_state(&store), RungState::Unmet);
+
+    // `rejected` is a resolving adjudication — excellent rung becomes Met.
+    store
+        .record_finding_verdict(&finding_id, "rejected", "false positive after inspection")
+        .unwrap();
+    assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
+    assert_eq!(excellent_state(&store), RungState::Met);
+
+    // `deferred` is a resolving adjudication — excellent rung becomes Met.
+    store
+        .record_finding_verdict(&finding_id, "deferred", "revisit after v2 ships")
+        .unwrap();
+    assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
+    assert_eq!(excellent_state(&store), RungState::Met);
+
+    // `duplicate` is a resolving adjudication — excellent rung becomes Met.
+    store
+        .record_finding_verdict(
+            &finding_id,
+            "duplicate",
+            "same as overlapping_ownership:other",
+        )
+        .unwrap();
+    assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
+    assert_eq!(excellent_state(&store), RungState::Met);
 }
 
 #[test]
@@ -325,14 +354,74 @@ fn graph_state_splits_findings_into_open_and_resolved() {
         pulse.findings
     );
 
-    // (2) Justified verdict resolves it: open decrements, resolved increments.
+    // (2) Each of the four non-open verdicts resolves the finding.
+    // `justified` resolves.
     store
         .record_finding_verdict(&finding.id, "justified", "cohesive")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
-    assert_eq!(pulse.findings, 1);
     assert_eq!(pulse.open_findings, 0);
     assert_eq!(pulse.resolved_findings, 1);
+    assert_eq!(
+        pulse.open_findings + pulse.resolved_findings,
+        pulse.findings
+    );
+
+    // `rejected` resolves.
+    store
+        .record_finding_verdict(&finding.id, "rejected", "false positive")
+        .unwrap();
+    let pulse = workitem::graph_state(&store).unwrap();
+    assert_eq!(pulse.open_findings, 0, "rejected is resolved");
+    assert_eq!(pulse.resolved_findings, 1);
+    assert_eq!(
+        pulse.open_findings + pulse.resolved_findings,
+        pulse.findings
+    );
+
+    // `deferred` resolves.
+    store
+        .record_finding_verdict(&finding.id, "deferred", "after v2")
+        .unwrap();
+    let pulse = workitem::graph_state(&store).unwrap();
+    assert_eq!(pulse.open_findings, 0, "deferred is resolved");
+    assert_eq!(pulse.resolved_findings, 1);
+    assert_eq!(
+        pulse.open_findings + pulse.resolved_findings,
+        pulse.findings
+    );
+
+    // `duplicate` resolves.
+    store
+        .record_finding_verdict(&finding.id, "duplicate", "same as other:finding")
+        .unwrap();
+    let pulse = workitem::graph_state(&store).unwrap();
+    assert_eq!(pulse.open_findings, 0, "duplicate is resolved");
+    assert_eq!(pulse.resolved_findings, 1);
+    assert_eq!(
+        pulse.open_findings + pulse.resolved_findings,
+        pulse.findings
+    );
+
+    // `needed` remains open.
+    store
+        .record_finding_verdict(&finding.id, "needed", "schedule it")
+        .unwrap();
+    let pulse = workitem::graph_state(&store).unwrap();
+    assert_eq!(pulse.open_findings, 1, "needed stays open");
+    assert_eq!(pulse.resolved_findings, 0);
+    assert_eq!(
+        pulse.open_findings + pulse.resolved_findings,
+        pulse.findings
+    );
+
+    // `blocked` remains open.
+    store
+        .record_finding_verdict(&finding.id, "blocked", "upstream dep")
+        .unwrap();
+    let pulse = workitem::graph_state(&store).unwrap();
+    assert_eq!(pulse.open_findings, 1, "blocked stays open");
+    assert_eq!(pulse.resolved_findings, 0);
     assert_eq!(
         pulse.open_findings + pulse.resolved_findings,
         pulse.findings
@@ -392,4 +481,230 @@ fn graph_state_splits_findings_into_open_and_resolved() {
         stale.open_findings + stale.resolved_findings,
         stale.findings
     );
+}
+
+// ---- CLI helpers (compiled binary) -----------------------------------------
+
+fn loom_bin() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom"))
+}
+
+fn loom_init(tmp: &std::path::Path, name: Option<&str>) {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("init").arg(tmp);
+    if let Some(n) = name {
+        cmd.args(["--name", n]);
+    }
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom init: {e}"));
+    assert!(
+        out.status.success(),
+        "loom init failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+fn loom_json(tmp: &std::path::Path, args: &[&str]) -> serde_json::Value {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args).arg("--json");
+    let out = cmd.output().unwrap_or_else(|e| panic!("spawn loom: {e}"));
+    assert!(
+        out.status.success(),
+        "loom {:?} --json failed: {}\n{}",
+        args,
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    serde_json::from_str(&stdout).unwrap_or_else(|e| {
+        panic!(
+            "loom {:?} --json did not emit JSON:\n{}\nparse error: {e}",
+            args, stdout
+        )
+    })
+}
+
+fn loom_run_ok(tmp: &std::path::Path, args: &[&str]) -> String {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args);
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom {:?}: {e}", args));
+    assert!(
+        out.status.success(),
+        "loom {:?} failed: {}\n{}",
+        args,
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout)
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+
+#[test]
+fn finding_add_creates_asserted_finding_without_inbox() {
+    // Contract: `loom finding add` creates an asserted Finding node whose body
+    // carries source/kind/evidence/impact/confidence, and creates NO inbox item.
+    let tmp = Tmp::new();
+    tmp.write("src/x.rs", "pub fn x() {}\n");
+    loom_init(tmp.path(), Some("t"));
+    loom_run_ok(tmp.path(), &["codefile", "add", "src/x.rs"]);
+
+    let out = loom_json(
+        tmp.path(),
+        &[
+            "finding",
+            "add",
+            "duplicated route-key normalization",
+            "--source",
+            "code_audit",
+            "--kind",
+            "duplication",
+            "--file",
+            "src/x.rs",
+            "--evidence",
+            "src/x.rs:1 — duplicate normalization observed",
+            "--impact",
+            "future route-key changes can drift",
+            "--confidence",
+            "0.8",
+        ],
+    );
+
+    let finding = out
+        .get("finding")
+        .expect("FINDING ADD: output must contain 'finding' key");
+    assert_eq!(
+        finding.get("type").and_then(|v| v.as_str()),
+        Some("finding"),
+        "FINDING ADD: node type must be 'finding'"
+    );
+    assert_eq!(
+        finding.get("truth_class").and_then(|v| v.as_str()),
+        Some("asserted"),
+        "FINDING ADD: truth_class must be 'asserted'"
+    );
+    let body = finding
+        .get("body")
+        .expect("FINDING ADD: node must have body");
+    assert_eq!(
+        body.get("source").and_then(|v| v.as_str()),
+        Some("code_audit")
+    );
+    assert_eq!(
+        body.get("kind").and_then(|v| v.as_str()),
+        Some("duplication")
+    );
+    assert_eq!(
+        body.get("evidence").and_then(|v| v.as_str()),
+        Some("src/x.rs:1 — duplicate normalization observed")
+    );
+    assert_eq!(body.get("confidence").and_then(|v| v.as_f64()), Some(0.8));
+
+    // No inbox item must be created by `finding add`.
+    let inbox = loom_json(tmp.path(), &["inbox", "list"]);
+    assert_eq!(
+        inbox.as_array().map(|a| a.len()),
+        Some(0),
+        "FINDING ADD: inbox must be empty after finding add, got: {}",
+        inbox
+    );
+}
+
+#[test]
+fn finding_verdict_gate_accepts_expanded_vocabulary_via_cli() {
+    // Contract: the `loom finding verdict` gate accepts all six vocabulary words
+    // and rejects unknown ones. Acceptance is tested through the real CLI binary
+    // (which calls adjudicate_finding → validate_finding_verdict), not the raw
+    // store method that bypasses the gate.
+    // Classification contract: needed/blocked stay open; justified/rejected/
+    // deferred/duplicate are resolved when not stale.
+    let tmp = Tmp::new();
+    tmp.write("src/x.rs", "pub fn x() {}\n");
+    loom_init(tmp.path(), Some("t"));
+    loom_run_ok(tmp.path(), &["codefile", "add", "src/x.rs"]);
+
+    // Create an asserted finding via CLI so we have a real finding ID.
+    let out = loom_json(
+        tmp.path(),
+        &[
+            "finding",
+            "add",
+            "gate check finding",
+            "--source",
+            "code_audit",
+            "--kind",
+            "code_audit",
+            "--file",
+            "src/x.rs",
+            "--evidence",
+            "src/x.rs:1 — observed",
+            "--impact",
+            "matters",
+            "--confidence",
+            "0.7",
+        ],
+    );
+    let id = out["finding"]["id"]
+        .as_str()
+        .expect("VERDICT GATE: finding add must emit id")
+        .to_string();
+    let short = &id[..8.min(id.len())];
+
+    // Unknown verdict must be rejected by the gate (non-zero exit).
+    let bad = std::process::Command::new(loom_bin())
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["finding", "verdict", short, "bogus", "--reason", "test"])
+        .output()
+        .unwrap();
+    assert!(
+        !bad.status.success(),
+        "VERDICT GATE: unknown verdict 'bogus' must exit non-zero"
+    );
+    let stderr = String::from_utf8_lossy(&bad.stderr);
+    assert!(
+        stderr.contains("needed") && stderr.contains("rejected") && stderr.contains("duplicate"),
+        "VERDICT GATE: error must name allowed verdicts, got: {stderr}"
+    );
+
+    // Each valid verdict must be accepted and produce the correct open/resolved
+    // classification. Call through the CLI so the gate is exercised every time.
+    for (verdict, expect_open) in [
+        ("needed", true),
+        ("blocked", true),
+        ("justified", false),
+        ("rejected", false),
+        ("deferred", false),
+        ("duplicate", false),
+    ] {
+        // loom_run_ok asserts success; any gate rejection will panic the test.
+        loom_run_ok(
+            tmp.path(),
+            &[
+                "finding",
+                "verdict",
+                short,
+                verdict,
+                "--reason",
+                "substantive reason",
+            ],
+        );
+        // Read classification back through the in-process store (same disk).
+        let store = loom::store::Store::open(tmp.path()).unwrap();
+        let pulse = workitem::graph_state(&store).unwrap();
+        if expect_open {
+            assert_eq!(
+                pulse.open_findings, 1,
+                "verdict '{verdict}' must keep finding open"
+            );
+            assert_eq!(pulse.resolved_findings, 0);
+        } else {
+            assert_eq!(
+                pulse.open_findings, 0,
+                "verdict '{verdict}' must resolve the finding"
+            );
+            assert_eq!(pulse.resolved_findings, 1);
+        }
+    }
 }

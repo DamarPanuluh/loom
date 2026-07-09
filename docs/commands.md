@@ -16,7 +16,7 @@ Plain-English orientation: what loom is plus the one thing to do next. This is a
 loom status [--json]
 ```
 
-Graph identity, maturity ladder, queue counts, validation summary, code ownership, and the compass. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of unanswered question-sourced inbox items.
+Graph identity, maturity ladder, queue counts, validation summary, code ownership, and the compass. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of open first-class `Question` nodes.
 
 `loom status` now prints a true per-queue backlog line (`fix=N validate=N build=N coverage=N quality=N analyze=N prove=N triage=N review=N elaborate=N`) computed by the same partition that `loom next` serves, plus a note when human questions are waiting. In JSON mode the output gains a `queues` object with the same counts.
 
@@ -97,7 +97,7 @@ Capture-first entry for free-form human/LLM language. Creates an `InboxItem` and
 loom guide [--role builder|analyzer|fixer|validator|quality|monitor] [--json]
 ```
 
-Self-contained driving protocol. `--json` includes `operator_loops`, `truth_axes` (each with `correct_when`, the falsifiable criterion for that form of truth), and `intake` — the capture-routing rule: raw thought/finding/question → `loom door`; structured plan/RFC → `loom proposal add`; falsifiable design claim → `loom hypothesis add`; timeboxed activity → `loom task add`. `--role` adds the lane's mindset, allowed/forbidden writes, evidence requirements, and the same truth-axis honesty line.
+Self-contained driving protocol. `--json` includes `operator_loops`, `truth_axes` (each with `correct_when`, the falsifiable criterion for that form of truth), and `intake` — the capture-routing rule: human/external input → `loom door`; evidence-backed code/tool observations → `loom finding add`; product decisions → `loom question add`; structured plan/RFC → `loom proposal add`; falsifiable design claim → `loom hypothesis add`; timeboxed activity → `loom task add`. `--role` adds the lane's mindset, allowed/forbidden writes, evidence requirements, and the same truth-axis honesty line.
 
 ```text
 loom schema [--json]
@@ -242,7 +242,7 @@ Read or set the evidence policy. `set-floor` sets the review-confidence floor (a
 loom completeness [<intent>] [--json]
 ```
 
-Definition-of-Complete scorecard: per-intent axes met/open/waived. Omit the key for all feature intents. The axes are `scenarios`, `prerequisites`, `boundary`, `proof`, `journey`, and `questions`. `scenarios` is satisfied by a family of `scenario-of` intents with `--aspect happy|sad|fallback|edge_case`; `questions` is driven by linked question inbox items (`loom inbox add "..." --source question --link intent:<id>`) and closes when those questions are answered/routed/withdrawn, not by a waiver.
+Definition-of-Complete scorecard: per-intent axes met/open/waived. Omit the key for all feature intents. The axes are `scenarios`, `prerequisites`, `boundary`, `proof`, `journey`, and `questions`. `scenarios` is satisfied by a family of `scenario-of` intents with `--aspect happy|sad|fallback|edge_case`; `questions` is driven by first-class `Question` nodes (`loom question add "..." --intent <intent>`) and closes when those questions are answered or closed as withdrawn/duplicate/deferred, not by a waiver.
 
 ---
 
@@ -287,7 +287,7 @@ loom intent tag add <intent> <term> [--json]
 loom intent tag remove <intent> <term> [--json]
 ```
 
-`confirm` ratifies meaning. `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered/routed/withdrawn through the linked inbox item.
+`confirm` ratifies meaning. `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
 
 ---
 
@@ -392,11 +392,14 @@ loom validation run [<intent>] [--all] [--json]
 ### Finding triage commands
 
 ```text
-loom finding list [--kind <kind>] [--state <state>] [--json]
-loom finding verdict <id> <verdict> --reason "<why>" [--json]
+loom finding add "<claim>" --source code_audit|wiki|validation|llm --kind <kind> \
+  --evidence "<observed fact>" --impact "<why it matters>" --confidence <0.0-1.0> \
+  (--file <registered-codefile> | --link <ref>) [--json]
+loom finding list [--kind <kind>] [--state untriaged|stale|needed|justified|rejected|deferred|blocked|duplicate] [--json]
+loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate --reason "<why>" [--json]
 ```
 
-Findings are derived structural signals — sync's code detectors, `scan run` diagnostics, and materialized graph-shape smells all land here. Verdicts are adjudications of those signals, not fixes.
+`Finding` is the one node type for evidence-backed observations. Programmatic producers (`sync` detectors, `scan run` diagnostics, materialized graph-shape smells) create derived findings; LLM/tool observations enter as asserted findings through `loom finding add`. Both share listing, triage, staleness display, and `loom finding verdict`; verdicts adjudicate signals, they do not fix code.
 
 ---
 
@@ -560,7 +563,22 @@ loom inbox mark <key> routed|rejected|duplicate|deferred [--reason "<why>"] [--j
 loom inbox remove <key> [--json]
 ```
 
-The single free-form input boundary. Raw text enters as `InboxItem`; typed creation commands plus positional `mark` dispositions close the loop.
+The single free-form input boundary. Raw text enters as `InboxItem`; allowed sources are `human|external|support|import`. Evidence-backed observations belong in `loom finding add`; product decisions belong in `loom question add`. Typed creation commands plus positional `mark` dispositions close the loop.
+
+---
+
+## Question commands
+
+```text
+loom question add "<question>" --intent <intent> [--json]
+loom question list [--status open|answered|withdrawn|duplicate|deferred] [--limit N] [--offset N] [--json]
+loom question show <key> [--json]
+loom question answer <key> --answer "<answer>" [--json]
+loom question close <key> withdrawn|duplicate|deferred --reason "<why>" [--json]
+loom question remove <key> [--json]
+```
+
+Questions are first-class `Question` nodes linked to intents by `questions` edges. `open` questions keep the completeness questions axis open; `answered`, `withdrawn`, `duplicate`, and `deferred` close it.
 
 ---
 
@@ -635,7 +653,7 @@ loom whoami [--json]
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.
 - `doctor`: schema conformance, provenance, evidence vacuity, role-gate audit; exits non-zero on any issue. Includes `consumes_without_seam` when a settled `consumes` grounding has neither a locator nor a criterion naming a seam.
-- `smells`: structural signals from graph shape, each with a remedy. Sync materializes every smell as a derived Finding (content-addressed by its subject ids), so smells are served by the triage queue and adjudicated with `loom finding verdict <id> <justified|needed|blocked> --reason "…"`; the adjudication is durable across syncs and shown by `loom smells`. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or adjudicate the customization `justified`) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge. Includes `vague_intent` when an active intent's description leans on a hedge term (`handles`, `properly`, `correctly`, `robustly`, …) and names no observable outcome (no action verb, digits, literals, paths, or "by <doing>") — a falsifiability lint on the intent plane: every verdict against a mushy description is judgment theater, so either reword it with `loom intent update --description --reword` or adjudicate the finding `justified` for a deliberate summary-level intent.
+- `smells`: structural signals from graph shape, each with a remedy. Sync materializes every smell as a derived Finding (content-addressed by its subject ids), so smells are served by the triage queue and adjudicated with `loom finding verdict <id> <needed|justified|rejected|deferred|blocked|duplicate> --reason "…"`; the adjudication is durable across syncs and shown by `loom smells`. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or adjudicate the customization `justified` or `deferred`) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge. Includes `vague_intent` when an active intent's description leans on a hedge term (`handles`, `properly`, `correctly`, `robustly`, …) and names no observable outcome (no action verb, digits, literals, paths, or "by <doing>") — a falsifiability lint on the intent plane: every verdict against a mushy description is judgment theater, so either reword it with `loom intent update --description --reword` or adjudicate the finding `justified` for a deliberate summary-level intent.
 - `debt`: advisory statistical cluster feed; never appears in required work queues until promoted.
 - `whoami`: acting agent identity and lane enforcement.
 
@@ -728,4 +746,4 @@ In text mode the human summary ends with:
 next: <step>
 ```
 
-List commands bound output with `--limit` and page with `--offset` (0-based) where the binary exposes it (`intent`, `codefile`, `edge`, `rule`, `validation`, `hypothesis`, `surface`, `proposal`, `task`, `note`, `inbox`, `wiki`, `journey`, `journey coverage`, `journey invariant`). Text output prints a footer — `… showing N–M of TOTAL; --offset M for the next page` — so rows past the first page are never silently hidden; JSON output stays a bare array (page it via `--limit`/`--offset`). Resolving a node by an ambiguous name or fragment errors with the full candidate list, each as `[<short-id>] <name>`, so a duplicate is addressable by id (`show`/`remove`) instead of leaving a bare count to guess from.
+List commands bound output with `--limit` and page with `--offset` (0-based) where the binary exposes it (`intent`, `codefile`, `edge`, `rule`, `validation`, `hypothesis`, `surface`, `proposal`, `task`, `note`, `inbox`, `question`, `wiki`, `journey`, `journey coverage`, `journey invariant`). Text output prints a footer — `… showing N–M of TOTAL; --offset M for the next page` — so rows past the first page are never silently hidden; JSON output stays a bare array (page it via `--limit`/`--offset`). Resolving a node by an ambiguous name or fragment errors with the full candidate list, each as `[<short-id>] <name>`, so a duplicate is addressable by id (`show`/`remove`) instead of leaving a bare count to guess from.

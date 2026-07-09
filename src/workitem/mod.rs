@@ -328,17 +328,18 @@ pub struct GraphState {
     pub untriaged: usize,
     pub stale_findings: usize,
     pub needed: usize,
-    /// Findings still demanding attention: untriaged OR stale OR verdict=needed.
+    /// Findings still demanding attention: untriaged OR stale OR verdict=needed
+    /// OR verdict=blocked.
     pub open_findings: usize,
-    /// Findings adjudicated and current (justified/blocked, not stale).
+    /// Findings adjudicated and current with resolving verdicts.
     pub resolved_findings: usize,
     pub inbox: usize,
     /// Recorded verdicts standing below the review confidence floor: honest
     /// uncertainty awaiting independent re-inspection (`loom next --mode review`).
     pub low_confidence: usize,
-    /// Unanswered questions raised for the human (inbox items with source
-    /// `question`). These are the human-gated remainder: batch them into one
-    /// conversation window instead of interrupting per question.
+    /// Open product questions raised for the human. These are the human-gated
+    /// remainder: batch them into one conversation window instead of interrupting
+    /// per question.
     pub open_questions: usize,
 }
 
@@ -359,7 +360,9 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
     // count it once so open + resolved == total with no double-count.
     let open_findings = findings
         .iter()
-        .filter(|fv| fv.state == "untriaged" || fv.stale || fv.state == "needed")
+        .filter(|fv| {
+            fv.state == "untriaged" || fv.stale || fv.state == "needed" || fv.state == "blocked"
+        })
         .count();
     let resolved_findings = findings.len() - open_findings;
     let floor = crate::policy::load(store)?.review_confidence_floor;
@@ -391,12 +394,9 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
             .filter(|n| n.status == "new")
             .count(),
         open_questions: store
-            .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
+            .list_nodes(Some(NodeType::Question), usize::MAX)?
             .into_iter()
-            .filter(|n| {
-                n.status == "new"
-                    && n.body.get("source").and_then(|v| v.as_str()) == Some("question")
-            })
+            .filter(|n| n.status == "open")
             .count(),
         low_confidence: store
             .edges_by_status(

@@ -74,8 +74,7 @@ carry the follow-up concerns their question raises (see §4d for the full ration
   `QualityRule` (compliance norms: security, performance, defect, style), `Validation` (proofs:
   test, assertion, benchmark, journey), `Hypothesis` (proposed changes — milestone 2).
 - **`CodeFile`** — where the code lives. The "where." Family:
-  `CodeRule` (structural norms: size, complexity, safety), `Finding` (occurrences at a location —
-  derived truth-class, §4d sub-fork), `InterfaceSurface` (public surfaces — milestone 2).
+  `CodeRule` (structural norms: size, complexity, safety), `Finding` (evidence-backed observations; derived for programmatic producers, asserted for manual observations, §4d sub-fork), `InterfaceSurface` (public surfaces — milestone 2).
 
 Auxiliary nodes (not cornerstone-anchored): `Note` (audit-trail text on any target),
 `InboxItem` (un-decomposed intake). These are cross-cutting, not family members.
@@ -212,7 +211,7 @@ conditional kind. That unifies them and keeps the node count small.
 keeps v2 small — and promote a reaction to a Scenario node only when contracts get genuinely rich
 (multiple conditions, ordered responses). Capability = intent + `aspect`, never a new node. **Locked: edge-native — see §10.**
 
-## 4d. Supporting nodes — the cornerstone families — LOCKED (families with norm/occurrence split; Finding = derived node α — LOCKED)
+## 4d. Supporting nodes — the cornerstone families — LOCKED (families with norm/occurrence split; Finding = single observation node — LOCKED)
 
 "Govern" is too broad: one edge carrying security, performance, defects, structure, and
 observability flattens fundamentally different *concerns* into one undifferentiated relation —
@@ -276,8 +275,7 @@ a location:
   >M branch count should split." A `CodeRule` is to a `CodeFile` what a `QualityRule` is to an
   `Intent` — the norm; not the measurement.
 - **`Finding`** — an occurrence: a specific location (file + optional symbol) where a `CodeRule`
-  is **violated or satisfied**. Truth-class `derived` (recomputed by sync from the file's own
-  content). Edge `flags : finding → codefile` (the location) + edge `assesses : finding → coderule`
+  is **violated or satisfied**. Programmatic findings use truth-class `derived` (recomputed by sync from the file's own content). Manual LLM/tool observations use truth-class `asserted` via `loom finding add`, with file/link evidence in the body. Derived producers add `flags : finding → codefile` (the location) + edge `assesses : finding → coderule`
   (which rule it's an occurrence of). Property `kind ∈ {oversized_file, complex_symbol,
   tangled_file, panic_marker, …}`. This is the **structural signal made a graph citizen** —
   physical code-quality concerns live as nodes so they can be queried, tagged, and adjudicated
@@ -317,11 +315,11 @@ and its rule (`assesses`). The asymmetry is real: Intent verdicts are one-hop (r
 file findings are two-hop (finding→file + finding→rule). The unified edge model handles both
 naturally — they're just different edge kinds with different endpoint types in the registry.
 
-### Finding = derived node — LOCKED (α)
+### Finding = single observation node — LOCKED
 
-Structural findings (`oversized_file`, `complex_symbol`, `tangled_file`, `panic_marker`) are deterministic (derived from the file's own content, not git history) and have a specific location (file + symbol) that deserves stable identity for querying and adjudication. Statistical signals (co-change, shotgun, clone) stay computed views in `loom debt`, never nodes.
+Structural findings (`oversized_file`, `complex_symbol`, `tangled_file`, `panic_marker`) are deterministic (derived from the file's own content, not git history) and have a specific location (file + symbol) that deserves stable identity for querying and adjudication. Manual LLM/tool observations are evidence-backed findings too, but asserted via `loom finding add`; their file/link evidence lives in the body and they do not get sync-owned `flags`/`assesses` edges. Statistical signals (co-change, shotgun, clone) stay computed views in `loom debt`, never nodes.
 
-Decision: **(α) — Finding as a derived node.** Locked. Rationale: structural = derived node, statistical = computed view. This splits cleanly along the truth-class boundary, makes "what findings exist for this file?" a graph query, and allows a confirmed finding to become a `needs_change` intent without a separate computation step.
+Decision: **Finding is the one node type for evidence-backed observations.** Locked. Programmatic producers use derived findings; LLM/tool observations use asserted findings; both share listing, triage, adjudication, and stale-aware closeout. This keeps one signal lane without introducing an Observation/CodeAuditItem parallel store.
 
 ## 5. The maturity ladder
 
@@ -441,7 +439,7 @@ second milestone. **Locked: rings 1–7 — see §10.**
    promote to a Scenario node only if contracts get rich.
 7. **Facets → canonical registry** (property keys + tags, each with a truth-class) queried via
    `loom find --tag <t> --where <key>=<val>`.
-8. **Finding + CodeRule → LOCKED (α).** Structural findings as derived nodes + CodeRule as the reusable norm; statistical signals always computed views, never stored as nodes. §4d.
+8. **Finding + CodeRule → LOCKED.** `Finding` is the one evidence-backed observation node: structural producers create derived findings + CodeRule as reusable norm; manual observations create asserted findings; statistical signals stay computed views. §4d.
 9. **Non-negotiable deferred rings for v1 → none** (clean MVP first; milestone 2 adds the rest).
 
 ---

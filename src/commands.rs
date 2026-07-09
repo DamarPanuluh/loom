@@ -5,7 +5,7 @@
 
 use crate::cli::{
     Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, LayerCmd, NoteCmd,
-    RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
+    QuestionCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
 };
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
@@ -103,6 +103,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Door { utterance } => misc_cmd::door(cli.graph.as_deref(), &utterance, cli.json),
         Command::Inbox { cmd } => misc_cmd::inbox(cli.graph.as_deref(), cmd, cli.json),
+        Command::Question { cmd } => misc_cmd::question(cli.graph.as_deref(), cmd, cli.json),
         Command::Task { cmd } => misc_cmd::task(cli.graph.as_deref(), cmd, cli.json),
         Command::Note { cmd } => misc_cmd::note(cli.graph.as_deref(), cmd, cli.json),
         Command::Session => misc_cmd::session(cli.graph.as_deref(), cli.json),

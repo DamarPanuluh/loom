@@ -40,7 +40,8 @@ Intent family
 
 CodeFile family
   CodeRule        a reusable structural norm held against code
-  Finding         a located deterministic structural occurrence
+  Finding         evidence-backed observation (derived producer or asserted manual finding)
+  Question        product question awaiting human answer
   InterfaceSurface  a seam through which behavior is consumed
 
 Cross-cutting
@@ -272,19 +273,24 @@ updated_at
 
 ### Finding
 
-A located deterministic structural occurrence.
+The one node type for evidence-backed observations. Programmatic producers use `truth_class: derived`; LLM/tool observations use `truth_class: asserted` through `loom finding add`. Both share listing, triage, adjudication, and staleness display.
 
 Fields:
 
 ```text
 id
-kind:           oversized_file | complex_symbol | tangled_file | panic_marker | ...
-location:       file path + optional symbol
-truth_class:    derived
+kind:           oversized_file | complex_symbol | tangled_file | code_audit | ...
+location:       file path + optional symbol (derived producers)
+truth_class:    derived | asserted
+source:         code_audit | wiki | validation | llm (asserted body)
+evidence:       observed fact (asserted body)
+impact:         why it matters (asserted body)
+confidence:     0.0..1.0 (asserted body)
+file/link:      registered codefile or graph ref (asserted body)
 created_at
 ```
 
-Note: `Finding` covers deterministic structural facts recomputed by sync. Statistical signals such as co-change clusters and clone clusters are `DebtCluster` (computed, never stored as nodes).
+Note: deterministic structural facts recomputed by sync and external scan diagnostics remain derived findings. Statistical signals such as co-change clusters and clone clusters are `DebtCluster` (computed, never stored as nodes).
 
 ### InterfaceSurface
 
@@ -322,22 +328,31 @@ created_at
 
 ### InboxItem
 
-Raw free-form input before routing into typed graph facts or disposition.
+Raw human/external free-form input before routing into typed graph facts or disposition.
 
 Fields:
 
 ```text
 id
 raw_text
-source:         human | llm | code_audit | wiki | validation | import | external
-status:         new | triaged | normalized | routed | rejected | deferred | duplicate
-kind:           observation | user_request | feature_proposal | bug_suspicion | refactor_suspicion |
-                missing_intent | missing_validation | missing_story | terminology | rough_edge |
-                external_blocker | question | decision_capture | constraint | acceptance_criterion |
-                interface_gap | evidence | risk | follow_up | duplicate_candidate | docs_gap | migration_need
-normalized_claim
-proposed_command
-target_refs:    [] links to related nodes
+source:         human | external | support | import
+status:         new | routed | rejected | deferred | duplicate
+target_refs:    [] optional links to related nodes/refs
+created_at
+updated_at
+```
+
+### Question
+
+Product question awaiting a human answer for an intent. Questions are not inbox items.
+
+Fields:
+
+```text
+id
+text
+status:         open | answered | withdrawn | duplicate | deferred
+intent:         intent id (body cache; `questions` edge is canonical link)
 created_at
 updated_at
 ```
@@ -433,6 +448,7 @@ The write-time check verifies the supplied truth class is in the allowed set for
 | `validates` | Validation | Intent | asserted | validator | proof checks behavior |
 | `governs` | QualityRule | Intent | asserted | quality | norm measured against behavior |
 | `targets` | Hypothesis | Intent | asserted | analyzer | hypothesis concerns intent |
+| `questions` | Question | Intent | asserted | builder | product question awaiting human answer for an intent |
 | `flags` | Finding | CodeFile | derived | sync | finding concerns codefile |
 | `assesses` | Finding | CodeRule | derived | sync | finding is occurrence of code rule |
 | `exposes` | InterfaceSurface | CodeFile | asserted | builder | declared surface exposed by a codefile |
@@ -596,8 +612,8 @@ These are core value families used by the store and CLI. Some values are registr
 ```text
 NodeType =
   Intent | CodeFile | QualityRule | CodeRule | Validation | Hypothesis |
-  Finding | InterfaceSurface | Note | InboxItem | TaskRecord | Proposal |
-  JourneyCoverage | JourneyInvariantPoint
+  Finding | Question | InterfaceSurface | Note | InboxItem | TaskRecord | Proposal |
+  JourneyCoverage | JourneyInvariantPoint | WikiPage | UpstreamIntent
 
 EdgeTruthClass =
   derived | asserted

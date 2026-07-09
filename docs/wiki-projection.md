@@ -15,7 +15,7 @@ The graph is the canonical source of truth. The wiki is a **projection** — a r
 Implications:
 
 - Editing a wiki page does not change product meaning.
-- A wiki prose change that contradicts the graph is a graph question, routed through `InboxItem` normalization.
+- A wiki prose change that contradicts the graph is documentation drift captured with `loom finding add --source wiki`; if it is a real product decision, open `loom question add` instead.
 - A stale wiki page is not a lie — it is a signal that the graph changed and the page has not caught up.
 - The wiki can be regenerated entirely from the graph at any time.
 
@@ -358,7 +358,7 @@ Not MVP. Include it only after the graph model, state machine, LLM driver, and w
 
 1. **Wiki docs explain the graph; they never replace it.**
 2. **Every factual claim cites a graph fact.** Uncited claims are either prose connective tissue or fabrications.
-3. **Semantic wiki changes enter the graph through InboxItem normalization.** Never directly.
+3. **Semantic wiki drift enters the graph through typed commands:** `loom finding add --source wiki` for evidence-backed drift, `loom question add` for product decisions. Never directly.
 4. **Stale pages are honest.** They signal graph/code changed, not that loom lied.
 5. **Publish requires verify.** No bypass.
 6. **Adapters point; they do not duplicate.** AGENTS.md/skills are reading-order pointers.

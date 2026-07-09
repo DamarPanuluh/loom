@@ -110,6 +110,11 @@ pub enum Command {
         #[command(subcommand)]
         cmd: InboxCmd,
     },
+    /// Product question commands (human-gated decisions linked to intents).
+    Question {
+        #[command(subcommand)]
+        cmd: QuestionCmd,
+    },
     /// TaskRecord commands (spikes / investigations; never certify truth).
     Task {
         #[command(subcommand)]

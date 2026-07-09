@@ -528,24 +528,29 @@ fn questions_axis_is_never_waivable() {
         "contract 2: questions axis never carries a waived reason"
     );
 
-    // And when questions ARE open, the waiver still does not apply.
-    store
+    // And when questions ARE open (via a Question node), the waiver still does not apply.
+    let question = store
         .add_node(
-            NodeType::InboxItem,
-            "open product question",
+            NodeType::Question,
             "should login support SSO?",
-            "new",
-            serde_json::json!({
-                "source": "question",
-                "link": format!("intent:{}", intent.id),
-            }),
+            "should login support SSO?",
+            "open",
+            serde_json::json!({ "intent": intent.id.clone() }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Questions,
+            &question.id,
+            &intent.id,
+            TruthClass::Asserted,
         )
         .unwrap();
     let card_open = completeness::scorecard(&store, &intent).unwrap();
     let q_open = axis_state(&card_open, "questions");
     assert_eq!(
         q_open.state, "open",
-        "contract 2: questions axis is open when an unanswered question inbox item exists"
+        "contract 2: questions axis is open when an open Question node exists"
     );
     assert!(
         q_open.waived_reason.is_none(),
@@ -558,10 +563,10 @@ fn questions_axis_is_never_waivable() {
 // ===========================================================================
 
 #[test]
-fn question_inbox_item_opens_questions_axis_and_increments_open_questions() {
-    // Contract 3: an inbox item status=new, body.source=question,
-    // body.link=intent:<id> opens the questions axis and increments
-    // graph_state().open_questions.
+fn question_node_opens_questions_axis_and_increments_open_questions() {
+    // Contract 3 (updated): a first-class Question node linked to an intent by
+    // a `questions` edge opens the questions axis and increments open_questions.
+    // InboxItem{source:"question"} is no longer the backing mechanism.
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = feature_intent(&store, "user can log in", Some("user_visible"));
@@ -575,83 +580,92 @@ fn question_inbox_item_opens_questions_axis_and_increments_open_questions() {
     assert_eq!(
         axis_state(&card_before, "questions").state,
         "met",
-        "contract 3: questions axis is met before a question is raised"
+        "contract 3: questions axis is met before any question is opened"
     );
 
-    store
+    // Create a Question node linked to the intent via a `questions` edge.
+    let question = store
         .add_node(
-            NodeType::InboxItem,
-            "open product question",
+            NodeType::Question,
             "should login support SSO?",
-            "new",
-            serde_json::json!({
-                "source": "question",
-                "link": format!("intent:{}", intent.id),
-            }),
+            "should login support SSO?",
+            "open",
+            serde_json::json!({ "intent": intent.id.clone() }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Questions,
+            &question.id,
+            &intent.id,
+            TruthClass::Asserted,
         )
         .unwrap();
 
     let after = graph_state(&store).unwrap();
     assert_eq!(
         after.open_questions, 1,
-        "contract 3: a new question inbox item increments open_questions"
+        "contract 3: an open Question node increments open_questions"
     );
     let card_after = completeness::scorecard(&store, &intent).unwrap();
     assert_eq!(
         axis_state(&card_after, "questions").state,
         "open",
-        "contract 3: a linked question inbox item opens the questions axis"
+        "contract 3: a linked open Question opens the questions axis"
     );
 }
 
 #[test]
-fn marking_question_routed_closes_questions_axis_and_decrements_open_questions() {
-    // Contract 3: marking the question inbox item `routed` closes both the
-    // questions axis and decrements open_questions.
+fn answering_question_node_closes_questions_axis_and_decrements_open_questions() {
+    // Contract 3: setting a linked Question to status "answered" closes the
+    // questions axis and decrements open_questions back to zero.
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = feature_intent(&store, "user can log in", Some("user_visible"));
-    let q = store
+    let question = store
         .add_node(
-            NodeType::InboxItem,
-            "open product question",
+            NodeType::Question,
             "should login support SSO?",
-            "new",
-            serde_json::json!({
-                "source": "question",
-                "link": format!("intent:{}", intent.id),
-            }),
+            "should login support SSO?",
+            "open",
+            serde_json::json!({ "intent": intent.id.clone() }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Questions,
+            &question.id,
+            &intent.id,
+            TruthClass::Asserted,
         )
         .unwrap();
 
     let open = graph_state(&store).unwrap();
     assert_eq!(
         open.open_questions, 1,
-        "contract 3: open_questions is 1 before routing"
+        "contract 3: open_questions is 1 before answer"
     );
 
-    store
-        .update_node(&q.id, None, None, Some("routed"))
-        .unwrap();
+    store.set_node_status(&question.id, "answered").unwrap();
 
     let closed = graph_state(&store).unwrap();
     assert_eq!(
         closed.open_questions, 0,
-        "contract 3: routing the question decrements open_questions back to zero"
+        "contract 3: answering the question decrements open_questions to zero"
     );
     let card = completeness::scorecard(&store, &intent).unwrap();
     assert_eq!(
         axis_state(&card, "questions").state,
         "met",
-        "contract 3: routing the question closes the questions axis"
+        "contract 3: an answered question closes the questions axis"
     );
 }
 
 #[test]
 fn non_question_inbox_item_does_not_open_the_questions_axis() {
-    // Contract 3: an inbox item whose source is NOT `question` must not open
-    // the questions axis nor count toward open_questions — only question-sourced
-    // items do.
+    // Contract 3: an InboxItem (any source) does not open the questions axis
+    // nor count toward open_questions. Only first-class Question nodes linked
+    // to an intent by a `questions` edge drive the questions axis.
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = feature_intent(&store, "user can log in", Some("user_visible"));
@@ -677,6 +691,48 @@ fn non_question_inbox_item_does_not_open_the_questions_axis() {
         axis_state(&card, "questions").state,
         "met",
         "contract 3: a non-question inbox item does not open the questions axis"
+    );
+}
+
+#[test]
+fn question_close_deferred_closes_questions_axis() {
+    // Contract 3: closing a Question with status "deferred" (non-"open" status)
+    // closes the questions axis and decrements open_questions.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+    let question = store
+        .add_node(
+            NodeType::Question,
+            "should login support SSO?",
+            "should login support SSO?",
+            "open",
+            serde_json::json!({ "intent": intent.id.clone() }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Questions,
+            &question.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    assert_eq!(graph_state(&store).unwrap().open_questions, 1);
+
+    store.set_node_status(&question.id, "deferred").unwrap();
+
+    assert_eq!(
+        graph_state(&store).unwrap().open_questions,
+        0,
+        "contract 3: a deferred question is no longer open"
+    );
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&card, "questions").state,
+        "met",
+        "contract 3: deferred question closes the questions axis"
     );
 }
 

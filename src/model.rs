@@ -180,6 +180,7 @@ str_enum! {
         Validation => "validation",
         Hypothesis => "hypothesis",
         Finding => "finding",
+        Question => "question",
         InterfaceSurface => "interface_surface",
         Note => "note",
         InboxItem => "inbox_item",
@@ -262,6 +263,7 @@ str_enum! {
         Asserts => "asserts",
         Documents => "documents",
         DependsOn => "depends_on",
+        Questions => "questions",
     }
 }
 
@@ -297,8 +299,9 @@ pub struct Node {
     #[serde(default)]
     pub status: String,
     /// How this node's existence becomes true. Most nodes are `asserted`
-    /// (a human/LLM chose to record them). `Finding` nodes are `derived` —
-    /// recomputed by sync and wiped/rebuilt deterministically (INV-2).
+    /// (a human/LLM chose to record them). `Finding` is the shared finding node:
+    /// programmatic producers create derived findings, while manual evidence-backed
+    /// observations enter as asserted findings.
     #[serde(default = "default_asserted")]
     pub truth_class: TruthClass,
     #[serde(default = "empty_object")]

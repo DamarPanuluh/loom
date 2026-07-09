@@ -1315,3 +1315,115 @@ fn note_add_then_list_round_trips() {
         serde_json::to_string_pretty(&list).unwrap()
     );
 }
+
+#[test]
+fn inbox_add_source_code_audit_is_rejected_with_finding_add_hint() {
+    // Contract: evidence-backed sources (code_audit|wiki|validation|llm) are
+    // rejected by `inbox add` with a message pointing to `loom finding add`.
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+
+    for source in ["code_audit", "wiki", "validation", "llm"] {
+        let out = std::process::Command::new(loom_bin())
+            .arg("--graph")
+            .arg(tmp.path())
+            .args(["inbox", "add", "an observation", "--source", source])
+            .output()
+            .unwrap_or_else(|e| panic!("spawn loom inbox add --source {source}: {e}"));
+        assert!(
+            !out.status.success(),
+            "INBOX SOURCE GATE: `inbox add --source {source}` must exit non-zero"
+        );
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            stderr.contains("loom finding add"),
+            "INBOX SOURCE GATE: rejection for source '{source}' must mention `loom finding add`, got: {stderr}"
+        );
+    }
+}
+
+#[test]
+fn inbox_add_source_question_is_rejected_with_question_add_hint() {
+    // Contract: `inbox add --source question` is rejected with a message pointing
+    // to `loom question add`, not to `loom finding add`.
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+
+    let out = std::process::Command::new(loom_bin())
+        .arg("--graph")
+        .arg(tmp.path())
+        .args([
+            "inbox",
+            "add",
+            "should we support SSO?",
+            "--source",
+            "question",
+        ])
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom inbox add --source question: {e}"));
+    assert!(
+        !out.status.success(),
+        "INBOX SOURCE GATE: `inbox add --source question` must exit non-zero"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("loom question add"),
+        "INBOX SOURCE GATE: rejection for source 'question' must mention `loom question add`, got: {stderr}"
+    );
+    assert!(
+        !stderr.contains("loom finding add"),
+        "INBOX SOURCE GATE: rejection for 'question' must NOT redirect to finding add, got: {stderr}"
+    );
+}
+
+#[test]
+fn guide_json_intake_uses_hardcut_entry_points() {
+    // Contract: `loom guide --json` intake object has separate entry points for
+    // human input, evidence-backed observations, and product questions. Findings
+    // and questions no longer route through `loom door`.
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+
+    let guide = loom_json(tmp.path(), &["guide"]);
+    let intake = guide
+        .get("intake")
+        .expect("GUIDE JSON: must emit an 'intake' object");
+
+    // Human/external input still goes through door.
+    let human = intake
+        .get("human_or_external_input")
+        .and_then(|v| v.as_str())
+        .expect("GUIDE JSON: intake must have 'human_or_external_input'");
+    assert!(
+        human.contains("loom door"),
+        "GUIDE JSON: human_or_external_input must reference loom door, got: {human}"
+    );
+
+    // Evidence-backed observations go to finding add, not door.
+    let obs = intake
+        .get("evidence_backed_observation")
+        .and_then(|v| v.as_str())
+        .expect("GUIDE JSON: intake must have 'evidence_backed_observation'");
+    assert!(
+        obs.contains("loom finding add"),
+        "GUIDE JSON: evidence_backed_observation must reference loom finding add, got: {obs}"
+    );
+    assert!(
+        !obs.contains("loom door"),
+        "GUIDE JSON: evidence_backed_observation must NOT reference loom door, got: {obs}"
+    );
+
+    // Product questions go to question add, not door.
+    let q = intake
+        .get("product_question")
+        .and_then(|v| v.as_str())
+        .expect("GUIDE JSON: intake must have 'product_question'");
+    assert!(
+        q.contains("loom question add"),
+        "GUIDE JSON: product_question must reference loom question add, got: {q}"
+    );
+    assert!(
+        !q.contains("loom door"),
+        "GUIDE JSON: product_question must NOT reference loom door, got: {q}"
+    );
+}

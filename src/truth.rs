@@ -31,8 +31,8 @@ pub enum TruthAxis {
     /// Whether a recorded claim has been inspected. Authoritative form: an
     /// asserted edge verdict (analyzer/quality/validator, by edge kind).
     Verdict,
-    /// Programmatic findings/smells awaiting adjudication. Authoritative form:
-    /// a durable finding verdict.
+    /// Evidence-backed findings awaiting adjudication. Authoritative form:
+    /// a durable finding verdict on an asserted or derived Finding.
     Signal,
     /// The world-facing projection. Authoritative form: the exported graph file.
     Projection,
@@ -137,12 +137,12 @@ impl TruthAxis {
             },
             TruthAxis::Signal => TruthGap {
                 axis: self,
-                missing_form: "a derived finding or smell awaits adjudication".into(),
-                correct_when: "every derived finding carries a durable adjudication — justified, \
-                               needed, or blocked — with a concrete reason. The goal is zero \
-                               unjudged signals, not zero signals"
+                missing_form: "an asserted or derived finding awaits adjudication".into(),
+                correct_when: "every material finding carries a durable adjudication — needed, \
+                               justified, rejected, deferred, blocked, or duplicate — with a \
+                               concrete reason. The goal is zero unjudged signals, not zero signals"
                     .into(),
-                authoritative_write: "loom finding verdict <id> justified|needed|blocked --reason …".into(),
+                authoritative_write: "loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate --reason …".into(),
                 forbidden_write: "deferring the judgment to a human instead of judging it".into(),
                 after_write: "loom status".into(),
             },

@@ -141,6 +141,14 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         description: "hypothesis concerns intent",
     },
     EdgeKindSpec {
+        kind: EdgeKind::Questions,
+        from: Question,
+        to: Intent,
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Builder,
+        description: "product question awaiting human answer for an intent",
+    },
+    EdgeKindSpec {
         kind: EdgeKind::Flags,
         from: Finding,
         to: CodeFile,
@@ -227,41 +235,25 @@ pub fn spec(kind: EdgeKind) -> &'static EdgeKindSpec {
         .expect("edge-kind registry is total (guarded by test)")
 }
 
-/// The declared truth class of each node kind — the node-side companion to the
-/// edge-kind [`REGISTRY`]. A fact kind's *class membership* is data here, not a
-/// hardcoded literal at each write site: `Store::add_node` /
-/// `Store::add_derived_node` read this at write time both to stamp the column
-/// and to reject the wrong constructor. The mapping may reassign a kind between
-/// classes, but the class *semantics* (derived = sync-rebuilt with a
-/// deterministic id + sentinel timestamp; asserted = a pinned judgment) live in
-/// the constructors, never here.
-pub const NODE_TRUTH_CLASSES: &[(NodeType, TruthClass)] = &[
-    (Intent, Asserted),
-    (CodeFile, Asserted),
-    (QualityRule, Asserted),
-    (CodeRule, Asserted),
-    (Validation, Asserted),
-    (Hypothesis, Asserted),
-    (Finding, Derived),
-    (InterfaceSurface, Asserted),
-    (Note, Asserted),
-    (InboxItem, Asserted),
-    (TaskRecord, Asserted),
-    (Proposal, Asserted),
-    (JourneyCoverage, Asserted),
-    (JourneyInvariantPoint, Asserted),
-    (WikiPage, Asserted),
-    (UpstreamIntent, Asserted),
-];
+/// The allowed truth classes of each node kind — the node-side companion to the
+/// edge-kind [`REGISTRY`]. Most node kinds are asserted-only. `Finding` is the
+/// hard-cut exception: programmatic producers use derived findings, while
+/// evidence-backed LLM/tool observations use asserted findings through the same
+/// listing and triage path.
+pub fn node_allows_truth_class(node_type: NodeType, truth_class: TruthClass) -> bool {
+    match node_type {
+        NodeType::Finding => matches!(truth_class, TruthClass::Asserted | TruthClass::Derived),
+        _ => truth_class == TruthClass::Asserted,
+    }
+}
 
-/// The declared truth class of a node kind. Infallible by construction once
-/// `node_registry_is_total` passes.
-pub fn node_truth_class(node_type: NodeType) -> TruthClass {
-    NODE_TRUTH_CLASSES
-        .iter()
-        .find(|(t, _)| *t == node_type)
-        .map(|(_, tc)| *tc)
-        .expect("node truth-class mapping is total (guarded by test)")
+/// The default truth class for display/schema policy. Constructors still stamp
+/// their explicit class after checking [`node_allows_truth_class`].
+pub fn node_default_truth_class(node_type: NodeType) -> TruthClass {
+    match node_type {
+        NodeType::Finding => TruthClass::Derived,
+        _ => TruthClass::Asserted,
+    }
 }
 
 #[cfg(test)]
@@ -308,30 +300,41 @@ mod tests {
     }
 
     #[test]
-    fn node_registry_is_total() {
-        // Every NodeType has exactly one declared truth class.
+    fn node_truth_class_policy_is_total() {
+        // Every NodeType allows at least one truth class, and the display default
+        // is always one of its allowed classes.
         for nt in NodeType::ALL {
-            let matches: Vec<_> = NODE_TRUTH_CLASSES.iter().filter(|(t, _)| t == nt).collect();
-            assert_eq!(
-                matches.len(),
-                1,
-                "node kind {nt} must have exactly one truth class"
+            let allowed: Vec<_> = TruthClass::ALL
+                .iter()
+                .copied()
+                .filter(|tc| node_allows_truth_class(*nt, *tc))
+                .collect();
+            assert!(!allowed.is_empty(), "node kind {nt} must allow truth");
+            assert!(
+                allowed.contains(&node_default_truth_class(*nt)),
+                "node kind {nt} default must be allowed"
             );
         }
-        assert_eq!(NODE_TRUTH_CLASSES.len(), NodeType::ALL.len());
     }
 
     #[test]
-    fn only_finding_is_derived() {
-        // The class split the two node constructors enforce: Finding is the sole
-        // sync-rebuilt node kind; everything else is a pinned judgment.
-        for (nt, tc) in NODE_TRUTH_CLASSES {
-            let expect = if *nt == NodeType::Finding {
-                TruthClass::Derived
+    fn only_finding_allows_asserted_and_derived_nodes() {
+        for nt in NodeType::ALL {
+            let allows_asserted = node_allows_truth_class(*nt, TruthClass::Asserted);
+            let allows_derived = node_allows_truth_class(*nt, TruthClass::Derived);
+            if *nt == NodeType::Finding {
+                assert!(allows_asserted, "Finding accepts asserted observations");
+                assert!(allows_derived, "Finding accepts derived producers");
+                assert_eq!(node_default_truth_class(*nt), TruthClass::Derived);
             } else {
-                TruthClass::Asserted
-            };
-            assert_eq!(*tc, expect, "{nt} truth class");
+                assert!(allows_asserted, "{nt} is asserted-only");
+                assert!(!allows_derived, "{nt} must not accept derived nodes");
+                assert_eq!(node_default_truth_class(*nt), TruthClass::Asserted);
+            }
         }
+        assert!(!node_allows_truth_class(
+            NodeType::Question,
+            TruthClass::Derived
+        ));
     }
 }

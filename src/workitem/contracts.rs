@@ -42,8 +42,7 @@ pub(super) fn elaborator_contract(
             ),
             "boundary/proof/journey: loom validation add … / loom journey coverage add … (or let the quality and validate queues drive them)".into(),
             format!(
-                "questions: loom inbox add \"<one crisp product question>\" --source question --link intent:{}",
-                intent.id
+                "questions: loom question add \"<one crisp product question>\" --intent {name}"
             ),
             format!("waive: loom intent waive {name} <axis> --reason '<why it deliberately does not apply>'"),
         ],
@@ -111,11 +110,12 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
             format!("loom edge implement {name} <codefile> --locator <symbol>"),
             format!("loom intent update {name} --lifecycle implemented --reason '<what was built>'"),
             "loom sync".into(),
-            "loom inbox add (out-of-scope findings)".into(),
+            "loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>".into(),
         ],
         forbidden_actions: vec![
             "loom rule verdict passing (quality lane)".into(),
             "loom validation verdict passed (validator lane)".into(),
+            "silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold".into(),
         ],
         required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
         evidence_template: None,
@@ -228,11 +228,12 @@ pub(super) fn analyzer_contract(edge: &Edge, from_name: &str, to_name: &str) -> 
         allowed_actions: vec![
             "read codefiles, notes, prior evidence".into(),
             write_back.clone(),
-            "loom inbox add (out-of-scope findings)".into(),
+            "loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>".into(),
         ],
         forbidden_actions: vec![
             "edit code".into(),
             "record a verdict from name similarity or assumption".into(),
+            "silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold".into(),
         ],
         required_evidence: "file/line locators, validation output, or runtime evidence".into(),
         evidence_template: None,
@@ -264,11 +265,12 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
             "edit code".into(),
             "loom sync".into(),
             "loom edge implement (re-ground if the fix moved code)".into(),
-            "loom inbox add (out-of-scope findings)".into(),
+            "loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>".into(),
         ],
         forbidden_actions: vec![
             "recording the passing verdict yourself (the owning lane re-measures after sync)".into(),
             "suppress the symptom without a root-cause fix".into(),
+            "silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold".into(),
         ],
         required_evidence: "Loom context checked, relevant code inspected, code change, sync clean, the failing criterion now addressed at its cause".into(),
         evidence_template: None,
@@ -340,6 +342,7 @@ pub(super) fn quality_contract_body(
         "loom codefile show <file>".into(),
         "read the grounded code".into(),
         write_back.clone(),
+        "loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>".into(),
     ];
     allowed.extend(hints.into_iter().map(|h| format!("hint: {h}")));
     let template_note = if evidence_template.is_some() {
@@ -365,6 +368,7 @@ pub(super) fn quality_contract_body(
             "edit code".into(),
             "mark passing without inspecting".into(),
             "mark independent without evidence the rule does not apply".into(),
+            "silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold".into(),
         ],
         required_evidence: "file/line locators showing compliance, violation, or non-applicability"
             .into(),
@@ -416,10 +420,12 @@ pub(super) fn validator_contract(
             ),
             format!("loom validation run {}", q(intent_name)),
             verdict_write_back(edge, val_name, intent_name),
+            "loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>".into(),
         ],
         forbidden_actions: vec![
             "edit code to make the proof pass".into(),
             "mark passed without observed proof".into(),
+            "silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold".into(),
         ],
         required_evidence:
             "command output, test count, failure message, or a concrete blocker reason".into(),
@@ -458,12 +464,13 @@ pub(super) fn reviewer_contract(
             "read both endpoints and the grounded code FIRST".into(),
             format!("loom edge show {} (recorded criterion/evidence — read AFTER forming your own view)", edge.id),
             write_back.clone(),
-            "loom inbox add (out-of-scope findings)".into(),
+            "loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>".into(),
         ],
         forbidden_actions: vec![
             "edit code".into(),
             "rubber-stamping the prior verdict without independent inspection".into(),
             "inheriting the prior confidence instead of stating your own".into(),
+            "silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold".into(),
         ],
         required_evidence: "fresh file/line or runtime evidence; state explicitly whether the prior verdict was confirmed or overturned".into(),
         evidence_template: None,
@@ -508,24 +515,27 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
 pub(super) fn triage_contract(id: &str) -> PromptContract {
     PromptContract {
         role: "analyzer".into(),
-        mindset: "Look and decide; do not fix here. Justified, needed, or blocked — record why."
+        mindset: "Look and decide; do not fix here. Every material finding must become needed, justified, rejected, deferred, blocked, or duplicate with a concrete reason."
             .into(),
-        why_now: "a programmatic flag is unjudged (or its prior judgment went stale when the file changed)".into(),
+        why_now: "an evidence-backed finding is unjudged (or its prior judgment went stale when the file changed)".into(),
         allowed_actions: vec![
-            format!("loom finding verdict {id} justified --reason <why it is acceptable>"),
             format!("loom finding verdict {id} needed --reason <what to do>"),
+            format!("loom finding verdict {id} justified --reason <why it is acceptable>"),
+            format!("loom finding verdict {id} rejected --reason <why it is false or below threshold>"),
+            format!("loom finding verdict {id} deferred --reason <why not scheduled now>"),
             format!("loom finding verdict {id} blocked --reason <what it waits on>"),
+            format!("loom finding verdict {id} duplicate --reason <duplicate finding id or target>"),
         ],
         forbidden_actions: vec![
             "edit code here (mark it needed, then fix in build/fix)".into(),
             "justified without a concrete reason".into(),
         ],
-        required_evidence: "a concrete reason: why it is fine, what to do, or what it blocks on"
+        required_evidence: "a concrete reason: what to do, why it is fine/false/deferred, what blocks it, or what it duplicates"
             .into(),
         evidence_template: None,
         examples: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!("loom finding verdict {id} <justified|needed|blocked> --reason '…'"),
+        write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate> --reason '…'"),
         stop_condition: "after recording the verdict, return to loom status".into(),
         human_gate: None,
     }
@@ -534,7 +544,7 @@ pub(super) fn triage_contract(id: &str) -> PromptContract {
 pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
     PromptContract {
         role: "analyzer".into(),
-        mindset: "Normalize the raw lead. Route it to durable graph work or reject it with a reason; do not let it sit as free text.".into(),
+        mindset: "Normalize raw human/external input. Route it to typed graph work or reject it with a reason; do not use inbox for code-audit findings or product questions.".into(),
         why_now: "a raw inbox item is still new".into(),
         allowed_actions: vec![
             format!("loom inbox show {id}"),

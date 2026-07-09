@@ -47,7 +47,7 @@ pub struct DoctorIssue {
     pub message: String,
 }
 
-/// A derived code finding plus its durable adjudication state.
+/// A code finding plus its durable adjudication state.
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingView {
     pub node: Node,
@@ -82,19 +82,24 @@ pub fn adjudication_of(store: &Store, node_id: &str) -> Result<Option<(String, S
     let Ok(adj) = serde_json::from_str::<Adjudication>(&raw) else {
         return Ok(None);
     };
-    if !matches!(adj.verdict.as_str(), "justified" | "needed" | "blocked") {
+    if !matches!(
+        adj.verdict.as_str(),
+        "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate"
+    ) {
         return Ok(None);
     }
     Ok(Some((adj.verdict, adj.reason)))
 }
 
-/// Whether a live smell carries a durable `justified` adjudication — an
-/// accepted exception that no longer counts as open, honoring the close-out
-/// contract "open smells fixed *or adjudicated*". `needed`/`blocked` remain
-/// open work, as does an untriaged smell.
-pub fn smell_is_justified(store: &Store, identity: &str) -> Result<bool> {
+/// Whether a live smell carries a durable resolving adjudication — an outcome
+/// that no longer counts as open. `needed`/`blocked` remain open work, as does
+/// an untriaged smell.
+pub fn smell_has_resolving_adjudication(store: &Store, identity: &str) -> Result<bool> {
     let id = Store::derived_node_id(NodeType::Finding, &smell_det_key(identity));
-    Ok(matches!(adjudication_of(store, &id)?, Some((v, _)) if v == "justified"))
+    Ok(matches!(
+        adjudication_of(store, &id)?,
+        Some((v, _)) if matches!(v.as_str(), "justified" | "rejected" | "deferred" | "duplicate")
+    ))
 }
 
 // ---- smells ----------------------------------------------------------------
@@ -651,7 +656,10 @@ pub fn findings_view(store: &Store) -> Result<Vec<FindingView>> {
             });
             continue;
         };
-        if !matches!(adj.verdict.as_str(), "justified" | "needed" | "blocked") {
+        if !matches!(
+            adj.verdict.as_str(),
+            "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate"
+        ) {
             out.push(FindingView {
                 node,
                 state: "untriaged".into(),

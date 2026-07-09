@@ -1069,20 +1069,64 @@ fn apply_adjudication_batch_is_atomic_and_gated() {
         None,
         "apply adjudication atomic setup: finding starts unadjudicated"
     );
+    // Seed a second finding exclusively for the atomicity rollback check;
+    // keeping it separate means the post-rollback None assertion is unambiguous
+    // even after finding_id has received all six valid verdicts.
+    let atomic_id = store
+        .add_derived_node(
+            NodeType::Finding,
+            "atomic-rollback-key",
+            "atomicity rollback finding",
+            "",
+            "overlapping_ownership",
+            json!({}),
+        )
+        .unwrap()
+        .id;
     drop(store);
 
+    // ── All six valid verdict strings accepted, each durably recorded ─────
+    for (verdict, reason) in [
+        ("needed", "needs follow-up implementation"),
+        ("justified", "cohesive co-owners by design"),
+        ("rejected", "false positive boundary condition"),
+        ("deferred", "handle after Q3 refactor"),
+        ("blocked", "waiting on upstream merge"),
+        ("duplicate", "same issue as a nearby finding"),
+    ] {
+        let vbatch = root.join(format!("v-{verdict}.json"));
+        std::fs::write(
+            &vbatch,
+            serde_json::to_string(&json!({
+                "adjudications": [{"finding": finding_id, "verdict": verdict, "reason": reason}]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        apply_batch(root, &vbatch)
+            .unwrap_or_else(|e| panic!("verdict '{verdict}' must be accepted by the gate: {e}"));
+        let s = Store::open(root).unwrap();
+        assert_eq!(
+            loom::signal::adjudication_of(&s, &finding_id).unwrap(),
+            Some((verdict.to_string(), reason.to_string())),
+            "verdict '{verdict}' must be durably recorded after apply"
+        );
+    }
+
+    // ── Bogus verdict rolls the whole batch back atomically ───────────────
+    // atomic_id was never adjudicated, so a None after rollback is unambiguous.
     let batch = root.join("bad_adjudications.json");
     std::fs::write(
         &batch,
         serde_json::to_string(&json!({
             "adjudications": [
                 {
-                    "finding": finding_id,
+                    "finding": atomic_id,
                     "verdict": "justified",
                     "reason": "shared implementation seam"
                 },
                 {
-                    "finding": finding_id,
+                    "finding": atomic_id,
                     "verdict": "bogus",
                     "reason": "bad verdict vocabulary"
                 }
@@ -1100,7 +1144,7 @@ fn apply_adjudication_batch_is_atomic_and_gated() {
 
     let store = Store::open(root).unwrap();
     assert_eq!(
-        loom::signal::adjudication_of(&store, &finding_id).unwrap(),
+        loom::signal::adjudication_of(&store, &atomic_id).unwrap(),
         None,
         "apply adjudication atomic: valid earlier adjudication rolled back"
     );
@@ -1214,4 +1258,188 @@ fn apply_tags_batch_is_atomic_on_unregistered_term() {
         !tags.iter().any(|tag| tag.target_id == refund.id),
         "apply tag atomic: failing tag batch left refund untagged"
     );
+}
+// =========================================================================
+// 16. Import restore validates node truth_class (reject impossible, accept
+//     both Finding classes) and validates `questions` edge endpoints.
+// =========================================================================
+#[test]
+fn import_restore_validates_truth_class_and_questions_edge() {
+    // Part A — impossible truth_class: an Intent stamped `derived` must be
+    // refused. Seed a minimal valid store, take its snapshot, corrupt exactly
+    // the one field under test, then try to restore into a fresh store.
+    {
+        let tmp = Tmp::new();
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        store
+            .add_node(
+                NodeType::Intent,
+                "checkout flow",
+                "",
+                "implemented",
+                json!({}),
+            )
+            .unwrap();
+        let mut snap = store.snapshot().unwrap();
+        drop(store);
+
+        snap.nodes
+            .iter_mut()
+            .find(|n| n.node_type == NodeType::Intent)
+            .unwrap()
+            .truth_class = TruthClass::Derived;
+
+        let tmp2 = Tmp::new();
+        let mut dest = Store::init(tmp2.path(), Some("t"), false).unwrap();
+        let err = dest.restore(&snap).unwrap_err();
+        assert!(
+            err.to_string().contains("disallows truth_class"),
+            "import: non-Finding derived node must be refused; got: {err}"
+        );
+    }
+
+    // Part B — asserted Finding (manual LLM/tool observation) must be accepted.
+    {
+        let tmp = Tmp::new();
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        store
+            .add_node(
+                NodeType::Finding,
+                "dup-normalization",
+                "",
+                "audit",
+                json!({"source": "code_audit"}),
+            )
+            .unwrap();
+        let snap = store.snapshot().unwrap();
+        drop(store);
+
+        let tmp2 = Tmp::new();
+        let mut dest = Store::init(tmp2.path(), Some("t"), false).unwrap();
+        dest.restore(&snap)
+            .expect("import must accept an asserted Finding");
+        let imported = dest
+            .list_nodes(Some(NodeType::Finding), usize::MAX)
+            .unwrap();
+        assert_eq!(imported.len(), 1, "one Finding survived import");
+        assert_eq!(
+            imported[0].truth_class,
+            TruthClass::Asserted,
+            "asserted truth_class preserved through import"
+        );
+    }
+
+    // Part C — derived Finding (programmatic/sync producer) must be accepted.
+    // Use add_derived_node directly: no smell/sync chain needed to prove the
+    // import gate accepts this truth_class.
+    {
+        let tmp = Tmp::new();
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        store
+            .add_derived_node(
+                NodeType::Finding,
+                "det-key-import-test",
+                "overlapping owners",
+                "",
+                "overlapping_ownership",
+                json!({}),
+            )
+            .unwrap();
+        let snap = store.snapshot().unwrap();
+        drop(store);
+
+        let tmp2 = Tmp::new();
+        let mut dest = Store::init(tmp2.path(), Some("t"), false).unwrap();
+        dest.restore(&snap)
+            .expect("import must accept a derived Finding");
+        let imported = dest
+            .list_nodes(Some(NodeType::Finding), usize::MAX)
+            .unwrap();
+        assert_eq!(imported.len(), 1, "one derived Finding survived import");
+        assert_eq!(
+            imported[0].truth_class,
+            TruthClass::Derived,
+            "derived truth_class preserved through import"
+        );
+    }
+
+    // ── D: valid Questions edge (Question → Intent) must be accepted ───────
+    {
+        let tmp = Tmp::new();
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let q = store
+            .add_node(
+                NodeType::Question,
+                "Should we cache at the edge?",
+                "",
+                "open",
+                json!({}),
+            )
+            .unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "cache routing",
+                "",
+                "implemented",
+                json!({}),
+            )
+            .unwrap();
+        store
+            .add_edge(EdgeKind::Questions, &q.id, &intent.id, TruthClass::Asserted)
+            .unwrap();
+        let snap = store.snapshot().unwrap();
+        drop(store);
+
+        let tmp2 = Tmp::new();
+        let mut dest = Store::init(tmp2.path(), Some("t"), false).unwrap();
+        dest.restore(&snap)
+            .expect("import must accept a valid Question to Intent questions edge");
+    }
+
+    // ── E: Questions edge with wrong to-type must be rejected ─────────────
+    // Redirect to_id to the Question node itself; Question->Question violates
+    // the registry spec which requires to=Intent for the questions kind.
+    {
+        let tmp = Tmp::new();
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let q = store
+            .add_node(
+                NodeType::Question,
+                "Should we cache at the edge?",
+                "",
+                "open",
+                json!({}),
+            )
+            .unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "cache routing",
+                "",
+                "implemented",
+                json!({}),
+            )
+            .unwrap();
+        store
+            .add_edge(EdgeKind::Questions, &q.id, &intent.id, TruthClass::Asserted)
+            .unwrap();
+        let mut snap = store.snapshot().unwrap();
+        drop(store);
+
+        let q_id = q.id.clone();
+        snap.edges
+            .iter_mut()
+            .find(|e| e.kind == EdgeKind::Questions)
+            .unwrap()
+            .to_id = q_id;
+
+        let tmp2 = Tmp::new();
+        let mut dest = Store::init(tmp2.path(), Some("t"), false).unwrap();
+        let err = dest.restore(&snap).unwrap_err();
+        assert!(
+            err.to_string().contains("endpoints violating kind"),
+            "import: Questions edge with wrong to-type must be refused; got: {err}"
+        );
+    }
 }
