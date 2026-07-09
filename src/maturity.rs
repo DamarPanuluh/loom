@@ -6,7 +6,7 @@
 //! that data exists, so the ladder never lies by counting absent machinery as
 //! failure.
 
-use crate::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
+use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
 use serde::Serialize;
@@ -147,19 +147,35 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     let smells = crate::signal::smells(store)?;
     // A resolving adjudication is an accepted exception and no longer counts
     // as open — honoring the close-out contract "open smells fixed *or
-    // adjudicated*". `needed`/`blocked`/untriaged smells still count. (Journey
-    // proof gaps below deliberately count every smell: a proof gap is not
-    // waivable by verdict.)
+    // adjudicated*". `needed`/`blocked`/untriaged smells still count.
     let mut open_smells = 0usize;
     for s in &smells {
         if !crate::signal::smell_has_resolving_adjudication(store, &s.identity)? {
             open_smells += 1;
         }
     }
-    let open_journey_proof_smells = smells
-        .iter()
-        .filter(|s| s.kind == "missing_journey_proof" || s.kind == "proof_too_shallow_for_intent")
-        .count();
+    // Journey proof gaps block `proven` unless the intent's journey axis is
+    // deliberately waived (`loom intent waive … journey`). Completeness already
+    // honors that waiver; maturity must too — otherwise CLI/unit-proven surfaces
+    // can never climb past proven when the journey runner is HTTP-only.
+    let mut open_journey_proof_smells = 0usize;
+    for s in &smells {
+        if s.kind != "missing_journey_proof" && s.kind != "proof_too_shallow_for_intent" {
+            continue;
+        }
+        let intent_id = s.identity.rsplit_once(':').map(|(_, id)| id).unwrap_or("");
+        if intent_id.is_empty() {
+            open_journey_proof_smells += 1;
+            continue;
+        }
+        let waived = store
+            .get_facet(intent_id, TargetKind::Node, "waiver:journey")?
+            .map(|r| !r.is_empty())
+            .unwrap_or(false);
+        if !waived {
+            open_journey_proof_smells += 1;
+        }
+    }
     let untriaged = crate::signal::untriaged_findings(store)?.len();
     let stale_findings = crate::signal::stale_findings(store)?.len();
     let unowned_codefiles = unowned_registered_codefiles(store)?;

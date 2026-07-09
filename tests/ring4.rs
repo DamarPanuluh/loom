@@ -993,6 +993,114 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
     assert_eq!(proven_after.state, RungState::Met);
 }
 
+#[test]
+fn proven_rung_honors_journey_axis_waiver() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "cli surface holds",
+            "",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let file = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/cli.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let impl_edge = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &impl_edge.id,
+            InspectionStatus::Passing,
+            "grounded",
+            "src/cli.rs",
+            0.9,
+            "test",
+        )
+        .unwrap();
+    let unit = store
+        .add_node(
+            NodeType::Validation,
+            "unit proof",
+            "",
+            "passed",
+            serde_json::json!({
+                "type": "test",
+                "command": "cargo test unit",
+                "proof_kind": "unit",
+                "proof_level": "L2",
+            }),
+        )
+        .unwrap();
+    let unit_edge = store
+        .add_edge(
+            EdgeKind::Validates,
+            &unit.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &unit_edge.id,
+            InspectionStatus::Passing,
+            "unit proof passed",
+            "unit exit 0",
+            0.9,
+            "test",
+        )
+        .unwrap();
+
+    let before = ladder(&store).unwrap();
+    assert_eq!(
+        before.rungs.iter().find(|r| r.name == "proven").unwrap().state,
+        RungState::Unmet
+    );
+
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "waiver:journey",
+            "CLI surface; HTTP journey runner does not apply",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let after = ladder(&store).unwrap();
+    let proven = after.rungs.iter().find(|r| r.name == "proven").unwrap();
+    assert_eq!(proven.state, RungState::Met);
+    assert!(
+        !proven.detail.contains("journey proof gap"),
+        "waived journey must not count as a proven gap: {}",
+        proven.detail
+    );
+}
+
 // ---- compass: findings route through durable triage --------------------------
 
 #[test]
@@ -1120,7 +1228,7 @@ fn excellent_rung_when_not_applicable_hides_untriaged_count() {
 #[test]
 fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     // A fully grounded + proven graph with seeded quality rules must report
-    // hardened = Unmet until every rule × root implemented intent pair has a
+    // hardened = Unmet until every rule × leaf implemented intent pair has a
     // governs verdict. The detail string must mention unmeasured quality pairs.
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();

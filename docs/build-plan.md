@@ -373,6 +373,8 @@ After the LLM-perspective review, these process gates apply until residue econom
 3. **Statistical signals never enter required queues** (INV-3 unchanged). `loom debt` stays advisory.
 4. **Bootstrap drafts only** — `loom bootstrap suggest` writes a Proposal of planned pillars; never auto-verdicts or `implemented`.
 5. **Detector economics** — resolving finding adjudications reopen on metric-band worsen, not every content-hash bump; dogfood runs `loom calibrate --write` before mass oversized triage.
+6. **Completeness ↔ maturity consistency** — a recorded `waiver:journey` closes the journey axis on the scorecard **and** stops counting that intent's journey-proof smell against the `proven` rung (CLI/unit surfaces must be able to climb when the journey runner is HTTP-only).
+7. **Quality measures leaves, not roll-ups or scenarios** — `unmeasured_quality_pairs` targets leaf implemented intents; hierarchy parents and scenario children (`scenario-of` / sad|fallback|edge_case) are excluded so ISO-style rules are not measured against empty parents or surroundings.
 
 ## What the build plan does not contain
 

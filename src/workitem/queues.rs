@@ -17,7 +17,7 @@ use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
     SuggestedRead, Target, WorkItem,
 };
-use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
+use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
 
@@ -286,29 +286,51 @@ pub(super) fn quality_item(store: &Store) -> Result<Option<WorkItem>> {
     unmeasured_pair_item(store)
 }
 
-/// Never-measured (rule × root implemented intent) pairs: every non-deprecated
-/// `QualityRule` crossed with every root `implemented` intent that has no
-/// `governs` edge yet. This is the SINGLE predicate shared by the work-item
-/// picker (`unmeasured_pair_item`), the queue roster (`unmeasured_pair_entries`),
-/// the queue count (`queue_counts`), and the maturity ladder (`hardened` rung)
-/// — so they can never disagree about what "unmeasured" means.
+/// Never-measured (rule × leaf implemented intent) pairs: every non-deprecated
+/// `QualityRule` crossed with every leaf `implemented` intent that has no
+/// `governs` edge yet. Roll-up parents (hierarchy `from_id`s) are excluded —
+/// they are realized via children and have no code of their own to measure.
+/// Scenario children (`scenario-of` sources, or sad/fallback/edge_case aspects)
+/// are also excluded — they surround a happy path. This is the SINGLE predicate
+/// shared by the work-item picker (`unmeasured_pair_item`), the queue roster
+/// (`unmeasured_pair_entries`), the queue count (`queue_counts`), and the
+/// maturity ladder (`hardened` rung) — so they can never disagree about what
+/// "unmeasured" means.
 pub(crate) fn unmeasured_quality_pairs(store: &Store) -> Result<Vec<(Node, Node)>> {
     let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
     let measured: std::collections::BTreeSet<(String, String)> =
         governs.into_iter().map(|e| (e.from_id, e.to_id)).collect();
-    let children: std::collections::BTreeSet<String> = store
+    // Parents in a hierarchy are roll-ups — measure their leaves instead.
+    let hierarchy_parents: std::collections::BTreeSet<String> = store
         .edges_with(Some(EdgeKind::Hierarchy), None, None)?
         .into_iter()
-        .map(|e| e.to_id)
+        .map(|e| e.from_id)
+        .collect();
+    let scenario_children: std::collections::BTreeSet<String> = store
+        .edges_with(Some(EdgeKind::ScenarioOf), None, None)?
+        .into_iter()
+        .map(|e| e.from_id)
         .collect();
     let rules = store.list_nodes(Some(NodeType::QualityRule), usize::MAX)?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
     let mut out = Vec::new();
     for rule in rules.into_iter().filter(|r| r.status != "deprecated") {
-        for intent in intents
-            .iter()
-            .filter(|i| i.status == "implemented" && !children.contains(&i.id))
-        {
+        for intent in intents.iter().filter(|i| {
+            if i.status != "implemented" {
+                return false;
+            }
+            if hierarchy_parents.contains(&i.id) || scenario_children.contains(&i.id) {
+                return false;
+            }
+            // Aspect-only scenarios (no scenario-of edge yet) still aren't
+            // independent quality surfaces.
+            if let Ok(Some(aspect)) = store.get_facet(&i.id, TargetKind::Node, "aspect") {
+                if matches!(aspect.as_str(), "sad" | "fallback" | "edge_case") {
+                    return false;
+                }
+            }
+            true
+        }) {
             if !measured.contains(&(rule.id.clone(), intent.id.clone())) {
                 out.push((rule.clone(), intent.clone()));
             }

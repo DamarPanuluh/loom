@@ -60,6 +60,20 @@
       "updated_at": "2026-07-09T04:59:38.634Z"
     },
     {
+      "id": "0d6c571ccb26dd49a71d328a1aebdda4",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived journey: CLI next router; ring9 unit proof covers the boundary; HTTP journey runner does not apply",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "a665d1c5fda0a34600d81165c1ceedc6"
+      },
+      "created_at": "2026-07-09T05:17:22.299Z",
+      "updated_at": "2026-07-09T05:17:22.299Z"
+    },
+    {
       "id": "0f4f847902602509f2d0d1bdd9a2e04c",
       "type": "validation",
       "name": "ring9 work packets",
@@ -96,6 +110,20 @@
       "updated_at": "2026-07-09T04:59:38.631Z"
     },
     {
+      "id": "13277495e98f2555ab6a928627d8f564",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived boundary: quality governs pairs are served by the quality queue",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "a665d1c5fda0a34600d81165c1ceedc6"
+      },
+      "created_at": "2026-07-09T05:17:22.307Z",
+      "updated_at": "2026-07-09T05:17:22.307Z"
+    },
+    {
       "id": "17767eb6b1298b024c3531048d8f70f1",
       "type": "codefile",
       "name": "src/commands/journey/mod.rs",
@@ -129,6 +157,20 @@
       "updated_at": "2026-07-09T04:59:38.633Z"
     },
     {
+      "id": "1c96f626b9b81daab11520436375b38f",
+      "type": "note",
+      "name": "note:decision",
+      "description": "renamed from 'sync downgrades never-reached journey steps after an earlier failure': behavior lives in journey::stale_unreached_passing_steps on run failure, not in sync.rs — the prior name mis-attributed the owner",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "67c2e0ce05bde2e1708a009c19f66483"
+      },
+      "created_at": "2026-07-09T05:18:30.244Z",
+      "updated_at": "2026-07-09T05:18:30.244Z"
+    },
+    {
       "id": "1e0dbf429488355d9494ea5ec55932e4",
       "type": "codefile",
       "name": "src/workitem/mod.rs",
@@ -151,6 +193,20 @@
       "updated_at": "2026-07-09T04:59:38.635Z"
     },
     {
+      "id": "26d91b0f65d552864a80d490139d78b0",
+      "type": "validation",
+      "name": "find tag",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test find_explain -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.203Z",
+      "updated_at": "2026-07-09T05:20:58.030Z"
+    },
+    {
       "id": "2ca691167b2d5e240c360f6cb211ed61",
       "type": "codefile",
       "name": "src/store/derived.rs",
@@ -160,6 +216,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.635Z",
       "updated_at": "2026-07-09T04:59:38.635Z"
+    },
+    {
+      "id": "30406584948e123aed3e6c7210b9b8f9",
+      "type": "validation",
+      "name": "maturity leaf grounding",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring4 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.083Z",
+      "updated_at": "2026-07-09T05:21:06.017Z"
     },
     {
       "id": "31db92e6363213dec048ef1094a3bf9b",
@@ -182,6 +252,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.636Z",
       "updated_at": "2026-07-09T04:59:38.636Z"
+    },
+    {
+      "id": "32cbbe36f19ef9319a9638833e55110b",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived journey: CLI/sync behavior; ring2 unit proof covers the boundary; HTTP journey runner does not apply",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d"
+      },
+      "created_at": "2026-07-09T05:17:11.096Z",
+      "updated_at": "2026-07-09T05:17:11.096Z"
     },
     {
       "id": "37c6462c5b09e1be1f07c039d2ba3cec",
@@ -295,6 +379,20 @@
       "updated_at": "2026-07-09T05:01:05.622Z"
     },
     {
+      "id": "49d63b3508aa9ce895c74a01fc05033b",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived boundary: quality measures leaf behaviors; system parent is realized via children",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "418b5ebb5624aafa8df49c4f826c1d20"
+      },
+      "created_at": "2026-07-09T05:17:22.348Z",
+      "updated_at": "2026-07-09T05:17:22.348Z"
+    },
+    {
       "id": "4c48d826cb3f799e0e88c06796c4f704",
       "type": "intent",
       "name": "import loads every node before any edge",
@@ -392,6 +490,33 @@
       "updated_at": "2026-07-09T04:59:38.634Z"
     },
     {
+      "id": "67184c544a37b964ff5f101e4e636024",
+      "type": "validation",
+      "name": "empty next",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.100Z",
+      "updated_at": "2026-07-09T05:20:53.891Z"
+    },
+    {
+      "id": "67c2e0ce05bde2e1708a009c19f66483",
+      "type": "intent",
+      "name": "journey run reopens never-reached later steps after an earlier failure",
+      "description": "when a journey fails mid-run, previously-passing validates edges for never-reached later steps reopen as needs_reverification",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:17:11.065Z",
+      "updated_at": "2026-07-09T05:18:30.245Z"
+    },
+    {
       "id": "6872fde15dfa5b05f00984400ffc3dd0",
       "type": "codefile",
       "name": "src/thresholds.rs",
@@ -401,6 +526,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.636Z",
       "updated_at": "2026-07-09T04:59:38.636Z"
+    },
+    {
+      "id": "68a6f630ce2e5c2e39b7ed15e38ce1b8",
+      "type": "validation",
+      "name": "sync symbol scope",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring2 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.145Z",
+      "updated_at": "2026-07-09T05:21:07.518Z"
     },
     {
       "id": "68d90c07e5365fcc5e772cd0fc6e2d1b",
@@ -414,6 +553,34 @@
       "updated_at": "2026-07-09T04:59:38.630Z"
     },
     {
+      "id": "6c5b91198cc500e98093d86598056d10",
+      "type": "validation",
+      "name": "sync scoped ripple",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring2 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.129Z",
+      "updated_at": "2026-07-09T05:21:07.286Z"
+    },
+    {
+      "id": "70882f309686742d58a3a4f97ebbae1b",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived journey: system roll-up; journey proofs attach to user-visible leaf behaviors, not the parent",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "418b5ebb5624aafa8df49c4f826c1d20"
+      },
+      "created_at": "2026-07-09T05:17:22.340Z",
+      "updated_at": "2026-07-09T05:17:22.340Z"
+    },
+    {
       "id": "708d7affac22b9cb483bf17598422e9c",
       "type": "codefile",
       "name": "src/commands/journey/prompt.rs",
@@ -423,6 +590,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.630Z",
       "updated_at": "2026-07-09T04:59:38.630Z"
+    },
+    {
+      "id": "70df5bd35ff5b1f0262cdc788ae18c0c",
+      "type": "validation",
+      "name": "door weak match",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 door_landing_menu -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.183Z",
+      "updated_at": "2026-07-09T05:20:52.884Z"
     },
     {
       "id": "73bd3c64daca91797965b663f5a950cc",
@@ -467,6 +648,34 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.633Z",
       "updated_at": "2026-07-09T04:59:38.633Z"
+    },
+    {
+      "id": "80fc1ef7ed7a6f421d3206368b552378",
+      "type": "validation",
+      "name": "journey never-reached reopen",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring6 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.157Z",
+      "updated_at": "2026-07-09T05:21:05.726Z"
+    },
+    {
+      "id": "8328da60f296ac520e1ca86487d97b52",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived proof: system parent is proven via child leaf validations, not a single parent validation",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "418b5ebb5624aafa8df49c4f826c1d20"
+      },
+      "created_at": "2026-07-09T05:17:22.356Z",
+      "updated_at": "2026-07-09T05:17:22.356Z"
     },
     {
       "id": "84c94866f63f2f6fd7d17684e0053900",
@@ -519,6 +728,20 @@
       "updated_at": "2026-07-09T04:59:40.611Z"
     },
     {
+      "id": "88b6c1f21a424627b27d424792117911",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived scenarios: system roll-up; sad/fallback/edge scenarios surround user-visible feature leaves (door, find, next, sync), not the parent",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "418b5ebb5624aafa8df49c4f826c1d20"
+      },
+      "created_at": "2026-07-09T05:17:29.856Z",
+      "updated_at": "2026-07-09T05:17:29.856Z"
+    },
+    {
       "id": "8a5218e43f067ad76e209aa67b91918a",
       "type": "note",
       "name": "note:decision",
@@ -531,6 +754,19 @@
       },
       "created_at": "2026-07-09T05:01:16.383Z",
       "updated_at": "2026-07-09T05:01:16.383Z"
+    },
+    {
+      "id": "8b48e493d426c401e035b9205b0217f6",
+      "type": "intent",
+      "name": "next prefers stale settled claims before merely uninspected ones",
+      "description": "when both stale and uninspected analyze residue exist, the router serves stale first so broken settled truth is repaired before new inspection",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:17:22.079Z",
+      "updated_at": "2026-07-09T05:17:22.079Z"
     },
     {
       "id": "8c09800873ec56699ca584e7da49a20e",
@@ -577,6 +813,20 @@
       "updated_at": "2026-07-09T04:59:38.631Z"
     },
     {
+      "id": "91d813a8317e60152cfd9826a3de03a9",
+      "type": "validation",
+      "name": "door hypothesis landing",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 door_landing_menu -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.175Z",
+      "updated_at": "2026-07-09T05:20:51.894Z"
+    },
+    {
       "id": "9275dedcc9c961050f9e48ba70c1b968",
       "type": "codefile",
       "name": "src/commands/graph_cmd.rs",
@@ -608,6 +858,47 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.633Z",
       "updated_at": "2026-07-09T04:59:38.633Z"
+    },
+    {
+      "id": "951dbe2556ac29565719436e4308f65c",
+      "type": "intent",
+      "name": "sync leaves unrelated grounded edges settled",
+      "description": "when a file changes, implements edges grounded in other files stay settled — ripple is scoped, not global",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:17:10.982Z",
+      "updated_at": "2026-07-09T05:17:10.982Z"
+    },
+    {
+      "id": "999903988c92dabe5f008e64c6c0dd10",
+      "type": "note",
+      "name": "note:decision",
+      "description": "reworded: behavior lives in journey::stale_unreached_passing_steps on run failure, not in sync.rs — the prior name mis-attributed the owner",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "67c2e0ce05bde2e1708a009c19f66483"
+      },
+      "created_at": "2026-07-09T05:18:30.245Z",
+      "updated_at": "2026-07-09T05:18:30.245Z"
+    },
+    {
+      "id": "99b383aac24cb9c469cd096b08f872b3",
+      "type": "validation",
+      "name": "door dismiss landing",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 door_landing_menu -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.166Z",
+      "updated_at": "2026-07-09T05:20:50.912Z"
     },
     {
       "id": "9a181af9b0ccd0bca14fff7bcc9a3904",
@@ -740,6 +1031,20 @@
       "updated_at": "2026-07-09T05:01:14.582Z"
     },
     {
+      "id": "af2245cadbb7898a84c1274d76204285",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived boundary: quality governs pairs are served by the quality queue",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d"
+      },
+      "created_at": "2026-07-09T05:17:11.104Z",
+      "updated_at": "2026-07-09T05:17:11.104Z"
+    },
+    {
       "id": "af231f0b76c6a6745e88761f532d4631",
       "type": "codefile",
       "name": "src/commands/pulse.rs",
@@ -751,6 +1056,20 @@
       "updated_at": "2026-07-09T04:59:38.631Z"
     },
     {
+      "id": "b02c55d4a71abcd28d202eef9ad3cf9d",
+      "type": "validation",
+      "name": "debt on-read",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring8 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.065Z",
+      "updated_at": "2026-07-09T05:20:48.736Z"
+    },
+    {
       "id": "b1082d74b231b22be2aaa977c34ab03d",
       "type": "codefile",
       "name": "src/workitem/context.rs",
@@ -760,6 +1079,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.636Z",
       "updated_at": "2026-07-09T04:59:38.636Z"
+    },
+    {
+      "id": "b2b3ae7f05978a751b4bc9fa6cf8bfcb",
+      "type": "validation",
+      "name": "derived plane INV-2",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring2 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.091Z",
+      "updated_at": "2026-07-09T05:20:49.921Z"
     },
     {
       "id": "b4817112203f1753162eccd2dfdfd2bf",
@@ -787,6 +1120,20 @@
       "updated_at": "2026-07-09T04:59:38.636Z"
     },
     {
+      "id": "b94f4bf70dff258e9139a8b07fd6300d",
+      "type": "validation",
+      "name": "find empty",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test find_explain -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.212Z",
+      "updated_at": "2026-07-09T05:20:55.976Z"
+    },
+    {
       "id": "b9b5fc117b642de96101368f51f8854e",
       "type": "codefile",
       "name": "src/packs.rs",
@@ -796,6 +1143,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.634Z",
       "updated_at": "2026-07-09T04:59:38.634Z"
+    },
+    {
+      "id": "bb3737b706f96354edac292ffb232e03",
+      "type": "intent",
+      "name": "sync reopens only the changed symbol on a realizing grounding",
+      "description": "when one symbol in a file changes, realizing groundings whose locator still resolves keep settlement unless that symbol fingerprint drifted",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:17:11.026Z",
+      "updated_at": "2026-07-09T05:17:11.026Z"
     },
     {
       "id": "bb77089433d6326ce9c65d609c549518",
@@ -846,6 +1206,33 @@
       "updated_at": "2026-07-09T05:01:14.479Z"
     },
     {
+      "id": "c65e0e46f5d62c18e45e8e9b40c63330",
+      "type": "intent",
+      "name": "next routes failing governs and validates to fix not quality or validate",
+      "description": "when a governs or validates edge is failing, it is served by the fix queue; quality/validate only see uninspected or stale",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:17:22.128Z",
+      "updated_at": "2026-07-09T05:17:22.128Z"
+    },
+    {
+      "id": "cbbcd820728f3e6e4600d460bd748980",
+      "type": "validation",
+      "name": "fix queue partition",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.118Z",
+      "updated_at": "2026-07-09T05:20:59.050Z"
+    },
+    {
       "id": "ccf732f1fc07a1c1a7b28d3a03115a61",
       "type": "intent",
       "name": "debt clusters are computed on read and never stored",
@@ -879,6 +1266,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.636Z",
       "updated_at": "2026-07-09T04:59:38.636Z"
+    },
+    {
+      "id": "ce3eef8bca489bea3f6d96b661a8ea90",
+      "type": "validation",
+      "name": "symbol-pattern intent guard",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.055Z",
+      "updated_at": "2026-07-09T05:21:07.035Z"
     },
     {
       "id": "ceecf7f5604e1cd4934245e61efe399d",
@@ -1552,21 +1953,6 @@
       "updated_at": ""
     },
     {
-      "id": "d5edb0debedeb836f",
-      "type": "finding",
-      "name": "user-visible intent 'door routes a weak lexical match as a caution not a strong hit' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:5f6c9a00b199447b9b2d5caedf67f247",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d622f101e93a3dcb0",
       "type": "finding",
       "name": "src/commands/proof_cmd.rs::rule is complex",
@@ -1597,16 +1983,16 @@
       "updated_at": ""
     },
     {
-      "id": "d6ae9e21aaa98cc74",
+      "id": "d6a3bcd44671a3b56",
       "type": "finding",
-      "name": "user-visible intent 'find --exact requires a whole-name match' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
+      "name": "src/workitem/queues.rs is implemented by 3 intents",
+      "description": "split the file or the intents; one file, one cohesive responsibility",
+      "status": "tangled_file",
       "truth_class": "derived",
       "body": {
         "category": "smell",
-        "identity": "missing_journey_proof:44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
-        "kind": "missing_journey_proof"
+        "identity": "tangled_file:8c09800873ec56699ca584e7da49a20e",
+        "kind": "tangled_file"
       },
       "created_at": "",
       "updated_at": ""
@@ -1777,21 +2163,6 @@
       "updated_at": ""
     },
     {
-      "id": "d8dd768572160bbe9",
-      "type": "finding",
-      "name": "user-visible intent 'door dismisses non-actionable capture without inventing work' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:a738afa26005fd57b7d9ff8990f1333e",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d90ceb976a899684c",
       "type": "finding",
       "name": "src/commands/proof_cmd.rs::validate_cmd is long",
@@ -1873,21 +2244,6 @@
           "\\blet\\s+_\\s*="
         ],
         "severity": "error"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d99d313a55151a12d",
-      "type": "finding",
-      "name": "user-visible intent 'when every queue is empty next returns no work item' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:e35fe452b1e6408ed91d6b60c683fcdf",
-        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -2109,21 +2465,6 @@
       "updated_at": ""
     },
     {
-      "id": "dbd196903b95e7f77",
-      "type": "finding",
-      "name": "user-visible intent 'door offers hypothesis when the utterance is a redesign idea' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:87f645ae8047677f86ddd1a51ddee725",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "dbf74e8168e6407ca",
       "type": "finding",
       "name": "src/commands/intent.rs::intent_update is long",
@@ -2283,16 +2624,16 @@
       "updated_at": ""
     },
     {
-      "id": "ddd4d3c52460ba56f",
+      "id": "de100d5afb2bdf9b8",
       "type": "finding",
-      "name": "user-visible intent 'find with no matches returns an empty hit list' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
+      "name": "src/sync.rs is implemented by 3 intents",
+      "description": "split the file or the intents; one file, one cohesive responsibility",
+      "status": "tangled_file",
       "truth_class": "derived",
       "body": {
         "category": "smell",
-        "identity": "missing_journey_proof:c612bfc13dff17ba087f658325e15509",
-        "kind": "missing_journey_proof"
+        "identity": "tangled_file:9d8618c4a7a0ddb0227c59563a91173f",
+        "kind": "tangled_file"
       },
       "created_at": "",
       "updated_at": ""
@@ -2476,21 +2817,6 @@
       "updated_at": ""
     },
     {
-      "id": "df2a869cee31af891",
-      "type": "finding",
-      "name": "user-visible intent 'find --tag filters to tagged intents only' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:ad873b67899063922d98d0923cef9d7b",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "df624576c54e20034",
       "type": "finding",
       "name": "src/sync.rs::ripple_changed_intents is complex",
@@ -2599,6 +2925,20 @@
       "updated_at": "2026-07-09T05:00:49.668Z"
     },
     {
+      "id": "f141b3a8c6a95cf71fc96dc494b95ea8",
+      "type": "validation",
+      "name": "analyze stale-first",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.110Z",
+      "updated_at": "2026-07-09T05:20:46.693Z"
+    },
+    {
       "id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "type": "intent",
       "name": "changing a file re-opens the asserted edges grounded in it",
@@ -2610,6 +2950,20 @@
       },
       "created_at": "2026-07-09T04:59:40.873Z",
       "updated_at": "2026-07-09T04:59:40.873Z"
+    },
+    {
+      "id": "f5bbcf954ed4ace68c02143b3c085029",
+      "type": "validation",
+      "name": "import order",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring5 -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.075Z",
+      "updated_at": "2026-07-09T05:21:02.974Z"
     },
     {
       "id": "fd559d929afe4b02f0ed05054af4573a",
@@ -2632,9 +2986,128 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.634Z",
       "updated_at": "2026-07-09T04:59:38.634Z"
+    },
+    {
+      "id": "ff11f5b41fb73fcbda03b7f07fef3bc3",
+      "type": "validation",
+      "name": "find exact",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test find_explain -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:20:44.193Z",
+      "updated_at": "2026-07-09T05:20:57.008Z"
     }
   ],
   "edges": [
+    {
+      "id": "0042b54b60478daab75c945ab26ad36b",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "8888575022b4e86b0862b5d6a8b91f00",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired DB resources are released via RAII on all paths",
+      "evidence": "src/store/edges.rs: rusqlite Connection/Statement drop on scope exit; no manual leaky acquire/release pairs",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.187Z",
+      "updated_at": "2026-07-09T05:22:17.190Z"
+    },
+    {
+      "id": "043bb394cb3afdbb18c163116565f054",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "4c48d826cb3f799e0e88c06796c4f704",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/store/facets.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.606Z",
+      "updated_at": "2026-07-09T05:22:16.609Z"
+    },
+    {
+      "id": "07b77a71169c6125f2412560e0472c4e",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "3d4a5253cf790a31d5e232539640f39e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/commands/intent.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.724Z",
+      "updated_at": "2026-07-09T05:22:16.727Z"
+    },
+    {
+      "id": "07da8fe4e63c14fc14008186a6127b0d",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/signal.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.033Z",
+      "updated_at": "2026-07-09T05:22:17.036Z"
+    },
+    {
+      "id": "088211034cf652638f87088c7b9ebef4",
+      "from_id": "ff11f5b41fb73fcbda03b7f07fef3bc3",
+      "to_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test find_explain -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.194Z",
+      "updated_at": "2026-07-09T05:20:57.007Z"
+    },
+    {
+      "id": "0a14b8b2dc4c909bc7e3caae1cb462b6",
+      "from_id": "8b48e493d426c401e035b9205b0217f6",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "stale-before-uninspected is the priority fallback of next",
+      "evidence": "workitem/queues.rs analyze_item serves needs_reverification before uninspected",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:22.093Z",
+      "updated_at": "2026-07-09T05:17:22.110Z"
+    },
+    {
+      "id": "0accb450e72362a3b04db7e8d1417968",
+      "from_id": "f5bbcf954ed4ace68c02143b3c085029",
+      "to_id": "4c48d826cb3f799e0e88c06796c4f704",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring5 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.075Z",
+      "updated_at": "2026-07-09T05:21:02.973Z"
+    },
     {
       "id": "0cf4f3aac2554110074ca2fa8d5adaac",
       "from_id": "8888575022b4e86b0862b5d6a8b91f00",
@@ -2651,19 +3124,184 @@
       "updated_at": "2026-07-09T04:59:40.786Z"
     },
     {
+      "id": "0e69cccb5a4000b413c8548efc2cbe2d",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "4c48d826cb3f799e0e88c06796c4f704",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "acquired DB resources are released via RAII on all paths",
+      "evidence": "src/store/facets.rs: rusqlite Connection/Statement drop on scope exit; no manual leaky acquire/release pairs",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.081Z",
+      "updated_at": "2026-07-09T05:22:17.084Z"
+    },
+    {
       "id": "125fce415a8f4d0258ee3b2895ae6c63",
       "from_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
       "to_id": "5f4caa5537d102a4137484043ebc59e5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "find --exact returns only whole-name case-insensitive matches",
+      "evidence": "discover_cmd.rs:426 find_exact compares n.name.eq_ignore_ascii_case(needle); no substring scoring",
+      "confidence": 0.95,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T05:01:14.573Z",
-      "updated_at": "2026-07-09T05:01:14.573Z"
+      "updated_at": "2026-07-09T05:17:54.483Z"
+    },
+    {
+      "id": "15dc2a9da33e5f7b73fd05e07f0bd493",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.614Z",
+      "updated_at": "2026-07-09T05:22:17.617Z"
+    },
+    {
+      "id": "168c13768bcb92347299ce8a99dbc083",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "c376864697a2d5c05a6477aee89ec5ef",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/travel.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.889Z",
+      "updated_at": "2026-07-09T05:22:16.892Z"
+    },
+    {
+      "id": "18b3625febe1da1c9a2fc4595ce60731",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/commands/capture_cmd.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.497Z",
+      "updated_at": "2026-07-09T05:22:16.501Z"
+    },
+    {
+      "id": "191435722cfe1a6c2ed81bda33a4a723",
+      "from_id": "67184c544a37b964ff5f101e4e636024",
+      "to_id": "e35fe452b1e6408ed91d6b60c683fcdf",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.101Z",
+      "updated_at": "2026-07-09T05:20:53.891Z"
+    },
+    {
+      "id": "1afddf413bac99f252148b95e034f6d4",
+      "from_id": "30406584948e123aed3e6c7210b9b8f9",
+      "to_id": "debde51c06b40f454f7624003c7e608d",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring4 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.084Z",
+      "updated_at": "2026-07-09T05:21:06.016Z"
+    },
+    {
+      "id": "1b12b5bc3d26eb2a62978d08a541c628",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "3d4a5253cf790a31d5e232539640f39e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/commands/intent.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.416Z",
+      "updated_at": "2026-07-09T05:22:17.419Z"
+    },
+    {
+      "id": "1b2cc5dc66ab0b4e8e77a78ac1e19aee",
+      "from_id": "f141b3a8c6a95cf71fc96dc494b95ea8",
+      "to_id": "8b48e493d426c401e035b9205b0217f6",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.110Z",
+      "updated_at": "2026-07-09T05:20:46.693Z"
+    },
+    {
+      "id": "1d2bf8847e49d15a8c396db411fd9575",
+      "from_id": "6c5b91198cc500e98093d86598056d10",
+      "to_id": "951dbe2556ac29565719436e4308f65c",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring2 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.136Z",
+      "updated_at": "2026-07-09T05:21:07.286Z"
+    },
+    {
+      "id": "1e41d2eb2f905d2deeaeaa4d5274efdd",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "c376864697a2d5c05a6477aee89ec5ef",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/travel.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.368Z",
+      "updated_at": "2026-07-09T05:22:17.371Z"
+    },
+    {
+      "id": "1f5072ccedceee3ccee06af1bd0764a5",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/commands/discover_cmd.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.821Z",
+      "updated_at": "2026-07-09T05:22:16.824Z"
     },
     {
       "id": "1fccc75f4294ddcb5af4a40f9b7a3bd9",
@@ -2696,6 +3334,21 @@
       "updated_at": "2026-07-09T04:59:41.272Z"
     },
     {
+      "id": "2ed62207ab1b179a300467099da1e5e2",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "8888575022b4e86b0862b5d6a8b91f00",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/store/edges.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.702Z",
+      "updated_at": "2026-07-09T05:22:16.705Z"
+    },
+    {
       "id": "2fe9889a5da9c17c36192488977ee52e",
       "from_id": "5f6c9a00b199447b9b2d5caedf67f247",
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
@@ -2711,6 +3364,21 @@
       "updated_at": "2026-07-09T05:00:57.480Z"
     },
     {
+      "id": "360d89f10987208933818e263d1bff87",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "debde51c06b40f454f7624003c7e608d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/maturity.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.566Z",
+      "updated_at": "2026-07-09T05:22:17.569Z"
+    },
+    {
       "id": "38c6f21d316132bd2a273f59836a7fc0",
       "from_id": "e35fe452b1e6408ed91d6b60c683fcdf",
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
@@ -2724,6 +3392,66 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.227Z",
       "updated_at": "2026-07-09T04:59:41.246Z"
+    },
+    {
+      "id": "3915aadf9c1e7e7d5112009464f5ae00",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.392Z",
+      "updated_at": "2026-07-09T05:22:17.395Z"
+    },
+    {
+      "id": "3eda35f47b9b869f5bb0bfee498db154",
+      "from_id": "cbbcd820728f3e6e4600d460bd748980",
+      "to_id": "c65e0e46f5d62c18e45e8e9b40c63330",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.119Z",
+      "updated_at": "2026-07-09T05:20:59.049Z"
+    },
+    {
+      "id": "44404aaa93d622edfc313ce26773d673",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/commands/capture_cmd.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.439Z",
+      "updated_at": "2026-07-09T05:22:17.441Z"
+    },
+    {
+      "id": "455f6cdb72d679d73112a19a7bbb9dd1",
+      "from_id": "b02c55d4a71abcd28d202eef9ad3cf9d",
+      "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring8 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.066Z",
+      "updated_at": "2026-07-09T05:20:48.736Z"
     },
     {
       "id": "45612cdd18f6fd5c84eefc1fe5c1b70a",
@@ -2756,19 +3484,34 @@
       "updated_at": "2026-07-09T04:59:41.585Z"
     },
     {
+      "id": "47ecc961822b98caab8b7aa00c1ffb07",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/sync.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.463Z",
+      "updated_at": "2026-07-09T05:22:17.466Z"
+    },
+    {
       "id": "48c202a4d0dcdb7edf7b6d502c61f151",
       "from_id": "ad873b67899063922d98d0923cef9d7b",
       "to_id": "5f4caa5537d102a4137484043ebc59e5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "find --tag intersects results with nodes carrying the vocab term",
+      "evidence": "discover_cmd.rs:97 resolve_find_filters calls store.nodes_with_tag(term) and intersects filter sets",
+      "confidence": 0.95,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T05:01:14.619Z",
-      "updated_at": "2026-07-09T05:01:14.619Z"
+      "updated_at": "2026-07-09T05:18:05.416Z"
     },
     {
       "id": "4a1a9cc09d133b1cf3e6a42a8e6ba968",
@@ -2786,6 +3529,66 @@
       "updated_at": "2026-07-09T05:01:14.512Z"
     },
     {
+      "id": "4c2d21b730ee4eeeaf16b47790597bad",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/sync.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.770Z",
+      "updated_at": "2026-07-09T05:22:16.773Z"
+    },
+    {
+      "id": "4e6ff28aee4142ba8d4510a7c181d155",
+      "from_id": "bb3737b706f96354edac292ffb232e03",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "symbol-scoped reopen is the edge case of file-level sync",
+      "evidence": "docs/commands.md + sync.rs symbol fingerprint map",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:11.035Z",
+      "updated_at": "2026-07-09T05:17:11.047Z"
+    },
+    {
+      "id": "4f35ac6ad576048d9f45b472667d864d",
+      "from_id": "70df5bd35ff5b1f0262cdc788ae18c0c",
+      "to_id": "5f6c9a00b199447b9b2d5caedf67f247",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 door_landing_menu -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.183Z",
+      "updated_at": "2026-07-09T05:20:52.884Z"
+    },
+    {
+      "id": "4f585bd06dcc4717561a3918f5c017ce",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "8888575022b4e86b0862b5d6a8b91f00",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/store/edges.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.937Z",
+      "updated_at": "2026-07-09T05:22:16.940Z"
+    },
+    {
       "id": "5002837a2b41d50a00c2179d499e1c18",
       "from_id": "ad873b67899063922d98d0923cef9d7b",
       "to_id": "873d9c05264943d486f1535988af1765",
@@ -2801,6 +3604,36 @@
       "updated_at": "2026-07-09T05:01:14.607Z"
     },
     {
+      "id": "50adb9f6bc9daacb80da816a2bcd5b7c",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.161Z",
+      "updated_at": "2026-07-09T05:22:17.164Z"
+    },
+    {
+      "id": "528674b12ec368b553188c2fe880a1e6",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "c376864697a2d5c05a6477aee89ec5ef",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/travel.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.133Z",
+      "updated_at": "2026-07-09T05:22:17.141Z"
+    },
+    {
       "id": "58e192005d47eaf7e4bad10eb7400d00",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "c376864697a2d5c05a6477aee89ec5ef",
@@ -2814,6 +3647,66 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:40.814Z",
       "updated_at": "2026-07-09T04:59:40.831Z"
+    },
+    {
+      "id": "5a725a5366582e1eb42f596c36f0cb4e",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "4c48d826cb3f799e0e88c06796c4f704",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/store/facets.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.325Z",
+      "updated_at": "2026-07-09T05:22:17.328Z"
+    },
+    {
+      "id": "5e7d9741cfa112c5ecca8a6055fefcc9",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "3d4a5253cf790a31d5e232539640f39e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/commands/intent.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.960Z",
+      "updated_at": "2026-07-09T05:22:16.962Z"
+    },
+    {
+      "id": "610c2258a58aae30a3bc9a1778fc4138",
+      "from_id": "b94f4bf70dff258e9139a8b07fd6300d",
+      "to_id": "c612bfc13dff17ba087f658325e15509",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test find_explain -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.212Z",
+      "updated_at": "2026-07-09T05:20:55.975Z"
+    },
+    {
+      "id": "61f9fa77419d4ebdbf66dd0eaccce647",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "debde51c06b40f454f7624003c7e608d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/maturity.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.346Z",
+      "updated_at": "2026-07-09T05:22:17.349Z"
     },
     {
       "id": "622fb62dc5cb854ea1f887e91d09dff5",
@@ -2836,14 +3729,14 @@
       "to_id": "8de84dddb070d7f3adbb02b6223e60af",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "door menu includes a dismiss landing that marks the inbox item rejected",
+      "evidence": "capture_cmd.rs:72-76 landing dismiss with loom inbox mark rejected",
+      "confidence": 0.95,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:49.604Z",
-      "updated_at": "2026-07-09T05:00:49.604Z"
+      "updated_at": "2026-07-09T05:18:05.425Z"
     },
     {
       "id": "6d914e462b3018693d5cd566bcc1888c",
@@ -2859,6 +3752,96 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.335Z",
       "updated_at": "2026-07-09T04:59:41.353Z"
+    },
+    {
+      "id": "6e351c9045b1d403c8c0c8da081a05b9",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/sync.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.522Z",
+      "updated_at": "2026-07-09T05:22:16.526Z"
+    },
+    {
+      "id": "6e5f854d36a628c83fe30914ef2af65e",
+      "from_id": "8b48e493d426c401e035b9205b0217f6",
+      "to_id": "8c09800873ec56699ca584e7da49a20e",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "analyze serves needs_reverification before uninspected non-governs/non-validates edges",
+      "evidence": "queues.rs:212-248 analyze_item queries NeedsReverification first, then Uninspected",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:22.118Z",
+      "updated_at": "2026-07-09T05:18:05.435Z"
+    },
+    {
+      "id": "709b22e6c58b4369df3ceccbe7dee175",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.914Z",
+      "updated_at": "2026-07-09T05:22:16.916Z"
+    },
+    {
+      "id": "71ad444497e184112fd7c4d5b1d16eb5",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "debde51c06b40f454f7624003c7e608d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/maturity.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.866Z",
+      "updated_at": "2026-07-09T05:22:16.869Z"
+    },
+    {
+      "id": "74402186b0957bd4a42b881593934c30",
+      "from_id": "99b383aac24cb9c469cd096b08f872b3",
+      "to_id": "a738afa26005fd57b7d9ff8990f1333e",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 door_landing_menu -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.166Z",
+      "updated_at": "2026-07-09T05:20:50.912Z"
+    },
+    {
+      "id": "76b4f65a6eeeaa55defcce1bc19e60ea",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "4c48d826cb3f799e0e88c06796c4f704",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "untrusted data is not concatenated into SQL/shell strings",
+      "evidence": "src/store/facets.rs: store uses parameterized SQL (params!/rusqlite); no format!-built queries in this surface",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.542Z",
+      "updated_at": "2026-07-09T05:22:17.545Z"
     },
     {
       "id": "779d924e21b176da8e76172ac667228b",
@@ -2906,6 +3889,81 @@
       "updated_at": "2026-07-09T04:59:41.610Z"
     },
     {
+      "id": "7b1f9436052956cef7cf9c28ba142089",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/commands/discover_cmd.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.302Z",
+      "updated_at": "2026-07-09T05:22:17.305Z"
+    },
+    {
+      "id": "7b8250753d16346eb739dfefbfe5511c",
+      "from_id": "91d813a8317e60152cfd9826a3de03a9",
+      "to_id": "87f645ae8047677f86ddd1a51ddee725",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 door_landing_menu -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.175Z",
+      "updated_at": "2026-07-09T05:20:51.894Z"
+    },
+    {
+      "id": "7d0e3da7b9104969f821ad4d213fb3e7",
+      "from_id": "67c2e0ce05bde2e1708a009c19f66483",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "journey step downgrade is a fallback path of sync after partial proof failure",
+      "evidence": "sync.rs journey reset / needs_reverification for never-reached steps",
+      "confidence": 0.8,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:11.074Z",
+      "updated_at": "2026-07-09T05:17:11.087Z"
+    },
+    {
+      "id": "7f6930ccae4e9245116c8bd1c4da6ecf",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/signal.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.547Z",
+      "updated_at": "2026-07-09T05:22:16.549Z"
+    },
+    {
+      "id": "8109484f3a86d31d49f7675a696e5df9",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/sync.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.010Z",
+      "updated_at": "2026-07-09T05:22:17.013Z"
+    },
+    {
       "id": "83f9e9bf573c6da1602d02df6bb16ba1",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "debde51c06b40f454f7624003c7e608d",
@@ -2919,6 +3977,96 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.304Z",
       "updated_at": "2026-07-09T04:59:41.322Z"
+    },
+    {
+      "id": "8a6f43604a37bde20c873403be1228df",
+      "from_id": "951dbe2556ac29565719436e4308f65c",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "non-ripple is the sad/negative path of sync scoping",
+      "evidence": "sync.rs only reopens groundings whose codefile content_hash changed (symbol-scoped)",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:10.992Z",
+      "updated_at": "2026-07-09T05:17:11.009Z"
+    },
+    {
+      "id": "8bf0ce692f5abd7b92501425851057bc",
+      "from_id": "b2b3ae7f05978a751b4bc9fa6cf8bfcb",
+      "to_id": "c376864697a2d5c05a6477aee89ec5ef",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring2 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.092Z",
+      "updated_at": "2026-07-09T05:20:49.921Z"
+    },
+    {
+      "id": "8c2ebd5a92bbcb67a4eb513150639ef9",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/signal.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.485Z",
+      "updated_at": "2026-07-09T05:22:17.488Z"
+    },
+    {
+      "id": "8e92779b2457addc7ef7bf3f280a765a",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "debde51c06b40f454f7624003c7e608d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/maturity.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.633Z",
+      "updated_at": "2026-07-09T05:22:16.636Z"
+    },
+    {
+      "id": "8eae40b4d5e3bcf599ceb0e43726c0b0",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/sync.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.258Z",
+      "updated_at": "2026-07-09T05:22:17.261Z"
+    },
+    {
+      "id": "8eb674637342f0f68e80f9dfc9beefc9",
+      "from_id": "951dbe2556ac29565719436e4308f65c",
+      "to_id": "9d8618c4a7a0ddb0227c59563a91173f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "sync only reopens groundings whose flagged codefile changed; other files' edges stay settled",
+      "evidence": "sync.rs run recomputes per-file content_hash; staling walks changed files' implements edges only",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:11.018Z",
+      "updated_at": "2026-07-09T05:18:05.484Z"
     },
     {
       "id": "8f0c99ec510f6a1d4fcc83222aa7b0e5",
@@ -2936,6 +4084,141 @@
       "updated_at": "2026-07-09T05:01:14.565Z"
     },
     {
+      "id": "8fd1d9006044b8995485df3d381f138a",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/commands/discover_cmd.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.573Z",
+      "updated_at": "2026-07-09T05:22:16.580Z"
+    },
+    {
+      "id": "9231ebd6f356da168f0f5b0cfac80f94",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "3d4a5253cf790a31d5e232539640f39e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/commands/intent.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.210Z",
+      "updated_at": "2026-07-09T05:22:17.213Z"
+    },
+    {
+      "id": "92501666d68b902c3b699a71b51e1a9c",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "8888575022b4e86b0862b5d6a8b91f00",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "untrusted data is not concatenated into SQL/shell strings",
+      "evidence": "src/store/edges.rs: store uses parameterized SQL (params!/rusqlite); no format!-built queries in this surface",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.639Z",
+      "updated_at": "2026-07-09T05:22:17.642Z"
+    },
+    {
+      "id": "933b0b72709c90438ffb2e7f88f2cbc5",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/signal.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.793Z",
+      "updated_at": "2026-07-09T05:22:16.796Z"
+    },
+    {
+      "id": "937e529cf51c9bad353bf59759fdb22b",
+      "from_id": "c65e0e46f5d62c18e45e8e9b40c63330",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "queue partition is the edge case of next routing",
+      "evidence": "docs/state-machine.md queue table; fix_item vs quality_item vs validate_item",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:22.136Z",
+      "updated_at": "2026-07-09T05:17:22.150Z"
+    },
+    {
+      "id": "95bac7d41a08fb54e8ebd0325380001d",
+      "from_id": "ce3eef8bca489bea3f6d96b661a8ea90",
+      "to_id": "3d4a5253cf790a31d5e232539640f39e",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.056Z",
+      "updated_at": "2026-07-09T05:21:07.035Z"
+    },
+    {
+      "id": "973e001539893ce5faa92b275777f608",
+      "from_id": "bb3737b706f96354edac292ffb232e03",
+      "to_id": "9d8618c4a7a0ddb0227c59563a91173f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "realizing groundings reopen symbol-scoped when the locator's region fingerprint changed",
+      "evidence": "sync.rs:213-258 locator_scope returns Changed/Unchanged against RegionDiff; unchanged symbols stay settled",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:11.056Z",
+      "updated_at": "2026-07-09T05:18:05.493Z"
+    },
+    {
+      "id": "974c81394a9712151ef3ddfa1ab48fb6",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "c376864697a2d5c05a6477aee89ec5ef",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/travel.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.656Z",
+      "updated_at": "2026-07-09T05:22:16.658Z"
+    },
+    {
+      "id": "a14dca9ff4b265341f0ec9abbce0bff4",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/commands/discover_cmd.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.057Z",
+      "updated_at": "2026-07-09T05:22:17.060Z"
+    },
+    {
       "id": "a287b6f474c38f792a5bd2c086e7efc7",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
@@ -2951,6 +4234,21 @@
       "updated_at": "2026-07-09T04:59:41.074Z"
     },
     {
+      "id": "a387be10394fc0bf9c9030d931e72536",
+      "from_id": "80fc1ef7ed7a6f421d3206368b552378",
+      "to_id": "67c2e0ce05bde2e1708a009c19f66483",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring6 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.157Z",
+      "updated_at": "2026-07-09T05:21:05.726Z"
+    },
+    {
       "id": "a4cae11a909b3eac87547373ea3ef7c9",
       "from_id": "87f645ae8047677f86ddd1a51ddee725",
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
@@ -2964,6 +4262,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:57.519Z",
       "updated_at": "2026-07-09T05:00:57.533Z"
+    },
+    {
+      "id": "a6b04dcaedf6f143198a2ba3d5502899",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/commands/capture_cmd.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.747Z",
+      "updated_at": "2026-07-09T05:22:16.750Z"
     },
     {
       "id": "a725fbe3f4b5d70dac377641c671e7bc",
@@ -3026,6 +4339,21 @@
       "updated_at": "2026-07-09T04:59:41.028Z"
     },
     {
+      "id": "acef576944596f2fd3f834ef36d84d03",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/commands/capture_cmd.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.235Z",
+      "updated_at": "2026-07-09T05:22:17.238Z"
+    },
+    {
       "id": "aed0ed392cd9c9d089b035ead1d610a9",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
@@ -3041,19 +4369,34 @@
       "updated_at": "2026-07-09T04:59:41.493Z"
     },
     {
+      "id": "af29744f7b026a8d4093fde2e0ce307a",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "c376864697a2d5c05a6477aee89ec5ef",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/travel.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.589Z",
+      "updated_at": "2026-07-09T05:22:17.592Z"
+    },
+    {
       "id": "afbb47fde7528bca93bef7f17deef80a",
       "from_id": "c612bfc13dff17ba087f658325e15509",
       "to_id": "5f4caa5537d102a4137484043ebc59e5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "find with no matches prints an empty hit list / no-match message rather than inventing hits",
+      "evidence": "discover_cmd.rs find_cmd → print_find_hits only emits rows from keyword_hits; empty hits produce no invented matches",
+      "confidence": 0.95,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T05:01:14.530Z",
-      "updated_at": "2026-07-09T05:01:14.530Z"
+      "updated_at": "2026-07-09T05:18:05.446Z"
     },
     {
       "id": "bcfe76d128a7d210f85a6aa8a1d7196f",
@@ -3086,6 +4429,21 @@
       "updated_at": "2026-07-09T04:59:40.993Z"
     },
     {
+      "id": "bf096f4b3cde938ba5288a6287aa55c2",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "debde51c06b40f454f7624003c7e608d",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/maturity.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.105Z",
+      "updated_at": "2026-07-09T05:22:17.108Z"
+    },
+    {
       "id": "c702ac386ca1a48e837adc1382175009",
       "from_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "to_id": "9d8618c4a7a0ddb0227c59563a91173f",
@@ -3106,14 +4464,14 @@
       "to_id": "8de84dddb070d7f3adbb02b6223e60af",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "door landing menu includes a hypothesis add command for redesign utterances",
+      "evidence": "capture_cmd.rs:53-58 landing hypothesis with loom hypothesis add command",
+      "confidence": 0.95,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:57.542Z",
-      "updated_at": "2026-07-09T05:00:57.542Z"
+      "updated_at": "2026-07-09T05:18:05.458Z"
     },
     {
       "id": "c97ae383433b9770577b77d08728ed37",
@@ -3146,19 +4504,34 @@
       "updated_at": "2026-07-09T04:59:42.108Z"
     },
     {
+      "id": "c9ad9da407d84b9438ec515962b681c4",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.679Z",
+      "updated_at": "2026-07-09T05:22:16.682Z"
+    },
+    {
       "id": "cb41f9484b17a52f3382a746fdbff083",
       "from_id": "5f6c9a00b199447b9b2d5caedf67f247",
       "to_id": "8de84dddb070d7f3adbb02b6223e60af",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "door labels weak lexical overlaps separately so operators prefer new_intent",
+      "evidence": "capture_cmd.rs:32-38 and :99-107 weak_matches scored <2 with prefer-new_intent guidance",
+      "confidence": 0.95,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:57.498Z",
-      "updated_at": "2026-07-09T05:00:57.498Z"
+      "updated_at": "2026-07-09T05:18:05.467Z"
     },
     {
       "id": "cfa4e3b2f1545493e68af2a1ebe74003",
@@ -5306,6 +6679,21 @@
       "updated_at": ""
     },
     {
+      "id": "df16341b1ada687ef9e860ff932aadba",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
+      "evidence": "src/commands/discover_cmd.rs: no SQL/shell/HTML string construction in grounded files",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.508Z",
+      "updated_at": "2026-07-09T05:22:17.511Z"
+    },
+    {
       "id": "df20b59be04fb63cb",
       "from_id": "ddc8495cb1c5108fb",
       "to_id": "db7de80cbbb28c471",
@@ -5471,6 +6859,66 @@
       "updated_at": ""
     },
     {
+      "id": "e2d2ba37e6017dd2c6ccd5257c4acb1b",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "no credentials, tokens, or keys in the grounded source",
+      "evidence": "src/signal.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:17.280Z",
+      "updated_at": "2026-07-09T05:22:17.282Z"
+    },
+    {
+      "id": "e65749710fe09b79dbc7d1901387cf8d",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "3d4a5253cf790a31d5e232539640f39e",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
+      "evidence": "src/commands/intent.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.470Z",
+      "updated_at": "2026-07-09T05:22:16.476Z"
+    },
+    {
+      "id": "e91cf6e7362d51d39ae070aee8db78f1",
+      "from_id": "26d91b0f65d552864a80d490139d78b0",
+      "to_id": "ad873b67899063922d98d0923cef9d7b",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test find_explain -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.204Z",
+      "updated_at": "2026-07-09T05:20:58.030Z"
+    },
+    {
+      "id": "ea144a9b49a29023cea79e44e318eafb",
+      "from_id": "67c2e0ce05bde2e1708a009c19f66483",
+      "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "on journey step failure, later never-reached previously-passing validates edges reopen",
+      "evidence": "journey.rs:399-401 calls stale_unreached_passing_steps; :424-439 stale_passing_edge on remaining steps",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:18:30.254Z",
+      "updated_at": "2026-07-09T05:18:30.411Z"
+    },
+    {
       "id": "ea4df4cad376bcd434247d4e69295adc",
       "from_id": "8888575022b4e86b0862b5d6a8b91f00",
       "to_id": "21d19deb8c417ca8c3fc3b84168ee4c1",
@@ -5546,6 +6994,21 @@
       "updated_at": "2026-07-09T05:00:49.588Z"
     },
     {
+      "id": "ef90e77cdfb78b41eacea7f3213aa0ec",
+      "from_id": "c65e0e46f5d62c18e45e8e9b40c63330",
+      "to_id": "8c09800873ec56699ca584e7da49a20e",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fix queue serves failing edges only; quality/validate exclude failing from their measurement lanes",
+      "evidence": "queues.rs:190-209 fix_item takes Failing; quality_item comment lines 253-255 send failing to fix",
+      "confidence": 0.95,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:17:22.158Z",
+      "updated_at": "2026-07-09T05:18:05.475Z"
+    },
+    {
       "id": "f1436b3b36145e0f23f566aadd1c10b8",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "4c48d826cb3f799e0e88c06796c4f704",
@@ -5559,6 +7022,51 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:40.704Z",
       "updated_at": "2026-07-09T04:59:40.731Z"
+    },
+    {
+      "id": "f20cbd1a9e71b2c31753f716764cc3f0",
+      "from_id": "68a6f630ce2e5c2e39b7ed15e38ce1b8",
+      "to_id": "bb3737b706f96354edac292ffb232e03",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring2 -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:20:44.146Z",
+      "updated_at": "2026-07-09T05:21:07.518Z"
+    },
+    {
+      "id": "f4a3b27660b002a46ffabf4d657d625b",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "independent",
+      "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
+      "evidence": "src/commands/capture_cmd.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.987Z",
+      "updated_at": "2026-07-09T05:22:16.990Z"
+    },
+    {
+      "id": "f61c9e75146772d038fd8167dd0ed947",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "4c48d826cb3f799e0e88c06796c4f704",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fallible operations propagate via Result or are invariant-only expects",
+      "evidence": "src/store/facets.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:22:16.843Z",
+      "updated_at": "2026-07-09T05:22:16.846Z"
     }
   ],
   "facets": [
@@ -6396,6 +7904,34 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "418b5ebb5624aafa8df49c4f826c1d20",
+      "target_kind": "node",
+      "key": "waiver:boundary",
+      "value": "quality measures leaf behaviors; system parent is realized via children",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "418b5ebb5624aafa8df49c4f826c1d20",
+      "target_kind": "node",
+      "key": "waiver:journey",
+      "value": "system roll-up; journey proofs attach to user-visible leaf behaviors, not the parent",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "418b5ebb5624aafa8df49c4f826c1d20",
+      "target_kind": "node",
+      "key": "waiver:proof",
+      "value": "system parent is proven via child leaf validations, not a single parent validation",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "418b5ebb5624aafa8df49c4f826c1d20",
+      "target_kind": "node",
+      "key": "waiver:scenarios",
+      "value": "system roll-up; sad/fallback/edge scenarios surround user-visible feature leaves (door, find, next, sync), not the parent",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "42b22cfef645fe1172656f2cf3e21db5",
       "target_kind": "node",
       "key": "content_hash",
@@ -6560,7 +8096,7 @@
       "target_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
       "target_kind": "node",
       "key": "visibility",
-      "value": "user_visible",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -6777,7 +8313,7 @@
       "target_id": "5f6c9a00b199447b9b2d5caedf67f247",
       "target_kind": "node",
       "key": "visibility",
-      "value": "user_visible",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -6835,6 +8371,27 @@
       "key": "symbol_fingerprints",
       "value": "{\"CommandProofRunner\":\"493ea6197937b3a5\",\"JourneyProofRunner\":\"8a16ce6a61878c50\",\"ManualProofRunner\":\"4af2613e7a13e6e8\",\"ProofOutcome\":\"6581a2c7f1fab999\",\"ProofRunner\":\"7dfe8e761a033178\",\"output_excerpt\":\"c5998dca6ccd906e\",\"run\":\"2c5ab885fa828e3f\",\"run_validation_command\":\"8e867a3802c5d2be\",\"runner_for\":\"7aef86b564ae019e\",\"validation_output_json\":\"a5c56537b2945657\",\"validation_timeout_secs\":\"e1a51b4b68bdd5ee\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "67c2e0ce05bde2e1708a009c19f66483",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "fallback",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "67c2e0ce05bde2e1708a009c19f66483",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "67c2e0ce05bde2e1708a009c19f66483",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
     },
     {
       "target_id": "6872fde15dfa5b05f00984400ffc3dd0",
@@ -6946,6 +8503,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "ladder:39 (parents from hierarchy from_id; skip in ungrounded count)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "6e5f854d36a628c83fe30914ef2af65e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn analyze_item",
       "truth_class": "asserted"
     },
     {
@@ -7288,7 +8852,7 @@
       "target_id": "87f645ae8047677f86ddd1a51ddee725",
       "target_kind": "node",
       "key": "visibility",
-      "value": "user_visible",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -7300,6 +8864,27 @@
     },
     {
       "target_id": "8888575022b4e86b0862b5d6a8b91f00",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8b48e493d426c401e035b9205b0217f6",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "fallback",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8b48e493d426c401e035b9205b0217f6",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8b48e493d426c401e035b9205b0217f6",
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
@@ -7402,6 +8987,13 @@
       "key": "symbol_fingerprints",
       "value": "{\"door\":\"1ae663e969634413\",\"inbox\":\"9b58e729cd09c0c1\",\"inbox_json\":\"2590d02b8805d4e3\",\"note\":\"4358575254290127\",\"question\":\"d9f351df17582239\",\"question_json\":\"3d858284960dd8ce\",\"resolve_note_target\":\"1b8fafa274c75f69\",\"task\":\"b8c70c92f11938a1\",\"task_outcome_note\":\"8406b08fc788ad0b\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "8eb674637342f0f68e80f9dfc9beefc9",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn sync",
+      "truth_class": "asserted"
     },
     {
       "target_id": "8fd07ad596e5e6379a3c3d6cfbf004e0",
@@ -7647,6 +9239,34 @@
       "key": "symbol_fingerprints",
       "value": "{\"Expect\":\"5d673dc7802d175b\",\"HttpAuth\":\"a100aea7f356f430\",\"HttpContract\":\"21a0a0a6f2cd1f00\",\"HttpExtract\":\"7d23b2124db6ccb7\",\"HttpRoute\":\"20de6870e8245315\",\"JourneySpec\":\"c11817d178be3201\",\"Request\":\"176915d221051ddc\",\"SpecKind\":\"62d611e37c0690b6\",\"Step\":\"9d3d3bdf12e0999f\",\"StepOutcome\":\"002f7d7e200e72d4\",\"as_str\":\"dd23de725b155344\",\"authorization\":\"31db3a054725e27f\",\"bail_no_usable_base\":\"96fb50fc6a6c1f97\",\"check_response\":\"e44ba79f457f06d3\",\"default\":\"680ec452a7c4af27\",\"diagnose_hints\":\"fb3e77c6fdcf88e9\",\"env_value\":\"957f6477feebaec1\",\"execute\":\"5032309665470e7e\",\"field_path\":\"0e1d112194a1310b\",\"get\":\"3dfa7e909f296b15\",\"http_contract_to_journey\":\"007ae431bb1e4e8f\",\"interpolate\":\"0dd3617533fae246\",\"interpolate_json\":\"a1327d1959843d46\",\"journey_status_rank\":\"335b5c06ea74822c\",\"journey_validations\":\"756d124017157682\",\"jsonpath\":\"8f4a915373310c5c\",\"normalize_path_params\":\"74920757c398291f\",\"parse\":\"d99e4e550167f5cc\",\"parse_with_kind\":\"87ad0217c7c787a3\",\"require\":\"63ad8fdab38b2e6c\",\"resolve_validation\":\"bb7f5b0170f24f1d\",\"stale_unreached_passing_steps\":\"158cbefb6bf94ff5\",\"value_to_string\":\"7f1e2b8c8189b785\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "951dbe2556ac29565719436e4308f65c",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "sad",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "951dbe2556ac29565719436e4308f65c",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "951dbe2556ac29565719436e4308f65c",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "973e001539893ce5faa92b275777f608",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "symbol",
+      "truth_class": "asserted"
     },
     {
       "target_id": "9acd2d42900ab6994c0bff2088a3f430",
@@ -7908,6 +9528,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "target_kind": "node",
+      "key": "waiver:boundary",
+      "value": "quality governs pairs are served by the quality queue",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "target_kind": "node",
+      "key": "waiver:journey",
+      "value": "CLI next router; ring9 unit proof covers the boundary; HTTP journey runner does not apply",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "a738afa26005fd57b7d9ff8990f1333e",
       "target_kind": "node",
       "key": "aspect",
@@ -7925,7 +9559,7 @@
       "target_id": "a738afa26005fd57b7d9ff8990f1333e",
       "target_kind": "node",
       "key": "visibility",
-      "value": "user_visible",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -8058,7 +9692,7 @@
       "target_id": "ad873b67899063922d98d0923cef9d7b",
       "target_kind": "node",
       "key": "visibility",
-      "value": "user_visible",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -8265,6 +9899,27 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "bb3737b706f96354edac292ffb232e03",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "edge_case",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "bb3737b706f96354edac292ffb232e03",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "bb3737b706f96354edac292ffb232e03",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "bb77089433d6326ce9c65d609c549518",
       "target_kind": "node",
       "key": "content_hash",
@@ -8394,7 +10049,28 @@
       "target_id": "c612bfc13dff17ba087f658325e15509",
       "target_kind": "node",
       "key": "visibility",
-      "value": "user_visible",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c65e0e46f5d62c18e45e8e9b40c63330",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "edge_case",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c65e0e46f5d62c18e45e8e9b40c63330",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c65e0e46f5d62c18e45e8e9b40c63330",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -8951,6 +10627,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d6a3bcd44671a3b56",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:17:30.260Z\",\"hash\":\"\",\"reason\":\"journey owned by UV leaf waivers / elaborate\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d6ae9e21aaa98cc74",
       "target_kind": "node",
       "key": "adjudication",
@@ -9287,6 +10970,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "de100d5afb2bdf9b8",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:17:30.268Z\",\"hash\":\"\",\"reason\":\"journey owned by UV leaf waivers / elaborate\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "de4eda701a00c81b9",
       "target_kind": "node",
       "key": "adjudication",
@@ -9409,7 +11099,7 @@
       "target_id": "e35fe452b1e6408ed91d6b60c683fcdf",
       "target_kind": "node",
       "key": "visibility",
-      "value": "user_visible",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -9462,6 +11152,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "ea144a9b49a29023cea79e44e318eafb",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn stale_unreached_passing_steps",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "ea4df4cad376bcd434247d4e69295adc",
       "target_kind": "edge",
       "key": "locator",
@@ -9483,6 +11180,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "ef90e77cdfb78b41eacea7f3213aa0ec",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn fix_item",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "target_kind": "node",
       "key": "level",
@@ -9494,6 +11198,20 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "target_kind": "node",
+      "key": "waiver:boundary",
+      "value": "quality governs pairs are served by the quality queue",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "target_kind": "node",
+      "key": "waiver:journey",
+      "value": "CLI/sync behavior; ring2 unit proof covers the boundary; HTTP journey runner does not apply",
       "truth_class": "asserted"
     },
     {
