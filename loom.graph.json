@@ -64,14 +64,14 @@
       "type": "validation",
       "name": "ring9 work packets",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring9 -q",
         "type": "test"
       },
       "created_at": "2026-07-09T04:59:47.801Z",
-      "updated_at": "2026-07-09T04:59:47.801Z"
+      "updated_at": "2026-07-09T05:00:29.971Z"
     },
     {
       "id": "0f6c0961ed42fd973adc8c54b1526297",
@@ -268,6 +268,33 @@
       "updated_at": "2026-07-09T04:59:38.628Z"
     },
     {
+      "id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+      "type": "intent",
+      "name": "find --exact requires a whole-name match",
+      "description": "when --exact is set, only whole-name case-insensitive matches are returned so partial fuzzy hits cannot seed a bad dedup",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:01:14.541Z",
+      "updated_at": "2026-07-09T05:01:14.541Z"
+    },
+    {
+      "id": "46d16fdebd7194e74c9ea3094439ac57",
+      "type": "validation",
+      "name": "door capture surface",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring9 door_landing_menu -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:00:49.620Z",
+      "updated_at": "2026-07-09T05:01:05.622Z"
+    },
+    {
       "id": "4c48d826cb3f799e0e88c06796c4f704",
       "type": "intent",
       "name": "import loads every node before any edge",
@@ -320,14 +347,14 @@
       "type": "validation",
       "name": "ring2 sync ripple",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring2 -q",
         "type": "test"
       },
       "created_at": "2026-07-09T04:59:47.816Z",
-      "updated_at": "2026-07-09T04:59:47.816Z"
+      "updated_at": "2026-07-09T05:00:30.250Z"
     },
     {
       "id": "5f4caa5537d102a4137484043ebc59e5",
@@ -339,6 +366,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.629Z",
       "updated_at": "2026-07-09T04:59:38.629Z"
+    },
+    {
+      "id": "5f6c9a00b199447b9b2d5caedf67f247",
+      "type": "intent",
+      "name": "door routes a weak lexical match as a caution not a strong hit",
+      "description": "when keyword overlap is weak, the landing menu labels existing_intent confidence=weak so the operator prefers new_intent unless it truly refines",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:00:57.456Z",
+      "updated_at": "2026-07-09T05:00:57.456Z"
     },
     {
       "id": "65b5feab526b976709962fb67b1efc73",
@@ -453,6 +493,19 @@
       "updated_at": "2026-07-09T04:59:41.362Z"
     },
     {
+      "id": "87f645ae8047677f86ddd1a51ddee725",
+      "type": "intent",
+      "name": "door offers hypothesis when the utterance is a redesign idea",
+      "description": "when the utterance is a redesign claim, the landing menu includes a hypothesis add command before it becomes build work",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:00:57.510Z",
+      "updated_at": "2026-07-09T05:00:57.510Z"
+    },
+    {
       "id": "8888575022b4e86b0862b5d6a8b91f00",
       "type": "intent",
       "name": "the verdict write boundary enforces the evidence, truth-class and lane gates",
@@ -464,6 +517,20 @@
       },
       "created_at": "2026-07-09T04:59:40.611Z",
       "updated_at": "2026-07-09T04:59:40.611Z"
+    },
+    {
+      "id": "8a5218e43f067ad76e209aa67b91918a",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived boundary: quality governs pairs are served by the quality queue",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "873d9c05264943d486f1535988af1765"
+      },
+      "created_at": "2026-07-09T05:01:16.383Z",
+      "updated_at": "2026-07-09T05:01:16.383Z"
     },
     {
       "id": "8c09800873ec56699ca584e7da49a20e",
@@ -543,6 +610,20 @@
       "updated_at": "2026-07-09T04:59:38.633Z"
     },
     {
+      "id": "9a181af9b0ccd0bca14fff7bcc9a3904",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived journey: CLI find surface; journey runner is HTTP-only — find_explain unit proof covers the boundary",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "873d9c05264943d486f1535988af1765"
+      },
+      "created_at": "2026-07-09T05:01:16.375Z",
+      "updated_at": "2026-07-09T05:01:16.375Z"
+    },
+    {
       "id": "9acd2d42900ab6994c0bff2088a3f430",
       "type": "codefile",
       "name": "src/commands/edge.rs",
@@ -611,6 +692,19 @@
       "updated_at": "2026-07-09T04:59:41.112Z"
     },
     {
+      "id": "a738afa26005fd57b7d9ff8990f1333e",
+      "type": "intent",
+      "name": "door dismisses non-actionable capture without inventing work",
+      "description": "when the utterance is not actionable, the operator marks the inbox item rejected and no intent/hypothesis/task is created",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:00:49.429Z",
+      "updated_at": "2026-07-09T05:00:49.429Z"
+    },
+    {
       "id": "a819a5f46c71c1074f2b96a4ad56bcb1",
       "type": "codefile",
       "name": "src/commands/codefile_cmd.rs",
@@ -633,6 +727,19 @@
       "updated_at": "2026-07-09T04:59:38.633Z"
     },
     {
+      "id": "ad873b67899063922d98d0923cef9d7b",
+      "type": "intent",
+      "name": "find --tag filters to tagged intents only",
+      "description": "when --tag is set, only intents carrying that vocab term are returned",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:01:14.582Z",
+      "updated_at": "2026-07-09T05:01:14.582Z"
+    },
+    {
       "id": "af231f0b76c6a6745e88761f532d4631",
       "type": "codefile",
       "name": "src/commands/pulse.rs",
@@ -653,6 +760,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.636Z",
       "updated_at": "2026-07-09T04:59:38.636Z"
+    },
+    {
+      "id": "b4817112203f1753162eccd2dfdfd2bf",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived journey: CLI capture surface; journey runner is HTTP-only today — unit/CLI proof covers the boundary until a CLI journey runner exists",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "4eefda1c44aaba4f1cb78be93db5712a"
+      },
+      "created_at": "2026-07-09T05:00:49.659Z",
+      "updated_at": "2026-07-09T05:00:49.659Z"
     },
     {
       "id": "b56d433c98a18554691b97911c8f898f",
@@ -710,6 +831,19 @@
       },
       "created_at": "2026-07-09T04:59:40.795Z",
       "updated_at": "2026-07-09T04:59:40.795Z"
+    },
+    {
+      "id": "c612bfc13dff17ba087f658325e15509",
+      "type": "intent",
+      "name": "find with no matches returns an empty hit list",
+      "description": "when the query matches no intents/codefiles, find prints no hits rather than inventing a near-miss",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-09T05:01:14.479Z",
+      "updated_at": "2026-07-09T05:01:14.479Z"
     },
     {
       "id": "ccf732f1fc07a1c1a7b28d3a03115a61",
@@ -861,6 +995,21 @@
       "updated_at": ""
     },
     {
+      "id": "d1265b27311107df2",
+      "type": "finding",
+      "name": "src/commands/discover_cmd.rs is implemented by 4 intents",
+      "description": "split the file or the intents; one file, one cohesive responsibility",
+      "status": "tangled_file",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "tangled_file:5f4caa5537d102a4137484043ebc59e5",
+        "kind": "tangled_file"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d13e3c848154990b5",
       "type": "finding",
       "name": "src/commands/discover_cmd.rs::print_find_hits nests deeply",
@@ -871,6 +1020,21 @@
         "kind": "deep_nesting",
         "metric": 5,
         "symbol": "print_find_hits"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d14a7f73c4780dc2a",
+      "type": "finding",
+      "name": "src/commands/capture_cmd.rs is implemented by 4 intents",
+      "description": "split the file or the intents; one file, one cohesive responsibility",
+      "status": "tangled_file",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "tangled_file:8de84dddb070d7f3adbb02b6223e60af",
+        "kind": "tangled_file"
       },
       "created_at": "",
       "updated_at": ""
@@ -901,6 +1065,21 @@
         "kind": "large_symbol",
         "metric": 133,
         "symbol": "status"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d1cd1af2d99005979",
+      "type": "finding",
+      "name": "user-visible intent 'an operator captures a topic through door and routes it from the landing menu' has validations but no passing L5/L6 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:4eefda1c44aaba4f1cb78be93db5712a",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -1373,6 +1552,21 @@
       "updated_at": ""
     },
     {
+      "id": "d5edb0debedeb836f",
+      "type": "finding",
+      "name": "user-visible intent 'door routes a weak lexical match as a caution not a strong hit' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:5f6c9a00b199447b9b2d5caedf67f247",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d622f101e93a3dcb0",
       "type": "finding",
       "name": "src/commands/proof_cmd.rs::rule is complex",
@@ -1398,6 +1592,21 @@
         "kind": "complex_symbol",
         "metric": 18,
         "symbol": "reconcile_shadows"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d6ae9e21aaa98cc74",
+      "type": "finding",
+      "name": "user-visible intent 'find --exact requires a whole-name match' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -1568,6 +1777,21 @@
       "updated_at": ""
     },
     {
+      "id": "d8dd768572160bbe9",
+      "type": "finding",
+      "name": "user-visible intent 'door dismisses non-actionable capture without inventing work' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:a738afa26005fd57b7d9ff8990f1333e",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d90ceb976a899684c",
       "type": "finding",
       "name": "src/commands/proof_cmd.rs::validate_cmd is long",
@@ -1649,21 +1873,6 @@
           "\\blet\\s+_\\s*="
         ],
         "severity": "error"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d9900f84095852c38",
-      "type": "finding",
-      "name": "user-visible intent 'find surfaces each matched intent's grounding' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:873d9c05264943d486f1535988af1765",
-        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -1827,21 +2036,6 @@
       "updated_at": ""
     },
     {
-      "id": "db1b05d0475e939da",
-      "type": "finding",
-      "name": "user-visible intent 'an operator captures a topic through door and routes it from the landing menu' has no linked validation; boundary-facing behavior needs an L5 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:4eefda1c44aaba4f1cb78be93db5712a",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "db23c217c2fd88001",
       "type": "finding",
       "name": "src/maturity.rs::compass takes many arguments",
@@ -1915,6 +2109,21 @@
       "updated_at": ""
     },
     {
+      "id": "dbd196903b95e7f77",
+      "type": "finding",
+      "name": "user-visible intent 'door offers hypothesis when the utterance is a redesign idea' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:87f645ae8047677f86ddd1a51ddee725",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dbf74e8168e6407ca",
       "type": "finding",
       "name": "src/commands/intent.rs::intent_update is long",
@@ -1940,6 +2149,21 @@
         "kind": "complex_symbol",
         "metric": 18,
         "symbol": "codefile_show"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dc52f414629e201c3",
+      "type": "finding",
+      "name": "user-visible intent 'find surfaces each matched intent's grounding' has validations but no passing L5/L6 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:873d9c05264943d486f1535988af1765",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -2054,6 +2278,21 @@
         "kind": "deep_nesting",
         "metric": 5,
         "symbol": "prescreen"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "ddd4d3c52460ba56f",
+      "type": "finding",
+      "name": "user-visible intent 'find with no matches returns an empty hit list' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:c612bfc13dff17ba087f658325e15509",
+        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -2237,6 +2476,21 @@
       "updated_at": ""
     },
     {
+      "id": "df2a869cee31af891",
+      "type": "finding",
+      "name": "user-visible intent 'find --tag filters to tagged intents only' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:ad873b67899063922d98d0923cef9d7b",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "df624576c54e20034",
       "type": "finding",
       "name": "src/sync.rs::ripple_changed_intents is complex",
@@ -2306,6 +2560,20 @@
       "updated_at": "2026-07-09T04:59:41.217Z"
     },
     {
+      "id": "e4974ddbe36741587f236fd36277150b",
+      "type": "validation",
+      "name": "find explain surface",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test find_explain -q",
+        "type": "test"
+      },
+      "created_at": "2026-07-09T05:01:14.629Z",
+      "updated_at": "2026-07-09T05:01:16.358Z"
+    },
+    {
       "id": "e5171cb5808f1854fae98b7296069e42",
       "type": "codefile",
       "name": "src/evidence.rs",
@@ -2315,6 +2583,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.632Z",
       "updated_at": "2026-07-09T04:59:38.632Z"
+    },
+    {
+      "id": "ee72ee913de8c489e13cb555b0f45828",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived boundary: quality governs pairs are served by the quality queue; not a product-decision gap for this capture surface",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "4eefda1c44aaba4f1cb78be93db5712a"
+      },
+      "created_at": "2026-07-09T05:00:49.668Z",
+      "updated_at": "2026-07-09T05:00:49.668Z"
     },
     {
       "id": "f2d36098dd6d84a9b2d81b316e3ded3d",
@@ -2369,6 +2651,21 @@
       "updated_at": "2026-07-09T04:59:40.786Z"
     },
     {
+      "id": "125fce415a8f4d0258ee3b2895ae6c63",
+      "from_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+      "to_id": "5f4caa5537d102a4137484043ebc59e5",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-09T05:01:14.573Z",
+      "updated_at": "2026-07-09T05:01:14.573Z"
+    },
+    {
       "id": "1fccc75f4294ddcb5af4a40f9b7a3bd9",
       "from_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "to_id": "8de84dddb070d7f3adbb02b6223e60af",
@@ -2399,6 +2696,21 @@
       "updated_at": "2026-07-09T04:59:41.272Z"
     },
     {
+      "id": "2fe9889a5da9c17c36192488977ee52e",
+      "from_id": "5f6c9a00b199447b9b2d5caedf67f247",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "weak matches are a degraded path of door routing",
+      "evidence": "capture_cmd.rs door splits strong_matches vs weak_matches in the landing menu",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:00:57.465Z",
+      "updated_at": "2026-07-09T05:00:57.480Z"
+    },
+    {
       "id": "38c6f21d316132bd2a273f59836a7fc0",
       "from_id": "e35fe452b1e6408ed91d6b60c683fcdf",
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
@@ -2414,6 +2726,21 @@
       "updated_at": "2026-07-09T04:59:41.246Z"
     },
     {
+      "id": "45612cdd18f6fd5c84eefc1fe5c1b70a",
+      "from_id": "46d16fdebd7194e74c9ea3094439ac57",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 door_landing_menu -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:00:49.622Z",
+      "updated_at": "2026-07-09T05:01:05.622Z"
+    },
+    {
       "id": "457d95b61ba306a20f36c86e44e1cba5",
       "from_id": "873d9c05264943d486f1535988af1765",
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
@@ -2427,6 +2754,51 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.567Z",
       "updated_at": "2026-07-09T04:59:41.585Z"
+    },
+    {
+      "id": "48c202a4d0dcdb7edf7b6d502c61f151",
+      "from_id": "ad873b67899063922d98d0923cef9d7b",
+      "to_id": "5f4caa5537d102a4137484043ebc59e5",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-09T05:01:14.619Z",
+      "updated_at": "2026-07-09T05:01:14.619Z"
+    },
+    {
+      "id": "4a1a9cc09d133b1cf3e6a42a8e6ba968",
+      "from_id": "c612bfc13dff17ba087f658325e15509",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "empty result is the sad path of find",
+      "evidence": "discover_cmd.rs find_cmd prints hits only when keyword_hits is non-empty",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:01:14.494Z",
+      "updated_at": "2026-07-09T05:01:14.512Z"
+    },
+    {
+      "id": "5002837a2b41d50a00c2179d499e1c18",
+      "from_id": "ad873b67899063922d98d0923cef9d7b",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "tag filter is a constrained path of find",
+      "evidence": "discover_cmd.rs resolve_find_filters / nodes_with_tag",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:01:14.591Z",
+      "updated_at": "2026-07-09T05:01:14.607Z"
     },
     {
       "id": "58e192005d47eaf7e4bad10eb7400d00",
@@ -2459,6 +2831,21 @@
       "updated_at": "2026-07-09T04:59:41.208Z"
     },
     {
+      "id": "6b213cda37a2e92efc881fc6e9660edd",
+      "from_id": "a738afa26005fd57b7d9ff8990f1333e",
+      "to_id": "8de84dddb070d7f3adbb02b6223e60af",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-09T05:00:49.604Z",
+      "updated_at": "2026-07-09T05:00:49.604Z"
+    },
+    {
       "id": "6d914e462b3018693d5cd566bcc1888c",
       "from_id": "debde51c06b40f454f7624003c7e608d",
       "to_id": "7ea392c6f00c1e88b731ab0331e898f2",
@@ -2479,14 +2866,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring9 -q` exit 0",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:47.805Z",
-      "updated_at": "2026-07-09T04:59:47.805Z"
+      "updated_at": "2026-07-09T05:00:29.970Z"
     },
     {
       "id": "781cf1bc474e67f9e0b193ea49a362e4",
@@ -2534,6 +2921,21 @@
       "updated_at": "2026-07-09T04:59:41.322Z"
     },
     {
+      "id": "8f0c99ec510f6a1d4fcc83222aa7b0e5",
+      "from_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "exact mode is an edge case of find",
+      "evidence": "discover_cmd.rs find_exact / find_cmd --exact path",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:01:14.551Z",
+      "updated_at": "2026-07-09T05:01:14.565Z"
+    },
+    {
       "id": "a287b6f474c38f792a5bd2c086e7efc7",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
@@ -2547,6 +2949,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.056Z",
       "updated_at": "2026-07-09T04:59:41.074Z"
+    },
+    {
+      "id": "a4cae11a909b3eac87547373ea3ef7c9",
+      "from_id": "87f645ae8047677f86ddd1a51ddee725",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "hypothesis is an edge landing of door capture",
+      "evidence": "capture_cmd.rs door menu includes landing hypothesis",
+      "confidence": 0.85,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:00:57.519Z",
+      "updated_at": "2026-07-09T05:00:57.533Z"
     },
     {
       "id": "a725fbe3f4b5d70dac377641c671e7bc",
@@ -2584,14 +3001,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring2 -q` exit 0",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:47.816Z",
-      "updated_at": "2026-07-09T04:59:47.816Z"
+      "updated_at": "2026-07-09T05:00:30.249Z"
     },
     {
       "id": "ac22d50ed2605b4ef35e0dd96d734201",
@@ -2622,6 +3039,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.468Z",
       "updated_at": "2026-07-09T04:59:41.493Z"
+    },
+    {
+      "id": "afbb47fde7528bca93bef7f17deef80a",
+      "from_id": "c612bfc13dff17ba087f658325e15509",
+      "to_id": "5f4caa5537d102a4137484043ebc59e5",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-09T05:01:14.530Z",
+      "updated_at": "2026-07-09T05:01:14.530Z"
     },
     {
       "id": "bcfe76d128a7d210f85a6aa8a1d7196f",
@@ -2669,6 +3101,21 @@
       "updated_at": "2026-07-09T04:59:40.943Z"
     },
     {
+      "id": "c92e0e4bfaa9abcab2e27e7f6b799b76",
+      "from_id": "87f645ae8047677f86ddd1a51ddee725",
+      "to_id": "8de84dddb070d7f3adbb02b6223e60af",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-09T05:00:57.542Z",
+      "updated_at": "2026-07-09T05:00:57.542Z"
+    },
+    {
       "id": "c97ae383433b9770577b77d08728ed37",
       "from_id": "3d4a5253cf790a31d5e232539640f39e",
       "to_id": "873d9c05264943d486f1535988af1765",
@@ -2697,6 +3144,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:42.105Z",
       "updated_at": "2026-07-09T04:59:42.108Z"
+    },
+    {
+      "id": "cb41f9484b17a52f3382a746fdbff083",
+      "from_id": "5f6c9a00b199447b9b2d5caedf67f247",
+      "to_id": "8de84dddb070d7f3adbb02b6223e60af",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-09T05:00:57.498Z",
+      "updated_at": "2026-07-09T05:00:57.498Z"
     },
     {
       "id": "cfa4e3b2f1545493e68af2a1ebe74003",
@@ -5054,6 +5516,36 @@
       "updated_at": "2026-07-09T04:59:40.864Z"
     },
     {
+      "id": "ee367066162d254c6220429e96c8a915",
+      "from_id": "e4974ddbe36741587f236fd36277150b",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test find_explain -q` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:01:14.630Z",
+      "updated_at": "2026-07-09T05:01:16.357Z"
+    },
+    {
+      "id": "ef5f30a4cd4a6ae377e181afcbbec065",
+      "from_id": "a738afa26005fd57b7d9ff8990f1333e",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "dismiss is a real sad path of door capture",
+      "evidence": "door menu includes dismiss → loom inbox mark rejected; capture_cmd.rs landing menu",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-09T05:00:49.538Z",
+      "updated_at": "2026-07-09T05:00:49.588Z"
+    },
+    {
       "id": "f1436b3b36145e0f23f566aadd1c10b8",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "4c48d826cb3f799e0e88c06796c4f704",
@@ -5412,6 +5904,13 @@
       "key": "symbol_fingerprints",
       "value": "{\"export\":\"4d3cdfee8573ed61\",\"import\":\"468c36bbf3131d68\",\"mode_cmd\":\"4e56052f65710538\",\"next_all\":\"14a256c5b2a73d7e\",\"next_cmd\":\"09968597134f8346\",\"print_work_item\":\"c907c76ec8eb662b\",\"queue_list\":\"2ef527f75d015204\",\"require_lane\":\"6abd179a4fa54fc8\",\"status\":\"18e4b82c8261ffd2\",\"sync_cmd\":\"56f7b0721a6b0323\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "125fce415a8f4d0258ee3b2895ae6c63",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn find_exact",
+      "truth_class": "asserted"
     },
     {
       "target_id": "17767eb6b1298b024c3531048d8f70f1",
@@ -6044,6 +6543,34 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "edge_case",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "48c202a4d0dcdb7edf7b6d502c61f151",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn resolve_find_filters",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "4c48d826cb3f799e0e88c06796c4f704",
       "target_kind": "node",
       "key": "level",
@@ -6069,6 +6596,20 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "target_kind": "node",
+      "key": "waiver:boundary",
+      "value": "quality governs pairs are served by the quality queue; not a product-decision gap for this capture surface",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "target_kind": "node",
+      "key": "waiver:journey",
+      "value": "CLI capture surface; journey runner is HTTP-only today — unit/CLI proof covers the boundary until a CLI journey runner exists",
       "truth_class": "asserted"
     },
     {
@@ -6217,6 +6758,27 @@
       "key": "symbol_fingerprints",
       "value": "{\"count_exts\":\"6e3ad0f3e7ac38cc\",\"detect_cmd\":\"6eab98f50b3fdb37\",\"explain_cmd\":\"ea80123d23a24daa\",\"find_cmd\":\"7f8c2894daf26680\",\"find_exact\":\"202ba6323a0050d4\",\"find_exact_filtered\":\"a5df962b57caffe5\",\"keyword_hits\":\"8591f29d87860f98\",\"parse_where_spec\":\"86418303c505fa50\",\"print_find_hits\":\"690b645a22855c33\",\"resolve_find_filters\":\"799ab9e7bcc12f94\",\"schema_cmd\":\"7379fafa5bdd6538\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "5f6c9a00b199447b9b2d5caedf67f247",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "fallback",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5f6c9a00b199447b9b2d5caedf67f247",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5f6c9a00b199447b9b2d5caedf67f247",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
     },
     {
       "target_id": "622fb62dc5cb854ea1f887e91d09dff5",
@@ -6371,6 +6933,13 @@
       "key": "symbol_fingerprints",
       "value": "{}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "6b213cda37a2e92efc881fc6e9660edd",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "landing: dismiss",
+      "truth_class": "asserted"
     },
     {
       "target_id": "6d914e462b3018693d5cd566bcc1888c",
@@ -6682,6 +7251,41 @@
     },
     {
       "target_id": "873d9c05264943d486f1535988af1765",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "873d9c05264943d486f1535988af1765",
+      "target_kind": "node",
+      "key": "waiver:boundary",
+      "value": "quality governs pairs are served by the quality queue",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "873d9c05264943d486f1535988af1765",
+      "target_kind": "node",
+      "key": "waiver:journey",
+      "value": "CLI find surface; journey runner is HTTP-only — find_explain unit proof covers the boundary",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "87f645ae8047677f86ddd1a51ddee725",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "edge_case",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "87f645ae8047677f86ddd1a51ddee725",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "87f645ae8047677f86ddd1a51ddee725",
       "target_kind": "node",
       "key": "visibility",
       "value": "user_visible",
@@ -7304,6 +7908,27 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "a738afa26005fd57b7d9ff8990f1333e",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "sad",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a738afa26005fd57b7d9ff8990f1333e",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a738afa26005fd57b7d9ff8990f1333e",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "a76fc4640e5b8d15ae87f1a1424e3227",
       "target_kind": "edge",
       "key": "locator",
@@ -7416,6 +8041,27 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "ad873b67899063922d98d0923cef9d7b",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "fallback",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ad873b67899063922d98d0923cef9d7b",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ad873b67899063922d98d0923cef9d7b",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "af231f0b76c6a6745e88761f532d4631",
       "target_kind": "node",
       "key": "content_hash",
@@ -7463,6 +8109,13 @@
       "key": "symbol_fingerprints",
       "value": "{\"emit\":\"c7782cfc2ccc948a\",\"emit_line\":\"3ca1e062091ab1be\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "afbb47fde7528bca93bef7f17deef80a",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn find_cmd",
+      "truth_class": "asserted"
     },
     {
       "target_id": "b1082d74b231b22be2aaa977c34ab03d",
@@ -7724,10 +8377,45 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "c612bfc13dff17ba087f658325e15509",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "sad",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c612bfc13dff17ba087f658325e15509",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c612bfc13dff17ba087f658325e15509",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "c702ac386ca1a48e837adc1382175009",
       "target_kind": "edge",
       "key": "locator",
       "value": "run:65 (compare 85; ripple only when prior.is_some 90-98)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c92e0e4bfaa9abcab2e27e7f6b799b76",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn door",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cb41f9484b17a52f3382a746fdbff083",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn door",
       "truth_class": "asserted"
     },
     {
@@ -7934,10 +8622,24 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d1265b27311107df2",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:16.788Z\",\"hash\":\"\",\"reason\":\"journey completeness owned by elaborate\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d13e3c848154990b5",
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:48.941Z\",\"hash\":\"9fc34cf9c7c1cb4e\",\"metric\":5,\"reason\":\"src/commands/discover_cmd.rs: file-level cohesion already judged in dogfood; symbol-level split deferred to a dedicated judgment pass\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d14a7f73c4780dc2a",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:05.964Z\",\"hash\":\"\",\"reason\":\"journey axis waived or owned by elaborate; not detector triage\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -7952,6 +8654,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:49.189Z\",\"hash\":\"e5c32ed7467473d1\",\"metric\":133,\"reason\":\"src/commands/status_cmd.rs: outside dogfood behavioral spine (ignored); symbol-level split not scheduled here\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d1cd1af2d99005979",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:05.972Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey axis waived or owned by elaborate; not detector triage\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -8221,6 +8930,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d5edb0debedeb836f",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:05.980Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey axis waived or owned by elaborate; not detector triage\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d622f101e93a3dcb0",
       "target_kind": "node",
       "key": "adjudication",
@@ -8232,6 +8948,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:49.209Z\",\"hash\":\"6b4b78b846b22c1b\",\"metric\":18,\"reason\":\"src/federation.rs: outside dogfood behavioral spine (ignored); symbol-level split not scheduled here\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d6ae9e21aaa98cc74",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:16.796Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey completeness owned by elaborate\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -8309,6 +9032,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:48.846Z\",\"hash\":\"07c6d4a72868b290\",\"metric\":18,\"reason\":\"src/commands/codefile_cmd.rs: outside dogfood behavioral spine (ignored); symbol-level split not scheduled here\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d8dd768572160bbe9",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:05.996Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey axis waived or owned by elaborate; not detector triage\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -8431,6 +9161,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "dbd196903b95e7f77",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:05.988Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey axis waived or owned by elaborate; not detector triage\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "dbf74e8168e6407ca",
       "target_kind": "node",
       "key": "adjudication",
@@ -8442,6 +9179,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:48.827Z\",\"hash\":\"07c6d4a72868b290\",\"metric\":18,\"reason\":\"src/commands/codefile_cmd.rs: outside dogfood behavioral spine (ignored); symbol-level split not scheduled here\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "dc52f414629e201c3",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:16.805Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey completeness owned by elaborate\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -8536,6 +9280,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "ddd4d3c52460ba56f",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:16.825Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey completeness owned by elaborate\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "de4eda701a00c81b9",
       "target_kind": "node",
       "key": "adjudication",
@@ -8624,6 +9375,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:49.463Z\",\"hash\":\"e64ba354ba560ad4\",\"metric\":15,\"reason\":\"src/workitem/mod.rs: file-level cohesion already judged in dogfood; symbol-level split deferred to a dedicated judgment pass\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "df2a869cee31af891",
+      "target_kind": "node",
+      "key": "adjudication",
+      "value": "{\"at\":\"2026-07-09T05:01:16.815Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey completeness owned by elaborate\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
