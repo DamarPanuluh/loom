@@ -925,7 +925,7 @@ fn offending_fn() -> String {
 fn apply_batch_adjudicates_findings() {
     // Contract: a single apply batch can adjudicate multiple durable Findings.
     // Two unrelated pairs co-own two different files, yielding two independent
-    // overlapping_ownership findings that are both triaged by one dispatch.
+    // tangled_file findings that are both triaged by one dispatch.
     let tmp = Tmp::new();
     let root = tmp.path();
     tmp.write("src/one.rs", "pub fn one() {}\n");
@@ -962,7 +962,7 @@ fn apply_batch_adjudicates_findings() {
     let mut finding_ids = loom::signal::smells(&store)
         .unwrap()
         .into_iter()
-        .filter(|smell| smell.kind == "overlapping_ownership")
+        .filter(|smell| smell.kind == "tangled_file")
         .map(|smell| {
             Store::derived_node_id(
                 NodeType::Finding,
@@ -974,7 +974,7 @@ fn apply_batch_adjudicates_findings() {
     assert_eq!(
         finding_ids.len(),
         2,
-        "apply adjudication batch setup: expected two overlapping ownership smells"
+        "apply adjudication batch setup: expected two tangled_file smells"
     );
 
     loom::sync::run(&store, root)
@@ -1056,8 +1056,8 @@ fn apply_adjudication_batch_is_atomic_and_gated() {
     let smell = loom::signal::smells(&store)
         .unwrap()
         .into_iter()
-        .find(|smell| smell.kind == "overlapping_ownership")
-        .expect("apply adjudication atomic setup: overlapping ownership smell exists");
+        .find(|smell| smell.kind == "tangled_file")
+        .expect("apply adjudication atomic setup: tangled_file smell exists");
     let finding_id = Store::derived_node_id(
         NodeType::Finding,
         &loom::signal::smell_det_key(&smell.identity),
@@ -1339,9 +1339,9 @@ fn import_restore_validates_truth_class_and_questions_edge() {
             .add_derived_node(
                 NodeType::Finding,
                 "det-key-import-test",
-                "overlapping owners",
+                "undeclared co-owners",
                 "",
-                "overlapping_ownership",
+                "tangled_file",
                 json!({}),
             )
             .unwrap();

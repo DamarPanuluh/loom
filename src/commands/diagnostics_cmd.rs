@@ -705,13 +705,12 @@ pub(crate) fn calibrate_cmd(graph: Option<&Path>, write: bool, json: bool) -> Re
 
 fn threshold_line(t: &crate::thresholds::Thresholds) -> String {
     format!(
-        "file loc {} | symbol complexity {} | symbol loc {} | nesting {} | args {} | file owners {}",
+        "file loc {} | symbol complexity {} | symbol loc {} | nesting {} | args {}",
         t.max_file_loc,
         t.max_symbol_complexity,
         t.max_symbol_loc,
         t.max_nesting,
         t.max_args,
-        t.max_file_owners
     )
 }
 

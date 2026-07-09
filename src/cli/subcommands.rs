@@ -997,7 +997,7 @@ pub enum ThresholdCmd {
     /// Hand-set one gate (e.g. `max_args 8`); persists to config.thresholds.
     Set {
         /// Gate name: max_file_loc | max_symbol_complexity | max_symbol_loc |
-        /// max_nesting | max_args | max_file_owners.
+        /// max_nesting | max_args.
         gate: String,
         /// The new threshold (strict `>` bound; must be >= 1).
         value: u64,

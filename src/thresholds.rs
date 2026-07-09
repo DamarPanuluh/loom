@@ -34,10 +34,18 @@ pub struct Thresholds {
     pub max_nesting: u32,
     /// `excess_args`: declared arguments per callable (receiver excluded).
     pub max_args: u32,
-    /// `tangled_file`: realizing owners per file (graph-shape gate). Hand-set
-    /// only — not part of the `calibrate` fit (owner counts are too small a
-    /// distribution for a stable quantile).
+    /// Retired: ownership smells use graph connectedness, not a count gate.
+    /// Kept so older `config.thresholds` exports still load; ignored by
+    /// detectors and omitted from [`GATES`] / `pairs` / save output.
+    /// `serde(default = …)` must return the historical default (2), not
+    /// `usize::default()` (0), so save→load of a struct built with
+    /// `Thresholds::default()` still compares equal on this inert field.
+    #[serde(default = "retired_max_file_owners", skip_serializing)]
     pub max_file_owners: usize,
+}
+
+fn retired_max_file_owners() -> usize {
+    2
 }
 
 impl Default for Thresholds {
@@ -75,13 +83,13 @@ pub fn clear(store: &Store) -> Result<()> {
 }
 
 /// Canonical gate names — the `config.thresholds` JSON keys, in display order.
+/// Ownership smells are not count-gated (`tangled_file` uses graph connectedness).
 pub const GATES: &[&str] = &[
     "max_file_loc",
     "max_symbol_complexity",
     "max_symbol_loc",
     "max_nesting",
     "max_args",
-    "max_file_owners",
 ];
 
 impl Thresholds {
@@ -96,7 +104,6 @@ impl Thresholds {
             ("max_symbol_loc", self.max_symbol_loc as u64),
             ("max_nesting", u64::from(self.max_nesting)),
             ("max_args", u64::from(self.max_args)),
-            ("max_file_owners", self.max_file_owners as u64),
         ]
     }
 
@@ -112,7 +119,10 @@ impl Thresholds {
             "max_symbol_loc" => self.max_symbol_loc = as_usize()?,
             "max_nesting" => self.max_nesting = as_u32()?,
             "max_args" => self.max_args = as_u32()?,
-            "max_file_owners" => self.max_file_owners = as_usize()?,
+            "max_file_owners" => bail!(
+                "max_file_owners is retired — tangled_file uses graph connectedness \
+                 (relates/hierarchy/scenario-of), not an owner-count gate"
+            ),
             other => bail!(
                 "unknown threshold gate '{other}' — one of: {}",
                 GATES.join(", ")
@@ -130,7 +140,9 @@ impl Thresholds {
             "max_symbol_loc" => self.max_symbol_loc = d.max_symbol_loc,
             "max_nesting" => self.max_nesting = d.max_nesting,
             "max_args" => self.max_args = d.max_args,
-            "max_file_owners" => self.max_file_owners = d.max_file_owners,
+            "max_file_owners" => bail!(
+                "max_file_owners is retired — tangled_file uses graph connectedness, not an owner-count gate"
+            ),
             other => bail!(
                 "unknown threshold gate '{other}' — one of: {}",
                 GATES.join(", ")
@@ -222,8 +234,7 @@ pub fn calibrate(store: &Store, root: &Path) -> Result<Calibration> {
             f64::from(current.max_nesting),
         ) as u32,
         max_args: fitted(&mut args, MIN_ARGS, 1.0, f64::from(current.max_args)) as u32,
-        // Not fitted: owner counts are too small a distribution for a stable
-        // quantile. Preserve the operator's setting (or the default) verbatim.
+        // Retired field — preserve whatever was loaded so round-trips stay quiet.
         max_file_owners: current.max_file_owners,
     };
     Ok(Calibration {
@@ -312,7 +323,6 @@ mod tests {
         assert_eq!(t.max_symbol_loc, 120, "default max_symbol_loc is 120");
         assert_eq!(t.max_nesting, 5, "default max_nesting is 5");
         assert_eq!(t.max_args, 6, "default max_args is 6");
-        assert_eq!(t.max_file_owners, 2, "default max_file_owners is 2");
     }
 
     #[test]
@@ -326,7 +336,7 @@ mod tests {
             max_symbol_loc: 88,
             max_nesting: 3,
             max_args: 9,
-            max_file_owners: 4,
+            ..Default::default()
         };
         save(&store, &t).expect("save persists thresholds");
         let back = load(&store).expect("load reads saved thresholds");
@@ -370,7 +380,7 @@ mod tests {
     // Contract 1: set_gate on a default Thresholds sets the named gate to the
     // given value AND leaves every other gate at its default — proving the
     // match arm touched exactly one field, not a neighbor by mistake. Covers all
-    // 6 gates (both u32 and usize arms) with distinct non-default values; a
+    // active gates (both u32 and usize arms) with distinct non-default values; a
     // flipped match arm (e.g. setting max_nesting when handed "max_args") or a
     // dropped arm reddens the whole-struct equality.
     #[test]
@@ -396,10 +406,6 @@ mod tests {
                 ..*t
             }),
             ("max_args", 8, |t| Thresholds { max_args: 8, ..*t }),
-            ("max_file_owners", 7, |t| Thresholds {
-                max_file_owners: 7,
-                ..*t
-            }),
         ];
         for &(gate, value, mutate) in cases {
             let mut t = Thresholds::default();
@@ -411,6 +417,14 @@ mod tests {
                 "only {gate} moves; every other gate keeps its default"
             );
         }
+        let mut t = Thresholds::default();
+        let err = t
+            .set_gate("max_file_owners", 7)
+            .expect_err("retired max_file_owners must error");
+        assert!(
+            format!("{err}").contains("retired"),
+            "error should name retirement: {err}"
+        );
     }
 
     // Contract 2: an unknown gate name errors AND leaves the struct untouched —
@@ -495,7 +509,7 @@ mod tests {
         assert_eq!(
             pairs.len(),
             GATES.len(),
-            "pairs() emits exactly the 6 gates"
+            "pairs() emits exactly the active gates"
         );
 
         let mut t = d;
@@ -506,18 +520,43 @@ mod tests {
             .find(|(k, _)| *k == "max_args")
             .expect("max_args pair present");
         assert_eq!(args.1, 42, "pairs() reflects the mutated value");
-        // the other five pairs still carry their defaults
+        // the other pairs still carry their defaults
         for (gate, val) in pairs.iter().filter(|(k, _)| *k != "max_args") {
             let expected = match *gate {
                 "max_file_loc" => d.max_file_loc as u64,
                 "max_symbol_complexity" => u64::from(d.max_symbol_complexity),
                 "max_symbol_loc" => d.max_symbol_loc as u64,
                 "max_nesting" => u64::from(d.max_nesting),
-                "max_file_owners" => d.max_file_owners as u64,
                 _ => panic!("unexpected gate in pairs(): {gate}"),
             };
             assert_eq!(*val, expected, "untouched gate {gate} keeps its default");
         }
+    }
+
+    #[test]
+    fn load_accepts_legacy_max_file_owners_and_ignores_it() {
+        // Older exports may still carry max_file_owners; load must not fail,
+        // and the field must not appear in pairs()/GATES.
+        let (_tmp, store) = fresh_store();
+        store
+            .set_meta(
+                THRESHOLDS_META_KEY,
+                r#"{"max_args":4,"max_file_owners":9}"#,
+            )
+            .unwrap();
+        let t = load(&store).expect("legacy max_file_owners still parses");
+        assert_eq!(t.max_args, 4);
+        assert_eq!(t.max_file_owners, 9, "serde still fills the retired field");
+        assert!(
+            !t.pairs().iter().any(|(k, _)| *k == "max_file_owners"),
+            "retired gate must not appear in pairs()"
+        );
+        save(&store, &t).unwrap();
+        let raw = store.get_meta(THRESHOLDS_META_KEY).unwrap().unwrap();
+        assert!(
+            !raw.contains("max_file_owners"),
+            "save must omit retired gate: {raw}"
+        );
     }
 
     // Contract 6: clear() drops the thresholds meta key so load() falls back to

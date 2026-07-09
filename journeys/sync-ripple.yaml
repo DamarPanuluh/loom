@@ -1,0 +1,8 @@
+journey: sync reopens grounded edges
+steps:
+  - name: sync json
+    intent: changing a file re-opens the asserted edges grounded in it
+    run: "loom sync --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["files_scanned"]

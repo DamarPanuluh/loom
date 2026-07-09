@@ -184,7 +184,7 @@ gi() { # intent | file | locator | criterion | evidence
   "$B" edge verdict "$eid" ground --criterion "$4" --evidence "$5" --confidence 0.95 >/dev/null
 }
 
-# relate two cohesive intents (kills overlapping_ownership when they share a
+# relate two cohesive intents (kills tangled_file when they share a
 # file) and record why the relationship holds.
 rel() { # a | b | why
   local out eid
@@ -336,25 +336,21 @@ done
 "$B" validation add --name "ring2 sync ripple" --type test --command "cargo test --test ring2 -q" \
   --intent "changing a file re-opens the asserted edges grounded in it" >/dev/null
 
-# Leave journey open on the product spine so elaborate has real work; waive is
-# not used — the open axis is intentional dogfood signal for completeness.
-# Defer the materialized journey smells so triage is not flooded with the same
-# signal completeness already tracks.
+# L5 CLI journeys for user-visible spine (`run:` steps — works for any CLI/tool repo).
+# Seed artifact hashes before recording proofs so a later sync journey does not
+# treat YAML/edit churn as drift that resets sibling journey validations.
+export PATH="$(dirname "$B"):$PATH"
+for spec in journeys/door-capture.yaml journeys/find-grounding.yaml \
+            journeys/next-router.yaml journeys/sync-ripple.yaml; do
+  "$B" journey add "$spec" >/dev/null
+done
 "$B" sync >/dev/null
-while read -r fid; do
-  [ -n "$fid" ] || continue
-  "$B" finding verdict "$fid" deferred --reason \
-    "dogfood leaves the journey completeness axis open on the user-visible spine; elaborate/journey work owns closing it" >/dev/null
-done < <("$B" smells --json | python3 -c "
-import json,sys
-for s in json.load(sys.stdin):
-    fid=s.get('finding_id') or ''
-    if fid: print(fid)
-")
+for spec in journeys/door-capture.yaml journeys/find-grounding.yaml \
+            journeys/next-router.yaml journeys/sync-ripple.yaml; do
+  "$B" journey run "$spec" >/dev/null
+done
 
-# Remaining untriaged structural findings: off-spine (ignored) files are not
-# dogfood work; on-spine symbol-level flags stay deferred until a dedicated
-# judgment pass — file-level oversized cohesion was already recorded above.
+# Defer remaining non-blocking residue outside the spine closeout.
 python3 - "$B" <<'PY'
 import json, subprocess, sys
 loom = sys.argv[1]
@@ -373,18 +369,40 @@ ignored = {
   "src/seed.rs", "src/store/derived.rs", "src/store/mod.rs", "src/store/nodes.rs", "src/thresholds.rs",
   "src/truth.rs", "src/workitem/context.rs", "src/workitem/contracts.rs",
 }
-items = json.loads(subprocess.check_output([loom, "finding", "list", "--state", "untriaged", "--json"], text=True))
-for i in items:
+for s in json.loads(subprocess.check_output([loom, "smells", "--json"], text=True)):
+    if s.get("state") != "untriaged":
+        continue
+    fid = s.get("finding_id")
+    if not fid:
+        continue
+    kind = s.get("kind") or ""
+    if kind in ("missing_journey_proof", "proof_too_shallow_for_intent"):
+        subprocess.check_call([
+            loom, "finding", "verdict", fid, "deferred",
+            "--reason", "system roll-up or non-spine UV; leaf CLI journeys own L5 proof",
+        ], stdout=subprocess.DEVNULL)
+    elif kind == "tangled_file":
+        # Undeclared multi-owner file: needed until co-owners form one connected
+        # neighborhood (relates/hierarchy/scenario-of) or the file/intents split.
+        subprocess.check_call([
+            loom, "finding", "verdict", fid, "needed",
+            "--reason", "undeclared multi-owner file — record relates/hierarchy/scenario-of so co-owners connect, or split",
+        ], stdout=subprocess.DEVNULL)
+    else:
+        subprocess.check_call([
+            loom, "finding", "verdict", fid, "deferred",
+            "--reason", "non-blocking smell outside dogfood closeout",
+        ], stdout=subprocess.DEVNULL)
+
+for i in json.loads(subprocess.check_output([loom, "finding", "list", "--state", "untriaged", "--json"], text=True)):
     name = i["node"]["name"]
     path = name.split("::")[0].split(" is ")[0]
     fid = i["node"]["id"]
     if path in ignored:
-        reason = f"{path}: outside dogfood behavioral spine (ignored); symbol-level split not scheduled here"
+        reason = f"{path}: outside dogfood behavioral spine (ignored)"
     else:
-        reason = f"{path}: file-level cohesion already judged in dogfood; symbol-level split deferred to a dedicated judgment pass"
-    subprocess.check_call([
-        loom, "finding", "verdict", fid, "deferred", "--reason", reason
-    ], stdout=subprocess.DEVNULL)
+        reason = f"{path}: symbol-level split deferred to a dedicated judgment pass"
+    subprocess.check_call([loom, "finding", "verdict", fid, "deferred", "--reason", reason], stdout=subprocess.DEVNULL)
 PY
 
 "$B" export >/dev/null

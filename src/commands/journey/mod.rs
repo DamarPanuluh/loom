@@ -487,13 +487,21 @@ fn journey_run(
     base_url: Option<&str>,
     json: bool,
 ) -> Result<()> {
+    // Drop the exclusive lock before CLI steps run — nested `loom …` (or any
+    // other graph writer) must be able to open the same graph. Same pattern as
+    // `validation run`.
     let store = open(graph)?;
     let mut parsed = crate::journey::parse(&spec)?;
     if let Some(base) = base_url {
         parsed.base = base.to_string();
     }
     crate::journey::require(&store, &parsed.journey)?;
-    let outcomes = crate::journey::execute(Some(&store), &parsed, true)?;
+    let cwd = store.root().to_path_buf();
+    drop(store);
+
+    let mut outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
+    let store = open(Some(&cwd))?;
+    crate::journey::record_outcomes(&store, &parsed, &mut outcomes)?;
     let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
     let passed = outcomes.iter().filter(|o| o.passed).count();
     let failed = outcomes.len().saturating_sub(passed);

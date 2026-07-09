@@ -123,6 +123,10 @@ Use `DebtSignal` or `DebtCluster` for these. A confirmed signal must be promoted
 
 Avoid: storing `statistical` as `edge.truth_class`.
 
+### tangled_file
+
+A structural smell: ≥2 intents realize the same codefile **and** those co-owners do not form one connected neighborhood via relationship edges (relates / hierarchy / scenario-of / …). Connectedness is the gate — not an owner-count threshold. A parent plus its scenarios sharing a module (a star) is declared cohesion and stays silent. Unrelated co-owners still fire. Remedy: split the file or intents, or record the missing relationship. (Former `overlapping_ownership` was the two-owner case of this same rule.)
+
 ---
 
 ## Node types
@@ -280,7 +284,7 @@ An intent at capability altitude: the system can do something meaningful. It is 
 
 ### scenario intent
 
-A concrete case of a behavior, usually linked by `scenario_of`. Scenario families are ordinary intents connected to a parent capability by `ScenarioOf`; the scenario intent's `aspect` facet marks whether it is `happy`, `sad`, `fallback`, or `edge_case`.
+A concrete case of a behavior, usually linked by `scenario_of`. Scenario families are ordinary intents connected to a parent capability by `ScenarioOf`; the scenario intent's `aspect` facet marks whether it is `happy`, `sad`, `fallback`, or `edge_case`. Creating an intent with `--aspect sad|fallback|edge_case` defaults `visibility` to `internal` unless `--visibility` is set explicitly — surroundings are not independent product surfaces.
 
 Example: `invalid password is rejected without session creation` scenario_of `user can log in with password` with `aspect=sad`.
 

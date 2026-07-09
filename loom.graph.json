@@ -5,6 +5,20 @@
   "observed": false,
   "nodes": [
     {
+      "id": "00551b89a3ac0e2aeaee06dbdb23060a",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "3ab0b682f435555d317d9cd931b6d904"
+      },
+      "created_at": "2026-07-09T05:41:08.707Z",
+      "updated_at": "2026-07-09T05:41:08.707Z"
+    },
+    {
       "id": "0105af8e455d578fa3d9a6e1e51d3d7b",
       "type": "codefile",
       "name": "src/signal.rs",
@@ -14,6 +28,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.635Z",
       "updated_at": "2026-07-09T04:59:38.635Z"
+    },
+    {
+      "id": "01778ebe9d6a2af8d0370c1e55d9f0e8",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "161b4fb0a91c1f53b52cceba3d7c30d5"
+      },
+      "created_at": "2026-07-09T05:42:44.370Z",
+      "updated_at": "2026-07-09T05:42:44.370Z"
     },
     {
       "id": "01a76c0e3a1a8c13d57f85fd246359b4",
@@ -78,14 +106,14 @@
       "type": "validation",
       "name": "ring9 work packets",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring9 -q",
         "type": "test"
       },
       "created_at": "2026-07-09T04:59:47.801Z",
-      "updated_at": "2026-07-09T05:00:29.971Z"
+      "updated_at": "2026-07-09T05:40:57.264Z"
     },
     {
       "id": "0f6c0961ed42fd973adc8c54b1526297",
@@ -124,6 +152,19 @@
       "updated_at": "2026-07-09T05:17:22.307Z"
     },
     {
+      "id": "161b4fb0a91c1f53b52cceba3d7c30d5",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:42:44.273Z",
+      "updated_at": "2026-07-09T05:42:44.370Z"
+    },
+    {
       "id": "17767eb6b1298b024c3531048d8f70f1",
       "type": "codefile",
       "name": "src/commands/journey/mod.rs",
@@ -144,6 +185,26 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.633Z",
       "updated_at": "2026-07-09T04:59:38.633Z"
+    },
+    {
+      "id": "199ae337d5d487380d37aa2d8e616879",
+      "type": "validation",
+      "name": "next router serves residue",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "artifact": "journeys/next-router.yaml",
+        "command": "loom journey run journeys/next-router.yaml",
+        "journey_id": "next router serves residue",
+        "proof_kind": "journey",
+        "proof_level": "L5",
+        "repo_native_kind": "journey_json",
+        "spec_hash": "948f666abf038815",
+        "type": "journey"
+      },
+      "created_at": "2026-07-09T05:40:55.128Z",
+      "updated_at": "2026-07-09T05:44:32.366Z"
     },
     {
       "id": "1a762d6a9153f77fcaa4c122d5fbf7b1",
@@ -207,6 +268,47 @@
       "updated_at": "2026-07-09T05:20:58.030Z"
     },
     {
+      "id": "29b9917b7d03290d9646219874af8447",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "b56b7c01675d0dfcebc1aaa230ad3ce8"
+      },
+      "created_at": "2026-07-09T05:40:55.071Z",
+      "updated_at": "2026-07-09T05:40:55.071Z"
+    },
+    {
+      "id": "2a78a408292b7f4821575c93476e26b2",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "2bcb20106e6c12f7380daac90987dee2"
+      },
+      "created_at": "2026-07-09T05:41:18.218Z",
+      "updated_at": "2026-07-09T05:41:18.218Z"
+    },
+    {
+      "id": "2bcb20106e6c12f7380daac90987dee2",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:41:18.122Z",
+      "updated_at": "2026-07-09T05:41:18.217Z"
+    },
+    {
       "id": "2ca691167b2d5e240c360f6cb211ed61",
       "type": "codefile",
       "name": "src/store/derived.rs",
@@ -222,14 +324,14 @@
       "type": "validation",
       "name": "maturity leaf grounding",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring4 -q",
         "type": "test"
       },
       "created_at": "2026-07-09T05:20:44.083Z",
-      "updated_at": "2026-07-09T05:21:06.017Z"
+      "updated_at": ""
     },
     {
       "id": "31db92e6363213dec048ef1094a3bf9b",
@@ -279,6 +381,32 @@
       "updated_at": "2026-07-09T04:59:38.631Z"
     },
     {
+      "id": "3ab0b682f435555d317d9cd931b6d904",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:41:08.613Z",
+      "updated_at": "2026-07-09T05:41:08.707Z"
+    },
+    {
+      "id": "3b5ef889b06803bc8dbe4255f5424404",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:38:09.567Z",
+      "updated_at": "2026-07-09T05:38:09.678Z"
+    },
+    {
       "id": "3d4a5253cf790a31d5e232539640f39e",
       "type": "intent",
       "name": "a symbol-pattern name is refused as an intent",
@@ -290,6 +418,47 @@
       },
       "created_at": "2026-07-09T04:59:40.955Z",
       "updated_at": "2026-07-09T04:59:40.955Z"
+    },
+    {
+      "id": "3e717b1314125146031edeb4666887c2",
+      "type": "note",
+      "name": "note:decision",
+      "description": "2 completeness waiver(s) re-opened by redefinition",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "a665d1c5fda0a34600d81165c1ceedc6"
+      },
+      "created_at": "2026-07-09T05:40:57.263Z",
+      "updated_at": "2026-07-09T05:40:57.263Z"
+    },
+    {
+      "id": "3f8b3a4f5d04749ab391d235b28281de",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:41:31.469Z",
+      "updated_at": "2026-07-09T05:41:31.571Z"
+    },
+    {
+      "id": "3ffb48536995f5e8987d55e6c33764c0",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "3b5ef889b06803bc8dbe4255f5424404"
+      },
+      "created_at": "2026-07-09T05:38:09.679Z",
+      "updated_at": "2026-07-09T05:38:09.679Z"
     },
     {
       "id": "400006f50fcbcce5b28ac2fcf6e638bf",
@@ -319,6 +488,19 @@
       "updated_at": "2026-07-09T04:59:40.601Z"
     },
     {
+      "id": "426558954d386499566a6c358d425651",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:38:39.921Z",
+      "updated_at": "2026-07-09T05:38:40.024Z"
+    },
+    {
       "id": "42b22cfef645fe1172656f2cf3e21db5",
       "type": "codefile",
       "name": "src/cli.rs",
@@ -328,6 +510,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.627Z",
       "updated_at": "2026-07-09T04:59:38.627Z"
+    },
+    {
+      "id": "433c6d4eb9bc12ac7b362954e7a83f7e",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:37:37.047Z",
+      "updated_at": "2026-07-09T05:37:37.160Z"
     },
     {
       "id": "44202f2e00ffd1f71a8c57cca8b6c373",
@@ -365,18 +560,46 @@
       "updated_at": "2026-07-09T05:01:14.541Z"
     },
     {
+      "id": "46b14e6fddd781794a6cc929fcd55dba",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "426558954d386499566a6c358d425651"
+      },
+      "created_at": "2026-07-09T05:38:40.024Z",
+      "updated_at": "2026-07-09T05:38:40.024Z"
+    },
+    {
       "id": "46d16fdebd7194e74c9ea3094439ac57",
       "type": "validation",
       "name": "door capture surface",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring9 door_landing_menu -q",
         "type": "test"
       },
       "created_at": "2026-07-09T05:00:49.620Z",
-      "updated_at": "2026-07-09T05:01:05.622Z"
+      "updated_at": "2026-07-09T05:40:56.921Z"
+    },
+    {
+      "id": "48e8229f88ad7a1b9058425b4e85b79f",
+      "type": "note",
+      "name": "note:decision",
+      "description": "2 completeness waiver(s) re-opened by redefinition",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d"
+      },
+      "created_at": "2026-07-09T05:40:57.426Z",
+      "updated_at": "2026-07-09T05:40:57.426Z"
     },
     {
       "id": "49d63b3508aa9ce895c74a01fc05033b",
@@ -416,7 +639,7 @@
         "level": "feature"
       },
       "created_at": "2026-07-09T04:59:41.446Z",
-      "updated_at": "2026-07-09T04:59:41.446Z"
+      "updated_at": "2026-07-09T05:40:56.918Z"
     },
     {
       "id": "4f3230038d7aeaa1b2780f45373a37df",
@@ -445,14 +668,14 @@
       "type": "validation",
       "name": "ring2 sync ripple",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring2 -q",
         "type": "test"
       },
       "created_at": "2026-07-09T04:59:47.816Z",
-      "updated_at": "2026-07-09T05:00:30.250Z"
+      "updated_at": "2026-07-09T05:40:57.429Z"
     },
     {
       "id": "5f4caa5537d102a4137484043ebc59e5",
@@ -479,6 +702,19 @@
       "updated_at": "2026-07-09T05:00:57.456Z"
     },
     {
+      "id": "6303bf575ac5d1397633acb6269a433a",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:38:12.730Z",
+      "updated_at": "2026-07-09T05:38:12.730Z"
+    },
+    {
       "id": "65b5feab526b976709962fb67b1efc73",
       "type": "codefile",
       "name": "src/proof.rs",
@@ -488,6 +724,26 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.634Z",
       "updated_at": "2026-07-09T04:59:38.634Z"
+    },
+    {
+      "id": "66c0bb6248c16742758001736decc28b",
+      "type": "validation",
+      "name": "find surfaces grounding",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "artifact": "journeys/find-grounding.yaml",
+        "command": "loom journey run journeys/find-grounding.yaml",
+        "journey_id": "find surfaces grounding",
+        "proof_kind": "journey",
+        "proof_level": "L5",
+        "repo_native_kind": "journey_json",
+        "spec_hash": "f5b87270a5b2fcc0",
+        "type": "journey"
+      },
+      "created_at": "2026-07-09T05:40:55.087Z",
+      "updated_at": "2026-07-09T05:44:32.211Z"
     },
     {
       "id": "67184c544a37b964ff5f101e4e636024",
@@ -553,6 +809,20 @@
       "updated_at": "2026-07-09T04:59:38.630Z"
     },
     {
+      "id": "6bb83a85d3a92643ee5dc0adaca6e70e",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined: clear journey waiver; CLI L5 journey now proves the boundary",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "873d9c05264943d486f1535988af1765"
+      },
+      "created_at": "2026-07-09T05:40:57.089Z",
+      "updated_at": "2026-07-09T05:40:57.089Z"
+    },
+    {
       "id": "6c5b91198cc500e98093d86598056d10",
       "type": "validation",
       "name": "sync scoped ripple",
@@ -604,6 +874,33 @@
       },
       "created_at": "2026-07-09T05:20:44.183Z",
       "updated_at": "2026-07-09T05:20:52.884Z"
+    },
+    {
+      "id": "71cc2139d4bb8abc70ff4a0bb3689450",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:38:31.303Z",
+      "updated_at": "2026-07-09T05:38:31.303Z"
+    },
+    {
+      "id": "727c5e7ef4732cb7de5d2da94654100f",
+      "type": "note",
+      "name": "note:decision",
+      "description": "2 completeness waiver(s) re-opened by redefinition",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "4eefda1c44aaba4f1cb78be93db5712a"
+      },
+      "created_at": "2026-07-09T05:40:56.919Z",
+      "updated_at": "2026-07-09T05:40:56.919Z"
     },
     {
       "id": "73bd3c64daca91797965b663f5a950cc",
@@ -699,7 +996,7 @@
         "level": "feature"
       },
       "created_at": "2026-07-09T04:59:41.362Z",
-      "updated_at": "2026-07-09T04:59:41.362Z"
+      "updated_at": "2026-07-09T05:40:57.084Z"
     },
     {
       "id": "87f645ae8047677f86ddd1a51ddee725",
@@ -813,6 +1110,20 @@
       "updated_at": "2026-07-09T04:59:38.631Z"
     },
     {
+      "id": "91a2da910a87bbaa857a76c5d409962c",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined; previous description: content-hash ripple: sync stales the asserted edges depending on a changed codefile; an unchanged hash (or a first-ever observation) triggers no ripple, so there is no false churn",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d"
+      },
+      "created_at": "2026-07-09T05:40:57.424Z",
+      "updated_at": "2026-07-09T05:40:57.424Z"
+    },
+    {
       "id": "91d813a8317e60152cfd9826a3de03a9",
       "type": "validation",
       "name": "door hypothesis landing",
@@ -847,6 +1158,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.635Z",
       "updated_at": "2026-07-09T04:59:38.635Z"
+    },
+    {
+      "id": "9335ea8011cfaee95046508c0a8c3e20",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined: clear journey waiver; CLI L5 journey now proves the boundary",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "a665d1c5fda0a34600d81165c1ceedc6"
+      },
+      "created_at": "2026-07-09T05:40:57.265Z",
+      "updated_at": "2026-07-09T05:40:57.265Z"
     },
     {
       "id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
@@ -926,6 +1251,20 @@
       "updated_at": "2026-07-09T04:59:38.629Z"
     },
     {
+      "id": "9ae8fb8b5d91c3a92c8eb6adaa8b16bb",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined; previous description: loom next returns failing, then stale, then uninspected asserted edges as a work item carrying allowed/forbidden actions and the evidence it expects",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "a665d1c5fda0a34600d81165c1ceedc6"
+      },
+      "created_at": "2026-07-09T05:40:57.262Z",
+      "updated_at": "2026-07-09T05:40:57.262Z"
+    },
+    {
       "id": "9d8618c4a7a0ddb0227c59563a91173f",
       "type": "codefile",
       "name": "src/sync.rs",
@@ -946,6 +1285,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.632Z",
       "updated_at": "2026-07-09T04:59:38.632Z"
+    },
+    {
+      "id": "a25a9f51378ba5cf5e3d9c02bba6c885",
+      "type": "inbox_item",
+      "name": "x",
+      "description": "x",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:38:31.523Z",
+      "updated_at": "2026-07-09T05:38:31.523Z"
     },
     {
       "id": "a4b6e3747d1eba394b20292f3fcd072d",
@@ -970,6 +1322,26 @@
       "updated_at": "2026-07-09T04:59:38.631Z"
     },
     {
+      "id": "a5d57bf73ec5f2124db71916864fe401",
+      "type": "validation",
+      "name": "sync reopens grounded edges",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "artifact": "journeys/sync-ripple.yaml",
+        "command": "loom journey run journeys/sync-ripple.yaml",
+        "journey_id": "sync reopens grounded edges",
+        "proof_kind": "journey",
+        "proof_level": "L5",
+        "repo_native_kind": "journey_json",
+        "spec_hash": "7c3bfb5af3e98a6a",
+        "type": "journey"
+      },
+      "created_at": "2026-07-09T05:40:55.300Z",
+      "updated_at": "2026-07-09T05:42:45.221Z"
+    },
+    {
       "id": "a665d1c5fda0a34600d81165c1ceedc6",
       "type": "intent",
       "name": "the next router serves the highest-priority asserted residue with a prompt contract",
@@ -980,7 +1352,7 @@
         "level": "feature"
       },
       "created_at": "2026-07-09T04:59:41.112Z",
-      "updated_at": "2026-07-09T04:59:41.112Z"
+      "updated_at": "2026-07-09T05:40:57.263Z"
     },
     {
       "id": "a738afa26005fd57b7d9ff8990f1333e",
@@ -1005,6 +1377,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.628Z",
       "updated_at": "2026-07-09T04:59:38.628Z"
+    },
+    {
+      "id": "a88a1ca4260f1c1d3fc61ee58f75b9f2",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "433c6d4eb9bc12ac7b362954e7a83f7e"
+      },
+      "created_at": "2026-07-09T05:37:37.161Z",
+      "updated_at": "2026-07-09T05:37:37.161Z"
     },
     {
       "id": "a89c1dfd353dac420fc9df4d27374e4c",
@@ -1095,6 +1481,20 @@
       "updated_at": "2026-07-09T05:20:49.921Z"
     },
     {
+      "id": "b392065225fc91bd7c012f740af62be8",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined; previous description: loom find prints the file, locator and verdict of every implements edge under a matched intent, not just the node name — the edge a plain text search lacks",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "873d9c05264943d486f1535988af1765"
+      },
+      "created_at": "2026-07-09T05:40:57.083Z",
+      "updated_at": "2026-07-09T05:40:57.083Z"
+    },
+    {
       "id": "b4817112203f1753162eccd2dfdfd2bf",
       "type": "note",
       "name": "note:decision",
@@ -1107,6 +1507,32 @@
       },
       "created_at": "2026-07-09T05:00:49.659Z",
       "updated_at": "2026-07-09T05:00:49.659Z"
+    },
+    {
+      "id": "b492b308d9aa877d9be4572c9fa8186a",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:44:32.061Z",
+      "updated_at": "2026-07-09T05:44:32.171Z"
+    },
+    {
+      "id": "b56b7c01675d0dfcebc1aaa230ad3ce8",
+      "type": "inbox_item",
+      "name": "ship a faster checkout flow",
+      "description": "ship a faster checkout flow",
+      "status": "routed",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:40:54.974Z",
+      "updated_at": "2026-07-09T05:40:55.070Z"
     },
     {
       "id": "b56d433c98a18554691b97911c8f898f",
@@ -1169,6 +1595,20 @@
       "updated_at": "2026-07-09T04:59:38.628Z"
     },
     {
+      "id": "bc0b5afa777670fb14ff5339139e9907",
+      "type": "note",
+      "name": "note:decision",
+      "description": "2 completeness waiver(s) re-opened by redefinition",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "873d9c05264943d486f1535988af1765"
+      },
+      "created_at": "2026-07-09T05:40:57.084Z",
+      "updated_at": "2026-07-09T05:40:57.084Z"
+    },
+    {
       "id": "c1f78c0db4fade0fc51d6af46430c1d1",
       "type": "codefile",
       "name": "src/commands/apply_cmd.rs",
@@ -1217,6 +1657,19 @@
       },
       "created_at": "2026-07-09T05:17:22.128Z",
       "updated_at": "2026-07-09T05:17:22.128Z"
+    },
+    {
+      "id": "c6fae35fd2ed46723cfb2b47530ca7fa",
+      "type": "inbox_item",
+      "name": "x",
+      "description": "x",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:38:31.431Z",
+      "updated_at": "2026-07-09T05:38:31.431Z"
     },
     {
       "id": "cbbcd820728f3e6e4600d460bd748980",
@@ -1311,12 +1764,12 @@
       "id": "d032daa88d799810a",
       "type": "finding",
       "name": "src/maturity.rs::ladder is long",
-      "description": "131 lines (> 120)",
+      "description": "147 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "large_symbol",
-        "metric": 131,
+        "metric": 147,
         "symbol": "ladder"
       },
       "created_at": "",
@@ -1368,6 +1821,20 @@
       "updated_at": ""
     },
     {
+      "id": "d0923bf7f19a30d4da16293bfe9e4bd5",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined: clear journey waiver; CLI L5 journey now proves the boundary",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d"
+      },
+      "created_at": "2026-07-09T05:40:57.431Z",
+      "updated_at": "2026-07-09T05:40:57.431Z"
+    },
+    {
       "id": "d0b37d60bf037c400",
       "type": "finding",
       "name": "src/store/nodes.rs::redefine_intent is complex",
@@ -1396,21 +1863,6 @@
       "updated_at": ""
     },
     {
-      "id": "d1265b27311107df2",
-      "type": "finding",
-      "name": "src/commands/discover_cmd.rs is implemented by 4 intents",
-      "description": "split the file or the intents; one file, one cohesive responsibility",
-      "status": "tangled_file",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "tangled_file:5f4caa5537d102a4137484043ebc59e5",
-        "kind": "tangled_file"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d13e3c848154990b5",
       "type": "finding",
       "name": "src/commands/discover_cmd.rs::print_find_hits nests deeply",
@@ -1421,21 +1873,6 @@
         "kind": "deep_nesting",
         "metric": 5,
         "symbol": "print_find_hits"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d14a7f73c4780dc2a",
-      "type": "finding",
-      "name": "src/commands/capture_cmd.rs is implemented by 4 intents",
-      "description": "split the file or the intents; one file, one cohesive responsibility",
-      "status": "tangled_file",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "tangled_file:8de84dddb070d7f3adbb02b6223e60af",
-        "kind": "tangled_file"
       },
       "created_at": "",
       "updated_at": ""
@@ -1471,21 +1908,6 @@
       "updated_at": ""
     },
     {
-      "id": "d1cd1af2d99005979",
-      "type": "finding",
-      "name": "user-visible intent 'an operator captures a topic through door and routes it from the landing menu' has validations but no passing L5/L6 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:4eefda1c44aaba4f1cb78be93db5712a",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d1d2f2378b9b8e235",
       "type": "finding",
       "name": "src/commands/orient_cmd.rs::session nests deeply",
@@ -1501,6 +1923,20 @@
       "updated_at": ""
     },
     {
+      "id": "d1d7ec017c3f23989740649965e6ce77",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "b492b308d9aa877d9be4572c9fa8186a"
+      },
+      "created_at": "2026-07-09T05:44:32.171Z",
+      "updated_at": "2026-07-09T05:44:32.171Z"
+    },
+    {
       "id": "d1dac00b051e31457",
       "type": "finding",
       "name": "src/store/derived.rs::add_derived_node takes many arguments",
@@ -1511,6 +1947,21 @@
         "kind": "excess_args",
         "metric": 6,
         "symbol": "add_derived_node"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d1db9ccdabe2db516",
+      "type": "finding",
+      "name": "src/journey.rs::run_cli_step is long",
+      "description": "134 lines (> 120)",
+      "status": "large_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "large_symbol",
+        "metric": 134,
+        "symbol": "run_cli_step"
       },
       "created_at": "",
       "updated_at": ""
@@ -1658,21 +2109,6 @@
         },
         "patterns": [],
         "severity": "warning"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d2f7a669fc8c20aaa",
-      "type": "finding",
-      "name": "user-visible intent 'changing a file re-opens the asserted edges grounded in it' has validations but no passing L5/L6 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:f2d36098dd6d84a9b2d81b316e3ded3d",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -1885,28 +2321,13 @@
       "id": "d50a4490590dba276",
       "type": "finding",
       "name": "src/workitem/queues.rs is oversized",
-      "description": "1207 lines (> 1110)",
+      "description": "1229 lines (> 1110)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
-        "metric": 1207,
+        "metric": 1229,
         "symbol": ""
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d54685165f10b8c04",
-      "type": "finding",
-      "name": "user-visible intent 'the next router serves the highest-priority asserted residue with a prompt contract' has validations but no passing L5/L6 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:a665d1c5fda0a34600d81165c1ceedc6",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -1925,6 +2346,20 @@
       },
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d56f37414d885898c085457fdf62abda",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined; previous description: loom door records an inbox item and returns a landing menu; the operator picks one typed command and marks the capture routed",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "4eefda1c44aaba4f1cb78be93db5712a"
+      },
+      "created_at": "2026-07-09T05:40:56.918Z",
+      "updated_at": "2026-07-09T05:40:56.918Z"
     },
     {
       "id": "d57000397855fa17bf3791ec279eba6b",
@@ -1983,21 +2418,6 @@
       "updated_at": ""
     },
     {
-      "id": "d6a3bcd44671a3b56",
-      "type": "finding",
-      "name": "src/workitem/queues.rs is implemented by 3 intents",
-      "description": "split the file or the intents; one file, one cohesive responsibility",
-      "status": "tangled_file",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "tangled_file:8c09800873ec56699ca584e7da49a20e",
-        "kind": "tangled_file"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d6b359a128335bd53",
       "type": "finding",
       "name": "src/commands/codefile_cmd.rs::dispatch nests deeply",
@@ -2008,21 +2428,6 @@
         "kind": "deep_nesting",
         "metric": 5,
         "symbol": "dispatch"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d6e14fbb52d4aa2fb",
-      "type": "finding",
-      "name": "src/journey.rs::execute is complex",
-      "description": "complexity ~21 (> 14)",
-      "status": "complex_symbol",
-      "truth_class": "derived",
-      "body": {
-        "kind": "complex_symbol",
-        "metric": 21,
-        "symbol": "execute"
       },
       "created_at": "",
       "updated_at": ""
@@ -2091,12 +2496,12 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "1375 lines (> 1110)",
+      "description": "1409 lines (> 1110)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
-        "metric": 1375,
+        "metric": 1409,
         "symbol": ""
       },
       "created_at": "",
@@ -2113,21 +2518,6 @@
         "kind": "complex_symbol",
         "metric": 23,
         "symbol": "validation"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d7c81115d79134acd",
-      "type": "finding",
-      "name": "src/journey.rs::execute nests deeply",
-      "description": "nesting depth 5 (> 4)",
-      "status": "deep_nesting",
-      "truth_class": "derived",
-      "body": {
-        "kind": "deep_nesting",
-        "metric": 5,
-        "symbol": "execute"
       },
       "created_at": "",
       "updated_at": ""
@@ -2158,6 +2548,21 @@
         "kind": "complex_symbol",
         "metric": 18,
         "symbol": "dispatch"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d8b93caf4a371ba97",
+      "type": "finding",
+      "name": "src/journey.rs::execute_steps is complex",
+      "description": "complexity ~15 (> 14)",
+      "status": "complex_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "complex_symbol",
+        "metric": 15,
+        "symbol": "execute_steps"
       },
       "created_at": "",
       "updated_at": ""
@@ -2257,6 +2662,21 @@
       "truth_class": "asserted",
       "body": {
         "category": "complexity"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d9d4c8a38770be303",
+      "type": "finding",
+      "name": "src/journey.rs::run_cli_step is complex",
+      "description": "complexity ~19 (> 14)",
+      "status": "complex_symbol",
+      "truth_class": "derived",
+      "body": {
+        "kind": "complex_symbol",
+        "metric": 19,
+        "symbol": "run_cli_step"
       },
       "created_at": "",
       "updated_at": ""
@@ -2495,21 +2915,6 @@
       "updated_at": ""
     },
     {
-      "id": "dc52f414629e201c3",
-      "type": "finding",
-      "name": "user-visible intent 'find surfaces each matched intent's grounding' has validations but no passing L5/L6 journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:873d9c05264943d486f1535988af1765",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "dcafddffcde29304b",
       "type": "finding",
       "name": "user-visible intent 'loom maintains a falsifiable graph for LLM-driven codebase work' has no linked validation; boundary-facing behavior needs an L5 journey proof",
@@ -2619,21 +3024,6 @@
         "kind": "deep_nesting",
         "metric": 5,
         "symbol": "prescreen"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "de100d5afb2bdf9b8",
-      "type": "finding",
-      "name": "src/sync.rs is implemented by 3 intents",
-      "description": "split the file or the intents; one file, one cohesive responsibility",
-      "status": "tangled_file",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "tangled_file:9d8618c4a7a0ddb0227c59563a91173f",
-        "kind": "tangled_file"
       },
       "created_at": "",
       "updated_at": ""
@@ -2890,14 +3280,14 @@
       "type": "validation",
       "name": "find explain surface",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test find_explain -q",
         "type": "test"
       },
       "created_at": "2026-07-09T05:01:14.629Z",
-      "updated_at": "2026-07-09T05:01:16.358Z"
+      "updated_at": "2026-07-09T05:40:57.087Z"
     },
     {
       "id": "e5171cb5808f1854fae98b7296069e42",
@@ -2909,6 +3299,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.632Z",
       "updated_at": "2026-07-09T04:59:38.632Z"
+    },
+    {
+      "id": "e75ed08517d020644ef70e01b558b6e7",
+      "type": "inbox_item",
+      "name": "test lock",
+      "description": "test lock",
+      "status": "new",
+      "truth_class": "asserted",
+      "body": {
+        "source": "human"
+      },
+      "created_at": "2026-07-09T05:38:47.357Z",
+      "updated_at": "2026-07-09T05:38:47.357Z"
     },
     {
       "id": "ee72ee913de8c489e13cb555b0f45828",
@@ -2923,6 +3326,20 @@
       },
       "created_at": "2026-07-09T05:00:49.668Z",
       "updated_at": "2026-07-09T05:00:49.668Z"
+    },
+    {
+      "id": "f05a7536ac48f1c0db14963b1d27a3df",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined: clear journey waiver; CLI L5 journey now proves the boundary",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "4eefda1c44aaba4f1cb78be93db5712a"
+      },
+      "created_at": "2026-07-09T05:40:56.923Z",
+      "updated_at": "2026-07-09T05:40:56.923Z"
     },
     {
       "id": "f141b3a8c6a95cf71fc96dc494b95ea8",
@@ -2949,7 +3366,7 @@
         "level": "feature"
       },
       "created_at": "2026-07-09T04:59:40.873Z",
-      "updated_at": "2026-07-09T04:59:40.873Z"
+      "updated_at": "2026-07-09T05:40:57.426Z"
     },
     {
       "id": "f5bbcf954ed4ace68c02143b3c085029",
@@ -2964,6 +3381,40 @@
       },
       "created_at": "2026-07-09T05:20:44.075Z",
       "updated_at": "2026-07-09T05:21:02.974Z"
+    },
+    {
+      "id": "f5c9bf839963e5c65d14e31409a84166",
+      "type": "note",
+      "name": "note:decision",
+      "description": "routed: landed as new_intent for dogfood journey",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "3f8b3a4f5d04749ab391d235b28281de"
+      },
+      "created_at": "2026-07-09T05:41:31.572Z",
+      "updated_at": "2026-07-09T05:41:31.572Z"
+    },
+    {
+      "id": "fc1ddfad97e73ae1ba5fceb6e0f42d32",
+      "type": "validation",
+      "name": "door capture happy path",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "artifact": "journeys/door-capture.yaml",
+        "command": "loom journey run journeys/door-capture.yaml",
+        "journey_id": "door capture happy path",
+        "proof_kind": "journey",
+        "proof_level": "L5",
+        "repo_native_kind": "journey_json",
+        "spec_hash": "165e41a1f6090b2d",
+        "type": "journey"
+      },
+      "created_at": "2026-07-09T05:38:02.149Z",
+      "updated_at": "2026-07-09T05:44:32.179Z"
     },
     {
       "id": "fd559d929afe4b02f0ed05054af4573a",
@@ -3084,14 +3535,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "stale-before-uninspected is the priority fallback of next",
       "evidence": "workitem/queues.rs analyze_item serves needs_reverification before uninspected",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:17:22.093Z",
-      "updated_at": "2026-07-09T05:17:22.110Z"
+      "updated_at": "2026-07-09T05:37:09.264Z"
     },
     {
       "id": "0accb450e72362a3b04db7e8d1417968",
@@ -3159,14 +3610,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
       "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: no SQL/shell/HTML string construction in grounded files",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.614Z",
-      "updated_at": "2026-07-09T05:22:17.617Z"
+      "updated_at": "2026-07-09T05:37:09.262Z"
     },
     {
       "id": "168c13768bcb92347299ce8a99dbc083",
@@ -3189,14 +3640,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
       "evidence": "src/commands/capture_cmd.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.497Z",
-      "updated_at": "2026-07-09T05:22:16.501Z"
+      "updated_at": "2026-07-09T05:40:56.919Z"
     },
     {
       "id": "191435722cfe1a6c2ed81bda33a4a723",
@@ -3219,14 +3670,14 @@
       "to_id": "debde51c06b40f454f7624003c7e608d",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring4 -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:20:44.084Z",
-      "updated_at": "2026-07-09T05:21:06.016Z"
+      "updated_at": "2026-07-09T05:37:09.266Z"
     },
     {
       "id": "1b12b5bc3d26eb2a62978d08a541c628",
@@ -3294,14 +3745,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "fallible operations propagate via Result or are invariant-only expects",
       "evidence": "src/commands/discover_cmd.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.821Z",
-      "updated_at": "2026-07-09T05:22:16.824Z"
+      "updated_at": "2026-07-09T05:40:57.085Z"
     },
     {
       "id": "1fccc75f4294ddcb5af4a40f9b7a3bd9",
@@ -3309,14 +3760,14 @@
       "to_id": "8de84dddb070d7f3adbb02b6223e60af",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "door captures free-form input as an inbox item and emits a landing menu of prefilled commands",
       "evidence": "capture_cmd.rs door adds an InboxItem and builds the landing menu from keyword matches + new_intent/hypothesis/spike options",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.504Z",
-      "updated_at": "2026-07-09T04:59:41.525Z"
+      "updated_at": "2026-07-09T05:40:56.919Z"
     },
     {
       "id": "2c8765e7d02aa04a693afbd72febc6b3",
@@ -3354,14 +3805,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "weak matches are a degraded path of door routing",
       "evidence": "capture_cmd.rs door splits strong_matches vs weak_matches in the landing menu",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:57.465Z",
-      "updated_at": "2026-07-09T05:00:57.480Z"
+      "updated_at": "2026-07-09T05:40:56.922Z"
     },
     {
       "id": "360d89f10987208933818e263d1bff87",
@@ -3369,14 +3820,14 @@
       "to_id": "debde51c06b40f454f7624003c7e608d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
       "evidence": "src/maturity.rs: no SQL/shell/HTML string construction in grounded files",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.566Z",
-      "updated_at": "2026-07-09T05:22:17.569Z"
+      "updated_at": "2026-07-09T05:37:09.265Z"
     },
     {
       "id": "38c6f21d316132bd2a273f59836a7fc0",
@@ -3384,14 +3835,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "this is a sad scenario of the parent idea",
       "evidence": "scenario-of edge links 'when every queue is empty next returns no work item' under 'the next router serves the highest-priority asserted residue with a prompt contract'",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.227Z",
-      "updated_at": "2026-07-09T04:59:41.246Z"
+      "updated_at": "2026-07-09T05:37:09.264Z"
     },
     {
       "id": "3915aadf9c1e7e7d5112009464f5ae00",
@@ -3399,14 +3850,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no credentials, tokens, or keys in the grounded source",
       "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.392Z",
-      "updated_at": "2026-07-09T05:22:17.395Z"
+      "updated_at": "2026-07-09T05:37:09.262Z"
     },
     {
       "id": "3eda35f47b9b869f5bb0bfee498db154",
@@ -3424,19 +3875,34 @@
       "updated_at": "2026-07-09T05:20:59.049Z"
     },
     {
+      "id": "414af24671b2b66e17586f711c80ba72",
+      "from_id": "66c0bb6248c16742758001736decc28b",
+      "to_id": "873d9c05264943d486f1535988af1765",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "journey step",
+      "evidence": "`loom find 'next router' --json` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "journey",
+      "created_at": "2026-07-09T05:40:55.088Z",
+      "updated_at": "2026-07-09T05:41:18.254Z"
+    },
+    {
       "id": "44404aaa93d622edfc313ce26773d673",
       "from_id": "dfe31470815685fd8",
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
       "evidence": "src/commands/capture_cmd.rs: no SQL/shell/HTML string construction in grounded files",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.439Z",
-      "updated_at": "2026-07-09T05:22:17.441Z"
+      "updated_at": "2026-07-09T05:40:56.920Z"
     },
     {
       "id": "455f6cdb72d679d73112a19a7bbb9dd1",
@@ -3459,14 +3925,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring9 door_landing_menu -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:49.622Z",
-      "updated_at": "2026-07-09T05:01:05.622Z"
+      "updated_at": "2026-07-09T05:40:56.921Z"
     },
     {
       "id": "457d95b61ba306a20f36c86e44e1cba5",
@@ -3474,14 +3940,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these behaviors are cohesive",
       "evidence": "find and door share keyword_hits in discover_cmd; complementary operator surfaces",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.567Z",
-      "updated_at": "2026-07-09T04:59:41.585Z"
+      "updated_at": "2026-07-09T05:40:56.922Z"
     },
     {
       "id": "47ecc961822b98caab8b7aa00c1ffb07",
@@ -3489,14 +3955,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
       "evidence": "src/sync.rs: no SQL/shell/HTML string construction in grounded files",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.463Z",
-      "updated_at": "2026-07-09T05:22:17.466Z"
+      "updated_at": "2026-07-09T05:40:57.427Z"
     },
     {
       "id": "48c202a4d0dcdb7edf7b6d502c61f151",
@@ -3519,14 +3985,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "empty result is the sad path of find",
       "evidence": "discover_cmd.rs find_cmd prints hits only when keyword_hits is non-empty",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:01:14.494Z",
-      "updated_at": "2026-07-09T05:01:14.512Z"
+      "updated_at": "2026-07-09T05:40:57.088Z"
     },
     {
       "id": "4c2d21b730ee4eeeaf16b47790597bad",
@@ -3534,14 +4000,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "fallible operations propagate via Result or are invariant-only expects",
       "evidence": "src/sync.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.770Z",
-      "updated_at": "2026-07-09T05:22:16.773Z"
+      "updated_at": "2026-07-09T05:40:57.427Z"
     },
     {
       "id": "4e6ff28aee4142ba8d4510a7c181d155",
@@ -3549,14 +4015,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "symbol-scoped reopen is the edge case of file-level sync",
       "evidence": "docs/commands.md + sync.rs symbol fingerprint map",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:17:11.035Z",
-      "updated_at": "2026-07-09T05:17:11.047Z"
+      "updated_at": "2026-07-09T05:40:57.429Z"
     },
     {
       "id": "4f35ac6ad576048d9f45b472667d864d",
@@ -3594,14 +4060,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "tag filter is a constrained path of find",
       "evidence": "discover_cmd.rs resolve_find_filters / nodes_with_tag",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:01:14.591Z",
-      "updated_at": "2026-07-09T05:01:14.607Z"
+      "updated_at": "2026-07-09T05:40:57.088Z"
     },
     {
       "id": "50adb9f6bc9daacb80da816a2bcd5b7c",
@@ -3609,14 +4075,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
       "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.161Z",
-      "updated_at": "2026-07-09T05:22:17.164Z"
+      "updated_at": "2026-07-09T05:37:09.263Z"
     },
     {
       "id": "528674b12ec368b553188c2fe880a1e6",
@@ -3699,14 +4165,14 @@
       "to_id": "debde51c06b40f454f7624003c7e608d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no credentials, tokens, or keys in the grounded source",
       "evidence": "src/maturity.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.346Z",
-      "updated_at": "2026-07-09T05:22:17.349Z"
+      "updated_at": "2026-07-09T05:37:09.265Z"
     },
     {
       "id": "622fb62dc5cb854ea1f887e91d09dff5",
@@ -3714,14 +4180,14 @@
       "to_id": "8c09800873ec56699ca584e7da49a20e",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "an analyze packet serves a stale settled claim before a merely uninspected one",
       "evidence": "queues.rs analyze_item takes needs_reverification non-governs/non-validates edges before uninspected ones; failing edges belong to fix_item, so no edge is served by two queues",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.190Z",
-      "updated_at": "2026-07-09T04:59:41.208Z"
+      "updated_at": "2026-07-09T05:37:09.261Z"
     },
     {
       "id": "6b213cda37a2e92efc881fc6e9660edd",
@@ -3744,14 +4210,14 @@
       "to_id": "7ea392c6f00c1e88b731ab0331e898f2",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "an implemented parent intent with grounded children is not reported ungrounded",
       "evidence": "maturity.rs ladder collects parent ids from hierarchy edges and continues past them when counting ungrounded leaves",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.335Z",
-      "updated_at": "2026-07-09T04:59:41.353Z"
+      "updated_at": "2026-07-09T05:37:09.261Z"
     },
     {
       "id": "6e351c9045b1d403c8c0c8da081a05b9",
@@ -3759,14 +4225,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
       "evidence": "src/sync.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.522Z",
-      "updated_at": "2026-07-09T05:22:16.526Z"
+      "updated_at": "2026-07-09T05:40:57.428Z"
     },
     {
       "id": "6e5f854d36a628c83fe30914ef2af65e",
@@ -3789,14 +4255,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "fallible operations propagate via Result or are invariant-only expects",
       "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.914Z",
-      "updated_at": "2026-07-09T05:22:16.916Z"
+      "updated_at": "2026-07-09T05:37:09.263Z"
     },
     {
       "id": "71ad444497e184112fd7c4d5b1d16eb5",
@@ -3804,14 +4270,14 @@
       "to_id": "debde51c06b40f454f7624003c7e608d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "fallible operations propagate via Result or are invariant-only expects",
       "evidence": "src/maturity.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.866Z",
-      "updated_at": "2026-07-09T05:22:16.869Z"
+      "updated_at": "2026-07-09T05:37:09.265Z"
     },
     {
       "id": "74402186b0957bd4a42b881593934c30",
@@ -3849,14 +4315,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring9 -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:47.805Z",
-      "updated_at": "2026-07-09T05:00:29.970Z"
+      "updated_at": "2026-07-09T05:37:09.264Z"
     },
     {
       "id": "781cf1bc474e67f9e0b193ea49a362e4",
@@ -3879,14 +4345,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these behaviors are cohesive",
       "evidence": "door is the capture entrance; next is the work router — complementary operator surfaces",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.593Z",
-      "updated_at": "2026-07-09T04:59:41.610Z"
+      "updated_at": "2026-07-09T05:40:56.922Z"
     },
     {
       "id": "7b1f9436052956cef7cf9c28ba142089",
@@ -3894,14 +4360,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no credentials, tokens, or keys in the grounded source",
       "evidence": "src/commands/discover_cmd.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.302Z",
-      "updated_at": "2026-07-09T05:22:17.305Z"
+      "updated_at": "2026-07-09T05:40:57.085Z"
     },
     {
       "id": "7b8250753d16346eb739dfefbfe5511c",
@@ -3924,14 +4390,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "journey step downgrade is a fallback path of sync after partial proof failure",
       "evidence": "sync.rs journey reset / needs_reverification for never-reached steps",
       "confidence": 0.8,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:17:11.074Z",
-      "updated_at": "2026-07-09T05:17:11.087Z"
+      "updated_at": "2026-07-09T05:40:57.430Z"
     },
     {
       "id": "7f6930ccae4e9245116c8bd1c4da6ecf",
@@ -3954,14 +4420,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
       "evidence": "src/sync.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.010Z",
-      "updated_at": "2026-07-09T05:22:17.013Z"
+      "updated_at": "2026-07-09T05:40:57.428Z"
     },
     {
       "id": "83f9e9bf573c6da1602d02df6bb16ba1",
@@ -3984,14 +4450,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "non-ripple is the sad/negative path of sync scoping",
       "evidence": "sync.rs only reopens groundings whose codefile content_hash changed (symbol-scoped)",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:17:10.992Z",
-      "updated_at": "2026-07-09T05:17:11.009Z"
+      "updated_at": "2026-07-09T05:40:57.430Z"
     },
     {
       "id": "8bf0ce692f5abd7b92501425851057bc",
@@ -4029,14 +4495,14 @@
       "to_id": "debde51c06b40f454f7624003c7e608d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
       "evidence": "src/maturity.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.633Z",
-      "updated_at": "2026-07-09T05:22:16.636Z"
+      "updated_at": "2026-07-09T05:37:09.266Z"
     },
     {
       "id": "8eae40b4d5e3bcf599ceb0e43726c0b0",
@@ -4044,14 +4510,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no credentials, tokens, or keys in the grounded source",
       "evidence": "src/sync.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.258Z",
-      "updated_at": "2026-07-09T05:22:17.261Z"
+      "updated_at": "2026-07-09T05:40:57.428Z"
     },
     {
       "id": "8eb674637342f0f68e80f9dfc9beefc9",
@@ -4074,14 +4540,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "exact mode is an edge case of find",
       "evidence": "discover_cmd.rs find_exact / find_cmd --exact path",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:01:14.551Z",
-      "updated_at": "2026-07-09T05:01:14.565Z"
+      "updated_at": "2026-07-09T05:40:57.089Z"
     },
     {
       "id": "8fd1d9006044b8995485df3d381f138a",
@@ -4089,14 +4555,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
       "evidence": "src/commands/discover_cmd.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.573Z",
-      "updated_at": "2026-07-09T05:22:16.580Z"
+      "updated_at": "2026-07-09T05:40:57.085Z"
     },
     {
       "id": "9231ebd6f356da168f0f5b0cfac80f94",
@@ -4149,14 +4615,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "queue partition is the edge case of next routing",
       "evidence": "docs/state-machine.md queue table; fix_item vs quality_item vs validate_item",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:17:22.136Z",
-      "updated_at": "2026-07-09T05:17:22.150Z"
+      "updated_at": "2026-07-09T05:37:09.265Z"
     },
     {
       "id": "95bac7d41a08fb54e8ebd0325380001d",
@@ -4209,14 +4675,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
       "evidence": "src/commands/discover_cmd.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.057Z",
-      "updated_at": "2026-07-09T05:22:17.060Z"
+      "updated_at": "2026-07-09T05:40:57.086Z"
     },
     {
       "id": "a287b6f474c38f792a5bd2c086e7efc7",
@@ -4254,14 +4720,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "hypothesis is an edge landing of door capture",
       "evidence": "capture_cmd.rs door menu includes landing hypothesis",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:57.519Z",
-      "updated_at": "2026-07-09T05:00:57.533Z"
+      "updated_at": "2026-07-09T05:40:56.923Z"
     },
     {
       "id": "a6b04dcaedf6f143198a2ba3d5502899",
@@ -4269,14 +4735,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "fallible operations propagate via Result or are invariant-only expects",
       "evidence": "src/commands/capture_cmd.rs: production paths use ?/Result; remaining expect/unwrap are match-arm invariants (len==1) or Option defaults — not swallowed I/O failures",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.747Z",
-      "updated_at": "2026-07-09T05:22:16.750Z"
+      "updated_at": "2026-07-09T05:40:56.920Z"
     },
     {
       "id": "a725fbe3f4b5d70dac377641c671e7bc",
@@ -4299,14 +4765,14 @@
       "to_id": "5f4caa5537d102a4137484043ebc59e5",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "find on an intent term prints its grounded path + locator + verdict lines beneath the match",
       "evidence": "discover_cmd.rs find_cmd follows implements edges and reads the locator facet; verified by the cold-start test that find beats grep",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.412Z",
-      "updated_at": "2026-07-09T04:59:41.436Z"
+      "updated_at": "2026-07-09T05:40:57.084Z"
     },
     {
       "id": "aa2baa73d0f723187a6b434e312caebf",
@@ -4314,14 +4780,14 @@
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test ring2 -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:47.816Z",
-      "updated_at": "2026-07-09T05:00:30.249Z"
+      "updated_at": "2026-07-09T05:40:57.428Z"
     },
     {
       "id": "ac22d50ed2605b4ef35e0dd96d734201",
@@ -4344,14 +4810,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no credentials, tokens, or keys in the grounded source",
       "evidence": "src/commands/capture_cmd.rs: scanned for password/api_key/secret_key/BEGIN RSA — none found",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.235Z",
-      "updated_at": "2026-07-09T05:22:17.238Z"
+      "updated_at": "2026-07-09T05:40:56.920Z"
     },
     {
       "id": "aed0ed392cd9c9d089b035ead1d610a9",
@@ -4434,14 +4900,14 @@
       "to_id": "debde51c06b40f454f7624003c7e608d",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
       "evidence": "src/maturity.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.105Z",
-      "updated_at": "2026-07-09T05:22:17.108Z"
+      "updated_at": "2026-07-09T05:37:09.266Z"
     },
     {
       "id": "c702ac386ca1a48e837adc1382175009",
@@ -4449,14 +4915,14 @@
       "to_id": "9d8618c4a7a0ddb0227c59563a91173f",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "editing a grounded file's content moves its settled verdicts to needs_reverification; an unchanged file does not, and a never-seen file does not",
       "evidence": "sync.rs recomputes content_hash, skips on equal (86), ripples via stale_edge only when a prior hash existed and differs (90)",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:40.925Z",
-      "updated_at": "2026-07-09T04:59:40.943Z"
+      "updated_at": "2026-07-09T05:40:57.427Z"
     },
     {
       "id": "c92e0e4bfaa9abcab2e27e7f6b799b76",
@@ -4479,14 +4945,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "these behaviors are cohesive",
       "evidence": "both are command-surface behaviors in the src/commands/ family",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.534Z",
-      "updated_at": "2026-07-09T04:59:41.556Z"
+      "updated_at": "2026-07-09T05:40:57.088Z"
     },
     {
       "id": "c9ab43d2ce50054f9222121b12114712",
@@ -4509,14 +4975,14 @@
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "grounded files are single-concern modules without copy-pasted logic blocks",
       "evidence": "src/workitem/queues.rs, src/workitem/mod.rs: post-split capture/orient/discover and focused sync/signal/queues modules; no duplicated blocks spotted in this measurement",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.679Z",
-      "updated_at": "2026-07-09T05:22:16.682Z"
+      "updated_at": "2026-07-09T05:37:09.263Z"
     },
     {
       "id": "cb41f9484b17a52f3382a746fdbff083",
@@ -4669,6 +5135,21 @@
       "updated_at": ""
     },
     {
+      "id": "d085124be098d0206",
+      "from_id": "d9d4c8a38770be303",
+      "to_id": "d9b35a203478bd583",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d0a3431f29d9164ed",
       "from_id": "deda23380b74be411",
       "to_id": "d9b35a203478bd583",
@@ -4777,6 +5258,21 @@
       "id": "d1b6925a2da346747",
       "from_id": "de7b1fc724c6c0781",
       "to_id": "a4b6e3747d1eba394b20292f3fcd072d",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d1bbdfb0046028686",
+      "from_id": "d9d4c8a38770be303",
+      "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "kind": "flags",
       "truth_class": "derived",
       "status": "current",
@@ -5314,21 +5810,6 @@
       "updated_at": ""
     },
     {
-      "id": "d502d91e036e8f0cb",
-      "from_id": "d7c81115d79134acd",
-      "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
-      "kind": "flags",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d52f2ebe7fc381af7",
       "from_id": "df0c493b2fe97f7ec",
       "to_id": "d105a1509d6314d8e",
@@ -5587,6 +6068,21 @@
       "id": "d72128d653ae01b43",
       "from_id": "ded07391855861992",
       "to_id": "d9b35a203478bd583",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d74ab785119d76f84",
+      "from_id": "d1db9ccdabe2db516",
+      "to_id": "d105a1509d6314d8e",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -6094,21 +6590,6 @@
       "updated_at": "2026-07-09T04:59:40.759Z"
     },
     {
-      "id": "db68aa762b990fbdc",
-      "from_id": "d6e14fbb52d4aa2fb",
-      "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
-      "kind": "flags",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "db6dc2890aab9a0b6",
       "from_id": "d3e3dbad73b3a3702",
       "to_id": "d105a1509d6314d8e",
@@ -6214,10 +6695,40 @@
       "updated_at": ""
     },
     {
+      "id": "dc0202304f86857a0da619dbab8a8939",
+      "from_id": "fc1ddfad97e73ae1ba5fceb6e0f42d32",
+      "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "journey step",
+      "evidence": "`loom inbox mark b492b308d9aa877d9be4572c9fa8186a routed --reason 'landed as new_intent for dogfood journey'` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "journey",
+      "created_at": "2026-07-09T05:38:02.152Z",
+      "updated_at": "2026-07-09T05:44:32.179Z"
+    },
+    {
       "id": "dc166128f79a2dcbf",
       "from_id": "d2602f61ad0fc6137",
       "to_id": "d9b35a203478bd583",
       "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dc1c6664e0eb673d5",
+      "from_id": "d1db9ccdabe2db516",
+      "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
+      "kind": "flags",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -6248,36 +6759,6 @@
       "from_id": "d41e84da431a76593",
       "to_id": "a819a5f46c71c1074f2b96a4ad56bcb1",
       "kind": "flags",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "dc95ee3dccf63ecf1",
-      "from_id": "d7c81115d79134acd",
-      "to_id": "db7de80cbbb28c471",
-      "kind": "assesses",
-      "truth_class": "derived",
-      "status": "current",
-      "criterion": "",
-      "evidence": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "dca0388f9b6cecb30",
-      "from_id": "d6e14fbb52d4aa2fb",
-      "to_id": "d9b35a203478bd583",
-      "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
       "criterion": "",
@@ -6619,6 +7100,21 @@
       "updated_at": ""
     },
     {
+      "id": "ded5fdae06650578e",
+      "from_id": "d8b93caf4a371ba97",
+      "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "deed0b0563e947950",
       "from_id": "d50a4490590dba276",
       "to_id": "d2fcf6c1e25f78a67",
@@ -6684,14 +7180,14 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets SQL/shell/HTML injection surfaces; this intent's code is CLI/graph routing without query construction",
       "evidence": "src/commands/discover_cmd.rs: no SQL/shell/HTML string construction in grounded files",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.508Z",
-      "updated_at": "2026-07-09T05:22:17.511Z"
+      "updated_at": "2026-07-09T05:40:57.086Z"
     },
     {
       "id": "df20b59be04fb63cb",
@@ -6859,6 +7355,21 @@
       "updated_at": ""
     },
     {
+      "id": "dfd8df76abbb0459a",
+      "from_id": "d8b93caf4a371ba97",
+      "to_id": "d9b35a203478bd583",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "evidence": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "e2d2ba37e6017dd2c6ccd5257c4acb1b",
       "from_id": "da0094e3c821d6b7d",
       "to_id": "ccf732f1fc07a1c1a7b28d3a03115a61",
@@ -6872,6 +7383,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.280Z",
       "updated_at": "2026-07-09T05:22:17.282Z"
+    },
+    {
+      "id": "e3b8683e6b65d5022382c8c5efd6f8af",
+      "from_id": "a5d57bf73ec5f2124db71916864fe401",
+      "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "journey step",
+      "evidence": "`loom sync --json` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "journey",
+      "created_at": "2026-07-09T05:40:55.302Z",
+      "updated_at": "2026-07-09T05:41:32.419Z"
     },
     {
       "id": "e65749710fe09b79dbc7d1901387cf8d",
@@ -6939,14 +7465,14 @@
       "to_id": "1e0dbf429488355d9494ea5ec55932e4",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "with a failing and an uninspected edge present, next returns the failing one first, with its contract",
       "evidence": "workitem/mod.rs next walks the fixed queue priority so failing claims (fix_item) are served before anything else; each item carries a PromptContract",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.162Z",
-      "updated_at": "2026-07-09T04:59:41.179Z"
+      "updated_at": "2026-07-09T05:40:57.264Z"
     },
     {
       "id": "ec92e384792f08cc440a6cb502170945",
@@ -6969,14 +7495,29 @@
       "to_id": "873d9c05264943d486f1535988af1765",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "evidence": "`cargo test --test find_explain -q` exit 0",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:01:14.630Z",
-      "updated_at": "2026-07-09T05:01:16.357Z"
+      "updated_at": "2026-07-09T05:40:57.087Z"
+    },
+    {
+      "id": "ee9c72c3c040f98f669581ae9cabacb3",
+      "from_id": "199ae337d5d487380d37aa2d8e616879",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "journey step",
+      "evidence": "`loom status --json` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "journey",
+      "created_at": "2026-07-09T05:40:55.129Z",
+      "updated_at": "2026-07-09T05:41:18.407Z"
     },
     {
       "id": "ef5f30a4cd4a6ae377e181afcbbec065",
@@ -6984,14 +7525,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "dismiss is a real sad path of door capture",
       "evidence": "door menu includes dismiss → loom inbox mark rejected; capture_cmd.rs landing menu",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:49.538Z",
-      "updated_at": "2026-07-09T05:00:49.588Z"
+      "updated_at": "2026-07-09T05:40:56.923Z"
     },
     {
       "id": "ef90e77cdfb78b41eacea7f3213aa0ec",
@@ -7044,14 +7585,14 @@
       "to_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule targets acquired resources (handles/locks/connections); this surface does not acquire long-lived resources",
       "evidence": "src/commands/capture_cmd.rs: handlers open the store via open()/open_read and rely on Drop; no raw fd/socket acquire",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.987Z",
-      "updated_at": "2026-07-09T05:22:16.990Z"
+      "updated_at": "2026-07-09T05:40:56.921Z"
     },
     {
       "id": "f61c9e75146772d038fd8167dd0ed947",
@@ -7074,7 +7615,7 @@
       "target_id": "0105af8e455d578fa3d9a6e1e51d3d7b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "2a8cb820ea0e4280",
+      "value": "c93e4a37899baa45",
       "truth_class": "derived"
     },
     {
@@ -7095,7 +7636,7 @@
       "target_id": "0105af8e455d578fa3d9a6e1e51d3d7b",
       "target_kind": "node",
       "key": "loc",
-      "value": "1375",
+      "value": "1409",
       "truth_class": "derived"
     },
     {
@@ -7109,14 +7650,14 @@
       "target_id": "0105af8e455d578fa3d9a6e1e51d3d7b",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "49",
+      "value": "50",
       "truth_class": "derived"
     },
     {
       "target_id": "0105af8e455d578fa3d9a6e1e51d3d7b",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Adjudication\":\"cb6444f740c0c3f4\",\"DebtCluster\":\"c2866b9d0f29d2fe\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication_of\":\"bfa0088cdea8dc25\",\"consumer_owned_file_smells\":\"c1d960efa4dbcea5\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"debt\":\"7348a9bcb1b09767\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"445f82044d4ca98a\",\"duplicated_responsibility_smells\":\"a96fe63898ac4de1\",\"edge_between\":\"a2b06485d9724169\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"92c76e894043a67d\",\"hierarchy_cycle_issues\":\"bc73433a09381558\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"9e1fb026842e0bbd\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_proof_smells\":\"846bca31c5815211\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"node_name\":\"7f49570215d4f5a7\",\"ownership_smells\":\"0de410bea2ff212b\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"quantile\":\"c14d11c29d4c1114\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"resolving_is_stale\":\"ce95db4b93de0b19\",\"resolving_verdict\":\"8797a3e48d3b74c5\",\"self_dir\":\"cc099cf5d4a21388\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_has_resolving_adjudication\":\"c2b8d814d0756d23\",\"smells\":\"5def712822f12b9d\",\"stale_findings\":\"b9bd1abf6df97a44\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"fbfbc38738e584cf\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
+      "value": "{\"Adjudication\":\"cb6444f740c0c3f4\",\"DebtCluster\":\"c2866b9d0f29d2fe\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication_of\":\"bfa0088cdea8dc25\",\"consumer_owned_file_smells\":\"c1d960efa4dbcea5\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"debt\":\"7348a9bcb1b09767\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"445f82044d4ca98a\",\"duplicated_responsibility_smells\":\"a96fe63898ac4de1\",\"edge_between\":\"a2b06485d9724169\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"92c76e894043a67d\",\"hierarchy_cycle_issues\":\"bc73433a09381558\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"9e1fb026842e0bbd\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_proof_smells\":\"846bca31c5815211\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"node_name\":\"7f49570215d4f5a7\",\"owners_connected\":\"bd496669db6737a3\",\"ownership_smells\":\"a73927eb17b8a26b\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"quantile\":\"c14d11c29d4c1114\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"resolving_is_stale\":\"ce95db4b93de0b19\",\"resolving_verdict\":\"8797a3e48d3b74c5\",\"self_dir\":\"cc099cf5d4a21388\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_has_resolving_adjudication\":\"c2b8d814d0756d23\",\"smells\":\"5def712822f12b9d\",\"stale_findings\":\"b9bd1abf6df97a44\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"fbfbc38738e584cf\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
       "truth_class": "derived"
     },
     {
@@ -7264,6 +7805,13 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"AxisState\":\"bde655d35654845b\",\"Scorecard\":\"6b578674adbdb7ec\",\"all_scorecards\":\"217cda723283fc1e\",\"apply_waiver\":\"b6e223bfd4b72bbf\",\"axis\":\"609ecb2d259ae760\",\"boundary_axis\":\"474b709c86764525\",\"check_axis\":\"d3bc1ba33775f8e3\",\"journey_axis\":\"25fa43872ee5817a\",\"open_axes\":\"4413e381a8e7707e\",\"prerequisites_axis\":\"d6310f90c40ad583\",\"proof_axis\":\"349fe651cb00c0d2\",\"questions_axis\":\"bbbd03f2784f2ac8\",\"scenarios_axis\":\"62130107c0fdd74c\",\"scorecard\":\"3127b82bb4d27889\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0a14b8b2dc4c909bc7e3caae1cb462b6",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
       "truth_class": "derived"
     },
     {
@@ -7421,10 +7969,17 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "15dc2a9da33e5f7b73fd05e07f0bd493",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "17767eb6b1298b024c3531048d8f70f1",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "58f123a8af1000fc",
+      "value": "f681361a2187d15b",
       "truth_class": "derived"
     },
     {
@@ -7445,7 +8000,7 @@
       "target_id": "17767eb6b1298b024c3531048d8f70f1",
       "target_kind": "node",
       "key": "loc",
-      "value": "596",
+      "value": "604",
       "truth_class": "derived"
     },
     {
@@ -7466,7 +8021,7 @@
       "target_id": "17767eb6b1298b024c3531048d8f70f1",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"dispatch\":\"7a79afcef54780ee\",\"is_journey_validation\":\"1f03121a9eed1345\",\"journey_add\":\"8633819ffd4d10d5\",\"journey_applicability\":\"377f2b6ff212ddc1\",\"journey_diagnose\":\"f28c3c227533b6e7\",\"journey_list\":\"610d7cc8cd26bd24\",\"journey_map\":\"2db5351e1305138f\",\"journey_proof_status\":\"083f6bbffac89d36\",\"journey_remove\":\"6d696e0062c63a1d\",\"journey_run\":\"9cf6e44ea833aa46\",\"outcome_json\":\"1cede86fba3c845d\",\"proof_gap_reason\":\"2cacee729f97672e\"}",
+      "value": "{\"dispatch\":\"7a79afcef54780ee\",\"is_journey_validation\":\"1f03121a9eed1345\",\"journey_add\":\"8633819ffd4d10d5\",\"journey_applicability\":\"377f2b6ff212ddc1\",\"journey_diagnose\":\"f28c3c227533b6e7\",\"journey_list\":\"610d7cc8cd26bd24\",\"journey_map\":\"2db5351e1305138f\",\"journey_proof_status\":\"083f6bbffac89d36\",\"journey_remove\":\"6d696e0062c63a1d\",\"journey_run\":\"e2b19529b904dbb9\",\"outcome_json\":\"1cede86fba3c845d\",\"proof_gap_reason\":\"2cacee729f97672e\"}",
       "truth_class": "derived"
     },
     {
@@ -7519,6 +8074,20 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "18b3625febe1da1c9a2fc4595ce60731",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "199ae337d5d487380d37aa2d8e616879",
+      "target_kind": "node",
+      "key": "artifact_hash",
+      "value": "948f666abf038815",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "1a762d6a9153f77fcaa4c122d5fbf7b1",
       "target_kind": "node",
       "key": "content_hash",
@@ -7565,6 +8134,13 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"Result\":\"d775841306ddb839\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "1afddf413bac99f252148b95e034f6d4",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
       "truth_class": "derived"
     },
     {
@@ -7617,11 +8193,25 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "1f5072ccedceee3ccee06af1bd0764a5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "1fccc75f4294ddcb5af4a40f9b7a3bd9",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn door",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "1fccc75f4294ddcb5af4a40f9b7a3bd9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "21d19deb8c417ca8c3fc3b84168ee4c1",
@@ -7729,10 +8319,17 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "2fe9889a5da9c17c36192488977ee52e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "31db92e6363213dec048ef1094a3bf9b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "3bee2573dfee9ea0",
+      "value": "44428f69b976a9b1",
       "truth_class": "derived"
     },
     {
@@ -7753,7 +8350,7 @@
       "target_id": "31db92e6363213dec048ef1094a3bf9b",
       "target_kind": "node",
       "key": "loc",
-      "value": "689",
+      "value": "701",
       "truth_class": "derived"
     },
     {
@@ -7774,7 +8371,7 @@
       "target_id": "31db92e6363213dec048ef1094a3bf9b",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"IntentAddArgs\":\"2c6b9893bd9fce91\",\"IntentUpdateArgs\":\"00c8129e85ea0ab0\",\"check_aspect\":\"0b466d548e3c8606\",\"check_level\":\"0aa882ed7f792ec1\",\"check_lifecycle\":\"ccca8bfb48a23b58\",\"check_visibility\":\"9f7309e9cd70b488\",\"create_intent\":\"07272d65574fce18\",\"dispatch\":\"3ae5293a30a05895\",\"has_internal_caps\":\"0f5901a49030dbfe\",\"intent_add\":\"d17c7ded5cb4850c\",\"intent_confirm\":\"b76bcdb43ecb55ed\",\"intent_list\":\"16d8c47a2f568698\",\"intent_reactivate\":\"6a0a68566971bdba\",\"intent_remove\":\"8cd7f18132a83613\",\"intent_retire\":\"79c644668586bb34\",\"intent_show\":\"fa0d3cac0e697b11\",\"intent_tag\":\"192715568686afbe\",\"intent_update\":\"7d3f418eaf6892b7\",\"intent_waive\":\"cd065c8b02ae98db\",\"looks_like_symbol\":\"8d062440583584f2\",\"tag_intent\":\"80e3d9f4dd36a493\"}",
+      "value": "{\"IntentAddArgs\":\"2c6b9893bd9fce91\",\"IntentUpdateArgs\":\"00c8129e85ea0ab0\",\"check_aspect\":\"0b466d548e3c8606\",\"check_level\":\"0aa882ed7f792ec1\",\"check_lifecycle\":\"ccca8bfb48a23b58\",\"check_visibility\":\"9f7309e9cd70b488\",\"create_intent\":\"7a9feb2ec67f722a\",\"dispatch\":\"3ae5293a30a05895\",\"has_internal_caps\":\"0f5901a49030dbfe\",\"intent_add\":\"724517823d6b499f\",\"intent_confirm\":\"b76bcdb43ecb55ed\",\"intent_list\":\"16d8c47a2f568698\",\"intent_reactivate\":\"6a0a68566971bdba\",\"intent_remove\":\"8cd7f18132a83613\",\"intent_retire\":\"79c644668586bb34\",\"intent_show\":\"fa0d3cac0e697b11\",\"intent_tag\":\"192715568686afbe\",\"intent_update\":\"7d3f418eaf6892b7\",\"intent_waive\":\"cd065c8b02ae98db\",\"looks_like_symbol\":\"8d062440583584f2\",\"tag_intent\":\"80e3d9f4dd36a493\"}",
       "truth_class": "derived"
     },
     {
@@ -7827,6 +8424,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "360d89f10987208933818e263d1bff87",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "37c6462c5b09e1be1f07c039d2ba3cec",
       "target_kind": "node",
       "key": "content_hash",
@@ -7873,6 +8477,20 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"guide\":\"2e130fea80c50d10\",\"guide_monitor\":\"27771e3c933bee65\",\"operator_loops\":\"3ce46549a3c1f5a6\",\"phase_in_plain_english\":\"d933f736e6c93c1d\",\"print_operator_loops\":\"e7b73bf071354121\",\"print_welcome_intro\":\"acf05f0f5ed14c55\",\"session\":\"95a025d53cce0bc4\",\"truth_axis_matrix\":\"1fc932e00b41f0cd\",\"welcome\":\"074f311856f9d540\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "38c6f21d316132bd2a273f59836a7fc0",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3915aadf9c1e7e7d5112009464f5ae00",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
       "truth_class": "derived"
     },
     {
@@ -8030,6 +8648,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "44404aaa93d622edfc313ce26773d673",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "44622b82dffeccf4fc474d85d24bdeda",
       "target_kind": "node",
       "key": "content_hash",
@@ -8100,11 +8725,46 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "45612cdd18f6fd5c84eefc1fe5c1b70a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "457d95b61ba306a20f36c86e44e1cba5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "47ecc961822b98caab8b7aa00c1ffb07",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "48c202a4d0dcdb7edf7b6d502c61f151",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn resolve_find_filters",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "4a1a9cc09d133b1cf3e6a42a8e6ba968",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "4c2d21b730ee4eeeaf16b47790597bad",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "4c48d826cb3f799e0e88c06796c4f704",
@@ -8121,6 +8781,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "4e6ff28aee4142ba8d4510a7c181d155",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "target_kind": "node",
       "key": "level",
@@ -8132,20 +8799,6 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "user_visible",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "4eefda1c44aaba4f1cb78be93db5712a",
-      "target_kind": "node",
-      "key": "waiver:boundary",
-      "value": "quality governs pairs are served by the quality queue; not a product-decision gap for this capture surface",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "4eefda1c44aaba4f1cb78be93db5712a",
-      "target_kind": "node",
-      "key": "waiver:journey",
-      "value": "CLI capture surface; journey runner is HTTP-only today — unit/CLI proof covers the boundary until a CLI journey runner exists",
       "truth_class": "asserted"
     },
     {
@@ -8195,6 +8848,20 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"BootstrapCmd\":\"def1bad12c014cb1\",\"CodefileCmd\":\"c223817d7265c2fb\",\"EdgeCmd\":\"71260bab4e379cf7\",\"FindingCmd\":\"1567b411c769996d\",\"GraphCmd\":\"c6d9e9720781c938\",\"HypothesisCmd\":\"bcc2206e7257bc7f\",\"IgnoreCmd\":\"f9c39cc52fcc57fa\",\"InboxCmd\":\"b997abc467ae3cf8\",\"IntentCmd\":\"54b1dc16f0066e4d\",\"IntentTagCmd\":\"2fd96d64a986e780\",\"JourneyCmd\":\"f575bb4296f6e748\",\"JourneyCoverageCmd\":\"05c37118ef4bb96c\",\"JourneyInvariantCmd\":\"d764bb7cb40fc699\",\"LayerCmd\":\"2177d28d2dd26cb2\",\"NoteCmd\":\"56ab85f4437638a2\",\"PolicyCmd\":\"c61c52fa11d3659e\",\"ProposalCmd\":\"079bec33ddce4e30\",\"ProposalItemCmd\":\"6a7205b69eb23e74\",\"QuestionCmd\":\"97939fb566387021\",\"RuleCmd\":\"ee8bb1c371b35252\",\"ScanCmd\":\"d77d05fdc1f6d3c9\",\"ScanFormatArg\":\"984d1856f8a626dc\",\"SurfaceCmd\":\"e44ef76f57090617\",\"TaskCmd\":\"d7fdf74b6556bfd7\",\"ThresholdCmd\":\"3eff5a090e78038d\",\"ValidationCmd\":\"e2f62893faa9a56a\",\"VocabCmd\":\"4b46bd49495a2ccf\",\"WikiCmd\":\"510c47fb12b1d4fa\",\"from\":\"5ec721d732f248d6\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5002837a2b41d50a00c2179d499e1c18",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "50adb9f6bc9daacb80da816a2bcd5b7c",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
       "truth_class": "derived"
     },
     {
@@ -8317,11 +8984,25 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "61f9fa77419d4ebdbf66dd0eaccce647",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "622fb62dc5cb854ea1f887e91d09dff5",
       "target_kind": "edge",
       "key": "locator",
       "value": "analyze_item:119 (stale before uninspected; failing routes to fix_item:97)",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "622fb62dc5cb854ea1f887e91d09dff5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "65b5feab526b976709962fb67b1efc73",
@@ -8370,6 +9051,13 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"CommandProofRunner\":\"493ea6197937b3a5\",\"JourneyProofRunner\":\"8a16ce6a61878c50\",\"ManualProofRunner\":\"4af2613e7a13e6e8\",\"ProofOutcome\":\"6581a2c7f1fab999\",\"ProofRunner\":\"7dfe8e761a033178\",\"output_excerpt\":\"c5998dca6ccd906e\",\"run\":\"2c5ab885fa828e3f\",\"run_validation_command\":\"8e867a3802c5d2be\",\"runner_for\":\"7aef86b564ae019e\",\"validation_output_json\":\"a5c56537b2945657\",\"validation_timeout_secs\":\"e1a51b4b68bdd5ee\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "66c0bb6248c16742758001736decc28b",
+      "target_kind": "node",
+      "key": "artifact_hash",
+      "value": "f5b87270a5b2fcc0",
       "truth_class": "derived"
     },
     {
@@ -8506,6 +9194,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "6d914e462b3018693d5cd566bcc1888c",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "6e351c9045b1d403c8c0c8da081a05b9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "6e5f854d36a628c83fe30914ef2af65e",
       "target_kind": "edge",
       "key": "locator",
@@ -8562,6 +9264,20 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "709b22e6c58b4369df3ceccbe7dee175",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "71ad444497e184112fd7c4d5b1d16eb5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "73bd3c64daca91797965b663f5a950cc",
       "target_kind": "node",
       "key": "content_hash",
@@ -8611,6 +9327,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "779d924e21b176da8e76172ac667228b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "7901f657d840bcb2677854979ada009a",
       "target_kind": "node",
       "key": "content_hash",
@@ -8657,6 +9380,27 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"ArtifactChange\":\"6db89b3cd894973e\",\"Deriver\":\"f3d6636a2b711f02\",\"RegionDiff\":\"5f35c71ee253b8b9\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "79cd43178ad085433134bcb77a207f7e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7b1f9436052956cef7cf9c28ba142089",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7d0e3da7b9104969f821ad4d213fb3e7",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
       "truth_class": "derived"
     },
     {
@@ -8712,14 +9456,14 @@
       "target_id": "7ea392c6f00c1e88b731ab0331e898f2",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ed6d6bed848ae985",
+      "value": "2f4b7e6e740036dd",
       "truth_class": "derived"
     },
     {
       "target_id": "7ea392c6f00c1e88b731ab0331e898f2",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::NodeType\",\"crate::model::TruthClass\",\"crate::store::Store\",\"serde::Serialize\"]",
+      "value": "[\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"serde::Serialize\"]",
       "truth_class": "derived"
     },
     {
@@ -8733,7 +9477,7 @@
       "target_id": "7ea392c6f00c1e88b731ab0331e898f2",
       "target_kind": "node",
       "key": "loc",
-      "value": "455",
+      "value": "471",
       "truth_class": "derived"
     },
     {
@@ -8754,7 +9498,14 @@
       "target_id": "7ea392c6f00c1e88b731ab0331e898f2",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"b7ad81f44fdd9440\",\"Rung\":\"90c669477b3cf962\",\"RungInputs\":\"f7601506c1a558fa\",\"RungState\":\"9d3a185544cf9967\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"8baecf90e03e5a87\",\"compass\":\"b7adc08ebb4485bd\",\"ladder\":\"aa89caea70000b23\",\"unowned_registered_codefiles\":\"edff69a996ad0a76\",\"validation_summary\":\"5ffa551b4d011d1b\"}",
+      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"b7ad81f44fdd9440\",\"Rung\":\"90c669477b3cf962\",\"RungInputs\":\"f7601506c1a558fa\",\"RungState\":\"9d3a185544cf9967\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"8baecf90e03e5a87\",\"compass\":\"b7adc08ebb4485bd\",\"ladder\":\"302c0615995a9886\",\"unowned_registered_codefiles\":\"edff69a996ad0a76\",\"validation_summary\":\"5ffa551b4d011d1b\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8109484f3a86d31d49f7675a696e5df9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
       "truth_class": "derived"
     },
     {
@@ -8821,20 +9572,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "873d9c05264943d486f1535988af1765",
-      "target_kind": "node",
-      "key": "waiver:boundary",
-      "value": "quality governs pairs are served by the quality queue",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "873d9c05264943d486f1535988af1765",
-      "target_kind": "node",
-      "key": "waiver:journey",
-      "value": "CLI find surface; journey runner is HTTP-only — find_explain unit proof covers the boundary",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "87f645ae8047677f86ddd1a51ddee725",
       "target_kind": "node",
       "key": "aspect",
@@ -8870,6 +9607,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "8a6f43604a37bde20c873403be1228df",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "8b48e493d426c401e035b9205b0217f6",
       "target_kind": "node",
       "key": "aspect",
@@ -8894,14 +9638,14 @@
       "target_id": "8c09800873ec56699ca584e7da49a20e",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "0d79c5a76f5ad4a0",
+      "value": "5d08d7d5da126c96",
       "truth_class": "derived"
     },
     {
       "target_id": "8c09800873ec56699ca584e7da49a20e",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"crate::Result\",\"crate::model::Edge\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TruthClass\",\"crate::store::Store\",\"super::LinkedEntity\",\"super::Mode\",\"super::SuggestedRead\",\"super::Target\",\"super::WorkItem\",\"super::axis_for_role\",\"super::cause_class\",\"super::context::edge_context\",\"super::context::node_context\",\"super::contracts::analyzer_contract\",\"super::contracts::builder_contract\",\"super::contracts::coverage_contract\",\"super::contracts::elaborator_contract\",\"super::contracts::fixer_contract\",\"super::contracts::inbox_triage_contract\",\"super::contracts::prove_contract\",\"super::contracts::quality_contract\",\"super::contracts::quality_contract_body\",\"super::contracts::reviewer_contract\",\"super::contracts::structural_finding_triage_contract\",\"super::contracts::triage_contract\",\"super::contracts::validator_contract\",\"super::effort_for\",\"super::node_target\",\"super::rank_lifecycle\"]",
+      "value": "[\"crate::Result\",\"crate::model::Edge\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::model::TargetKind\",\"crate::model::TruthClass\",\"crate::store::Store\",\"super::LinkedEntity\",\"super::Mode\",\"super::SuggestedRead\",\"super::Target\",\"super::WorkItem\",\"super::axis_for_role\",\"super::cause_class\",\"super::context::edge_context\",\"super::context::node_context\",\"super::contracts::analyzer_contract\",\"super::contracts::builder_contract\",\"super::contracts::coverage_contract\",\"super::contracts::elaborator_contract\",\"super::contracts::fixer_contract\",\"super::contracts::inbox_triage_contract\",\"super::contracts::prove_contract\",\"super::contracts::quality_contract\",\"super::contracts::quality_contract_body\",\"super::contracts::reviewer_contract\",\"super::contracts::structural_finding_triage_contract\",\"super::contracts::triage_contract\",\"super::contracts::validator_contract\",\"super::effort_for\",\"super::node_target\",\"super::rank_lifecycle\"]",
       "truth_class": "derived"
     },
     {
@@ -8915,7 +9659,7 @@
       "target_id": "8c09800873ec56699ca584e7da49a20e",
       "target_kind": "node",
       "key": "loc",
-      "value": "1207",
+      "value": "1229",
       "truth_class": "derived"
     },
     {
@@ -8936,7 +9680,7 @@
       "target_id": "8c09800873ec56699ca584e7da49a20e",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"QueueCounts\":\"eb1cb843dd5bf77e\",\"QueueEntry\":\"360c18d6af450b81\",\"analyze_item\":\"4d1d5fd453bd6bf2\",\"build_item\":\"2e4b9f5179141690\",\"build_reason\":\"efd92d263fd6245e\",\"coverage_item\":\"184bcd43f74d0114\",\"edge_entry\":\"52fab9edccd5f2f6\",\"edge_work\":\"b9400a46e28cfecb\",\"elaborate_item\":\"8e5c009b3e907deb\",\"fix_item\":\"b556185436892c99\",\"inbox_triage_item\":\"4cffb1f5ffb44102\",\"is_structural_size_finding\":\"37369813c42e9bdb\",\"node_entry\":\"a33364d6c442be56\",\"prescreen_for\":\"53b25b80d6483252\",\"prove_item\":\"22c0522616027687\",\"quality_item\":\"297500d0c2600653\",\"queue_counts\":\"c8b678c397bf15a3\",\"queue_items\":\"6a97fb09319dd486\",\"review_item\":\"ed43d8567923718a\",\"triage_item\":\"16d218f13fcd9527\",\"ungrounded_implemented_intents\":\"ecb6035146dc0c04\",\"unmeasured_pair_entries\":\"e70fddecb688e4da\",\"unmeasured_pair_item\":\"43fba57f5323cd8b\",\"unmeasured_quality_pairs\":\"6992e0d960d59de0\",\"unmet_prerequisites\":\"81265becce10990d\",\"validate_item\":\"7ab8e3a026a0c970\"}",
+      "value": "{\"QueueCounts\":\"eb1cb843dd5bf77e\",\"QueueEntry\":\"360c18d6af450b81\",\"analyze_item\":\"4d1d5fd453bd6bf2\",\"build_item\":\"2e4b9f5179141690\",\"build_reason\":\"efd92d263fd6245e\",\"coverage_item\":\"184bcd43f74d0114\",\"edge_entry\":\"52fab9edccd5f2f6\",\"edge_work\":\"b9400a46e28cfecb\",\"elaborate_item\":\"8e5c009b3e907deb\",\"fix_item\":\"b556185436892c99\",\"inbox_triage_item\":\"4cffb1f5ffb44102\",\"is_structural_size_finding\":\"37369813c42e9bdb\",\"node_entry\":\"a33364d6c442be56\",\"prescreen_for\":\"53b25b80d6483252\",\"prove_item\":\"22c0522616027687\",\"quality_item\":\"297500d0c2600653\",\"queue_counts\":\"c8b678c397bf15a3\",\"queue_items\":\"6a97fb09319dd486\",\"review_item\":\"ed43d8567923718a\",\"triage_item\":\"16d218f13fcd9527\",\"ungrounded_implemented_intents\":\"ecb6035146dc0c04\",\"unmeasured_pair_entries\":\"e70fddecb688e4da\",\"unmeasured_pair_item\":\"43fba57f5323cd8b\",\"unmeasured_quality_pairs\":\"f2f41a81a578b8b9\",\"unmet_prerequisites\":\"81265becce10990d\",\"validate_item\":\"7ab8e3a026a0c970\"}",
       "truth_class": "derived"
     },
     {
@@ -8989,11 +9733,32 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "8e92779b2457addc7ef7bf3f280a765a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8eae40b4d5e3bcf599ceb0e43726c0b0",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "8eb674637342f0f68e80f9dfc9beefc9",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn sync",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "8f0c99ec510f6a1d4fcc83222aa7b0e5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "8fd07ad596e5e6379a3c3d6cfbf004e0",
@@ -9042,6 +9807,13 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"TruthAxis\":\"1d376261c6f8735c\",\"TruthGap\":\"bacf5462e8067b45\",\"as_str\":\"ef379b3726a53a43\",\"axis_for_phase\":\"37c3f1766701bd9d\",\"gap\":\"8cb8c64cee875e52\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8fd1d9006044b8995485df3d381f138a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
       "truth_class": "derived"
     },
     {
@@ -9192,17 +9964,24 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "937e529cf51c9bad353bf59759fdb22b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "686ce52288799e9a",
+      "value": "04ac1e1de0a7282d",
       "truth_class": "derived"
     },
     {
       "target_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::Context\",\"anyhow::anyhow\",\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::store::Store\",\"std::collections::BTreeMap\",\"std::path::Path\",\"std::time::Duration\"]",
+      "value": "[\"anyhow::Context\",\"anyhow::anyhow\",\"crate::Result\",\"crate::model::EdgeKind\",\"crate::model::InspectionStatus\",\"crate::model::Node\",\"crate::model::NodeType\",\"crate::store::Store\",\"process_control::ChildExt\",\"process_control::Control\",\"std::collections::BTreeMap\",\"std::path::Path\",\"std::process::Stdio\",\"std::time::Duration\"]",
       "truth_class": "derived"
     },
     {
@@ -9216,7 +9995,7 @@
       "target_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "target_kind": "node",
       "key": "loc",
-      "value": "774",
+      "value": "1022",
       "truth_class": "derived"
     },
     {
@@ -9230,14 +10009,14 @@
       "target_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "33",
+      "value": "39",
       "truth_class": "derived"
     },
     {
       "target_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Expect\":\"5d673dc7802d175b\",\"HttpAuth\":\"a100aea7f356f430\",\"HttpContract\":\"21a0a0a6f2cd1f00\",\"HttpExtract\":\"7d23b2124db6ccb7\",\"HttpRoute\":\"20de6870e8245315\",\"JourneySpec\":\"c11817d178be3201\",\"Request\":\"176915d221051ddc\",\"SpecKind\":\"62d611e37c0690b6\",\"Step\":\"9d3d3bdf12e0999f\",\"StepOutcome\":\"002f7d7e200e72d4\",\"as_str\":\"dd23de725b155344\",\"authorization\":\"31db3a054725e27f\",\"bail_no_usable_base\":\"96fb50fc6a6c1f97\",\"check_response\":\"e44ba79f457f06d3\",\"default\":\"680ec452a7c4af27\",\"diagnose_hints\":\"fb3e77c6fdcf88e9\",\"env_value\":\"957f6477feebaec1\",\"execute\":\"5032309665470e7e\",\"field_path\":\"0e1d112194a1310b\",\"get\":\"3dfa7e909f296b15\",\"http_contract_to_journey\":\"007ae431bb1e4e8f\",\"interpolate\":\"0dd3617533fae246\",\"interpolate_json\":\"a1327d1959843d46\",\"journey_status_rank\":\"335b5c06ea74822c\",\"journey_validations\":\"756d124017157682\",\"jsonpath\":\"8f4a915373310c5c\",\"normalize_path_params\":\"74920757c398291f\",\"parse\":\"d99e4e550167f5cc\",\"parse_with_kind\":\"87ad0217c7c787a3\",\"require\":\"63ad8fdab38b2e6c\",\"resolve_validation\":\"bb7f5b0170f24f1d\",\"stale_unreached_passing_steps\":\"158cbefb6bf94ff5\",\"value_to_string\":\"7f1e2b8c8189b785\"}",
+      "value": "{\"Expect\":\"b74bdf4237a53b7e\",\"HttpAuth\":\"a100aea7f356f430\",\"HttpContract\":\"21a0a0a6f2cd1f00\",\"HttpExtract\":\"7d23b2124db6ccb7\",\"HttpRoute\":\"20de6870e8245315\",\"JourneySpec\":\"c11817d178be3201\",\"Request\":\"176915d221051ddc\",\"SpecKind\":\"62d611e37c0690b6\",\"Step\":\"70248007e27cde3b\",\"StepOutcome\":\"002f7d7e200e72d4\",\"as_str\":\"dd23de725b155344\",\"authorization\":\"31db3a054725e27f\",\"bail_no_usable_base\":\"96fb50fc6a6c1f97\",\"check_response\":\"e44ba79f457f06d3\",\"default\":\"680ec452a7c4af27\",\"diagnose_hints\":\"cbaf679845d8f335\",\"env_value\":\"957f6477feebaec1\",\"execute\":\"b8ceb22617ace411\",\"execute_in\":\"fdc968cd3aa5ed95\",\"execute_steps\":\"6137c67d439da3ff\",\"field_path\":\"0e1d112194a1310b\",\"get\":\"3dfa7e909f296b15\",\"http_contract_to_journey\":\"e55b6b6dfe24f907\",\"interpolate\":\"0dd3617533fae246\",\"interpolate_json\":\"a1327d1959843d46\",\"is_cli\":\"743cff6b4783a909\",\"journey_status_rank\":\"335b5c06ea74822c\",\"journey_validations\":\"756d124017157682\",\"jsonpath\":\"8f4a915373310c5c\",\"normalize_path_params\":\"74920757c398291f\",\"parse\":\"d99e4e550167f5cc\",\"parse_with_kind\":\"87ad0217c7c787a3\",\"record_outcomes\":\"68853485641bbe75\",\"require\":\"63ad8fdab38b2e6c\",\"resolve_validation\":\"bb7f5b0170f24f1d\",\"run_cli_step\":\"28ba2342dd9e85c8\",\"stale_unreached_passing_steps\":\"158cbefb6bf94ff5\",\"truncate\":\"632b4c5e7a30c4f4\",\"value_to_string\":\"7f1e2b8c8189b785\"}",
       "truth_class": "derived"
     },
     {
@@ -9367,6 +10146,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "a14dca9ff4b265341f0ec9abbce0bff4",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a1614f02b1128549bb1895a1a5b97d82",
       "target_kind": "node",
       "key": "content_hash",
@@ -9465,6 +10251,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "a4cae11a909b3eac87547373ea3ef7c9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a4f33445f41fe63afb99940ec509ac4a",
       "target_kind": "node",
       "key": "content_hash",
@@ -9514,6 +10307,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "a5d57bf73ec5f2124db71916864fe401",
+      "target_kind": "node",
+      "key": "artifact_hash",
+      "value": "7c3bfb5af3e98a6a",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "target_kind": "node",
       "key": "level",
@@ -9528,18 +10328,11 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "a665d1c5fda0a34600d81165c1ceedc6",
-      "target_kind": "node",
-      "key": "waiver:boundary",
-      "value": "quality governs pairs are served by the quality queue",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "a665d1c5fda0a34600d81165c1ceedc6",
-      "target_kind": "node",
-      "key": "waiver:journey",
-      "value": "CLI next router; ring9 unit proof covers the boundary; HTTP journey runner does not apply",
-      "truth_class": "asserted"
+      "target_id": "a6b04dcaedf6f143198a2ba3d5502899",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "a738afa26005fd57b7d9ff8990f1333e",
@@ -9568,6 +10361,13 @@
       "key": "locator",
       "value": "find_cmd (walks edges_with Implements; prints path @ locator [verdict])",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "a76fc4640e5b8d15ae87f1a1424e3227",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "a819a5f46c71c1074f2b96a4ad56bcb1",
@@ -9668,11 +10468,25 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "aa2baa73d0f723187a6b434e312caebf",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "ac22d50ed2605b4ef35e0dd96d734201",
       "target_kind": "edge",
       "key": "locator",
       "value": "intent_add gate:136 -> looks_like_symbol:654",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "acef576944596f2fd3f834ef36d84d03",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "ad873b67899063922d98d0923cef9d7b",
@@ -9969,6 +10783,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "bf096f4b3cde938ba5288a6287aa55c2",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/maturity.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "c1f78c0db4fade0fc51d6af46430c1d1",
       "target_kind": "node",
       "key": "content_hash",
@@ -10081,11 +10902,32 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "c702ac386ca1a48e837adc1382175009",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'changing a file re-opens the asserted edges grounded in it' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "c92e0e4bfaa9abcab2e27e7f6b799b76",
       "target_kind": "edge",
       "key": "locator",
       "value": "fn door",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "c97ae383433b9770577b77d08728ed37",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c9ad9da407d84b9438ec515962b681c4",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/workitem/queues.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "cb41f9484b17a52f3382a746fdbff083",
@@ -10301,7 +11143,7 @@
       "target_id": "d1265b27311107df2",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-09T05:01:16.788Z\",\"hash\":\"\",\"reason\":\"journey completeness owned by elaborate\",\"verdict\":\"deferred\"}",
+      "value": "{\"at\":\"2026-07-09T05:41:32.658Z\",\"hash\":\"\",\"reason\":\"undeclared multi-owner file — record relates between co-owners or split\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
@@ -10315,7 +11157,7 @@
       "target_id": "d14a7f73c4780dc2a",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-09T05:01:05.964Z\",\"hash\":\"\",\"reason\":\"journey axis waived or owned by elaborate; not detector triage\",\"verdict\":\"deferred\"}",
+      "value": "{\"at\":\"2026-07-09T05:41:32.676Z\",\"hash\":\"\",\"reason\":\"undeclared multi-owner file — record relates between co-owners or split\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
@@ -10630,7 +11472,7 @@
       "target_id": "d6a3bcd44671a3b56",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-09T05:17:30.260Z\",\"hash\":\"\",\"reason\":\"journey owned by UV leaf waivers / elaborate\",\"verdict\":\"deferred\"}",
+      "value": "{\"at\":\"2026-07-09T05:41:32.666Z\",\"hash\":\"\",\"reason\":\"undeclared multi-owner file — record relates between co-owners or split\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
@@ -10973,7 +11815,7 @@
       "target_id": "de100d5afb2bdf9b8",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-09T05:17:30.268Z\",\"hash\":\"\",\"reason\":\"journey owned by UV leaf waivers / elaborate\",\"verdict\":\"deferred\"}",
+      "value": "{\"at\":\"2026-07-09T05:41:32.686Z\",\"hash\":\"\",\"reason\":\"undeclared multi-owner file — record relates between co-owners or split\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
@@ -11052,6 +11894,13 @@
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:49.179Z\",\"hash\":\"7f6dee62416c706e\",\"metric\":6,\"reason\":\"src/commands/proposal_cmd.rs: outside dogfood behavioral spine (ignored); symbol-level split not scheduled here\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "df16341b1ada687ef9e860ff932aadba",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "df1b77486ad0a25c5",
@@ -11173,11 +12022,32 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "eab54a9e1ea96c8c1b7acd13b90ab07a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'the next router serves the highest-priority asserted residue with a prompt contract' description updated",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "ec92e384792f08cc440a6cb502170945",
       "target_kind": "edge",
       "key": "locator",
       "value": "export_to_file:75 / Export::from_snapshot",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "ee367066162d254c6220429e96c8a915",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'find surfaces each matched intent's grounding' description updated",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ef5f30a4cd4a6ae377e181afcbbec065",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
     },
     {
       "target_id": "ef90e77cdfb78b41eacea7f3213aa0ec",
@@ -11201,18 +12071,18 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
-      "target_kind": "node",
-      "key": "waiver:boundary",
-      "value": "quality governs pairs are served by the quality queue",
-      "truth_class": "asserted"
+      "target_id": "f4a3b27660b002a46ffabf4d657d625b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "intent 'an operator captures a topic through door and routes it from the landing menu' description updated",
+      "truth_class": "derived"
     },
     {
-      "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
+      "target_id": "fc1ddfad97e73ae1ba5fceb6e0f42d32",
       "target_kind": "node",
-      "key": "waiver:journey",
-      "value": "CLI/sync behavior; ring2 unit proof covers the boundary; HTTP journey runner does not apply",
-      "truth_class": "asserted"
+      "key": "artifact_hash",
+      "value": "165e41a1f6090b2d",
+      "truth_class": "derived"
     },
     {
       "target_id": "fd559d929afe4b02f0ed05054af4573a",

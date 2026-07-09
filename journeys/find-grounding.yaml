@@ -1,0 +1,8 @@
+journey: find surfaces grounding
+steps:
+  - name: find next router
+    intent: find surfaces each matched intent's grounding
+    run: "loom find 'next router' --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["groundings", "path"]

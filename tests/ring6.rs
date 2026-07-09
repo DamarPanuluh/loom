@@ -26,9 +26,10 @@ fn codefile(store: &Store, path: &str) -> String {
 // ---- smells ----------------------------------------------------------------
 
 #[test]
-fn smells_detect_tangle_and_overlap() {
+fn smells_detect_undeclared_shared_ownership() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // ≥3 disconnected owners → tangled_file
     let cf = codefile(&store, "src/god.rs");
     for i in 0..3 {
         let id = intent(&store, &format!("behavior {i}"), "implemented");
@@ -37,9 +38,14 @@ fn smells_detect_tangle_and_overlap() {
             .unwrap();
     }
     let smells = loom::signal::smells(&store).unwrap();
-    assert!(smells.iter().any(|s| s.kind == "tangled_file"));
+    assert!(
+        smells
+            .iter()
+            .any(|s| s.kind == "tangled_file" && s.message.contains("src/god.rs")),
+        "disconnected multi-owners must fire tangled_file: {smells:?}"
+    );
 
-    // a separate 2-owner file with no edge → overlapping_ownership
+    // Exactly 2 disconnected owners → same smell (former overlapping_ownership).
     let cf2 = codefile(&store, "src/pair.rs");
     let a = intent(&store, "alpha behavior", "implemented");
     let b = intent(&store, "beta behavior", "implemented");
@@ -50,66 +56,73 @@ fn smells_detect_tangle_and_overlap() {
         .add_edge(EdgeKind::Implements, &b, &cf2, TruthClass::Asserted)
         .unwrap();
     let smells = loom::signal::smells(&store).unwrap();
-    assert!(smells.iter().any(|s| s.kind == "overlapping_ownership"));
-}
-
-/// Contract: the `tangled_file` smell's owner-count gate is configurable via
-/// `Thresholds::max_file_owners` (a strict `>` bound). Under the DEFAULT config
-/// (`max_file_owners == 2`) a file realized by exactly 3 asserted `Implements`
-/// owners fires the smell (3 > 2). Saving `max_file_owners: 3` silences that
-/// same 3-owner file (3 is not > 3) — proving the gate reads the configured
-/// value, not a hardcoded const — while a 4-owner file still fires (4 > 3).
-#[test]
-fn tangled_file_owner_gate_is_configurable() {
-    let tmp = Tmp::new();
-    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-
-    // A file realized by exactly 3 asserted Implements owners.
-    let cf3 = codefile(&store, "src/god.rs");
-    for i in 0..3 {
-        let id = intent(&store, &format!("behavior {i}"), "implemented");
-        store
-            .add_edge(EdgeKind::Implements, &id, &cf3, TruthClass::Asserted)
-            .unwrap();
-    }
-
-    // Default config (max_file_owners == 2): 3 owners > 2 → tangled_file fires.
-    let smells = loom::signal::smells(&store).unwrap();
     assert!(
         smells
             .iter()
-            .any(|s| s.kind == "tangled_file" && s.message.contains("src/god.rs")),
-        "default gate (2) fires tangled_file for a 3-owner file"
+            .any(|s| s.kind == "tangled_file" && s.message.contains("src/pair.rs")),
+        "disconnected pair must fire tangled_file: {smells:?}"
     );
+    assert!(
+        !smells.iter().any(|s| s.kind == "overlapping_ownership"),
+        "overlapping_ownership is retired"
+    );
+}
 
-    // Raise the gate to 3: the 3-owner file falls silent (3 is not > 3).
-    let t = loom::thresholds::Thresholds {
-        max_file_owners: 3,
-        ..Default::default()
-    };
-    loom::thresholds::save(&store, &t).unwrap();
+#[test]
+fn tangled_file_spared_when_co_owners_are_related() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let cf = codefile(&store, "src/shared.rs");
+    let a = intent(&store, "alpha behavior", "implemented");
+    let b = intent(&store, "beta behavior", "implemented");
+    let c = intent(&store, "gamma behavior", "implemented");
+    for id in [&a, &b, &c] {
+        store
+            .add_edge(EdgeKind::Implements, id, &cf, TruthClass::Asserted)
+            .unwrap();
+    }
+    // Star (parent ↔ children), not a clique — still one connected neighborhood.
+    store
+        .add_edge(EdgeKind::ScenarioOf, &b, &a, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::ScenarioOf, &c, &a, TruthClass::Asserted)
+        .unwrap();
     let smells = loom::signal::smells(&store).unwrap();
     assert!(
         !smells
             .iter()
-            .any(|s| s.kind == "tangled_file" && s.message.contains("src/god.rs")),
-        "max_file_owners: 3 silences the 3-owner file (3 is not > 3)"
+            .any(|s| s.kind == "tangled_file" && s.message.contains("src/shared.rs")),
+        "connected co-owners must not fire tangled_file: {smells:?}"
     );
+}
 
-    // A 4-owner file still fires under max_file_owners: 3 (4 > 3).
-    let cf4 = codefile(&store, "src/mega.rs");
+#[test]
+fn tangled_file_ignores_owner_count_when_connected() {
+    // Contract: connectedness is the gate — many related owners stay silent;
+    // there is no max_file_owners count threshold.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let cf = codefile(&store, "src/mega.rs");
+    let parent = intent(&store, "parent capability", "implemented");
+    store
+        .add_edge(EdgeKind::Implements, &parent, &cf, TruthClass::Asserted)
+        .unwrap();
     for i in 0..4 {
-        let id = intent(&store, &format!("mega behavior {i}"), "implemented");
+        let id = intent(&store, &format!("scenario {i}"), "implemented");
         store
-            .add_edge(EdgeKind::Implements, &id, &cf4, TruthClass::Asserted)
+            .add_edge(EdgeKind::Implements, &id, &cf, TruthClass::Asserted)
+            .unwrap();
+        store
+            .add_edge(EdgeKind::ScenarioOf, &id, &parent, TruthClass::Asserted)
             .unwrap();
     }
     let smells = loom::signal::smells(&store).unwrap();
     assert!(
-        smells
+        !smells
             .iter()
             .any(|s| s.kind == "tangled_file" && s.message.contains("src/mega.rs")),
-        "max_file_owners: 3 still fires for a 4-owner file (4 > 3)"
+        "five connected owners must stay silent: {smells:?}"
     );
 }
 
@@ -131,7 +144,7 @@ fn sync_materializes_smell_finding_adjudication_and_convergence() {
     let smell = loom::signal::smells(&store)
         .unwrap()
         .into_iter()
-        .find(|s| s.kind == "overlapping_ownership")
+        .find(|s| s.kind == "tangled_file")
         .unwrap();
     let expected_id = Store::derived_node_id(
         NodeType::Finding,
@@ -679,6 +692,75 @@ fn journey_run_stamps_passing_steps() {
     assert_eq!(
         store.get_node(&journey.id).unwrap().unwrap().status,
         "passed"
+    );
+}
+
+#[test]
+fn journey_cli_step_stamps_passing_on_exit_zero() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent_id = intent(&store, "tool prints ok", "implemented");
+    let journey = store
+        .add_node(
+            NodeType::Validation,
+            "cli-ok",
+            "",
+            "not_run",
+            serde_json::json!({"type":"journey","proof_kind":"journey","proof_level":"L5"}),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &journey.id, &intent_id)
+        .unwrap();
+
+    let spec = loom::journey::JourneySpec {
+        journey: "cli-ok".into(),
+        base: String::new(),
+        steps: vec![serde_json::from_value(serde_json::json!({
+            "name": "echo json",
+            "intent": "tool prints ok",
+            "run": "printf '{\"ok\":true,\"id\":\"x1\"}'",
+            "expect": { "exit_code": 0, "exists": ["$.ok"], "body": { "$.ok": true } },
+            "capture": { "cid": "$.id" }
+        }))
+        .unwrap()],
+    };
+    let outcomes =
+        loom::journey::execute_in(Some(&store), &spec, true, Some(tmp.path())).unwrap();
+    assert_eq!(outcomes.len(), 1);
+    assert!(outcomes[0].passed, "{}", outcomes[0].detail);
+    let edges = store
+        .edges_with(
+            Some(EdgeKind::Validates),
+            Some(&journey.id),
+            Some(&intent_id),
+        )
+        .unwrap();
+    assert_eq!(edges[0].status, InspectionStatus::Passing);
+    assert_eq!(
+        store.get_node(&journey.id).unwrap().unwrap().status,
+        "passed"
+    );
+}
+
+#[test]
+fn journey_cli_step_rejects_mixed_run_and_request() {
+    let spec = loom::journey::JourneySpec {
+        journey: "mixed".into(),
+        base: String::new(),
+        steps: vec![serde_json::from_value(serde_json::json!({
+            "name": "bad",
+            "intent": "x",
+            "run": "true",
+            "request": { "method": "GET", "url": "/x" },
+            "expect": { "exit_code": 0 }
+        }))
+        .unwrap()],
+    };
+    let err = loom::journey::execute(None, &spec, false).unwrap_err();
+    assert!(
+        err.to_string().contains("either `run`"),
+        "mixed step must error: {err}"
     );
 }
 

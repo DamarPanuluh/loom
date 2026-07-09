@@ -1,0 +1,15 @@
+journey: door capture happy path
+steps:
+  - name: capture utterance
+    intent: an operator captures a topic through door and routes it from the landing menu
+    run: "loom door 'ship a faster checkout flow' --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["landing_menu", "captured"]
+    capture:
+      inbox_id: "$.captured.id"
+  - name: mark routed
+    intent: an operator captures a topic through door and routes it from the landing menu
+    run: "loom inbox mark {{ inbox_id }} routed --reason 'landed as new_intent for dogfood journey'"
+    expect:
+      exit_code: 0

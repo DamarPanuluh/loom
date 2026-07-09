@@ -233,7 +233,7 @@ In both formats, only diagnostics whose `file` resolves to a registered `CodeFil
 loom calibrate [--write] [--json]
 ```
 
-Derives structural finding thresholds (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) from the repo's own distribution: each gate is proposed at the worst-5% quantile of the registered codefiles' metrics, rounded up and clamped to sane floors, so sync flags today's tail without flooding triage. Default is a preview (current vs proposed); `--write` persists the proposal to graph config. Thresholds travel with `loom export` in `config.thresholds`; absent config means the shipped defaults (file loc 600, symbol complexity 20, symbol loc 120, nesting 5, args 6, file owners 2). Every gate is a strict `>` bound. `config.thresholds` also carries `max_file_owners` (default 2), the gate for the `tangled_file` smell — set it by hand; `calibrate` never fits it (owner counts are too small a distribution for a stable quantile) and preserves the current value.
+Derives structural finding thresholds (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) from the repo's own distribution: each gate is proposed at the worst-5% quantile of the registered codefiles' metrics, rounded up and clamped to sane floors, so sync flags today's tail without flooding triage. Default is a preview (current vs proposed); `--write` persists the proposal to graph config. Thresholds travel with `loom export` in `config.thresholds`; absent config means the shipped defaults (file loc 600, symbol complexity 20, symbol loc 120, nesting 5, args 6). Every gate is a strict `>` bound. Ownership smells are not count-gated: `tangled_file` fires when ≥2 realizing owners of a file do not form one connected neighborhood via relationship edges (relates / hierarchy / scenario-of / …). A parent-plus-scenarios star stays silent; disconnected co-owners fire. Legacy `max_file_owners` in an old export is ignored on load.
 
 ```text
 loom threshold list [--json]
@@ -241,7 +241,7 @@ loom threshold set <gate> <value>
 loom threshold reset [<gate>]
 ```
 
-The manual counterpart to `calibrate`: hand-set a single gate instead of fitting the whole set from the distribution. `<gate>` is one of the `config.thresholds` keys (`max_file_loc`, `max_symbol_complexity`, `max_symbol_loc`, `max_nesting`, `max_args`, `max_file_owners`); `<value>` must be ≥ 1. `set` persists to `config.thresholds` (portable — travels in the export). `reset <gate>` restores one gate to its shipped default; `reset` with no gate drops the whole `thresholds` config so every gate reverts to "absent = shipped default" (not a pinned snapshot — a later change to the defaults still takes effect). `max_file_owners` is set only this way; `calibrate` never fits it.
+The manual counterpart to `calibrate`: hand-set a single gate instead of fitting the whole set from the distribution. `<gate>` is one of the `config.thresholds` keys (`max_file_loc`, `max_symbol_complexity`, `max_symbol_loc`, `max_nesting`, `max_args`); `<value>` must be ≥ 1. `set` persists to `config.thresholds` (portable — travels in the export). `reset <gate>` restores one gate to its shipped default; `reset` with no gate drops the whole `thresholds` config so every gate reverts to "absent = shipped default" (not a pinned snapshot — a later change to the defaults still takes effect). `max_file_owners` is retired (`tangled_file` uses graph connectedness); setting it errors.
 
 ```text
 loom policy show [--json]
@@ -451,9 +451,24 @@ Native specs accept JSON or YAML:
 }
 ```
 
-The spec name key is `journey`. HTTP contract specs use `name`, optional `base`/`auth`, and `routes`; route fields include `method`, `path`, optional `intent`/`name`, `success_status`, `query`, `example_request`, `response_fields`, and `extract`. Bearer auth injects `{{ env.LOOM_JOURNEY_AUTH_TOKEN }}`.
+The spec name key is `journey`. A step is either **HTTP** (`request` + response expectations) or **CLI** (`run` + exit/stdout expectations) — not both:
 
-`run` records graph verdicts. A failing boundary records the exact failed expectation and reopens previously-passing never-reached later steps. `diagnose` executes directly without graph writes and is useful for missing env/auth/404/template failures. Both accept `--base-url`, which overrides the spec base and `{{ env.BASE_URL }}`.
+```yaml
+journey: door capture happy path
+steps:
+  - name: capture utterance
+    intent: an operator captures a topic through door and routes it from the landing menu
+    run: "loom door 'ship faster checkout' --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["landing_menu"]
+    capture:
+      inbox_id: "$.captured.id"
+```
+
+CLI steps run via `sh -c` with the graph root as cwd (so repo-local binaries and fixtures resolve). `journey run` releases the exclusive graph lock while steps execute, then reopens to stamp verdicts — so a step may invoke the same repo's CLI (or any other graph writer) without deadlocking. `expect.exit_code` defaults to `0`. `body` / `exists` / `capture` on a CLI step parse stdout as JSON. HTTP contract specs use `name`, optional `base`/`auth`, and `routes`; route fields include `method`, `path`, optional `intent`/`name`, `success_status`, `query`, `example_request`, `response_fields`, and `extract`. Bearer auth injects `{{ env.LOOM_JOURNEY_AUTH_TOKEN }}`.
+
+`run` records graph verdicts. A failing boundary records the exact failed expectation and reopens previously-passing never-reached later steps. `diagnose` executes directly without graph writes and is useful for missing env/auth/404/template failures. Both accept `--base-url`, which overrides the spec base and `{{ env.BASE_URL }}` for HTTP steps.
 
 ### Journey coverage
 

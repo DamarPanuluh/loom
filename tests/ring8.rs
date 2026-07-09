@@ -372,7 +372,7 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
     assert_eq!(smells.len(), 1);
     let smell = smells
         .into_iter()
-        .find(|s| s.kind == "overlapping_ownership")
+        .find(|s| s.kind == "tangled_file")
         .unwrap();
     let identity = smell.identity;
     let finding_id =
@@ -425,7 +425,7 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
         .record_finding_verdict(
             &finding_id,
             "duplicate",
-            "same as overlapping_ownership:other",
+            "same as tangled_file:other",
         )
         .unwrap();
     assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());

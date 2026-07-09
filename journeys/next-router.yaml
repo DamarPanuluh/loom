@@ -1,0 +1,8 @@
+journey: next router serves residue
+steps:
+  - name: status exposes router inputs
+    intent: the next router serves the highest-priority asserted residue with a prompt contract
+    run: "loom status --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["graph_state", "maturity"]

@@ -178,9 +178,8 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         .collect();
     let tags_by_intent = tags_by_node(&snap);
 
-    let thresholds = crate::thresholds::load(store)?;
     let mut out = Vec::new();
-    out.extend(ownership_smells(&snap, &owners, thresholds.max_file_owners));
+    out.extend(ownership_smells(&snap, &owners));
     out.extend(consumer_owned_file_smells(&snap, &owners));
     out.extend(undeclared_coupling_smells(
         &snap,
@@ -251,48 +250,71 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
         .collect()
 }
 
-/// tangled files (more than `max_owners` realizing owners) and overlapping
-/// ownership (exactly 2 owners with no relationship recorded between them).
+/// Undeclared shared ownership: ≥2 realizing owners of one file that do **not**
+/// form one connected neighborhood via relationship edges (relates / hierarchy /
+/// scenario-of / …).
+///
+/// Connectedness is the gate — not an owner-count threshold. A parent plus its
+/// scenarios sharing a module (a star) is declared cohesion and stays silent.
+/// Two unrelated intents on one file fire. Ten related intents stay silent
+/// (maybe large, but not undeclared). Former `overlapping_ownership` is the
+/// two-owner case of the same rule; identity is always `tangled_file:{cf}`.
 fn ownership_smells<'a>(
     snap: &'a Snapshot,
     owners: &BTreeMap<&'a str, Vec<&'a str>>,
-    max_owners: usize,
 ) -> Vec<Smell> {
     let mut out = Vec::new();
     for (cf, ids) in owners {
-        if ids.len() > max_owners {
-            out.push(Smell {
-                kind: "tangled_file".into(),
-                message: format!(
-                    "{} is implemented by {} intents",
-                    node_name(snap, cf),
-                    ids.len()
-                ),
-                remedy: "split the file or the intents; one file, one cohesive responsibility"
-                    .into(),
-                identity: format!("tangled_file:{cf}"),
-            });
+        if ids.len() < 2 || owners_connected(snap, ids) {
+            continue;
         }
-        if ids.len() == 2 && !edge_between(snap, ids[0], ids[1]) {
-            let (a, b) = if ids[0] <= ids[1] {
-                (ids[0], ids[1])
-            } else {
-                (ids[1], ids[0])
-            };
-            out.push(Smell {
-                kind: "overlapping_ownership".into(),
-                message: format!(
-                    "'{}' and '{}' both own {} with no relationship recorded",
-                    node_name(snap, ids[0]),
-                    node_name(snap, ids[1]),
-                    node_name(snap, cf),
-                ),
-                remedy: "record a relates edge, or split ownership".into(),
-                identity: format!("overlapping_ownership:{cf}:{a}:{b}"),
-            });
-        }
+        let message = if ids.len() == 2 {
+            format!(
+                "'{}' and '{}' both realize {} with no relationship connecting them",
+                node_name(snap, ids[0]),
+                node_name(snap, ids[1]),
+                node_name(snap, cf),
+            )
+        } else {
+            format!(
+                "{} is realized by {} intents with no recorded relationship connecting them",
+                node_name(snap, cf),
+                ids.len()
+            )
+        };
+        out.push(Smell {
+            kind: "tangled_file".into(),
+            message,
+            remedy: "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood"
+                .into(),
+            identity: format!("tangled_file:{cf}"),
+        });
     }
     out
+}
+
+/// True when every co-owner is reachable from every other via relationship
+/// edges (undirected BFS on the owner subgraph). A star (parent ↔ scenarios)
+/// counts; a pairwise clique is not required.
+fn owners_connected(snap: &Snapshot, ids: &[&str]) -> bool {
+    if ids.len() < 2 {
+        return true;
+    }
+    let set: BTreeSet<&str> = ids.iter().copied().collect();
+    let start = ids[0];
+    let mut seen = BTreeSet::new();
+    let mut stack = vec![start];
+    while let Some(cur) = stack.pop() {
+        if !seen.insert(cur) {
+            continue;
+        }
+        for other in &set {
+            if *other != cur && edge_between(snap, cur, other) {
+                stack.push(*other);
+            }
+        }
+    }
+    seen.len() == set.len()
 }
 
 /// undeclared coupling: codefile A imports B, but their owning intents share no

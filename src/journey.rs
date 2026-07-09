@@ -1,8 +1,11 @@
 //! Journey runner — the consumer-plane proof executor (ring 6).
 //!
-//! Plane: execution + graph write-back. A journey spec is an ordered chain of HTTP
-//! requests, each naming the intent it proves, with values captured from one
-//! response threaded into later requests. `run` executes the journey and stamps
+//! Plane: execution + graph write-back. A journey spec is an ordered chain of
+//! steps, each naming the intent it proves. A step is either:
+//! - **HTTP** — `request` + response expectations (API / contract surfaces)
+//! - **CLI** — `run` (shell command) + exit/stdout expectations (CLI / tool surfaces)
+//!
+//! Values captured from one step thread into later steps. `run` stamps
 //! `validates` edges: consecutive passing steps pass, the failing boundary fails
 //! with the exact broken expectation, and never-reached steps are not executed;
 //! previously passing validates edges for never-reached steps are reopened.
@@ -14,8 +17,10 @@ use crate::model::{EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 use anyhow::{anyhow, Context};
+use process_control::{ChildExt, Control};
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::process::Stdio;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,12 +51,23 @@ pub struct Step {
     #[serde(default)]
     pub name: String,
     pub intent: String,
+    /// Shell command for a CLI step (`sh -c`). Mutually exclusive with a
+    /// meaningful HTTP `request` — when `run` is non-empty, the step is CLI.
+    #[serde(default)]
+    pub run: String,
     #[serde(default)]
     pub request: Request,
     #[serde(default)]
     pub expect: Expect,
     #[serde(default)]
     pub capture: BTreeMap<String, String>,
+}
+
+impl Step {
+    /// CLI steps name a shell command; HTTP steps name a request URL/method.
+    pub fn is_cli(&self) -> bool {
+        !self.run.trim().is_empty()
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -85,9 +101,20 @@ fn get() -> String {
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 pub struct Expect {
+    /// HTTP response status (HTTP steps).
     pub status: Option<u16>,
+    /// Process exit code (CLI steps). Defaults to `0` when omitted on a CLI step.
+    pub exit_code: Option<i32>,
+    /// Substrings that must appear in CLI stdout (CLI steps).
+    #[serde(default)]
+    pub stdout_contains: Vec<String>,
+    /// Substrings that must appear in CLI stderr (CLI steps).
+    #[serde(default)]
+    pub stderr_contains: Vec<String>,
+    /// JSONPath → expected value. HTTP: response body. CLI: stdout parsed as JSON.
     #[serde(default)]
     pub body: BTreeMap<String, serde_json::Value>,
+    /// JSONPaths that must exist. HTTP: response body. CLI: stdout parsed as JSON.
     #[serde(default)]
     pub exists: Vec<String>,
 }
@@ -217,6 +244,7 @@ fn http_contract_to_journey(contract: HttpContract) -> JourneySpec {
             Step {
                 name,
                 intent,
+                run: String::new(),
                 request: Request {
                     method,
                     url: normalize_path_params(&route.path),
@@ -226,6 +254,9 @@ fn http_contract_to_journey(contract: HttpContract) -> JourneySpec {
                 },
                 expect: Expect {
                     status: route.success_status,
+                    exit_code: None,
+                    stdout_contains: Vec::new(),
+                    stderr_contains: Vec::new(),
                     body: BTreeMap::new(),
                     exists: route
                         .response_fields
@@ -308,108 +339,314 @@ fn field_path(field: &str) -> String {
 
 /// Execute a journey. When `record` is true, write verdicts onto the journey's
 /// `validates` edges; otherwise (diagnose) only report.
+///
+/// `cwd` is the working directory for CLI steps (`run:`). HTTP steps ignore it.
+/// When `None`, CLI steps use the process current directory.
+///
+/// Prefer [`execute_steps`] + [`record_outcomes`] from `journey run` so the
+/// exclusive graph lock is not held while nested CLI steps touch the same graph.
 pub fn execute(
     store: Option<&Store>,
     spec: &JourneySpec,
     record: bool,
 ) -> Result<Vec<StepOutcome>> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()
-        .context("building http client")?;
-    let mut vars: BTreeMap<String, String> = BTreeMap::new();
-    let mut outcomes = Vec::new();
-    let journey_val = if record {
+    execute_in(store, spec, record, None)
+}
+
+/// Like [`execute`], but CLI steps run with `cwd` as the working directory.
+pub fn execute_in(
+    store: Option<&Store>,
+    spec: &JourneySpec,
+    record: bool,
+    cwd: Option<&Path>,
+) -> Result<Vec<StepOutcome>> {
+    let mut outcomes = execute_steps(spec, cwd, !record)?;
+    if record {
         let store =
             store.ok_or_else(|| anyhow!("recording a journey run requires a graph store"))?;
-        Some(resolve_validation(store, &spec.journey, true)?)
+        record_outcomes(store, spec, &mut outcomes)?;
+    }
+    Ok(outcomes)
+}
+
+/// Run every step without holding a graph store (no verdict write-back).
+///
+/// Use this from `journey run` after dropping the exclusive lock so CLI steps
+/// that invoke the same repo's loom (or any other graph writer) can open the
+/// graph. Call [`record_outcomes`] afterward to stamp proofs.
+pub fn execute_steps(
+    spec: &JourneySpec,
+    cwd: Option<&Path>,
+    diagnose_style: bool,
+) -> Result<Vec<StepOutcome>> {
+    let has_http = spec.steps.iter().any(|s| !s.is_cli());
+    let client = if has_http {
+        Some(
+            reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(30))
+                .build()
+                .context("building http client")?,
+        )
     } else {
         None
     };
-    for (idx, step) in spec.steps.iter().enumerate() {
-        let base = interpolate(&spec.base, &vars);
-        if !record && (base.is_empty() || base.contains("{{")) {
-            bail_no_usable_base(spec, &base)?;
+    let mut vars: BTreeMap<String, String> = BTreeMap::new();
+    let mut outcomes = Vec::new();
+    for step in &spec.steps {
+        if step.is_cli() && !step.request.url.trim().is_empty() {
+            anyhow::bail!(
+                "step '{}': set either `run` (CLI) or `request` (HTTP), not both",
+                step.name
+            );
         }
-        let url = interpolate(&format!("{base}{}", step.request.url), &vars);
-        let method = step.request.method.to_uppercase();
-        let method = reqwest::Method::from_bytes(method.as_bytes())
-            .map_err(|_| anyhow!("step '{}': invalid HTTP method '{method}'", step.name))?;
-        let mut req = client.request(method, &url);
-        for (name, value) in &step.request.headers {
-            req = req.header(name, interpolate(value, &vars));
-        }
-        if !step.request.query.is_empty() {
-            let query: Vec<(String, String)> = step
-                .request
-                .query
-                .iter()
-                .map(|(key, value)| (key.clone(), interpolate(&value_to_string(value), &vars)))
-                .collect();
-            req = req.query(&query);
-        }
-        if let Some(body) = &step.request.json {
-            let interpolated = interpolate_json(body, &vars);
-            req = req.json(&interpolated);
-        }
-        let mut outcome = match req.send() {
-            Ok(resp) => check_response(step, resp, &mut vars, !record),
-            Err(e) => StepOutcome {
-                name: step.name.clone(),
-                intent: step.intent.clone(),
-                passed: false,
-                detail: if record {
-                    format!("request error: {e}")
-                } else {
-                    format!("request failed: {e}")
-                },
-            },
-        };
-        if let (Some(store), Some(journey)) = (store, &journey_val) {
-            match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
-                Ok(intent) => {
-                    for e in store.edges_with(
-                        Some(EdgeKind::Validates),
-                        Some(&journey.id),
-                        Some(&intent.id),
-                    )? {
-                        let status = if outcome.passed {
-                            InspectionStatus::Passing
-                        } else {
-                            InspectionStatus::Failing
-                        };
-                        store.record_verdict(
-                            &e.id,
-                            status,
-                            "journey step",
-                            &outcome.detail,
-                            1.0,
-                            "journey",
-                        )?;
-                    }
-                }
-                Err(e) => {
-                    outcome.passed = false;
-                    outcome.detail = format!("unresolved step intent '{}': {e}", step.intent);
-                }
+        let outcome = if step.is_cli() {
+            run_cli_step(step, &mut vars, cwd, diagnose_style)?
+        } else {
+            let client = client
+                .as_ref()
+                .ok_or_else(|| anyhow!("internal: HTTP client missing for HTTP step"))?;
+            let base = interpolate(&spec.base, &vars);
+            if diagnose_style && (base.is_empty() || base.contains("{{")) {
+                bail_no_usable_base(spec, &base)?;
             }
-        }
+            let url = interpolate(&format!("{base}{}", step.request.url), &vars);
+            let method = step.request.method.to_uppercase();
+            let method = reqwest::Method::from_bytes(method.as_bytes())
+                .map_err(|_| anyhow!("step '{}': invalid HTTP method '{method}'", step.name))?;
+            let mut req = client.request(method, &url);
+            for (name, value) in &step.request.headers {
+                req = req.header(name, interpolate(value, &vars));
+            }
+            if !step.request.query.is_empty() {
+                let query: Vec<(String, String)> = step
+                    .request
+                    .query
+                    .iter()
+                    .map(|(key, value)| (key.clone(), interpolate(&value_to_string(value), &vars)))
+                    .collect();
+                req = req.query(&query);
+            }
+            if let Some(body) = &step.request.json {
+                let interpolated = interpolate_json(body, &vars);
+                req = req.json(&interpolated);
+            }
+            match req.send() {
+                Ok(resp) => check_response(step, resp, &mut vars, diagnose_style),
+                Err(e) => StepOutcome {
+                    name: step.name.clone(),
+                    intent: step.intent.clone(),
+                    passed: false,
+                    detail: if diagnose_style {
+                        format!("request failed: {e}")
+                    } else {
+                        format!("request error: {e}")
+                    },
+                },
+            }
+        };
         let passed = outcome.passed;
         outcomes.push(outcome);
         if !passed {
-            if let (Some(store), Some(journey)) = (store, &journey_val) {
-                stale_unreached_passing_steps(store, spec, &journey.id, idx + 1)?;
-            }
             break;
         }
     }
-    if record {
-        let all_pass = outcomes.iter().all(|o| o.passed) && !outcomes.is_empty();
-        if let (Some(store), Some(journey)) = (store, &journey_val) {
-            store.set_node_status(&journey.id, if all_pass { "passed" } else { "failed" })?;
+    Ok(outcomes)
+}
+
+/// Stamp `validates` verdicts and journey status from already-executed outcomes.
+///
+/// Resolves the journey validation (repairing duplicates when needed). Mutates
+/// `outcomes` when a step intent cannot be resolved (marks that step failed).
+pub fn record_outcomes(
+    store: &Store,
+    spec: &JourneySpec,
+    outcomes: &mut [StepOutcome],
+) -> Result<Node> {
+    let journey = resolve_validation(store, &spec.journey, true)?;
+    let mut first_fail_idx: Option<usize> = None;
+    for (idx, outcome) in outcomes.iter_mut().enumerate() {
+        match store.resolve_node(&outcome.intent, Some(NodeType::Intent)) {
+            Ok(intent) => {
+                for e in store.edges_with(
+                    Some(EdgeKind::Validates),
+                    Some(&journey.id),
+                    Some(&intent.id),
+                )? {
+                    let status = if outcome.passed {
+                        InspectionStatus::Passing
+                    } else {
+                        InspectionStatus::Failing
+                    };
+                    store.record_verdict(
+                        &e.id,
+                        status,
+                        "journey step",
+                        &outcome.detail,
+                        1.0,
+                        "journey",
+                    )?;
+                }
+            }
+            Err(e) => {
+                outcome.passed = false;
+                outcome.detail = format!("unresolved step intent '{}': {e}", outcome.intent);
+            }
+        }
+        if !outcome.passed && first_fail_idx.is_none() {
+            first_fail_idx = Some(idx);
         }
     }
-    Ok(outcomes)
+    if let Some(idx) = first_fail_idx {
+        stale_unreached_passing_steps(store, spec, &journey.id, idx + 1)?;
+    }
+    let all_pass = !outcomes.is_empty() && outcomes.iter().all(|o| o.passed);
+    store.set_node_status(&journey.id, if all_pass { "passed" } else { "failed" })?;
+    Ok(journey)
+}
+
+fn run_cli_step(
+    step: &Step,
+    vars: &mut BTreeMap<String, String>,
+    cwd: Option<&Path>,
+    diagnose_style: bool,
+) -> Result<StepOutcome> {
+    let command = interpolate(&step.run, vars);
+    let timeout_secs = 60u64;
+    let mut builder = std::process::Command::new("sh");
+    builder.arg("-c").arg(&command);
+    if let Some(dir) = cwd {
+        builder.current_dir(dir);
+    }
+    builder.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let child = builder
+        .spawn()
+        .with_context(|| format!("step '{}': spawning `{command}`", step.name))?;
+    let output = child
+        .controlled_with_output()
+        .time_limit(Duration::from_secs(timeout_secs))
+        .terminate_for_timeout()
+        .wait()
+        .with_context(|| format!("step '{}': waiting on `{command}`", step.name))?;
+    let Some(output) = output else {
+        return Ok(StepOutcome {
+            name: step.name.clone(),
+            intent: step.intent.clone(),
+            passed: false,
+            detail: format!("`{command}` timed out after {timeout_secs}s"),
+        });
+    };
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let code = output.status.code().unwrap_or(-1) as i32;
+    let want = step.expect.exit_code.unwrap_or(0);
+    if code != want {
+        return Ok(StepOutcome {
+            name: step.name.clone(),
+            intent: step.intent.clone(),
+            passed: false,
+            detail: if diagnose_style {
+                format!("exit {code} (want {want}); stderr: {}", truncate(&stderr, 200))
+            } else {
+                format!("exit {code} (want {want})")
+            },
+        });
+    }
+    for needle in &step.expect.stdout_contains {
+        let n = interpolate(needle, vars);
+        if !stdout.contains(&n) {
+            return Ok(StepOutcome {
+                name: step.name.clone(),
+                intent: step.intent.clone(),
+                passed: false,
+                detail: format!("stdout missing `{n}`"),
+            });
+        }
+    }
+    for needle in &step.expect.stderr_contains {
+        let n = interpolate(needle, vars);
+        if !stderr.contains(&n) {
+            return Ok(StepOutcome {
+                name: step.name.clone(),
+                intent: step.intent.clone(),
+                passed: false,
+                detail: format!("stderr missing `{n}`"),
+            });
+        }
+    }
+    let stdout_json = serde_json::from_str::<serde_json::Value>(stdout.trim()).ok();
+    if (!step.expect.body.is_empty() || !step.expect.exists.is_empty() || !step.capture.is_empty())
+        && stdout_json.is_none()
+    {
+        return Ok(StepOutcome {
+            name: step.name.clone(),
+            intent: step.intent.clone(),
+            passed: false,
+            detail: "CLI step expects JSON stdout for body/exists/capture, but stdout was not JSON"
+                .into(),
+        });
+    }
+    if let Some(ref body) = stdout_json {
+        for path in &step.expect.exists {
+            if jsonpath(body, path).is_none() {
+                return Ok(StepOutcome {
+                    name: step.name.clone(),
+                    intent: step.intent.clone(),
+                    passed: false,
+                    detail: format!("stdout JSON missing `{path}`"),
+                });
+            }
+        }
+        for (path, expected) in &step.expect.body {
+            let Some(got) = jsonpath(body, path) else {
+                return Ok(StepOutcome {
+                    name: step.name.clone(),
+                    intent: step.intent.clone(),
+                    passed: false,
+                    detail: format!("stdout JSON missing `{path}`"),
+                });
+            };
+            let expected = interpolate_json(expected, vars);
+            if got != expected {
+                return Ok(StepOutcome {
+                    name: step.name.clone(),
+                    intent: step.intent.clone(),
+                    passed: false,
+                    detail: format!("stdout JSON `{path}`: got {got}, want {expected}"),
+                });
+            }
+        }
+        for (name, path) in &step.capture {
+            if let Some(v) = jsonpath(body, path) {
+                vars.insert(name.clone(), value_to_string(&v));
+            } else {
+                return Ok(StepOutcome {
+                    name: step.name.clone(),
+                    intent: step.intent.clone(),
+                    passed: false,
+                    detail: format!("capture `{name}` from `{path}` missing in stdout JSON"),
+                });
+            }
+        }
+    }
+    // Always expose raw streams for later interpolation when useful.
+    vars.insert("stdout".into(), stdout.clone());
+    vars.insert("stderr".into(), stderr);
+    Ok(StepOutcome {
+        name: step.name.clone(),
+        intent: step.intent.clone(),
+        passed: true,
+        detail: format!("`{command}` exit {code}"),
+    })
+}
+
+fn truncate(s: &str, max: usize) -> String {
+    let t = s.trim();
+    if t.chars().count() <= max {
+        t.to_string()
+    } else {
+        let cut: String = t.chars().take(max).collect();
+        format!("{cut}…")
+    }
 }
 
 fn bail_no_usable_base(spec: &JourneySpec, resolved_base: &str) -> Result<()> {
@@ -637,17 +874,28 @@ fn jsonpath(v: &serde_json::Value, path: &str) -> Option<serde_json::Value> {
 /// Diagnose common failure roots before/without recording.
 pub fn diagnose_hints(spec: &JourneySpec) -> Vec<String> {
     let mut hints = Vec::new();
-    if spec.base.is_empty() {
-        hints.push("no `base` url set — relative step urls will fail".into());
+    let has_http = spec.steps.iter().any(|s| !s.is_cli());
+    let has_cli = spec.steps.iter().any(|s| s.is_cli());
+    if has_http && spec.base.is_empty() {
+        hints.push("no `base` url set — relative HTTP step urls will fail".into());
     }
-    let blob = serde_json::to_string(
-        &spec
-            .steps
-            .iter()
-            .map(|s| &s.request.url)
-            .collect::<Vec<_>>(),
-    )
-    .unwrap_or_default();
+    if has_cli {
+        hints.push(
+            "CLI steps run via `sh -c` in the graph root with the exclusive lock released — put the binary on PATH (or use a repo-relative path)"
+                .into(),
+        );
+    }
+    let mut blob = String::new();
+    for s in &spec.steps {
+        blob.push_str(&s.run);
+        blob.push_str(&s.request.url);
+        for v in s.request.headers.values() {
+            blob.push_str(v);
+        }
+        for n in &s.expect.stdout_contains {
+            blob.push_str(n);
+        }
+    }
     if blob.contains("{{ env.") || blob.contains("{{env.") {
         hints.push("steps reference env vars — ensure they are set before running".into());
     }

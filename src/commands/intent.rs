@@ -163,6 +163,17 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
     if let Some(a) = &args.aspect {
         check_aspect(a)?;
     }
+    // Scenario aspects (sad/fallback/edge_case) surround a happy path — they are
+    // not independent product surfaces. Default them to internal unless the
+    // caller explicitly set visibility (keeps elaborate/quality/journey on the
+    // happy-path spine for any repo).
+    let visibility = match (&args.visibility, &args.aspect) {
+        (Some(v), _) => Some(v.clone()),
+        (None, Some(a)) if matches!(a.as_str(), "sad" | "fallback" | "edge_case") => {
+            Some("internal".into())
+        }
+        (None, _) => None,
+    };
     let node = store.add_node(
         NodeType::Intent,
         &args.name,
@@ -186,7 +197,7 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
         &args.level,
         TruthClass::Asserted,
     )?;
-    if let Some(v) = &args.visibility {
+    if let Some(v) = &visibility {
         store.set_facet(
             &node.id,
             TargetKind::Node,
@@ -213,13 +224,14 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
 fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
     let store = open(graph)?;
     let node = create_intent(&store, &args)?;
+    let visibility = store.get_facet(&node.id, TargetKind::Node, "visibility")?;
     pulse::emit_line(
         &store,
         json,
         serde_json::json!({
             "intent": node_json(&node),
             "level": args.level,
-            "visibility": args.visibility,
+            "visibility": visibility,
             "layer": args.layer,
             "aspect": args.aspect,
             "allow_symbol_name": args.allow_symbol_name,
