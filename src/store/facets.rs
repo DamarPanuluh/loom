@@ -73,6 +73,24 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
+    /// Node ids tagged with `term` (any target_kind=node).
+    pub fn nodes_with_tag(&self, term: &str) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT target_id FROM tag WHERE term=?1 AND target_kind='node' ORDER BY target_id",
+        )?;
+        let rows = stmt.query_map(params![term], |r| r.get::<_, String>(0))?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    /// Node ids with facet `key=value` (target_kind=node).
+    pub fn nodes_where_facet(&self, key: &str, value: &str) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT target_id FROM facet WHERE key=?1 AND value=?2 AND target_kind='node' ORDER BY target_id",
+        )?;
+        let rows = stmt.query_map(params![key, value], |r| r.get::<_, String>(0))?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
     // ---- snapshot / restore (export / import) ----------------------------
 
     /// Read the whole graph as a deterministic snapshot (sorted collections).

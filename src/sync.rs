@@ -49,9 +49,11 @@ pub struct SyncReport {
 pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     let mut report = SyncReport::default();
     let mut changed_intents: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut changed_codefiles: BTreeSet<String> = BTreeSet::new();
     let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();
     for deriver in crate::seed::sync_derivers() {
         for change in deriver.derive(store, root, &mut report)? {
+            changed_codefiles.insert(change.artifact_id.clone());
             ripple_codefile(
                 store,
                 &change.artifact_id,
@@ -65,7 +67,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
         }
     }
     report.surfaces_affected = seen_surfaces.len();
-    ripple_changed_intents(store, &changed_intents, &mut report)?;
+    ripple_changed_intents(store, &changed_intents, &changed_codefiles, &mut report)?;
     ripple_artifact_drift(store, root, &mut report)?;
     ripple_runner_drift(store, root, &mut report)?;
     ripple_wiki_drift(store, &mut report)?;
@@ -281,11 +283,22 @@ fn evidence_span_status(
 
 /// Pass 2: ripple staleness from changed intents to the edges that depend on
 /// them — targets, governs, validates (also resetting the proof), and relationships.
+///
+/// `relates` is special: undirected analyzer judgment. One-sided symbol churn
+/// must not fan out across the whole mesh. A relates edge stales only when
+/// **both** endpoints are in `changed_intents`, or when its `depends_on` refs
+/// intersect this sync's change set (intent ids + changed codefile ids).
+/// Directional kinds (`requires`, `triggers`, …) keep one-sided ripple.
 fn ripple_changed_intents(
     store: &Store,
     changed_intents: &BTreeMap<String, BTreeSet<String>>,
+    changed_codefiles: &BTreeSet<String>,
     report: &mut SyncReport,
 ) -> Result<()> {
+    // Union of change refs for depends_on intersection.
+    let mut change_refs: BTreeSet<String> = changed_intents.keys().cloned().collect();
+    change_refs.extend(changed_codefiles.iter().cloned());
+
     for (intent, causes) in changed_intents {
         let cause = causes.iter().cloned().collect::<Vec<_>>().join("; ");
         for e in store.edges_with(Some(EdgeKind::Governs), None, Some(intent))? {
@@ -307,7 +320,6 @@ fn ripple_changed_intents(
             report.validations_reset += 1;
         }
         for kind in [
-            EdgeKind::Relates,
             EdgeKind::Requires,
             EdgeKind::ScenarioOf,
             EdgeKind::VariantOf,
@@ -326,7 +338,49 @@ fn ripple_changed_intents(
             }
         }
     }
+
+    // Relates: collect unique edges touching any changed intent, then apply the
+    // hybrid gate once per edge (avoids double-stale and one-sided fanout).
+    let mut seen_relates = BTreeSet::new();
+    for intent in changed_intents.keys() {
+        for e in store.edges_with(Some(EdgeKind::Relates), Some(intent), None)? {
+            seen_relates.insert(e.id);
+        }
+        for e in store.edges_with(Some(EdgeKind::Relates), None, Some(intent))? {
+            seen_relates.insert(e.id);
+        }
+    }
+    for edge_id in seen_relates {
+        let Some(e) = store.get_edge(&edge_id)? else {
+            continue;
+        };
+        let both_changed = changed_intents.contains_key(&e.from_id)
+            && changed_intents.contains_key(&e.to_id);
+        let deps_hit = depends_on_intersects(&e.depends_on, &change_refs);
+        if !(both_changed || deps_hit) {
+            report.edges_spared += 1;
+            continue;
+        }
+        let cause = if both_changed {
+            "both relates endpoints changed".to_string()
+        } else {
+            "relates depends_on intersects sync change set".to_string()
+        };
+        if store.stale_edge(&e.id, &cause)? {
+            report.edges_staled += 1;
+        }
+    }
     Ok(())
+}
+
+fn depends_on_intersects(depends_on: &serde_json::Value, change_refs: &BTreeSet<String>) -> bool {
+    let Some(arr) = depends_on.as_array() else {
+        return false;
+    };
+    arr.iter().any(|v| {
+        v.as_str()
+            .is_some_and(|s| change_refs.contains(s) || change_refs.iter().any(|c| c == s))
+    })
 }
 
 /// Pass 2b: ripple drift of a JourneyProof validation's `body.artifact` file.

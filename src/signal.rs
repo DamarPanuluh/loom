@@ -61,8 +61,48 @@ struct Adjudication {
     verdict: String,
     reason: String,
     hash: String,
+    /// Metric observed when the verdict was recorded (loc, complexity, …).
+    /// Absent on pre-banding adjudications — those fall back to hash-only stale.
+    #[serde(default)]
+    metric: Option<u64>,
     #[serde(rename = "at")]
     _at: String,
+}
+
+/// Resolving adjudications (`justified`/`rejected`/`deferred`/`duplicate`) stay
+/// settled across content-hash churn unless the finding's metric worsens by more
+/// than this relative band (or absolute floor). `needed`/`blocked` still reopen
+/// on any hash change — those are open work.
+const RESOLVING_METRIC_BAND: f64 = 0.10;
+const RESOLVING_METRIC_FLOOR: u64 = 50;
+
+fn resolving_verdict(verdict: &str) -> bool {
+    matches!(
+        verdict,
+        "justified" | "rejected" | "deferred" | "duplicate"
+    )
+}
+
+/// Whether a resolving adjudication should reopen: metric grew past the band,
+/// or (legacy) hash changed with no stamped metric.
+fn resolving_is_stale(
+    adj: &Adjudication,
+    current_hash: Option<&String>,
+    current_metric: Option<u64>,
+) -> bool {
+    let hash_changed = !adj.hash.is_empty() && current_hash != Some(&adj.hash);
+    if !hash_changed {
+        return false;
+    }
+    match (adj.metric, current_metric) {
+        (Some(recorded), Some(now)) => {
+            let floor =
+                RESOLVING_METRIC_FLOOR.max((recorded as f64 * RESOLVING_METRIC_BAND).ceil() as u64);
+            now > recorded.saturating_add(floor)
+        }
+        // Legacy adjudications without a metric: keep hash-only stale (safe).
+        _ => true,
+    }
 }
 
 /// The deterministic Finding det_key for a smell identity. `sync` materializes
@@ -669,7 +709,13 @@ pub fn findings_view(store: &Store) -> Result<Vec<FindingView>> {
             continue;
         }
         let current_hash = store.finding_codefile_hash(&node.id)?;
-        let stale = !adj.hash.is_empty() && current_hash.as_ref() != Some(&adj.hash);
+        let current_metric = store.finding_metric(&node.id)?;
+        let stale = if resolving_verdict(&adj.verdict) {
+            resolving_is_stale(&adj, current_hash.as_ref(), current_metric)
+        } else {
+            // Open work (needed/blocked): any codefile edit reopens triage.
+            !adj.hash.is_empty() && current_hash.as_ref() != Some(&adj.hash)
+        };
         out.push(FindingView {
             node,
             state: adj.verdict,

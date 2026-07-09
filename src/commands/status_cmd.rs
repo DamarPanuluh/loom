@@ -484,10 +484,22 @@ pub(crate) fn queue_list(graph: Option<&Path>, mode: &str, json: bool) -> Result
     );
     let width = items.len().to_string().len();
     for (i, it) in items.iter().enumerate() {
+        let hint = it
+            .routing_hint
+            .as_deref()
+            .map(|h| format!("/{h}"))
+            .unwrap_or_default();
+        let class = it
+            .cause_class
+            .as_deref()
+            .map(|c| format!(" {c}"))
+            .unwrap_or_default();
         println!(
-            "  {:>width$}. [{}] {} — {}",
+            "  {:>width$}. [{}{}{}] {} — {}",
             i + 1,
             it.effort,
+            hint,
+            class,
             it.target.name,
             it.reason,
             width = width
@@ -549,9 +561,14 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
 fn print_work_item(item: &workitem::WorkItem) {
     let c = &item.prompt_contract;
     let short = &item.target.id[..8.min(item.target.id.len())];
+    let hint = item
+        .routing_hint
+        .as_deref()
+        .map(|h| format!(", {h}"))
+        .unwrap_or_default();
     println!(
-        "[{}] {} (effort {})",
-        item.mode, item.target.name, item.effort
+        "[{}] {} (effort {}{})",
+        item.mode, item.target.name, item.effort, hint
     );
     println!("  id: {short}");
     println!("  why: {}", item.reason);

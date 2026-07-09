@@ -502,7 +502,7 @@ Choose the next queue/work item based on graph state.
 
 ### WorkItem
 
-A promptable unit of work emitted by `loom next`. Real fields are `mode`, `owner_role`, `effort`, `reason`, `target`, `stale_causes`, `prompt_contract`, `context`, `truth_gap`, and `next_step`. File hints live at `context.read_set`; allowed actions and write-back live inside `prompt_contract`.
+A promptable unit of work emitted by `loom next`. Real fields are `mode`, `owner_role`, `effort`, `routing_hint`, `reason`, `target`, `stale_causes`, `prompt_contract`, `context`, `truth_gap`, and `next_step`. File hints live at `context.read_set`; allowed actions and write-back live inside `prompt_contract`.
 
 ### PromptContract
 
@@ -545,7 +545,11 @@ A state requiring human decision or input. The LLM may frame choices, but must n
 
 ### effort
 
-A model-neutral difficulty tier for the work: low, mid, high. The harness maps effort to available model/tooling; loom does not name vendors.
+A model-neutral difficulty tier for the work: low, mid, high. The harness maps effort to available model/tooling; loom does not name vendors. Sync's `cheap re-confirm` grading forces `low`.
+
+### routing_hint
+
+Optional orchestrator hint on a WorkItem / queue roster row: `mechanical` (batch-safe reaffirm via `loom apply` verdicts) or `judgment` (one-packet inspection). Distinct from `effort`: effort is cost; routing_hint is whether a weaker model may close the item.
 
 
 ### Definition-of-Complete

@@ -401,7 +401,13 @@ mod nodes;
 // ---- helpers -------------------------------------------------------------
 
 fn schema_migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(SCHEMA)])
+    Migrations::new(vec![
+        M::up(SCHEMA),
+        M::up(
+            "CREATE INDEX IF NOT EXISTS idx_tag_term ON tag(term);
+             CREATE INDEX IF NOT EXISTS idx_facet_key_value ON facet(key, value);",
+        ),
+    ])
 }
 
 fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
@@ -409,6 +415,24 @@ fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
     schema_migrations()
         .to_latest(conn)
         .context("migrating graph schema")?;
+    // Keep the portable identity stamp aligned with the migration counter when
+    // meta already exists (re-open / upgrade). Fresh init inserts schema_version
+    // itself after this returns.
+    let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let has_schema_meta = conn
+        .query_row(
+            "SELECT 1 FROM meta WHERE key='schema_version'",
+            [],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
+    if has_schema_meta {
+        conn.execute(
+            "UPDATE meta SET value=?1 WHERE key='schema_version'",
+            params![user_version.to_string()],
+        )?;
+    }
     Ok(())
 }
 

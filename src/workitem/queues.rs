@@ -10,11 +10,12 @@ use super::context::{edge_context, node_context};
 use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, elaborator_contract, fixer_contract,
     inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
-    reviewer_contract, triage_contract, validator_contract,
+    reviewer_contract, structural_finding_triage_contract, triage_contract,
+    validator_contract,
 };
 use super::{
-    axis_for_role, effort_for, node_target, rank_lifecycle, LinkedEntity, SuggestedRead, Target,
-    WorkItem,
+    axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
+    SuggestedRead, Target, WorkItem,
 };
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
@@ -118,6 +119,7 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
         mode: "build".into(),
         owner_role: "builder".into(),
         effort: "mid".into(),
+        routing_hint: super::hint_judgment(),
         reason,
         target: node_target(&intent),
         stale_causes: Vec::new(),
@@ -165,6 +167,7 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
         mode: "coverage".into(),
         owner_role: "builder".into(),
         effort: "low".into(),
+        routing_hint: super::hint_mechanical(),
         reason,
         target: node_target(&cf),
         stale_causes: Vec::new(),
@@ -349,6 +352,7 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
         mode: "quality".into(),
         owner_role: "quality".into(),
         effort,
+        routing_hint: super::hint_judgment(),
         reason: format!(
             "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
             rule.name, intent.name
@@ -471,6 +475,7 @@ pub(super) fn elaborate_item(store: &Store) -> Result<Option<WorkItem>> {
         mode: "elaborate".into(),
         owner_role: "builder".into(),
         effort: "high".into(),
+        routing_hint: super::hint_judgment(),
         reason,
         target: node_target(&intent),
         stale_causes: Vec::new(),
@@ -495,6 +500,7 @@ pub(super) fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
         mode: "prove".into(),
         owner_role: "analyzer".into(),
         effort: "high".into(),
+        routing_hint: super::hint_judgment(),
         reason: "unproven hypothesis — prove or refute the claim against the code".into(),
         target: node_target(&h),
         stale_causes: Vec::new(),
@@ -513,17 +519,38 @@ pub(super) fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
     }))
 }
 
+/// Structural detectors (size/complexity) need cohesion judgment — never a
+/// mechanical "length is intentional" closeout. Smells and inbox stay on the
+/// generic triage contract; only these kinds get the cohesion checklist.
+fn is_structural_size_finding(node: &crate::model::Node) -> bool {
+    let kind = node
+        .body
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or(node.status.as_str());
+    matches!(
+        kind,
+        "oversized_file"
+            | "complex_symbol"
+            | "large_symbol"
+            | "deep_nesting"
+            | "excess_args"
+            | "panic_marker"
+            | "tangled_file"
+    )
+}
+
 pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
     let findings = crate::signal::triage_findings(store)?;
     let Some(fv) = findings.into_iter().next() else {
         return inbox_triage_item(store);
     };
     let short = &fv.node.id[..8.min(fv.node.id.len())];
-    // Cohesion evidence from the graph: which intents own the flagged file. One
-    // or two cohesive owners reads as justified length; many unrelated ones (or
-    // none) reads as a file that needs splitting — the judgment grep cannot make.
-    // Graph-shape smells flag no file: their remedy IS the triage context.
+    // Cohesion evidence from the graph: which intents own the flagged file.
+    // Owner-count is a hint for the LLM, not a verdict — a catch-all file can
+    // still "own" intents. Graph-shape smells flag no file: remedy is context.
     let is_smell = fv.node.body.get("category").and_then(|v| v.as_str()) == Some("smell");
+    let structural = is_structural_size_finding(&fv.node);
     let cohesion = if is_smell {
         format!(" — structural smell; remedy: {}", fv.node.description)
     } else {
@@ -538,15 +565,20 @@ pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
                 String::new()
             };
             format!(
-                " — flagged file owns {} intent(s): {}{}",
+                " — flagged file owns {} intent(s): {}{}{}",
                 owners.len(),
                 names.join("; "),
-                more
+                more,
+                if structural {
+                    " (owner-count is a hint — read the file; catch-all bags are needed, not justified)"
+                } else {
+                    ""
+                }
             )
         }
     };
     let stale = if fv.stale {
-        " — prior verdict is stale (file changed)"
+        " — prior verdict is stale (metric worsened or open work's file changed)"
     } else {
         ""
     };
@@ -554,18 +586,36 @@ pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
         "adjudicate evidence-backed finding: {}{}{}",
         fv.node.name, stale, cohesion
     );
+    let (effort, routing_hint, prompt_contract) = if structural {
+        (
+            "mid".into(),
+            super::hint_judgment(),
+            structural_finding_triage_contract(short),
+        )
+    } else {
+        (
+            "low".into(),
+            super::hint_mechanical(),
+            triage_contract(short),
+        )
+    };
     Ok(Some(WorkItem {
         mode: "triage".into(),
         owner_role: "analyzer".into(),
-        effort: "low".into(),
+        effort,
+        routing_hint,
         reason,
         target: node_target(&fv.node),
         stale_causes: Vec::new(),
-        prompt_contract: triage_contract(short),
+        prompt_contract,
         context: node_context(
             store,
             &fv.node,
-            "Inspect the flagged finding and owning codefile context before adjudicating.",
+            if structural {
+                "Read the flagged file's structure (modules/handlers). Judge one concern vs catch-all before adjudicating."
+            } else {
+                "Inspect the flagged finding and owning codefile context before adjudicating."
+            },
         )?,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Signal.gap(),
@@ -586,6 +636,7 @@ fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort: "low".into(),
+        routing_hint: super::hint_mechanical(),
         reason: format!("route raw human/external input: '{}'", item.description),
         target: node_target(&item),
         stale_causes: Vec::new(),
@@ -633,7 +684,7 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
         _ => analyzer_contract(edge, &from_name, &to_name),
     };
     // A rule's authored inspection effort beats the generic status mapping.
-    let effort = if edge.kind == EdgeKind::Governs {
+    let base_effort = if edge.kind == EdgeKind::Governs {
         from.as_ref()
             .and_then(|r| r.body.get("effort"))
             .and_then(|v| v.as_str())
@@ -642,19 +693,28 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
     } else {
         effort_for(edge)
     };
+    let context = edge_context(
+        store,
+        edge,
+        "Inspect the target edge endpoints and linked code before acting.",
+    )?;
+    let (effort, routing_hint) = super::refine_effort_and_hint(
+        base_effort,
+        &stale_causes,
+        &contract.write_back,
+        &edge.criterion,
+        context.read_set.len(),
+    );
     Ok(WorkItem {
         mode: mode.into(),
         owner_role: role.into(),
         effort,
+        routing_hint,
         reason: reason.into(),
         target,
         stale_causes,
         prompt_contract: contract,
-        context: edge_context(
-            store,
-            edge,
-            "Inspect the target edge endpoints and linked code before acting.",
-        )?,
+        context,
         scorecard: None,
         truth_gap: axis_for_role(role).gap(),
         // The fixer lane never records verdicts — its loop ends at sync, and
@@ -823,6 +883,12 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
 pub struct QueueEntry {
     pub mode: String,
     pub effort: String,
+    /// `mechanical` | `judgment` — same axis as `WorkItem.routing_hint`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub routing_hint: Option<String>,
+    /// `cheap` | `full` | `other` — derived from the edge's stale_cause facet.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cause_class: Option<String>,
     pub reason: String,
     pub target: Target,
 }
@@ -836,9 +902,22 @@ fn edge_entry(store: &Store, edge: &Edge, mode: &str, reason: &str) -> Result<Qu
         .get_node(&edge.to_id)?
         .map(|n| n.name)
         .unwrap_or_default();
+    let stale_causes = store
+        .get_facet(&edge.id, crate::model::TargetKind::Edge, "stale_cause")?
+        .map(|c| vec![c])
+        .unwrap_or_default();
+    let class = cause_class(&stale_causes);
+    let base = effort_for(edge);
+    let (effort, routing_hint) = match class {
+        "cheap" => ("low".into(), Some("mechanical".into())),
+        "full" => (base, Some("judgment".into())),
+        _ => (base, Some("judgment".into())),
+    };
     Ok(QueueEntry {
         mode: mode.into(),
-        effort: effort_for(edge),
+        effort,
+        routing_hint,
+        cause_class: Some(class.into()),
         reason: reason.into(),
         target: Target {
             kind: "edge".into(),
@@ -851,9 +930,20 @@ fn edge_entry(store: &Store, edge: &Edge, mode: &str, reason: &str) -> Result<Qu
 }
 
 fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEntry {
+    let routing_hint = match mode {
+        "elaborate" | "prove" | "build" => Some("judgment".into()),
+        "coverage" => Some("mechanical".into()),
+        // Structural size/complexity findings need cohesion judgment; inbox and
+        // generic findings stay mechanical.
+        "triage" if is_structural_size_finding(node) => Some("judgment".into()),
+        "triage" => Some("mechanical".into()),
+        _ => Some("judgment".into()),
+    };
     QueueEntry {
         mode: mode.into(),
         effort: effort.into(),
+        routing_hint,
+        cause_class: None,
         reason,
         target: node_target(node),
     }
@@ -1014,12 +1104,16 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
         }
         Mode::Triage => {
             for fv in crate::signal::triage_findings(store)? {
+                let structural = is_structural_size_finding(&fv.node);
                 let reason = if fv.stale {
                     "stale evidence-backed finding — re-adjudicate it"
+                } else if structural {
+                    "adjudicate structural finding — judge cohesion, not length"
                 } else {
                     "adjudicate evidence-backed finding"
                 };
-                out.push(node_entry("triage", "low", &fv.node, reason.into()));
+                let effort = if structural { "mid" } else { "low" };
+                out.push(node_entry("triage", effort, &fv.node, reason.into()));
             }
             for item in store
                 .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
@@ -1094,6 +1188,8 @@ fn unmeasured_pair_entries(store: &Store) -> Result<Vec<QueueEntry>> {
         out.push(QueueEntry {
             mode: "quality".into(),
             effort,
+            routing_hint: Some("judgment".into()),
+            cause_class: None,
             reason: format!(
                 "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
                 rule.name, intent.name

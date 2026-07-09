@@ -193,8 +193,38 @@ impl Store {
                 TruthClass::Asserted,
             )?;
         }
+        // Relates edges record cited codefile ids in depends_on so sync can
+        // reopen the claim when those files change, without one-sided intent
+        // fanout. Other kinds keep depends_on empty (federation uses DependsOn
+        // edges, not this column).
+        if edge.kind == EdgeKind::Relates {
+            let mut refs: Vec<String> = Vec::new();
+            for stamp in &stamps {
+                if let Some(cf) = self
+                    .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
+                    .into_iter()
+                    .find(|n| n.name == stamp.file)
+                {
+                    if !refs.contains(&cf.id) {
+                        refs.push(cf.id);
+                    }
+                }
+            }
+            self.set_depends_on(edge_id, &refs)?;
+        }
         self.get_edge(edge_id)?
             .ok_or_else(|| anyhow!("edge vanished after verdict"))
+    }
+
+    /// Replace the edge's `depends_on` JSON array (asserted provenance refs).
+    pub fn set_depends_on(&self, edge_id: &str, refs: &[String]) -> Result<()> {
+        let now = now(&self.conn)?;
+        let json = serde_json::to_string(refs)?;
+        self.conn.execute(
+            "UPDATE edge SET depends_on=?2, updated_at=?3 WHERE id=?1",
+            params![edge_id, json, now],
+        )?;
+        Ok(())
     }
 
     /// Set the status of a derived edge. This is the ONLY path that writes

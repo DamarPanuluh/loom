@@ -78,6 +78,7 @@ WorkItem
   mode:            build | coverage | fix | analyze | validate | quality | prove | triage | review | elaborate
   owner_role:      builder | analyzer | fixer | validator | quality
   effort:          low | mid | high
+  routing_hint:    mechanical | judgment   # optional; orchestrators map to model tiers
   reason:          why this item is next
   target:          { kind, id, name, from?, to? }
   stale_causes:    [] typed stale_cause facets recorded by sync — symbol-scoped where the
@@ -103,6 +104,8 @@ WorkItem
   next_step:       what to do after acting
 ```
 
+`loom next --mode <m> --all` roster rows also carry `routing_hint` and (for edge items) `cause_class` (`cheap` | `full` | `other`) so an orchestrator can select mechanical residue without opening every full packet.
+
 There is no top-level `id`, `target_facts`, `allowed_commands`, or `read_set`. The target id is `work_item.target.id`; allowed actions and write-back live in `work_item.prompt_contract`; the file read set lives in `work_item.context.read_set`.
 
 `effort` is a statement about the work, not a model. The harness maps effort to available models. loom never names vendors.
@@ -118,7 +121,9 @@ understanding into durable graph artifacts: intents, scenario families,
 prerequisites, interface boundaries, validations, journey coverage, invariant
 points, reasoned waivers, and crisp product questions. Prefer graph writes over
 prose summaries. Do not answer product questions for the human, and do not mark
-proofs passed without observed runs.
+proofs passed without observed runs. On a cold graph with codefiles registered
+and no intents yet, start from `loom bootstrap suggest` (a Proposal of planned
+pillars) then adopt — never invent an entire spine as `implemented`.
 
 **Draining mode** closes already-routed gaps one packet at a time. A bounded or
 cheaper model can run `loom next`, inspect the packet's `read_set`, satisfy
@@ -619,14 +624,32 @@ human-gated (requires human):
 
 ---
 
-## Effort tiers
+## Effort tiers and routing_hint
 
-Every WorkItem carries `effort: low | mid | high`. This is a statement about the work, computed from graph structure.
+Every WorkItem carries `effort: low | mid | high`. This is a statement about the work, computed from graph structure and sync grading.
 
 ```text
-low:   mechanical grounding, evidence-only re-verification, simple proof re-run
-mid:   relationship re-inspection, quality measurement, finding/inbox triage
+low:   mechanical grounding, evidence-only re-verification (cheap re-confirm), simple proof re-run
+mid:   relationship re-inspection, quality measurement, structural finding cohesion triage, inbox triage
 high:  design reasoning, hypothesis proof, complex repair, intent alignment
+```
+
+`routing_hint` is a separate axis for harness routing:
+
+```text
+mechanical: cheap re-confirm (cited evidence intact) or a fully prefilled write_back with prior criterion
+judgment:   full re-inspection, rewritten evidence, structural size/complexity cohesion, or any packet that still needs fresh reading
+```
+
+Structural detector findings (`oversized_file`, complexity/nesting/args, …) are **judgment** triage: the detector only crossed a calibrated gate; the LLM must name one cohesive concern (`justified`) or a split plan (`needed`). Owner-count in the reason is a hint, not a verdict. Do not batch-reaffirm these as mechanical residue.
+
+Orchestrator contract for mechanical residue (no dedicated reconfirm command):
+
+```text
+loom next --mode analyze --all --json
+  → select items where routing_hint == mechanical (or cause_class == cheap)
+  → loom apply batch.json   # verdicts[] reaffirming prior criterion with fresh evidence
+  → loom next               # judgment items one-at-a-time
 ```
 
 Mapping to models/agents is the harness's job. loom never names vendors.

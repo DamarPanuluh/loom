@@ -541,6 +541,39 @@ pub(super) fn triage_contract(id: &str) -> PromptContract {
     }
 }
 
+/// Structural size/complexity findings need cohesion judgment — not a mechanical
+/// "length is intentional" closeout. Owner-count is a hint, not the verdict.
+pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "Judge cohesion, not line count. Read the flagged file's top-level modules/handlers. One concern → justified; a catch-all bag of unrelated commands/surfaces → needed (split). Do not fix here."
+            .into(),
+        why_now: "a structural detector flagged size or complexity; calibrate already set the gate — this packet is about whether the file is one concern".into(),
+        allowed_actions: vec![
+            format!("loom finding verdict {id} needed --reason <split plan: which concerns to separate>"),
+            format!("loom finding verdict {id} justified --reason <the single cohesive concern>"),
+            format!("loom finding verdict {id} rejected --reason <why the metric is a false positive>"),
+            format!("loom finding verdict {id} deferred --reason <why not scheduled now>"),
+            format!("loom finding verdict {id} blocked --reason <what it waits on>"),
+            format!("loom finding verdict {id} duplicate --reason <duplicate finding id or target>"),
+        ],
+        forbidden_actions: vec![
+            "edit code here (mark it needed, then fix in build/fix)".into(),
+            "justified because 'length is intentional' or 'cohesive surface' without naming one concern".into(),
+            "justified from owner-count alone without reading the file structure".into(),
+            "batch-reaffirm / mechanical closeout of this packet".into(),
+        ],
+        required_evidence: "name the concern(s) you saw: one → justified with that name; several unrelated → needed with a split plan; false gate → rejected"
+            .into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate> --reason '…'"),
+        stop_condition: "after recording the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
 pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
     PromptContract {
         role: "analyzer".into(),

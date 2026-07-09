@@ -1090,3 +1090,11 @@ pub enum GraphCmd {
     /// List linked upstream graphs.
     List,
 }
+
+#[derive(Subcommand, Debug)]
+pub enum BootstrapCmd {
+    /// Draft a Proposal of planned pillar intents from derived signals
+    /// (registered codefiles, tests/, README H2s). Operator adopts via
+    /// `loom proposal item adopt --as intent`. Never writes verdicts.
+    Suggest,
+}

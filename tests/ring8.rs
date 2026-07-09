@@ -13,9 +13,9 @@ fn derived_finding(store: &Store) -> loom::model::Node {
             NodeType::Finding,
             "oversized_file:src/x.rs:",
             "src/x.rs is oversized",
-            "1200 lines",
+            "1200 lines (> 600)",
             "oversized_file",
-            serde_json::json!({ "kind": "oversized_file", "symbol": "" }),
+            serde_json::json!({ "kind": "oversized_file", "symbol": "", "metric": 1200 }),
         )
         .unwrap()
 }
@@ -110,7 +110,7 @@ fn finding_adjudication_survives_derived_graph_wipe() {
 }
 
 #[test]
-fn finding_adjudication_goes_stale_when_codefile_hash_changes() {
+fn finding_adjudication_stays_settled_on_hash_churn_within_metric_band() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let codefile = mature_graph_with_codefile(&store);
@@ -136,6 +136,56 @@ fn finding_adjudication_goes_stale_when_codefile_hash_changes() {
     assert!(!fresh[0].stale);
     assert!(loom::signal::untriaged_findings(&store).unwrap().is_empty());
 
+    // Content hash churn without a metric jump must not reopen a resolving
+    // adjudication — otherwise every edit re-triages justified oversized files.
+    store
+        .set_facet(
+            &codefile.id,
+            TargetKind::Node,
+            "content_hash",
+            "h2",
+            TruthClass::Derived,
+        )
+        .unwrap();
+    let still = loom::signal::findings_view(&store).unwrap();
+    assert!(!still[0].stale);
+    assert!(loom::signal::stale_findings(&store).unwrap().is_empty());
+    assert!(loom::signal::triage_findings(&store).unwrap().is_empty());
+}
+
+#[test]
+fn finding_adjudication_goes_stale_when_metric_worsens_past_band() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let codefile = mature_graph_with_codefile(&store);
+    store
+        .set_facet(
+            &codefile.id,
+            TargetKind::Node,
+            "content_hash",
+            "h1",
+            TruthClass::Derived,
+        )
+        .unwrap();
+    let finding = derived_finding(&store);
+    store
+        .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
+        .unwrap();
+    store
+        .record_finding_verdict(&finding.id, "justified", "cohesive")
+        .unwrap();
+
+    // Rebuild the finding with a metric past the 10%/50-line band (1200 → 1400).
+    store
+        .add_derived_node(
+            NodeType::Finding,
+            "oversized_file:src/x.rs:",
+            "src/x.rs is oversized",
+            "1400 lines (> 600)",
+            "oversized_file",
+            serde_json::json!({ "kind": "oversized_file", "symbol": "", "metric": 1400 }),
+        )
+        .unwrap();
     store
         .set_facet(
             &codefile.id,
@@ -147,9 +197,44 @@ fn finding_adjudication_goes_stale_when_codefile_hash_changes() {
         .unwrap();
     let stale = loom::signal::findings_view(&store).unwrap();
     assert!(stale[0].stale);
-    assert_eq!(loom::signal::untriaged_findings(&store).unwrap().len(), 0);
     assert_eq!(loom::signal::stale_findings(&store).unwrap().len(), 1);
     assert_eq!(loom::signal::triage_findings(&store).unwrap().len(), 1);
+}
+
+#[test]
+fn needed_finding_still_stales_on_hash_change() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let codefile = mature_graph_with_codefile(&store);
+    store
+        .set_facet(
+            &codefile.id,
+            TargetKind::Node,
+            "content_hash",
+            "h1",
+            TruthClass::Derived,
+        )
+        .unwrap();
+    let finding = derived_finding(&store);
+    store
+        .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
+        .unwrap();
+    store
+        .record_finding_verdict(&finding.id, "needed", "split later")
+        .unwrap();
+
+    store
+        .set_facet(
+            &codefile.id,
+            TargetKind::Node,
+            "content_hash",
+            "h2",
+            TruthClass::Derived,
+        )
+        .unwrap();
+    let stale = loom::signal::findings_view(&store).unwrap();
+    assert!(stale[0].stale);
+    assert_eq!(loom::signal::stale_findings(&store).unwrap().len(), 1);
 }
 
 #[test]
@@ -203,6 +288,18 @@ fn triage_item_surfaces_owning_intents_as_cohesion_evidence() {
     // owning intent is named in the work item so cohesion is judged at a glance.
     assert!(item.reason.contains("owns 1 intent(s)"));
     assert!(item.reason.contains("behavior holds"));
+    // Structural size findings are judgment work, not mechanical closeout.
+    assert_eq!(item.routing_hint.as_deref(), Some("judgment"));
+    assert_eq!(item.effort, "mid");
+    assert!(item
+        .prompt_contract
+        .mindset
+        .contains("Judge cohesion, not line count"));
+    assert!(item
+        .prompt_contract
+        .forbidden_actions
+        .iter()
+        .any(|a| a.contains("length is intentional")));
 }
 
 #[test]

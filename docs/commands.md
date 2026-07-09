@@ -82,8 +82,13 @@ Quality fallback: if no `governs` edge needs work, `loom next --mode quality` pr
 ```
 
 ```text
-loom find [--limit N] [--exact] "<query>" [--json]
+loom find [--limit N] [--exact] [--tag <term>] [--where KEY=VALUE] ["<query>"] [--json]
+loom explain <intent> [--json]
 ```
+
+`find` searches intents/codefiles/quality rules by keyword (fuzzy) or `--exact` whole-name match. `--tag` and repeatable `--where KEY=VALUE` filter by vocabulary tag and allowlisted facets (`visibility`, `level`, `aspect` — also listed in `loom schema`). Filters AND together; query may be omitted when filters alone select the set.
+
+`explain` is a read-only neighborhood brief for one intent: description, facets/tags, groundings, 1-hop related intents, validations, completeness scorecard, open questions. It is **not** a `loom next` work lane.
 
 Keyword-substring search over intents, codefiles, and quality rules. It is not BM25. Fuzzy hits that match the query as a whole name (case-insensitive) are tagged `(exact)` so an existence check never rests on reading a score. `--exact` restricts output to those whole-name matches only — the reliable "does a node named exactly this exist?" check, and it lists every id when duplicates share a name.
 
@@ -186,6 +191,8 @@ Sections (all optional, applied in dependency order — `vocab` first, then `int
 
 `verdict` verbs match `loom edge verdict`: `ground` | `issue` | `independent`. Groundings and relationships are find-or-create (idempotent — an existing edge is reused, never duplicated); intent creation is create-only (re-declaring an existing name is rejected, and the atomic rollback leaves the graph unchanged). A re-recorded identical verdict is a boundary-level no-op, so re-applying an unchanged batch does not churn exported timestamps.
 
+**Mechanical reconfirm:** when `loom next --mode analyze --all` shows `routing_hint: mechanical` / `cause_class: cheap`, an orchestrator may batch-reaffirm those edges through `verdicts[]` (reuse the prior criterion; cite intact evidence) instead of opening each full packet. Judgment items stay one-at-a-time via `loom next`.
+
 `adjudications` records a durable finding verdict (`justified` | `needed` | `blocked` with a substantive reason) — the same gate as `loom finding verdict`, on a finding materialized by a prior `sync`. `vocab` registers terms (idempotent) and `tags` tags an intent with registered terms (same gate as `loom intent tag add`); list a term under `vocab` earlier in the same batch to register and apply it in one call — collapsing the per-intent "arm the duplicate detector" churn, just as `adjudications` collapses per-finding triage.
 
 ### Concurrency
@@ -197,6 +204,14 @@ loom detect [--json]
 ```
 
 Detects repo languages and recommends seedable quality packs only. Available packs are: `iso5055`, `service`, `web-ui`, `data`, `concurrency`, `docker` (29 rules total across the shipped pack set).
+
+```text
+loom bootstrap suggest [--json]
+```
+
+Cold-start assist when the graph has **registered codefiles and zero intents**. Scans derived signals (top-level `src/` modules from registered codefiles, `tests/*.rs`, README `##` headings) and writes a **Proposal** whose items are candidate pillar intents (suggested name/description/level/visibility). The operator adopts with `loom proposal item adopt <proposal> <n> --as intent` → `lifecycle=planned` only.
+
+Hard rules: never creates `implements`/`governs`/`validates` verdicts; never sets `implemented`; refuses if any intent already exists. `loom session` offers this command when `intents == 0 && codefiles > 0`.
 
 ```text
 loom scan add <name> "<command>" [--map <map>] [--format lines|json] [--json]
@@ -400,6 +415,8 @@ loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate -
 ```
 
 `Finding` is the one node type for evidence-backed observations. Programmatic producers (`sync` detectors, `scan run` diagnostics, materialized graph-shape smells) create derived findings; LLM/tool observations enter as asserted findings through `loom finding add`. Both share listing, triage, staleness display, and `loom finding verdict`; verdicts adjudicate signals, they do not fix code.
+
+Resolving adjudications (`justified` | `rejected` | `deferred` | `duplicate`) stay settled across content-hash churn unless the finding's metric worsens past a band (~10% or 50 absolute, whichever is larger). Open work (`needed` | `blocked`) still reopens on any flagged-codefile hash change. Use `loom calibrate --write` so structural gates fit the repo before mass triage.
 
 ---
 

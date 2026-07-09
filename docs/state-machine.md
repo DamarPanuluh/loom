@@ -46,6 +46,8 @@ Every fact type has a canonical owner. A change to one expression of truth must 
 | Product question | `Question` | builder / human answer |
 | Operational work | `TaskRecord` | any role |
 
+Finding adjudication freshness: resolving verdicts (`justified` / `rejected` / `deferred` / `duplicate`) reopen triage only when the finding's metric worsens past a band (~10% or absolute floor), not on every content-hash change of the flagged file. Open verdicts (`needed` / `blocked`) still reopen on hash change. Calibrate thresholds (`loom calibrate --write`) before treating structural detectors as obligations.
+
 A documentation prose edit is not a change to behavior meaning unless it is routed as a typed graph delta and accepted. Raw human/external input enters through `InboxItem`; evidence-backed wiki/code observations enter through `Finding`.
 
 ---
@@ -111,7 +113,8 @@ CodeFile content hash changed
   → consumes/configures/verifies implements edges for this file → needs_reverification only if the file vanished or seam locator drifted
   → governs edges whose intent grounds this file through a realizing edge → needs_reverification
   → Validation.last_result → not_run; linked validates edges → needs_reverification
-  → relates/requires/triggers/sequence edges between intents realizing this file → needs_reverification
+  → requires/triggers/sequence/scenario-of/variant-of edges touching an intent that realized this file → needs_reverification
+  → relates edges: only when **both** endpoints' realizing groundings changed this sync, **or** the edge's `depends_on` refs (cited codefile ids stamped at explore/verdict) intersect the change set — one-sided symbol churn does not fan out across the relates mesh
   → WikiPages documenting an intent grounded in this file → stale (served by loom wiki next)
 ```
 
@@ -136,6 +139,7 @@ Intent description changed (redefinition)
   → governs edges for this intent → needs_reverification
   → validates edges for this intent → needs_reverification; linked Validation.last_result → not_run
   → relates/requires/etc edges touching this intent → needs_reverification
+    (meaning change is not code churn: one-sided relates reopen is intentional here)
   → completeness waiver facets are cleared so waived axes re-open under the new meaning
   → old wording and waiver reopening are preserved in decision Notes
   → WikiPages documenting this intent → stale (served by loom wiki next)

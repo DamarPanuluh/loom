@@ -15,6 +15,7 @@ use anyhow::{anyhow, bail};
 use std::path::{Path, PathBuf};
 
 mod apply_cmd;
+mod bootstrap_cmd;
 mod codefile_cmd;
 mod diagnostics_cmd;
 mod domain_cmd;
@@ -112,7 +113,20 @@ pub fn run(cli: Cli) -> Result<()> {
             query,
             limit,
             exact,
-        } => misc_cmd::find_cmd(cli.graph.as_deref(), &query, limit, exact, cli.json),
+            tag,
+            where_facets,
+        } => misc_cmd::find_cmd(
+            cli.graph.as_deref(),
+            &query,
+            limit,
+            exact,
+            tag.as_deref(),
+            &where_facets,
+            cli.json,
+        ),
+        Command::Explain { intent } => {
+            misc_cmd::explain_cmd(cli.graph.as_deref(), &intent, cli.json)
+        },
         Command::Detect => misc_cmd::detect_cmd(cli.graph.as_deref(), cli.json),
         Command::Schema => misc_cmd::schema_cmd(cli.json),
         Command::Rule { cmd } => proof_cmd::rule(cli.graph.as_deref(), cmd, cli.json),
@@ -143,6 +157,7 @@ pub fn run(cli: Cli) -> Result<()> {
             diagnostics_cmd::completeness_cmd(cli.graph.as_deref(), key.as_deref(), cli.json)
         }
         Command::Graph { cmd } => graph_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Bootstrap { cmd } => bootstrap_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
     }
 }
 

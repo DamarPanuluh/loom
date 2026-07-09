@@ -433,6 +433,38 @@ fn evidence_refines_cause() {
         cause_b.contains("cited evidence rewritten"),
         "rewritten span must append 'cited evidence rewritten' to the cause: {cause_b}"
     );
+
+    // Cheap vs full grading must reach the work packet / roster so orchestrators
+    // can route mechanical residue without mid-tier inspection.
+    use loom::workitem::{self, Mode};
+    let roster = workitem::queue_items(&store, Mode::Analyze).unwrap();
+    let row_a = roster
+        .iter()
+        .find(|r| r.target.id == e_a)
+        .expect("intact-span edge in analyze roster");
+    assert_eq!(row_a.cause_class.as_deref(), Some("cheap"));
+    assert_eq!(row_a.routing_hint.as_deref(), Some("mechanical"));
+    assert_eq!(row_a.effort, "low");
+
+    let row_b = roster
+        .iter()
+        .find(|r| r.target.id == e_b)
+        .expect("rewritten-span edge in analyze roster");
+    assert_eq!(row_b.cause_class.as_deref(), Some("full"));
+    assert_eq!(row_b.routing_hint.as_deref(), Some("judgment"));
+
+    let packet = workitem::next(&store, Some(Mode::Analyze))
+        .unwrap()
+        .expect("analyze serves a packet");
+    // Top of queue is stable by edge order; whichever is first must carry a hint.
+    assert!(
+        packet.routing_hint.is_some(),
+        "analyze packet must carry routing_hint"
+    );
+    if packet.stale_causes.iter().any(|c| c.contains("cheap re-confirm")) {
+        assert_eq!(packet.effort, "low");
+        assert_eq!(packet.routing_hint.as_deref(), Some("mechanical"));
+    }
 }
 
 // ============================================================
@@ -589,5 +621,123 @@ fn vague_intent_smell() {
     assert!(
         smell_has_resolving_adjudication(&store, &identity).unwrap(),
         "smell_has_resolving_adjudication must return true after a 'justified' adjudication"
+    );
+}
+
+// ============================================================
+// 9. relates hybrid ripple
+// ============================================================
+
+/// One-sided symbol change must NOT stale a relates edge between two intents.
+/// Both endpoints changing, or depends_on intersecting a changed codefile, must.
+#[test]
+fn relates_spared_on_one_sided_change_staled_when_both_or_depends_on() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    tmp.write("src/a.rs", "pub fn alpha() {}\n");
+    tmp.write("src/b.rs", "pub fn beta() {}\n");
+
+    let cf_a = add_codefile(&store, "src/a.rs");
+    let cf_b = add_codefile(&store, "src/b.rs");
+    let i_a = add_intent(&store, "alpha behavior", "alpha does a thing");
+    let i_b = add_intent(&store, "beta behavior", "beta does a thing");
+    let g_a = ground(&store, &i_a, &cf_a, Some("fn alpha"));
+    let g_b = ground(&store, &i_b, &cf_b, Some("fn beta"));
+
+    sync::run(&store, tmp.path()).unwrap();
+    pass(&store, &g_a, "see src/a.rs:1");
+    pass(&store, &g_b, "see src/b.rs:1");
+
+    let relates = store
+        .add_edge(EdgeKind::Relates, &i_a, &i_b, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &relates.id,
+            InspectionStatus::Passing,
+            "they share a seam",
+            "see src/a.rs:1 — alpha calls into beta's world",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    // record_verdict stamps depends_on with cited codefile ids for Relates.
+    let deps = store.get_edge(&relates.id).unwrap().unwrap().depends_on;
+    assert!(
+        deps.as_array()
+            .map(|a| a.iter().any(|v| v.as_str() == Some(cf_a.as_str())))
+            .unwrap_or(false),
+        "relates depends_on should include cited codefile a: {deps}"
+    );
+
+    // One-sided: only alpha's file changes. Relates must be spared (both
+    // endpoints not in changed_intents — only i_a changes — BUT depends_on
+    // includes cf_a which DID change, so this case stales via depends_on).
+    // Use a relates WITHOUT depends_on hit: clear depends_on first, then
+    // change only alpha — should spare.
+    store.set_depends_on(&relates.id, &[]).unwrap();
+    // Re-settle so we can observe a fresh stale.
+    store
+        .record_verdict(
+            &relates.id,
+            InspectionStatus::Passing,
+            "they share a seam",
+            "conceptual coupling only — no file citation",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    // Clearing citations leaves depends_on empty after the relates stamp of [].
+    store.set_depends_on(&relates.id, &[]).unwrap();
+
+    tmp.write("src/a.rs", "pub fn alpha() { let _ = 1; }\n");
+    sync::run(&store, tmp.path()).unwrap();
+
+    assert_eq!(
+        edge_status(&store, &relates.id),
+        InspectionStatus::Passing,
+        "one-sided change with empty depends_on must spare relates"
+    );
+    assert_eq!(
+        edge_status(&store, &g_a),
+        InspectionStatus::NeedsReverification,
+        "alpha grounding still reopens"
+    );
+
+    // Both endpoints change → relates stales.
+    pass(&store, &g_a, "see src/a.rs:1");
+    tmp.write("src/a.rs", "pub fn alpha() { let _ = 2; }\n");
+    tmp.write("src/b.rs", "pub fn beta() { let _ = 2; }\n");
+    sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        edge_status(&store, &relates.id),
+        InspectionStatus::NeedsReverification,
+        "both endpoints changed → relates must stale"
+    );
+    let cause = stale_cause(&store, &relates.id).unwrap();
+    assert!(
+        cause.contains("both relates endpoints"),
+        "cause should name both-endpoints rule: {cause}"
+    );
+
+    // depends_on hit: re-settle, stamp depends_on to cf_a only, change only a.
+    pass(
+        &store,
+        &relates.id,
+        "see src/a.rs:1 — alpha side of the seam",
+    );
+    // pass() helper may not set depends_on the same way — force it.
+    store.set_depends_on(&relates.id, &[cf_a.clone()]).unwrap();
+    pass(&store, &g_a, "see src/a.rs:1");
+    pass(&store, &g_b, "see src/b.rs:1");
+
+    tmp.write("src/a.rs", "pub fn alpha() { let _ = 3; }\n");
+    // b unchanged
+    sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        edge_status(&store, &relates.id),
+        InspectionStatus::NeedsReverification,
+        "depends_on intersecting changed codefile must stale relates"
     );
 }

@@ -138,6 +138,11 @@ pub struct WorkItem {
     pub mode: String,
     pub owner_role: String,
     pub effort: String,
+    /// Orchestrator hint: `mechanical` (cheap re-confirm / fully prefilled
+    /// write-back) vs `judgment` (needs fresh inspection). Harnesses map this
+    /// to model tiers; loom never names vendors.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub routing_hint: Option<String>,
     pub reason: String,
     /// The primary target: an intent or an edge, described for the LLM.
     pub target: Target,
@@ -276,11 +281,64 @@ fn rank_lifecycle(s: &str) -> u8 {
     }
 }
 
-fn effort_for(edge: &Edge) -> String {
+pub(crate) fn effort_for(edge: &Edge) -> String {
     match edge.status {
         InspectionStatus::Failing => "high".into(),
         _ => "mid".into(),
     }
+}
+
+/// Classify a stale_cause string for roster filtering: `cheap` | `full` | `other`.
+pub(crate) fn cause_class(stale_causes: &[String]) -> &'static str {
+    if stale_causes
+        .iter()
+        .any(|c| c.contains("cheap re-confirm"))
+    {
+        "cheap"
+    } else if stale_causes.iter().any(|c| {
+        c.contains("full re-inspection") || c.contains("cited evidence rewritten")
+    }) {
+        "full"
+    } else {
+        "other"
+    }
+}
+
+/// Refine effort + routing_hint from sync grading and packet shape.
+///
+/// - `cheap re-confirm` → effort `low`, hint `mechanical`
+/// - `full re-inspection` / rewritten evidence → hint `judgment`, keep base effort
+/// - else: fully prefilled write_back + non-empty prior criterion + small read_set
+///   → `mechanical`; otherwise `judgment`
+pub(crate) fn refine_effort_and_hint(
+    base_effort: String,
+    stale_causes: &[String],
+    write_back: &str,
+    prior_criterion: &str,
+    read_set_len: usize,
+) -> (String, Option<String>) {
+    match cause_class(stale_causes) {
+        "cheap" => ("low".into(), Some("mechanical".into())),
+        "full" => (base_effort, Some("judgment".into())),
+        _ => {
+            let templated = write_back.contains('<') && write_back.contains('>');
+            let mechanical =
+                !templated && !prior_criterion.trim().is_empty() && read_set_len <= 3;
+            if mechanical {
+                (base_effort, Some("mechanical".into()))
+            } else {
+                (base_effort, Some("judgment".into()))
+            }
+        }
+    }
+}
+
+pub(crate) fn hint_judgment() -> Option<String> {
+    Some("judgment".into())
+}
+
+pub(crate) fn hint_mechanical() -> Option<String> {
+    Some("mechanical".into())
 }
 
 /// The truth axis an edge-work role is closing. `fixer` restores implementation

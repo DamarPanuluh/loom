@@ -369,21 +369,61 @@ impl Store {
         reason: &str,
     ) -> Result<()> {
         let hash = self.finding_codefile_hash(finding_id)?.unwrap_or_default();
+        let metric = self.finding_metric(finding_id)?;
         let at = now(&self.conn)?;
-        let adjudication = serde_json::json!({
+        let mut adjudication = serde_json::json!({
             "verdict": verdict,
             "reason": reason,
             "hash": hash,
             "at": at,
-        })
-        .to_string();
+        });
+        if let Some(m) = metric {
+            adjudication["metric"] = serde_json::json!(m);
+        }
         self.set_facet(
             finding_id,
             TargetKind::Node,
             "adjudication",
-            &adjudication,
+            &adjudication.to_string(),
             TruthClass::Asserted,
         )
+    }
+
+    /// Observable metric the finding is about (file loc, symbol complexity, …),
+    /// when the finding body or description carries one. Used to band-stale
+    /// resolving adjudications instead of reopening on every content-hash bump.
+    pub fn finding_metric(&self, finding_id: &str) -> Result<Option<u64>> {
+        let Some(finding) = self.get_node(finding_id)? else {
+            return Ok(None);
+        };
+        if let Some(m) = finding.body.get("metric").and_then(|v| v.as_u64()) {
+            return Ok(Some(m));
+        }
+        // Parse a leading integer from the detail line ("1200 lines (> 600)").
+        let mut num = String::new();
+        for ch in finding.description.chars() {
+            if ch.is_ascii_digit() {
+                num.push(ch);
+            } else if !num.is_empty() {
+                break;
+            }
+        }
+        if !num.is_empty() {
+            return Ok(num.parse().ok());
+        }
+        // oversized_file fallback: current codefile loc facet.
+        if finding.body.get("kind").and_then(|v| v.as_str()) == Some("oversized_file") {
+            if let Some(flags) = self
+                .edges_with(Some(EdgeKind::Flags), Some(finding_id), None)?
+                .into_iter()
+                .next()
+            {
+                if let Some(loc) = self.get_facet(&flags.to_id, TargetKind::Node, "loc")? {
+                    return Ok(loc.parse().ok());
+                }
+            }
+        }
+        Ok(None)
     }
 
     /// Current content hash of the codefile flagged by a finding.

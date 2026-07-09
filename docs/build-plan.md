@@ -364,6 +364,16 @@ ring 12  loom apply atomic batches; cross-graph federation (graph link, Upstream
 
 `CHANGELOG.md` is the authoritative per-release record for this period.
 
+## Addendum — LLM-fidelity hard cuts (post 0.24)
+
+After the LLM-perspective review, these process gates apply until residue economics are proven on dogfood:
+
+1. **No new CLI families** until `routing_hint` / cheap-reconfirm routing and hybrid relates ripple are in use, and a typical single-file edit does not regenerate a mid-effort analyze wall dominated by one-sided `relates` fanout.
+2. **Operator skills must not duplicate command recipes** — vendored `skills/loom-driver/SKILL.md` points at `docs/llm-driver.md` / `docs/commands.md` / `loom guide --json`. CI (`tests/intake_fidelity.rs`) forbids teaching rejected inbox sources.
+3. **Statistical signals never enter required queues** (INV-3 unchanged). `loom debt` stays advisory.
+4. **Bootstrap drafts only** — `loom bootstrap suggest` writes a Proposal of planned pillars; never auto-verdicts or `implemented`.
+5. **Detector economics** — resolving finding adjudications reopen on metric-band worsen, not every content-hash bump; dogfood runs `loom calibrate --write` before mass oversized triage.
+
 ## What the build plan does not contain
 
 - Feature timeline or delivery dates — not loom's concern

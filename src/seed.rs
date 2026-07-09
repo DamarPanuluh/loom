@@ -194,7 +194,11 @@ impl Deriver for StructuralDeriver {
                     &f.title,
                     &f.detail,
                     f.kind,
-                    serde_json::json!({ "kind": f.kind, "symbol": f.symbol }),
+                    serde_json::json!({
+                        "kind": f.kind,
+                        "symbol": f.symbol,
+                        "metric": f.metric,
+                    }),
                 )?;
                 store.add_derived_edge(EdgeKind::Flags, &node.id, &cf.id)?;
                 store.add_derived_edge(EdgeKind::Assesses, &node.id, rule_id)?;
@@ -319,6 +323,8 @@ struct FindingDesc {
     title: String,
     detail: String,
     rule: &'static str,
+    /// The numeric observation that crossed the gate (loc, complexity, …).
+    metric: u64,
 }
 
 /// Derive the built-in structural findings of one file. Symbol-level detectors
@@ -334,6 +340,7 @@ fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDe
             title: format!("{path} is oversized"),
             detail: format!("{} lines (> {})", ex.loc, t.max_file_loc),
             rule: "max-file-size",
+            metric: ex.loc as u64,
         });
     }
     // Per-callable detectors (source files only).
@@ -352,6 +359,7 @@ fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDe
                         s.complexity, t.max_symbol_complexity
                     ),
                     rule: "complex-symbol",
+                    metric: s.complexity as u64,
                 });
             }
             let sym_loc = s.line_end.saturating_sub(s.line_start) + 1;
@@ -362,6 +370,7 @@ fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDe
                     title: format!("{}::{} is long", path, s.name),
                     detail: format!("{} lines (> {})", sym_loc, t.max_symbol_loc),
                     rule: "large-symbol",
+                    metric: sym_loc as u64,
                 });
             }
             if s.max_nesting > t.max_nesting {
@@ -371,6 +380,7 @@ fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDe
                     title: format!("{}::{} nests deeply", path, s.name),
                     detail: format!("nesting depth {} (> {})", s.max_nesting, t.max_nesting),
                     rule: "deep-nesting",
+                    metric: s.max_nesting as u64,
                 });
             }
             if s.arg_count > t.max_args {
@@ -380,6 +390,7 @@ fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDe
                     title: format!("{}::{} takes many arguments", path, s.name),
                     detail: format!("{} args (> {})", s.arg_count, t.max_args),
                     rule: "excess-args",
+                    metric: s.arg_count as u64,
                 });
             }
         }
@@ -393,6 +404,7 @@ fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDe
             title: format!("{path} panics at a boundary"),
             detail: format!("{} unwrap()/panic! site(s)", ex.panic_sites),
             rule: "no-panic-marker",
+            metric: ex.panic_sites as u64,
         });
     }
     out

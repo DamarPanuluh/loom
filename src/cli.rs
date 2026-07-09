@@ -133,9 +133,10 @@ pub enum Command {
         #[arg(long, value_enum)]
         role: Option<RoleArg>,
     },
-    /// Search the graph for intents/codefiles by keyword (fuzzy), or by whole
-    /// name with --exact.
+    /// Search the graph for intents/codefiles by keyword (fuzzy), facet, or tag.
     Find {
+        /// Keyword query; optional when --tag / --where alone filter the set.
+        #[arg(default_value = "")]
         query: String,
         #[arg(long, default_value_t = 20)]
         limit: usize,
@@ -143,6 +144,18 @@ pub enum Command {
         /// check, with no fuzzy substring scoring.
         #[arg(long)]
         exact: bool,
+        /// Restrict to nodes tagged with this vocabulary term.
+        #[arg(long)]
+        tag: Option<String>,
+        /// Restrict to nodes with facet key=value (repeatable; AND). Allowed
+        /// keys: visibility, level, aspect.
+        #[arg(long = "where", value_name = "KEY=VALUE")]
+        where_facets: Vec<String>,
+    },
+    /// Read-only neighborhood brief for an intent (not a work lane).
+    Explain {
+        /// Intent name, id, or unique fragment.
+        intent: String,
     },
     /// Detect repo languages and recommend quality packs.
     Detect,
@@ -248,6 +261,12 @@ pub enum Command {
     Graph {
         #[command(subcommand)]
         cmd: GraphCmd,
+    },
+    /// Cold-start assist: draft a Proposal of planned pillar intents from
+    /// derived signals (codefiles, tests, README). Never auto-verdicts.
+    Bootstrap {
+        #[command(subcommand)]
+        cmd: BootstrapCmd,
     },
 }
 
