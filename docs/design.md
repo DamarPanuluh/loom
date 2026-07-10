@@ -44,7 +44,7 @@ teaching all derive from it.
 
 The three rules that fall out, and must hold everywhere:
 1. **Statistical never gates and never enters required debt.** It is a feed (`loom debt`), full stop.
-2. **Derived is never queued for judgment.** Sync owns its status; a human never "inspects" an import.
+2. **Derived facts are never re-judged; derived Finding nodes are served for asserted adjudication.** Sync owns derived fact status (a human never "inspects" an import); untriaged or stale Finding nodes still route to triage so the operator can write a separate asserted adjudication.
 3. **Absence is the default.** A pair with no relationship has no row. "Independent" is a rare, *evidence-bearing* judgment, not a checkbox to fill for every pair.
 
 ---
@@ -56,8 +56,11 @@ loom sync     recompute the structural plane (deterministic); re-open only the a
               facts whose dependencies changed.
 loom next     the asserted residue: stale verdicts, broken groundings, unbuilt intents.
               Never the grid. Never a co-change instance.
-loom debt     ranked statistical clusters — the compression layer. Confirm one → it becomes
-              an asserted edge / work item; dismiss → a decision note. Both remove it.
+loom debt     ranked statistical clusters — the compression layer. Explicit
+              `loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>]`
+              creates exactly one asserted Finding (`source: debt_promotion`) that
+              enters ordinary finding triage; dismissal is adjudicating that finding
+              `rejected`, not a separate dismiss API. The raw feed stays advisory.
 loom status   where you stand (maturity) + the single next move (compass).
 ```
 
@@ -317,7 +320,7 @@ naturally — they're just different edge kinds with different endpoint types in
 
 ### Finding = single observation node — LOCKED
 
-Structural findings (`oversized_file`, `complex_symbol`, `tangled_file`, `panic_marker`) are deterministic (derived from the file's own content, not git history) and have a specific location (file + symbol) that deserves stable identity for querying and adjudication. Manual LLM/tool observations are evidence-backed findings too, but asserted via `loom finding add`; their file/link evidence lives in the body and they do not get sync-owned `flags`/`assesses` edges. Statistical signals (co-change, shotgun, clone) stay computed views in `loom debt`, never nodes.
+Structural findings (`oversized_file`, `complex_symbol`, `tangled_file`, `panic_marker`) are deterministic (derived from the file's own content, not git history) and have a specific location (file + symbol) that deserves stable identity for querying and adjudication. Manual LLM/tool observations are evidence-backed findings too, but asserted via `loom finding add`; their file/link evidence lives in the body and they do not get sync-owned `flags`/`assesses` edges. Statistical signals (`size_outlier` and shipped git-history `co_change` clusters; clone/shotgun/recurrence remain design-only) stay computed views in `loom debt`, never nodes.
 
 Decision: **Finding is the one node type for evidence-backed observations.** Locked. Programmatic producers use derived findings; LLM/tool observations use asserted findings; both share listing, triage, adjudication, and stale-aware closeout. This keeps one signal lane without introducing an Observation/CodeAuditItem parallel store.
 
@@ -332,9 +335,10 @@ rung above the lowest *unmet* rung is shown as blocked (`⊘ … (blocked by <ga
 satisfied, so a higher rung never reads as reached while a lower one is still open.
 `NotApplicable` rungs are transparent — they never act as the gate.
 
-The v2 fix baked in from the start: **Excellent gates on triaged statistical clusters, not raw
-instance count.** Excellent is `Met` when every cluster above an impact threshold is adjudicated
-(confirmed → work, or dismissed → decision note), `NotApplicable` when none cross it. No 18k cliff.
+The v2 fix baked in from the start: **Excellent gates on open findings/smells, not raw
+statistical-debt instance count.** Statistical clusters stay advisory (`loom debt`); only an
+explicit `loom debt promote` mints a separate asserted Finding that can enter ordinary finding
+triage and therefore the Excellent open-finding gate. No 18k cliff from unpromoted heuristics.
 
 `Hardened` gates on the **asserted coupling residue** (stale/uninspected asserted relationships)
 plus — a deliberate 2026-07 revision — the **unmeasured quality pairs**: every non-deprecated

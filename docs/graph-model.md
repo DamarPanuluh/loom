@@ -273,7 +273,7 @@ updated_at
 
 ### Finding
 
-The one node type for evidence-backed observations. Programmatic producers use `truth_class: derived`; LLM/tool observations use `truth_class: asserted` through `loom finding add`. Both share listing, triage, adjudication, and staleness display.
+The one node type for evidence-backed observations. Programmatic producers use `truth_class: derived`; LLM/tool observations use `truth_class: asserted` through `loom finding add`. Both share listing, triage, adjudication, and staleness display. Explicit `loom debt promote` also mints an asserted Finding with `source: debt_promotion` (cluster snapshot + operator evidence/confidence in the body) and creates no edges or facets (including no `flags`/`assesses`).
 
 Fields:
 
@@ -282,7 +282,7 @@ id
 kind:           oversized_file | complex_symbol | tangled_file | code_audit | ...
 location:       file path + optional symbol (derived producers)
 truth_class:    derived | asserted
-source:         code_audit | wiki | validation | llm (asserted body)
+source:         code_audit | wiki | validation | llm | debt_promotion (asserted body)
 evidence:       observed fact (asserted body)
 impact:         why it matters (asserted body)
 confidence:     0.0..1.0 (asserted body)
@@ -290,7 +290,7 @@ file/link:      registered codefile or graph ref (asserted body)
 created_at
 ```
 
-Note: deterministic structural facts recomputed by sync and external scan diagnostics remain derived findings. Statistical signals such as co-change clusters and clone clusters are `DebtCluster` (computed, never stored as nodes).
+Note: deterministic structural facts recomputed by sync and external scan diagnostics remain derived findings. Statistical signals are `DebtCluster` values — computed, never stored as nodes. `loom debt` currently computes LOC `size_outlier` and git-history `co_change` clusters (clone/shotgun/recurrence remain design vocabulary, not computed).
 
 ### InterfaceSurface
 
@@ -527,12 +527,13 @@ Every graph fact belongs to one plane by how it becomes true.
 
 Reproducible. Computed by `loom sync` from code, files, or graph structure. Wipe and re-run sync: byte-identical result.
 
-Examples: file hash, imports, symbols, language, `flags` edges, `assesses` edges.
+Examples: file hash, imports, symbols, language, derived Finding nodes, `flags` edges, `assesses` edges.
 
 Rules:
-- Never queued for human/LLM judgment.
-- Written only by sync.
-- Can never be stale-but-trusted.
+- Derived facts themselves are never re-judged and never enter the asserted residue queue (`loom next` truth-verdict work).
+- Untriaged or stale derived Finding nodes may still surface in triage; the write is a separate asserted adjudication on the Finding id, never a conversion of the derived occurrence into asserted truth and never a rewrite of derived `flags`/`assesses` edges.
+- Written only by sync (including sync-owned scan reconciliation of external diagnostics).
+- Can never be stale-but-trusted as a derived occurrence: sync rebuilds or retires the fact.
 
 ### Asserted
 
@@ -547,11 +548,11 @@ Rules:
 
 ### Statistical signals (not stored)
 
-Heuristics computed from history or structure. Never stored as edges. Never gate required work by existing.
+Heuristics computed from history or structure. Never stored as edges or nodes. Never gate required work, maturity rungs, or `loom next` counts by mere existence.
 
-Examples: co-change clusters, clone clusters, shotgun surgery signals, recurrence patterns.
+Shipped examples: LOC size-outlier clusters, git-history co-change clusters. Unimplemented design examples (not computed yet): clone clusters, shotgun surgery signals, recurrence patterns, proof-locality suspicion.
 
-Surface: `loom debt` ranked feed. Confirmation promotes to durable graph facts (`Hypothesis`, `needs_change Intent`, manual edge, decision `Note`).
+Surface: `loom debt` ranked advisory feed with stable `cluster_id`s. Explicit `loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>]` creates exactly one asserted Finding (`source: debt_promotion`) that preserves the cluster snapshot and enters ordinary finding triage. Promotion never stores the statistical signal as an edge/node, never writes derived `flags`/`assesses`, and never enqueues the raw cluster as required residue. Follow-on facts (Hypothesis, needs_change Intent, manual edge, decision Note) emerge later from ordinary triage and existing commands, not as the first-surface promotion destinations.
 
 ---
 

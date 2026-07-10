@@ -81,7 +81,7 @@ Never copy v1 code. Re-derive clean.
 - `loom codefile add '<glob>'` — register files, detect language/role
 - Tree-sitter extraction: symbols, imports, loc, content hash, generated/vendor/test classification
 - `loom sync` — content-hash change detection; re-extracts on change; never false-flags on mtime
-- Ripple from `loom sync`: realizing implements locators → needs_reverification + dependent ripple; consumes/configures/verifies groundings reopen only on seam-locator drift; governs → needs_reverification; Validation.last_result → not_run + linked validates → needs_reverification; asserted relationships → needs_reverification
+- Ripple from `loom sync`: realizing implements locators → needs_reverification + dependent ripple; consumes/configures/verifies groundings reopen only on seam-locator drift; governs → needs_reverification; Validation.last_result → not_run + linked validates → needs_reverification; asserted relationships remain settled only when their own stamped citations fully cover the exact changed dependency files and remain byte-intact
 - Derived `Finding` nodes for structural occurrences (oversized_file, complex_symbol, panic_marker) + `flags`/`assesses` edges — derived, recomputed by sync
 - InterfaceSurface extraction is not current; `exposes` edges are asserted-only, not derived by sync
 - `loom codefile show` — ownership view: owners, symbols, imports, stale count
@@ -90,6 +90,7 @@ Never copy v1 code. Re-derive clean.
 **Invariants to test:**
 
 - INV-2: Wipe all derived facts → sync → byte-identical result (the golden sync test)
+- Localized-edit fan-out: ten intact relationship claims create zero packets; the changed grounding plus missing/rewritten relationship evidence creates at most three full-judgment packets
 - Sync is content-hash based: touching mtime without content change → no ripple
 - Derived facts never enter the asserted residue queue
 - `loom sync` output: N changed, M staled, K validations reset
@@ -215,7 +216,7 @@ Never copy v1 code. Re-derive clean.
   - duplicated responsibility (armed by vocab from ring 5), unjourneyed surfaces
   - vocab drift (armed by vocab registry from ring 5), `consumer_owned_file`
   - Each finding carries exact remedy command; open findings gate `Excellent` rung
-- `loom debt` — statistical cluster feed (co-change, clone, shotgun, recurrence, proof-locality); computed on demand, never stored as edges
+- `loom debt` — statistical cluster feed: shipped = LOC `size_outlier` + git-history `co_change` with stable `cluster_id`s and `loom debt promote` (one asserted Finding, `source: debt_promotion`); clone/shotgun/recurrence/proof-locality remain deferred design examples; computed on demand, never stored as edges
 - `loom scan add/list/remove/run` — external diagnostic adapters (linters/type-checkers) whose diagnostics become derived findings in the normal triage lifecycle
 - `loom doctor` — schema conformance, evidence vacuity, provenance, role gate audit, and `consumes_without_seam`
 - Centrality hotspot and focused-dig helpers are deferred/not current; use `loom next` WorkItem context/read_set instead.
@@ -229,7 +230,7 @@ Never copy v1 code. Re-derive clean.
 - `loom smells` layering violation fires after `loom layer order` declared; silent before
 - `loom smells` duplicated_responsibility fires after vocab tag collision; lexical fallback always runs
 - `loom doctor` non-zero exit on any integrity violation
-- Co-change signal does not appear in `loom next` required queue
+- Co-change signal does not appear in `loom next` required queue (holds non-vacuously now that co-change is computed)
 
 **Reference:** `src/journey.rs` and `src/commands/journey.rs` for HTTP execution, JSONPath-style field checks, and evidence-stamping semantics.
 **Exit criterion:** `loom journey run` stamps correct evidence; `loom smells` fully armed; `loom debt` + `loom doctor` correct.

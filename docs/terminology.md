@@ -111,15 +111,19 @@ Asserted facts persist until invalidated by dependency changes.
 
 A heuristic suspicion computed from history or structure. It is not stored as an edge and never gates required work by existing.
 
-Examples:
+Implemented examples:
 
-- co-change cluster,
+- `size_outlier` LOC cluster,
+- git-history `co_change` cluster.
+
+Design vocabulary not yet computed:
+
 - clone cluster,
 - shotgun surgery signal,
 - recurrent trouble,
 - proof-locality suspicion.
 
-Use `DebtSignal` or `DebtCluster` for these. A confirmed signal must be promoted to a durable graph fact such as a `Hypothesis`, `Intent`, manual edge, or decision note.
+Use `DebtSignal` or `DebtCluster` for these. Explicit `loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>]` creates one asserted Finding (`source: debt_promotion`) for ordinary finding triage; the raw feed stays advisory.
 
 Avoid: storing `statistical` as `edge.truth_class`.
 
@@ -179,7 +183,7 @@ Examples:
 - complex symbol at `src/db/stats.rs:build_ladder`,
 - panic marker at `src/server/auth.rs:require_user`.
 
-Do not use `Finding` for statistical co-change or clone clusters unless a deterministic located occurrence is confirmed.
+Do not use `Finding` for raw statistical co-change or clone clusters — those stay `DebtCluster` computed views. The sole exception is an asserted Finding minted by `loom debt promote` (`source: debt_promotion`), which is ordinary finding triage, not a stored statistical signal.
 
 ### external diagnostic adapter
 

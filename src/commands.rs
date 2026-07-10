@@ -4,8 +4,8 @@
 //! output. No SQL here — that lives in `crate::store`.
 
 use crate::cli::{
-    Cli, CodefileCmd, Command, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, LayerCmd, NoteCmd,
-    QuestionCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
+    Cli, CodefileCmd, Command, DebtCmd, FindingCmd, HypothesisCmd, IgnoreCmd, InboxCmd, LayerCmd,
+    NoteCmd, QuestionCmd, RuleCmd, SurfaceCmd, TaskCmd, ValidationCmd, VocabCmd,
 };
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
@@ -140,7 +140,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Vocab { cmd } => domain_cmd::vocab(cli.graph.as_deref(), cmd, cli.json),
         Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd, cli.json),
         Command::Smells => diagnostics_cmd::smells_cmd(cli.graph.as_deref(), cli.json),
-        Command::Debt => diagnostics_cmd::debt_cmd(cli.graph.as_deref(), cli.json),
+        Command::Debt { cmd } => diagnostics_cmd::debt(cli.graph.as_deref(), cmd, cli.json),
         Command::Finding { cmd } => diagnostics_cmd::finding(cli.graph.as_deref(), cmd, cli.json),
         Command::Doctor => diagnostics_cmd::doctor_cmd(cli.graph.as_deref(), cli.json),
         Command::Coverage => diagnostics_cmd::coverage_cmd(cli.graph.as_deref(), cli.json),

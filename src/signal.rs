@@ -1,8 +1,9 @@
 //! Signal plane — smells (structural), debt (statistical), doctor (integrity).
 //!
 //! Plane boundary (INV-3): smells are structural findings computed from graph
-//! shape; debt is a statistical feed computed on demand and NEVER stored as an
-//! edge or counted as required work. Doctor audits integrity after the fact.
+//! shape; debt is a statistical feed computed on demand (optionally reading VCS
+//! history) and NEVER stored as an edge or counted as required work. Doctor
+//! audits integrity after the fact.
 //!
 //! All three are pure reads over a `Snapshot`. Nothing here mutates the graph.
 
@@ -31,14 +32,9 @@ pub struct Smell {
     pub identity: String,
 }
 
-/// A statistical debt signal: ranked, advisory, never stored.
-#[derive(Debug, Clone, Serialize)]
-pub struct DebtCluster {
-    pub kind: String,
-    pub message: String,
-    pub impact: u32,
-    pub confirm: String,
-}
+#[path = "signal/debt.rs"]
+mod debt;
+pub use debt::{debt, debt_cluster_id, DebtCluster};
 
 /// A doctor finding: an integrity violation.
 #[derive(Debug, Clone, Serialize)]
@@ -768,53 +764,6 @@ pub fn triage_findings(store: &Store) -> Result<Vec<FindingView>> {
         .into_iter()
         .filter(|fv| fv.state == "untriaged" || fv.stale)
         .collect())
-}
-
-// ---- debt (statistical, never stored) --------------------------------------
-
-pub fn debt(store: &Store) -> Result<Vec<DebtCluster>> {
-    let snap = store.snapshot()?;
-    let mut out = Vec::new();
-
-    // size outliers: files whose loc exceeds the Tukey upper fence of the repo.
-    // (a statistical signal computed on demand — never stored, never required.)
-    let locs: Vec<(String, f64)> = snap
-        .facets
-        .iter()
-        .filter(|f| f.key == "loc")
-        .filter_map(|f| {
-            f.value
-                .parse::<f64>()
-                .ok()
-                .map(|v| (f.target_id.clone(), v))
-        })
-        .collect();
-    if locs.len() >= 4 {
-        let mut vals: Vec<f64> = locs.iter().map(|(_, v)| *v).collect();
-        vals.sort_by(|a, b| a.total_cmp(b));
-        let q1 = quantile(&vals, 0.25);
-        let q3 = quantile(&vals, 0.75);
-        let fence = q3 + 1.5 * (q3 - q1);
-        for (id, v) in &locs {
-            if *v > fence && *v > 200.0 {
-                out.push(DebtCluster {
-                    kind: "size_outlier".into(),
-                    message: format!(
-                        "{} is {} loc (repo upper fence {:.0})",
-                        node_name(&snap, id),
-                        *v as u64,
-                        fence
-                    ),
-                    impact: *v as u32,
-                    confirm:
-                        "your call: split it if it's tangled, or justify the size as genuine cohesion — judge and act, don't defer to a human"
-                            .into(),
-                });
-            }
-        }
-    }
-    out.sort_by_key(|b| std::cmp::Reverse(b.impact));
-    Ok(out)
 }
 
 // ---- doctor (integrity audit) ----------------------------------------------

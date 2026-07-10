@@ -9,6 +9,10 @@ use std::path::PathBuf;
 mod subcommands;
 pub use subcommands::*;
 
+#[path = "cli/debt.rs"]
+mod debt;
+pub use debt::DebtCmd;
+
 #[derive(Parser, Debug)]
 #[command(
     name = "loom",
@@ -223,8 +227,13 @@ pub enum Command {
     },
     /// Structural smells (computed from graph shape, each with a remedy).
     Smells,
-    /// Statistical debt feed (advisory; never required work).
-    Debt,
+    /// Statistical debt feed (advisory; never required work). Promote a cluster
+    /// to an asserted Finding with `loom debt promote` — the feed itself stays
+    /// unstored and non-gating.
+    Debt {
+        #[command(subcommand)]
+        cmd: Option<DebtCmd>,
+    },
     /// Derived code findings and durable adjudication verdicts.
     Finding {
         #[command(subcommand)]

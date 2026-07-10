@@ -5,10 +5,129 @@
 //! so `wipe_derived` + rebuild is byte-identical (INV-2). `stale_edge` is the
 //! ripple's only way to re-open a settled asserted verdict — it records the
 //! cause and writes no verdict of its own. Nothing here mints random ids for
-//! derived data or touches asserted statuses (INV-5).
+//! derived data or touches asserted statuses (INV-5). Asserted debt promotions
+//! (`add_promoted_debt_finding`) also live here as a separate write path: they
+//! never convert statistical signals into edges/nodes of the derived plane.
 
 use super::*;
 use anyhow::Context;
+
+/// Inputs for promoting a live debt cluster into one asserted Finding.
+///
+/// Callers must recompute the feed and pass the live cluster fields; the write
+/// boundary re-checks the deterministic cluster id so provenance cannot be forged.
+#[derive(Debug, Clone)]
+pub(crate) struct DebtPromotionInput<'a> {
+    pub cluster_id: &'a str,
+    pub kind: &'a str,
+    pub message: &'a str,
+    pub impact: u32,
+    pub confirm: &'a str,
+    pub subject_ids: &'a [String],
+    /// Canonical CodeFile names matching `subject_ids` order for a single
+    /// subject, or sorted when multiple (co_change).
+    pub subject_names: &'a [String],
+    pub evidence: &'a str,
+    pub confidence: f64,
+}
+
+/// Result of an idempotent debt-promotion write.
+#[derive(Debug, Clone)]
+pub(crate) struct DebtPromotionResult {
+    pub finding: Node,
+    pub created: bool,
+}
+
+/// Normalized debt-promotion write inputs after boundary checks.
+struct NormalizedDebtPromotion<'a> {
+    finding_id: String,
+    evidence: &'a str,
+}
+
+/// Recompute cluster id, enforce c-prefix shape, trim/validate evidence and confidence.
+fn normalize_debt_promotion<'a>(
+    input: &DebtPromotionInput<'a>,
+) -> Result<NormalizedDebtPromotion<'a>> {
+    let expected = crate::signal::debt_cluster_id(input.kind, input.subject_ids);
+    if expected != input.cluster_id {
+        bail!(
+            "debt promotion cluster_id '{}' does not match recomputed id '{}' for kind '{}' — callers cannot bind arbitrary provenance",
+            input.cluster_id,
+            expected,
+            input.kind
+        );
+    }
+    if input.cluster_id.len() < 2 || !input.cluster_id.starts_with('c') {
+        bail!(
+            "debt promotion cluster_id '{}' is not a c-prefixed cluster id",
+            input.cluster_id
+        );
+    }
+
+    let evidence = input.evidence.trim();
+    if evidence.is_empty() || crate::model::is_placeholder(evidence) {
+        bail!(
+            "debt promote requires substantive evidence (not a placeholder like '…' or '<evidence>')"
+        );
+    }
+    if !input.confidence.is_finite() || !(0.0..=1.0).contains(&input.confidence) {
+        bail!("debt promote confidence must be a finite value between 0.0 and 1.0");
+    }
+
+    Ok(NormalizedDebtPromotion {
+        finding_id: format!("p{}", &input.cluster_id[1..]),
+        evidence,
+    })
+}
+
+/// Deterministic Finding body: kind/source/evidence/impact/confidence + debt_cluster
+/// snapshot, with `file` (single) or `files` (multi) when subject names exist.
+fn promoted_debt_finding_body(input: &DebtPromotionInput<'_>, evidence: &str) -> serde_json::Value {
+    let mut body = serde_json::json!({
+        "kind": input.kind,
+        "source": "debt_promotion",
+        "evidence": evidence,
+        "impact": input.impact,
+        "confidence": input.confidence,
+        "debt_cluster": {
+            "id": input.cluster_id,
+            "kind": input.kind,
+            "message": input.message,
+            "impact": input.impact,
+            "confirm": input.confirm,
+            "subject_ids": input.subject_ids,
+        },
+    });
+    match input.subject_names.len() {
+        0 => {}
+        1 => {
+            body["file"] = serde_json::Value::String(input.subject_names[0].clone());
+        }
+        _ => {
+            body["files"] = serde_json::Value::Array(
+                input
+                    .subject_names
+                    .iter()
+                    .map(|n| serde_json::Value::String(n.clone()))
+                    .collect(),
+            );
+        }
+    }
+    body
+}
+
+/// True when `existing` is an asserted Finding from this promotion path for `cluster_id`.
+fn is_matching_debt_promotion(existing: &Node, cluster_id: &str) -> bool {
+    existing.node_type == NodeType::Finding
+        && existing.truth_class == TruthClass::Asserted
+        && existing.body.get("source").and_then(|v| v.as_str()) == Some("debt_promotion")
+        && existing
+            .body
+            .get("debt_cluster")
+            .and_then(|v| v.get("id"))
+            .and_then(|v| v.as_str())
+            == Some(cluster_id)
+}
 
 impl Store {
     // ---- ring 2: structural plane (sync + derived data) ------------------
@@ -655,5 +774,101 @@ impl Store {
                     .map(|s| s.to_string())
             })
             .collect())
+    }
+
+    /// Promote a live debt cluster into one asserted Finding with deterministic
+    /// id `p` + cluster digest. Idempotent when evidence/confidence match;
+    /// fails closed on id collision or conflicting replay. Never writes edges,
+    /// facets, or statistical truth (INV-3).
+    pub(crate) fn add_promoted_debt_finding(
+        &self,
+        input: DebtPromotionInput<'_>,
+    ) -> Result<DebtPromotionResult> {
+        let normalized = normalize_debt_promotion(&input)?;
+        let body = promoted_debt_finding_body(&input, normalized.evidence);
+        let inserted = self.insert_promoted_debt_finding_row(
+            &normalized.finding_id,
+            &input,
+            normalized.evidence,
+            &body,
+        )?;
+
+        if inserted == 1 {
+            let finding = self.get_node(&normalized.finding_id)?.ok_or_else(|| {
+                anyhow!(
+                    "promoted finding '{}' vanished after insert",
+                    normalized.finding_id
+                )
+            })?;
+            return Ok(DebtPromotionResult {
+                finding,
+                created: true,
+            });
+        }
+
+        self.existing_promoted_debt_result(&normalized.finding_id, &input, normalized.evidence)
+    }
+
+    /// INSERT ON CONFLICT DO NOTHING for a promoted debt Finding.
+    fn insert_promoted_debt_finding_row(
+        &self,
+        finding_id: &str,
+        input: &DebtPromotionInput<'_>,
+        evidence: &str,
+        body: &serde_json::Value,
+    ) -> Result<usize> {
+        let now = now(&self.conn)?;
+        let inserted = self.conn.execute(
+            "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?8)
+             ON CONFLICT(id) DO NOTHING",
+            params![
+                finding_id,
+                NodeType::Finding.as_str(),
+                input.message,
+                evidence,
+                input.kind,
+                TruthClass::Asserted.as_str(),
+                body.to_string(),
+                now
+            ],
+        )?;
+        Ok(inserted)
+    }
+
+    /// Collision / idempotency / conflicting-payload checks after ON CONFLICT.
+    fn existing_promoted_debt_result(
+        &self,
+        finding_id: &str,
+        input: &DebtPromotionInput<'_>,
+        evidence: &str,
+    ) -> Result<DebtPromotionResult> {
+        let existing = self
+            .get_node(finding_id)?
+            .ok_or_else(|| anyhow!("promoted finding '{finding_id}' missing after conflict"))?;
+
+        if !is_matching_debt_promotion(&existing, input.cluster_id) {
+            bail!("debt promotion id '{finding_id}' collides with an unrelated node");
+        }
+
+        let stored_evidence = existing
+            .body
+            .get("evidence")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim();
+        let stored_confidence = existing.body.get("confidence").and_then(|v| v.as_f64());
+        if stored_evidence != evidence || stored_confidence != Some(input.confidence) {
+            bail!(
+                "debt cluster '{}' is already promoted as finding '{}' with different evidence or confidence",
+                input.cluster_id,
+                finding_id
+            );
+        }
+
+        Ok(DebtPromotionResult {
+            finding: existing,
+            created: false,
+        })
     }
 }

@@ -409,6 +409,9 @@ impl Store {
 }
 
 mod derived;
+#[allow(unused_imports)] // consumed by diagnostics_cmd via crate::store::
+pub(crate) use derived::{DebtPromotionInput, DebtPromotionResult};
+
 mod edges;
 mod facets;
 mod nodes;
@@ -553,10 +556,10 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
 /// byte-identical (INV-2).
 const DERIVED_TS: &str = "";
 
-/// Deterministic, content-addressed id for derived data (FNV-1a 64-bit over the
-/// joined parts). The same inputs always yield the same id, so a wiped-and-
-/// rebuilt derived plane is byte-identical.
-fn derived_id(parts: &[&str]) -> String {
+/// Deterministic FNV-1a 64-bit digest over the joined parts. Returns the bare
+/// 16-hex digest (no prefix). Callers choose a plane prefix (`d` for derived
+/// rows, `c` for debt clusters, `p` for promoted findings).
+pub(crate) fn fnv_hex_digest(parts: &[&str]) -> String {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for (i, p) in parts.iter().enumerate() {
         if i > 0 {
@@ -568,7 +571,14 @@ fn derived_id(parts: &[&str]) -> String {
             h = h.wrapping_mul(0x0100_0000_01b3);
         }
     }
-    format!("d{h:016x}")
+    format!("{h:016x}")
+}
+
+/// Deterministic, content-addressed id for derived data (FNV-1a 64-bit over the
+/// joined parts). The same inputs always yield the same id, so a wiped-and-
+/// rebuilt derived plane is byte-identical.
+fn derived_id(parts: &[&str]) -> String {
+    format!("d{}", fnv_hex_digest(parts))
 }
 
 /// Generate a fresh 128-bit hex id and an RFC3339 timestamp in one query, using

@@ -474,6 +474,402 @@ fn inv3_debt_never_gates_or_queues() {
     }
 }
 
+/// Real temp-git path: 12 analyzable commits with a strong a+b co-change pair
+/// surface exactly one advisory `co_change` cluster. INV-3: feed computation
+/// never writes, never gates maturity, never enters the next queue.
+#[test]
+fn debt_detects_git_cochange_and_is_advisory() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a_id = codefile(&store, "a.rs");
+    let b_id = codefile(&store, "b.rs");
+    let _c_id = codefile(&store, "c.rs");
+
+    git_ok(tmp.path(), &["init"]);
+    git_ok(tmp.path(), &["config", "user.name", "loom-test"]);
+    git_ok(
+        tmp.path(),
+        &["config", "user.email", "loom-test@example.com"],
+    );
+    git_ok(tmp.path(), &["config", "commit.gpgsign", "false"]);
+
+    // 4 joint a+b, 1 solo a, 1 solo b, 6 solo c → 12 analyzable commits.
+    // joint=4, sa=5, sb=5, N=12: Jaccard 4/6, dir 4/5, lift 4*12/(5*5)=1.92.
+    let mut stamp = 0u32;
+    for i in 1..=4 {
+        stamp += 1;
+        write_repo_file(tmp.path(), "a.rs", &format!("a-joint-{i}-{stamp}"));
+        write_repo_file(tmp.path(), "b.rs", &format!("b-joint-{i}-{stamp}"));
+        git_commit_paths(
+            tmp.path(),
+            &["a.rs", "b.rs"],
+            &format!("joint-ab-{i}"),
+            &format!("2001-01-{:02}T12:00:00 +0000", i),
+        );
+    }
+    stamp += 1;
+    write_repo_file(tmp.path(), "a.rs", &format!("a-solo-{stamp}"));
+    git_commit_paths(
+        tmp.path(),
+        &["a.rs"],
+        "solo-a-1",
+        "2001-01-05T12:00:00 +0000",
+    );
+    stamp += 1;
+    write_repo_file(tmp.path(), "b.rs", &format!("b-solo-{stamp}"));
+    git_commit_paths(
+        tmp.path(),
+        &["b.rs"],
+        "solo-b-1",
+        "2001-01-06T12:00:00 +0000",
+    );
+    for i in 1..=6 {
+        stamp += 1;
+        write_repo_file(tmp.path(), "c.rs", &format!("c-solo-{i}-{stamp}"));
+        git_commit_paths(
+            tmp.path(),
+            &["c.rs"],
+            &format!("solo-c-{i}"),
+            &format!("2001-01-{:02}T12:00:00 +0000", 6 + i),
+        );
+    }
+
+    let snap_before = store.snapshot().unwrap();
+    let edges_before = store.list_edges(None, usize::MAX).unwrap().len();
+    let ladder_before = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
+    let queues_before =
+        serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+
+    let debt1 = loom::signal::debt(&store).unwrap();
+    let debt2 = loom::signal::debt(&store).unwrap();
+
+    let co: Vec<_> = debt1.iter().filter(|d| d.kind == "co_change").collect();
+    assert_eq!(
+        co.len(),
+        1,
+        "exactly one co_change cluster expected, got {debt1:?}"
+    );
+    let row = co[0];
+    assert_eq!(row.kind, "co_change");
+    assert!(
+        row.cluster_id.starts_with('c') && row.cluster_id.len() == 17,
+        "cluster_id must be c + 16 hex, got {}",
+        row.cluster_id
+    );
+    assert!(
+        row.cluster_id[1..].chars().all(|ch| ch.is_ascii_hexdigit()),
+        "cluster_id hex tail invalid: {}",
+        row.cluster_id
+    );
+    let mut expected_subjects = vec![a_id.clone(), b_id.clone()];
+    expected_subjects.sort();
+    assert_eq!(
+        row.subject_ids, expected_subjects,
+        "subject_ids must be sorted CodeFile ids for a.rs+b.rs"
+    );
+    assert!(
+        row.message.contains("a.rs, b.rs"),
+        "message must list sorted paths: {}",
+        row.message
+    );
+    assert!(
+        row.message.contains("4/12"),
+        "message must report joint support over analyzable commits: {}",
+        row.message
+    );
+    assert_eq!(row.impact, 4, "impact = joint_support * (members-1)");
+    assert_eq!(
+        row.cluster_id,
+        loom::signal::debt_cluster_id("co_change", &expected_subjects)
+    );
+
+    let ser1 = serde_json::to_value(&debt1).unwrap();
+    let ser2 = serde_json::to_value(&debt2).unwrap();
+    assert_eq!(ser1, ser2, "debt feed must be value-stable across calls");
+    assert_eq!(
+        serde_json::to_string(&debt1).unwrap(),
+        serde_json::to_string(&debt2).unwrap(),
+        "debt feed must be byte-stable across calls"
+    );
+
+    let snap_after = store.snapshot().unwrap();
+    let edges_after = store.list_edges(None, usize::MAX).unwrap().len();
+    let ladder_after = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
+    let queues_after = serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+    assert_eq!(
+        snap_before, snap_after,
+        "debt must not mutate the graph snapshot"
+    );
+    assert_eq!(edges_before, edges_after, "debt must never store edges");
+    assert_eq!(
+        ladder_before, ladder_after,
+        "debt must never be a maturity gate input"
+    );
+    assert_eq!(
+        queues_before, queues_after,
+        "debt must never change queue counts"
+    );
+
+    if let Some(item) = loom::workitem::next(&store, None).unwrap() {
+        let rendered = serde_json::to_string(&item).unwrap();
+        assert!(
+            !rendered.contains("co_change"),
+            "loom next must never serve a co_change debt cluster: {rendered}"
+        );
+        assert!(
+            !rendered.contains(&row.cluster_id),
+            "loom next must never carry the debt cluster id: {rendered}"
+        );
+    }
+}
+
+/// Non-git roots skip co-change silently: size_outlier still fires, and the
+/// public `loom debt --json` surface stays exit-zero with the same rows.
+#[test]
+fn debt_gracefully_skips_history_outside_git() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // loc facets: three small, one huge → size_outlier (existing four-LOC fixture).
+    let mut big_id = String::new();
+    for (p, loc) in [("a.rs", 40), ("b.rs", 50), ("c.rs", 45), ("big.rs", 5000)] {
+        let id = codefile(&store, p);
+        if p == "big.rs" {
+            big_id = id.clone();
+        }
+        store
+            .set_facet(
+                &id,
+                TargetKind::Node,
+                "loc",
+                &loc.to_string(),
+                TruthClass::Derived,
+            )
+            .unwrap();
+    }
+
+    let debt = loom::signal::debt(&store).unwrap();
+    assert!(
+        debt.iter().any(|d| d.kind == "size_outlier"),
+        "size_outlier must fire without git: {debt:?}"
+    );
+    assert!(
+        !debt.iter().any(|d| d.kind == "co_change"),
+        "co_change must be absent outside a git repo: {debt:?}"
+    );
+    let outlier = debt
+        .iter()
+        .find(|d| d.kind == "size_outlier")
+        .expect("size_outlier row");
+    assert!(
+        outlier.cluster_id.starts_with('c') && outlier.cluster_id.len() == 17,
+        "stable c-prefixed cluster_id required: {}",
+        outlier.cluster_id
+    );
+    assert_eq!(
+        outlier.cluster_id,
+        loom::signal::debt_cluster_id("size_outlier", &[big_id.clone()])
+    );
+    assert!(
+        outlier.message.contains("big.rs"),
+        "outlier message names the file: {}",
+        outlier.message
+    );
+
+    drop(store);
+    let cli = run_cli_json(tmp.path(), &["debt"]);
+    let rows = cli
+        .as_array()
+        .unwrap_or_else(|| panic!("loom debt --json must be a top-level array: {cli}"));
+    assert!(
+        rows.iter().any(|r| r["kind"] == "size_outlier"),
+        "CLI must expose size_outlier: {cli}"
+    );
+    assert!(
+        !rows.iter().any(|r| r["kind"] == "co_change"),
+        "CLI must not invent co_change outside git: {cli}"
+    );
+    let cli_outlier = rows
+        .iter()
+        .find(|r| r["kind"] == "size_outlier")
+        .expect("CLI size_outlier");
+    assert_eq!(
+        cli_outlier["cluster_id"].as_str().unwrap_or(""),
+        outlier.cluster_id
+    );
+}
+
+/// `loom debt` JSON/text retain legacy keys, add a stable copyable cluster id,
+/// and remain pure reads (INV-3) across repeated invocations.
+#[test]
+fn debt_cli_json_and_text_expose_stable_cluster_ids() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    for (p, loc) in [("a.rs", 40), ("b.rs", 50), ("c.rs", 45), ("big.rs", 5000)] {
+        let id = codefile(&store, p);
+        store
+            .set_facet(
+                &id,
+                TargetKind::Node,
+                "loc",
+                &loc.to_string(),
+                TruthClass::Derived,
+            )
+            .unwrap();
+    }
+    let nodes_before = store.list_nodes(None, usize::MAX).unwrap().len();
+    let edges_before = store.list_edges(None, usize::MAX).unwrap().len();
+    let facets_before = store.snapshot().unwrap().facets.len();
+    drop(store);
+
+    let json1 = run_cli_json(tmp.path(), &["debt"]);
+    let json2 = run_cli_json(tmp.path(), &["debt"]);
+    assert_eq!(
+        json1, json2,
+        "debt --json must be value-stable across reads"
+    );
+    assert_eq!(
+        serde_json::to_string(&json1).unwrap(),
+        serde_json::to_string(&json2).unwrap(),
+        "debt --json must be byte-stable across reads"
+    );
+    let rows = json1
+        .as_array()
+        .unwrap_or_else(|| panic!("top-level JSON array required: {json1}"));
+    assert!(
+        !rows.is_empty(),
+        "outlier fixture must produce at least one debt row"
+    );
+    for row in rows {
+        for key in ["kind", "message", "impact", "confirm", "cluster_id"] {
+            assert!(
+                row.get(key).is_some(),
+                "debt JSON row missing retained/new key '{key}': {row}"
+            );
+        }
+        // subject_ids are intentionally not serialized into the feed.
+        assert!(
+            row.get("subject_ids").is_none(),
+            "subject_ids must stay off the wire: {row}"
+        );
+        let cid = row["cluster_id"]
+            .as_str()
+            .unwrap_or_else(|| panic!("cluster_id must be a string: {row}"));
+        assert!(
+            cid.starts_with('c') && cid.len() == 17,
+            "cluster_id must be c + 16 hex (17 chars): {cid}"
+        );
+        assert!(
+            cid[1..].chars().all(|ch| ch.is_ascii_hexdigit()),
+            "cluster_id hex tail invalid: {cid}"
+        );
+    }
+    let cluster_id = rows[0]["cluster_id"].as_str().unwrap().to_string();
+    let kind = rows[0]["kind"].as_str().unwrap();
+    let message = rows[0]["message"].as_str().unwrap();
+    let impact = rows[0]["impact"].as_u64().unwrap();
+    let confirm = rows[0]["confirm"].as_str().unwrap();
+
+    let (status, stdout, stderr) = run_cli_raw(tmp.path(), &["debt"]);
+    assert!(
+        status.success(),
+        "loom debt text must exit zero: {status:?}\n--stderr--\n{stderr}"
+    );
+    let primary = format!("[{kind}] {message} (impact {impact})");
+    assert!(
+        stdout.contains(&primary),
+        "text must keep the primary ranked line:\nexpected substring: {primary}\n--stdout--\n{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!("    id: {cluster_id}")),
+        "text must expose a copyable id line for {cluster_id}:\n{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!("    confirm: {confirm}")),
+        "text must keep the confirm line:\n{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!(
+            "{} ranked signal(s) — advisory, never required",
+            rows.len()
+        )),
+        "text must keep the advisory footer:\n{stdout}"
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(
+        store.list_nodes(None, usize::MAX).unwrap().len(),
+        nodes_before,
+        "debt reads must not create/remove nodes"
+    );
+    assert_eq!(
+        store.list_edges(None, usize::MAX).unwrap().len(),
+        edges_before,
+        "debt reads must not create/remove edges"
+    );
+    assert_eq!(
+        store.snapshot().unwrap().facets.len(),
+        facets_before,
+        "debt reads must not create/remove facets"
+    );
+}
+
+/// Write a tracked source file under the temp repo root.
+fn write_repo_file(dir: &Path, rel: &str, body: &str) {
+    let path = dir.join(rel);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+    std::fs::write(&path, body).unwrap_or_else(|e| panic!("write {}: {e}", path.display()));
+}
+
+/// Run `git` in `dir` with argument arrays only (no shell). Panics with
+/// stdout/stderr on non-zero exit so a red co-change fixture is diagnosable.
+fn git_ok(dir: &Path, args: &[&str]) {
+    let out = std::process::Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .output()
+        .unwrap_or_else(|e| panic!("spawn git {:?}: {e}", args));
+    assert!(
+        out.status.success(),
+        "git {:?} failed: {:?}\n--stdout--\n{}\n--stderr--\n{}",
+        args,
+        out.status,
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// Stage only the listed paths and create a deterministic non-empty commit.
+fn git_commit_paths(dir: &Path, paths: &[&str], message: &str, date: &str) {
+    let mut add_args = vec!["add", "--"];
+    add_args.extend_from_slice(paths);
+    git_ok(dir, &add_args);
+
+    let out = std::process::Command::new("git")
+        .args(["-c", "commit.gpgsign=false", "commit", "-m", message])
+        .current_dir(dir)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_AUTHOR_DATE", date)
+        .env("GIT_COMMITTER_DATE", date)
+        .output()
+        .unwrap_or_else(|e| panic!("spawn git commit: {e}"));
+    assert!(
+        out.status.success(),
+        "git commit -m {:?} paths {:?} failed: {:?}\n--stdout--\n{}\n--stderr--\n{}",
+        message,
+        paths,
+        out.status,
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 // ---- doctor ----------------------------------------------------------------
 
 #[test]

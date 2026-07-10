@@ -12,7 +12,7 @@ LLM         acts, judges, inspects, repairs, writes evidence, suggests
 human       product authority, constraint source, reviewer when required
 ```
 
-loom is not the actor. Every **asserted or cognitive** state transition requires an LLM or human write-back; loom validates and applies it. **Derived** transitions are owned by sync alone — no LLM write-back, no judgment, no queue item.
+loom is not the actor. Every **asserted or cognitive** state transition requires an LLM or human write-back; loom validates and applies it. **Derived** transitions are owned by sync alone — no LLM write-back or re-judgment of the machine fact; untriaged or stale Finding nodes may still route to triage for a separate asserted adjudication.
 
 The LLM is not free-form. It reports through **typed graph writes**. Chat output alone changes nothing in the graph.
 
@@ -682,7 +682,7 @@ When the session continues from a known state:
 ```text
 loom status
   → maturity + compass
-  → graph_state, validation summary, code ownership, queues, and debt pulse
+  → graph_state, validation summary, code ownership, queues, and debt pulse (statistical clusters carry stable `cluster_id`; `loom debt promote` is the only write path from the feed and mints an asserted Finding for triage)
 
 loom next
   → single highest-priority WorkItem with full PromptContract

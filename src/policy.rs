@@ -8,8 +8,9 @@
 //! loudly, never silently re-defaults).
 //!
 //! The third leg the intent names, the *acceptable evidence forms*, is already
-//! declared mapping data in [`crate::truth`] (each axis's `required_evidence`),
-//! so it needs no constant here — this module carries only the values that were
+//! declared per work lane on [`workitem::PromptContract.required_evidence`]
+//! (populated in [`crate::workitem::contracts`]), not on `crate::truth` axes —
+//! so it needs no constant here. This module carries only the values that were
 //! genuinely hardcoded.
 
 use crate::store::Store;

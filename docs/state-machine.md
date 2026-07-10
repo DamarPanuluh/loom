@@ -95,7 +95,7 @@ This cycle is non-blocking. Multiple events can queue. The LLM works one `WorkIt
 | `InterfaceSurfaceChanged` | sync / builder | InterfaceSurface / exposes edge |
 | `ExternalContractChanged` | builder / human | InterfaceSurface / contract_ref |
 | `GraphImported` | builder (import) | restored graph facts |
-| `DebtClusterConfirmed` | human / LLM | Hypothesis / needs_change Intent / manual edge / Note |
+| `DebtClusterConfirmed` | human / LLM | asserted Finding (`source: debt_promotion`) via `loom debt promote` |
 | `DocumentationDriftCaptured` | any role | InboxItem |
 | `TaskRecordCreated` | any role | TaskRecord |
 | `TaskRecordClosed` | any role | TaskRecord + optional promoted graph facts |
@@ -115,8 +115,9 @@ CodeFile content hash changed
   → consumes/configures/verifies implements edges for this file → needs_reverification only if the file vanished or seam locator drifted
   → governs edges whose intent grounds this file through a realizing edge → needs_reverification
   → Validation.last_result → not_run; linked validates edges → needs_reverification
-  → requires/triggers/sequence/scenario-of/variant-of edges touching an intent that realized this file → needs_reverification
-  → relates edges: only when **both** endpoints' realizing groundings changed this sync, **or** the edge's `depends_on` refs (cited codefile ids stamped at explore/verdict) intersect the change set — one-sided symbol churn does not fan out across the relates mesh
+  → requires/triggers/sequence/scenario-of/variant-of edges touching an intent that realized this file → keep settled only when their own stamped citations cover every relevant changed CodeFile and all cited bytes remain intact; otherwise needs_reverification
+  → relates edges: enter the same evidence check only when **both** endpoints' realizing groundings changed this sync, **or** the edge's `depends_on` refs intersect the change set — one-sided symbol churn does not fan out across the relates mesh
+  → missing citations, deleted/rewritten spans, and legacy cap-sized stamp sets always fail closed to full re-inspection
   → WikiPages documenting an intent grounded in this file → stale (served by loom wiki next)
 ```
 
@@ -215,11 +216,18 @@ Documentation semantic claim differs from graph
 
 ```text
 Statistical cluster confirmed by human/LLM
-  → Hypothesis → targeted intents (if redesign claim)
-  → needs_change Intent (if concrete known issue)
-  → manual relates edge + Note (if indirect coupling)
-  → decision Note dismissing it (if deliberate)
-  → never: raw human/external input directly as a Finding; evidence-backed code/tool/model observations enter via `loom finding add`
+  → loom debt promote <cluster-id> --evidence "<TEXT>" [--confidence <0..1>]
+  → exactly one asserted Finding (source: debt_promotion; deterministic p… id;
+    body preserves cluster snapshot + subject ids + operator evidence/confidence;
+    no edges or facets)
+  → finding triage verdict:
+      needed    → work (ordinary follow-on intents/edges/notes as needed)
+      justified → settled (accepted as-is)
+      rejected  → settled (dismissal is this adjudication, not a dismiss API)
+  → raw loom debt feed stays advisory and never enters maturity or required queues
+  → never: raw statistical signal stored as a Finding; never raw human/external input
+    directly as a Finding — evidence-backed code/tool/model observations enter via
+    `loom finding add`, while debt promotion is the sole write path from the debt feed
 ```
 
 ---

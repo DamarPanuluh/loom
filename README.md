@@ -24,11 +24,11 @@ The goal is not autonomous coding. The LLM still acts. `loom` routes, remembers,
 
 | Truth class | Owner | Example | Routed as required work? |
 |---|---|---|---|
-| **derived** | machine | file hashes, imports, symbols, external diagnostics, structural findings | No; recomputed by `loom sync` / `loom scan run` |
+| **derived** | machine | file hashes, imports, symbols, external diagnostics, structural findings | No for the fact itself (recomputed by `loom sync` / `loom scan run`); untriaged or stale Finding nodes do route to triage, where the write is a separate asserted adjudication |
 | **asserted** | human/LLM with evidence | intent grounding, quality verdict, validation result, completeness waiver | Yes; routed by `loom next` |
-| **statistical** | heuristic | co-change or debt signal | No; advisory until promoted |
+| **statistical** | heuristic | co-change or debt signal | No; advisory — explicit `loom debt promote` creates a separate asserted Finding |
 
-This is the v2 spine: derived facts are reproducible, asserted facts persist until invalidated, and statistical signals never become mandatory work by existing.
+This is the v2 spine: derived facts are reproducible, asserted facts persist until invalidated, and statistical signals stay advisory until an operator explicitly promotes a cluster into a separate asserted Finding for ordinary triage.
 
 ## Current feature spine
 
@@ -41,6 +41,7 @@ This is the v2 spine: derived facts are reproducible, asserted facts persist unt
 - **Cold-start assist:** `loom bootstrap suggest` drafts a Proposal of planned pillar intents from codefiles/tests/README (never auto-verdicts).
 - **Find + explain:** `loom find --tag` / `--where` and `loom explain <intent>` for facet search and neighborhood briefs.
 - **Calibrated structural detectors:** sync's built-in findings (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) run on configurable thresholds; `loom calibrate [--write]` proposes gates from the repo's own metric distribution (worst-5% tail, floored) so detection fits the codebase instead of a universal constant.
+- **Advisory debt + promotion:** `loom debt` ranks statistical clusters (`size_outlier` LOC outliers and git-history `co_change`) with stable `cluster_id`s; `loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>]` mints exactly one asserted Finding (`source: debt_promotion`) for ordinary finding triage while the raw feed stays advisory.
 - **Portable configuration:** `loom.graph.json` carries the `config` map (`layer_order`, `ignores`, `codefile_globs`, `scan_adapters`, `thresholds`, `evidence_policy`) so imports keep the graph's routing, scan, detector, and policy setup.
 - **Wiki projection:** `loom wiki plan/next/record/list/remove` tracks reader-first documentation pages as graph citizens — an agent writes the prose, the graph governs truth and freshness, and `loom sync` stales a page precisely when a documented intent, its code, or its proof drifts.
 - **Federation:** `loom graph link` composes graphs across repositories via committed exports; upstream intents appear as shadow nodes that ripple staleness locally without ever entering local queues or gates.
@@ -165,8 +166,8 @@ surface     Interface surface commands
 vocab       Vocabulary commands
 layer       Architecture layer-order commands
 smells      Structural smell report
-debt        Statistical debt feed
-finding     Derived finding adjudication
+debt        Advisory statistical feed (size outliers, co-change) + explicit promotion
+finding     Evidence-backed capture and asserted adjudication
 doctor      Integrity audit
 coverage    Vertical-spine coverage report
 ignore      Coverage exclusion commands
@@ -195,7 +196,7 @@ Then follow the returned lane:
 - **validate** — run or mark proofs.
 - **quality** — inspect rules against intents.
 - **elaborate** — complete the surroundings of user-visible feature intents: scenarios, prerequisites, proof, journey coverage, and product questions.
-- **triage** — route inbox items and derived findings, including findings produced by scan adapters.
+- **triage** — route inbox items and untriaged/stale findings (derived and asserted) for durable adjudication.
 
 After graph mutations:
 
