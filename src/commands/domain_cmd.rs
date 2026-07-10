@@ -26,10 +26,7 @@ pub(crate) fn layer_detector_state(store: &Store) -> Result<serde_json::Value> {
         })
         .map(|f| f.value.clone())
         .collect();
-    let order: Vec<String> = store
-        .get_meta("layer_order")?
-        .and_then(|v| serde_json::from_str(&v).ok())
-        .unwrap_or_default();
+    let order: Vec<String> = super::read_json_meta(store, "layer_order")?;
     let armed = !order.is_empty();
     let warning = if !armed && layers.len() >= 2 {
         Some("no layer order declared")

@@ -74,6 +74,14 @@ impl ProofRunner for CommandProofRunner {
                 reason: "manual_check".into(),
             };
         }
+        if v.body.get("command_trusted").and_then(|v| v.as_bool()) == Some(false) {
+            return ProofOutcome::Blocked {
+                reason: format!(
+                    "imported command is untrusted; review it, then run `loom validation update '{}' --command <reviewed-command>` to approve the exact text locally",
+                    v.name
+                ),
+            };
+        }
         let timeout_secs = validation_timeout_secs(v);
         match run_validation_command(root, &command, timeout_secs) {
             Ok(Some(o)) if o.status.success() => ProofOutcome::Passed {
@@ -234,6 +242,20 @@ mod tests {
         match runner.run(&root, &val("test", "")) {
             ProofOutcome::Manual { .. } => {}
             o => panic!("empty command has no runnable proof, got {o:?}"),
+        }
+    }
+
+    #[test]
+    fn imported_untrusted_command_is_blocked_before_execution() {
+        let root = std::env::temp_dir();
+        let mut validation = val("test", "exit 0");
+        validation.body["command_trusted"] = serde_json::Value::Bool(false);
+        match runner_for(ValidationType::Test).run(&root, &validation) {
+            ProofOutcome::Blocked { reason } => {
+                assert!(reason.contains("imported command is untrusted"));
+                assert!(reason.contains("validation update"));
+            }
+            outcome => panic!("untrusted command must be blocked, got {outcome:?}"),
         }
     }
 }

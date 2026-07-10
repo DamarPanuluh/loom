@@ -39,7 +39,7 @@ pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     "reason": adj.as_ref().map(|(_, r)| r.as_str()).unwrap_or(""),
                     "adjudicate": if *materialized {
                         format!(
-                            "loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate> --reason '…'",
+                            "loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'",
                             &id[..8.min(id.len())]
                         )
                     } else {
@@ -63,7 +63,7 @@ pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     println!("    remedy: {}", s.remedy);
                     if *materialized {
                         println!(
-                            "    adjudicate: loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate> --reason '…'",
+                            "    adjudicate: loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'",
                             &id[..8.min(id.len())]
                         );
                     } else {
@@ -108,14 +108,16 @@ pub(crate) fn finding(graph: Option<&Path>, cmd: FindingCmd, json: bool) -> Resu
             link,
         } => finding_add(
             graph,
-            &text,
-            &source,
-            &kind,
-            &evidence,
-            &impact,
-            confidence,
-            file.as_deref(),
-            link.as_deref(),
+            FindingAddInput {
+                text,
+                source,
+                kind,
+                evidence,
+                impact,
+                confidence,
+                file,
+                link,
+            },
             json,
         ),
         FindingCmd::List { kind, state } => finding_list(graph, kind, state, json),
@@ -126,19 +128,30 @@ pub(crate) fn finding(graph: Option<&Path>, cmd: FindingCmd, json: bool) -> Resu
         } => finding_verdict(graph, &id, &verdict, &reason, json),
     }
 }
-fn finding_add(
-    graph: Option<&Path>,
-    text: &str,
-    source: &str,
-    kind: &str,
-    evidence: &str,
-    impact: &str,
+
+struct FindingAddInput {
+    text: String,
+    source: String,
+    kind: String,
+    evidence: String,
+    impact: String,
     confidence: f64,
-    file: Option<&str>,
-    link: Option<&str>,
-    json: bool,
-) -> Result<()> {
-    match source {
+    file: Option<String>,
+    link: Option<String>,
+}
+
+fn finding_add(graph: Option<&Path>, input: FindingAddInput, json: bool) -> Result<()> {
+    let FindingAddInput {
+        text,
+        source,
+        kind,
+        evidence,
+        impact,
+        confidence,
+        file,
+        link,
+    } = input;
+    match source.as_str() {
         "code_audit" | "wiki" | "validation" | "llm" => {}
         "human" | "external" | "support" | "import" => {
             bail!("human/external input belongs in inbox; use loom door or loom inbox add")
@@ -146,7 +159,11 @@ fn finding_add(
         "question" => bail!("product questions belong in loom question add"),
         other => bail!("unknown finding source '{other}' (use code_audit|wiki|validation|llm)"),
     }
-    for (field, value) in [("text", text), ("evidence", evidence), ("impact", impact)] {
+    for (field, value) in [
+        ("text", text.as_str()),
+        ("evidence", evidence.as_str()),
+        ("impact", impact.as_str()),
+    ] {
         if crate::model::is_placeholder(value) {
             bail!("finding add requires substantive {field} (not a placeholder like '…' or '<{field}>')");
         }
@@ -158,7 +175,7 @@ fn finding_add(
         bail!("finding add requires --file <registered codefile> or --link <ref>");
     }
     let store = open(graph)?;
-    let codefile = match file {
+    let codefile = match file.as_deref() {
         Some(path) => Some(store.resolve_node(path, Some(NodeType::CodeFile))?),
         None => None,
     };
@@ -173,9 +190,9 @@ fn finding_add(
         body["file"] = serde_json::Value::String(cf.name.clone());
     }
     if let Some(l) = link {
-        body["link"] = serde_json::Value::String(l.to_string());
+        body["link"] = serde_json::Value::String(l);
     }
-    let finding = store.add_node(NodeType::Finding, text, impact, kind, body)?;
+    let finding = store.add_node(NodeType::Finding, &text, &impact, &kind, body)?;
     pulse::emit_line(
         &store,
         json,
@@ -239,7 +256,7 @@ fn finding_list(
 }
 /// Validate, resolve, and record a finding adjudication through the single gate
 /// the CLI enforces — verdict vocabulary
-/// (`needed|justified|rejected|deferred|blocked|duplicate`) plus a substantive
+/// (`needed|justified|rejected|deferred|blocked|duplicate|resolved`) plus a substantive
 /// (non-placeholder) reason — returning the resolved finding.
 /// Shared by `loom finding verdict` and the `loom apply` adjudications batch so
 pub(crate) fn adjudicate_finding(
@@ -281,17 +298,18 @@ fn finding_verdict(
 fn validate_finding_filter_state(state: &str) -> Result<()> {
     match state {
         "untriaged" | "stale" | "needed" | "justified" | "rejected" | "deferred" | "blocked"
-        | "duplicate" => Ok(()),
+        | "duplicate" | "resolved" => Ok(()),
         other => {
-            bail!("unknown finding state '{other}' (use untriaged|stale|needed|justified|rejected|deferred|blocked|duplicate)")
+            bail!("unknown finding state '{other}' (use untriaged|stale|needed|justified|rejected|deferred|blocked|duplicate|resolved)")
         }
     }
 }
 fn validate_finding_verdict(verdict: &str) -> Result<()> {
     match verdict {
-        "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate" => Ok(()),
+        "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate"
+        | "resolved" => Ok(()),
         other => bail!(
-            "unknown verdict '{other}' (use needed|justified|rejected|deferred|blocked|duplicate)"
+            "unknown verdict '{other}' (use needed|justified|rejected|deferred|blocked|duplicate|resolved)"
         ),
     }
 }
@@ -407,10 +425,7 @@ pub(crate) fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd, json: bool) -> Re
     let store = open(graph)?;
     match cmd {
         IgnoreCmd::Add { glob, reason } => {
-            let mut list: Vec<serde_json::Value> = store
-                .get_meta("ignores")?
-                .and_then(|v| serde_json::from_str(&v).ok())
-                .unwrap_or_default();
+            let mut list: Vec<serde_json::Value> = super::read_json_meta(&store, "ignores")?;
             list.push(serde_json::json!({ "glob": glob, "reason": reason }));
             store.set_meta("ignores", &serde_json::to_string(&list)?)?;
             pulse::emit_line(
@@ -428,10 +443,7 @@ pub(crate) fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd, json: bool) -> Re
             Ok(())
         }
         IgnoreCmd::Remove { glob } => {
-            let mut list: Vec<serde_json::Value> = store
-                .get_meta("ignores")?
-                .and_then(|v| serde_json::from_str(&v).ok())
-                .unwrap_or_default();
+            let mut list: Vec<serde_json::Value> = super::read_json_meta(&store, "ignores")?;
             let before = list.len();
             list.retain(|r| r.get("glob").and_then(|g| g.as_str()) != Some(glob.as_str()));
             if list.len() == before {
@@ -451,10 +463,7 @@ pub(crate) fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd, json: bool) -> Re
             Ok(())
         }
         IgnoreCmd::List => {
-            let list: Vec<serde_json::Value> = store
-                .get_meta("ignores")?
-                .and_then(|v| serde_json::from_str(&v).ok())
-                .unwrap_or_default();
+            let list: Vec<serde_json::Value> = super::read_json_meta(&store, "ignores")?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&list)?);
             } else {
@@ -706,11 +715,7 @@ pub(crate) fn calibrate_cmd(graph: Option<&Path>, write: bool, json: bool) -> Re
 fn threshold_line(t: &crate::thresholds::Thresholds) -> String {
     format!(
         "file loc {} | symbol complexity {} | symbol loc {} | nesting {} | args {}",
-        t.max_file_loc,
-        t.max_symbol_complexity,
-        t.max_symbol_loc,
-        t.max_nesting,
-        t.max_args,
+        t.max_file_loc, t.max_symbol_complexity, t.max_symbol_loc, t.max_nesting, t.max_args,
     )
 }
 

@@ -422,11 +422,7 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
 
     // `duplicate` is a resolving adjudication — excellent rung becomes Met.
     store
-        .record_finding_verdict(
-            &finding_id,
-            "duplicate",
-            "same as tangled_file:other",
-        )
+        .record_finding_verdict(&finding_id, "duplicate", "same as tangled_file:other")
         .unwrap();
     assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Met);
@@ -710,12 +706,12 @@ fn finding_add_creates_asserted_finding_without_inbox() {
 
 #[test]
 fn finding_verdict_gate_accepts_expanded_vocabulary_via_cli() {
-    // Contract: the `loom finding verdict` gate accepts all six vocabulary words
+    // Contract: the `loom finding verdict` gate accepts all seven vocabulary words
     // and rejects unknown ones. Acceptance is tested through the real CLI binary
     // (which calls adjudicate_finding → validate_finding_verdict), not the raw
     // store method that bypasses the gate.
     // Classification contract: needed/blocked stay open; justified/rejected/
-    // deferred/duplicate are resolved when not stale.
+    // deferred/duplicate/resolved are resolved when not stale.
     let tmp = Tmp::new();
     tmp.write("src/x.rs", "pub fn x() {}\n");
     loom_init(tmp.path(), Some("t"));
@@ -774,6 +770,7 @@ fn finding_verdict_gate_accepts_expanded_vocabulary_via_cli() {
         ("rejected", false),
         ("deferred", false),
         ("duplicate", false),
+        ("resolved", false),
     ] {
         // loom_run_ok asserts success; any gate rejection will panic the test.
         loom_run_ok(

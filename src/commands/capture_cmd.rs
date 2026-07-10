@@ -7,6 +7,12 @@
 use super::*;
 
 pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<()> {
+    // A name hit is worth two points and a description hit one. Requiring four
+    // points prevents one generic verb in an intent name ("fix", "record",
+    // "validate") from displacing the safer new-intent landing while still
+    // promoting a match with two terms in its name.
+    const STRONG_MATCH_SCORE: usize = 4;
+
     let store = open(graph)?;
     let item = store.add_node(
         NodeType::InboxItem,
@@ -27,11 +33,11 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
     let mut menu: Vec<serde_json::Value> = Vec::new();
     let strong_matches: Vec<_> = matches
         .iter()
-        .filter(|(score, _, _, _)| *score >= 2)
+        .filter(|(score, _, _, _)| *score >= STRONG_MATCH_SCORE)
         .collect();
     let weak_matches: Vec<_> = matches
         .iter()
-        .filter(|(score, _, _, _)| *score < 2)
+        .filter(|(score, _, _, _)| *score < STRONG_MATCH_SCORE)
         .collect();
     for (score, _, name, id) in &strong_matches {
         menu.push(serde_json::json!({

@@ -11,6 +11,21 @@ use super::*;
 impl Store {
     // ---- facets / tags ---------------------------------------------------
 
+    /// Facets and tags use a polymorphic `(target_id, target_kind)` reference,
+    /// which SQLite cannot express as one foreign key. Enforce that reference
+    /// here so ordinary Store writes cannot create the orphan truth that import
+    /// validation and `doctor` are designed to detect.
+    fn require_annotation_target(&self, target_id: &str, target_kind: TargetKind) -> Result<()> {
+        let exists = match target_kind {
+            TargetKind::Node => self.get_node(target_id)?.is_some(),
+            TargetKind::Edge => self.get_edge(target_id)?.is_some(),
+        };
+        if !exists {
+            bail!("no {target_kind} target '{target_id}' for facet/tag write");
+        }
+        Ok(())
+    }
+
     pub fn set_facet(
         &self,
         target_id: &str,
@@ -19,6 +34,7 @@ impl Store {
         value: &str,
         truth_class: TruthClass,
     ) -> Result<()> {
+        self.require_annotation_target(target_id, target_kind)?;
         self.conn.execute(
             "INSERT INTO facet(target_id,target_kind,key,value,truth_class)
              VALUES (?1,?2,?3,?4,?5)
@@ -47,6 +63,7 @@ impl Store {
     }
 
     pub fn set_tag(&self, target_id: &str, target_kind: TargetKind, term: &str) -> Result<()> {
+        self.require_annotation_target(target_id, target_kind)?;
         self.conn.execute(
             "INSERT OR IGNORE INTO tag(target_id,target_kind,term) VALUES (?1,?2,?3)",
             params![target_id, target_kind.as_str(), term],

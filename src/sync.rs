@@ -125,7 +125,8 @@ fn ripple_codefile(
                 },
                 Scope::Unknown => Some(cause.to_string()),
             };
-            let mut full_cause = precise_cause.expect("non-spared branches carry a cause");
+            let base_cause = precise_cause.expect("non-spared branches carry a cause");
+            let mut full_cause = base_cause.clone();
             match evidence {
                 Some(true) => {
                     full_cause.push_str(" — cited evidence intact, cheap re-confirm");
@@ -141,7 +142,10 @@ fn ripple_codefile(
             changed_intents
                 .entry(e.from_id.clone())
                 .or_default()
-                .insert(full_cause);
+                // The evidence grade above belongs to this grounding only.
+                // Downstream governs/validates/relationship edges grade their
+                // own citations in pass 2.
+                .insert(base_cause);
         } else {
             // A consumer/config/verify grounding: the behavior lives elsewhere,
             // so a content edit does NOT invalidate it and does NOT ripple to the
@@ -269,16 +273,67 @@ fn evidence_span_status(
     let Some(content) = content else {
         return Ok(None);
     };
-    let Some(raw) = store.get_facet(
-        edge_id,
-        TargetKind::Edge,
-        crate::evidence::EVIDENCE_SPANS_KEY,
-    )?
-    else {
-        return Ok(None);
-    };
-    let spans: Vec<crate::evidence::SpanStamp> = serde_json::from_str(&raw).unwrap_or_default();
+    let spans = evidence_spans(store, edge_id)?;
     Ok(crate::evidence::spans_status(&spans, file, content))
+}
+
+fn evidence_spans(store: &Store, edge_id: &str) -> Result<Vec<crate::evidence::SpanStamp>> {
+    let raw = store
+        .get_facet(
+            edge_id,
+            TargetKind::Edge,
+            crate::evidence::EVIDENCE_SPANS_KEY,
+        )?
+        .unwrap_or_default();
+    Ok(serde_json::from_str(&raw).unwrap_or_default())
+}
+
+/// Refine a downstream edge's stale cause using that edge's own citations in
+/// the changed files. A grounding's evidence grade must never be inherited by
+/// a quality, proof, or relationship verdict: their evidence may cover
+/// different lines in the same file.
+fn dependent_evidence_cause(
+    store: &Store,
+    edge_id: &str,
+    base_cause: &str,
+    changed_files: &[(String, Option<String>)],
+) -> Result<String> {
+    let spans = evidence_spans(store, edge_id)?;
+    let mut cited_changed_file = false;
+    let mut rewritten = false;
+    for (file, content) in changed_files {
+        if !spans.iter().any(|span| span.file == *file) {
+            continue;
+        }
+        cited_changed_file = true;
+        match content {
+            Some(content) => {
+                if crate::evidence::spans_status(&spans, file, content) == Some(false) {
+                    rewritten = true;
+                }
+            }
+            None => rewritten = true,
+        }
+    }
+    if !cited_changed_file {
+        return Ok(base_cause.to_string());
+    }
+    let grade = if rewritten {
+        "cited evidence rewritten, full re-inspection"
+    } else {
+        "cited evidence intact, cheap re-confirm"
+    };
+    Ok(format!("{base_cause} — {grade}"))
+}
+
+fn stale_dependent(
+    store: &Store,
+    edge_id: &str,
+    base_cause: &str,
+    changed_files: &[(String, Option<String>)],
+) -> Result<bool> {
+    let cause = dependent_evidence_cause(store, edge_id, base_cause, changed_files)?;
+    store.stale_edge(edge_id, &cause)
 }
 
 /// Pass 2: ripple staleness from changed intents to the edges that depend on
@@ -295,6 +350,17 @@ fn ripple_changed_intents(
     changed_codefiles: &BTreeSet<String>,
     report: &mut SyncReport,
 ) -> Result<()> {
+    let mut changed_files = Vec::new();
+    for codefile_id in changed_codefiles {
+        let Some(codefile) = store.get_node(codefile_id)? else {
+            continue;
+        };
+        changed_files.push((
+            codefile.name.clone(),
+            std::fs::read_to_string(store.root().join(&codefile.name)).ok(),
+        ));
+    }
+
     // Union of change refs for depends_on intersection.
     let mut change_refs: BTreeSet<String> = changed_intents.keys().cloned().collect();
     change_refs.extend(changed_codefiles.iter().cloned());
@@ -302,17 +368,17 @@ fn ripple_changed_intents(
     for (intent, causes) in changed_intents {
         let cause = causes.iter().cloned().collect::<Vec<_>>().join("; ");
         for e in store.edges_with(Some(EdgeKind::Governs), None, Some(intent))? {
-            if store.stale_edge(&e.id, &cause)? {
+            if stale_dependent(store, &e.id, &cause, &changed_files)? {
                 report.edges_staled += 1;
             }
         }
         for e in store.edges_with(Some(EdgeKind::Targets), None, Some(intent))? {
-            if store.stale_edge(&e.id, &cause)? {
+            if stale_dependent(store, &e.id, &cause, &changed_files)? {
                 report.edges_staled += 1;
             }
         }
         for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent))? {
-            if store.stale_edge(&e.id, &cause)? {
+            if stale_dependent(store, &e.id, &cause, &changed_files)? {
                 report.edges_staled += 1;
             }
             // Reset the linked Validation's last_result.
@@ -327,12 +393,12 @@ fn ripple_changed_intents(
             EdgeKind::Sequence,
         ] {
             for e in store.edges_with(Some(kind), Some(intent), None)? {
-                if store.stale_edge(&e.id, &cause)? {
+                if stale_dependent(store, &e.id, &cause, &changed_files)? {
                     report.edges_staled += 1;
                 }
             }
             for e in store.edges_with(Some(kind), None, Some(intent))? {
-                if store.stale_edge(&e.id, &cause)? {
+                if stale_dependent(store, &e.id, &cause, &changed_files)? {
                     report.edges_staled += 1;
                 }
             }
@@ -354,8 +420,8 @@ fn ripple_changed_intents(
         let Some(e) = store.get_edge(&edge_id)? else {
             continue;
         };
-        let both_changed = changed_intents.contains_key(&e.from_id)
-            && changed_intents.contains_key(&e.to_id);
+        let both_changed =
+            changed_intents.contains_key(&e.from_id) && changed_intents.contains_key(&e.to_id);
         let deps_hit = depends_on_intersects(&e.depends_on, &change_refs);
         if !(both_changed || deps_hit) {
             report.edges_spared += 1;
@@ -366,7 +432,7 @@ fn ripple_changed_intents(
         } else {
             "relates depends_on intersects sync change set".to_string()
         };
-        if store.stale_edge(&e.id, &cause)? {
+        if stale_dependent(store, &e.id, &cause, &changed_files)? {
             report.edges_staled += 1;
         }
     }

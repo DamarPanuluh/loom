@@ -510,10 +510,10 @@ pub enum ValidationCmd {
         #[arg(long)]
         artifact: Option<String>,
     },
-    /// Run stored proof commands for an intent (or --all pending).
+    /// Run one validation, every validation for an intent, or --all pending.
     Run {
         #[arg(default_value = "")]
-        intent: String,
+        key: String,
         /// Run every pending validation.
         #[arg(long)]
         all: bool,

@@ -8,6 +8,7 @@
 //! derived data or touches asserted statuses (INV-5).
 
 use super::*;
+use anyhow::Context;
 
 impl Store {
     // ---- ring 2: structural plane (sync + derived data) ------------------
@@ -50,7 +51,7 @@ impl Store {
     /// Re-open an asserted edge whose dependency changed (sync ripple). Moves a
     /// settled verdict to `needs_reverification` and records the concrete cause
     /// on the edge as the `stale_cause` facet. Distinct from `record_verdict`
-    /// (it writes no verdict) and from `set_derived_status` (asserted only).
+    /// (it writes no fresh verdict) and from `set_derived_status` (derived only).
     /// Returns true if the edge was re-opened.
     pub fn stale_edge(&self, edge_id: &str, cause: &str) -> Result<bool> {
         let cause = cause.trim();
@@ -121,16 +122,20 @@ impl Store {
     }
 
     /// Set a node's status directly for asserted/user-visible transitions.
-    /// Touches updated_at with the live clock.
+    /// A repeated status is a no-op so rerunning an unchanged proof does not
+    /// create meaningless timestamp and export churn.
     pub fn set_node_status(&self, id: &str, status: &str) -> Result<()> {
+        let node = self
+            .get_node(id)?
+            .ok_or_else(|| anyhow!("no node '{id}'"))?;
+        if node.status == status {
+            return Ok(());
+        }
         let now = now(&self.conn)?;
-        let n = self.conn.execute(
+        self.conn.execute(
             "UPDATE node SET status=?2,updated_at=?3 WHERE id=?1",
             params![id, status, now],
         )?;
-        if n == 0 {
-            bail!("no node '{id}'");
-        }
         Ok(())
     }
 
@@ -409,7 +414,9 @@ impl Store {
             }
         }
         if !num.is_empty() {
-            return Ok(num.parse().ok());
+            return Ok(Some(num.parse::<u64>().with_context(|| {
+                format!("invalid numeric metric '{num}' on finding '{finding_id}'")
+            })?));
         }
         // oversized_file fallback: current codefile loc facet.
         if finding.body.get("kind").and_then(|v| v.as_str()) == Some("oversized_file") {
@@ -419,7 +426,9 @@ impl Store {
                 .next()
             {
                 if let Some(loc) = self.get_facet(&flags.to_id, TargetKind::Node, "loc")? {
-                    return Ok(loc.parse().ok());
+                    return Ok(Some(loc.parse::<u64>().with_context(|| {
+                        format!("invalid loc facet '{loc}' on codefile '{}'", flags.to_id)
+                    })?));
                 }
             }
         }

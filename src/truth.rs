@@ -139,10 +139,10 @@ impl TruthAxis {
                 axis: self,
                 missing_form: "an asserted or derived finding awaits adjudication".into(),
                 correct_when: "every material finding carries a durable adjudication — needed, \
-                               justified, rejected, deferred, blocked, or duplicate — with a \
+                               justified, rejected, deferred, blocked, duplicate, or resolved — with a \
                                concrete reason. The goal is zero unjudged signals, not zero signals"
                     .into(),
-                authoritative_write: "loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate --reason …".into(),
+                authoritative_write: "loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate|resolved --reason …".into(),
                 forbidden_write: "deferring the judgment to a human instead of judging it".into(),
                 after_write: "loom status".into(),
             },

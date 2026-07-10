@@ -95,7 +95,9 @@ fn bootstrap_suggest_creates_proposal_adopt_yields_planned_intent() {
     );
 
     let store = Store::open(tmp.path()).unwrap();
-    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX).unwrap();
+    let intents = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap();
     assert_eq!(intents.len(), 1);
     assert_eq!(intents[0].status, "planned");
     assert_eq!(intents[0].name, "users can sign in");

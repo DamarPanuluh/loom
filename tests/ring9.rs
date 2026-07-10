@@ -657,15 +657,16 @@ fn queue_modes_never_serve_the_same_edge() {
 // ===========================================================================
 
 #[test]
-fn unmeasured_pair_fallback_serves_root_intent_only() {
+fn unmeasured_pair_fallback_serves_leaf_intent_only() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     loom::packs::seed(&store, "iso5055").unwrap();
 
-    // One implemented root intent, NO governs edges yet.
+    // One implemented roll-up intent, NO governs edges yet.
     let root = implemented_intent(&store, "root behavior");
 
-    // A child intent (hierarchy edge under the root) — must NOT be paired.
+    // A child leaf intent (hierarchy edge under the root) — this is the code-bearing
+    // quality surface and therefore MUST be paired instead of the roll-up.
     let child = store
         .add_node(
             NodeType::Intent,
@@ -685,7 +686,7 @@ fn unmeasured_pair_fallback_serves_root_intent_only() {
         .unwrap();
 
     let item = workitem::next(&store, Some(Mode::Quality)).unwrap().expect(
-        "UNMEASURED PAIR: a seeded pack with an unmeasured root intent must serve a quality item",
+        "UNMEASURED PAIR: a seeded pack with an unmeasured leaf intent must serve a quality item",
     );
 
     assert_eq!(
@@ -693,16 +694,16 @@ fn unmeasured_pair_fallback_serves_root_intent_only() {
         "UNMEASURED PAIR: target.kind must be \"rule_intent_pair\", got {}",
         item.target.kind
     );
-    // The served intent must be the ROOT, not the child.
+    // The served intent must be the LEAF, not the roll-up root.
     assert_eq!(
-        item.target.id, root.id,
-        "UNMEASURED PAIR: only root intents are paired, never children — served id {} but root is {}",
-        item.target.id, root.id
+        item.target.id, child.id,
+        "UNMEASURED PAIR: only leaf intents are paired, never roll-up roots — served id {} but leaf is {}",
+        item.target.id, child.id
     );
     assert_eq!(
         item.target.to.as_deref(),
-        Some(root.name.as_str()),
-        "UNMEASURED PAIR: target.to must be the root intent name"
+        Some(child.name.as_str()),
+        "UNMEASURED PAIR: target.to must be the leaf intent name"
     );
 
     // prompt_contract carries evidence_template AND examples (Some).
@@ -732,9 +733,9 @@ fn unmeasured_pair_fallback_serves_root_intent_only() {
         rule_name
     );
     assert!(
-        wb.contains(&root.name),
+        wb.contains(&child.name),
         "UNMEASURED PAIR: write_back must contain the real intent name '{}', got: {wb}",
-        root.name
+        child.name
     );
 }
 
@@ -1132,6 +1133,11 @@ fn door_landing_menu_and_inbox_mark_contract() {
         "DOOR+INBOX CLI: landing_menu must contain a 'dismiss' landing, got {:?}",
         landings
     );
+    assert!(
+        landings.contains(&"hypothesis"),
+        "DOOR+INBOX CLI: landing_menu must contain a 'hypothesis' landing, got {:?}",
+        landings
+    );
     let next_step = door
         .get("next_step")
         .and_then(|v| v.as_str())
@@ -1204,8 +1210,8 @@ fn door_landing_menu_and_inbox_mark_contract() {
 
 #[test]
 fn door_weak_existing_intent_match_follows_new_intent_and_is_labelled_weak() {
-    // Contract: a weak lexical match (score < 2) must NOT displace new_intent.
-    // Strong matches (score >= 2) precede new_intent; weak ones follow spike and
+    // Contract: a weak lexical match (score < 4) must NOT displace new_intent.
+    // Strong matches (score >= 4) precede new_intent; weak ones follow spike and
     // carry confidence="weak" with a why that nudges toward new_intent.
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("t"));
@@ -1213,7 +1219,7 @@ fn door_weak_existing_intent_match_follows_new_intent_and_is_labelled_weak() {
     // Seed an existing intent whose description shares exactly one query term
     // with the utterance and whose name shares none. Scoring is
     // score(name)*2 + score(description); a single description hit yields 1,
-    // which is below the strong threshold of 2 -> a weak match.
+    // which is below the strong threshold of 4 -> a weak match.
     loom_run_ok(
         tmp.path(),
         &[
@@ -1282,6 +1288,46 @@ fn door_weak_existing_intent_match_follows_new_intent_and_is_labelled_weak() {
         "DOOR WEAK MATCH: weak why must mention weak lexical overlap and prefer new_intent, got: {}",
         why
     );
+}
+
+#[test]
+fn door_weak_generic_name_term_does_not_become_a_strong_match() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    loom_run_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "fix failing checks",
+            "--description",
+            "routes broken proof results to repair work",
+            "--level",
+            "feature",
+            "--visibility",
+            "user_visible",
+            "--aspect",
+            "happy",
+        ],
+    );
+
+    let door = loom_json(
+        tmp.path(),
+        &[
+            "door",
+            "fix Loom dogfood so it exercises the real repository",
+        ],
+    );
+    let menu = door["landing_menu"]
+        .as_array()
+        .expect("door emits a landing menu");
+    assert_eq!(menu[0]["landing"], "new_intent");
+    let existing = menu
+        .iter()
+        .find(|entry| entry["landing"] == "existing_intent")
+        .expect("the lexical match remains visible as a weak option");
+    assert_eq!(existing["confidence"], "weak");
 }
 
 #[test]

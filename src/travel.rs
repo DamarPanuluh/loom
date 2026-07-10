@@ -5,7 +5,7 @@
 //! exports to byte-identical JSON, so `loom.graph.json` diffs cleanly in PRs and
 //! `loom export --check` can gate CI.
 
-use crate::model::{Edge, Facet, Node, Tag};
+use crate::model::{Edge, Facet, Node, NodeType, Tag};
 use crate::store::{Identity, Snapshot, Store};
 use crate::Result;
 use anyhow::Context;
@@ -134,6 +134,47 @@ pub fn read_export(path: &Path) -> Result<Export> {
     Export::from_json(&text)
 }
 
+/// Quarantine executable text crossing the import trust boundary. The graph
+/// structure still restores atomically, but imported validation and scan
+/// commands cannot execute until an operator re-enters each exact command via
+/// the corresponding local update command.
+pub fn quarantine_imported_execution(snap: &mut Snapshot) -> Result<usize> {
+    let mut quarantined = 0;
+    for node in &mut snap.nodes {
+        if node.node_type != NodeType::Validation {
+            continue;
+        }
+        let has_command = node
+            .body
+            .get("command")
+            .and_then(|value| value.as_str())
+            .is_some_and(|command| !command.trim().is_empty());
+        if has_command {
+            node.body["command_trusted"] = serde_json::Value::Bool(false);
+            quarantined += 1;
+        }
+    }
+    if let Some(raw) = snap.config.get("scan_adapters").cloned() {
+        let mut adapters: Vec<serde_json::Value> = serde_json::from_str(&raw)
+            .context("parsing imported scan_adapters before command quarantine")?;
+        for adapter in &mut adapters {
+            let has_command = adapter
+                .get("command")
+                .and_then(|value| value.as_str())
+                .is_some_and(|command| !command.trim().is_empty());
+            if has_command {
+                adapter["trusted"] = serde_json::Value::Bool(false);
+                quarantined += 1;
+            }
+        }
+        snap.config.insert(
+            "scan_adapters".into(),
+            serde_json::to_string(&adapters).context("serializing quarantined scan_adapters")?,
+        );
+    }
+    Ok(quarantined)
+}
+
 // ---- projection seam -------------------------------------------------------
 
 /// The registry key of the canonical deterministic graph export.
@@ -205,7 +246,8 @@ mod tests {
             config: Default::default(),
         };
         let json = e.to_json().unwrap();
-        insta::assert_snapshot!(json, @r###"{
+        insta::assert_snapshot!(json, @r###"
+{
   "format": 1,
   "graph_id": "g1",
   "name": "demo",
@@ -244,6 +286,47 @@ mod tests {
                          "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
         let parsed = Export::from_json(legacy).unwrap();
         assert!(parsed.config.is_empty());
+    }
+
+    #[test]
+    fn import_quarantines_validation_and_scan_commands() {
+        let mut config = std::collections::BTreeMap::new();
+        config.insert(
+            "scan_adapters".into(),
+            r#"[{"name":"lint","command":"cargo lint"}]"#.into(),
+        );
+        let mut snapshot = Snapshot {
+            identity: Identity {
+                graph_id: "g".into(),
+                name: "n".into(),
+                schema_version: crate::SCHEMA_VERSION,
+                observed: false,
+            },
+            nodes: vec![Node {
+                id: "validation".into(),
+                node_type: NodeType::Validation,
+                name: "imported proof".into(),
+                description: String::new(),
+                status: "not_run".into(),
+                truth_class: crate::model::TruthClass::Asserted,
+                body: serde_json::json!({"type":"test", "command":"cargo test", "command_trusted":true}),
+                created_at: String::new(),
+                updated_at: String::new(),
+            }],
+            edges: Vec::new(),
+            facets: Vec::new(),
+            tags: Vec::new(),
+            config,
+        };
+
+        assert_eq!(quarantine_imported_execution(&mut snapshot).unwrap(), 2);
+        assert_eq!(
+            snapshot.nodes[0].body["command_trusted"],
+            serde_json::Value::Bool(false)
+        );
+        let adapters: serde_json::Value =
+            serde_json::from_str(&snapshot.config["scan_adapters"]).unwrap();
+        assert_eq!(adapters[0]["trusted"], serde_json::Value::Bool(false));
     }
 
     #[test]

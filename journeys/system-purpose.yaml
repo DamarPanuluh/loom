@@ -1,0 +1,19 @@
+journey: loom system purpose
+steps:
+  - name: report the living graph
+    intent: loom maintains a falsifiable graph for LLM-driven codebase work
+    run: "loom status --json"
+    expect:
+      exit_code: 0
+      exists: ["$.graph.graph_id", "$.maturity.rungs", "$.queues"]
+  - name: recover the product intent
+    intent: loom maintains a falsifiable graph for LLM-driven codebase work
+    run: "loom find 'falsifiable graph' --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["loom maintains a falsifiable graph", "groundings"]
+  - name: audit graph integrity
+    intent: loom maintains a falsifiable graph for LLM-driven codebase work
+    run: "loom doctor --json"
+    expect:
+      exit_code: 0

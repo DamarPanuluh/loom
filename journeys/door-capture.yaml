@@ -13,3 +13,8 @@ steps:
     run: "loom inbox mark {{ inbox_id }} routed --reason 'landed as new_intent for dogfood journey'"
     expect:
       exit_code: 0
+  - name: remove journey fixture
+    intent: an operator captures a topic through door and routes it from the landing menu
+    run: "loom inbox remove {{ inbox_id }}"
+    expect:
+      exit_code: 0

@@ -10,8 +10,7 @@ use super::context::{edge_context, node_context};
 use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, elaborator_contract, fixer_contract,
     inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
-    reviewer_contract, structural_finding_triage_contract, triage_contract,
-    validator_contract,
+    reviewer_contract, structural_finding_triage_contract, triage_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -278,11 +277,11 @@ pub(super) fn quality_item(store: &Store) -> Result<Option<WorkItem>> {
             "quality verdict went stale — a dependency changed; re-measure",
         )?));
     }
-    // Fallback: propose the first never-measured (rule × root intent) pair.
+    // Fallback: propose the first never-measured (rule × leaf intent) pair.
     // Seeding a pack must create actionable work — a rule nobody is asked to
-    // measure is a dead end. Roots only (no hierarchy parent): measurement
-    // starts at the highest honest altitude, and a component verdict covers
-    // descendants unless a leaf needs its own.
+    // measure is a dead end. Leaves only: roll-up parents have no code of their
+    // own to inspect, while scenario children are surroundings rather than
+    // independent quality surfaces.
     unmeasured_pair_item(store)
 }
 
@@ -775,7 +774,9 @@ pub(super) fn prescreen_for(
         return Ok(Vec::new());
     }
     let mut files = Vec::new();
-    for e in store.realizing_groundings(intent_id)?.into_iter().take(8) {
+    // Pre-screen every realizing file. A cap here would let the quality packet
+    // omit a violation solely because its file sorted after the eighth edge.
+    for e in store.realizing_groundings(intent_id)? {
         if let Some(cf) = store.get_node(&e.to_id)? {
             files.push(cf.name);
         }
@@ -783,12 +784,7 @@ pub(super) fn prescreen_for(
     if files.is_empty() {
         return Ok(Vec::new());
     }
-    Ok(crate::prescan::prescreen(
-        store.root(),
-        &files,
-        &patterns,
-        20,
-    ))
+    crate::prescan::prescreen(store.root(), &files, &patterns, 20)
 }
 
 /// Per-queue backlog counts mirroring the EXACT serving partition of each
@@ -1195,7 +1191,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
     Ok(out)
 }
 
-/// Every never-measured (rule × root implemented intent) pair as a roster row —
+/// Every never-measured (rule × leaf implemented intent) pair as a roster row —
 /// the enumerated form of `unmeasured_pair_item`'s single pick.
 fn unmeasured_pair_entries(store: &Store) -> Result<Vec<QueueEntry>> {
     let pairs = unmeasured_quality_pairs(store)?;

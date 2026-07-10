@@ -405,44 +405,7 @@ pub fn execute_steps(
             let client = client
                 .as_ref()
                 .ok_or_else(|| anyhow!("internal: HTTP client missing for HTTP step"))?;
-            let base = interpolate(&spec.base, &vars);
-            if diagnose_style && (base.is_empty() || base.contains("{{")) {
-                bail_no_usable_base(spec, &base)?;
-            }
-            let url = interpolate(&format!("{base}{}", step.request.url), &vars);
-            let method = step.request.method.to_uppercase();
-            let method = reqwest::Method::from_bytes(method.as_bytes())
-                .map_err(|_| anyhow!("step '{}': invalid HTTP method '{method}'", step.name))?;
-            let mut req = client.request(method, &url);
-            for (name, value) in &step.request.headers {
-                req = req.header(name, interpolate(value, &vars));
-            }
-            if !step.request.query.is_empty() {
-                let query: Vec<(String, String)> = step
-                    .request
-                    .query
-                    .iter()
-                    .map(|(key, value)| (key.clone(), interpolate(&value_to_string(value), &vars)))
-                    .collect();
-                req = req.query(&query);
-            }
-            if let Some(body) = &step.request.json {
-                let interpolated = interpolate_json(body, &vars);
-                req = req.json(&interpolated);
-            }
-            match req.send() {
-                Ok(resp) => check_response(step, resp, &mut vars, diagnose_style),
-                Err(e) => StepOutcome {
-                    name: step.name.clone(),
-                    intent: step.intent.clone(),
-                    passed: false,
-                    detail: if diagnose_style {
-                        format!("request failed: {e}")
-                    } else {
-                        format!("request error: {e}")
-                    },
-                },
-            }
+            run_http_step(client, spec, step, &mut vars, diagnose_style)?
         };
         let passed = outcome.passed;
         outcomes.push(outcome);
@@ -451,6 +414,50 @@ pub fn execute_steps(
         }
     }
     Ok(outcomes)
+}
+
+fn run_http_step(
+    client: &reqwest::blocking::Client,
+    spec: &JourneySpec,
+    step: &Step,
+    vars: &mut BTreeMap<String, String>,
+    diagnose_style: bool,
+) -> Result<StepOutcome> {
+    let base = interpolate(&spec.base, vars);
+    if diagnose_style && (base.is_empty() || base.contains("{{")) {
+        bail_no_usable_base(spec, &base)?;
+    }
+    let url = interpolate(&format!("{base}{}", step.request.url), vars);
+    let method_name = step.request.method.to_uppercase();
+    let method = reqwest::Method::from_bytes(method_name.as_bytes())
+        .map_err(|_| anyhow!("step '{}': invalid HTTP method '{method_name}'", step.name))?;
+    let mut request = client.request(method, &url);
+    for (name, value) in &step.request.headers {
+        request = request.header(name, interpolate(value, vars));
+    }
+    if !step.request.query.is_empty() {
+        let query: Vec<(String, String)> = step
+            .request
+            .query
+            .iter()
+            .map(|(key, value)| (key.clone(), interpolate(&value_to_string(value), vars)))
+            .collect();
+        request = request.query(&query);
+    }
+    if let Some(body) = &step.request.json {
+        request = request.json(&interpolate_json(body, vars));
+    }
+    Ok(match request.send() {
+        Ok(response) => check_response(step, response, vars, diagnose_style),
+        Err(error) => failed_step(
+            step,
+            if diagnose_style {
+                format!("request failed: {error}")
+            } else {
+                format!("request error: {error}")
+            },
+        ),
+    })
 }
 
 /// Stamp `validates` verdicts and journey status from already-executed outcomes.
@@ -464,28 +471,19 @@ pub fn record_outcomes(
 ) -> Result<Node> {
     let journey = resolve_validation(store, &spec.journey, true)?;
     let mut first_fail_idx: Option<usize> = None;
+    let mut intent_outcomes: BTreeMap<String, (InspectionStatus, Vec<String>)> = BTreeMap::new();
     for (idx, outcome) in outcomes.iter_mut().enumerate() {
         match store.resolve_node(&outcome.intent, Some(NodeType::Intent)) {
             Ok(intent) => {
-                for e in store.edges_with(
-                    Some(EdgeKind::Validates),
-                    Some(&journey.id),
-                    Some(&intent.id),
-                )? {
-                    let status = if outcome.passed {
-                        InspectionStatus::Passing
-                    } else {
-                        InspectionStatus::Failing
-                    };
-                    store.record_verdict(
-                        &e.id,
-                        status,
-                        "journey step",
-                        &outcome.detail,
-                        1.0,
-                        "journey",
-                    )?;
+                let entry = intent_outcomes
+                    .entry(intent.id)
+                    .or_insert_with(|| (InspectionStatus::Passing, Vec::new()));
+                if !outcome.passed {
+                    entry.0 = InspectionStatus::Failing;
                 }
+                entry
+                    .1
+                    .push(format!("{}: {}", outcome.name, outcome.detail));
             }
             Err(e) => {
                 outcome.passed = false;
@@ -494,6 +492,20 @@ pub fn record_outcomes(
         }
         if !outcome.passed && first_fail_idx.is_none() {
             first_fail_idx = Some(idx);
+        }
+    }
+    // Several protocol steps may exercise the same behavior. Record one
+    // aggregate verdict per intent instead of repeatedly cycling the same edge
+    // through each step's evidence; otherwise a logically identical rerun
+    // dirties updated_at even when the final evidence is byte-identical.
+    for (intent_id, (status, details)) in intent_outcomes {
+        let evidence = details.join(" | ");
+        for e in store.edges_with(
+            Some(EdgeKind::Validates),
+            Some(&journey.id),
+            Some(&intent_id),
+        )? {
+            store.record_verdict(&e.id, status, "journey steps", &evidence, 1.0, "journey")?;
         }
     }
     if let Some(idx) = first_fail_idx {
@@ -512,121 +524,36 @@ fn run_cli_step(
 ) -> Result<StepOutcome> {
     let command = interpolate(&step.run, vars);
     let timeout_secs = 60u64;
-    let mut builder = std::process::Command::new("sh");
-    builder.arg("-c").arg(&command);
-    if let Some(dir) = cwd {
-        builder.current_dir(dir);
-    }
-    builder.stdout(Stdio::piped()).stderr(Stdio::piped());
-    let child = builder
-        .spawn()
-        .with_context(|| format!("step '{}': spawning `{command}`", step.name))?;
-    let output = child
-        .controlled_with_output()
-        .time_limit(Duration::from_secs(timeout_secs))
-        .terminate_for_timeout()
-        .wait()
-        .with_context(|| format!("step '{}': waiting on `{command}`", step.name))?;
+    let output = execute_cli_command(step, &command, cwd, timeout_secs)?;
     let Some(output) = output else {
-        return Ok(StepOutcome {
-            name: step.name.clone(),
-            intent: step.intent.clone(),
-            passed: false,
-            detail: format!("`{command}` timed out after {timeout_secs}s"),
-        });
+        return Ok(failed_step(
+            step,
+            format!("`{command}` timed out after {timeout_secs}s"),
+        ));
     };
     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
     let code = output.status.code().unwrap_or(-1) as i32;
     let want = step.expect.exit_code.unwrap_or(0);
     if code != want {
-        return Ok(StepOutcome {
-            name: step.name.clone(),
-            intent: step.intent.clone(),
-            passed: false,
-            detail: if diagnose_style {
-                format!("exit {code} (want {want}); stderr: {}", truncate(&stderr, 200))
+        return Ok(failed_step(
+            step,
+            if diagnose_style {
+                format!(
+                    "exit {code} (want {want}); stderr: {}",
+                    truncate(&stderr, 200)
+                )
             } else {
                 format!("exit {code} (want {want})")
             },
-        });
+        ));
     }
-    for needle in &step.expect.stdout_contains {
-        let n = interpolate(needle, vars);
-        if !stdout.contains(&n) {
-            return Ok(StepOutcome {
-                name: step.name.clone(),
-                intent: step.intent.clone(),
-                passed: false,
-                detail: format!("stdout missing `{n}`"),
-            });
-        }
-    }
-    for needle in &step.expect.stderr_contains {
-        let n = interpolate(needle, vars);
-        if !stderr.contains(&n) {
-            return Ok(StepOutcome {
-                name: step.name.clone(),
-                intent: step.intent.clone(),
-                passed: false,
-                detail: format!("stderr missing `{n}`"),
-            });
-        }
+    if let Some(detail) = cli_text_failure(step, &stdout, &stderr, vars) {
+        return Ok(failed_step(step, detail));
     }
     let stdout_json = serde_json::from_str::<serde_json::Value>(stdout.trim()).ok();
-    if (!step.expect.body.is_empty() || !step.expect.exists.is_empty() || !step.capture.is_empty())
-        && stdout_json.is_none()
-    {
-        return Ok(StepOutcome {
-            name: step.name.clone(),
-            intent: step.intent.clone(),
-            passed: false,
-            detail: "CLI step expects JSON stdout for body/exists/capture, but stdout was not JSON"
-                .into(),
-        });
-    }
-    if let Some(ref body) = stdout_json {
-        for path in &step.expect.exists {
-            if jsonpath(body, path).is_none() {
-                return Ok(StepOutcome {
-                    name: step.name.clone(),
-                    intent: step.intent.clone(),
-                    passed: false,
-                    detail: format!("stdout JSON missing `{path}`"),
-                });
-            }
-        }
-        for (path, expected) in &step.expect.body {
-            let Some(got) = jsonpath(body, path) else {
-                return Ok(StepOutcome {
-                    name: step.name.clone(),
-                    intent: step.intent.clone(),
-                    passed: false,
-                    detail: format!("stdout JSON missing `{path}`"),
-                });
-            };
-            let expected = interpolate_json(expected, vars);
-            if got != expected {
-                return Ok(StepOutcome {
-                    name: step.name.clone(),
-                    intent: step.intent.clone(),
-                    passed: false,
-                    detail: format!("stdout JSON `{path}`: got {got}, want {expected}"),
-                });
-            }
-        }
-        for (name, path) in &step.capture {
-            if let Some(v) = jsonpath(body, path) {
-                vars.insert(name.clone(), value_to_string(&v));
-            } else {
-                return Ok(StepOutcome {
-                    name: step.name.clone(),
-                    intent: step.intent.clone(),
-                    passed: false,
-                    detail: format!("capture `{name}` from `{path}` missing in stdout JSON"),
-                });
-            }
-        }
+    if let Some(detail) = apply_cli_json_contract(step, stdout_json.as_ref(), vars) {
+        return Ok(failed_step(step, detail));
     }
     // Always expose raw streams for later interpolation when useful.
     vars.insert("stdout".into(), stdout.clone());
@@ -635,8 +562,102 @@ fn run_cli_step(
         name: step.name.clone(),
         intent: step.intent.clone(),
         passed: true,
-        detail: format!("`{command}` exit {code}"),
+        // Persist the authored template, not runtime substitutions such as a
+        // captured random id. The exit code is the observed fact; volatile
+        // values would make an identical passing journey dirty the export and
+        // can also disclose data that only needed to flow between steps.
+        detail: format!("`{}` exit {code}", step.run),
     })
+}
+
+fn execute_cli_command(
+    step: &Step,
+    command: &str,
+    cwd: Option<&Path>,
+    timeout_secs: u64,
+) -> Result<Option<process_control::Output>> {
+    let mut builder = std::process::Command::new("sh");
+    builder.arg("-c").arg(command);
+    if let Some(dir) = cwd {
+        builder.current_dir(dir);
+    }
+    builder.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let child = builder
+        .spawn()
+        .with_context(|| format!("step '{}': spawning `{command}`", step.name))?;
+    child
+        .controlled_with_output()
+        .time_limit(Duration::from_secs(timeout_secs))
+        .terminate_for_timeout()
+        .wait()
+        .with_context(|| format!("step '{}': waiting on `{command}`", step.name))
+}
+
+fn cli_text_failure(
+    step: &Step,
+    stdout: &str,
+    stderr: &str,
+    vars: &BTreeMap<String, String>,
+) -> Option<String> {
+    for needle in &step.expect.stdout_contains {
+        let expected = interpolate(needle, vars);
+        if !stdout.contains(&expected) {
+            return Some(format!("stdout missing `{expected}`"));
+        }
+    }
+    for needle in &step.expect.stderr_contains {
+        let expected = interpolate(needle, vars);
+        if !stderr.contains(&expected) {
+            return Some(format!("stderr missing `{expected}`"));
+        }
+    }
+    None
+}
+
+fn apply_cli_json_contract(
+    step: &Step,
+    body: Option<&serde_json::Value>,
+    vars: &mut BTreeMap<String, String>,
+) -> Option<String> {
+    let needs_json =
+        !step.expect.body.is_empty() || !step.expect.exists.is_empty() || !step.capture.is_empty();
+    let Some(body) = body else {
+        return needs_json.then(|| {
+            "CLI step expects JSON stdout for body/exists/capture, but stdout was not JSON".into()
+        });
+    };
+    for path in &step.expect.exists {
+        if jsonpath(body, path).is_none() {
+            return Some(format!("stdout JSON missing `{path}`"));
+        }
+    }
+    for (path, expected) in &step.expect.body {
+        let Some(got) = jsonpath(body, path) else {
+            return Some(format!("stdout JSON missing `{path}`"));
+        };
+        let expected = interpolate_json(expected, vars);
+        if got != expected {
+            return Some(format!("stdout JSON `{path}`: got {got}, want {expected}"));
+        }
+    }
+    for (name, path) in &step.capture {
+        let Some(value) = jsonpath(body, path) else {
+            return Some(format!(
+                "capture `{name}` from `{path}` missing in stdout JSON"
+            ));
+        };
+        vars.insert(name.clone(), value_to_string(&value));
+    }
+    None
+}
+
+fn failed_step(step: &Step, detail: impl Into<String>) -> StepOutcome {
+    StepOutcome {
+        name: step.name.clone(),
+        intent: step.intent.clone(),
+        passed: false,
+        detail: detail.into(),
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -1018,5 +1039,24 @@ mod tests {
         // Not a bare identifier (contains a space/symbol not in the allowed
         // set) — left untouched rather than guessed at.
         assert_eq!(normalize_path_params("/x/{a b}/y"), "/x/{a b}/y");
+    }
+
+    #[test]
+    fn successful_cli_evidence_preserves_the_template_not_runtime_values() {
+        let step = Step {
+            name: "use captured id".into(),
+            intent: "captured values remain ephemeral".into(),
+            run: "true # {{ item_id }}".into(),
+            request: Request::default(),
+            expect: Expect::default(),
+            capture: BTreeMap::new(),
+        };
+        let mut vars = BTreeMap::from([("item_id".into(), "random-runtime-id".into())]);
+
+        let outcome = run_cli_step(&step, &mut vars, None, false).unwrap();
+
+        assert!(outcome.passed);
+        assert_eq!(outcome.detail, "`true # {{ item_id }}` exit 0");
+        assert!(!outcome.detail.contains("random-runtime-id"));
     }
 }

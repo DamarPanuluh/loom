@@ -7,6 +7,7 @@
 //! content extraction and derived facets belong to `sync`, never here.
 
 use super::*;
+use anyhow::Context;
 
 pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Result<()> {
     match cmd {
@@ -184,10 +185,7 @@ fn observed_globs(store: &Store) -> Result<Vec<String>> {
     read_globs(store, "observed_globs")
 }
 fn read_globs(store: &Store, key: &str) -> Result<Vec<String>> {
-    Ok(store
-        .get_meta(key)?
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default())
+    super::read_json_meta(store, key)
 }
 fn remember_glob(store: &Store, pattern: &str, observed: bool) -> Result<()> {
     let mut globs = registered_globs(store)?;
@@ -365,14 +363,31 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
 
     let observed = codefile_observed(&n);
     if json {
+        let loc = if loc.is_empty() {
+            None
+        } else {
+            Some(
+                loc.parse::<u64>()
+                    .with_context(|| format!("invalid loc facet on '{}'", n.name))?,
+            )
+        };
+        let symbol_count = if symbols.is_empty() {
+            None
+        } else {
+            Some(
+                symbols
+                    .parse::<u64>()
+                    .with_context(|| format!("invalid symbol_count facet on '{}'", n.name))?,
+            )
+        };
         let out = serde_json::json!({
             "name": n.name,
             "id": n.id,
             "observed": observed,
             "language": language,
             "role": role,
-            "loc": loc.parse::<u64>().ok(),
-            "symbol_count": symbols.parse::<u64>().ok(),
+            "loc": loc,
+            "symbol_count": symbol_count,
             "owners": owners.iter().map(|(name, loc, verdict, ev, role)| serde_json::json!({
                 "intent": name, "locator": loc, "verdict": verdict, "evidence": ev, "role": role,
             })).collect::<Vec<_>>(),

@@ -54,7 +54,7 @@ Queue partition is deliberately disjoint:
 
 Fixer lane safety: fix the source and run `loom sync`; sync re-opens the claim (`needs_reverification` plus any `stale_cause` facet), and the owning lane re-measures it.
 
-Quality fallback: if no `governs` edge needs work, `loom next --mode quality` proposes the first never-measured `(QualityRule × root implemented Intent)` pair. Recording the verdict creates the `governs` edge, so seeding a pack creates actionable work.
+Quality fallback: if no `governs` edge needs work, `loom next --mode quality` proposes the first never-measured `(QualityRule × leaf implemented Intent)` pair. Roll-up parents and scenario children are excluded because they are not independent code-bearing quality surfaces. Recording the verdict creates the `governs` edge, so seeding a pack creates actionable work.
 
 `loom next --json` serializes as `NextOutput`. Abbreviated shape (see `llm-driver.md` for the full WorkItem, TruthGap, and GraphState fields):
 
@@ -193,7 +193,7 @@ Sections (all optional, applied in dependency order — `vocab` first, then `int
 
 **Mechanical reconfirm:** when `loom next --mode analyze --all` shows `routing_hint: mechanical` / `cause_class: cheap`, an orchestrator may batch-reaffirm those edges through `verdicts[]` (reuse the prior criterion; cite intact evidence) instead of opening each full packet. Judgment items stay one-at-a-time via `loom next`.
 
-`adjudications` records a durable finding verdict (`justified` | `needed` | `blocked` with a substantive reason) — the same gate as `loom finding verdict`, on a finding materialized by a prior `sync`. `vocab` registers terms (idempotent) and `tags` tags an intent with registered terms (same gate as `loom intent tag add`); list a term under `vocab` earlier in the same batch to register and apply it in one call — collapsing the per-intent "arm the duplicate detector" churn, just as `adjudications` collapses per-finding triage.
+`adjudications` records a durable finding verdict (`needed` | `justified` | `rejected` | `deferred` | `blocked` | `duplicate` | `resolved` with a substantive reason) — the same gate as `loom finding verdict`, on a finding materialized by a prior `sync`. Use `resolved` only when the finding was true and the repair has now been observed; `rejected` means the finding itself was false or below threshold. `vocab` registers terms (idempotent) and `tags` tags an intent with registered terms (same gate as `loom intent tag add`); list a term under `vocab` earlier in the same batch to register and apply it in one call — collapsing the per-intent "arm the duplicate detector" churn, just as `adjudications` collapses per-finding triage.
 
 ### Concurrency
 
@@ -399,7 +399,7 @@ loom validation unlink <validation> <intent> [--json]
 loom validation remove <validation> [--json]
 loom validation show <validation> [--json]
 loom validation list [--limit N] [--offset N] [--json]
-loom validation run [<intent>] [--all] [--json]
+loom validation run [<intent-or-validation>] [--all] [--json]
 ```
 
 `loom validation run` executes stored commands without holding the graph lock while the command executes. Settled verdicts are not re-run unless made pending by sync or command changes.
@@ -410,13 +410,13 @@ loom validation run [<intent>] [--all] [--json]
 loom finding add "<claim>" --source code_audit|wiki|validation|llm --kind <kind> \
   --evidence "<observed fact>" --impact "<why it matters>" --confidence <0.0-1.0> \
   (--file <registered-codefile> | --link <ref>) [--json]
-loom finding list [--kind <kind>] [--state untriaged|stale|needed|justified|rejected|deferred|blocked|duplicate] [--json]
-loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate --reason "<why>" [--json]
+loom finding list [--kind <kind>] [--state untriaged|stale|needed|justified|rejected|deferred|blocked|duplicate|resolved] [--json]
+loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate|resolved --reason "<why>" [--json]
 ```
 
 `Finding` is the one node type for evidence-backed observations. Programmatic producers (`sync` detectors, `scan run` diagnostics, materialized graph-shape smells) create derived findings; LLM/tool observations enter as asserted findings through `loom finding add`. Both share listing, triage, staleness display, and `loom finding verdict`; verdicts adjudicate signals, they do not fix code.
 
-Resolving adjudications (`justified` | `rejected` | `deferred` | `duplicate`) stay settled across content-hash churn unless the finding's metric worsens past a band (~10% or 50 absolute, whichever is larger). Open work (`needed` | `blocked`) still reopens on any flagged-codefile hash change. Use `loom calibrate --write` so structural gates fit the repo before mass triage.
+Resolving adjudications (`justified` | `rejected` | `deferred` | `duplicate` | `resolved`) stay settled across content-hash churn unless the finding's metric worsens past a band (~10% or 50 absolute, whichever is larger). Open work (`needed` | `blocked`) still reopens on any flagged-codefile hash change. Use `resolved` for an observed repair, not for a false positive. Use `loom calibrate --write` so structural gates fit the repo before mass triage.
 
 ---
 
@@ -685,7 +685,7 @@ loom whoami [--json]
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.
 - `doctor`: schema conformance, provenance, evidence vacuity, role-gate audit; exits non-zero on any issue. Includes `consumes_without_seam` when a settled `consumes` grounding has neither a locator nor a criterion naming a seam.
-- `smells`: structural signals from graph shape, each with a remedy. Sync materializes every smell as a derived Finding (content-addressed by its subject ids), so smells are served by the triage queue and adjudicated with `loom finding verdict <id> <needed|justified|rejected|deferred|blocked|duplicate> --reason "…"`; the adjudication is durable across syncs and shown by `loom smells`. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or adjudicate the customization `justified` or `deferred`) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge. Includes `vague_intent` when an active intent's description leans on a hedge term (`handles`, `properly`, `correctly`, `robustly`, …) and names no observable outcome (no action verb, digits, literals, paths, or "by <doing>") — a falsifiability lint on the intent plane: every verdict against a mushy description is judgment theater, so either reword it with `loom intent update --description --reword` or adjudicate the finding `justified` for a deliberate summary-level intent.
+- `smells`: structural signals from graph shape, each with a remedy. Sync materializes every smell as a derived Finding (content-addressed by its subject ids), so smells are served by the triage queue and adjudicated with `loom finding verdict <id> <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason "…"`; the adjudication is durable across syncs and shown by `loom smells`. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or adjudicate the customization `justified` or `deferred`) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge. Includes `vague_intent` when an active intent's description leans on a hedge term (`handles`, `properly`, `correctly`, `robustly`, …) and names no observable outcome (no action verb, digits, literals, paths, or "by <doing>") — a falsifiability lint on the intent plane: every verdict against a mushy description is judgment theater, so either reword it with `loom intent update --description --reword` or adjudicate the finding `justified` for a deliberate summary-level intent.
 - `debt`: advisory statistical cluster feed; never appears in required work queues until promoted.
 - `whoami`: acting agent identity and lane enforcement.
 

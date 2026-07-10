@@ -5,9 +5,12 @@
 //! The persisted adjudication remains the derived `Finding`/`CodeRule` pipeline;
 //! this module only supplies deterministic candidate evidence for the prompt.
 
+use anyhow::Context;
 use regex::Regex;
 use serde::Serialize;
 use std::fs;
+
+use crate::Result;
 
 /// A textual candidate hit found by the pre-screen pass.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -20,41 +23,37 @@ pub struct PreScreenHit {
 
 /// Scans `files` under `root` with valid regex `patterns`, returning at most `cap` hits.
 ///
-/// Invalid regexes and unreadable files are skipped. Results are deterministic:
-/// files and patterns are scanned in lexical order, and each file is scanned by
-/// ascending line number.
+/// Invalid regexes and unreadable grounded files are errors: an empty hit list
+/// must mean "inspected and found nothing," never "the sensor could not run."
+/// Results are deterministic: files and patterns are scanned in lexical order,
+/// and each file is scanned by ascending line number.
 pub fn prescreen(
     root: &std::path::Path,
     files: &[String],
     patterns: &[String],
     cap: usize,
-) -> Vec<PreScreenHit> {
+) -> Result<Vec<PreScreenHit>> {
     if cap == 0 || files.is_empty() || patterns.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
-    let mut compiled = patterns
-        .iter()
-        .filter_map(|pattern| {
+    let mut compiled = Vec::with_capacity(patterns.len());
+    for pattern in patterns {
+        compiled.push((
+            pattern.as_str(),
             Regex::new(pattern)
-                .ok()
-                .map(|regex| (pattern.as_str(), regex))
-        })
-        .collect::<Vec<_>>();
-    compiled.sort_by_key(|(left, _)| *left);
-
-    if compiled.is_empty() {
-        return Vec::new();
+                .with_context(|| format!("compiling quality pattern '{pattern}'"))?,
+        ));
     }
+    compiled.sort_by_key(|(left, _)| *left);
 
     let mut ordered_files = files.iter().map(String::as_str).collect::<Vec<_>>();
     ordered_files.sort_unstable();
 
     let mut hits = Vec::new();
     for path in ordered_files {
-        let Ok(text) = fs::read_to_string(root.join(path)) else {
-            continue;
-        };
+        let text = fs::read_to_string(root.join(path))
+            .with_context(|| format!("reading grounded file '{path}' for quality pre-screen"))?;
 
         for (line_index, line) in text.lines().enumerate() {
             let line_number = line_index + 1;
@@ -67,14 +66,14 @@ pub fn prescreen(
                         excerpt: truncate_excerpt(line.trim(), 160),
                     });
                     if hits.len() == cap {
-                        return hits;
+                        return Ok(hits);
                     }
                 }
             }
         }
     }
 
-    hits
+    Ok(hits)
 }
 
 fn truncate_excerpt(excerpt: &str, max_chars: usize) -> String {
@@ -141,7 +140,8 @@ mod tests {
             &["src/auth.rs".to_string()],
             &[r#"password\s*=\s*\"[A-Za-z0-9]{16,}"#.to_string()],
             20,
-        );
+        )
+        .unwrap();
 
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].path, "src/auth.rs");
@@ -161,7 +161,8 @@ mod tests {
             &["b.txt".to_string(), "a.txt".to_string()],
             &[r"token=[a-z]{16}".to_string()],
             2,
-        );
+        )
+        .unwrap();
 
         assert_eq!(hits.len(), 2);
         assert_eq!(hits[0].path, "a.txt");
@@ -171,19 +172,19 @@ mod tests {
     }
 
     #[test]
-    fn skips_invalid_regexes() {
+    fn rejects_invalid_regexes() {
         let root = TestRoot::new("invalid");
         root.write("a.txt", "safe\nsecret=abcdefghijklmnop\n");
 
-        let hits = prescreen(
+        let error = prescreen(
             &root.path,
             &["a.txt".to_string()],
             &["(".to_string(), r"secret=[a-z]{16}".to_string()],
             20,
-        );
+        )
+        .unwrap_err();
 
-        assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].pattern, r"secret=[a-z]{16}");
+        assert!(error.to_string().contains("compiling quality pattern"));
     }
 
     #[test]
@@ -197,7 +198,8 @@ mod tests {
             &["b.txt".to_string(), "a.txt".to_string()],
             &["beta".to_string(), "alpha".to_string()],
             20,
-        );
+        )
+        .unwrap();
 
         let tuples = hits
             .iter()

@@ -930,7 +930,7 @@ fn prescreen_finds_secret_literal_with_iso5055_patterns_and_respects_cap() {
         "contract 5: the iso5055 secrets rule carries non-empty patterns"
     );
 
-    let hits = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 20);
+    let hits = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 20).unwrap();
     assert_eq!(
         hits.len(),
         1,
@@ -956,12 +956,13 @@ fn prescreen_finds_secret_literal_with_iso5055_patterns_and_respects_cap() {
         "let api_key = \"sk-live-abcdefghijklmnop\";\nlet token = \"tok-live-abcdefghijklmnop\";\n",
     )
     .unwrap();
-    let none = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 0);
+    let none = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 0).unwrap();
     assert!(
         none.is_empty(),
         "contract 5: prescreen with cap=0 returns no hits"
     );
-    let capped = loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 1);
+    let capped =
+        loom::prescan::prescreen(root, &["src/auth.rs".to_string()], &patterns, 1).unwrap();
     assert_eq!(
         capped.len(),
         1,
@@ -1043,6 +1044,64 @@ fn quality_work_item_carries_pre_screened_hits_for_grounded_intent() {
     assert_eq!(
         hit.line, 2,
         "contract 5: pre_screened_hit line points at the secret literal"
+    );
+}
+
+#[test]
+fn quality_packet_reads_and_prescreens_every_grounded_file() {
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    let store = Store::init(root, Some("t"), false).unwrap();
+    packs::seed(&store, "iso5055").unwrap();
+    let rule = store
+        .resolve_node(
+            "iso5055-sec-no-hardcoded-secrets",
+            Some(NodeType::QualityRule),
+        )
+        .unwrap();
+    let intent = feature_intent(&store, "nine-file behavior", Some("user_visible"));
+
+    for index in 0..9 {
+        let path = format!("src/file-{index}.rs");
+        std::fs::write(root.join(&path), "fn safe() {}\n").unwrap();
+        let codefile = store
+            .add_node(NodeType::CodeFile, &path, "", "", serde_json::json!({}))
+            .unwrap();
+        store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &codefile.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+    let last_edge = store
+        .realizing_groundings(&intent.id)
+        .unwrap()
+        .pop()
+        .unwrap();
+    let last_file = store.get_node(&last_edge.to_id).unwrap().unwrap().name;
+    std::fs::write(
+        root.join(&last_file),
+        "let api_key = \"sk-live-abcdefghijklmnop\";\n",
+    )
+    .unwrap();
+    store
+        .ensure_edge(EdgeKind::Governs, &rule.id, &intent.id)
+        .unwrap();
+
+    let item = workitem::next(&store, Some(Mode::Quality))
+        .unwrap()
+        .expect("quality item");
+    assert_eq!(item.context.read_set.len(), 9);
+    assert!(
+        item.prompt_contract
+            .pre_screened_hits
+            .iter()
+            .any(|hit| hit.path == last_file),
+        "the file beyond the old eight-file cap must be pre-screened"
     );
 }
 

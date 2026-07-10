@@ -40,6 +40,14 @@ fn is_lines(format: &ScanFormat) -> bool {
     matches!(format, ScanFormat::Lines)
 }
 
+fn trusted_by_default() -> bool {
+    true
+}
+
+fn is_trusted(trusted: &bool) -> bool {
+    *trusted
+}
+
 /// A configured external diagnostic source.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Adapter {
@@ -51,6 +59,11 @@ pub struct Adapter {
     /// adapter configs stay byte-identical (INV-2 export determinism).
     #[serde(default, skip_serializing_if = "is_lines")]
     pub format: ScanFormat,
+    /// Imported executable config is quarantined until its command is
+    /// re-entered through `loom scan update --command` locally. `true` is
+    /// omitted so existing/local adapter config stays byte-compatible.
+    #[serde(default = "trusted_by_default", skip_serializing_if = "is_trusted")]
+    pub trusted: bool,
 }
 
 /// Summary of one scan run.
@@ -97,6 +110,7 @@ pub fn add_adapter(
         command: command.to_string(),
         map: map.map(str::to_string),
         format,
+        trusted: true,
     });
     write_adapters(store, &adapters)
 }
@@ -128,6 +142,7 @@ pub fn update_adapter(
         .ok_or_else(|| anyhow!("no scan adapter named '{name}'"))?;
     if let Some(command) = command {
         adapter.command = command.to_string();
+        adapter.trusted = true;
     }
     if let Some(format) = format {
         adapter.format = format;
@@ -218,6 +233,13 @@ pub fn run_unlocked(root: &Path, name: Option<&str>) -> Result<ScanReport> {
 fn execute_adapters(root: &Path, adapters: Vec<Adapter>) -> Result<Vec<AdapterOutput>> {
     let mut outputs = Vec::with_capacity(adapters.len());
     for adapter in adapters {
+        if !adapter.trusted {
+            bail!(
+                "scan adapter '{}' came from an import and its command is untrusted; review it, then run `loom scan update '{}' --command <reviewed-command>`",
+                adapter.name,
+                adapter.name
+            );
+        }
         validate_map(adapter.format, adapter.map.as_deref())?;
         let (output, exit_code) = run_adapter_command(root, &adapter.command, &adapter.name)?;
         outputs.push(AdapterOutput {
@@ -1443,6 +1465,7 @@ mod tests {
             command: "printf ''".into(),
             map: None,
             format: ScanFormat::Lines,
+            trusted: true,
         };
         let serialized = serde_json::to_string(&lines)?;
         assert!(
@@ -1458,6 +1481,7 @@ mod tests {
             command: "printf '[]'".into(),
             map: None,
             format: ScanFormat::Json,
+            trusted: true,
         };
         let serialized_json = serde_json::to_string(&json)?;
         assert!(
@@ -1475,11 +1499,27 @@ mod tests {
         let legacy = r#"{"name":"lint","command":"printf ''"}"#;
         let adapter: Adapter = serde_json::from_str(legacy)?;
         assert_eq!(adapter.name, "lint");
+        assert!(adapter.trusted, "legacy local adapters remain trusted");
         assert_eq!(
             adapter.format,
             ScanFormat::Lines,
             "missing format must default to Lines"
         );
         Ok(())
+    }
+
+    #[test]
+    fn imported_untrusted_adapter_is_not_executed() {
+        let adapter = Adapter {
+            name: "imported".into(),
+            command: "exit 0".into(),
+            map: None,
+            format: ScanFormat::Lines,
+            trusted: false,
+        };
+        let error = execute_adapters(std::path::Path::new("."), vec![adapter])
+            .err()
+            .expect("untrusted adapter must be rejected");
+        assert!(error.to_string().contains("command is untrusted"));
     }
 }

@@ -265,9 +265,26 @@ impl Store {
         }
     }
 
-    /// Set (or refresh) the `role` facet on a grounding edge. A pure facet
-    /// write — the re-open-on-change policy lives in `reclassify_grounding`.
-    pub fn set_grounding_role(&self, edge_id: &str, role: GroundingRole) -> Result<()> {
+    /// Resolve and authorize the one edge shape that may carry a grounding role.
+    /// Both direct role writes and reclassification route through this authority.
+    fn grounding_edge_for_write(&self, edge_id: &str) -> Result<Edge> {
+        let edge = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if edge.kind != EdgeKind::Implements {
+            bail!(
+                "grounding roles apply only to implements edges; '{edge_id}' is a {} edge",
+                edge.kind
+            );
+        }
+        if edge.truth_class != TruthClass::Asserted {
+            bail!("grounding roles apply only to asserted implements edges");
+        }
+        self.check_lane(registry::spec(EdgeKind::Implements).owner)?;
+        Ok(edge)
+    }
+
+    fn write_grounding_role(&self, edge_id: &str, role: GroundingRole) -> Result<()> {
         self.set_facet(
             edge_id,
             TargetKind::Edge,
@@ -275,6 +292,14 @@ impl Store {
             role.as_str(),
             TruthClass::Asserted,
         )
+    }
+
+    /// Set (or refresh) the `role` facet on a grounding edge. The shared write
+    /// authority rejects other edge kinds/truth classes; re-open-on-change lives
+    /// in [`Store::reclassify_grounding`].
+    pub fn set_grounding_role(&self, edge_id: &str, role: GroundingRole) -> Result<()> {
+        self.grounding_edge_for_write(edge_id)?;
+        self.write_grounding_role(edge_id, role)
     }
 
     /// Whether a grounding edge has been superseded by a `rehome` (its
@@ -331,25 +356,13 @@ impl Store {
         role: GroundingRole,
         reason: &str,
     ) -> Result<(Edge, GroundingRole, bool)> {
-        let edge = self
-            .get_edge(edge_id)?
-            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
-        if edge.kind != EdgeKind::Implements {
-            bail!(
-                "set-role is for grounding (implements) edges; '{edge_id}' is a {} edge",
-                edge.kind
-            );
-        }
-        if edge.truth_class != TruthClass::Asserted {
-            bail!("cannot set the role of a derived edge");
-        }
-        self.check_lane(registry::spec(EdgeKind::Implements).owner)?;
+        let edge = self.grounding_edge_for_write(edge_id)?;
         let reason = reason.trim();
         if reason.is_empty() {
             bail!("set-role requires a reason");
         }
         let old = self.grounding_role(edge_id)?;
-        self.set_grounding_role(edge_id, role)?;
+        self.write_grounding_role(edge_id, role)?;
         self.add_note(
             &edge.from_id,
             "decision",

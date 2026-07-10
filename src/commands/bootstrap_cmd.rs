@@ -87,9 +87,7 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
     });
     let title = format!(
         "bootstrap pillars for {}",
-        root.file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("repo")
+        root.file_name().and_then(|s| s.to_str()).unwrap_or("repo")
     );
     let description = format!(
         "{} candidate pillar intent(s) from codefiles/tests/README — adopt to planned intents",
@@ -134,7 +132,10 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
                 candidates.len()
             ),
         )?;
-        println!("  adopt each: loom proposal item adopt {} <n> --as intent", &node.id[..8]);
+        println!(
+            "  adopt each: loom proposal item adopt {} <n> --as intent",
+            &node.id[..8]
+        );
         println!("  never auto-implements or marks implemented — planned only");
     }
     Ok(())

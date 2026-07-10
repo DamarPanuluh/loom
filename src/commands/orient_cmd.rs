@@ -222,7 +222,9 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         println!("      loom intent add --name <pillar>   seed what this codebase should do");
     } else if intents == 0 && codefiles > 0 {
         println!("  - code registered, no intents yet — draft pillars:");
-        println!("      loom bootstrap suggest      Proposal of planned intents from code/tests/README");
+        println!(
+            "      loom bootstrap suggest      Proposal of planned intents from code/tests/README"
+        );
         println!("      loom intent add --name <pillar>   or seed one by hand");
     } else if queues.prove + queues.triage + queues.review + queues.elaborate == 0 {
         println!("  - graph is settled; map more, or just get to work");
@@ -420,8 +422,8 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     crate::truth::TruthAxis::Implementation,
                 ),
                 "analyzer" => (
-                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record needed/justified/rejected/deferred/blocked/duplicate with a reason. Serves the review queue too: re-inspect low-confidence verdicts independently before reading the recorded evidence.",
-                    "loom edge explore <a> <b> ground|issue|independent; loom edge verdict <edge_id> ground|issue|independent (non-relates claims); loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate --reason '…'",
+                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record needed/justified/rejected/deferred/blocked/duplicate/resolved with a reason. Use resolved only after observing the repair. Serves the review queue too: re-inspect low-confidence verdicts independently before reading the recorded evidence.",
+                    "loom edge explore <a> <b> ground|issue|independent; loom edge verdict <edge_id> ground|issue|independent (non-relates claims); loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate|resolved --reason '…'",
                     "edit code; verdict from name similarity; inheriting a prior verdict's confidence",
                     crate::truth::TruthAxis::Verdict,
                 ),

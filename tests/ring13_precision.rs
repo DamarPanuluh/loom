@@ -461,10 +461,67 @@ fn evidence_refines_cause() {
         packet.routing_hint.is_some(),
         "analyze packet must carry routing_hint"
     );
-    if packet.stale_causes.iter().any(|c| c.contains("cheap re-confirm")) {
+    if packet
+        .stale_causes
+        .iter()
+        .any(|c| c.contains("cheap re-confirm"))
+    {
         assert_eq!(packet.effort, "low");
         assert_eq!(packet.routing_hint.as_deref(), Some("mechanical"));
     }
+}
+
+#[test]
+fn dependent_verdicts_grade_their_own_evidence_not_the_groundings() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    tmp.write(
+        "src/lib.rs",
+        "// stable grounding evidence\npub fn alpha() {\n    let value = 1;\n}\n",
+    );
+
+    let codefile = add_codefile(&store, "src/lib.rs");
+    let intent = add_intent(&store, "dependent evidence behavior", "something");
+    let grounding = ground(&store, &intent, &codefile, None);
+    let rule = store
+        .add_node(
+            NodeType::QualityRule,
+            "quality rule",
+            "a norm",
+            "active",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let governs = store
+        .add_edge(EdgeKind::Governs, &rule.id, &intent, TruthClass::Asserted)
+        .unwrap();
+
+    sync::run(&store, tmp.path()).unwrap();
+    pass(
+        &store,
+        &grounding,
+        "src/lib.rs:1 — stable grounding citation",
+    );
+    pass(
+        &store,
+        &governs.id,
+        "src/lib.rs:2-4 — quality citation over the function body",
+    );
+
+    tmp.write(
+        "src/lib.rs",
+        "// stable grounding evidence\npub fn alpha() {\n    let value = 2;\n}\n",
+    );
+    sync::run(&store, tmp.path()).unwrap();
+
+    let grounding_cause = stale_cause(&store, &grounding).unwrap();
+    assert!(grounding_cause.contains("cheap re-confirm"));
+    let governs_cause = stale_cause(&store, &governs.id).unwrap();
+    assert!(
+        governs_cause.contains("full re-inspection"),
+        "downstream edge must grade its rewritten citation, not inherit grounding grade: {governs_cause}"
+    );
+    assert!(!governs_cause.contains("cheap re-confirm"));
 }
 
 // ============================================================
@@ -728,7 +785,9 @@ fn relates_spared_on_one_sided_change_staled_when_both_or_depends_on() {
         "see src/a.rs:1 — alpha side of the seam",
     );
     // pass() helper may not set depends_on the same way — force it.
-    store.set_depends_on(&relates.id, &[cf_a.clone()]).unwrap();
+    store
+        .set_depends_on(&relates.id, std::slice::from_ref(&cf_a))
+        .unwrap();
     pass(&store, &g_a, "see src/a.rs:1");
     pass(&store, &g_b, "see src/b.rs:1");
 

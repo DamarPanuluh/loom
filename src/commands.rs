@@ -11,7 +11,8 @@ use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, Truth
 use crate::store::Store;
 use crate::Result;
 use crate::{travel, workitem};
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context};
+use serde::de::DeserializeOwned;
 use std::path::{Path, PathBuf};
 
 mod apply_cmd;
@@ -129,7 +130,7 @@ pub fn run(cli: Cli) -> Result<()> {
         ),
         Command::Explain { intent } => {
             misc_cmd::explain_cmd(cli.graph.as_deref(), &intent, cli.json)
-        },
+        }
         Command::Detect => misc_cmd::detect_cmd(cli.graph.as_deref(), cli.json),
         Command::Schema => misc_cmd::schema_cmd(cli.json),
         Command::Rule { cmd } => proof_cmd::rule(cli.graph.as_deref(), cmd, cli.json),
@@ -190,6 +191,18 @@ pub(crate) fn open(graph: Option<&Path>) -> Result<Store> {
 pub(crate) fn open_read(graph: Option<&Path>) -> Result<Store> {
     let root = resolve_root(graph)?;
     Store::open_read(&root)
+}
+
+/// Read typed JSON configuration from meta. Absence means the type's default;
+/// malformed persisted state is corruption and must be surfaced to the caller.
+pub(crate) fn read_json_meta<T>(store: &Store, key: &str) -> Result<T>
+where
+    T: DeserializeOwned + Default,
+{
+    let Some(raw) = store.get_meta(key)? else {
+        return Ok(T::default());
+    };
+    serde_json::from_str(&raw).with_context(|| format!("parsing meta '{key}'"))
 }
 
 pub(crate) fn node_json(n: &Node) -> serde_json::Value {

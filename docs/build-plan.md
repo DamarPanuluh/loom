@@ -176,7 +176,7 @@ Never copy v1 code. Re-derive clean.
 - `loom codefile show` — includes governing rules and findings
 - `loom next --mode validate` — uninspected/stale validates edges only; failing validates route to fix
 - `loom validation add / verdict / update / unlink / remove / show / list`
-- `loom validation run [<intent>] | --all`
+- `loom validation run [<intent-or-validation>] | --all`
 - Note commands: `loom note add <target> / list`
 - **Hypothesis plane** — `Hypothesis` node CRUD; `targets` edge; `loom hypothesis add / prove / adopt / reject / show / list`; `loom next --mode prove`
 - **Journey model** — `loom journey add <spec>` creates Validation(type=journey) + validates edges to step intents + calls edges to InterfaceSurfaces; spec parsing and graph write-back

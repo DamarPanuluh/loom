@@ -359,13 +359,29 @@ impl Store {
                 })
                 .with_context(|| format!("reading meta '{k}'"))
         };
+        // `observed` did not exist in the earliest graphs, so absence remains a
+        // backward-compatible `false`. A present value is strict: swallowing a
+        // database error or typo here could silently turn a monitor into an
+        // owned graph and enable its build/fix lanes.
+        let observed_raw = self
+            .conn
+            .query_row("SELECT value FROM meta WHERE key='observed'", [], |row| {
+                row.get::<_, String>(0)
+            })
+            .optional()
+            .context("reading meta 'observed'")?;
+        let observed = match observed_raw.as_deref() {
+            None | Some("0") => false,
+            Some("1") => true,
+            Some(value) => bail!("meta.observed is malformed: expected '0' or '1', got '{value}'"),
+        };
         Ok(Identity {
             graph_id: get("graph_id")?,
             name: get("name")?,
             schema_version: get("schema_version")?
                 .parse()
                 .context("meta.schema_version is malformed")?,
-            observed: get("observed").unwrap_or_else(|_| "0".into()) == "1",
+            observed,
         })
     }
 
@@ -397,7 +413,6 @@ mod edges;
 mod facets;
 mod nodes;
 
-// ---- helpers -----------------------------------------------------------
 // ---- helpers -------------------------------------------------------------
 
 fn schema_migrations() -> Migrations<'static> {
@@ -420,11 +435,9 @@ fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
     // itself after this returns.
     let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
     let has_schema_meta = conn
-        .query_row(
-            "SELECT 1 FROM meta WHERE key='schema_version'",
-            [],
-            |_| Ok(true),
-        )
+        .query_row("SELECT 1 FROM meta WHERE key='schema_version'", [], |_| {
+            Ok(true)
+        })
         .optional()?
         .unwrap_or(false);
     if has_schema_meta {
@@ -462,11 +475,14 @@ fn adopt_legacy_schema_version(conn: &Connection) -> Result<()> {
         )
         .optional()?;
 
-    if legacy_schema_version
-        .as_deref()
-        .and_then(|s| s.parse::<u32>().ok())
-        == Some(SCHEMA_VERSION)
-    {
+    let legacy_schema_version = legacy_schema_version
+        .map(|raw| {
+            raw.parse::<u32>()
+                .with_context(|| format!("invalid persisted schema_version '{raw}'"))
+        })
+        .transpose()?;
+
+    if legacy_schema_version == Some(SCHEMA_VERSION) {
         conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     }
     Ok(())
@@ -724,5 +740,207 @@ mod tests {
         let store = Store::open(tmp.path()).unwrap();
         assert_eq!(sqlite_user_version(&store.conn), SCHEMA_VERSION);
         assert_eq!(store.identity().unwrap().name, "legacy");
+    }
+
+    #[test]
+    fn malformed_legacy_schema_version_is_reported() {
+        let tmp = TmpRoot::new("loom-store-invalid-legacy-version");
+        let loom_dir = tmp.path().join(LOOM_DIR);
+        std::fs::create_dir_all(&loom_dir).unwrap();
+        let db_path = loom_dir.join(GRAPH_DB);
+        let conn = Connection::open(&db_path).unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+        conn.execute(
+            "INSERT INTO meta(key,value) VALUES ('schema_version','not-a-number')",
+            [],
+        )
+        .unwrap();
+        drop(conn);
+
+        let error = Store::open(tmp.path())
+            .err()
+            .expect("malformed legacy schema version must fail open");
+        assert!(
+            error
+                .to_string()
+                .contains("invalid persisted schema_version"),
+            "corrupt schema metadata must be surfaced: {error}"
+        );
+    }
+
+    #[test]
+    fn facet_and_tag_writes_reject_missing_typed_targets() {
+        let tmp = TmpRoot::new("loom-store-annotation-targets");
+        let store = Store::init(tmp.path(), Some("annotations"), false).unwrap();
+
+        let facet_error = store
+            .set_facet(
+                "missing-node",
+                TargetKind::Node,
+                "level",
+                "feature",
+                TruthClass::Asserted,
+            )
+            .expect_err("a facet must not create an orphan node reference");
+        assert!(facet_error.to_string().contains("no node target"));
+
+        let tag_error = store
+            .set_tag("missing-edge", TargetKind::Edge, "reviewed")
+            .expect_err("a tag must not create an orphan edge reference");
+        assert!(tag_error.to_string().contains("no edge target"));
+
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "annotations keep typed targets",
+                "",
+                "planned",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &intent.id,
+                TargetKind::Node,
+                "level",
+                "feature",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_tag(&intent.id, TargetKind::Node, "integrity")
+            .unwrap();
+    }
+
+    #[test]
+    fn identity_defaults_only_missing_observed_and_rejects_malformed_values() {
+        let tmp = TmpRoot::new("loom-store-observed-meta");
+        let store = Store::init(tmp.path(), Some("observed-meta"), false).unwrap();
+
+        store
+            .conn
+            .execute("DELETE FROM meta WHERE key='observed'", [])
+            .unwrap();
+        assert!(!store.identity().unwrap().observed);
+
+        store
+            .conn
+            .execute(
+                "INSERT INTO meta(key,value) VALUES ('observed','maybe')",
+                [],
+            )
+            .unwrap();
+        let error = store
+            .identity()
+            .expect_err("a malformed observed flag must not become owned mode");
+        assert!(error.to_string().contains("meta.observed is malformed"));
+    }
+
+    #[test]
+    fn grounding_roles_reject_non_implements_edges() {
+        let tmp = TmpRoot::new("loom-store-grounding-role-kind");
+        let store = Store::init(tmp.path(), Some("grounding-role-kind"), false).unwrap();
+        let first = store
+            .add_node(
+                NodeType::Intent,
+                "first behavior",
+                "",
+                "planned",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let second = store
+            .add_node(
+                NodeType::Intent,
+                "second behavior",
+                "",
+                "planned",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let relates = store
+            .add_edge(
+                EdgeKind::Relates,
+                &first.id,
+                &second.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+
+        let error = store
+            .set_grounding_role(&relates.id, GroundingRole::Consumes)
+            .expect_err("a relationship edge must not accept grounding semantics");
+        assert!(error.to_string().contains("only to implements edges"));
+        assert!(
+            store
+                .get_facet(&relates.id, TargetKind::Edge, "role")
+                .unwrap()
+                .is_none(),
+            "rejected role write must leave no facet"
+        );
+    }
+
+    #[test]
+    fn repeated_node_status_preserves_updated_at() {
+        let tmp = TmpRoot::new("loom-store-idempotent-node-status");
+        let store = Store::init(tmp.path(), Some("idempotent-node-status"), false).unwrap();
+        let validation = store
+            .add_node(
+                NodeType::Validation,
+                "repeatable proof",
+                "",
+                "not_run",
+                serde_json::json!({}),
+            )
+            .unwrap();
+
+        store.set_node_status(&validation.id, "passed").unwrap();
+        store
+            .conn
+            .execute(
+                "UPDATE node SET updated_at='stable-sentinel' WHERE id=?1",
+                params![validation.id],
+            )
+            .unwrap();
+        store.set_node_status(&validation.id, "passed").unwrap();
+
+        assert_eq!(
+            store.get_node(&validation.id).unwrap().unwrap().updated_at,
+            "stable-sentinel",
+            "an unchanged status must not dirty the portable graph"
+        );
+    }
+
+    #[test]
+    fn delete_node_cascades_body_linked_notes_and_their_annotations() {
+        let tmp = TmpRoot::new("loom-store-note-cascade");
+        let store = Store::init(tmp.path(), Some("note-cascade"), false).unwrap();
+        let inbox = store
+            .add_node(
+                NodeType::InboxItem,
+                "journey fixture",
+                "",
+                "routed",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let decision = store
+            .add_note(&inbox.id, "decision", "routed by journey")
+            .unwrap();
+        let nested = store
+            .add_note(&decision.id, "context", "why it was routed")
+            .unwrap();
+        store
+            .set_tag(&decision.id, TargetKind::Node, "fixture")
+            .unwrap();
+
+        store.delete_node(&inbox.id).unwrap();
+
+        assert!(store.get_node(&decision.id).unwrap().is_none());
+        assert!(store.get_node(&nested.id).unwrap().is_none());
+        assert!(store
+            .tags_of(&decision.id, TargetKind::Node)
+            .unwrap()
+            .is_empty());
     }
 }

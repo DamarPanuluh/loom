@@ -58,10 +58,7 @@ pub(crate) fn find_cmd(
         if q.is_empty() {
             bail!("--exact requires a non-empty query");
         }
-        if filter_ids.is_none() {
-            return find_exact(&store, q, &kinds, json);
-        }
-        return find_exact_filtered(&store, q, &kinds, filter_ids.as_ref(), json);
+        return find_exact(&store, q, &kinds, filter_ids.as_ref(), json);
     }
 
     let limited = if q.is_empty() {
@@ -91,7 +88,7 @@ pub(crate) fn find_cmd(
         hits
     };
 
-    print_find_hits(&store, q, &limited, json)
+    print_find_hits(&store, q, &limited, false, json)
 }
 
 fn resolve_find_filters(
@@ -136,7 +133,7 @@ fn parse_where_spec(spec: &str) -> Result<(String, String)> {
     Ok((key, value))
 }
 
-fn find_exact_filtered(
+fn find_exact(
     store: &Store,
     query: &str,
     kinds: &[NodeType],
@@ -146,107 +143,155 @@ fn find_exact_filtered(
     let mut limited = Vec::new();
     for kind in kinds {
         for n in store.list_nodes(Some(*kind), usize::MAX)? {
-            if n.name.eq_ignore_ascii_case(query) {
-                if filter.is_none_or(|ids| ids.contains(&n.id)) {
-                    limited.push((100usize, kind.as_str().to_string(), n.name, n.id));
-                }
+            if n.status != "deprecated"
+                && n.name.eq_ignore_ascii_case(query)
+                && filter.is_none_or(|ids| ids.contains(&n.id))
+            {
+                limited.push((100usize, kind.as_str().to_string(), n.name, n.id));
             }
         }
     }
-    print_find_hits(store, query, &limited, json)
+    print_find_hits(store, query, &limited, true, json)
 }
 
 fn print_find_hits(
     store: &Store,
     query: &str,
     limited: &[(usize, String, String, String)],
+    exact_only: bool,
     json: bool,
 ) -> Result<()> {
+    let rows = project_find_hits(store, limited)?;
     if json {
-        let mut rows = Vec::new();
-        for (s, kind, name, id) in limited {
-            let mut groundings = Vec::new();
-            if kind == "intent" {
-                for e in store.edges_with(Some(EdgeKind::Implements), Some(id), None)? {
-                    if store.edge_superseded(&e.id)? {
-                        continue;
-                    }
-                    let path = store
-                        .get_node(&e.to_id)?
-                        .map(|n| n.name)
-                        .unwrap_or_else(|| e.to_id.clone());
-                    let locator = store
-                        .get_facet(&e.id, TargetKind::Edge, "locator")?
-                        .unwrap_or_default();
-                    groundings.push(serde_json::json!({
-                        "edge_id": e.id,
-                        "path": path,
-                        "locator": locator,
-                        "role": store.grounding_role(&e.id)?.as_str(),
-                        "status": e.status.as_str(),
-                        "evidence": e.evidence,
-                    }));
-                }
+        let mut value = serde_json::to_value(&rows)?;
+        if exact_only {
+            for row in value
+                .as_array_mut()
+                .expect("FindHit serializes as an array")
+            {
+                row.as_object_mut()
+                    .expect("FindHit serializes as an object")
+                    .insert("exact".into(), serde_json::Value::Bool(true));
             }
-            rows.push(serde_json::json!({
-                "score": s,
-                "kind": kind,
-                "name": name,
-                "id": id,
-                "groundings": groundings,
-            }));
         }
-        println!("{}", serde_json::to_string_pretty(&rows)?);
+        println!("{}", serde_json::to_string_pretty(&value)?);
     } else {
-        if limited.is_empty() {
-            println!(
-                "no match for '{query}' — try `loom status` to see coverage, or it may not exist"
-            );
+        if rows.is_empty() {
+            if exact_only {
+                println!(
+                    "no exact match for '{query}' — nothing named exactly this exists \
+                     (drop --exact for fuzzy matches)"
+                );
+            } else {
+                println!(
+                    "no match for '{query}' — try `loom status` to see coverage, or it may not exist"
+                );
+            }
         }
         let needle = query.trim();
-        for (s, kind, name, id) in limited {
-            let mark = if !needle.is_empty() && name.eq_ignore_ascii_case(needle) {
+        for row in rows {
+            let mark = if !needle.is_empty() && row.name.eq_ignore_ascii_case(needle) {
                 " (exact)"
             } else {
                 ""
             };
-            println!("{:<10} {} [{}] (score {s}){mark}", kind, name, &id[..8]);
-            if kind == "intent" {
-                let grounds = store.edges_with(Some(EdgeKind::Implements), Some(id), None)?;
-                if store.realizing_groundings(id)?.is_empty() {
+            println!(
+                "{:<10} {} [{}] (score {}){mark}",
+                row.kind,
+                row.name,
+                &row.id[..8],
+                row.score
+            );
+            if row.kind == "intent" {
+                if !row.groundings.iter().any(|g| g.role == "realizes") {
                     println!("             ↳ (no realizing grounding yet)");
                 }
-                for e in grounds {
-                    if store.edge_superseded(&e.id)? {
-                        continue;
-                    }
-                    let role = store.grounding_role(&e.id)?;
-                    let path = store
-                        .get_node(&e.to_id)?
-                        .map(|n| n.name)
-                        .unwrap_or_else(|| e.to_id.clone());
-                    let loc = store
-                        .get_facet(&e.id, TargetKind::Edge, "locator")?
-                        .unwrap_or_default();
-                    let at = if loc.is_empty() {
+                for grounding in row.groundings {
+                    let at = if grounding.locator.is_empty() {
                         String::new()
                     } else {
-                        format!(" @ {loc}")
+                        format!(" @ {}", grounding.locator)
                     };
-                    let ev = if e.evidence.is_empty() {
+                    let ev = if grounding.evidence.is_empty() {
                         String::new()
                     } else {
-                        format!(" — {}", e.evidence)
+                        format!(" — {}", grounding.evidence)
                     };
                     println!(
-                        "             ↳ [{role}] {path}{at} [{}]{ev}",
-                        e.status.as_str()
+                        "             ↳ [{}] {}{at} [{}]{ev}",
+                        grounding.role, grounding.path, grounding.status
                     );
                 }
             }
         }
     }
     Ok(())
+}
+
+#[derive(serde::Serialize)]
+struct FindHit {
+    score: usize,
+    kind: String,
+    name: String,
+    id: String,
+    groundings: Vec<FindGrounding>,
+}
+
+#[derive(serde::Serialize)]
+struct FindGrounding {
+    edge_id: String,
+    path: String,
+    locator: String,
+    role: String,
+    status: String,
+    evidence: String,
+}
+
+/// Build the shared semantic projection once; JSON and text are renderers of
+/// the same rows, so neither can silently omit a grounding field or edge rule.
+fn project_find_hits(
+    store: &Store,
+    limited: &[(usize, String, String, String)],
+) -> Result<Vec<FindHit>> {
+    let mut rows = Vec::with_capacity(limited.len());
+    for (score, kind, name, id) in limited {
+        let groundings = if kind == "intent" {
+            project_groundings(store, id)?
+        } else {
+            Vec::new()
+        };
+        rows.push(FindHit {
+            score: *score,
+            kind: kind.clone(),
+            name: name.clone(),
+            id: id.clone(),
+            groundings,
+        });
+    }
+    Ok(rows)
+}
+
+fn project_groundings(store: &Store, intent_id: &str) -> Result<Vec<FindGrounding>> {
+    let mut groundings = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
+        if store.edge_superseded(&edge.id)? {
+            continue;
+        }
+        groundings.push(FindGrounding {
+            edge_id: edge.id.clone(),
+            path: store
+                .get_node(&edge.to_id)?
+                .map(|n| n.name)
+                .unwrap_or_else(|| edge.to_id.clone()),
+            locator: store
+                .get_facet(&edge.id, TargetKind::Edge, "locator")?
+                .unwrap_or_default(),
+            role: store.grounding_role(&edge.id)?.as_str().into(),
+            status: edge.status.as_str().into(),
+            evidence: edge.evidence,
+        });
+    }
+    Ok(groundings)
 }
 
 /// Read-only neighborhood brief for an intent — not a `loom next` lane.
@@ -258,24 +303,19 @@ pub(crate) fn explain_cmd(graph: Option<&Path>, intent_key: &str, json: bool) ->
     let aspect = store.get_facet(&intent.id, TargetKind::Node, "aspect")?;
     let tags = store.tags_of(&intent.id, TargetKind::Node)?;
 
-    let mut groundings = Vec::new();
-    for e in store.edges_with(Some(EdgeKind::Implements), Some(&intent.id), None)? {
-        if store.edge_superseded(&e.id)? {
-            continue;
-        }
-        let path = store
-            .get_node(&e.to_id)?
-            .map(|n| n.name)
-            .unwrap_or_else(|| e.to_id.clone());
-        let locator = store.get_facet(&e.id, TargetKind::Edge, "locator")?;
-        groundings.push(serde_json::json!({
-            "edge_id": e.id,
-            "path": path,
-            "locator": locator,
-            "role": store.grounding_role(&e.id)?.as_str(),
-            "status": e.status.as_str(),
-        }));
-    }
+    let grounding_rows = project_groundings(&store, &intent.id)?;
+    let groundings: Vec<_> = grounding_rows
+        .iter()
+        .map(|grounding| {
+            serde_json::json!({
+                "edge_id": grounding.edge_id,
+                "path": grounding.path,
+                "locator": grounding.locator,
+                "role": grounding.role,
+                "status": grounding.status,
+            })
+        })
+        .collect();
 
     let mut related = Vec::new();
     for kind in [
@@ -319,24 +359,24 @@ pub(crate) fn explain_cmd(graph: Option<&Path>, intent_key: &str, json: bool) ->
     }
 
     let scorecard = crate::completeness::scorecard(&store, &intent)?;
-    let open_questions: Vec<_> = store
-        .list_nodes(Some(NodeType::Question), usize::MAX)?
-        .into_iter()
-        .filter(|q| q.status == "open")
-        .filter(|q| {
-            store
-                .edges_with(Some(EdgeKind::Questions), Some(&q.id), Some(&intent.id))
-                .ok()
-                .map(|es| !es.is_empty())
-                .unwrap_or(false)
-        })
-        .map(|q| {
-            serde_json::json!({
-                "id": q.id,
-                "text": q.description,
-            })
-        })
-        .collect();
+    let mut open_questions = Vec::new();
+    for question in store.list_nodes(Some(NodeType::Question), usize::MAX)? {
+        if question.status != "open"
+            || store
+                .edges_with(
+                    Some(EdgeKind::Questions),
+                    Some(&question.id),
+                    Some(&intent.id),
+                )?
+                .is_empty()
+        {
+            continue;
+        }
+        open_questions.push(serde_json::json!({
+            "id": question.id,
+            "text": question.description,
+        }));
+    }
 
     let brief = serde_json::json!({
         "intent": {
@@ -407,10 +447,7 @@ pub(crate) fn explain_cmd(graph: Option<&Path>, intent_key: &str, json: bool) ->
                 v["status"].as_str().unwrap_or("")
             );
         }
-        println!(
-            "  completeness open axes: {}",
-            scorecard.open
-        );
+        println!("  completeness open axes: {}", scorecard.open);
         if !open_questions.is_empty() {
             println!("  open questions: {}", open_questions.len());
         }
@@ -418,45 +455,6 @@ pub(crate) fn explain_cmd(graph: Option<&Path>, intent_key: &str, json: bool) ->
     Ok(())
 }
 
-/// `loom find --exact`: whole-name (case-insensitive) matches only, no scoring.
-/// Fuzzy `find` ranks by substring, so a partial hit can read as a match that
-/// isn't there — the false positive that seeded a bad dedup. This answers
-/// "does a node named exactly this exist?" deterministically, and lists every
-/// colliding id when duplicates share the name.
-fn find_exact(store: &Store, query: &str, kinds: &[NodeType], json: bool) -> Result<()> {
-    let needle = query.trim();
-    let mut hits: Vec<(String, String, String)> = Vec::new();
-    for nt in kinds {
-        for n in store.list_nodes(Some(*nt), usize::MAX)? {
-            if n.status == "deprecated" {
-                continue;
-            }
-            if n.name.eq_ignore_ascii_case(needle) {
-                hits.push((nt.as_str().to_string(), n.name.clone(), n.id.clone()));
-            }
-        }
-    }
-    hits.sort_by(|a, b| a.1.cmp(&b.1).then(a.2.cmp(&b.2)));
-    if json {
-        let rows: Vec<_> = hits
-            .iter()
-            .map(|(kind, name, id)| {
-                serde_json::json!({ "kind": kind, "name": name, "id": id, "exact": true })
-            })
-            .collect();
-        println!("{}", serde_json::to_string_pretty(&rows)?);
-    } else if hits.is_empty() {
-        println!(
-            "no exact match for '{query}' — nothing named exactly this exists \
-             (drop --exact for fuzzy matches)"
-        );
-    } else {
-        for (kind, name, id) in &hits {
-            println!("{:<10} {} [{}] (exact)", kind, name, &id[..8.min(id.len())]);
-        }
-    }
-    Ok(())
-}
 pub(crate) fn detect_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let root = resolve_root(graph).or_else(|_| std::env::current_dir())?;
     let mut langs: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
@@ -580,7 +578,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
                 "inspection_statuses": InspectionStatus::ALL.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
                 "intent_lifecycle": IntentLifecycle::ALL.iter().map(|l| l.as_str()).collect::<Vec<_>>(),
                 "truth_classes": TruthClass::ALL.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
-                "finding_verdicts": ["needed", "justified", "rejected", "deferred", "blocked", "duplicate"],
+                "finding_verdicts": ["needed", "justified", "rejected", "deferred", "blocked", "duplicate", "resolved"],
                 "find_where_keys": FIND_WHERE_KEYS,
             }))?
         );
@@ -624,12 +622,9 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
             .join(" ")
     );
     println!("finding verdicts:");
-    println!("  needed | justified | rejected | deferred | blocked | duplicate");
+    println!("  needed | justified | rejected | deferred | blocked | duplicate | resolved");
     println!("  stored as asserted adjudication facets on stable Finding ids");
     println!("  verdicts go stale when the flagged codefile content hash changes");
-    println!(
-        "find --where keys: {}",
-        FIND_WHERE_KEYS.join(" ")
-    );
+    println!("find --where keys: {}", FIND_WHERE_KEYS.join(" "));
     Ok(())
 }

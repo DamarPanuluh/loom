@@ -15,6 +15,7 @@
 use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
+use anyhow::Context;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -33,10 +34,10 @@ pub struct UpstreamEntry {
 
 /// Read the linked-upstream registry from meta.
 pub fn read_upstream_entries(store: &Store) -> Result<Vec<UpstreamEntry>> {
-    Ok(store
-        .get_meta("upstream_graphs")?
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default())
+    let Some(raw) = store.get_meta("upstream_graphs")? else {
+        return Ok(Vec::new());
+    };
+    serde_json::from_str(&raw).context("parsing upstream_graphs registry")
 }
 
 /// Write the linked-upstream registry to meta.
@@ -76,10 +77,10 @@ pub fn run(store: &Store, root: &Path) -> Result<FederationReport> {
     }
 
     // Read cached per-upstream hashes.
-    let cached_hashes: HashMap<String, String> = store
-        .get_meta("upstream_hashes")?
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default();
+    let cached_hashes: HashMap<String, String> = match store.get_meta("upstream_hashes")? {
+        Some(raw) => serde_json::from_str(&raw).context("parsing upstream_hashes cache")?,
+        None => HashMap::new(),
+    };
 
     let mut new_hashes = cached_hashes.clone();
 
@@ -94,10 +95,8 @@ pub fn run(store: &Store, root: &Path) -> Result<FederationReport> {
         };
 
         // Read the raw file content for hashing; skip if unchanged.
-        let content = match std::fs::read_to_string(&export_path) {
-            Ok(c) => c,
-            Err(_) => continue, // Missing export file — skip silently.
-        };
+        let content = std::fs::read_to_string(&export_path)
+            .with_context(|| format!("reading upstream export '{}'", export_path.display()))?;
         let hash = content_hash(&content);
 
         let hash_matches = cached_hashes.get(&entry.graph_id).map(|h| h.as_str()) == Some(&hash);
@@ -107,10 +106,8 @@ pub fn run(store: &Store, root: &Path) -> Result<FederationReport> {
         }
 
         // Parse the export.
-        let export = match crate::travel::Export::from_json(&content) {
-            Ok(e) => e,
-            Err(_) => continue, // Malformed export — skip silently.
-        };
+        let export = crate::travel::Export::from_json(&content)
+            .with_context(|| format!("parsing upstream export '{}'", export_path.display()))?;
 
         // Reconcile shadow nodes against the fresh export.
         reconcile_shadows(store, &export, &entry.alias, &mut report)?;
@@ -192,15 +189,12 @@ fn reconcile_shadows(
                 write_upstream_facets(store, &shadow.id, node, &upstream_hash)?;
                 report.shadows_updated += 1;
 
-                // Stale all DependsOn edges pointing at this shadow.
-                let edges = store.edges_with(Some(EdgeKind::DependsOn), None, Some(&shadow.id))?;
-                for e in &edges {
-                    if store
-                        .stale_edge(&e.id, &format!("upstream/{alias}/{} changed", node.name))?
-                    {
-                        report.edges_staled += 1;
-                    }
-                }
+                stale_dependents(
+                    store,
+                    &shadow.id,
+                    &format!("upstream/{alias}/{} changed", node.name),
+                    report,
+                )?;
             }
             None => {
                 // New upstream intent — create shadow.
@@ -244,17 +238,28 @@ fn reconcile_shadows(
             "true",
             TruthClass::Derived,
         )?;
-        let edges = store.edges_with(Some(EdgeKind::DependsOn), None, Some(&shadow.id))?;
-        for e in &edges {
-            if store.stale_edge(
-                &e.id,
-                &format!("upstream/{alias}/{} removed from export", shadow.name),
-            )? {
-                report.edges_staled += 1;
-            }
-        }
+        stale_dependents(
+            store,
+            &shadow.id,
+            &format!("upstream/{alias}/{} removed from export", shadow.name),
+            report,
+        )?;
     }
 
+    Ok(())
+}
+
+fn stale_dependents(
+    store: &Store,
+    shadow_id: &str,
+    cause: &str,
+    report: &mut FederationReport,
+) -> Result<()> {
+    for edge in store.edges_with(Some(EdgeKind::DependsOn), None, Some(shadow_id))? {
+        if store.stale_edge(&edge.id, cause)? {
+            report.edges_staled += 1;
+        }
+    }
     Ok(())
 }
 

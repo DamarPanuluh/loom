@@ -1077,7 +1077,12 @@ fn proven_rung_honors_journey_axis_waiver() {
 
     let before = ladder(&store).unwrap();
     assert_eq!(
-        before.rungs.iter().find(|r| r.name == "proven").unwrap().state,
+        before
+            .rungs
+            .iter()
+            .find(|r| r.name == "proven")
+            .unwrap()
+            .state,
         RungState::Unmet
     );
 

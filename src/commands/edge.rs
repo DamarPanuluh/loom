@@ -105,7 +105,10 @@ fn edge_implement(
         Some(r) => parse_grounding_role(r)?,
         None => GroundingRole::Realizes,
     };
-    let e = store.add_edge(EdgeKind::Implements, &i.id, &cf.id, TruthClass::Asserted)?;
+    // Groundings are keyed by (intent, codefile, kind). Re-running implement is
+    // an edit of that grounding's locator/role, not a request for a duplicate
+    // edge (which the database correctly rejects).
+    let e = store.ensure_edge(EdgeKind::Implements, &i.id, &cf.id)?;
     if let Some(loc) = &locator {
         store.set_facet(
             &e.id,

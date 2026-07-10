@@ -178,7 +178,10 @@ fn push_grounded_codefiles(
 /// context. This is what makes a packet self-contained: the worker opens these
 /// files directly instead of running follow-up show commands.
 fn push_intent_read_set(store: &Store, ctx: &mut TraversalContext, intent: &Node) -> Result<()> {
-    for (edge, role) in ordered_groundings(store, &intent.id)?.into_iter().take(8) {
+    // The read set is authoritative, not decorative: never cap it silently.
+    // Linked entities above stay bounded for packet size, but every grounded
+    // file must remain visible to the worker that earns a verdict.
+    for (edge, role) in ordered_groundings(store, &intent.id)? {
         let Some(cf) = store.get_node(&edge.to_id)? else {
             continue;
         };

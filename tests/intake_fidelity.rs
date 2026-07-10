@@ -76,7 +76,9 @@ fn operator_prose_never_teaches_rejected_inbox_sources() {
     }
 
     assert!(
-        scanned.iter().any(|p| p.ends_with("skills/loom-driver/SKILL.md")),
+        scanned
+            .iter()
+            .any(|p| p.ends_with("skills/loom-driver/SKILL.md")),
         "vendored skills/loom-driver/SKILL.md must exist"
     );
 

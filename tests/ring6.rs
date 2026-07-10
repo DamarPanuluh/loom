@@ -725,8 +725,7 @@ fn journey_cli_step_stamps_passing_on_exit_zero() {
         }))
         .unwrap()],
     };
-    let outcomes =
-        loom::journey::execute_in(Some(&store), &spec, true, Some(tmp.path())).unwrap();
+    let outcomes = loom::journey::execute_in(Some(&store), &spec, true, Some(tmp.path())).unwrap();
     assert_eq!(outcomes.len(), 1);
     assert!(outcomes[0].passed, "{}", outcomes[0].detail);
     let edges = store
@@ -740,6 +739,55 @@ fn journey_cli_step_stamps_passing_on_exit_zero() {
     assert_eq!(
         store.get_node(&journey.id).unwrap().unwrap().status,
         "passed"
+    );
+}
+
+#[test]
+fn repeated_same_intent_journey_steps_are_idempotent() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent_id = intent(&store, "one behavior spans two steps", "implemented");
+    let journey = store
+        .add_node(
+            NodeType::Validation,
+            "two-step-cli",
+            "",
+            "not_run",
+            serde_json::json!({"type":"journey","proof_kind":"journey","proof_level":"L5"}),
+        )
+        .unwrap();
+    let validates = store
+        .ensure_edge(EdgeKind::Validates, &journey.id, &intent_id)
+        .unwrap();
+    let spec = loom::journey::JourneySpec {
+        journey: "two-step-cli".into(),
+        base: String::new(),
+        steps: vec![
+            serde_json::from_value(serde_json::json!({
+                "name": "first", "intent": "one behavior spans two steps",
+                "run": "true # first", "expect": { "exit_code": 0 }
+            }))
+            .unwrap(),
+            serde_json::from_value(serde_json::json!({
+                "name": "second", "intent": "one behavior spans two steps",
+                "run": "true # second", "expect": { "exit_code": 0 }
+            }))
+            .unwrap(),
+        ],
+    };
+
+    loom::journey::execute_in(Some(&store), &spec, true, Some(tmp.path())).unwrap();
+    let first = store.get_edge(&validates.id).unwrap().unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    loom::journey::execute_in(Some(&store), &spec, true, Some(tmp.path())).unwrap();
+    let second = store.get_edge(&validates.id).unwrap().unwrap();
+
+    assert_eq!(first.evidence, second.evidence);
+    assert!(second.evidence.contains("first:"));
+    assert!(second.evidence.contains("second:"));
+    assert_eq!(
+        first.updated_at, second.updated_at,
+        "an identical multi-step proof must not dirty the export timestamp"
     );
 }
 

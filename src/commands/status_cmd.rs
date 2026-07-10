@@ -55,11 +55,13 @@ pub(crate) fn import(
         std::env::current_dir()?
     };
     let export = travel::read_export(file)?;
+    let mut snapshot = export.into_snapshot();
+    let quarantined_commands = travel::quarantine_imported_execution(&mut snapshot)?;
     let mut store = Store::init(&root, None, false)?;
     let report = if repair_orphans {
-        store.restore_repairing(&export.into_snapshot())?
+        store.restore_repairing(&snapshot)?
     } else {
-        store.restore(&export.into_snapshot())?;
+        store.restore(&snapshot)?;
         crate::store::RestoreReport::default()
     };
     let id = store.identity()?;
@@ -71,6 +73,7 @@ pub(crate) fn import(
                 "name": id.name,
                 "graph_id": id.graph_id,
                 "file": file,
+                "quarantined_commands": quarantined_commands,
                 "repaired": repair_orphans,
                 "preserved_soft_refs": report.preserved_soft_refs,
                 "dropped_facets": report.dropped_facets
@@ -89,6 +92,11 @@ pub(crate) fn import(
         );
     } else {
         println!("imported graph '{}' from {}", id.name, file.display());
+        if quarantined_commands > 0 {
+            println!(
+                "  quarantined {quarantined_commands} imported command(s) — review and re-enter each through validation/scan update before execution"
+            );
+        }
         if report.preserved_soft_refs > 0 {
             println!(
                 "  preserved {} adjudication verdict(s) on not-yet-materialized findings (re-attach on next sync)",

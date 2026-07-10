@@ -243,10 +243,10 @@ impl Store {
     }
 
     /// Hard-delete an asserted node and everything keyed to it. Incident edges
-    /// are deleted explicitly (not via FK cascade) so their edge-scoped facets
-    /// and tags — e.g. an `implements` locator — are cleaned too; those rows have
-    /// no FK and would otherwise orphan. Refuses derived nodes (sync owns them).
-    /// All in one transaction.
+    /// and body-linked Notes are deleted explicitly (not via FK cascade) so
+    /// their facets and tags cannot orphan. Notes are followed recursively: a
+    /// note about a deleted decision note is part of the same target-bound
+    /// history. Refuses derived nodes (sync owns them). All in one transaction.
     pub fn delete_node(&self, id: &str) -> Result<()> {
         let node = self
             .get_node(id)?
@@ -260,6 +260,16 @@ impl Store {
         }
         for e in self.edges_with(None, None, Some(id))? {
             incident.insert(e.id);
+        }
+        let mut note_targets = vec![id.to_string()];
+        note_targets.extend(incident.iter().cloned());
+        let mut dependent_notes = std::collections::BTreeSet::new();
+        while let Some(target) = note_targets.pop() {
+            for note in self.notes_for(&target)? {
+                if dependent_notes.insert(note.id.clone()) {
+                    note_targets.push(note.id);
+                }
+            }
         }
         let tx = self.conn.unchecked_transaction()?;
         for eid in &incident {
@@ -281,6 +291,17 @@ impl Store {
             "DELETE FROM tag WHERE target_id=?1 AND target_kind='node'",
             params![id],
         )?;
+        for note_id in &dependent_notes {
+            tx.execute(
+                "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
+                params![note_id],
+            )?;
+            tx.execute(
+                "DELETE FROM tag WHERE target_id=?1 AND target_kind='node'",
+                params![note_id],
+            )?;
+            tx.execute("DELETE FROM node WHERE id=?1", params![note_id])?;
+        }
         tx.execute("DELETE FROM node WHERE id=?1", params![id])?;
         tx.commit()?;
         Ok(())

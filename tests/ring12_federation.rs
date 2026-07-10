@@ -69,6 +69,95 @@ fn write_file(root: &std::path::Path, rel: &str, content: &str) {
     std::fs::write(p, content).unwrap();
 }
 
+#[test]
+fn edge_implement_is_idempotent_and_updates_the_locator() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("grounding"));
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "federated behavior",
+            "--description",
+            "one behavior",
+        ],
+    );
+    write_file(tmp.path(), "src/federation.rs", "fn run() {}\n");
+    loom_ok(tmp.path(), &["codefile", "add", "src/federation.rs"]);
+
+    let first = loom_json(
+        tmp.path(),
+        &[
+            "edge",
+            "implement",
+            "federated behavior",
+            "src/federation.rs",
+            "--locator",
+            "fn run",
+        ],
+    );
+    let second = loom_json(
+        tmp.path(),
+        &[
+            "edge",
+            "implement",
+            "federated behavior",
+            "src/federation.rs",
+            "--locator",
+            "module federation",
+        ],
+    );
+
+    assert_eq!(first["edge"]["id"], second["edge"]["id"]);
+    assert_eq!(second["locator"], "module federation");
+    let store = Store::open(tmp.path()).unwrap();
+    let edges = store
+        .edges_with(Some(EdgeKind::Implements), None, None)
+        .unwrap();
+    assert_eq!(edges.len(), 1, "re-grounding must not create a second edge");
+    assert_eq!(
+        store
+            .get_facet(&edges[0].id, TargetKind::Edge, "locator")
+            .unwrap()
+            .as_deref(),
+        Some("module federation")
+    );
+}
+
+#[test]
+fn federation_sync_fails_loudly_when_a_linked_export_disappears() {
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("upstream"));
+    loom_ok(upstream.path(), &["export"]);
+    let export = upstream.path().join("loom.graph.json");
+
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("downstream"));
+    loom_json(
+        downstream.path(),
+        &["graph", "link", export.to_str().unwrap()],
+    );
+    std::fs::remove_file(&export).unwrap();
+
+    let out = std::process::Command::new(loom_bin())
+        .arg("--graph")
+        .arg(downstream.path())
+        .args(["sync", "--json"])
+        .output()
+        .unwrap();
+    assert!(
+        !out.status.success(),
+        "missing upstream export must fail sync"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("reading upstream export"),
+        "failure must identify the unavailable federation input: {stderr}"
+    );
+}
+
 // =========================================================================
 // 1. Two-graph E2E: link + sync, upstream change stales DependsOn edges.
 // =========================================================================

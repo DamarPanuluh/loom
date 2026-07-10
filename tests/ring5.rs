@@ -1,8 +1,8 @@
 //! Ring 5 tests — quality, validation, hypothesis, journey model, vocab/layer.
 
 use loom::cli::{
-    Cli, CodefileCmd, Command, EdgeCmd, HypothesisCmd, IntentCmd, JourneyCmd, ValidationCmd,
-    WikiCmd,
+    Cli, CodefileCmd, Command, EdgeCmd, HypothesisCmd, IntentCmd, JourneyCmd, LayerCmd,
+    ValidationCmd, WikiCmd,
 };
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
@@ -178,7 +178,7 @@ fn validate_runs_command_and_records_result() {
         tmp.path(),
         Command::Validation {
             cmd: ValidationCmd::Run {
-                intent: "always passes".into(),
+                key: "true-proof".into(),
                 all: false,
             },
         },
@@ -378,7 +378,7 @@ fn validate_timed_out_command_records_blocked() {
         tmp.path(),
         Command::Validation {
             cmd: ValidationCmd::Run {
-                intent: "can hang".into(),
+                key: "can hang".into(),
                 all: false,
             },
         },
@@ -827,6 +827,27 @@ fn vocab_gates_tagging_and_layer_order_persists() {
         .unwrap()
         .unwrap()
         .contains("domain"));
+}
+
+#[test]
+fn malformed_json_meta_is_reported_by_typed_cli_handlers() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store.set_meta("layer_order", "not json").unwrap();
+    drop(store);
+
+    let error = loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Layer {
+            cmd: LayerCmd::List,
+        }),
+    })
+    .unwrap_err();
+    assert!(
+        error.to_string().contains("parsing meta 'layer_order'"),
+        "corrupt typed config must be surfaced with its key: {error}"
+    );
 }
 
 // ---- integration monitoring: the `edge call` contract link ------------------

@@ -46,7 +46,7 @@ Every fact type has a canonical owner. A change to one expression of truth must 
 | Product question | `Question` | builder / human answer |
 | Operational work | `TaskRecord` | any role |
 
-Finding adjudication freshness: resolving verdicts (`justified` / `rejected` / `deferred` / `duplicate`) reopen triage only when the finding's metric worsens past a band (~10% or absolute floor), not on every content-hash change of the flagged file. Open verdicts (`needed` / `blocked`) still reopen on hash change. Calibrate thresholds (`loom calibrate --write`) before treating structural detectors as obligations.
+Finding adjudication freshness: resolving verdicts (`justified` / `rejected` / `deferred` / `duplicate` / `resolved`) reopen triage only when the finding's metric worsens past a band (~10% or absolute floor), not on every content-hash change of the flagged file. `resolved` means a true issue was repaired and observed; `rejected` means the finding was false or below threshold. Open verdicts (`needed` / `blocked`) still reopen on hash change. Calibrate thresholds (`loom calibrate --write`) before treating structural detectors as obligations.
 
 Journey proof gaps (`missing_journey_proof` / `proof_too_shallow_for_intent`) block the `proven` maturity rung unless the intent carries a recorded `waiver:journey` — the same waiver completeness already honors. Quality measurement targets leaf implemented intents; hierarchy roll-ups and scenario children are not independent `governs` surfaces.
 

@@ -40,7 +40,10 @@ fn find_tag_and_where_and_explain() {
     let tmp = Tmp::new();
     loom_init(tmp.path());
 
-    loom_ok(tmp.path(), &["vocab", "add", "auth", "--why", "authentication concern"]);
+    loom_ok(
+        tmp.path(),
+        &["vocab", "add", "auth", "--why", "authentication concern"],
+    );
     loom_ok(
         tmp.path(),
         &[
@@ -103,4 +106,52 @@ fn find_tag_and_where_and_explain() {
     assert_eq!(v["intent"]["name"], "users can sign in");
     assert_eq!(v["intent"]["visibility"], "user_visible");
     assert!(v["completeness"]["axes"].is_array());
+}
+
+#[test]
+fn find_exact_uses_the_grounding_aware_projection() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path());
+
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "users can sign in",
+            "--description",
+            "auth succeeds",
+            "--lifecycle",
+            "implemented",
+            "--visibility",
+            "user_visible",
+        ],
+    );
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(tmp.path().join("src/auth.rs"), "fn sign_in() {}\n").unwrap();
+    loom_ok(tmp.path(), &["codefile", "add", "src/auth.rs"]);
+    loom_ok(
+        tmp.path(),
+        &[
+            "edge",
+            "implement",
+            "users can sign in",
+            "src/auth.rs",
+            "--locator",
+            "sign_in:12-30",
+        ],
+    );
+
+    let out = loom_ok(
+        tmp.path(),
+        &["find", "users can sign in", "--exact", "--json"],
+    );
+    let rows: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let hit = &rows.as_array().unwrap()[0];
+    assert_eq!(hit["exact"], true, "exact compatibility field: {out}");
+    assert_eq!(hit["groundings"][0]["path"], "src/auth.rs");
+    assert_eq!(hit["groundings"][0]["locator"], "sign_in:12-30");
+    assert_eq!(hit["groundings"][0]["role"], "realizes");
+    assert_eq!(hit["groundings"][0]["status"], "uninspected");
 }

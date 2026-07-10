@@ -290,14 +290,12 @@ pub(crate) fn effort_for(edge: &Edge) -> String {
 
 /// Classify a stale_cause string for roster filtering: `cheap` | `full` | `other`.
 pub(crate) fn cause_class(stale_causes: &[String]) -> &'static str {
-    if stale_causes
-        .iter()
-        .any(|c| c.contains("cheap re-confirm"))
-    {
+    if stale_causes.iter().any(|c| c.contains("cheap re-confirm")) {
         "cheap"
-    } else if stale_causes.iter().any(|c| {
-        c.contains("full re-inspection") || c.contains("cited evidence rewritten")
-    }) {
+    } else if stale_causes
+        .iter()
+        .any(|c| c.contains("full re-inspection") || c.contains("cited evidence rewritten"))
+    {
         "full"
     } else {
         "other"
@@ -322,8 +320,7 @@ pub(crate) fn refine_effort_and_hint(
         "full" => (base_effort, Some("judgment".into())),
         _ => {
             let templated = write_back.contains('<') && write_back.contains('>');
-            let mechanical =
-                !templated && !prior_criterion.trim().is_empty() && read_set_len <= 3;
+            let mechanical = !templated && !prior_criterion.trim().is_empty() && read_set_len <= 3;
             if mechanical {
                 (base_effort, Some("mechanical".into()))
             } else {

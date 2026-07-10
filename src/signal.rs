@@ -69,7 +69,7 @@ struct Adjudication {
     _at: String,
 }
 
-/// Resolving adjudications (`justified`/`rejected`/`deferred`/`duplicate`) stay
+/// Resolving adjudications (`justified`/`rejected`/`deferred`/`duplicate`/`resolved`) stay
 /// settled across content-hash churn unless the finding's metric worsens by more
 /// than this relative band (or absolute floor). `needed`/`blocked` still reopen
 /// on any hash change — those are open work.
@@ -79,7 +79,7 @@ const RESOLVING_METRIC_FLOOR: u64 = 50;
 fn resolving_verdict(verdict: &str) -> bool {
     matches!(
         verdict,
-        "justified" | "rejected" | "deferred" | "duplicate"
+        "justified" | "rejected" | "deferred" | "duplicate" | "resolved"
     )
 }
 
@@ -124,7 +124,7 @@ pub fn adjudication_of(store: &Store, node_id: &str) -> Result<Option<(String, S
     };
     if !matches!(
         adj.verdict.as_str(),
-        "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate"
+        "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate" | "resolved"
     ) {
         return Ok(None);
     }
@@ -138,7 +138,7 @@ pub fn smell_has_resolving_adjudication(store: &Store, identity: &str) -> Result
     let id = Store::derived_node_id(NodeType::Finding, &smell_det_key(identity));
     Ok(matches!(
         adjudication_of(store, &id)?,
-        Some((v, _)) if matches!(v.as_str(), "justified" | "rejected" | "deferred" | "duplicate")
+        Some((v, _)) if matches!(v.as_str(), "justified" | "rejected" | "deferred" | "duplicate" | "resolved")
     ))
 }
 
@@ -720,7 +720,7 @@ pub fn findings_view(store: &Store) -> Result<Vec<FindingView>> {
         };
         if !matches!(
             adj.verdict.as_str(),
-            "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate"
+            "needed" | "justified" | "rejected" | "deferred" | "blocked" | "duplicate" | "resolved"
         ) {
             out.push(FindingView {
                 node,

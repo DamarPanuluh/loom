@@ -539,10 +539,7 @@ mod tests {
         // and the field must not appear in pairs()/GATES.
         let (_tmp, store) = fresh_store();
         store
-            .set_meta(
-                THRESHOLDS_META_KEY,
-                r#"{"max_args":4,"max_file_owners":9}"#,
-            )
+            .set_meta(THRESHOLDS_META_KEY, r#"{"max_args":4,"max_file_owners":9}"#)
             .unwrap();
         let t = load(&store).expect("legacy max_file_owners still parses");
         assert_eq!(t.max_args, 4);

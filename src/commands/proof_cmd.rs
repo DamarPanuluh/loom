@@ -248,7 +248,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
     // `validation run` executes stored proof commands; validate_cmd manages its
     // own store/lock lifecycle, so it must not run under this handler's store.
     let cmd = match cmd {
-        ValidationCmd::Run { intent, all } => return validate_cmd(graph, &intent, all, json),
+        ValidationCmd::Run { key, all } => return validate_cmd(graph, &key, all, json),
         other => other,
     };
     let store = open(graph)?;
@@ -381,6 +381,11 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             }
             if let Some(c) = &command {
                 body["command"] = serde_json::json!(c);
+                // Re-entering the command through the local CLI is the explicit
+                // approval step for a command quarantined during import.
+                if let Some(object) = body.as_object_mut() {
+                    object.remove("command_trusted");
+                }
             }
             store.set_node_body(&val.id, &body)?;
             pulse::emit_line(
@@ -525,12 +530,7 @@ fn mark_validation(
     store.set_node_status(val_id, node_status)?;
     Ok(())
 }
-pub(crate) fn validate_cmd(
-    graph: Option<&Path>,
-    intent: &str,
-    all: bool,
-    json: bool,
-) -> Result<()> {
+pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: bool) -> Result<()> {
     let store = open(graph)?;
     let vals: Vec<_> = if all {
         store
@@ -539,29 +539,21 @@ pub(crate) fn validate_cmd(
             .filter(|v| v.status == "not_run")
             .collect()
     } else {
-        let i = match store.resolve_node(intent, Some(NodeType::Intent)) {
-            Ok(i) => i,
-            Err(e) => {
-                // A common driver slip: passing a validation NAME to `run`, which
-                // takes the INTENT whose proofs to run. Name the real usage.
-                if store
-                    .resolve_node(intent, Some(NodeType::Validation))
-                    .is_ok()
-                {
-                    bail!(
-                        "'{intent}' is a validation, but `validation run` takes the INTENT whose proofs to run — try `loom validation run <intent>` or `--all`"
-                    );
+        match store.resolve_node(key, Some(NodeType::Intent)) {
+            Ok(intent) => {
+                let mut out = Vec::new();
+                for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))? {
+                    if let Some(v) = store.get_node(&e.from_id)? {
+                        out.push(v);
+                    }
                 }
-                return Err(e);
+                out
             }
-        };
-        let mut out = Vec::new();
-        for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&i.id))? {
-            if let Some(v) = store.get_node(&e.from_id)? {
-                out.push(v);
-            }
+            Err(intent_error) => match store.resolve_node(key, Some(NodeType::Validation)) {
+                Ok(validation) => vec![validation],
+                Err(_) => return Err(intent_error),
+            },
         }
-        out
     };
     if vals.is_empty() {
         return pulse::emit_line(
