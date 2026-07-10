@@ -9,6 +9,7 @@ use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::signal::{smell_det_key, smell_has_resolving_adjudication, smells};
 use loom::store::Store;
 use loom::sync;
+use std::collections::BTreeSet;
 
 mod common;
 use common::Tmp;
@@ -367,6 +368,33 @@ fn evidence_stamped_and_integrity() {
             .is_none(),
         "a nonexistent-path citation must not produce an evidence_spans facet"
     );
+
+    // D: more citations than Loom can retain must fail before the verdict is
+    // written. Silently dropping citation 17 would make later relationship
+    // sparing unsound because sync could not know that dependency existed.
+    let i4 = add_intent(&store, "behavior d", "something d");
+    let e4 = ground(&store, &i4, &cf, None);
+    let many_lines = (1..=17)
+        .map(|line| format!("// line {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    tmp.write("src/many.rs", &format!("{many_lines}\n"));
+    let evidence = (1..=17)
+        .map(|line| format!("src/many.rs:{line}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let err = store
+        .record_verdict(
+            &e4,
+            InspectionStatus::Passing,
+            "criterion",
+            &evidence,
+            0.9,
+            "test",
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("more than 16 distinct spans"));
+    assert_eq!(edge_status(&store, &e4), InspectionStatus::Uninspected);
 }
 
 // ============================================================
@@ -798,5 +826,134 @@ fn relates_spared_on_one_sided_change_staled_when_both_or_depends_on() {
         edge_status(&store, &relates.id),
         InspectionStatus::NeedsReverification,
         "depends_on intersecting changed codefile must stale relates"
+    );
+}
+
+// ============================================================
+// 10. relationship evidence-scoped fan-out
+// ============================================================
+
+/// Acceptance gate for graph-maintenance churn: a localized edit with ten
+/// settled relationships citing untouched evidence creates no work for those
+/// claims. Only the changed grounding, an unanchored relationship, and a
+/// relationship whose citation was rewritten enter full judgment (<= 3).
+#[test]
+fn localized_edit_produces_at_most_three_full_judgment_packets() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    tmp.write(
+        "src/lib.rs",
+        "// stable relationship contract\npub fn alpha() {\n    let value = 1;\n}\n",
+    );
+
+    let codefile = add_codefile(&store, "src/lib.rs");
+    let changed = add_intent(
+        &store,
+        "localized relationship source",
+        "returns the localized source value",
+    );
+    let grounding = ground(&store, &changed, &codefile, None);
+    let stable = (0..10)
+        .map(|index| {
+            let target = add_intent(
+                &store,
+                &format!("stable relationship target {index}"),
+                "preserves the shared target contract",
+            );
+            store
+                .add_edge(EdgeKind::Requires, &changed, &target, TruthClass::Asserted)
+                .unwrap()
+                .id
+        })
+        .collect::<Vec<_>>();
+    let unanchored_target = add_intent(
+        &store,
+        "unanchored relationship target",
+        "preserves the unanchored target contract",
+    );
+    let unanchored = store
+        .add_edge(
+            EdgeKind::Requires,
+            &changed,
+            &unanchored_target,
+            TruthClass::Asserted,
+        )
+        .unwrap()
+        .id;
+    let rewritten_target = add_intent(
+        &store,
+        "rewritten relationship target",
+        "preserves the rewritten target contract",
+    );
+    let rewritten = store
+        .add_edge(
+            EdgeKind::Requires,
+            &changed,
+            &rewritten_target,
+            TruthClass::Asserted,
+        )
+        .unwrap()
+        .id;
+
+    sync::run(&store, tmp.path()).unwrap();
+    pass(&store, &grounding, "src/lib.rs:2-4 — realizing body");
+    for edge in &stable {
+        pass(&store, edge, "src/lib.rs:1 — stable relationship contract");
+    }
+    pass(
+        &store,
+        &unanchored,
+        "relationship follows from domain semantics",
+    );
+    pass(
+        &store,
+        &rewritten,
+        "src/lib.rs:2-4 — relationship follows from this body",
+    );
+
+    tmp.write(
+        "src/lib.rs",
+        "// stable relationship contract\npub fn alpha() {\n    let value = 2;\n}\n",
+    );
+    let report = sync::run(&store, tmp.path()).unwrap();
+
+    assert!(report.edges_spared >= 10, "report: {report:?}");
+    for edge in &stable {
+        assert_eq!(
+            edge_status(&store, edge),
+            InspectionStatus::Passing,
+            "intact relationship evidence must stay settled"
+        );
+    }
+    assert_eq!(
+        edge_status(&store, &unanchored),
+        InspectionStatus::NeedsReverification
+    );
+    assert_eq!(
+        edge_status(&store, &rewritten),
+        InspectionStatus::NeedsReverification
+    );
+
+    use loom::workitem::{self, Mode};
+    let full_judgment = workitem::queue_items(&store, Mode::Analyze)
+        .unwrap()
+        .into_iter()
+        .filter(|item| {
+            item.cause_class.as_deref() == Some("full")
+                && item.routing_hint.as_deref() == Some("judgment")
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        full_judgment.len() <= 3,
+        "localized edit created {} full-judgment packets: {full_judgment:#?}",
+        full_judgment.len()
+    );
+    let full_ids = full_judgment
+        .iter()
+        .map(|item| item.target.id.as_str())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        full_ids,
+        BTreeSet::from([grounding.as_str(), unanchored.as_str(), rewritten.as_str(),])
     );
 }

@@ -27,9 +27,10 @@ use std::sync::LazyLock;
 /// The asserted edge facet carrying the citation stamps of the last verdict.
 pub const EVIDENCE_SPANS_KEY: &str = "evidence_spans";
 
-/// Stamp at most this many distinct citations per verdict (bounds facet size;
-/// honest evidence cites a handful of spans, not dozens).
-const MAX_SPANS: usize = 16;
+/// Maximum distinct citations per verdict (bounds facet size; honest evidence
+/// cites a handful of spans, not dozens). Exposed within the crate so sync can
+/// treat a legacy facet at this cap as potentially truncated and fail closed.
+pub(crate) const MAX_SPANS: usize = 16;
 
 /// Window-search re-anchoring is skipped for files larger than this many
 /// lines — the exact-position check still runs, only the "moved but intact"
@@ -98,16 +99,18 @@ pub fn stamp(root: &Path, evidence: &str) -> Result<Vec<SpanStamp>> {
             );
         }
         let lines: Vec<&str> = content.lines().collect();
-        // The integrity gate above runs for EVERY citation; only the stored
-        // stamps are capped.
-        if stamps.len() < MAX_SPANS {
-            stamps.push(SpanStamp {
-                file: file.to_string(),
-                start,
-                end,
-                hash: fingerprint(&lines[start - 1..end].join("\n")),
-            });
+        if stamps.len() == MAX_SPANS {
+            bail!(
+                "evidence cites more than {MAX_SPANS} distinct spans — reduce it to the most \
+                 decision-relevant citations"
+            );
         }
+        stamps.push(SpanStamp {
+            file: file.to_string(),
+            start,
+            end,
+            hash: fingerprint(&lines[start - 1..end].join("\n")),
+        });
     }
     Ok(stamps)
 }

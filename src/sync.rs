@@ -12,7 +12,9 @@
 //! pure extraction), and ripples nothing because no prior hashes remain.
 
 use crate::deriver::RegionDiff;
-use crate::model::{EdgeKind, GroundingRole, InspectionStatus, NodeType, TargetKind, TruthClass};
+use crate::model::{
+    Edge, EdgeKind, GroundingRole, InspectionStatus, NodeType, TargetKind, TruthClass,
+};
 use crate::store::Store;
 use crate::Result;
 use std::collections::{BTreeMap, BTreeSet};
@@ -42,13 +44,53 @@ pub struct SyncReport {
     pub missing: Vec<String>,
 }
 
+/// Exact source provenance for one intent that changed during this sync. The
+/// changed CodeFile ids are kept alongside the human causes so pass 2 can judge
+/// a relationship against only the files that changed its endpoint, never an
+/// unrelated file that happened to change in the same sync.
+#[derive(Debug, Default)]
+struct IntentChanges {
+    causes: BTreeSet<String>,
+    codefiles: BTreeSet<String>,
+}
+
+#[derive(Debug)]
+struct ChangedFile {
+    path: String,
+    content: Option<String>,
+}
+
+#[derive(Debug, Default)]
+struct RelationshipChanges {
+    causes: BTreeSet<String>,
+    codefiles: BTreeSet<String>,
+}
+
+struct RelatesContext<'a> {
+    store: &'a Store,
+    changed_intents: &'a BTreeMap<String, IntentChanges>,
+    changed_codefiles: &'a BTreeSet<String>,
+    changed_files: &'a BTreeMap<String, ChangedFile>,
+    change_refs: &'a BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RelationshipEvidenceImpact {
+    /// Every relevant changed file is covered by at least one intact stamp.
+    Intact,
+    /// At least one covered citation was rewritten or its file disappeared.
+    Rewritten,
+    /// Evidence does not completely cover the relevant changed files.
+    Unanchored,
+}
+
 /// Run a full sync against the graph rooted at `root`. Orchestrates the
 /// registered code-seed derivers to recompute the derived plane, then ripples
 /// the artifact changes they report — the engine names no extraction type, so
 /// unplugging a deriver leaves this loop intact and rippling correctly.
 pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     let mut report = SyncReport::default();
-    let mut changed_intents: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut changed_intents: BTreeMap<String, IntentChanges> = BTreeMap::new();
     let mut changed_codefiles: BTreeSet<String> = BTreeSet::new();
     let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();
     for deriver in crate::seed::sync_derivers() {
@@ -92,7 +134,7 @@ fn ripple_codefile(
     cause: &str,
     content: Option<&str>,
     regions: Option<&RegionDiff>,
-    changed_intents: &mut BTreeMap<String, BTreeSet<String>>,
+    changed_intents: &mut BTreeMap<String, IntentChanges>,
     seen_surfaces: &mut BTreeSet<String>,
     report: &mut SyncReport,
 ) -> Result<()> {
@@ -139,13 +181,12 @@ fn ripple_codefile(
             if store.stale_edge(&e.id, &full_cause)? {
                 report.edges_staled += 1;
             }
-            changed_intents
-                .entry(e.from_id.clone())
-                .or_default()
-                // The evidence grade above belongs to this grounding only.
-                // Downstream governs/validates/relationship edges grade their
-                // own citations in pass 2.
-                .insert(base_cause);
+            let changes = changed_intents.entry(e.from_id.clone()).or_default();
+            // The evidence grade above belongs to this grounding only.
+            // Downstream governs/validates/relationship edges grade their own
+            // citations against this exact CodeFile provenance in pass 2.
+            changes.causes.insert(base_cause);
+            changes.codefiles.insert(cf_id.to_string());
         } else {
             // A consumer/config/verify grounding: the behavior lives elsewhere,
             // so a content edit does NOT invalidate it and does NOT ripple to the
@@ -296,19 +337,19 @@ fn dependent_evidence_cause(
     store: &Store,
     edge_id: &str,
     base_cause: &str,
-    changed_files: &[(String, Option<String>)],
+    changed_files: &[&ChangedFile],
 ) -> Result<String> {
     let spans = evidence_spans(store, edge_id)?;
     let mut cited_changed_file = false;
     let mut rewritten = false;
-    for (file, content) in changed_files {
-        if !spans.iter().any(|span| span.file == *file) {
+    for file in changed_files {
+        if !spans.iter().any(|span| span.file == file.path) {
             continue;
         }
         cited_changed_file = true;
-        match content {
+        match &file.content {
             Some(content) => {
-                if crate::evidence::spans_status(&spans, file, content) == Some(false) {
+                if crate::evidence::spans_status(&spans, &file.path, content) == Some(false) {
                     rewritten = true;
                 }
             }
@@ -330,10 +371,106 @@ fn stale_dependent(
     store: &Store,
     edge_id: &str,
     base_cause: &str,
-    changed_files: &[(String, Option<String>)],
+    changed_files: &[&ChangedFile],
 ) -> Result<bool> {
     let cause = dependent_evidence_cause(store, edge_id, base_cause, changed_files)?;
     store.stale_edge(edge_id, &cause)
+}
+
+fn load_changed_files(
+    store: &Store,
+    changed_codefiles: &BTreeSet<String>,
+) -> Result<BTreeMap<String, ChangedFile>> {
+    let mut files = BTreeMap::new();
+    for codefile_id in changed_codefiles {
+        let Some(codefile) = store.get_node(codefile_id)? else {
+            continue;
+        };
+        files.insert(
+            codefile_id.clone(),
+            ChangedFile {
+                path: codefile.name.clone(),
+                content: std::fs::read_to_string(store.root().join(&codefile.name)).ok(),
+            },
+        );
+    }
+    Ok(files)
+}
+
+fn files_for<'a>(
+    changed_files: &'a BTreeMap<String, ChangedFile>,
+    codefiles: &BTreeSet<String>,
+) -> Vec<&'a ChangedFile> {
+    codefiles
+        .iter()
+        .filter_map(|id| changed_files.get(id))
+        .collect()
+}
+
+/// Judge whether a relationship's own evidence still supports it after its
+/// dependencies changed. Sparing is deliberately strict: every relevant file
+/// must have at least one stamp, every stamp in it must still be intact, and a
+/// legacy facet at the old storage cap is treated as incomplete because older
+/// Loom versions may have silently truncated additional citations.
+fn relationship_evidence_impact(
+    store: &Store,
+    edge_id: &str,
+    changed_files: &[&ChangedFile],
+) -> Result<RelationshipEvidenceImpact> {
+    let spans = evidence_spans(store, edge_id)?;
+    if changed_files.is_empty() || spans.is_empty() || spans.len() >= crate::evidence::MAX_SPANS {
+        return Ok(RelationshipEvidenceImpact::Unanchored);
+    }
+    let mut missing = false;
+    for file in changed_files {
+        let status = file
+            .content
+            .as_deref()
+            .and_then(|content| crate::evidence::spans_status(&spans, &file.path, content));
+        match status {
+            Some(true) => {}
+            Some(false) | None if file.content.is_none() => {
+                return Ok(RelationshipEvidenceImpact::Rewritten);
+            }
+            Some(false) => return Ok(RelationshipEvidenceImpact::Rewritten),
+            None => missing = true,
+        }
+    }
+    Ok(if missing {
+        RelationshipEvidenceImpact::Unanchored
+    } else {
+        RelationshipEvidenceImpact::Intact
+    })
+}
+
+/// The deep seam for relationship maintenance: callers provide only the exact
+/// dependency files that changed; this routine owns the fail-closed evidence
+/// policy and the stale/spared accounting.
+fn ripple_relationship_claim(
+    store: &Store,
+    edge: &Edge,
+    base_cause: &str,
+    changed_files: &[&ChangedFile],
+    report: &mut SyncReport,
+) -> Result<()> {
+    match relationship_evidence_impact(store, &edge.id, changed_files)? {
+        RelationshipEvidenceImpact::Intact => report.edges_spared += 1,
+        RelationshipEvidenceImpact::Rewritten => {
+            if stale_dependent(store, &edge.id, base_cause, changed_files)? {
+                report.edges_staled += 1;
+            }
+        }
+        RelationshipEvidenceImpact::Unanchored => {
+            let cause = format!(
+                "{base_cause} — relationship evidence does not cover every changed dependency, \
+                 conservative full re-inspection"
+            );
+            if store.stale_edge(&edge.id, &cause)? {
+                report.edges_staled += 1;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Pass 2: ripple staleness from changed intents to the edges that depend on
@@ -346,97 +483,205 @@ fn stale_dependent(
 /// Directional kinds (`requires`, `triggers`, …) keep one-sided ripple.
 fn ripple_changed_intents(
     store: &Store,
-    changed_intents: &BTreeMap<String, BTreeSet<String>>,
+    changed_intents: &BTreeMap<String, IntentChanges>,
     changed_codefiles: &BTreeSet<String>,
     report: &mut SyncReport,
 ) -> Result<()> {
-    let mut changed_files = Vec::new();
-    for codefile_id in changed_codefiles {
-        let Some(codefile) = store.get_node(codefile_id)? else {
-            continue;
-        };
-        changed_files.push((
-            codefile.name.clone(),
-            std::fs::read_to_string(store.root().join(&codefile.name)).ok(),
-        ));
+    let changed_files = load_changed_files(store, changed_codefiles)?;
+    let mut relationship_changes: BTreeMap<String, RelationshipChanges> = BTreeMap::new();
+    for (intent, changes) in changed_intents {
+        let intent_files = files_for(&changed_files, &changes.codefiles);
+        ripple_non_relationship_dependents(store, intent, changes, &intent_files, report)?;
+        collect_directional_relationships(store, intent, changes, &mut relationship_changes)?;
     }
+    ripple_directional_relationships(store, relationship_changes, &changed_files, report)?;
+    ripple_relates(
+        store,
+        changed_intents,
+        changed_codefiles,
+        &changed_files,
+        report,
+    )
+}
 
-    // Union of change refs for depends_on intersection.
-    let mut change_refs: BTreeSet<String> = changed_intents.keys().cloned().collect();
-    change_refs.extend(changed_codefiles.iter().cloned());
-
-    for (intent, causes) in changed_intents {
-        let cause = causes.iter().cloned().collect::<Vec<_>>().join("; ");
-        for e in store.edges_with(Some(EdgeKind::Governs), None, Some(intent))? {
-            if stale_dependent(store, &e.id, &cause, &changed_files)? {
+fn ripple_non_relationship_dependents(
+    store: &Store,
+    intent: &str,
+    changes: &IntentChanges,
+    changed_files: &[&ChangedFile],
+    report: &mut SyncReport,
+) -> Result<()> {
+    let cause = changes
+        .causes
+        .iter()
+        .cloned()
+        .collect::<Vec<_>>()
+        .join("; ");
+    for kind in [EdgeKind::Governs, EdgeKind::Targets] {
+        for edge in store.edges_with(Some(kind), None, Some(intent))? {
+            if stale_dependent(store, &edge.id, &cause, changed_files)? {
                 report.edges_staled += 1;
             }
         }
-        for e in store.edges_with(Some(EdgeKind::Targets), None, Some(intent))? {
-            if stale_dependent(store, &e.id, &cause, &changed_files)? {
-                report.edges_staled += 1;
-            }
-        }
-        for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent))? {
-            if stale_dependent(store, &e.id, &cause, &changed_files)? {
-                report.edges_staled += 1;
-            }
-            // Reset the linked Validation's last_result.
-            store.reset_validation_status_for_sync(&e.from_id)?;
-            report.validations_reset += 1;
-        }
-        for kind in [
-            EdgeKind::Requires,
-            EdgeKind::ScenarioOf,
-            EdgeKind::VariantOf,
-            EdgeKind::Triggers,
-            EdgeKind::Sequence,
-        ] {
-            for e in store.edges_with(Some(kind), Some(intent), None)? {
-                if stale_dependent(store, &e.id, &cause, &changed_files)? {
-                    report.edges_staled += 1;
-                }
-            }
-            for e in store.edges_with(Some(kind), None, Some(intent))? {
-                if stale_dependent(store, &e.id, &cause, &changed_files)? {
-                    report.edges_staled += 1;
-                }
-            }
-        }
     }
-
-    // Relates: collect unique edges touching any changed intent, then apply the
-    // hybrid gate once per edge (avoids double-stale and one-sided fanout).
-    let mut seen_relates = BTreeSet::new();
-    for intent in changed_intents.keys() {
-        for e in store.edges_with(Some(EdgeKind::Relates), Some(intent), None)? {
-            seen_relates.insert(e.id);
-        }
-        for e in store.edges_with(Some(EdgeKind::Relates), None, Some(intent))? {
-            seen_relates.insert(e.id);
-        }
-    }
-    for edge_id in seen_relates {
-        let Some(e) = store.get_edge(&edge_id)? else {
-            continue;
-        };
-        let both_changed =
-            changed_intents.contains_key(&e.from_id) && changed_intents.contains_key(&e.to_id);
-        let deps_hit = depends_on_intersects(&e.depends_on, &change_refs);
-        if !(both_changed || deps_hit) {
-            report.edges_spared += 1;
-            continue;
-        }
-        let cause = if both_changed {
-            "both relates endpoints changed".to_string()
-        } else {
-            "relates depends_on intersects sync change set".to_string()
-        };
-        if stale_dependent(store, &e.id, &cause, &changed_files)? {
+    for edge in store.edges_with(Some(EdgeKind::Validates), None, Some(intent))? {
+        if stale_dependent(store, &edge.id, &cause, changed_files)? {
             report.edges_staled += 1;
+        }
+        store.reset_validation_status_for_sync(&edge.from_id)?;
+        report.validations_reset += 1;
+    }
+    Ok(())
+}
+
+fn collect_directional_relationships(
+    store: &Store,
+    intent: &str,
+    changes: &IntentChanges,
+    candidates: &mut BTreeMap<String, RelationshipChanges>,
+) -> Result<()> {
+    for kind in [
+        EdgeKind::Requires,
+        EdgeKind::ScenarioOf,
+        EdgeKind::VariantOf,
+        EdgeKind::Triggers,
+        EdgeKind::Sequence,
+    ] {
+        for edge in store
+            .edges_with(Some(kind), Some(intent), None)?
+            .into_iter()
+            .chain(store.edges_with(Some(kind), None, Some(intent))?)
+        {
+            let candidate = candidates.entry(edge.id).or_default();
+            candidate.causes.extend(changes.causes.iter().cloned());
+            candidate
+                .codefiles
+                .extend(changes.codefiles.iter().cloned());
         }
     }
     Ok(())
+}
+
+fn ripple_directional_relationships(
+    store: &Store,
+    candidates: BTreeMap<String, RelationshipChanges>,
+    changed_files: &BTreeMap<String, ChangedFile>,
+    report: &mut SyncReport,
+) -> Result<()> {
+    for (edge_id, changes) in candidates {
+        let Some(edge) = store.get_edge(&edge_id)? else {
+            continue;
+        };
+        let cause = changes.causes.into_iter().collect::<Vec<_>>().join("; ");
+        let relevant_files = files_for(changed_files, &changes.codefiles);
+        ripple_relationship_claim(store, &edge, &cause, &relevant_files, report)?;
+    }
+    Ok(())
+}
+
+fn ripple_relates(
+    store: &Store,
+    changed_intents: &BTreeMap<String, IntentChanges>,
+    changed_codefiles: &BTreeSet<String>,
+    changed_files: &BTreeMap<String, ChangedFile>,
+    report: &mut SyncReport,
+) -> Result<()> {
+    let mut change_refs: BTreeSet<String> = changed_intents.keys().cloned().collect();
+    change_refs.extend(changed_codefiles.iter().cloned());
+    let context = RelatesContext {
+        store,
+        changed_intents,
+        changed_codefiles,
+        changed_files,
+        change_refs: &change_refs,
+    };
+    for edge_id in relates_touching(store, changed_intents.keys())? {
+        let Some(e) = store.get_edge(&edge_id)? else {
+            continue;
+        };
+        ripple_one_relates(&context, &e, report)?;
+    }
+    Ok(())
+}
+
+/// Collect each undirected relates edge once even when both endpoints changed.
+fn relates_touching<'a>(
+    store: &Store,
+    changed_intents: impl Iterator<Item = &'a String>,
+) -> Result<BTreeSet<String>> {
+    let mut edges = BTreeSet::new();
+    for intent in changed_intents {
+        for edge in store
+            .edges_with(Some(EdgeKind::Relates), Some(intent), None)?
+            .into_iter()
+            .chain(store.edges_with(Some(EdgeKind::Relates), None, Some(intent))?)
+        {
+            edges.insert(edge.id);
+        }
+    }
+    Ok(edges)
+}
+
+fn ripple_one_relates(
+    context: &RelatesContext<'_>,
+    edge: &Edge,
+    report: &mut SyncReport,
+) -> Result<()> {
+    let both_changed = context.changed_intents.contains_key(&edge.from_id)
+        && context.changed_intents.contains_key(&edge.to_id);
+    let deps_hit = depends_on_intersects(&edge.depends_on, context.change_refs);
+    if !(both_changed || deps_hit) {
+        report.edges_spared += 1;
+        return Ok(());
+    }
+    let cause = if both_changed {
+        "both relates endpoints changed"
+    } else {
+        "relates depends_on intersects sync change set"
+    };
+    let relevant = relates_dependency_files(
+        edge,
+        both_changed,
+        deps_hit,
+        context.changed_intents,
+        context.changed_codefiles,
+    );
+    let relevant_files = files_for(context.changed_files, &relevant);
+    ripple_relationship_claim(context.store, edge, cause, &relevant_files, report)
+}
+
+fn relates_dependency_files(
+    edge: &Edge,
+    both_changed: bool,
+    deps_hit: bool,
+    changed_intents: &BTreeMap<String, IntentChanges>,
+    changed_codefiles: &BTreeSet<String>,
+) -> BTreeSet<String> {
+    let mut relevant = BTreeSet::new();
+    if both_changed {
+        for endpoint in [&edge.from_id, &edge.to_id] {
+            if let Some(changes) = changed_intents.get(endpoint) {
+                relevant.extend(changes.codefiles.iter().cloned());
+            }
+        }
+    }
+    if deps_hit {
+        let deps = edge
+            .depends_on
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|value| value.as_str());
+        for dep in deps {
+            if changed_codefiles.contains(dep) {
+                relevant.insert(dep.to_string());
+            }
+            if let Some(changes) = changed_intents.get(dep) {
+                relevant.extend(changes.codefiles.iter().cloned());
+            }
+        }
+    }
+    relevant
 }
 
 fn depends_on_intersects(depends_on: &serde_json::Value, change_refs: &BTreeSet<String>) -> bool {
