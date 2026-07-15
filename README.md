@@ -44,7 +44,7 @@ This is the v2 spine: derived facts are reproducible, asserted facts persist unt
 - **Advisory debt + promotion:** `loom debt` ranks statistical clusters (`size_outlier` LOC outliers and git-history `co_change`) with stable `cluster_id`s; `loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>]` mints exactly one asserted Finding (`source: debt_promotion`) for ordinary finding triage while the raw feed stays advisory.
 - **Portable configuration:** `loom.graph.json` carries the `config` map (`layer_order`, `ignores`, `codefile_globs`, `scan_adapters`, `thresholds`, `evidence_policy`) so imports keep the graph's routing, scan, detector, and policy setup.
 - **Wiki projection:** `loom wiki plan/next/record/list/remove` tracks reader-first documentation pages as graph citizens — an agent writes the prose, the graph governs truth and freshness, and `loom sync` stales a page precisely when a documented intent, its code, or its proof drifts.
-- **Federation:** `loom graph link` composes graphs across repositories via committed exports; upstream intents appear as shadow nodes that ripple staleness locally without ever entering local queues or gates.
+- **Federation:** `loom graph link` composes graphs across repositories via committed exports; upstream intents appear as shadow nodes that ripple staleness locally without ever entering local queues or gates. Plain `graph unlink` keeps shadows (doctor flags orphans); permanent dispose is `graph unlink --prune` or `graph prune-orphans` (`--cascade` if DependsOn edges remain).
 
 ## Storage
 

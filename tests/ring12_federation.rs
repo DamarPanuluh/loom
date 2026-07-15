@@ -446,6 +446,248 @@ fn unlink_orphans_shadows_for_doctor() {
             .any(|i| i["kind"] == "orphaned_upstream_intent"),
         "doctor must flag orphaned upstream intent: {issues:?}"
     );
+    // Doctor message must name the remediation — orphans without a cleanup path
+    // left hardened maturity unreachable after intentional permanent unlink.
+    let orphan_msg = issues
+        .iter()
+        .find(|i| i["kind"] == "orphaned_upstream_intent")
+        .and_then(|i| i["message"].as_str())
+        .unwrap_or("");
+    assert!(
+        orphan_msg.contains("prune-orphans"),
+        "doctor orphan message must name prune-orphans remediation: {orphan_msg}"
+    );
+}
+
+// =========================================================================
+// 3b. Permanent dispose: prune-orphans after unlink clears doctor.
+// =========================================================================
+
+#[test]
+fn prune_orphans_after_unlink_clears_doctor() {
+    // graph list must surface orphan residue when the registry is empty —
+    // the product-graph failure mode was "list []" while doctor blocked hardened.
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("svc"));
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "endpoint-a",
+            "--description",
+            "an endpoint",
+        ],
+    );
+    loom_ok(upstream.path(), &["export"]);
+    let upstream_export = upstream.path().join("loom.graph.json");
+
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("client"));
+    loom_ok(
+        downstream.path(),
+        &["graph", "link", upstream_export.to_str().unwrap()],
+    );
+    loom_ok(downstream.path(), &["graph", "unlink", "svc"]);
+
+    let listed = loom_json(downstream.path(), &["graph", "list"]);
+    assert_eq!(
+        listed["orphan_shadows"].as_u64().unwrap(),
+        1,
+        "list must report orphan residue, not a silent empty array: {listed}"
+    );
+    assert_eq!(listed["hint"], "loom graph prune-orphans");
+
+    let pruned = loom_json(downstream.path(), &["graph", "prune-orphans"]);
+    assert_eq!(pruned["pruned"]["count"].as_u64().unwrap(), 1);
+    assert!(pruned["pruned"]["blocked"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+
+    let store = Store::open(downstream.path()).unwrap();
+    let shadows = store
+        .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+        .unwrap();
+    assert!(shadows.is_empty(), "all orphan shadows disposed");
+    drop(store);
+
+    // After prune, list is a plain empty array again (no false orphan envelope).
+    let listed_clean = loom_json(downstream.path(), &["graph", "list"]);
+    assert!(
+        listed_clean.as_array().map(|a| a.is_empty()).unwrap_or(false),
+        "clean list must be []: {listed_clean}"
+    );
+
+    loom_ok(downstream.path(), &["doctor"]);
+}
+
+// =========================================================================
+// 3c. unlink --prune disposes shadows in the same step.
+// =========================================================================
+
+#[test]
+fn unlink_prune_disposes_shadows_immediately() {
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("svc"));
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "endpoint-a",
+            "--description",
+            "an endpoint",
+        ],
+    );
+    loom_ok(upstream.path(), &["export"]);
+    let upstream_export = upstream.path().join("loom.graph.json");
+
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("client"));
+    loom_ok(
+        downstream.path(),
+        &["graph", "link", upstream_export.to_str().unwrap()],
+    );
+
+    let out = loom_json(
+        downstream.path(),
+        &["graph", "unlink", "svc", "--prune"],
+    );
+    assert_eq!(out["pruned"]["count"].as_u64().unwrap(), 1);
+
+    let store = Store::open(downstream.path()).unwrap();
+    assert!(store
+        .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+        .unwrap()
+        .is_empty());
+    drop(store);
+    loom_ok(downstream.path(), &["doctor"]);
+}
+
+// =========================================================================
+// 3d. prune refuses orphans still targeted by DependsOn; --cascade forces.
+// =========================================================================
+
+#[test]
+fn prune_orphans_refuses_depends_on_unless_cascade() {
+    let upstream = Tmp::new();
+    loom_init(upstream.path(), Some("svc"));
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "endpoint-a",
+            "--description",
+            "an endpoint",
+        ],
+    );
+    loom_ok(
+        upstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "endpoint-b",
+            "--description",
+            "another endpoint",
+        ],
+    );
+    loom_ok(upstream.path(), &["export"]);
+    let upstream_export = upstream.path().join("loom.graph.json");
+
+    let downstream = Tmp::new();
+    loom_init(downstream.path(), Some("client"));
+    loom_ok(
+        downstream.path(),
+        &["graph", "link", upstream_export.to_str().unwrap()],
+    );
+    loom_ok(
+        downstream.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "local-feature",
+            "--description",
+            "depends on upstream",
+        ],
+    );
+    loom_ok(
+        downstream.path(),
+        &[
+            "edge",
+            "depends-on",
+            "local-feature",
+            "upstream/svc/endpoint-a",
+        ],
+    );
+    loom_ok(downstream.path(), &["graph", "unlink", "svc"]);
+
+    // Without --cascade: free orphan (endpoint-b) is pruned; claimed one blocks.
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph")
+        .arg(downstream.path())
+        .args(["graph", "prune-orphans", "--json"]);
+    let out = cmd.output().unwrap();
+    // Partial success: one pruned, one blocked — should still exit 0.
+    assert!(
+        out.status.success(),
+        "partial prune should succeed: {}\n{}",
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let body: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(body["pruned"]["count"].as_u64().unwrap(), 1, "{body}");
+    assert_eq!(
+        body["pruned"]["blocked"].as_array().unwrap().len(),
+        1,
+        "{body}"
+    );
+
+    let store = Store::open(downstream.path()).unwrap();
+    let remaining = store
+        .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+        .unwrap();
+    assert_eq!(remaining.len(), 1);
+    assert_eq!(remaining[0].name, "upstream/svc/endpoint-a");
+    let deps = store
+        .edges_with(Some(EdgeKind::DependsOn), None, None)
+        .unwrap();
+    assert_eq!(deps.len(), 1, "DependsOn edge still present without cascade");
+    drop(store);
+
+    // Pure-blocked re-run (only the claimed orphan left) must exit non-zero.
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph")
+        .arg(downstream.path())
+        .args(["graph", "prune-orphans", "--json"]);
+    let blocked_only = cmd.output().unwrap();
+    assert!(
+        !blocked_only.status.success(),
+        "all-blocked prune must fail closed"
+    );
+
+    // --cascade removes the last shadow and its DependsOn edge.
+    let cascaded = loom_json(downstream.path(), &["graph", "prune-orphans", "--cascade"]);
+    assert_eq!(cascaded["pruned"]["count"].as_u64().unwrap(), 1);
+    assert_eq!(cascaded["pruned"]["cascade_edges"].as_u64().unwrap(), 1);
+
+    let store = Store::open(downstream.path()).unwrap();
+    assert!(store
+        .list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)
+        .unwrap()
+        .is_empty());
+    assert!(store
+        .edges_with(Some(EdgeKind::DependsOn), None, None)
+        .unwrap()
+        .is_empty());
+    drop(store);
+    loom_ok(downstream.path(), &["doctor"]);
 }
 
 // =========================================================================

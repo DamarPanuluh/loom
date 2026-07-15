@@ -1083,9 +1083,33 @@ pub enum GraphCmd {
         name: Option<String>,
     },
     /// Unlink an upstream graph by alias or graph-id.
+    ///
+    /// Default keeps UpstreamIntent shadows orphaned (doctor flags them). Pass
+    /// `--prune` when the upstream is permanently gone so shadows are disposed
+    /// in the same step; remaining DependsOn claims refuse unless `--cascade`.
     Unlink {
         /// Alias or graph-id of the upstream to remove.
         key: String,
+        /// Also delete this upstream's UpstreamIntent shadow nodes.
+        #[arg(long)]
+        prune: bool,
+        /// With `--prune`, also cascade-delete DependsOn edges that still
+        /// target those shadows (default refuses and lists the blocked ones).
+        #[arg(long, requires = "prune")]
+        cascade: bool,
+    },
+    /// Dispose orphan UpstreamIntent shadows left after `graph unlink`.
+    ///
+    /// Shadows whose alias is no longer in the upstream registry are removed.
+    /// Orphans still targeted by local DependsOn edges are left in place
+    /// unless `--cascade` is set (which removes those edges too).
+    PruneOrphans {
+        /// Only dispose orphans for this former alias (default: all orphans).
+        #[arg(long)]
+        alias: Option<String>,
+        /// Also cascade-delete DependsOn edges that still target orphan shadows.
+        #[arg(long)]
+        cascade: bool,
     },
     /// List linked upstream graphs.
     List,

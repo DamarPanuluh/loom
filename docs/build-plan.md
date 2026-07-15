@@ -277,7 +277,7 @@ These were deferred from the MVP as significant new subsystems. Their eventual f
 | Feature | Status |
 |---|---|
 | Wiki projection | **Shipped** (v0.20.0) as `loom wiki plan/next/record/list/remove` — smaller than the `wiki-projection.md` design (no generate/verify/publish pipeline; the graph governs truth + freshness, an agent writes prose) |
-| Federation | **Shipped** (v0.22 line) as `loom graph link/unlink/list` + `loom edge depends-on` over committed exports; observed graph mode via `loom mode` / `init --observed` |
+| Federation | **Shipped** (v0.22 line) as `loom graph link/unlink/list` + `loom edge depends-on` over committed exports; permanent dispose via `unlink --prune` / `prune-orphans` (`--cascade` for remaining DependsOn); observed graph mode via `loom mode` / `init --observed` |
 | Personas | Still deferred — niche; no pressing model demand |
 
 ---

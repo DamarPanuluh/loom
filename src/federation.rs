@@ -22,7 +22,7 @@ use std::path::Path;
 // ---- upstream registry (shared with commands::graph_cmd) -------------------
 
 /// Upstream graph registration stored in the `upstream_graphs` meta key.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct UpstreamEntry {
     /// Filesystem path to the upstream `loom.graph.json`.
     pub path: String,
@@ -43,6 +43,21 @@ pub fn read_upstream_entries(store: &Store) -> Result<Vec<UpstreamEntry>> {
 /// Write the linked-upstream registry to meta.
 pub fn write_upstream_entries(store: &Store, entries: &[UpstreamEntry]) -> Result<()> {
     store.set_meta("upstream_graphs", &serde_json::to_string(entries)?)?;
+    Ok(())
+}
+
+/// Drop cached export hashes for graph ids that are no longer registered.
+/// Local-only meta (`upstream_hashes` is not portable); leaving stale keys after
+/// unlink is harmless for sync but confuses operators reading the store.
+pub fn drop_upstream_hash(store: &Store, graph_id: &str) -> Result<()> {
+    let Some(raw) = store.get_meta("upstream_hashes")? else {
+        return Ok(());
+    };
+    let mut hashes: HashMap<String, String> =
+        serde_json::from_str(&raw).context("parsing upstream_hashes cache")?;
+    if hashes.remove(graph_id).is_some() {
+        store.set_meta("upstream_hashes", &serde_json::to_string(&hashes)?)?;
+    }
     Ok(())
 }
 
@@ -324,4 +339,112 @@ fn shadows_have_facets(store: &Store, alias: &str) -> Result<bool> {
     }
     // No shadows at all for this alias — need reconciliation.
     Ok(false)
+}
+
+// ---- orphan shadow disposal (after intentional permanent unlink) -----------
+
+/// One UpstreamIntent shadow whose alias is no longer in the registry.
+#[derive(Debug, Clone)]
+pub struct OrphanShadow {
+    pub id: String,
+    pub name: String,
+    pub alias: String,
+    /// Local intents that still assert `DependsOn` → this shadow.
+    pub dependent_intents: Vec<String>,
+    /// The DependsOn edge ids that would cascade if pruned with cascade=true.
+    pub depends_on_edge_ids: Vec<String>,
+}
+
+/// Result of disposing orphan UpstreamIntent shadows.
+#[derive(Debug, Default, Clone)]
+pub struct OrphanPruneReport {
+    /// Shadows hard-deleted.
+    pub pruned: Vec<OrphanShadow>,
+    /// DependsOn edges removed as part of cascade (0 without cascade).
+    pub cascade_edges: usize,
+    /// Orphans still held by DependsOn claims (only when cascade=false).
+    pub blocked: Vec<OrphanShadow>,
+}
+
+/// List UpstreamIntent shadows whose `body.alias` is not in the upstream registry.
+///
+/// Optional `alias_filter` restricts to one former alias (e.g. just-unlinked).
+pub fn list_orphan_shadows(
+    store: &Store,
+    alias_filter: Option<&str>,
+) -> Result<Vec<OrphanShadow>> {
+    let entries = read_upstream_entries(store)?;
+    let linked: std::collections::BTreeSet<&str> =
+        entries.iter().map(|e| e.alias.as_str()).collect();
+
+    let mut orphans = Vec::new();
+    for n in store.list_nodes(Some(NodeType::UpstreamIntent), usize::MAX)? {
+        let alias = n
+            .body
+            .get("alias")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if linked.contains(alias.as_str()) {
+            continue;
+        }
+        if let Some(want) = alias_filter {
+            if alias != want {
+                continue;
+            }
+        }
+        let edges = store.edges_with(Some(EdgeKind::DependsOn), None, Some(&n.id))?;
+        let mut dependent_intents = Vec::new();
+        let mut depends_on_edge_ids = Vec::new();
+        for e in edges {
+            depends_on_edge_ids.push(e.id.clone());
+            if let Some(from) = store.get_node(&e.from_id)? {
+                dependent_intents.push(from.name);
+            } else {
+                dependent_intents.push(e.from_id);
+            }
+        }
+        orphans.push(OrphanShadow {
+            id: n.id,
+            name: n.name,
+            alias,
+            dependent_intents,
+            depends_on_edge_ids,
+        });
+    }
+    orphans.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(orphans)
+}
+
+/// Hard-delete orphan UpstreamIntent shadows after an intentional permanent unlink.
+///
+/// Default (`cascade = false`): deletes only orphans with no remaining
+/// `DependsOn` edges; orphans still claimed by local intents are listed in
+/// `blocked` and left in place (operator must `edge remove` or re-run with
+/// `cascade = true`).
+///
+/// With `cascade = true`: deletes every matching orphan; `Store::delete_node`
+/// cascades incident edges (including DependsOn) so no dangling claims remain.
+///
+/// `alias_filter` limits disposal to one former alias (used by `unlink --prune`).
+pub fn prune_orphan_shadows(
+    store: &Store,
+    alias_filter: Option<&str>,
+    cascade: bool,
+) -> Result<OrphanPruneReport> {
+    let orphans = list_orphan_shadows(store, alias_filter)?;
+    let mut report = OrphanPruneReport::default();
+
+    for orphan in orphans {
+        let has_deps = !orphan.depends_on_edge_ids.is_empty();
+        if has_deps && !cascade {
+            report.blocked.push(orphan);
+            continue;
+        }
+        let edge_count = orphan.depends_on_edge_ids.len();
+        store.delete_node(&orphan.id)?;
+        report.cascade_edges += edge_count;
+        report.pruned.push(orphan);
+    }
+    Ok(report)
 }

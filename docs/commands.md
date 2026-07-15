@@ -148,7 +148,8 @@ Restores an export into a fresh store. Import is validate-then-write and never l
 
 ```text
 loom graph link <path-to-loom.graph.json> [--name <alias>] [--json]
-loom graph unlink <alias-or-graph-id> [--json]
+loom graph unlink <alias-or-graph-id> [--prune] [--cascade] [--json]
+loom graph prune-orphans [--alias <alias>] [--cascade] [--json]
 loom graph list [--json]
 ```
 
@@ -158,7 +159,15 @@ Link an upstream graph via its committed `loom.graph.json` export. `link` reads 
 
 `loom sync` runs a federation pass after the codefile discovery pass: for each linked upstream, it reads the export file, compares a content hash against a cached value, and on change parses the export, diffs against shadow nodes, creates new shadows for new upstream intents, updates derived facets on changed ones, marks deleted upstream intents with `upstream_missing=true`, and stales all `DependsOn` edges whose upstream target changed. An unchanged upstream adds only one `stat()` + hash comparison — negligible overhead.
 
-`unlink` removes the upstream registration but intentionally leaves shadow nodes orphaned (never auto-deleted). `loom doctor` flags orphaned upstream intents (`orphaned_upstream_intent` issue kind).
+**Unlink vs permanent dispose.** `unlink` removes the upstream registration and, by default, **keeps** shadow nodes orphaned so a mistaken unlink can re-link and reattach (same shadow names). `loom doctor` hard-fails on each orphan (`orphaned_upstream_intent`) until they are disposed — this alone blocks the maturity `hardened` rung. That is intentional: orphans are recoverable state, not silent deletion.
+
+Cleanup path when the upstream is **permanently gone** (vendored/inlined, registry empty):
+
+1. Prefer at unlink time: `loom graph unlink <alias> --prune` — drops that alias's shadows in the same step.
+2. After a plain unlink already happened: `loom graph prune-orphans` (optional `--alias <alias>`).
+3. If local intents still assert `DependsOn` → those shadows, prune **refuses** those nodes and lists the blocked edges/intents. Either `loom edge remove <edge-id> --reason '…'` for each claim you no longer hold, or re-run with `--cascade` (on `unlink --prune --cascade` or `prune-orphans --cascade`) to hard-delete the shadows and cascade-delete the DependsOn edges.
+
+`intent remove` does **not** apply to `UpstreamIntent` — use the prune path above, never store surgery or export-filter-reimport.
 
 ```text
 loom edge depends-on <intent> <upstream-shadow> [--json]
@@ -741,11 +750,12 @@ Reader-first wiki pages tracked as a projection of the graph: the graph governs 
 
 ```text
 loom graph link <path-to-loom.graph.json> [--name <alias>] [--json]
-loom graph unlink <alias-or-graph-id> [--json]
+loom graph unlink <alias-or-graph-id> [--prune] [--cascade] [--json]
+loom graph prune-orphans [--alias <alias>] [--cascade] [--json]
 loom graph list [--json]
 ```
 
-Cross-graph federation over committed exports; see "Graph init and travel" for the `UpstreamIntent` shadow-node model and `loom edge depends-on` for cross-graph claims.
+Cross-graph federation over committed exports; see "Graph init and travel" for the `UpstreamIntent` shadow-node model, permanent-unlink cleanup (`--prune` / `prune-orphans`), and `loom edge depends-on` for cross-graph claims.
 
 ---
 
@@ -757,7 +767,7 @@ These are **not** current shipped commands or flags. Do not emit them from promp
 - removed/deferred command families: impact preview, hotspots, dig
 - removed/deferred subcommands: intent context, edge unimplement, vocab merge, inbox normalize
 - removed/deferred flags: `guide --mode`, `import --as-planned`
-- shipped since this list was written (do **not** treat as deferred): batch writes (`loom apply`), wiki projection (`loom wiki`, with the verb set above — the older `generate/verify/publish/update` design in `wiki-projection.md` was superseded), and federation (`loom graph link/unlink/list`, `loom edge depends-on`)
+- shipped since this list was written (do **not** treat as deferred): batch writes (`loom apply`), wiki projection (`loom wiki`, with the verb set above — the older `generate/verify/publish/update` design in `wiki-projection.md` was superseded), and federation (`loom graph link/unlink/list`, `graph unlink --prune`, `graph prune-orphans`, `loom edge depends-on`)
 - removed legacy (grammar convergence): top-level `loom validate` (→ `loom validation run`), `validation mark --result` (→ `validation verdict <outcome>`), `rule verdict --status` (→ positional outcome), `hypothesis prove --verdict` (→ positional outcome), `validation delete`/`surface delete` (→ `remove`), `rule ungovern` (→ `rule unlink`), the `loom saga` alias, the `saga` validation type, and the `saga:` spec name key
 
 ---
