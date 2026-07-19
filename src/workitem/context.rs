@@ -242,6 +242,7 @@ fn push_node_entity(
         edge_kind: None,
         edge_status: None,
         locator: None,
+        facets: None,
     });
 }
 
@@ -295,6 +296,7 @@ fn push_edge_entity(
         edge_kind: Some(edge.kind.as_str().into()),
         edge_status: Some(edge.status.as_str().into()),
         locator,
+        facets: None,
     });
     Ok(())
 }

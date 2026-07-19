@@ -21,6 +21,8 @@ pub mod evidence;
 pub mod extract;
 pub mod federation;
 pub mod fsglob;
+pub mod grammar;
+pub mod journal;
 pub mod journey;
 pub mod maturity;
 pub mod model;

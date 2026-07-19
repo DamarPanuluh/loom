@@ -1,0 +1,504 @@
+//! Context command — read-only, one-screen packets for code and intent work.
+//!
+//! Plane: CLI read assembly. Resolves a target and composes facts already in
+//! the graph into `TraversalContext`; it never writes, infers, or certifies
+//! truth beyond plainly reporting stored state.
+
+use super::open_read;
+use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
+use crate::store::Store;
+use crate::workitem::{FileRead, LinkedEntity, SuggestedRead, TraversalContext};
+use crate::Result;
+use anyhow::bail;
+use serde::Serialize;
+use std::collections::{BTreeMap, BTreeSet};
+
+#[derive(Serialize)]
+struct ContextPacket {
+    target: LinkedEntity,
+    context: TraversalContext,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    completeness: Option<crate::completeness::Scorecard>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    staleness_flags: Vec<String>,
+}
+
+/// Resolve an intent first, then an exact registered codefile path, then the
+/// same keyword score used by `loom door`. A query has no fabricated target:
+/// its closest intent candidates are the packet's targets.
+pub(crate) fn context_cmd(graph: Option<&std::path::Path>, input: &str, json: bool) -> Result<()> {
+    let store = open_read(graph)?;
+    let input = input.trim();
+    if input.is_empty() {
+        bail!("context needs an intent, registered codefile path, or query");
+    }
+
+    if let Ok(intent) = store.resolve_node(input, Some(NodeType::Intent)) {
+        return render_node_packet(&store, intent, "intent", json);
+    }
+    if let Some(file) = store
+        .codefiles()?
+        .into_iter()
+        .find(|file| file.name == input)
+    {
+        return render_node_packet(&store, file, "codefile", json);
+    }
+
+    let hits = super::discover_cmd::keyword_hits(&store, input, &[NodeType::Intent], 5)?;
+    if hits.is_empty() {
+        bail!(
+            "could not resolve '{input}' as an intent, registered codefile path, or related intent query"
+        );
+    }
+    let mut context = empty_context(format!("Closest intent context for query '{input}'"));
+    let mut seen_edges = BTreeSet::new();
+    let mut staleness_flags = Vec::new();
+    for (_, _, _, id) in hits {
+        let intent = store
+            .get_node(&id)?
+            .expect("keyword_hits returns existing node ids");
+        append_intent(
+            &store,
+            &intent,
+            "query_match",
+            &mut context,
+            &mut seen_edges,
+            &mut staleness_flags,
+        )?;
+    }
+    let target = LinkedEntity {
+        role: "query".into(),
+        kind: "query".into(),
+        id: format!("query:{input}"),
+        name: input.into(),
+        description: None,
+        status: None,
+        edge_kind: None,
+        edge_status: None,
+        locator: None,
+        facets: None,
+    };
+    render(
+        ContextPacket {
+            target,
+            context,
+            completeness: None,
+            staleness_flags,
+        },
+        json,
+    )
+}
+
+fn render_node_packet(store: &Store, node: Node, target_kind: &str, json: bool) -> Result<()> {
+    let mut context = empty_context(format!(
+        "Read-only context for {target_kind} '{}'",
+        node.name
+    ));
+    let mut seen_edges = BTreeSet::new();
+    let mut staleness_flags = Vec::new();
+    let target = match node.node_type {
+        NodeType::Intent => {
+            append_intent(
+                store,
+                &node,
+                "target",
+                &mut context,
+                &mut seen_edges,
+                &mut staleness_flags,
+            )?;
+            intent_entity(store, "target", &node)?
+        }
+        NodeType::CodeFile => {
+            append_file(
+                store,
+                &node,
+                "target",
+                &mut context,
+                &mut seen_edges,
+                &mut staleness_flags,
+            )?;
+            node_entity("target", &node)
+        }
+        _ => unreachable!("context resolves only intent/codefile nodes"),
+    };
+    let completeness = (node.node_type == NodeType::Intent)
+        .then(|| crate::completeness::scorecard(store, &node))
+        .transpose()?;
+    render(
+        ContextPacket {
+            target,
+            context,
+            completeness,
+            staleness_flags,
+        },
+        json,
+    )
+}
+
+fn empty_context(purpose: String) -> TraversalContext {
+    TraversalContext {
+        purpose,
+        linked_entities: Vec::new(),
+        suggested_reads: Vec::new(),
+        read_set: Vec::new(),
+    }
+}
+
+fn append_intent(
+    store: &Store,
+    intent: &Node,
+    role: &str,
+    context: &mut TraversalContext,
+    seen_edges: &mut BTreeSet<String>,
+    staleness_flags: &mut Vec<String>,
+) -> Result<()> {
+    push_entity(context, intent_entity(store, role, intent)?);
+    push_suggested_read(
+        context,
+        "inspect intent criterion",
+        format!("loom intent show {}", intent.id),
+    );
+
+    for edge in touching_edges(store, &intent.id)? {
+        let edge_role = match edge.kind {
+            EdgeKind::Implements if edge.from_id == intent.id => "grounding",
+            EdgeKind::Validates if edge.to_id == intent.id => "proof",
+            EdgeKind::Governs if edge.to_id == intent.id => "quality_rule",
+            EdgeKind::Questions if edge.to_id == intent.id => "open_question",
+            _ => "related",
+        };
+        push_edge(
+            store,
+            context,
+            edge_role,
+            &edge,
+            seen_edges,
+            staleness_flags,
+        )?;
+        let other_id = if edge.from_id == intent.id {
+            &edge.to_id
+        } else {
+            &edge.from_id
+        };
+        if let Some(other) = store.get_node(other_id)? {
+            match edge.kind {
+                EdgeKind::Implements if other.node_type == NodeType::CodeFile => {
+                    push_entity(context, node_entity("grounding_file", &other));
+                    push_file_read(
+                        store,
+                        context,
+                        &other,
+                        edge_locator(store, &edge)?,
+                        "grounded implementation",
+                    );
+                }
+                EdgeKind::Validates if other.node_type == NodeType::Validation => {
+                    push_entity(context, node_entity("validation", &other));
+                    push_suggested_read(
+                        context,
+                        "inspect proof definition and last result",
+                        format!("loom validation show {}", other.id),
+                    );
+                }
+                EdgeKind::Governs if other.node_type == NodeType::QualityRule => {
+                    push_entity(context, node_entity("quality_rule", &other));
+                    push_suggested_read(
+                        context,
+                        "inspect applicable quality rule",
+                        format!("loom rule show {}", other.id),
+                    );
+                }
+                EdgeKind::Questions
+                    if other.node_type == NodeType::Question && other.status == "open" =>
+                {
+                    push_entity(context, node_entity("open_question", &other));
+                }
+                _ if other.node_type == NodeType::Intent => {
+                    push_entity(context, intent_entity(store, "related_intent", &other)?);
+                }
+                _ => {}
+            }
+        }
+    }
+    append_notes(store, &intent.id, context)?;
+    Ok(())
+}
+
+fn append_file(
+    store: &Store,
+    file: &Node,
+    role: &str,
+    context: &mut TraversalContext,
+    seen_edges: &mut BTreeSet<String>,
+    staleness_flags: &mut Vec<String>,
+) -> Result<()> {
+    push_entity(context, node_entity(role, file));
+    push_file_read(store, context, file, None, "registered codefile target");
+    push_suggested_read(
+        context,
+        "inspect registered codefile",
+        format!("loom codefile show {}", file.id),
+    );
+    for edge in touching_edges(store, &file.id)? {
+        let edge_role = if edge.kind == EdgeKind::Implements {
+            "grounding"
+        } else {
+            "related"
+        };
+        push_edge(
+            store,
+            context,
+            edge_role,
+            &edge,
+            seen_edges,
+            staleness_flags,
+        )?;
+        let other_id = if edge.from_id == file.id {
+            &edge.to_id
+        } else {
+            &edge.from_id
+        };
+        if let Some(other) = store.get_node(other_id)? {
+            if other.node_type == NodeType::Intent {
+                append_intent(
+                    store,
+                    &other,
+                    "owning_intent",
+                    context,
+                    seen_edges,
+                    staleness_flags,
+                )?;
+            }
+        }
+    }
+    append_notes(store, &file.id, context)
+}
+
+fn append_notes(store: &Store, target_id: &str, context: &mut TraversalContext) -> Result<()> {
+    for note in store.notes_for(target_id)?.into_iter().take(6) {
+        let role = match note.status.as_str() {
+            "warning" => "warning",
+            "decision" => "decision",
+            _ => "note",
+        };
+        push_entity(context, node_entity(role, &note));
+    }
+    Ok(())
+}
+
+fn touching_edges(store: &Store, id: &str) -> Result<Vec<Edge>> {
+    let mut edges = store.edges_with(None, Some(id), None)?;
+    edges.extend(store.edges_with(None, None, Some(id))?);
+    edges.sort_by(|a, b| a.id.cmp(&b.id));
+    edges.dedup_by(|a, b| a.id == b.id);
+    Ok(edges)
+}
+
+fn push_edge(
+    store: &Store,
+    context: &mut TraversalContext,
+    role: &str,
+    edge: &Edge,
+    seen_edges: &mut BTreeSet<String>,
+    staleness_flags: &mut Vec<String>,
+) -> Result<()> {
+    if seen_edges.insert(edge.id.clone()) {
+        let locator = edge_locator(store, edge)?;
+        context.linked_entities.push(LinkedEntity {
+            role: role.into(),
+            kind: "edge".into(),
+            id: edge.id.clone(),
+            name: format!("{} {} {}", edge.from_id, edge.kind.as_str(), edge.to_id),
+            description: Some(edge.criterion.clone()).filter(|criterion| !criterion.is_empty()),
+            status: None,
+            edge_kind: Some(edge.kind.as_str().into()),
+            edge_status: Some(edge.status.as_str().into()),
+            locator,
+            facets: None,
+        });
+        push_suggested_read(
+            context,
+            "inspect linked edge",
+            format!("loom edge show {}", edge.id),
+        );
+    }
+    if matches!(
+        edge.status,
+        InspectionStatus::NeedsReverification | InspectionStatus::Failing
+    ) {
+        let flag = format!(
+            "{} edge {} is {}",
+            edge.kind.as_str(),
+            &edge.id[..8.min(edge.id.len())],
+            edge.status.as_str()
+        );
+        if !staleness_flags.contains(&flag) {
+            staleness_flags.push(flag);
+        }
+    }
+    Ok(())
+}
+
+fn intent_entity(store: &Store, role: &str, intent: &Node) -> Result<LinkedEntity> {
+    let mut facets = BTreeMap::new();
+    for key in [
+        "origin",
+        "level",
+        "visibility",
+        "aspect",
+        "ratified_by",
+        "ratified_at",
+    ] {
+        if let Some(value) = store.get_facet(&intent.id, TargetKind::Node, key)? {
+            facets.insert(key.into(), value);
+        }
+    }
+    facets.insert(
+        "ratification".into(),
+        store
+            .get_facet(&intent.id, TargetKind::Node, "ratification")?
+            .unwrap_or_else(|| "unratified".into()),
+    );
+    Ok(LinkedEntity {
+        facets: Some(facets),
+        ..node_entity(role, intent)
+    })
+}
+
+fn node_entity(role: &str, node: &Node) -> LinkedEntity {
+    LinkedEntity {
+        role: role.into(),
+        kind: node.node_type.as_str().into(),
+        id: node.id.clone(),
+        name: node.name.clone(),
+        description: Some(node.description.clone()).filter(|description| !description.is_empty()),
+        status: Some(node.status.clone()).filter(|status| !status.is_empty()),
+        edge_kind: None,
+        edge_status: None,
+        locator: None,
+        facets: None,
+    }
+}
+
+fn edge_locator(store: &Store, edge: &Edge) -> Result<Option<String>> {
+    store.get_facet(&edge.id, TargetKind::Edge, "locator")
+}
+
+fn push_entity(context: &mut TraversalContext, entity: LinkedEntity) {
+    if !context
+        .linked_entities
+        .iter()
+        .any(|existing| existing.id == entity.id && existing.role == entity.role)
+    {
+        context.linked_entities.push(entity);
+    }
+}
+
+fn push_suggested_read(context: &mut TraversalContext, reason: &str, command: String) {
+    if !context
+        .suggested_reads
+        .iter()
+        .any(|read| read.command == command)
+    {
+        context.suggested_reads.push(SuggestedRead {
+            reason: reason.into(),
+            command,
+        });
+    }
+}
+
+fn push_file_read(
+    store: &Store,
+    context: &mut TraversalContext,
+    file: &Node,
+    locator: Option<String>,
+    why: &str,
+) {
+    if !store.root().join(&file.name).exists()
+        || context
+            .read_set
+            .iter()
+            .any(|read| read.path == file.name && read.locator == locator)
+    {
+        return;
+    }
+    context.read_set.push(FileRead {
+        path: file.name.clone(),
+        locator,
+        why: why.into(),
+    });
+}
+
+fn render(packet: ContextPacket, json: bool) -> Result<()> {
+    if json {
+        println!("{}", serde_json::to_string_pretty(&packet)?);
+        return Ok(());
+    }
+    println!(
+        "{} [{}]",
+        packet.target.name,
+        &packet.target.id[..8.min(packet.target.id.len())]
+    );
+    if let Some(description) = &packet.target.description {
+        println!("  criterion: {description}");
+    }
+    if let Some(status) = &packet.target.status {
+        println!("  lifecycle: {status}");
+    }
+    if let Some(facets) = &packet.target.facets {
+        println!(
+            "  ratification: {}",
+            facets
+                .get("ratification")
+                .map(String::as_str)
+                .unwrap_or("unratified")
+        );
+    }
+    for (heading, roles) in [
+        (
+            "intents",
+            &["owning_intent", "related_intent", "query_match"] as &[&str],
+        ),
+        ("groundings", &["grounding", "grounding_file"]),
+        ("proofs", &["proof", "validation"]),
+        ("quality", &["quality_rule"]),
+        ("decisions", &["decision", "warning", "note"]),
+        ("open questions", &["open_question"]),
+    ] {
+        let rows: Vec<_> = packet
+            .context
+            .linked_entities
+            .iter()
+            .filter(|entity| roles.contains(&entity.role.as_str()))
+            .take(6)
+            .collect();
+        if rows.is_empty() {
+            continue;
+        }
+        println!("  {heading}:");
+        for row in rows {
+            let suffix = row
+                .edge_status
+                .as_deref()
+                .or(row.status.as_deref())
+                .map(|status| format!(" [{status}]"))
+                .unwrap_or_default();
+            let locator = row
+                .locator
+                .as_deref()
+                .map(|locator| format!(" @ {locator}"))
+                .unwrap_or_default();
+            println!("    {}{}{}", row.name, locator, suffix);
+        }
+    }
+    if let Some(scorecard) = &packet.completeness {
+        println!("  completeness: {} open axis/axes", scorecard.open);
+    }
+    if !packet.staleness_flags.is_empty() {
+        println!("  staleness:");
+        for flag in &packet.staleness_flags {
+            println!("    {flag}");
+        }
+    }
+    Ok(())
+}

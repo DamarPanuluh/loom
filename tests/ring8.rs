@@ -7,6 +7,20 @@ use loom::workitem::{self, Mode};
 mod common;
 use common::*;
 
+/// Test fixture: seeded intents are wanted by construction — ratify them all
+/// so routing tests exercise the gate under test, not the ratify gate.
+fn ratify_all(store: &Store) {
+    for n in workitem::unratified_intents(store).unwrap() {
+        store
+            .ratify_intent(
+                &n.id,
+                "test fixture: seeded intent is wanted",
+                "test fixture",
+            )
+            .unwrap();
+    }
+}
+
 fn derived_finding(store: &Store) -> loom::model::Node {
     store
         .add_derived_node(
@@ -259,6 +273,7 @@ fn triage_mode_serves_findings_until_verdict_is_recorded() {
         .allowed_actions
         .iter()
         .all(|a| a.contains(short)));
+    ratify_all(&store);
     assert_eq!(ladder(&store).unwrap().phase, "triage");
 
     store

@@ -105,13 +105,7 @@ fn link(graph: Option<&Path>, export_path: &Path, alias: Option<&str>, json: boo
     )
 }
 
-fn unlink(
-    graph: Option<&Path>,
-    key: &str,
-    prune: bool,
-    cascade: bool,
-    json: bool,
-) -> Result<()> {
+fn unlink(graph: Option<&Path>, key: &str, prune: bool, cascade: bool, json: bool) -> Result<()> {
     let store = open(graph)?;
     let mut entries = read_upstream_entries(&store)?;
     let removed: Vec<UpstreamEntry> = entries

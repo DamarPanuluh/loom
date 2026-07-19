@@ -22,6 +22,139 @@ use serde::{Deserialize, Serialize};
 /// `store::PORTABLE_META_KEYS`).
 pub const EVIDENCE_POLICY_META_KEY: &str = "evidence_policy";
 
+/// Meta key carrying ratification policies. Policies are portable, scoped
+/// configuration over Intent facets; they are deliberately not graph nodes.
+pub const RATIFICATION_POLICIES_META_KEY: &str = "ratification_policies";
+
+/// Origins that may appear on an Intent's immutable provenance facet.
+pub const INTENT_ORIGINS: &[&str] = &["human", "llm", "drive", "import"];
+
+/// A human-authored delegation of ratification scope. Empty filters mean
+/// "any value" for that facet; supplied values are ORed within a facet and
+/// ANDed across facets.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RatificationPolicy {
+    pub name: String,
+    pub enabled: bool,
+    #[serde(default)]
+    pub origins: Vec<String>,
+    #[serde(default)]
+    pub levels: Vec<String>,
+    #[serde(default)]
+    pub lifecycles: Vec<String>,
+    /// UTC timestamp of the terminal-gated policy write. This is the date
+    /// cited in machine-attributed policy ratification evidence.
+    pub human_authored_at: String,
+}
+
+impl RatificationPolicy {
+    pub fn matches(&self, origin: Option<&str>, level: Option<&str>, lifecycle: &str) -> bool {
+        self.enabled
+            && (self.origins.is_empty()
+                || origin.is_some_and(|v| self.origins.iter().any(|x| x == v)))
+            && (self.levels.is_empty() || level.is_some_and(|v| self.levels.iter().any(|x| x == v)))
+            && (self.lifecycles.is_empty()
+                || self.lifecycles.iter().any(|value| value == lifecycle))
+    }
+}
+
+/// Portable collection of human-authored policy scopes.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RatificationPolicies {
+    pub policies: Vec<RatificationPolicy>,
+}
+
+impl RatificationPolicies {
+    pub fn validate(&self) -> Result<()> {
+        let mut names = std::collections::BTreeSet::new();
+        for policy in &self.policies {
+            if policy.name.trim().is_empty() {
+                bail!("ratification policy name must not be empty");
+            }
+            if !names.insert(policy.name.as_str()) {
+                bail!("duplicate ratification policy '{}'", policy.name);
+            }
+            if policy.human_authored_at.trim().is_empty() {
+                bail!(
+                    "ratification policy '{}' is missing its human-authored timestamp",
+                    policy.name
+                );
+            }
+            for origin in &policy.origins {
+                if !INTENT_ORIGINS.contains(&origin.as_str()) {
+                    bail!(
+                        "unknown policy origin '{origin}'; valid origins: {}",
+                        INTENT_ORIGINS.join(", ")
+                    );
+                }
+            }
+            for level in &policy.levels {
+                if !crate::grammar::LEVELS.contains(&level.as_str()) {
+                    bail!(
+                        "unknown policy level '{level}'; valid levels: {}",
+                        crate::grammar::LEVELS.join(", ")
+                    );
+                }
+            }
+            for lifecycle in &policy.lifecycles {
+                if !crate::grammar::ACTIVE_LIFECYCLES.contains(&lifecycle.as_str()) {
+                    bail!(
+                        "unknown policy lifecycle '{lifecycle}'; valid active lifecycles: {}",
+                        crate::grammar::ACTIVE_LIFECYCLES.join(", ")
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn named(&self, name: &str) -> Option<&RatificationPolicy> {
+        self.policies.iter().find(|policy| policy.name == name)
+    }
+}
+
+/// Apply an already-authorized policy batch. The caller supplies the
+/// CLI-observed presence proof; this function deliberately does not claim a
+/// human reviewed individual intents. Each resulting ratification is visibly
+/// machine-attributed to the policy.
+pub fn apply_ratification_policy(
+    store: &Store,
+    policy: &RatificationPolicy,
+    presence: &str,
+) -> Result<Vec<crate::model::Node>> {
+    use crate::model::{NodeType, TargetKind};
+
+    if !policy.enabled {
+        bail!("ratification policy '{}' is disabled", policy.name);
+    }
+    let date = policy
+        .human_authored_at
+        .split('T')
+        .next()
+        .unwrap_or(&policy.human_authored_at);
+    let evidence = format!("by policy '{}' (human-authored {date})", policy.name);
+    let mut ratified = Vec::new();
+    for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
+        if intent.status == "deprecated"
+            || store
+                .get_facet(&intent.id, TargetKind::Node, "ratification")?
+                .as_deref()
+                == Some("ratified")
+        {
+            continue;
+        }
+        let origin = store.get_facet(&intent.id, TargetKind::Node, "origin")?;
+        let level = store.get_facet(&intent.id, TargetKind::Node, "level")?;
+        if policy.matches(origin.as_deref(), level.as_deref(), &intent.status) {
+            store.ratify_intent_by_policy(&intent.id, &evidence, presence, &policy.name)?;
+            ratified.push(intent);
+        }
+    }
+    Ok(ratified)
+}
+
 /// The code seed's default review-confidence floor. A verdict recorded strictly
 /// below this is not settled truth: it routes to the review queue for a stronger
 /// re-inspection instead of standing as fact. This is the value that used to be
@@ -105,6 +238,26 @@ pub fn save(store: &Store, p: &EvidencePolicy) -> Result<()> {
 /// than a pinned snapshot of today's values.
 pub fn clear(store: &Store) -> Result<()> {
     store.remove_meta(EVIDENCE_POLICY_META_KEY)
+}
+
+/// Read the portable ratification-policy collection; absent configuration means
+/// no delegated scope exists.
+pub fn load_ratification_policies(store: &Store) -> Result<RatificationPolicies> {
+    let policies = match store.get_meta(RATIFICATION_POLICIES_META_KEY)? {
+        Some(json) => serde_json::from_str(&json)?,
+        None => RatificationPolicies::default(),
+    };
+    policies.validate()?;
+    Ok(policies)
+}
+
+/// Persist the complete portable ratification-policy collection.
+pub fn save_ratification_policies(store: &Store, policies: &RatificationPolicies) -> Result<()> {
+    policies.validate()?;
+    store.set_meta(
+        RATIFICATION_POLICIES_META_KEY,
+        &serde_json::to_string(policies)?,
+    )
 }
 
 #[cfg(test)]

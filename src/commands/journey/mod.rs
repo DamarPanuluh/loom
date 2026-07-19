@@ -34,6 +34,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()>
         JourneyCmd::List { limit, offset } => journey_list(graph, limit, offset, json),
         JourneyCmd::Map => journey_map(graph, json),
         JourneyCmd::Run { spec, base_url } => journey_run(graph, spec, base_url.as_deref(), json),
+        JourneyCmd::Freeze { spec } => journey_freeze(graph, spec, json),
         JourneyCmd::Diagnose { spec, base_url } => {
             journey_diagnose(&spec, base_url.as_deref(), json)
         }
@@ -502,6 +503,15 @@ fn journey_run(
     let mut outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
     let store = open(Some(&cwd))?;
     crate::journey::record_outcomes(&store, &parsed, &mut outcomes)?;
+    let deviations = crate::journey::read_baseline(&cwd, &parsed.journey)?
+        .map(|baseline| crate::journey::deviations(&baseline, &outcomes))
+        .unwrap_or_default();
+    crate::journal::append(
+        store.root(),
+        "journey_run",
+        &parsed.journey,
+        json!({ "outcomes": outcomes, "deviations": deviations }),
+    )?;
     let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
     let passed = outcomes.iter().filter(|o| o.passed).count();
     let failed = outcomes.len().saturating_sub(passed);
@@ -511,6 +521,7 @@ fn journey_run(
         "failed": failed,
         "total": rows.len(),
         "outcomes": rows,
+        "deviations": deviations,
     });
     let next_step = if failed > 0 {
         format!(
@@ -545,6 +556,32 @@ fn journey_run(
         );
     }
     emitted
+}
+
+/// Freeze a differential baseline. Baselines are local files rather than
+/// journal lookups so replays stay cheap and deterministic; the freeze event
+/// itself is journaled for audit.
+fn journey_freeze(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let parsed = crate::journey::parse(&spec)?;
+    let cwd = store.root().to_path_buf();
+    drop(store);
+    let outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
+    let path = crate::journey::write_baseline(&cwd, &parsed.journey, &outcomes)?;
+    let store = open(Some(&cwd))?;
+    let entry = crate::journal::append(
+        store.root(),
+        "journey_freeze",
+        &parsed.journey,
+        json!({ "spec": spec, "baseline": path, "outcomes": outcomes }),
+    )?;
+    pulse::emit_line(
+        &store,
+        json,
+        json!({ "journey": parsed.journey, "baseline": path, "journal": crate::journal::reference(&entry) }),
+        "loom journey run",
+        format!("froze journey baseline '{}'", parsed.journey),
+    )
 }
 
 fn journey_diagnose(spec: &Path, base_url: Option<&str>, json: bool) -> Result<()> {

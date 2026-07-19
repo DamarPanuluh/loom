@@ -77,6 +77,7 @@ pub const PORTABLE_META_KEYS: &[&str] = &[
     "scan_adapters",
     "thresholds",
     "evidence_policy",
+    "ratification_policies",
     "upstream_graphs",
 ];
 

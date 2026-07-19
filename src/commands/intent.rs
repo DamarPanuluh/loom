@@ -1,10 +1,20 @@
 //! `loom intent` command family.
 //!
 //! Plane: CLI surface over the judgment plane — the asserted intent lifecycle
-//! (add/update/waive/reactivate); it writes assertions, never derived truth.
+//! (add/update/waive/reactivate/ratify); it writes assertions, never derived
+//! truth.
+//!
+//! Contract (ratification): every intent carries `origin` (who minted it) and
+//! `ratification` (whether the product authority wants it). Any lane may mint;
+//! ONLY a human (solo agent) may ratify — the one write every `llm:*` lane is
+//! denied (INV-8). Redefining a ratified intent stales its ratification to
+//! `needs_reconfirmation`, exactly as sync stales a verdict.
 
 use super::{node_json, open, pulse, require_lane};
 use crate::cli::{IntentCmd, IntentTagCmd};
+use crate::grammar::{
+    looks_like_symbol, ACTIVE_LIFECYCLES, ALL_LIFECYCLES, ASPECTS, LEVELS, VISIBILITIES,
+};
 use crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
@@ -72,8 +82,23 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             replaced_by,
         } => intent_retire(graph, key, reason, replaced_by, json),
         IntentCmd::Confirm { key } => intent_confirm(graph, key, json),
+        IntentCmd::Ratify {
+            key,
+            all,
+            by_policy,
+            evidence,
+        } => intent_ratify(graph, key, all, by_policy, evidence, json),
         IntentCmd::Tag { cmd } => intent_tag(graph, cmd, json),
     }
+}
+
+/// Is this intent ratified? Absent facet = unratified (fail closed: wantedness
+/// is never presumed).
+pub(crate) fn is_ratified(store: &Store, intent_id: &str) -> Result<bool> {
+    Ok(store
+        .get_facet(intent_id, TargetKind::Node, "ratification")?
+        .as_deref()
+        == Some("ratified"))
 }
 
 pub(crate) struct IntentAddArgs {
@@ -89,7 +114,6 @@ pub(crate) struct IntentAddArgs {
 
 /// Validate a scenario aspect label.
 fn check_aspect(aspect: &str) -> Result<()> {
-    const ASPECTS: &[&str] = &["happy", "sad", "fallback", "edge_case"];
     if !ASPECTS.contains(&aspect) {
         bail!("unknown aspect '{aspect}' (use {})", ASPECTS.join("|"));
     }
@@ -97,7 +121,6 @@ fn check_aspect(aspect: &str) -> Result<()> {
 }
 
 fn check_level(level: &str) -> Result<()> {
-    const LEVELS: &[&str] = &["system", "component", "feature", "cross_cutting"];
     if !LEVELS.contains(&level) {
         bail!("unknown level '{level}' (use {})", LEVELS.join("|"));
     }
@@ -105,8 +128,6 @@ fn check_level(level: &str) -> Result<()> {
 }
 
 fn check_lifecycle(lifecycle: &str, allow_deprecated: bool) -> Result<()> {
-    const ACTIVE_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change"];
-    const ALL_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change", "deprecated"];
     let lifecycles = if allow_deprecated {
         ALL_LIFECYCLES
     } else {
@@ -122,7 +143,6 @@ fn check_lifecycle(lifecycle: &str, allow_deprecated: bool) -> Result<()> {
 }
 
 fn check_visibility(visibility: &str) -> Result<()> {
-    const VISIBILITIES: &[&str] = &["user_visible", "internal"];
     if !VISIBILITIES.contains(&visibility) {
         bail!(
             "unknown visibility '{visibility}' (use {})",
@@ -218,7 +238,172 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
             TruthClass::Asserted,
         )?;
     }
+    // Provenance + ratification (INV-8): anyone may mint, only a human may
+    // ratify. A solo (human-at-the-keyboard) mint is itself a ratification act —
+    // the minting utterance is the evidence. A declared `llm:*` lane mints an
+    // unratified intent that stays honestly failing until a human ratifies it.
+    let (origin, ratification) = match store.agent() {
+        crate::store::Agent::Solo => ("human", "ratified"),
+        crate::store::Agent::Lane(_) => ("llm", "unratified"),
+    };
+    store.set_facet(
+        &node.id,
+        TargetKind::Node,
+        "origin",
+        origin,
+        TruthClass::Asserted,
+    )?;
+    store.set_facet(
+        &node.id,
+        TargetKind::Node,
+        "ratification",
+        ratification,
+        TruthClass::Asserted,
+    )?;
+    // No birth note: `origin=human` + `ratification=ratified` already record
+    // that the minting act was the ratification; a note on every solo mint
+    // would only bloat the audit trail.
     Ok(node)
+}
+
+/// Ratify an intent (or every unratified intent with `--all`): the human
+/// authority's evidence-bearing "yes, this is wanted". The ONE write in the
+/// system denied to every `llm:*` lane — the LLM may author everything and
+/// ratify nothing (INV-8; fail closed, no override flag).
+fn intent_ratify(
+    graph: Option<&Path>,
+    key: Option<String>,
+    all: bool,
+    by_policy: Option<String>,
+    evidence: Option<String>,
+    json: bool,
+) -> Result<()> {
+    let store = open(graph)?;
+    if let Some(policy_name) = by_policy {
+        if key.is_some() || all || evidence.is_some() {
+            bail!("--by-policy cannot be combined with an intent key, --all, or --evidence");
+        }
+        return intent_ratify_by_policy(&store, &policy_name, json);
+    }
+    let evidence = evidence.ok_or_else(|| {
+        anyhow::anyhow!(
+            "--evidence is required unless --by-policy supplies policy-attributed evidence"
+        )
+    })?;
+    let targets: Vec<Node> = match (&key, all) {
+        (Some(_), true) => bail!("pass a key or --all, not both"),
+        (None, false) => bail!("pass an intent key, or --all to ratify every unratified intent"),
+        (Some(k), false) => vec![store.resolve_node(k, Some(NodeType::Intent))?],
+        (None, true) => {
+            let mut v = Vec::new();
+            for n in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
+                if n.status == "deprecated" {
+                    continue;
+                }
+                if !is_ratified(&store, &n.id)? {
+                    v.push(n);
+                }
+            }
+            v
+        }
+    };
+    if targets.is_empty() {
+        pulse::emit_line(
+            &store,
+            json,
+            serde_json::json!({ "ratified": [] }),
+            "loom status",
+            "nothing to ratify — every active intent is already ratified",
+        )?;
+        return Ok(());
+    }
+    let mut ratified = Vec::new();
+    for n in &targets {
+        // INV-8's demonstrated-presence gate is deliberately CLI-only so
+        // store-level fixtures can exercise the durable ratification facts.
+        let presence = super::require_human_presence(&n.name)?;
+        store.ratify_intent(&n.id, &evidence, presence)?;
+        ratified.push(serde_json::json!({ "id": n.id, "name": n.name }));
+    }
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({ "ratified": ratified, "evidence": evidence }),
+        "loom status",
+        if targets.len() == 1 {
+            format!("ratified '{}'", targets[0].name)
+        } else {
+            format!("ratified {} intent(s)", targets.len())
+        },
+    )?;
+    Ok(())
+}
+
+/// Apply one previously human-authored policy. The policy delegates scope, not
+/// authority: the batch itself still needs a present human at a terminal, and
+/// the store still rejects every `llm:*` lane under INV-8.
+fn intent_ratify_by_policy(store: &Store, policy_name: &str, json: bool) -> Result<()> {
+    let policies = crate::policy::load_ratification_policies(store)?;
+    let policy = policies
+        .named(policy_name)
+        .ok_or_else(|| anyhow::anyhow!("no ratification policy named '{policy_name}'"))?;
+    if !policy.enabled {
+        bail!("ratification policy '{policy_name}' is disabled");
+    }
+
+    let mut matches = 0;
+    for n in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
+        if n.status == "deprecated" || is_ratified(store, &n.id)? {
+            continue;
+        }
+        let origin = store.get_facet(&n.id, TargetKind::Node, "origin")?;
+        let level = store.get_facet(&n.id, TargetKind::Node, "level")?;
+        if policy.matches(origin.as_deref(), level.as_deref(), &n.status) {
+            matches += 1;
+        }
+    }
+    if matches == 0 {
+        pulse::emit_line(
+            store,
+            json,
+            serde_json::json!({ "ratified": [], "policy": policy_name }),
+            "loom status",
+            format!("policy '{policy_name}' matched no unratified active intents"),
+        )?;
+        return Ok(());
+    }
+
+    // Unlike --all, this is one human-approved policy application, so one
+    // policy-name challenge authorizes its complete matching batch.
+    let presence = super::require_human_presence(policy_name)?;
+    let applied = crate::policy::apply_ratification_policy(store, policy, presence)?;
+    let evidence = format!(
+        "by policy '{policy_name}' (human-authored {})",
+        policy
+            .human_authored_at
+            .split('T')
+            .next()
+            .unwrap_or(&policy.human_authored_at)
+    );
+    let ratified: Vec<_> = applied
+        .iter()
+        .map(|n| serde_json::json!({ "id": n.id, "name": n.name }))
+        .collect();
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "ratified": ratified,
+            "policy": policy_name,
+            "evidence": evidence,
+        }),
+        "loom status",
+        format!(
+            "policy '{policy_name}' ratified {} intent(s)",
+            ratified.len()
+        ),
+    )?;
+    Ok(())
 }
 
 fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
@@ -249,6 +434,12 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     let visibility = store.get_facet(&n.id, TargetKind::Node, "visibility")?;
     let layer = store.get_facet(&n.id, TargetKind::Node, "layer")?;
     let aspect = store.get_facet(&n.id, TargetKind::Node, "aspect")?;
+    let origin = store.get_facet(&n.id, TargetKind::Node, "origin")?;
+    let ratification = store
+        .get_facet(&n.id, TargetKind::Node, "ratification")?
+        .unwrap_or_else(|| "unratified".into());
+    let ratified_by = store.get_facet(&n.id, TargetKind::Node, "ratified_by")?;
+    let ratified_at = store.get_facet(&n.id, TargetKind::Node, "ratified_at")?;
     let tags = store.tags_of(&n.id, TargetKind::Node)?;
 
     if json {
@@ -257,6 +448,10 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
         intent["visibility"] = serde_json::json!(visibility);
         intent["layer"] = serde_json::json!(layer);
         intent["aspect"] = serde_json::json!(aspect);
+        intent["origin"] = serde_json::json!(origin);
+        intent["ratification"] = serde_json::json!(ratification);
+        intent["ratified_by"] = serde_json::json!(ratified_by);
+        intent["ratified_at"] = serde_json::json!(ratified_at);
         intent["tags"] = serde_json::json!(tags);
         println!("{}", serde_json::to_string_pretty(&intent)?);
         return Ok(());
@@ -278,6 +473,14 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     }
     if let Some(aspect) = aspect {
         println!("  aspect: {aspect}");
+    }
+    println!("  origin: {}", origin.unwrap_or_else(|| "unknown".into()));
+    println!("  ratification: {ratification}");
+    if let Some(by) = ratified_by {
+        println!("  ratified_by: {by}");
+    }
+    if let Some(at) = ratified_at {
+        println!("  ratified_at: {at}");
     }
     if !tags.is_empty() {
         println!("  tags: {}", tags.join(", "));
@@ -484,6 +687,8 @@ fn intent_update(graph: Option<&Path>, args: IntentUpdateArgs, json: bool) -> Re
             store.add_note(&n.id, "decision", &format!("reworded: {reason}"))?;
             parts.push("reworded (no ripple)".into());
         } else {
+            // redefine_intent also stales a ratified intent's ratification to
+            // needs_reconfirmation — wantedness rots with meaning.
             reopened = store.redefine_intent(&n.id, description)?;
             store.add_note(&n.id, "decision", &format!("redefined: {reason}"))?;
             parts.push(format!("redefined — {reopened} edge(s) re-opened"));
@@ -657,45 +862,4 @@ fn intent_tag(graph: Option<&Path>, cmd: IntentTagCmd, json: bool) -> Result<()>
         }
     }
     Ok(())
-}
-
-/// Heuristic: does this name look like a code symbol rather than a behavior?
-/// Behaviors read as phrases ("payment can be captured"); symbols are single
-/// tokens (`capture_payment`, `runWithSqlite`, `Store::open`, `handle()`).
-pub fn looks_like_symbol(name: &str) -> bool {
-    let n = name.trim();
-    if n.is_empty() || n.contains(' ') {
-        return false;
-    }
-    n.contains('_') || n.contains("::") || n.contains('(') || has_internal_caps(n)
-}
-
-/// camelCase / PascalCase detection: a lowercase letter immediately followed by
-/// an uppercase one, e.g. `runWithSqlite`.
-fn has_internal_caps(s: &str) -> bool {
-    let chars: Vec<char> = s.chars().collect();
-    chars
-        .windows(2)
-        .any(|w| w[0].is_ascii_lowercase() && w[1].is_ascii_uppercase())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::looks_like_symbol;
-
-    #[test]
-    fn symbol_names_detected() {
-        assert!(looks_like_symbol("capture_payment"));
-        assert!(looks_like_symbol("runWithSqlite"));
-        assert!(looks_like_symbol("Store::open"));
-        assert!(looks_like_symbol("handle()"));
-    }
-
-    #[test]
-    fn behavioral_names_pass() {
-        assert!(!looks_like_symbol("payment can be captured"));
-        assert!(!looks_like_symbol("user can log in"));
-        assert!(!looks_like_symbol("sync"));
-        assert!(!looks_like_symbol("checkout"));
-    }
 }

@@ -13,17 +13,21 @@ use crate::Result;
 use crate::{travel, workitem};
 use anyhow::{anyhow, bail, Context};
 use serde::de::DeserializeOwned;
+use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 mod apply_cmd;
 mod bootstrap_cmd;
 mod capture_cmd;
 mod codefile_cmd;
+mod context_cmd;
 mod diagnostics_cmd;
 mod discover_cmd;
 mod domain_cmd;
+mod drive_cmd;
 mod edge;
 mod graph_cmd;
+mod hook_cmd;
 mod intent;
 mod journey;
 mod misc_cmd;
@@ -33,7 +37,7 @@ mod proposal_cmd;
 mod pulse;
 mod status_cmd;
 mod wiki;
-pub use intent::looks_like_symbol;
+pub use crate::grammar::looks_like_symbol;
 pub(crate) use status_cmd::require_lane;
 
 /// Dispatch a parsed CLI invocation.
@@ -86,7 +90,7 @@ pub fn run(cli: Cli) -> Result<()> {
             repair_orphans,
         } => status_cmd::import(cli.graph.as_deref(), &file, repair_orphans, cli.json),
         Command::Apply { file } => apply_cmd::apply(cli.graph.as_deref(), &file, cli.json),
-        Command::Sync => status_cmd::sync_cmd(cli.graph.as_deref(), cli.json),
+        Command::Sync { quiet } => status_cmd::sync_cmd(cli.graph.as_deref(), cli.json, quiet),
         Command::Status => status_cmd::status(cli.graph.as_deref(), cli.json),
         Command::Mode { mode } => status_cmd::mode_cmd(
             cli.graph.as_deref(),
@@ -131,6 +135,9 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Explain { intent } => {
             misc_cmd::explain_cmd(cli.graph.as_deref(), &intent, cli.json)
         }
+        Command::Context { target } => {
+            context_cmd::context_cmd(cli.graph.as_deref(), &target, cli.json)
+        }
         Command::Detect => misc_cmd::detect_cmd(cli.graph.as_deref(), cli.json),
         Command::Schema => misc_cmd::schema_cmd(cli.json),
         Command::Rule { cmd } => proof_cmd::rule(cli.graph.as_deref(), cmd, cli.json),
@@ -148,6 +155,8 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Whoami => diagnostics_cmd::whoami_cmd(cli.graph.as_deref(), cli.json),
         Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Drive { cmd } => drive_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Hook { cmd } => hook_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Wiki { cmd } => wiki::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Scan { cmd } => diagnostics_cmd::scan_cmd(cli.graph.as_deref(), cmd, cli.json),
         Command::Calibrate { write } => {
@@ -183,6 +192,25 @@ pub(crate) fn resolve_root(graph: Option<&Path>) -> Result<PathBuf> {
 pub(crate) fn open(graph: Option<&Path>) -> Result<Store> {
     let root = resolve_root(graph)?;
     Store::open(&root)
+}
+
+/// Prove a human is presently operating this CLI before a ratifying write.
+/// A lane check alone cannot distinguish an unset `LOOM_AGENT` in automation
+/// from a person at a terminal, which is the failure documented in 62b197cc.
+pub(crate) fn require_human_presence(subject: &str) -> Result<&'static str> {
+    if !io::stdin().is_terminal() {
+        bail!(
+            "INV-8 / finding 62b197cc: non-interactive ratification is indistinguishable from an LLM"
+        );
+    }
+    print!("Human presence required. Type '{subject}' to confirm: ");
+    io::stdout().flush()?;
+    let mut typed = String::new();
+    io::stdin().read_line(&mut typed)?;
+    if typed.trim() != subject {
+        bail!("confirmation did not match '{subject}'; ratification was not written");
+    }
+    Ok("tty+challenge")
 }
 
 /// Open the target graph read-only (shared lock, `query_only`). Read commands

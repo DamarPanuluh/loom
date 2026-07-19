@@ -579,6 +579,38 @@ pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
     }
 }
 
+/// Ratification: the one write denied to every llm:* lane (INV-8). The LLM's
+/// job in this packet is presentation — compile the intent's criterion, origin,
+/// grounding and proof state for the human — never the decision itself.
+pub(super) fn ratify_contract(id: &str) -> PromptContract {
+    PromptContract {
+        role: "human".into(),
+        mindset: "Product authority. Decide whether this behavior is wanted. An LLM presenting this packet summarizes the intent and stops — it must not ratify, and it must not answer for the human."
+            .into(),
+        why_now: "the intent's wantedness is unestablished: minted without ratification, or redefined after it".into(),
+        allowed_actions: vec![
+            format!("loom intent show {id}"),
+            format!("loom intent ratify {id} --evidence <why this is wanted>"),
+            format!("loom intent retire {id} --reason <why it is not wanted>"),
+            format!("loom intent update {id} --description <corrected criterion> --reason <…>  (then re-ratify)"),
+        ],
+        forbidden_actions: vec![
+            "ratifying from an llm:* lane (INV-8 — the write boundary rejects it; do not work around it)".into(),
+            "treating silence or plausibility as ratification".into(),
+        ],
+        required_evidence: "the human's reason this behavior is wanted: an utterance, a source doc, a decision"
+            .into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!("loom intent ratify {id} --evidence '…'"),
+        stop_condition: "if no human is present, stop — batch ratify packets for the next human session instead of draining them".into(),
+        human_gate: Some(
+            "ratification is human-only: present the packet, then wait for the human's decision".into(),
+        ),
+    }
+}
+
 pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
     PromptContract {
         role: "analyzer".into(),

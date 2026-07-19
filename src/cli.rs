@@ -79,7 +79,11 @@ pub enum Command {
     /// batch back.
     Apply { file: PathBuf },
     /// Recompute the structural plane and ripple staleness.
-    Sync,
+    Sync {
+        /// Suppress successful sync output (for git hooks).
+        #[arg(long)]
+        quiet: bool,
+    },
     /// Print graph identity and counts.
     Status,
     /// Show or set the graph mode — `owned` (build + prove) or `observed`
@@ -152,7 +156,7 @@ pub enum Command {
         #[arg(long)]
         tag: Option<String>,
         /// Restrict to nodes with facet key=value (repeatable; AND). Allowed
-        /// keys: visibility, level, aspect.
+        /// keys: visibility, level, aspect, origin, ratification.
         #[arg(long = "where", value_name = "KEY=VALUE")]
         where_facets: Vec<String>,
     },
@@ -160,6 +164,11 @@ pub enum Command {
     Explain {
         /// Intent name, id, or unique fragment.
         intent: String,
+    },
+    /// Pull one read-only context packet for an intent, registered file, or query.
+    Context {
+        /// Intent id/name/prefix, registered codefile path, or free-text query.
+        target: String,
     },
     /// Detect repo languages and recommend quality packs.
     Detect,
@@ -260,6 +269,16 @@ pub enum Command {
         #[command(subcommand)]
         cmd: JourneyCmd,
     },
+    /// Run an interactive, journaled human drive session, or freeze a session.
+    Drive {
+        #[command(subcommand)]
+        cmd: Option<DriveCmd>,
+    },
+    /// Install or remove local git hooks that keep the structural plane fresh.
+    Hook {
+        #[command(subcommand)]
+        cmd: HookCmd,
+    },
     /// Reader-first wiki pages, tracked as a projection of the graph: record a
     /// page's documented intents, get the next page to write, list, or remove.
     Wiki {
@@ -294,6 +313,9 @@ pub enum ModeArg {
     Triage,
     Review,
     Elaborate,
+    /// Human-presence queue: intents awaiting the human authority's
+    /// ratification (never served by plain `loom next`).
+    Ratify,
 }
 
 impl ModeArg {
@@ -309,6 +331,7 @@ impl ModeArg {
             ModeArg::Triage => "triage",
             ModeArg::Review => "review",
             ModeArg::Elaborate => "elaborate",
+            ModeArg::Ratify => "ratify",
         }
     }
 }

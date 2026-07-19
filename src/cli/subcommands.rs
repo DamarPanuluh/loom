@@ -58,6 +58,23 @@ pub enum IntentCmd {
         #[arg(long, default_value_t = 0)]
         offset: usize,
     },
+    /// Ratify an intent (or --all unratified): the human authority's
+    /// evidence-bearing "yes, this is wanted". Human-only — every llm:* lane
+    /// is denied this one write (INV-8); minting stays open to all lanes.
+    Ratify {
+        key: Option<String>,
+        /// Ratify every active unratified intent (bulk grandfathering).
+        #[arg(long)]
+        all: bool,
+        /// Apply a named human-authored ratification policy to matching intents.
+        /// This is still a terminal-gated human-presence write.
+        #[arg(long)]
+        by_policy: Option<String>,
+        /// Why this behavior is wanted: an utterance, source doc, or decision.
+        /// Required unless --by-policy supplies machine-attributed evidence.
+        #[arg(long)]
+        evidence: Option<String>,
+    },
     /// One mutation verb for an intent. --description redefines (ripples one
     /// hop; --reword: same concept, no ripple). --name relabels, --level /
     /// --visibility / --aspect correct attributes, --lifecycle moves the
@@ -800,6 +817,8 @@ pub enum JourneyCmd {
         #[arg(long)]
         base_url: Option<String>,
     },
+    /// Run a journey and store its verbatim baseline under `.loom/baselines/`.
+    Freeze { spec: PathBuf },
     /// Execute a journey spec directly without a graph (failure diagnosis).
     Diagnose {
         /// Path to the journey or HTTP contract spec file (.json or .yaml/.yml).
@@ -825,6 +844,20 @@ pub enum JourneyCmd {
         /// The intent whose flow needs a typed runner (id, name, or fragment).
         intent: String,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum DriveCmd {
+    /// Compile recorded drive exchanges into a local journey YAML file.
+    Freeze { name: String },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum HookCmd {
+    /// Install idempotent post-commit and post-merge sync hooks.
+    Install,
+    /// Remove only hooks previously installed by Loom.
+    Remove,
 }
 
 #[derive(Subcommand, Debug)]
@@ -1030,8 +1063,38 @@ pub enum PolicyCmd {
         /// The lane to stop gating.
         role: String,
     },
+    /// Manage human-authored policy scopes for mechanical intent ratification.
+    Ratification {
+        #[command(subcommand)]
+        cmd: RatificationPolicyCmd,
+    },
     /// Reset the whole policy to the shipped defaults (drops the config).
     Reset,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum RatificationPolicyCmd {
+    /// List portable ratification-policy scopes.
+    List,
+    /// Create or replace a named policy scope. This write requires a terminal
+    /// and typed-name confirmation from a human.
+    Set {
+        name: String,
+        /// Intent origin filter (repeatable; empty matches every origin).
+        #[arg(long = "origin")]
+        origins: Vec<String>,
+        /// Intent level filter (repeatable; empty matches every level).
+        #[arg(long = "level")]
+        levels: Vec<String>,
+        /// Intent lifecycle filter (repeatable; empty matches every active lifecycle).
+        #[arg(long = "lifecycle")]
+        lifecycles: Vec<String>,
+        /// Save the policy disabled; disabled policies never match.
+        #[arg(long)]
+        disabled: bool,
+    },
+    /// Delete a named policy scope. This write requires human presence.
+    Remove { name: String },
 }
 
 #[derive(Subcommand, Debug)]

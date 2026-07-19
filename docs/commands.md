@@ -18,7 +18,7 @@ loom status [--json]
 
 Graph identity, maturity ladder, queue counts, validation summary, code ownership, and the compass. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of open first-class `Question` nodes.
 
-`loom status` now prints a true per-queue backlog line (`fix=N validate=N build=N coverage=N quality=N analyze=N prove=N triage=N review=N elaborate=N`) computed by the same partition that `loom next` serves, plus a note when human questions are waiting. In JSON mode the output gains a `queues` object with the same counts.
+`loom status` now prints a true per-queue backlog line (`fix=N validate=N build=N coverage=N quality=N analyze=N prove=N triage=N review=N elaborate=N`) computed by the same partition that `loom next` serves, plus a note when human questions are waiting or intents await human ratification. In JSON mode the output gains a `queues` object with the same counts (including `ratify`).
 
 ```text
 loom session [--json]
@@ -30,10 +30,10 @@ Turn-zero entry when the user says "use loom" without a specific task. Returns a
 loom next [--mode <queue>] [--all] [--json]
 ```
 
-Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `--mode`, routes by compass priority.
+Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `--mode`, routes by compass priority. The `ratify` queue is human-presence work and is NEVER served by plain `loom next` — an LLM driver is denied the ratify write (INV-8), so the default loop only serves autonomously-drainable lanes; the compass still points at `--mode ratify` when unratified intents gate the ladder.
 
 ```text
---mode: build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate
+--mode: build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate | ratify
 --all:  closeout view — the top item of every queue at once
 --mode <m> --all:  the FULL depth of one queue — every item it would serve, in
                    priority order (entry 1 is what `loom next --mode <m>` serves),
@@ -84,11 +84,14 @@ Quality fallback: if no `governs` edge needs work, `loom next --mode quality` pr
 ```text
 loom find [--limit N] [--exact] [--tag <term>] [--where KEY=VALUE] ["<query>"] [--json]
 loom explain <intent> [--json]
+loom context <file|intent|query> [--json]
 ```
 
-`find` searches intents/codefiles/quality rules by keyword (fuzzy) or `--exact` whole-name match. `--tag` and repeatable `--where KEY=VALUE` filter by vocabulary tag and allowlisted facets (`visibility`, `level`, `aspect` — also listed in `loom schema`). Filters AND together; query may be omitted when filters alone select the set.
+`find` searches intents/codefiles/quality rules by keyword (fuzzy) or `--exact` whole-name match. `--tag` and repeatable `--where KEY=VALUE` filter by vocabulary tag and allowlisted facets (`visibility`, `level`, `aspect`, `origin`, `ratification` — also listed in `loom schema`). Filters AND together; query may be omitted when filters alone select the set. `ratification=unratified` also finds intents with no ratification facet, because absence fails closed as unratified.
 
 `explain` is a read-only neighborhood brief for one intent: description, facets/tags, groundings, 1-hop related intents, validations, completeness scorecard, open questions. It is **not** a `loom next` work lane.
+
+`context` is the compact, read-only packet for an operator about to work on a file or behavior. It resolves an intent first, then an exact registered codefile path, then the closest intents using the same keyword scoring as `loom door`. It reports criteria/lifecycle/ratification, groundings and locators, validation and quality-rule state, notes and open questions, completeness (for an intent), and plainly labelled stale or failing edges.
 
 Keyword-substring search over intents, codefiles, and quality rules. It is not BM25. Fuzzy hits that match the query as a whole name (case-insensitive) are tagged `(exact)` so an existence check never rests on reading a score. `--exact` restricts output to those whole-name matches only — the reliable "does a node named exactly this exist?" check, and it lists every id when duplicates share a name.
 
@@ -257,10 +260,13 @@ loom policy show [--json]
 loom policy set-floor <fraction> [--json]
 loom policy gate-add <lane> [--json]
 loom policy gate-remove <lane> [--json]
+loom policy ratification list [--json]
+loom policy ratification set <name> [--origin <origin>]... [--level <level>]... [--lifecycle <lifecycle>]... [--disabled] [--json]
+loom policy ratification remove <name> [--json]
 loom policy reset [--json]
 ```
 
-Read or set the evidence policy. `set-floor` sets the review-confidence floor (a fraction in `[0.0, 1.0]`) below which a recorded verdict is routed to `loom next --mode review`; `gate-add`/`gate-remove` move an owner lane (`builder | analyzer | fixer | validator | quality`) in or out of the human-gated set described in `llm-driver.md`. The policy persists to portable `config.evidence_policy` and travels with the export; absent config means the shipped defaults, and `reset` drops the config to restore them.
+Read or set the evidence policy. `set-floor` sets the review-confidence floor (a fraction in `[0.0, 1.0]`) below which a recorded verdict is routed to `loom next --mode review`; `gate-add`/`gate-remove` move an owner lane (`builder | analyzer | fixer | validator | quality`) in or out of the human-gated set described in `llm-driver.md`. The policy persists to portable `config.evidence_policy` and travels with the export; absent config means the shipped defaults, and `reset` drops the config to restore them. `policy ratification` separately manages portable, facet-scoped policy filters for delegated intent ratification; every set/remove is terminal-gated and requires typing the policy name back.
 
 ```text
 loom completeness [<intent>] [--json]
@@ -286,6 +292,8 @@ loom intent add --name "<name>"
 
 **Atomization guard:** if the intent name matches a symbol pattern (for example snake_case with no spaces), the command is rejected unless `--allow-symbol-name` and a behavioral `--description` are both provided. Functions and symbols are locators on `implements` edges, not intents.
 
+**Provenance + ratification:** every minted intent is stamped with `origin` (`human` for a solo agent, `llm` for a declared `llm:*` lane) and a `ratification` state. A solo mint is born `ratified` — the minting act is the ratification. A lane mint is born `unratified`: first-class in the graph (groundable, provable, queryable) but the `wanted` maturity rung stays unmet until a human ratifies it. Absent ratification always reads as `unratified` (wantedness is never presumed).
+
 ```text
 loom intent update <intent> --reason "<why>"
   [--description "<new>"] [--reword]
@@ -300,6 +308,9 @@ loom intent update <intent> --reason "<why>"
 `update` is the single mutation verb. The ripple rule lives in the fields, not in command choice: a `--description` change is a redefinition and ripples one hop (passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers are cleared so waived axes re-open, and old wording is preserved in decision notes); `--reword` is same meaning, clearer words, no ripple. `--name`, `--level`, `--visibility`, `--aspect`, and `--lifecycle` never ripple. Every update records `--reason`.
 
 ```text
+loom intent ratify <intent> --evidence "<why wanted>" [--json]
+loom intent ratify --all --evidence "<why wanted>" [--json]   (bulk grandfathering)
+loom intent ratify --by-policy <name> [--json]
 loom intent confirm <intent> [--json]
 loom intent retire <intent> --reason "<why>" [--replaced-by <intent>] [--json]
 loom intent remove <intent> --reason "<why>" [--json]   (mistakes only; refuses intents that still have hierarchy children)
@@ -311,7 +322,7 @@ loom intent tag add <intent> <term> [--json]
 loom intent tag remove <intent> <term> [--json]
 ```
 
-`confirm` ratifies meaning. `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
+`ratify` is the human authority's evidence-bearing "yes, this is wanted" — the ONE write rejected for every `llm:*` lane (INV-8, fail closed, no override): the LLM may author everything and ratify nothing. It also requires a real terminal and an exact typed-name challenge (once per ordinary intent; once per named policy batch); piped input is rejected because it is indistinguishable from an LLM. `--by-policy` writes machine-attributed evidence and `ratified_by=policy:<name>`, never a claim of individual human review. Redefining a ratified intent (`update --description` without `--reword`) stales its ratification to `needs_reconfirmation` and the ratify queue re-serves it. `confirm` re-affirms meaning (a note, not a ratification). `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
 
 ---
 

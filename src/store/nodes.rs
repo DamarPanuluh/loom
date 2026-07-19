@@ -11,6 +11,22 @@ use super::*;
 impl Store {
     // ---- nodes -----------------------------------------------------------
 
+    /// Database-clock UTC timestamp for portable asserted configuration.
+    pub fn current_timestamp(&self) -> Result<String> {
+        now(&self.conn)
+    }
+
+    /// Refuse an authority-bearing write from every declared LLM lane.
+    pub fn require_human_authority(&self) -> Result<()> {
+        if let Agent::Lane(r) = self.agent.get() {
+            bail!(
+                "INV-8: ratification authority is human-only — agent 'llm:{}' may not author or apply ratification policy",
+                r.as_str()
+            );
+        }
+        Ok(())
+    }
+
     /// Add a node. Generates id + timestamps. `body` defaults to `{}`.
     pub fn add_node(
         &self,
@@ -409,6 +425,23 @@ impl Store {
                 &format!("{cleared} completeness waiver(s) re-opened by redefinition"),
             )?;
         }
+        // Wantedness rots with meaning: a ratified intent whose criterion
+        // changed is no longer known-wanted. Stale the ratification exactly as
+        // the loop below stales verdicts; the ratify queue re-serves it.
+        if self
+            .get_facet(id, TargetKind::Node, "ratification")?
+            .as_deref()
+            == Some("ratified")
+        {
+            self.set_facet(
+                id,
+                TargetKind::Node,
+                "ratification",
+                "needs_reconfirmation",
+                TruthClass::Asserted,
+            )?;
+            self.add_note(id, "ratify", "ratification staled by redefinition")?;
+        }
         // ripple one hop: implements/targets/governs/validates/relationships touching it
         let cause = format!("intent '{}' description updated", intent.name);
         let mut reopened = 0usize;
@@ -460,6 +493,97 @@ impl Store {
 
     /// Retire an intent: status → deprecated. Invisible to computation, visible
     /// to history. Builder lane.
+    /// Ratify an intent: the human authority's evidence-bearing "yes, this is
+    /// wanted". INV-8, enforced at the write boundary: ANY declared `llm:*`
+    /// lane is rejected — not just wrong lanes. The LLM may author everything
+    /// and ratify nothing; only the solo (human) agent may write this fact.
+    /// Fail closed, no override.
+    pub fn ratify_intent(&self, id: &str, evidence: &str, presence: &str) -> Result<()> {
+        self.ratify_intent_as(id, evidence, presence, "human")
+    }
+
+    /// Record a ratification applied by a named, human-authored policy. The
+    /// caller is still required to be the solo human agent: a policy delegates
+    /// scope, never authority, so INV-8 remains enforced at this boundary.
+    pub fn ratify_intent_by_policy(
+        &self,
+        id: &str,
+        evidence: &str,
+        presence: &str,
+        policy_name: &str,
+    ) -> Result<()> {
+        self.ratify_intent_as(id, evidence, presence, &format!("policy:{policy_name}"))
+    }
+
+    fn ratify_intent_as(
+        &self,
+        id: &str,
+        evidence: &str,
+        presence: &str,
+        ratified_by: &str,
+    ) -> Result<()> {
+        self.require_human_authority()?;
+        if crate::model::is_placeholder(evidence) {
+            bail!(
+                "ratification needs substantive evidence: why this behavior is wanted \
+                 (an utterance, a source doc, a decision)"
+            );
+        }
+        if presence.trim().is_empty() {
+            bail!("ratification requires a human-presence descriptor")
+        }
+        let intent = self
+            .get_node(id)?
+            .ok_or_else(|| anyhow!("no intent '{id}'"))?;
+        if intent.node_type != NodeType::Intent {
+            bail!("'{id}' is not an intent");
+        }
+        if intent.status == "deprecated" {
+            bail!("cannot ratify a deprecated intent — reactivate it first");
+        }
+        self.set_facet(
+            id,
+            TargetKind::Node,
+            "ratification",
+            "ratified",
+            TruthClass::Asserted,
+        )?;
+        self.set_facet(
+            id,
+            TargetKind::Node,
+            "ratified_by",
+            ratified_by,
+            TruthClass::Asserted,
+        )?;
+        let ratified_at = now(&self.conn)?;
+        self.set_facet(
+            id,
+            TargetKind::Node,
+            "ratified_at",
+            &ratified_at,
+            TruthClass::Asserted,
+        )?;
+        self.set_facet(
+            id,
+            TargetKind::Node,
+            "ratified_presence",
+            presence,
+            TruthClass::Asserted,
+        )?;
+        self.add_note(id, "ratify", &format!("ratified: {evidence}"))?;
+        crate::journal::append(
+            self.root(),
+            "ratification",
+            id,
+            serde_json::json!({
+                "evidence": evidence,
+                "ratified_by": ratified_by,
+                "presence": presence,
+            }),
+        )?;
+        Ok(())
+    }
+
     pub fn retire_intent(&self, id: &str, reason: &str, replaced_by: Option<&str>) -> Result<()> {
         self.check_lane(registry::OwnerRole::Builder)?;
         let intent = self

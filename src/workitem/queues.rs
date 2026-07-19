@@ -10,7 +10,8 @@ use super::context::{edge_context, node_context};
 use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, elaborator_contract, fixer_contract,
     inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
-    reviewer_contract, structural_finding_triage_contract, triage_contract, validator_contract,
+    ratify_contract, reviewer_contract, structural_finding_triage_contract, triage_contract,
+    validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -217,15 +218,21 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::NeedsReverification],
     )?;
+    // Analyze packets run AS the edge's owning lane (implements/hierarchy/
+    // requires → builder, relates → analyzer, …): the re-verdict write is
+    // gated by the registry owner, so a packet naming any other role would
+    // promise work its lane cannot record — the exact INV-7 rejection a
+    // drain worker hit on 2026-07-19. Same rule review_item already applies.
     if let Some(e) = stale
         .into_iter()
         .find(|e| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates))
     {
+        let owner = crate::registry::spec(e.kind).owner.as_str();
         return Ok(Some(edge_work(
             store,
             &e,
             "analyze",
-            "analyzer",
+            owner,
             "dependency changed — re-verify this claim",
         )?));
     }
@@ -237,11 +244,12 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
         .into_iter()
         .find(|e| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates))
     {
+        let owner = crate::registry::spec(e.kind).owner.as_str();
         return Ok(Some(edge_work(
             store,
             &e,
             "analyze",
-            "analyzer",
+            owner,
             "uninspected claim — inspect the code and record a verdict",
         )?));
     }
@@ -364,6 +372,7 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
         edge_kind: None,
         edge_status: None,
         locator: None,
+        facets: None,
     });
     context.suggested_reads.push(SuggestedRead {
         reason: "the measuring stick — its inspection guide and examples".into(),
@@ -559,6 +568,71 @@ fn is_structural_size_finding(node: &crate::model::Node) -> bool {
             | "panic_marker"
             | "tangled_file"
     )
+}
+
+/// Active intents whose wantedness is unestablished: `ratification` facet
+/// absent, `unratified`, or staled to `needs_reconfirmation`. Shared predicate —
+/// the ladder's `wanted` rung, the queue count, and the served ratify work all
+/// read this one function so they can never disagree.
+pub fn unratified_intents(store: &Store) -> Result<Vec<Node>> {
+    let mut out = Vec::new();
+    for n in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
+        if n.status == "deprecated" {
+            continue;
+        }
+        let state = store
+            .get_facet(&n.id, crate::model::TargetKind::Node, "ratification")?
+            .unwrap_or_else(|| "unratified".into());
+        if state != "ratified" {
+            out.push(n);
+        }
+    }
+    Ok(out)
+}
+
+/// The ratify queue: human-presence work. An LLM lane can PRESENT this packet
+/// (summarize the intent, its grounding, its origin) but the write itself is
+/// denied to every llm:* lane (INV-8) — so the contract carries a human gate.
+pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(n) = unratified_intents(store)?.into_iter().next() else {
+        return Ok(None);
+    };
+    let short = &n.id[..8.min(n.id.len())];
+    let origin = store
+        .get_facet(&n.id, crate::model::TargetKind::Node, "origin")?
+        .unwrap_or_else(|| "unknown".into());
+    let state = store
+        .get_facet(&n.id, crate::model::TargetKind::Node, "ratification")?
+        .unwrap_or_else(|| "unratified".into());
+    let reason = if state == "needs_reconfirmation" {
+        format!(
+            "'{}' was redefined after ratification — the human must re-confirm it is still wanted",
+            n.name
+        )
+    } else {
+        format!(
+            "'{}' (origin: {origin}) has never been ratified — no evidence the product authority wants it",
+            n.name
+        )
+    };
+    Ok(Some(WorkItem {
+        mode: "ratify".into(),
+        owner_role: "human".into(),
+        effort: "low".into(),
+        routing_hint: super::hint_judgment(),
+        reason,
+        target: node_target(&n),
+        stale_causes: Vec::new(),
+        prompt_contract: ratify_contract(short),
+        context: node_context(
+            store,
+            &n,
+            "Present this intent to the human: its criterion, origin, grounding, and proofs. The ratify/reject decision is theirs.",
+        )?,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Intent.gap(),
+        next_step: "after the human ratifies (or retires) the intent, run `loom status`".into(),
+    }))
 }
 
 pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
@@ -792,6 +866,8 @@ pub(super) fn prescreen_for(
 /// what `loom next --mode <m>` would actually serve.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct QueueCounts {
+    /// active intents that are unratified or need re-confirmation (human-only).
+    pub ratify: usize,
     pub build: usize,
     pub coverage: usize,
     /// failing (any kind) + stale relationship/grounding claims.
@@ -858,6 +934,7 @@ pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
         .filter(|n| n.status == "new")
         .count();
     Ok(QueueCounts {
+        ratify: unratified_intents(store)?.len(),
         build: if observed {
             0
         } else {
@@ -907,6 +984,11 @@ pub struct QueueEntry {
     /// `cheap` | `full` | `other` — derived from the edge's stale_cause facet.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cause_class: Option<String>,
+    /// The lane whose write boundary owns this item's write-back (edge rows:
+    /// the registry owner). Batch orchestrators MUST partition by this — a
+    /// batch recorded under any other lane is rejected by INV-7.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner_role: Option<String>,
     pub reason: String,
     pub target: Target,
 }
@@ -936,6 +1018,7 @@ fn edge_entry(store: &Store, edge: &Edge, mode: &str, reason: &str) -> Result<Qu
         effort,
         routing_hint,
         cause_class: Some(class.into()),
+        owner_role: Some(crate::registry::spec(edge.kind).owner.as_str().into()),
         reason: reason.into(),
         target: Target {
             kind: "edge".into(),
@@ -957,11 +1040,19 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
         "triage" => Some("mechanical".into()),
         _ => Some("judgment".into()),
     };
+    // Node rows: the mode's serving lane (mirrors each *_item's owner_role).
+    let owner_role = match mode {
+        "build" | "coverage" | "prove" | "elaborate" => Some("builder".into()),
+        "triage" => Some("analyzer".into()),
+        "ratify" => Some("human".into()),
+        _ => None,
+    };
     QueueEntry {
         mode: mode.into(),
         effort: effort.into(),
         routing_hint,
         cause_class: None,
+        owner_role,
         reason,
         target: node_target(node),
     }
@@ -1187,6 +1278,19 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 out.push(node_entry("elaborate", "high", &intent, reason));
             }
         }
+        Mode::Ratify => {
+            for n in unratified_intents(store)? {
+                let state = store
+                    .get_facet(&n.id, TargetKind::Node, "ratification")?
+                    .unwrap_or_else(|| "unratified".into());
+                let reason = if state == "needs_reconfirmation" {
+                    "redefined after ratification — human must re-confirm it is wanted"
+                } else {
+                    "never ratified — no evidence the product authority wants it"
+                };
+                out.push(node_entry("ratify", "low", &n, reason.into()));
+            }
+        }
     }
     Ok(out)
 }
@@ -1208,6 +1312,7 @@ fn unmeasured_pair_entries(store: &Store) -> Result<Vec<QueueEntry>> {
             effort,
             routing_hint: Some("judgment".into()),
             cause_class: None,
+            owner_role: Some("quality".into()),
             reason: format!(
                 "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
                 rule.name, intent.name

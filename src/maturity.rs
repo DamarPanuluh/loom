@@ -182,8 +182,12 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
     let doctor_issues = crate::signal::doctor(store)?.len();
     let export_fresh = crate::travel::export_is_fresh(store)?;
     let unmeasured_quality_pairs = crate::workitem::unmeasured_quality_pairs(store)?.len();
+    // Single source of truth with the ratify lane (same predicate the queue
+    // serves), so `unratified > 0` in the ladder always has a work item.
+    let unratified = crate::workitem::unratified_intents(store)?.len();
     let rungs = build_rungs(&RungInputs {
         active: active.len(),
+        unratified,
         planned,
         ungrounded,
         unowned_codefiles,
@@ -263,6 +267,13 @@ fn compass(
     if queues.fix > 0 {
         return ("fix".into(), "loom next --mode fix".into());
     }
+    // Ratification precedes building: an unratified intent may be a behavior
+    // nobody wants — route the human before an LLM lane spends work realizing
+    // it. This is human-presence work; LLM drivers batch it and move to the
+    // drainable lanes below (`loom next` without a mode never serves it).
+    if queues.ratify > 0 {
+        return ("ratify".into(), "loom next --mode ratify".into());
+    }
     // Build and coverage route on the QUEUE count, not the raw rung inputs
     // (planned/ungrounded/unowned): `queue_counts` forces these lanes to 0 on an
     // observed graph, where they are disabled. For an owned graph the counts are
@@ -309,6 +320,9 @@ fn compass(
 /// The scalar counts the rung ladder is computed from.
 struct RungInputs {
     active: usize,
+    /// Active intents whose ratification is absent, unratified, or staled —
+    /// wantedness unestablished (the `wanted` rung + ratify queue input).
+    unratified: usize,
     planned: usize,
     ungrounded: usize,
     unowned_codefiles: usize,
@@ -339,6 +353,23 @@ fn build_rungs(c: &RungInputs) -> Vec<Rung> {
             RungState::Met
         },
         detail: format!("{} active intent(s)", c.active),
+        blocked: false,
+        blocked_by: None,
+    });
+    // Wanted: every active intent is ratified by the human authority. Sits
+    // between seeded and realized — anyone (human or LLM lane) may mint an
+    // intent, but an unratified spine honestly blocks every rung above it
+    // until the human says "yes, wanted" (docs/rethink-lived-graph.md §3).
+    rungs.push(Rung {
+        name: "wanted".into(),
+        state: if c.active == 0 {
+            RungState::NotApplicable
+        } else if c.unratified == 0 {
+            RungState::Met
+        } else {
+            RungState::Unmet
+        },
+        detail: format!("{} unratified intent(s)", c.unratified),
         blocked: false,
         blocked_by: None,
     });

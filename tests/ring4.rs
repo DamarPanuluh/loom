@@ -8,6 +8,20 @@ use loom::workitem::{self, Mode};
 mod common;
 use common::*;
 
+/// Test fixture: seeded intents are wanted by construction — ratify them all
+/// so ladder/compass tests exercise the gate under test, not the ratify gate.
+fn ratify_all(store: &Store) {
+    for n in workitem::unratified_intents(store).unwrap() {
+        store
+            .ratify_intent(
+                &n.id,
+                "test fixture: seeded intent is wanted",
+                "test fixture",
+            )
+            .unwrap();
+    }
+}
+
 #[test]
 fn empty_graph_compass_routes_to_seed() {
     let tmp = Tmp::new();
@@ -81,11 +95,13 @@ fn planned_intent_routes_to_build() {
             serde_json::json!({}),
         )
         .unwrap();
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "build");
-    // seeded met, realized unmet
+    // seeded met, wanted met (fixture-ratified), realized unmet
     assert_eq!(l.rungs[0].state, RungState::Met);
-    assert_eq!(l.rungs[1].state, RungState::Unmet);
+    assert_eq!(l.rungs[1].state, RungState::Met);
+    assert_eq!(l.rungs[2].state, RungState::Unmet);
 }
 
 #[test]
@@ -108,6 +124,7 @@ fn implemented_but_ungrounded_intent_routes_to_a_nonempty_build_queue() {
         .unwrap();
 
     // Compass routes to build (realized rung Unmet: 1 ungrounded).
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(
         l.phase, "build",
@@ -188,6 +205,71 @@ fn graph_mode_is_settable_after_init_and_takes_effect() {
 }
 
 #[test]
+fn analyze_packet_carries_the_lane_that_owns_the_write() {
+    // Regression (2026-07-19 drain): `--mode analyze` served an implements-edge
+    // re-verdict with owner_role=analyzer, but the registry owns implements
+    // writes as builder — INV-7 rejected the whole batch. The packet (and the
+    // --all roster row) must name the registry owner, and that lane's write
+    // must actually succeed.
+    use loom::registry::OwnerRole;
+    use loom::store::Agent;
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "the widget renders",
+            "a user sees the widget",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = store
+        .add_node(
+            NodeType::CodeFile,
+            "src/widget.rs",
+            "",
+            "active",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let edge = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    ratify_all(&store);
+
+    let item = workitem::next(&store, Some(Mode::Analyze))
+        .unwrap()
+        .expect("uninspected implements claim is analyze work");
+    assert_eq!(item.target.id, edge.id);
+    assert_eq!(
+        item.owner_role, "builder",
+        "packet must name the registry owner of the write, not the mode's default lane"
+    );
+    let roster = workitem::queue_items(&store, Mode::Analyze).unwrap();
+    assert_eq!(roster[0].owner_role.as_deref(), Some("builder"));
+
+    // The promise must be real: the named lane's write is accepted.
+    store.set_agent(Agent::Lane(OwnerRole::Builder));
+    store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "grounded",
+            "src/widget.rs",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    store.set_agent(Agent::Solo);
+}
+
+#[test]
 fn observed_graph_compass_never_routes_to_a_disabled_lane() {
     // Regression: on an observed graph the build/coverage/fix lanes are disabled
     // (`queue_counts` forces them to 0). An ungrounded implemented intent leaves
@@ -216,6 +298,7 @@ fn observed_graph_compass_never_routes_to_a_disabled_lane() {
         "coverage lane is disabled on an observed graph"
     );
 
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_ne!(
         l.phase, "build",
@@ -255,20 +338,23 @@ fn rungs_above_the_lowest_unmet_rung_are_marked_blocked() {
             serde_json::json!({}),
         )
         .unwrap();
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
 
-    // The gate is the lowest Unmet rung: `realized` at index 1.
+    // The gate is the lowest Unmet rung: `realized` at index 2 (after seeded
+    // and the fixture-ratified `wanted`).
     let gate = l.rungs.iter().position(|r| r.state == RungState::Unmet);
-    assert_eq!(gate, Some(1), "realized is the lowest unmet rung");
+    assert_eq!(gate, Some(2), "realized is the lowest unmet rung");
 
     // Gate and everything below it are never blocked.
     assert!(!l.rungs[0].blocked, "seeded (below gate) is not blocked");
-    assert!(!l.rungs[1].blocked, "the gate rung itself is not blocked");
-    assert_eq!(l.rungs[1].blocked_by, None);
+    assert!(!l.rungs[1].blocked, "wanted (below gate) is not blocked");
+    assert!(!l.rungs[2].blocked, "the gate rung itself is not blocked");
+    assert_eq!(l.rungs[2].blocked_by, None);
 
     // Every rung above the gate is blocked by it — including `excellent`, which
     // is independently Met but must not read as satisfied above unmet `realized`.
-    for r in &l.rungs[2..] {
+    for r in &l.rungs[3..] {
         assert!(
             r.blocked,
             "{} sits above the gate and must be blocked",
@@ -397,6 +483,7 @@ fn fully_grounded_no_residue_routes_complete() {
             "llm",
         )
         .unwrap();
+    ratify_all(&store);
     let before_export = ladder(&store).unwrap();
     assert_eq!(before_export.phase, "export");
     let exported = before_export
@@ -496,6 +583,7 @@ fn registered_unowned_codefile_routes_to_coverage() {
         )
         .unwrap();
 
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "coverage");
     assert_eq!(l.next_command, "loom coverage");
@@ -761,6 +849,7 @@ fn doctor_issue_routes_to_audit_after_earlier_gates_pass() {
             .unwrap();
     }
 
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "audit");
     assert_eq!(l.next_command, "loom doctor");
@@ -854,6 +943,7 @@ fn proven_rung_requires_each_implemented_leaf_to_have_passing_validation() {
         )
         .unwrap();
 
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "validate");
     assert_eq!(l.next_command, "loom next --mode validate");
@@ -945,6 +1035,7 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
         )
         .unwrap();
 
+    ratify_all(&store);
     let before = ladder(&store).unwrap();
     let proven_before = before.rungs.iter().find(|r| r.name == "proven").unwrap();
     assert_eq!(before.phase, "validate");
@@ -988,6 +1079,7 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
         )
         .unwrap();
 
+    ratify_all(&store);
     let after = ladder(&store).unwrap();
     let proven_after = after.rungs.iter().find(|r| r.name == "proven").unwrap();
     assert_eq!(proven_after.state, RungState::Met);
@@ -1168,6 +1260,7 @@ fn findings_route_to_triage_until_judged() {
         .unwrap();
 
     // baseline: graph is clean but not complete until the travel export is fresh.
+    ratify_all(&store);
     assert_eq!(ladder(&store).unwrap().phase, "export");
     travel::export_to_file(&store).unwrap();
     assert_eq!(ladder(&store).unwrap().phase, "complete");
@@ -1290,6 +1383,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
         .unwrap();
 
     // Before seeding: hardened should be Met (no stale, no uninspected, no doctor, no pairs).
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
     assert_eq!(
@@ -1303,6 +1397,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     assert!(n > 0, "iso5055 pack seeds at least one rule");
 
     // Now hardened must be Unmet: unmeasured pairs block it.
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
     assert_eq!(
@@ -1345,6 +1440,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     }
 
     // Now hardened should be Met.
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
     assert_eq!(

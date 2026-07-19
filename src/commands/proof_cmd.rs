@@ -528,6 +528,12 @@ fn mark_validation(
         store.record_verdict(&e.id, edge_status, "proof", ev, 1.0, "llm")?;
     }
     store.set_node_status(val_id, node_status)?;
+    crate::journal::append(
+        store.root(),
+        "validation_verdict",
+        val_id,
+        serde_json::json!({ "outcome": result, "evidence": ev, "reason": reason }),
+    )?;
     Ok(())
 }
 pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: bool) -> Result<()> {

@@ -116,7 +116,7 @@ pub(crate) fn import(
     }
     Ok(())
 }
-pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
+pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool) -> Result<()> {
     let root = resolve_root(graph)?;
     let store = Store::open(&root)?;
     // Discovery pass: expand remembered globs and register new files before
@@ -130,6 +130,15 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     // that already exists (the repo tracks it) and has drifted is rewritten:
     // never creates an untracked file, and preserves byte-determinism.
     let reexported = crate::travel::refresh_export_if_tracked(&store)?;
+    crate::journal::append(
+        store.root(),
+        "sync",
+        "graph",
+        serde_json::json!({ "quiet": quiet, "files_changed": report.files_changed }),
+    )?;
+    if quiet {
+        return Ok(());
+    }
     if json {
         println!(
             "{}",
@@ -347,7 +356,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         ladder.phase, ladder.next_command
     );
     println!(
-        "  queues: fix={} validate={} build={} coverage={} quality={} analyze={} prove={} triage={} review={} elaborate={}{}",
+        "  queues: fix={} validate={} build={} coverage={} quality={} analyze={} prove={} triage={} review={} elaborate={}{}{}",
         queues.fix,
         queues.validate,
         queues.build,
@@ -358,6 +367,11 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         queues.triage,
         queues.review,
         queues.elaborate,
+        if queues.ratify > 0 {
+            format!("  ({} intent(s) awaiting human ratification)", queues.ratify)
+        } else {
+            String::new()
+        },
         if pulse.open_questions > 0 {
             format!("  ({} question(s) for the human)", pulse.open_questions)
         } else {
@@ -385,6 +399,7 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
         ("triage", workitem::Mode::Triage, counts.triage),
         ("review", workitem::Mode::Review, counts.review),
         ("elaborate", workitem::Mode::Elaborate, counts.elaborate),
+        ("ratify", workitem::Mode::Ratify, counts.ratify),
     ];
     if json {
         let mut queues = serde_json::Map::new();

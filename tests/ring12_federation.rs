@@ -501,10 +501,7 @@ fn prune_orphans_after_unlink_clears_doctor() {
 
     let pruned = loom_json(downstream.path(), &["graph", "prune-orphans"]);
     assert_eq!(pruned["pruned"]["count"].as_u64().unwrap(), 1);
-    assert!(pruned["pruned"]["blocked"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(pruned["pruned"]["blocked"].as_array().unwrap().is_empty());
 
     let store = Store::open(downstream.path()).unwrap();
     let shadows = store
@@ -516,7 +513,10 @@ fn prune_orphans_after_unlink_clears_doctor() {
     // After prune, list is a plain empty array again (no false orphan envelope).
     let listed_clean = loom_json(downstream.path(), &["graph", "list"]);
     assert!(
-        listed_clean.as_array().map(|a| a.is_empty()).unwrap_or(false),
+        listed_clean
+            .as_array()
+            .map(|a| a.is_empty())
+            .unwrap_or(false),
         "clean list must be []: {listed_clean}"
     );
 
@@ -552,10 +552,7 @@ fn unlink_prune_disposes_shadows_immediately() {
         &["graph", "link", upstream_export.to_str().unwrap()],
     );
 
-    let out = loom_json(
-        downstream.path(),
-        &["graph", "unlink", "svc", "--prune"],
-    );
+    let out = loom_json(downstream.path(), &["graph", "unlink", "svc", "--prune"]);
     assert_eq!(out["pruned"]["count"].as_u64().unwrap(), 1);
 
     let store = Store::open(downstream.path()).unwrap();
@@ -658,7 +655,11 @@ fn prune_orphans_refuses_depends_on_unless_cascade() {
     let deps = store
         .edges_with(Some(EdgeKind::DependsOn), None, None)
         .unwrap();
-    assert_eq!(deps.len(), 1, "DependsOn edge still present without cascade");
+    assert_eq!(
+        deps.len(),
+        1,
+        "DependsOn edge still present without cascade"
+    );
     drop(store);
 
     // Pure-blocked re-run (only the claimed orphan left) must exit non-zero.

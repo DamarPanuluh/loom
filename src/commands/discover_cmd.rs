@@ -4,6 +4,9 @@
 //! the door landing menu in `capture_cmd`.
 
 use super::*;
+use crate::grammar::{
+    ACTIVE_LIFECYCLES, ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
+};
 
 /// Keyword scoring shared by `loom find` and the door's landing menu: score
 /// nodes of the given kinds against the query terms, best first, capped at
@@ -37,7 +40,8 @@ pub(crate) fn keyword_hits(
 }
 
 /// Allowed `--where` facet keys for `loom find` (minimal property allowlist).
-pub(crate) const FIND_WHERE_KEYS: &[&str] = &["visibility", "level", "aspect"];
+pub(crate) const FIND_WHERE_KEYS: &[&str] =
+    &["visibility", "level", "aspect", "origin", "ratification"];
 
 pub(crate) fn find_cmd(
     graph: Option<&Path>,
@@ -111,7 +115,18 @@ fn resolve_find_filters(
                 FIND_WHERE_KEYS.join(", ")
             );
         }
-        sets.push(store.nodes_where_facet(&key, &value)?.into_iter().collect());
+        let ids = if key == "ratification" && value == "unratified" {
+            // Absence is meaningful for ratification (INV-8): an intent that
+            // has never been ratified has no facet in legacy/imported graphs,
+            // and must still be found rather than silently treated as wanted.
+            crate::workitem::unratified_intents(store)?
+                .into_iter()
+                .map(|intent| intent.id)
+                .collect()
+        } else {
+            store.nodes_where_facet(&key, &value)?.into_iter().collect()
+        };
+        sets.push(ids);
     }
     let mut iter = sets.into_iter();
     let mut acc = iter.next().unwrap_or_default();
@@ -555,6 +570,46 @@ fn count_exts(
         }
     }
 }
+/// The statement grammar: the well-formedness rules every graph write must
+/// satisfy, served by the tool itself so an LLM driver reads them from
+/// `loom schema` each session instead of from drifting prose. Lexicon
+/// (vocabulary) lives in the registries; grammar (sentence rules) lives here;
+/// pragmatics (how statements are used) is `loom guide` / the prompt contracts.
+fn grammar_json() -> serde_json::Value {
+    serde_json::json!({
+        "intent_name": {
+            "rule": "a behavioral phrase, falsifiable at a meaningful altitude — never a code symbol",
+            "rejected": "snake_case / camelCase / Path::symbol / fn() names, unless --allow-symbol-name AND a behavioral --description are both given (override is recorded for audit)",
+            "examples_good": ["payment can be captured", "an operator captures a topic through door"],
+            "examples_bad": ["capture_payment", "runWithSqlite", "Store::open"],
+        },
+        "intent_facets": {
+            "level": LEVELS,
+            "lifecycle_at_add": ACTIVE_LIFECYCLES,
+            "visibility": VISIBILITIES,
+            "aspect": ASPECTS,
+            "origin": ["human", "llm"],
+            "ratification": RATIFICATION_STATES,
+        },
+        "authorship": {
+            "mint": "any agent (solo or any llm:* lane) may add intents, edges, findings, notes",
+            "ratify": "human-only (INV-8): `loom intent ratify` is rejected for every llm:* lane, fail closed, no override — the LLM may author everything and ratify nothing",
+            "verdicts": "asserted verdicts need non-placeholder criterion AND evidence (INV-6); confidence < 0.7 routes to review",
+            "derived": "sync alone writes derived facts; no agent re-judges a machine fact (INV-5)",
+        },
+        "evidence": {
+            "rule": "criterion/evidence/reason fields must be substantive — whole-field placeholders are rejected at the write boundary",
+            "rejected_placeholders": PLACEHOLDER_TOKENS,
+            "prefer": "file:line spans, command output excerpts, utterances, source-doc refs",
+        },
+        "ratification_lifecycle": {
+            "born_ratified": "intent minted by the human (solo agent) — the minting act is the evidence",
+            "born_unratified": "intent minted by an llm:* lane — first-class in the graph, but the `wanted` rung stays unmet until a human ratifies",
+            "staled": "redefining a ratified intent's description moves it to needs_reconfirmation — wantedness rots with meaning",
+        },
+    })
+}
+
 pub(crate) fn schema_cmd(json: bool) -> Result<()> {
     use crate::model::*;
     if json {
@@ -580,6 +635,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
                 "truth_classes": TruthClass::ALL.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
                 "finding_verdicts": ["needed", "justified", "rejected", "deferred", "blocked", "duplicate", "resolved"],
                 "find_where_keys": FIND_WHERE_KEYS,
+                "grammar": grammar_json(),
             }))?
         );
         return Ok(());
@@ -626,5 +682,42 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
     println!("  stored as asserted adjudication facets on stable Finding ids");
     println!("  verdicts go stale when the flagged codefile content hash changes");
     println!("find --where keys: {}", FIND_WHERE_KEYS.join(" "));
+    println!("grammar (write-boundary rules):");
+    println!("  intent name: behavioral phrase, never a code symbol (override: --allow-symbol-name + behavioral --description, audited)");
+    println!(
+        "  ratification: {} — human-only write (INV-8): any lane may mint, only a human ratifies",
+        RATIFICATION_STATES.join(" | ")
+    );
+    println!("  evidence: criterion/evidence/reason must be substantive; whole-field placeholders rejected (INV-6)");
+    println!("  redefinition: changing a ratified intent's description stales it to needs_reconfirmation");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::grammar_json;
+    use crate::grammar::{
+        ACTIVE_LIFECYCLES, ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
+    };
+
+    #[test]
+    fn schema_json_grammar_uses_the_write_gate_tables() {
+        let grammar = grammar_json();
+        let facets = &grammar["intent_facets"];
+        assert_eq!(facets["level"], serde_json::json!(LEVELS));
+        assert_eq!(
+            facets["lifecycle_at_add"],
+            serde_json::json!(ACTIVE_LIFECYCLES)
+        );
+        assert_eq!(facets["visibility"], serde_json::json!(VISIBILITIES));
+        assert_eq!(facets["aspect"], serde_json::json!(ASPECTS));
+        assert_eq!(
+            facets["ratification"],
+            serde_json::json!(RATIFICATION_STATES)
+        );
+        assert_eq!(
+            grammar["evidence"]["rejected_placeholders"],
+            serde_json::json!(PLACEHOLDER_TOKENS)
+        );
+    }
 }

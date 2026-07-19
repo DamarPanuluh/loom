@@ -168,6 +168,8 @@ impl TruthAxis {
 pub fn axis_for_phase(phase: &str, next_command: &str) -> Option<TruthAxis> {
     match phase {
         "seed" => Some(TruthAxis::Intent),
+        // Ratification closes intent truth: whether the behavior is WANTED.
+        "ratify" => Some(TruthAxis::Intent),
         "build" => Some(TruthAxis::Implementation),
         "coverage" => Some(TruthAxis::Implementation),
         "validate" => Some(TruthAxis::Proof),

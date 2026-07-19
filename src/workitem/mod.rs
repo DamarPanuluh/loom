@@ -14,9 +14,10 @@ use crate::store::Store;
 use crate::Result;
 pub(crate) use queues::ungrounded_implemented_intents;
 pub(crate) use queues::unmeasured_quality_pairs;
+pub use queues::unratified_intents;
 use queues::{
     analyze_item, build_item, coverage_item, elaborate_item, fix_item, prove_item, quality_item,
-    review_item, triage_item, validate_item,
+    ratify_item, review_item, triage_item, validate_item,
 };
 pub use queues::{queue_counts, queue_items, QueueCounts, QueueEntry};
 use serde::Serialize;
@@ -34,6 +35,7 @@ pub enum Mode {
     Triage,
     Review,
     Elaborate,
+    Ratify,
 }
 
 impl Mode {
@@ -49,6 +51,7 @@ impl Mode {
             "triage" => Some(Mode::Triage),
             "review" => Some(Mode::Review),
             "elaborate" => Some(Mode::Elaborate),
+            "ratify" => Some(Mode::Ratify),
             _ => None,
         }
     }
@@ -114,6 +117,10 @@ pub struct LinkedEntity {
     pub edge_status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locator: Option<String>,
+    /// Canonical facets needed to interpret this linked entity. Work packets
+    /// normally omit these; `loom context` fills them for intent provenance.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub facets: Option<std::collections::BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -208,6 +215,11 @@ fn next_inner(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
         Some(Mode::Prove) => prove_item(store),
         Some(Mode::Triage) => triage_item(store),
         Some(Mode::Review) => review_item(store),
+        // Human-presence queue: served ONLY on explicit request. Default `next`
+        // keeps serving autonomously-drainable work — an LLM driver must never
+        // be routed into a write it is denied (INV-8); ratify packets batch for
+        // the next human session instead.
+        Some(Mode::Ratify) => ratify_item(store),
         Some(Mode::Elaborate) if observed => Ok(None),
         Some(Mode::Elaborate) => elaborate_item(store),
         None => {

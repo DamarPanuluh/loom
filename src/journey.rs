@@ -19,9 +19,10 @@ use crate::Result;
 use anyhow::{anyhow, Context};
 use process_control::{ChildExt, Control};
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
+use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpecKind {
@@ -171,12 +172,82 @@ struct HttpExtract {
 }
 
 /// The outcome of one executed step.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StepOutcome {
     pub name: String,
     pub intent: String,
     pub passed: bool,
     pub detail: String,
+    #[serde(default)]
+    pub transcript: String,
+    /// Wall-clock execution time retained with a frozen baseline so an
+    /// otherwise-passing replay can still surface a latency cliff.
+    #[serde(default)]
+    pub latency_ms: u128,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Baseline {
+    pub journey: String,
+    pub outcomes: Vec<StepOutcome>,
+}
+
+pub fn baseline_path(root: &Path, journey: &str) -> PathBuf {
+    root.join(crate::LOOM_DIR)
+        .join("baselines")
+        .join(format!("{journey}.json"))
+}
+
+pub fn write_baseline(root: &Path, journey: &str, outcomes: &[StepOutcome]) -> Result<PathBuf> {
+    let path = baseline_path(root, journey);
+    std::fs::create_dir_all(path.parent().expect("baseline path has parent"))?;
+    std::fs::write(
+        &path,
+        serde_json::to_vec_pretty(&Baseline {
+            journey: journey.into(),
+            outcomes: outcomes.to_vec(),
+        })?,
+    )?;
+    Ok(path)
+}
+
+pub fn read_baseline(root: &Path, journey: &str) -> Result<Option<Baseline>> {
+    let path = baseline_path(root, journey);
+    match std::fs::read(&path) {
+        Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+pub fn deviations(baseline: &Baseline, outcomes: &[StepOutcome]) -> Vec<String> {
+    let mut deviations = Vec::new();
+    for (index, outcome) in outcomes.iter().enumerate() {
+        let Some(before) = baseline.outcomes.get(index) else {
+            deviations.push(format!("new step '{}'", outcome.name));
+            continue;
+        };
+        if before.transcript != outcome.transcript {
+            deviations.push(format!("{}: verbatim output changed", outcome.name));
+        }
+        if before.passed != outcome.passed {
+            deviations.push(format!("{}: pass/fail changed", outcome.name));
+        }
+        // Avoid flagging scheduler noise: a cliff is at least 100 ms slower
+        // and at least twice the frozen execution time.
+        if outcome.latency_ms >= before.latency_ms.saturating_mul(2)
+            && outcome.latency_ms.saturating_sub(before.latency_ms) >= 100
+        {
+            deviations.push(format!(
+                "{}: latency cliff ({}ms → {}ms)",
+                outcome.name, before.latency_ms, outcome.latency_ms
+            ));
+        }
+    }
+    if baseline.outcomes.len() > outcomes.len() {
+        deviations.push("one or more baseline steps were not reached".into());
+    }
+    deviations
 }
 
 pub fn parse(path: &Path) -> Result<JourneySpec> {
@@ -399,7 +470,8 @@ pub fn execute_steps(
                 step.name
             );
         }
-        let outcome = if step.is_cli() {
+        let started = Instant::now();
+        let mut outcome = if step.is_cli() {
             run_cli_step(step, &mut vars, cwd, diagnose_style)?
         } else {
             let client = client
@@ -407,6 +479,7 @@ pub fn execute_steps(
                 .ok_or_else(|| anyhow!("internal: HTTP client missing for HTTP step"))?;
             run_http_step(client, spec, step, &mut vars, diagnose_style)?
         };
+        outcome.latency_ms = started.elapsed().as_millis();
         let passed = outcome.passed;
         outcomes.push(outcome);
         if !passed {
@@ -557,7 +630,7 @@ fn run_cli_step(
     }
     // Always expose raw streams for later interpolation when useful.
     vars.insert("stdout".into(), stdout.clone());
-    vars.insert("stderr".into(), stderr);
+    vars.insert("stderr".into(), stderr.clone());
     Ok(StepOutcome {
         name: step.name.clone(),
         intent: step.intent.clone(),
@@ -567,6 +640,8 @@ fn run_cli_step(
         // values would make an identical passing journey dirty the export and
         // can also disclose data that only needed to flow between steps.
         detail: format!("`{}` exit {code}", step.run),
+        transcript: format!("stdout:\n{stdout}\nstderr:\n{stderr}\nexit:{code}"),
+        latency_ms: 0,
     })
 }
 
@@ -657,6 +732,8 @@ fn failed_step(step: &Step, detail: impl Into<String>) -> StepOutcome {
         intent: step.intent.clone(),
         passed: false,
         detail: detail.into(),
+        transcript: String::new(),
+        latency_ms: 0,
     }
 }
 
@@ -707,7 +784,11 @@ fn check_response(
     diagnose_style: bool,
 ) -> StepOutcome {
     let status = resp.status().as_u16();
-    let body_parse: Result<serde_json::Value, _> = resp.json();
+    // Keep the raw body in the baseline transcript even when no assertion
+    // currently inspects it; a changed response is still operational drift.
+    let body_text = resp.text().unwrap_or_default();
+    let body_parse: Result<serde_json::Value, _> = serde_json::from_str(&body_text);
+    let transcript = || format!("status:{status}\nbody:\n{body_text}");
     let status_ok = if diagnose_style {
         status == step.expect.status.unwrap_or(200)
     } else {
@@ -730,6 +811,8 @@ fn check_response(
             intent: step.intent.clone(),
             passed: false,
             detail,
+            transcript: transcript(),
+            latency_ms: 0,
         };
     }
     // A step that never reads the body (status-only check) tolerates a
@@ -745,6 +828,8 @@ fn check_response(
                 intent: step.intent.clone(),
                 passed: false,
                 detail: format!("response body is not valid JSON ({e}); status {status}"),
+                transcript: transcript(),
+                latency_ms: 0,
             };
         }
         Err(_) => serde_json::Value::Null,
@@ -766,6 +851,8 @@ fn check_response(
                 intent: step.intent.clone(),
                 passed: false,
                 detail,
+                transcript: transcript(),
+                latency_ms: 0,
             };
         }
     }
@@ -781,6 +868,8 @@ fn check_response(
                 intent: step.intent.clone(),
                 passed: false,
                 detail,
+                transcript: transcript(),
+                latency_ms: 0,
             };
         }
     }
@@ -813,6 +902,8 @@ fn check_response(
         intent: step.intent.clone(),
         passed: true,
         detail,
+        transcript: transcript(),
+        latency_ms: 0,
     }
 }
 

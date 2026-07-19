@@ -58,6 +58,10 @@ static CITATION_RE: LazyLock<Regex> = LazyLock::new(|| {
     .expect("citation regex is valid")
 });
 
+static JOURNAL_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"journal:([A-Za-z0-9_-]+)").expect("journal citation regex is valid")
+});
+
 /// Parse and stamp every file:line citation in `evidence` that resolves to a
 /// readable file under `root`.
 ///
@@ -67,6 +71,12 @@ static CITATION_RE: LazyLock<Regex> = LazyLock::new(|| {
 /// (URLs, tool output, deleted files, absolute/parent-escaping paths) are
 /// skipped, never guessed at.
 pub fn stamp(root: &Path, evidence: &str) -> Result<Vec<SpanStamp>> {
+    for cap in JOURNAL_RE.captures_iter(evidence) {
+        let id = &cap[1];
+        if !crate::journal::exists(root, id)? {
+            bail!("evidence cites journal:{id}, but no such append-only journal entry exists");
+        }
+    }
     let mut seen: BTreeSet<(String, usize, usize)> = BTreeSet::new();
     let mut stamps = Vec::new();
     for cap in CITATION_RE.captures_iter(evidence) {

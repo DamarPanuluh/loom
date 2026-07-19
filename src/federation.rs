@@ -369,10 +369,7 @@ pub struct OrphanPruneReport {
 /// List UpstreamIntent shadows whose `body.alias` is not in the upstream registry.
 ///
 /// Optional `alias_filter` restricts to one former alias (e.g. just-unlinked).
-pub fn list_orphan_shadows(
-    store: &Store,
-    alias_filter: Option<&str>,
-) -> Result<Vec<OrphanShadow>> {
+pub fn list_orphan_shadows(store: &Store, alias_filter: Option<&str>) -> Result<Vec<OrphanShadow>> {
     let entries = read_upstream_entries(store)?;
     let linked: std::collections::BTreeSet<&str> =
         entries.iter().map(|e| e.alias.as_str()).collect();
