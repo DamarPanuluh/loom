@@ -6148,14 +6148,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "fallible operations in the symbol-pattern intent gate propagate or explicitly handle failure",
-      "evidence": "src/commands/intent.rs:160-235 — validation and Store writes use Result propagation with ?; inspected unwrap/expect uses are static invariant/panic assertions rather than discarded Result; no ignored Result found",
-      "confidence": 0.84,
+      "status": "passing",
+      "criterion": "Every fallible operation in the symbol-name rejection path propagates or handles its failure.",
+      "evidence": "src/commands/intent.rs:165-232 — create_intent rejects invalid symbol names with bail! and propagates validation/store writes with ?; inspection found no discarded Result, unwrap, expect, or literal secret/query construction in this grounded path.",
+      "confidence": 0.96,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.724Z",
-      "updated_at": "2026-07-19T05:25:48.659Z"
+      "updated_at": "2026-07-19T06:14:17.725Z"
     },
     {
       "id": "07da8fe4e63c14fc14008186a6127b0d",
@@ -6321,6 +6321,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.081Z",
       "updated_at": "2026-07-09T20:38:13.432Z"
+    },
+    {
+      "id": "0e870fe33ac226977baf39d0f432aaff",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "Semantic-impact input is not concatenated into SQL, shell, or HTML.",
+      "evidence": "src/commands/intent.rs:833-905 passes user values only to Store APIs; src/store/facets.rs:38-50 persists facet values with SQLite ?1..?5 parameters, and inspection found no SQL/shell/HTML construction.",
+      "confidence": 0.99,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T06:15:56.716Z",
+      "updated_at": "2026-07-19T06:15:56.720Z"
     },
     {
       "id": "0ec973420d4de4226d92d06990380ca2",
@@ -6493,14 +6508,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "no dead or duplicated code ships in the grounded sources",
-      "evidence": "cargo clippy --all-targets with -D warnings green at the v0.25.0 release gate (catches dead_code); the single recorded suppression src/signal/debt/git.rs:45 is a parser-completeness field, not shipped dead logic",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "The changed typed CLI dispatch surface contains no unreachable or duplicated command branch.",
+      "evidence": "src/cli/subcommands.rs:10-140 defines each IntentCmd variant once; src/commands/intent.rs:24-97 has one exhaustive one-to-one IntentCmd dispatch; src/commands.rs:43-160 forwards Command::Intent once to that handler.",
+      "confidence": 0.91,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:41:55.756Z",
-      "updated_at": "2026-07-19T05:25:48.661Z"
+      "updated_at": "2026-07-19T06:15:34.670Z"
     },
     {
       "id": "182371b9473cdb9de8eef2bcd1dec9d6",
@@ -6583,17 +6598,18 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "The intent-add symbol-name guard is a CLI behavior and is conceptually related to typed command dispatch.",
-      "evidence": "src/commands/intent.rs:160-185 — create_intent enforces the symbol-name gate; src/commands.rs:39-52 — typed Command::Intent dispatch reaches the intent handler.",
-      "confidence": 0.82,
+      "status": "passing",
+      "criterion": "The symbol-pattern intent guard is a typed CLI behavior and remains conceptually related to typed command dispatch.",
+      "evidence": "src/commands.rs:85 dispatches Command::Intent to intent::dispatch; src/commands/intent.rs:165-182 enforces the symbol-name gate within that typed command family; src/cli/subcommands.rs:10-140 defines the corresponding typed IntentCmd surface.",
+      "confidence": 0.96,
       "depends_on": [
+        "44622b82dffeccf4fc474d85d24bdeda",
         "31db92e6363213dec048ef1094a3bf9b",
-        "44622b82dffeccf4fc474d85d24bdeda"
+        "4f3230038d7aeaa1b2780f45373a37df"
       ],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:11:00.768Z",
-      "updated_at": "2026-07-19T05:25:48.669Z"
+      "updated_at": "2026-07-19T06:16:41.681Z"
     },
     {
       "id": "1afddf413bac99f252148b95e034f6d4",
@@ -6616,14 +6632,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "no user input reaches SQL or shell without parameterization or quarantine",
-      "evidence": "src/store/derived.rs:148-168 dynamic SQL appends only fixed clauses with ?N placeholders bound via ToSql; params! used at 50+ sites across the store; imported validation commands are quarantined before any execution (src/commands/status_cmd.rs:59)",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "Symbol-name and description input is never concatenated into SQL, shell, or HTML.",
+      "evidence": "src/commands/intent.rs:165-232 validates input with looks_like_symbol and bail!, then passes values through Store APIs; inspection found no SQL/shell/HTML construction in the guard.",
+      "confidence": 0.97,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.416Z",
-      "updated_at": "2026-07-19T05:25:48.659Z"
+      "updated_at": "2026-07-19T06:15:34.883Z"
     },
     {
       "id": "1b2cc5dc66ab0b4e8e77a78ac1e19aee",
@@ -6866,6 +6882,21 @@
       "updated_at": "2026-07-19T05:20:06.421Z"
     },
     {
+      "id": "28d606458b28f06efbc4a80c3e3e9298",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "Resources acquired for semantic-impact assessment are released on all exits.",
+      "evidence": "src/commands.rs:192-195 returns Store as a local RAII value; src/commands/intent.rs:844-905 holds it locally and uses ? for early exits, so Drop releases its lock/connection without manual cleanup.",
+      "confidence": 0.96,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T06:15:56.650Z",
+      "updated_at": "2026-07-19T06:15:56.654Z"
+    },
+    {
       "id": "29341f92d2189ef75d54de98c9f5a869",
       "from_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "to_id": "cda59b47323aae0c0eae884bd132a002",
@@ -7017,6 +7048,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:00:57.465Z",
       "updated_at": "2026-07-09T20:26:48.955Z"
+    },
+    {
+      "id": "2ff5f135a91751d0b7edc029346639f4",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "Every fallible operation in semantic-impact assessment is propagated or handled explicitly.",
+      "evidence": "src/commands/intent.rs:833-905 rejects invalid input with bail! and propagates open, resolve, facet, note, and read calls with ?; inspection found no discarded Result, unwrap, or expect.",
+      "confidence": 0.98,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T06:15:56.618Z",
+      "updated_at": "2026-07-19T06:15:56.621Z"
     },
     {
       "id": "3379ea17ab429e6d4398715f3804f4c0",
@@ -7309,14 +7355,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "files, locks, connections, and child processes are released deterministically",
-      "evidence": "RAII throughout: the SQLite Connection and advisory lock File release on Drop (Store holds _lock: File in src/store/mod.rs:90); journal appends open-write-close per call; journey and scan child processes are waited on by blocking runners",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "Resources involved in the changed typed CLI dispatch path are released on all exits.",
+      "evidence": "src/commands.rs:192-195 returns Store as a local RAII value; src/commands/intent.rs:24-97 only dispatches typed variants and has no manual resource acquisition or release path.",
+      "confidence": 0.94,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:11:36.517Z",
-      "updated_at": "2026-07-19T05:25:48.662Z"
+      "updated_at": "2026-07-19T06:15:34.751Z"
     },
     {
       "id": "425bc1e094dbb9dc98ab74a62e7025df",
@@ -8129,14 +8175,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "files, locks, connections, and child processes are released deterministically",
-      "evidence": "RAII throughout: the SQLite Connection and advisory lock File release on Drop (Store holds _lock: File in src/store/mod.rs:90); journal appends open-write-close per call; journey and scan child processes are waited on by blocking runners",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "The symbol-name guard releases every resource it acquires on success and failure.",
+      "evidence": "src/commands/intent.rs:165-232 performs validation and Store calls through the caller-owned Store; it acquires no file, lock, connection, or manual handle that could leak on an error path.",
+      "confidence": 0.96,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.960Z",
-      "updated_at": "2026-07-19T05:25:48.659Z"
+      "updated_at": "2026-07-19T06:15:34.914Z"
     },
     {
       "id": "5e80d2c7470bf91b08e2ee9d8aacf57e",
@@ -8809,14 +8855,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "requires",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "proof execution is reachable only through typed Validation and Journey commands",
-      "evidence": "src/commands.rs:144,157 route Command::Validation and Command::Journey to proof_cmd/journey dispatchers; the new context/drive/hook commands add no proof-execution path",
-      "confidence": 0.93,
+      "status": "passing",
+      "criterion": "Proof execution remains reachable only through typed Validation and Journey command variants.",
+      "evidence": "src/commands.rs:143-157 dispatches Command::Validation only to proof_cmd::validation and Command::Journey only to journey::dispatch; the added IntentCmd::Impact variant is routed separately at src/commands.rs:85.",
+      "confidence": 0.97,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:11:00.765Z",
-      "updated_at": "2026-07-19T05:25:48.664Z"
+      "updated_at": "2026-07-19T06:16:41.723Z"
     },
     {
       "id": "7e86a7b1db8eede1f915f6c5ceb37f11",
@@ -9094,14 +9140,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "no user input reaches SQL or shell without parameterization or quarantine",
-      "evidence": "src/store/derived.rs:148-168 dynamic SQL appends only fixed clauses with ?N placeholders bound via ToSql; params! used at 50+ sites across the store; imported validation commands are quarantined before any execution (src/commands/status_cmd.rs:59)",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "Untrusted CLI values on the changed dispatch path are never concatenated into SQL, shell, or HTML.",
+      "evidence": "src/cli/subcommands.rs:10-140 declares typed arguments only; src/commands/intent.rs:24-97 forwards variants to handlers and contains no SQL/shell/HTML construction in the changed dispatch path.",
+      "confidence": 0.96,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:23:48.447Z",
-      "updated_at": "2026-07-19T05:25:48.662Z"
+      "updated_at": "2026-07-19T06:15:34.719Z"
     },
     {
       "id": "8e632c3c7aca8f98015934bc28e2108e",
@@ -9229,14 +9275,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "no hardcoded credentials or secrets in the grounded sources",
-      "evidence": "repo-wide sweep 2026-07-19: grep for api_key/secret/password/token literal assignments across src returned zero hits; loom is a local CLI with no credential surface",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "The symbol-name guard contains no literal credential, token, or key.",
+      "evidence": "src/commands/intent.rs:165-232 contains behavioral error messages and facet labels only; inspection found no secret-like literal assignment or private-key material.",
+      "confidence": 0.98,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.210Z",
-      "updated_at": "2026-07-19T05:25:48.660Z"
+      "updated_at": "2026-07-19T06:15:34.944Z"
     },
     {
       "id": "92501666d68b902c3b699a71b51e1a9c",
@@ -9829,14 +9875,14 @@
       "to_id": "31db92e6363213dec048ef1094a3bf9b",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "loom intent add with a symbol-pattern name and no --allow-symbol-name is rejected",
-      "evidence": "src/grammar.rs:70-85 looks_like_symbol (moved from intent.rs, re-exported); src/commands/intent.rs:160-210 create_intent still rejects symbol names unless --allow-symbol-name plus a behavioral description are both given",
-      "confidence": 0.95,
+      "status": "passing",
+      "criterion": "loom intent add rejects a symbol-pattern name unless an explicit behavioral override is supplied.",
+      "evidence": "src/commands/intent.rs:165-182 checks looks_like_symbol, rejects unapproved symbol names with bail!, and requires a non-empty behavioral description for an override; src/commands/intent.rs:183-232 propagates validation and store writes.",
+      "confidence": 0.98,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.005Z",
-      "updated_at": "2026-07-19T05:25:48.649Z"
+      "updated_at": "2026-07-19T06:16:41.817Z"
     },
     {
       "id": "ac317fd6f3a8d75f1c6fbc07ad296e4f",
@@ -10009,14 +10055,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "no hardcoded credentials or secrets in the grounded sources",
-      "evidence": "repo-wide sweep 2026-07-19: grep for api_key/secret/password/token literal assignments across src returned zero hits; loom is a local CLI with no credential surface",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "The changed typed CLI dispatch surface contains no literal credential, token, or key.",
+      "evidence": "src/cli/subcommands.rs:10-140 and src/commands/intent.rs:24-97 contain typed command fields and dispatch arms only; inspection found no secret-like literal assignment or private-key material.",
+      "confidence": 0.97,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:13:51.604Z",
-      "updated_at": "2026-07-19T05:25:48.662Z"
+      "updated_at": "2026-07-19T06:15:34.784Z"
     },
     {
       "id": "b49d6810decf4dbcfc55bf8d934653a0",
@@ -10054,14 +10100,14 @@
       "to_id": "532576fe14cb8bc3d398797ca58f08c0",
       "kind": "requires",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "typed CLI handlers delegate graph reads and writes to Store",
-      "evidence": "src/commands.rs:192-230 open/open_read remain the only store constructors; the new context/drive/hook handlers all delegate through them",
-      "confidence": 0.93,
+      "status": "passing",
+      "criterion": "Typed CLI handlers continue to delegate graph reads and writes through the Store boundary.",
+      "evidence": "src/commands.rs:192-195 resolves the graph root and opens Store through the shared helper; src/commands/intent.rs:844-905 obtains that Store and performs semantic-impact writes only through its typed methods.",
+      "confidence": 0.97,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:11:00.758Z",
-      "updated_at": "2026-07-19T05:25:48.664Z"
+      "updated_at": "2026-07-19T06:16:41.754Z"
     },
     {
       "id": "b937a0251723cab8ab606ea91999365f",
@@ -10525,14 +10571,14 @@
       "to_id": "4f3230038d7aeaa1b2780f45373a37df",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "Command-family flags and variants are typed subcommand enums.",
-      "evidence": "src/cli/subcommands.rs:1-7 — typed clap surface remains intact.",
+      "status": "passing",
+      "criterion": "Command-family flags and variants remain typed Clap subcommand enums.",
+      "evidence": "src/cli/subcommands.rs:1-10 defines the typed Clap surface and src/cli/subcommands.rs:10-140 declares IntentCmd variants, including the typed Impact arguments at lines 124-134.",
       "confidence": 0.98,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:09:26.475Z",
-      "updated_at": "2026-07-19T05:25:48.623Z"
+      "updated_at": "2026-07-19T06:16:41.851Z"
     },
     {
       "id": "cb2f877429474e87eda7f8be31db0640",
@@ -11495,6 +11541,21 @@
       "updated_at": ""
     },
     {
+      "id": "d467cc1267cd1c74c498ac817f8f3d02",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "The semantic-impact command has one live CLI declaration and one matching implementation, without duplicated logic.",
+      "evidence": "src/cli/subcommands.rs:124-134 declares Impact once; src/commands/intent.rs:84-89 dispatches it once; src/commands/intent.rs:823-906 implements the assessment in one function.",
+      "confidence": 0.96,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T06:15:56.560Z",
+      "updated_at": "2026-07-19T06:15:56.576Z"
+    },
+    {
       "id": "d489944dc971e8d75",
       "from_id": "d247f48b5ef8f0833",
       "to_id": "d105a1509d6314d8e",
@@ -12048,6 +12109,21 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d8e0bd1a47898c83cdc5ba3c9399a7b1",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "The semantic-impact command contains no literal credential, token, or key.",
+      "evidence": "src/commands/intent.rs:823-906 accepts only intent key, classification, and evidence and contains no secret-like literal assignment or private-key material.",
+      "confidence": 0.99,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T06:15:56.684Z",
+      "updated_at": "2026-07-19T06:15:56.688Z"
     },
     {
       "id": "d8f1334acbc839636",
@@ -13439,14 +13515,14 @@
       "to_id": "c376864697a2d5c05a6477aee89ec5ef",
       "kind": "requires",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "CLI import, export, export-check, and sync-refresh require deterministic derived rebuilds",
-      "evidence": "src/commands.rs:87-93 Export/Import/Sync arms dispatch to status_cmd; src/commands/status_cmd.rs:11-45 export --check compares against the deterministic travel export; sync refreshes it as a byproduct",
-      "confidence": 0.92,
+      "status": "passing",
+      "criterion": "CLI export, export-check, and sync-refresh remain dependent on deterministic derived rebuilds.",
+      "evidence": "src/commands.rs:87-94 dispatches Export, Import, and Sync to status handlers; src/commands/status_cmd.rs:11-44 checks export freshness through travel::export_is_fresh and writes exports through travel::export_to_file.",
+      "confidence": 0.96,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:13:44.522Z",
-      "updated_at": "2026-07-19T05:25:48.667Z"
+      "updated_at": "2026-07-19T06:16:41.786Z"
     },
     {
       "id": "e6051a3a9462e118b02b3d46b6d9d0bb",
@@ -13484,14 +13560,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "no dead or duplicated code ships in the grounded sources",
-      "evidence": "cargo clippy --all-targets with -D warnings green at the v0.25.0 release gate (catches dead_code); the single recorded suppression src/signal/debt/git.rs:45 is a parser-completeness field, not shipped dead logic",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "The symbol-name guard has no unreachable code and shares its gate between direct and batch intent creation.",
+      "evidence": "src/commands/intent.rs:165-232 defines the symbol-name gate once; src/commands/intent.rs:414-417 and src/commands/apply_cmd.rs:253-265 both call create_intent, avoiding duplicate gate implementations.",
+      "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.470Z",
-      "updated_at": "2026-07-19T05:25:48.660Z"
+      "updated_at": "2026-07-19T06:15:34.851Z"
     },
     {
       "id": "e65ab1fe5ff0ab9cfdb39078d5648e7f",
@@ -13679,14 +13755,14 @@
       "to_id": "31db92e6363213dec048ef1094a3bf9b",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "The intent command records one of the three evidence-backed semantic-impact classifications and only routes a ratified intent to human reconfirmation when its criterion changed.",
-      "evidence": "src/commands/intent.rs:833-905 validates the closed classification set, records asserted facets and a decision note, requires the builder lane, and stales ratification only in the criterion_changed branch; tests/ring14_ratify.rs:303-376 covers preserved and criterion_changed outcomes through the CLI.",
-      "confidence": 0.97,
+      "status": "passing",
+      "criterion": "Semantic-impact assessment records an evidence-backed classification and only routes changed criteria to human reconfirmation.",
+      "evidence": "src/commands/intent.rs:833-905 validates all three classifications, records asserted evidence, requires the builder lane, and stales ratification only for criterion_changed; tests/ring14_ratify.rs:303-376 exercises preserved and changed-criterion CLI outcomes.",
+      "confidence": 0.98,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:25:14.288Z",
-      "updated_at": "2026-07-19T05:25:48.654Z"
+      "updated_at": "2026-07-19T06:16:41.885Z"
     },
     {
       "id": "f098cbd13d2add50460e0d2291ef81d4",
@@ -13739,14 +13815,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "production paths return typed Results; no unwrap/expect/panic outside test modules",
-      "evidence": "test-region-aware sweep 2026-07-19: unwrap/expect/panic hits in src are confined to cfg(test) modules; sole production exception src/travel.rs:227 expect() on the registered-projection invariant (infallible by construction, message names the invariant); anyhow::Result is the default error type",
-      "confidence": 0.88,
+      "status": "passing",
+      "criterion": "Fallible work reached by the changed typed CLI dispatch is propagated to the command boundary.",
+      "evidence": "src/commands.rs:43-160 returns Result from each command arm; src/commands/intent.rs:24-97 delegates the Impact arm directly to its Result-returning handler, with no discarded Result, unwrap, or expect in the changed dispatch path.",
+      "confidence": 0.94,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:01:11.555Z",
-      "updated_at": "2026-07-19T05:25:48.662Z"
+      "updated_at": "2026-07-19T06:15:34.819Z"
     },
     {
       "id": "f2f9408e58474e4fabb62ba621ec772e",
@@ -14111,15 +14187,8 @@
       "target_id": "07b77a71169c6125f2412560e0472c4e",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":160,\"end\":235,\"hash\":\"85d150d354d48fef\"}]",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":165,\"end\":232,\"hash\":\"19e90819d32b9117\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "07b77a71169c6125f2412560e0472c4e",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/intent.rs changed — cited evidence intact, cheap re-confirm",
-      "truth_class": "derived"
     },
     {
       "target_id": "07da8fe4e63c14fc14008186a6127b0d",
@@ -14259,6 +14328,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/facets.rs\",\"start\":200,\"end\":311,\"hash\":\"b5fd10246db5ac7e\"},{\"file\":\"src/store/facets.rs\",\"start\":312,\"end\":391,\"hash\":\"209cdc5dbdf6e48c\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0e870fe33ac226977baf39d0f432aaff",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":833,\"end\":905,\"hash\":\"4ab7a0c0255e46d2\"},{\"file\":\"src/store/facets.rs\",\"start\":38,\"end\":50,\"hash\":\"877a5838c78a569c\"}]",
       "truth_class": "asserted"
     },
     {
@@ -14440,15 +14516,8 @@
       "target_id": "173cf34dc91fcbc5e91f7b1797e6a4e3",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/signal/debt/git.rs\",\"start\":45,\"end\":45,\"hash\":\"70eafe2946b59b10\"}]",
+      "value": "[{\"file\":\"src/cli/subcommands.rs\",\"start\":10,\"end\":140,\"hash\":\"4c82e7b3934ec1be\"},{\"file\":\"src/commands/intent.rs\",\"start\":24,\"end\":97,\"hash\":\"56dc34f75592edf2\"},{\"file\":\"src/commands.rs\",\"start\":43,\"end\":160,\"hash\":\"9f50815cd7eb069d\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "173cf34dc91fcbc5e91f7b1797e6a4e3",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "17767eb6b1298b024c3531048d8f70f1",
@@ -14636,15 +14705,8 @@
       "target_id": "1a65f78451f6e4a8bdf5e3906162b68f",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":160,\"end\":185,\"hash\":\"11a1152ae77ec082\"},{\"file\":\"src/commands.rs\",\"start\":39,\"end\":52,\"hash\":\"a5a37734948b8e9f\"}]",
+      "value": "[{\"file\":\"src/commands.rs\",\"start\":85,\"end\":85,\"hash\":\"9b93d77cca737a7e\"},{\"file\":\"src/commands/intent.rs\",\"start\":165,\"end\":182,\"hash\":\"70c428a8c482ea1f\"},{\"file\":\"src/cli/subcommands.rs\",\"start\":10,\"end\":140,\"hash\":\"4c82e7b3934ec1be\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "1a65f78451f6e4a8bdf5e3906162b68f",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "both relates endpoints changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
-      "truth_class": "derived"
     },
     {
       "target_id": "1a762d6a9153f77fcaa4c122d5fbf7b1",
@@ -14699,15 +14761,8 @@
       "target_id": "1b12b5bc3d26eb2a62978d08a541c628",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/store/derived.rs\",\"start\":148,\"end\":168,\"hash\":\"cfb3df0d0151a966\"},{\"file\":\"src/commands/status_cmd.rs\",\"start\":59,\"end\":59,\"hash\":\"3a7c2d44cf77cb97\"}]",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":165,\"end\":232,\"hash\":\"19e90819d32b9117\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "1b12b5bc3d26eb2a62978d08a541c628",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/intent.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "1ca18428ac1f063f10e18c22026840f5",
@@ -15032,6 +15087,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "28d606458b28f06efbc4a80c3e3e9298",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands.rs\",\"start\":192,\"end\":195,\"hash\":\"82ca9c1000cac04a\"},{\"file\":\"src/commands/intent.rs\",\"start\":844,\"end\":905,\"hash\":\"fe150eda89dfae3b\"}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "29341f92d2189ef75d54de98c9f5a869",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -15232,6 +15294,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands/capture_cmd.rs\",\"start\":10,\"end\":14,\"hash\":\"7f15f691c23c08e0\"},{\"file\":\"src/commands/capture_cmd.rs\",\"start\":34,\"end\":41,\"hash\":\"3f76f9ca1f554035\"},{\"file\":\"src/commands/capture_cmd.rs\",\"start\":52,\"end\":76,\"hash\":\"f8ba07d7184ad37e\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2ff5f135a91751d0b7edc029346639f4",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":833,\"end\":905,\"hash\":\"4ab7a0c0255e46d2\"}]",
       "truth_class": "asserted"
     },
     {
@@ -15616,15 +15685,8 @@
       "target_id": "4160a91c462f16b6e040f8e8698a8d4b",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/store/mod.rs\",\"start\":90,\"end\":90,\"hash\":\"1aecb5b5ee9b7eb2\"}]",
+      "value": "[{\"file\":\"src/commands.rs\",\"start\":192,\"end\":195,\"hash\":\"82ca9c1000cac04a\"},{\"file\":\"src/commands/intent.rs\",\"start\":24,\"end\":97,\"hash\":\"56dc34f75592edf2\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "4160a91c462f16b6e040f8e8698a8d4b",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "418b5ebb5624aafa8df49c4f826c1d20",
@@ -16722,15 +16784,8 @@
       "target_id": "5e7d9741cfa112c5ecca8a6055fefcc9",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/store/mod.rs\",\"start\":90,\"end\":90,\"hash\":\"1aecb5b5ee9b7eb2\"}]",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":165,\"end\":232,\"hash\":\"19e90819d32b9117\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "5e7d9741cfa112c5ecca8a6055fefcc9",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/intent.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "5e80d2c7470bf91b08e2ee9d8aacf57e",
@@ -17604,15 +17659,8 @@
       "target_id": "7def42dfb9f0bf971342bd6bab730f2c",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands.rs\",\"start\":144,\"end\":144,\"hash\":\"7c516bc6e4c508e5\"}]",
+      "value": "[{\"file\":\"src/commands.rs\",\"start\":143,\"end\":157,\"hash\":\"45dd8818fcdff178\"},{\"file\":\"src/commands.rs\",\"start\":85,\"end\":85,\"hash\":\"9b93d77cca737a7e\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "7def42dfb9f0bf971342bd6bab730f2c",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
-      "truth_class": "derived"
     },
     {
       "target_id": "7df67ffb425a80067c9bece582699dc4",
@@ -18066,15 +18114,8 @@
       "target_id": "8db06e73c0cdb43262b87dc4f7701066",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/store/derived.rs\",\"start\":148,\"end\":168,\"hash\":\"cfb3df0d0151a966\"},{\"file\":\"src/commands/status_cmd.rs\",\"start\":59,\"end\":59,\"hash\":\"3a7c2d44cf77cb97\"}]",
+      "value": "[{\"file\":\"src/cli/subcommands.rs\",\"start\":10,\"end\":140,\"hash\":\"4c82e7b3934ec1be\"},{\"file\":\"src/commands/intent.rs\",\"start\":24,\"end\":97,\"hash\":\"56dc34f75592edf2\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "8db06e73c0cdb43262b87dc4f7701066",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "8de0686b8a40a014cb5f82b0d7854c52",
@@ -18310,9 +18351,9 @@
     {
       "target_id": "9231ebd6f356da168f0f5b0cfac80f94",
       "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/intent.rs changed",
-      "truth_class": "derived"
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":165,\"end\":232,\"hash\":\"19e90819d32b9117\"}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "92501666d68b902c3b699a71b51e1a9c",
@@ -19368,7 +19409,7 @@
       "target_id": "ac22d50ed2605b4ef35e0dd96d734201",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/grammar.rs\",\"start\":70,\"end\":85,\"hash\":\"3ce5422d6b7b7684\"},{\"file\":\"src/commands/intent.rs\",\"start\":160,\"end\":210,\"hash\":\"665bff3f355607e1\"}]",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":165,\"end\":182,\"hash\":\"70c428a8c482ea1f\"},{\"file\":\"src/commands/intent.rs\",\"start\":183,\"end\":232,\"hash\":\"149f8ce6eaa1e27d\"}]",
       "truth_class": "asserted"
     },
     {
@@ -19377,13 +19418,6 @@
       "key": "locator",
       "value": "intent_add gate:136 -> looks_like_symbol:654",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "ac22d50ed2605b4ef35e0dd96d734201",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/intent.rs changed — cited evidence intact, cheap re-confirm",
-      "truth_class": "derived"
     },
     {
       "target_id": "ac317fd6f3a8d75f1c6fbc07ad296e4f",
@@ -19612,9 +19646,9 @@
     {
       "target_id": "b3d0529d9ba9bda33206e7914e258cf0",
       "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
-      "truth_class": "derived"
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/cli/subcommands.rs\",\"start\":10,\"end\":140,\"hash\":\"4c82e7b3934ec1be\"},{\"file\":\"src/commands/intent.rs\",\"start\":24,\"end\":97,\"hash\":\"56dc34f75592edf2\"}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "b56d433c98a18554691b97911c8f898f",
@@ -19676,15 +19710,8 @@
       "target_id": "b66de2e550d6449728ff4defc08a14d1",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands.rs\",\"start\":192,\"end\":230,\"hash\":\"c3cf4fd2be443d98\"}]",
+      "value": "[{\"file\":\"src/commands.rs\",\"start\":192,\"end\":195,\"hash\":\"82ca9c1000cac04a\"},{\"file\":\"src/commands/intent.rs\",\"start\":844,\"end\":905,\"hash\":\"fe150eda89dfae3b\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "b66de2e550d6449728ff4defc08a14d1",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
-      "truth_class": "derived"
     },
     {
       "target_id": "b937a0251723cab8ab606ea91999365f",
@@ -20383,7 +20410,7 @@
       "target_id": "cabb63ce7cb3e71c00a8865082a17991",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/cli/subcommands.rs\",\"start\":1,\"end\":7,\"hash\":\"3cc8235a589fdc90\"}]",
+      "value": "[{\"file\":\"src/cli/subcommands.rs\",\"start\":1,\"end\":10,\"hash\":\"d9f2c1194758acff\"},{\"file\":\"src/cli/subcommands.rs\",\"start\":10,\"end\":140,\"hash\":\"4c82e7b3934ec1be\"}]",
       "truth_class": "asserted"
     },
     {
@@ -20392,13 +20419,6 @@
       "key": "locator",
       "value": "enum IntentCmd",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "cabb63ce7cb3e71c00a8865082a17991",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — cited evidence intact, cheap re-confirm",
-      "truth_class": "derived"
     },
     {
       "target_id": "cb2f877429474e87eda7f8be31db0640",
@@ -20698,7 +20718,7 @@
       "target_id": "d01dff0e9dd4e989c",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-18T20:41:58.119Z\",\"hash\":\"ede02095b9081c09\",\"metric\":1187,\"reason\":\"The file is a catch-all of unrelated command-family clap enums (Intent, Codefile, Edge, Journey, Validation, Policy, Hook, Drive and more); split family definitions into dedicated cli modules while retaining the typed surface re-exports.\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:17:31.526Z\",\"hash\":\"7751892cccf7460e\",\"metric\":1198,\"reason\":\"src/cli/subcommands.rs has 28 unrelated public command enums across intent, graph, inbox, proof, journeys, policy, wiki, and bootstrap (lines 11-1198). Split command-family enums into focused cli modules while keeping a small re-exporting root.\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
@@ -20747,7 +20767,7 @@
       "target_id": "d1265b27311107df2",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-09T05:41:32.658Z\",\"hash\":\"\",\"reason\":\"undeclared multi-owner file — record relates between co-owners or split\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:19:05.573Z\",\"hash\":\"\",\"reason\":\"src/commands/discover_cmd.rs:1-160 is one read-only discovery surface: find_cmd selects exact/filter/keyword paths, resolve_find_filters supplies shared predicates, and find_exact renders the same search model. Its five owners are facets of one find behavior.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -21024,6 +21044,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d467cc1267cd1c74c498ac817f8f3d02",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/cli/subcommands.rs\",\"start\":124,\"end\":134,\"hash\":\"15b466f76ab9e3f8\"},{\"file\":\"src/commands/intent.rs\",\"start\":84,\"end\":89,\"hash\":\"1de213241b92ff55\"},{\"file\":\"src/commands/intent.rs\",\"start\":823,\"end\":906,\"hash\":\"f322ad3843ecca03\"}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d4817cbb6764c8867",
       "target_kind": "node",
       "key": "adjudication",
@@ -21174,7 +21201,7 @@
       "target_id": "d6012016d50d667b3",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-18T19:16:03.083Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"The user-visible ratify-queue behavior has passing unit validation but no L5/L6 journey proof; add a repo-native journey that observes unratified routing and its human gate.\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:19:05.726Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"The journey axis is deliberately waived for human-only ratify routing: a non-TTY journey must be rejected and an LLM cannot satisfy the typed challenge honestly. ring14 proves fail-closed queue routing; a real journey remains a human-terminal operation.\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -21188,7 +21215,7 @@
       "target_id": "d649f89a4a1409fac",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-19T02:43:43.644Z\",\"hash\":\"\",\"reason\":\"src/commands/diagnostics_cmd.rs combines several distinct command surfaces: signals/debt/finding adjudication (lines 14-468), integrity/coverage/ignore/scan/completeness/calibration/thresholds (470-958), and portable policy plus ratification-policy authoring (959-1154). Split policy commands from diagnostic/quality commands, preserving shared finding helpers where needed.\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:19:05.672Z\",\"hash\":\"\",\"reason\":\"Confirmed diagnostics_cmd mixes diagnostics and policy authoring. Extracting policy commands is deferred to a dedicated behavior-preserving module move so shared finding/scan helpers can be preserved and separately tested; the required split remains explicitly tracked.\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -21216,7 +21243,7 @@
       "target_id": "d6a3bcd44671a3b56",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-09T05:41:32.666Z\",\"hash\":\"\",\"reason\":\"undeclared multi-owner file — record relates between co-owners or split\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:19:05.617Z\",\"hash\":\"\",\"reason\":\"src/workitem/queues.rs:1-180 and its named *_item functions implement one queue-routing concern: shared WorkItem selection predicates and contracts across modes. Its four owners are router behaviors, not unrelated module responsibilities.\",\"verdict\":\"justified\"}",
       "truth_class": "asserted"
     },
     {
@@ -21293,7 +21320,7 @@
       "target_id": "d7bd6b25386332693",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-19T02:43:35.249Z\",\"hash\":\"\",\"reason\":\"src/cli/subcommands.rs is a catch-all collection of unrelated clap enum families: graph primitives (Intent/Codefile/Edge), collaboration (Inbox/Question/Note/Task), proof/quality (Rule/Validation/Scan), journeys/drive/hooks, configuration/policy, wiki, and bootstrap span lines 11-1187. Split command-family definitions into focused CLI modules while retaining a small dispatch-facing root.\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:19:05.645Z\",\"hash\":\"\",\"reason\":\"Confirmed catch-all CLI enum file (28 unrelated command families, src/cli/subcommands.rs:11-1198). Behavior-preserving module extraction is deferred to a dedicated refactor packet because it changes public module layout across the command surface; the required split remains explicitly tracked.\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -21342,7 +21369,7 @@
       "target_id": "d848646b057145355",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-18T19:16:03.072Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"The user-visible ratification operation has passing unit validation but no L5/L6 journey proof; add a repo-native journey that executes the human ratify boundary and asserts its visible result.\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:19:05.698Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"The journey axis is deliberately waived for this TTY+typed human ratification boundary: an automated journey would fake the human-presence proof INV-8 requires. The existing ring14 integration suite remains the executable enforcement proof; a real journey requires a human terminal session.\",\"verdict\":\"deferred\"}",
       "truth_class": "asserted"
     },
     {
@@ -21364,6 +21391,13 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T05:01:05.996Z\",\"hash\":\"\",\"metric\":5,\"reason\":\"journey axis waived or owned by elaborate; not detector triage\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d8e0bd1a47898c83cdc5ba3c9399a7b1",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":823,\"end\":906,\"hash\":\"f322ad3843ecca03\"}]",
       "truth_class": "asserted"
     },
     {
@@ -21587,7 +21621,7 @@
       "target_id": "dbfa9702517d16361",
       "target_kind": "node",
       "key": "adjudication",
-      "value": "{\"at\":\"2026-07-19T02:44:59.138Z\",\"hash\":\"5c01cf6df3f92ab2\",\"metric\":6,\"reason\":\"intent_ratify at src/commands/intent.rs:273-280 accepts six parameters and mixes command selection (key/all/by_policy), evidence, graph, and rendering. Introduce a ratification request/options struct that validates the mutually exclusive modes before dispatching to direct or policy ratification.\",\"verdict\":\"needed\"}",
+      "value": "{\"at\":\"2026-07-19T06:17:38.197Z\",\"hash\":\"0e039476cc6a2f8a\",\"metric\":6,\"reason\":\"src/commands/intent.rs:278-344 mixes graph resolution, manual versus policy mode selection, target collection, human-presence challenges, durable ratification writes, and rendering across six parameters. Introduce a RatifyRequest/options struct and separate target selection from execution.\",\"verdict\":\"needed\"}",
       "truth_class": "asserted"
     },
     {
@@ -22098,15 +22132,8 @@
       "target_id": "e5c0e982e518d28fe8a95dcecd8b360e",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands.rs\",\"start\":87,\"end\":93,\"hash\":\"640cb7a7f694b6cc\"},{\"file\":\"src/commands/status_cmd.rs\",\"start\":11,\"end\":45,\"hash\":\"4d3cdfee8573ed61\"}]",
+      "value": "[{\"file\":\"src/commands.rs\",\"start\":87,\"end\":94,\"hash\":\"530043573bf97824\"},{\"file\":\"src/commands/status_cmd.rs\",\"start\":11,\"end\":44,\"hash\":\"38bc2097c818c288\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "e5c0e982e518d28fe8a95dcecd8b360e",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
-      "truth_class": "derived"
     },
     {
       "target_id": "e6051a3a9462e118b02b3d46b6d9d0bb",
@@ -22126,15 +22153,8 @@
       "target_id": "e65749710fe09b79dbc7d1901387cf8d",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/signal/debt/git.rs\",\"start\":45,\"end\":45,\"hash\":\"70eafe2946b59b10\"}]",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":165,\"end\":232,\"hash\":\"19e90819d32b9117\"},{\"file\":\"src/commands/intent.rs\",\"start\":414,\"end\":417,\"hash\":\"d1a20838131ae641\"},{\"file\":\"src/commands/apply_cmd.rs\",\"start\":253,\"end\":265,\"hash\":\"33aa3b7809df2f83\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "e65749710fe09b79dbc7d1901387cf8d",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "content hash of src/commands/intent.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "e65ab1fe5ff0ab9cfdb39078d5648e7f",
@@ -22235,13 +22255,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "efc0bc12f2b8659e4fbaf9b44003036a",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'intent_impact' in src/commands/intent.rs changed — cited evidence intact, cheap re-confirm",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "f098cbd13d2add50460e0d2291ef81d4",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -22259,15 +22272,8 @@
       "target_id": "f22ee64afc8319d5a3a5a7b60f7995be",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/travel.rs\",\"start\":227,\"end\":227,\"hash\":\"4bfc118647a83fde\"}]",
+      "value": "[{\"file\":\"src/commands.rs\",\"start\":43,\"end\":160,\"hash\":\"9f50815cd7eb069d\"},{\"file\":\"src/commands/intent.rs\",\"start\":24,\"end\":97,\"hash\":\"56dc34f75592edf2\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "f22ee64afc8319d5a3a5a7b60f7995be",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
-      "truth_class": "derived"
     },
     {
       "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
