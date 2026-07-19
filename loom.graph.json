@@ -78,6 +78,20 @@
       "updated_at": "2026-07-18T20:06:57.956Z"
     },
     {
+      "id": "087160fe86b3a014c95a560e5d62be21",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived journey: A CLI journey cannot honestly automate the required TTY and typed human challenge without faking human presence (INV-8); tests/ring14_ratify.rs exercises the enforcement paths, while an actual ratification remains a human terminal session.",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "0950a847d7afcc73ed56c8e21a6607af"
+      },
+      "created_at": "2026-07-19T05:28:32.861Z",
+      "updated_at": "2026-07-19T05:28:32.861Z"
+    },
+    {
       "id": "0950a847d7afcc73ed56c8e21a6607af",
       "type": "intent",
       "name": "an operator ratifies an intent as wanted",
@@ -489,7 +503,7 @@
       "type": "validation",
       "name": "ring14 ratify presence gate",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring14_ratify",
@@ -497,7 +511,7 @@
         "type": "test"
       },
       "created_at": "2026-07-18T19:43:15.197Z",
-      "updated_at": "2026-07-18T19:43:15.197Z"
+      "updated_at": "2026-07-19T05:28:58.807Z"
     },
     {
       "id": "25b69d1c890230de4defece741d73002",
@@ -1592,6 +1606,20 @@
       "updated_at": "2026-07-09T19:01:15.730Z"
     },
     {
+      "id": "69250f35515395983f78b1894ca9e5c0",
+      "type": "validation",
+      "name": "semantic impact preserves or routes reconfirmation",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring14_ratify semantic_impact_preserves_or_routes_human_reconfirmation",
+        "type": "test"
+      },
+      "created_at": "2026-07-19T05:25:24.149Z",
+      "updated_at": "2026-07-19T05:25:57.525Z"
+    },
+    {
       "id": "692f3330b4b5e92212ed1b0e495f39e7",
       "type": "note",
       "name": "note:ratify",
@@ -1903,7 +1931,7 @@
         "type": "test"
       },
       "created_at": "2026-07-09T19:10:16.792Z",
-      "updated_at": "2026-07-18T20:40:00.120Z"
+      "updated_at": "2026-07-19T05:28:05.295Z"
     },
     {
       "id": "7c1af63abfd3c07000aa476907cb6bac",
@@ -2367,6 +2395,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.633Z",
       "updated_at": "2026-07-09T04:59:38.633Z"
+    },
+    {
+      "id": "9509e8ece3ccefb2399968b3404e565c",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: Added builder-lane semantic impact assessments with evidence; changed criteria stale wantedness for human reconfirmation.",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de"
+      },
+      "created_at": "2026-07-19T05:25:14.318Z",
+      "updated_at": "2026-07-19T05:25:14.318Z"
     },
     {
       "id": "951dbe2556ac29565719436e4308f65c",
@@ -3206,7 +3248,7 @@
       "type": "validation",
       "name": "ring16 policy ratify",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring16_policy_ratify",
@@ -3214,7 +3256,7 @@
         "type": "test"
       },
       "created_at": "2026-07-18T19:43:43.822Z",
-      "updated_at": "2026-07-18T19:43:43.822Z"
+      "updated_at": "2026-07-19T05:29:00.088Z"
     },
     {
       "id": "c4ae46671fbfda6da41d3d5a3bbdacb6",
@@ -3416,7 +3458,7 @@
         "type": "test"
       },
       "created_at": "2026-07-09T05:20:44.055Z",
-      "updated_at": "2026-07-18T20:40:04.689Z"
+      "updated_at": "2026-07-19T05:28:10.989Z"
     },
     {
       "id": "ce766bf67aec8e9934902eca0fef9708",
@@ -3463,12 +3505,12 @@
       "id": "d01dff0e9dd4e989c",
       "type": "finding",
       "name": "src/cli/subcommands.rs is oversized",
-      "description": "1187 lines (> 1110)",
+      "description": "1198 lines (> 1110)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
-        "metric": 1187,
+        "metric": 1198,
         "symbol": ""
       },
       "created_at": "",
@@ -3639,7 +3681,7 @@
     {
       "id": "d159e84bdc686eb00",
       "type": "finding",
-      "name": "src/commands/intent.rs is realized by 4 intents with no recorded relationship connecting them",
+      "name": "src/commands/intent.rs is realized by 5 intents with no recorded relationship connecting them",
       "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
       "status": "tangled_file",
       "truth_class": "derived",
@@ -5720,6 +5762,20 @@
       "updated_at": "2026-07-09T20:30:12.594Z"
     },
     {
+      "id": "f29b40dc9311b41442b73364705f545c",
+      "type": "note",
+      "name": "note:decision",
+      "description": "waived journey: The ratify queue is intentionally human-presence work: a non-TTY journey must be rejected and a TTY challenge cannot be automated by an LLM without violating INV-8. tests/ring14_ratify.rs:127-171 proves fail-closed wanted-rung and human-only queue routing.",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "e56229425a63eeb67ae20ca43cf10c1b"
+      },
+      "created_at": "2026-07-19T05:28:42.682Z",
+      "updated_at": "2026-07-19T05:28:42.682Z"
+    },
+    {
       "id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "type": "intent",
       "name": "changing a file re-opens the asserted edges grounded in it",
@@ -5858,13 +5914,13 @@
       "type": "intent",
       "name": "the LLM classifies semantic impact before human intent reconfirmation",
       "description": "after a code change, the LLM determines with evidence whether behavior is preserved, behavior changed within the same intent, or the intent criterion changed; preserved behavior is re-affirmed without human reconfirmation, while a changed criterion routes to the human",
-      "status": "planned",
+      "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature"
       },
       "created_at": "2026-07-18T19:00:39.616Z",
-      "updated_at": "2026-07-18T19:00:39.616Z"
+      "updated_at": "2026-07-19T05:25:14.317Z"
     },
     {
       "id": "fc1ddfad97e73ae1ba5fceb6e0f42d32",
@@ -6092,14 +6148,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "fallible operations in the symbol-pattern intent gate propagate or explicitly handle failure",
       "evidence": "src/commands/intent.rs:160-235 — validation and Store writes use Result propagation with ?; inspected unwrap/expect uses are static invariant/panic assertions rather than discarded Result; no ignored Result found",
       "confidence": 0.84,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.724Z",
-      "updated_at": "2026-07-18T20:41:53.793Z"
+      "updated_at": "2026-07-19T05:25:48.659Z"
     },
     {
       "id": "07da8fe4e63c14fc14008186a6127b0d",
@@ -6437,14 +6493,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no dead or duplicated code ships in the grounded sources",
       "evidence": "cargo clippy --all-targets with -D warnings green at the v0.25.0 release gate (catches dead_code); the single recorded suppression src/signal/debt/git.rs:45 is a parser-completeness field, not shipped dead logic",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:41:55.756Z",
-      "updated_at": "2026-07-19T05:20:05.397Z"
+      "updated_at": "2026-07-19T05:25:48.661Z"
     },
     {
       "id": "182371b9473cdb9de8eef2bcd1dec9d6",
@@ -6527,7 +6583,7 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "relates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "The intent-add symbol-name guard is a CLI behavior and is conceptually related to typed command dispatch.",
       "evidence": "src/commands/intent.rs:160-185 — create_intent enforces the symbol-name gate; src/commands.rs:39-52 — typed Command::Intent dispatch reaches the intent handler.",
       "confidence": 0.82,
@@ -6537,7 +6593,7 @@
       ],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:11:00.768Z",
-      "updated_at": "2026-07-19T02:39:23.613Z"
+      "updated_at": "2026-07-19T05:25:48.669Z"
     },
     {
       "id": "1afddf413bac99f252148b95e034f6d4",
@@ -6560,14 +6616,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no user input reaches SQL or shell without parameterization or quarantine",
       "evidence": "src/store/derived.rs:148-168 dynamic SQL appends only fixed clauses with ?N placeholders bound via ToSql; params! used at 50+ sites across the store; imported validation commands are quarantined before any execution (src/commands/status_cmd.rs:59)",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.416Z",
-      "updated_at": "2026-07-19T05:20:05.431Z"
+      "updated_at": "2026-07-19T05:25:48.659Z"
     },
     {
       "id": "1b2cc5dc66ab0b4e8e77a78ac1e19aee",
@@ -7253,14 +7309,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "files, locks, connections, and child processes are released deterministically",
       "evidence": "RAII throughout: the SQLite Connection and advisory lock File release on Drop (Store holds _lock: File in src/store/mod.rs:90); journal appends open-write-close per call; journey and scan child processes are waited on by blocking runners",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:11:36.517Z",
-      "updated_at": "2026-07-19T05:20:05.569Z"
+      "updated_at": "2026-07-19T05:25:48.662Z"
     },
     {
       "id": "425bc1e094dbb9dc98ab74a62e7025df",
@@ -8060,12 +8116,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proof",
-      "evidence": "observed run: cargo test --test ring5 advertised_global_json_read_commands_parse_as_json -q, 1 passed; 0 failed; 2026-07-19",
+      "evidence": "Observed 2026-07-19: cargo test --test ring5 advertised_global_json_read_commands_parse_as_json -q — 1 passed; 0 failed; 0 ignored; 0 measured; 65 filtered out.",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:10:16.793Z",
-      "updated_at": "2026-07-18T20:40:00.119Z"
+      "updated_at": "2026-07-19T05:28:05.293Z"
     },
     {
       "id": "5e7d9741cfa112c5ecca8a6055fefcc9",
@@ -8073,14 +8129,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "files, locks, connections, and child processes are released deterministically",
       "evidence": "RAII throughout: the SQLite Connection and advisory lock File release on Drop (Store holds _lock: File in src/store/mod.rs:90); journal appends open-write-close per call; journey and scan child processes are waited on by blocking runners",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.960Z",
-      "updated_at": "2026-07-19T05:20:05.623Z"
+      "updated_at": "2026-07-19T05:25:48.659Z"
     },
     {
       "id": "5e80d2c7470bf91b08e2ee9d8aacf57e",
@@ -8753,14 +8809,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "requires",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof execution is reachable only through typed Validation and Journey commands",
       "evidence": "src/commands.rs:144,157 route Command::Validation and Command::Journey to proof_cmd/journey dispatchers; the new context/drive/hook commands add no proof-execution path",
       "confidence": 0.93,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:11:00.765Z",
-      "updated_at": "2026-07-19T05:18:23.384Z"
+      "updated_at": "2026-07-19T05:25:48.664Z"
     },
     {
       "id": "7e86a7b1db8eede1f915f6c5ceb37f11",
@@ -8881,6 +8937,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.091Z",
       "updated_at": "2026-07-19T05:20:06.093Z"
+    },
+    {
+      "id": "84b3026d739bd086168cb745511abbbd",
+      "from_id": "69250f35515395983f78b1894ca9e5c0",
+      "to_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "Observed after sync on 2026-07-19: cargo test --test ring14_ratify semantic_impact_preserves_or_routes_human_reconfirmation — 1 passed; 0 failed; 8 filtered out.",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T05:25:24.150Z",
+      "updated_at": "2026-07-19T05:25:57.523Z"
     },
     {
       "id": "86f9306be6902b05965621bca872c1aa",
@@ -9023,14 +9094,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no user input reaches SQL or shell without parameterization or quarantine",
       "evidence": "src/store/derived.rs:148-168 dynamic SQL appends only fixed clauses with ?N placeholders bound via ToSql; params! used at 50+ sites across the store; imported validation commands are quarantined before any execution (src/commands/status_cmd.rs:59)",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:23:48.447Z",
-      "updated_at": "2026-07-19T05:20:05.749Z"
+      "updated_at": "2026-07-19T05:25:48.662Z"
     },
     {
       "id": "8e632c3c7aca8f98015934bc28e2108e",
@@ -9158,14 +9229,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no hardcoded credentials or secrets in the grounded sources",
       "evidence": "repo-wide sweep 2026-07-19: grep for api_key/secret/password/token literal assignments across src returned zero hits; loom is a local CLI with no credential surface",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.210Z",
-      "updated_at": "2026-07-19T05:20:05.768Z"
+      "updated_at": "2026-07-19T05:25:48.660Z"
     },
     {
       "id": "92501666d68b902c3b699a71b51e1a9c",
@@ -9265,12 +9336,12 @@
       "truth_class": "asserted",
       "status": "passing",
       "criterion": "proof",
-      "evidence": "observed run: cargo test --test ring9 -q, 22 passed; 0 failed; 2026-07-19",
+      "evidence": "Observed 2026-07-19: cargo test --test ring9 -q — 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out.",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:20:44.056Z",
-      "updated_at": "2026-07-18T20:40:04.688Z"
+      "updated_at": "2026-07-19T05:28:10.988Z"
     },
     {
       "id": "96a7d0c6a179521251f9d6c986d33627",
@@ -9758,14 +9829,14 @@
       "to_id": "31db92e6363213dec048ef1094a3bf9b",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "loom intent add with a symbol-pattern name and no --allow-symbol-name is rejected",
       "evidence": "src/grammar.rs:70-85 looks_like_symbol (moved from intent.rs, re-exported); src/commands/intent.rs:160-210 create_intent still rejects symbol names unless --allow-symbol-name plus a behavioral description are both given",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.005Z",
-      "updated_at": "2026-07-19T05:18:23.387Z"
+      "updated_at": "2026-07-19T05:25:48.649Z"
     },
     {
       "id": "ac317fd6f3a8d75f1c6fbc07ad296e4f",
@@ -9938,14 +10009,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no hardcoded credentials or secrets in the grounded sources",
       "evidence": "repo-wide sweep 2026-07-19: grep for api_key/secret/password/token literal assignments across src returned zero hits; loom is a local CLI with no credential surface",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:13:51.604Z",
-      "updated_at": "2026-07-19T05:20:05.839Z"
+      "updated_at": "2026-07-19T05:25:48.662Z"
     },
     {
       "id": "b49d6810decf4dbcfc55bf8d934653a0",
@@ -9983,14 +10054,14 @@
       "to_id": "532576fe14cb8bc3d398797ca58f08c0",
       "kind": "requires",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "typed CLI handlers delegate graph reads and writes to Store",
       "evidence": "src/commands.rs:192-230 open/open_read remain the only store constructors; the new context/drive/hook handlers all delegate through them",
       "confidence": 0.93,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:11:00.758Z",
-      "updated_at": "2026-07-19T05:18:23.387Z"
+      "updated_at": "2026-07-19T05:25:48.664Z"
     },
     {
       "id": "b937a0251723cab8ab606ea91999365f",
@@ -10454,14 +10525,14 @@
       "to_id": "4f3230038d7aeaa1b2780f45373a37df",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "Command-family flags and variants are typed subcommand enums.",
       "evidence": "src/cli/subcommands.rs:1-7 — typed clap surface remains intact.",
       "confidence": 0.98,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:09:26.475Z",
-      "updated_at": "2026-07-19T02:39:41.613Z"
+      "updated_at": "2026-07-19T05:25:48.623Z"
     },
     {
       "id": "cb2f877429474e87eda7f8be31db0640",
@@ -13368,14 +13439,14 @@
       "to_id": "c376864697a2d5c05a6477aee89ec5ef",
       "kind": "requires",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "CLI import, export, export-check, and sync-refresh require deterministic derived rebuilds",
       "evidence": "src/commands.rs:87-93 Export/Import/Sync arms dispatch to status_cmd; src/commands/status_cmd.rs:11-45 export --check compares against the deterministic travel export; sync refreshes it as a byproduct",
       "confidence": 0.92,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:13:44.522Z",
-      "updated_at": "2026-07-19T05:18:23.391Z"
+      "updated_at": "2026-07-19T05:25:48.667Z"
     },
     {
       "id": "e6051a3a9462e118b02b3d46b6d9d0bb",
@@ -13413,14 +13484,14 @@
       "to_id": "3d4a5253cf790a31d5e232539640f39e",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "no dead or duplicated code ships in the grounded sources",
       "evidence": "cargo clippy --all-targets with -D warnings green at the v0.25.0 release gate (catches dead_code); the single recorded suppression src/signal/debt/git.rs:45 is a parser-completeness field, not shipped dead logic",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.470Z",
-      "updated_at": "2026-07-19T05:20:05.889Z"
+      "updated_at": "2026-07-19T05:25:48.660Z"
     },
     {
       "id": "e65ab1fe5ff0ab9cfdb39078d5648e7f",
@@ -13603,6 +13674,21 @@
       "updated_at": "2026-07-09T05:18:05.475Z"
     },
     {
+      "id": "efc0bc12f2b8659e4fbaf9b44003036a",
+      "from_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
+      "to_id": "31db92e6363213dec048ef1094a3bf9b",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "needs_reverification",
+      "criterion": "The intent command records one of the three evidence-backed semantic-impact classifications and only routes a ratified intent to human reconfirmation when its criterion changed.",
+      "evidence": "src/commands/intent.rs:833-905 validates the closed classification set, records asserted facets and a decision note, requires the builder lane, and stales ratification only in the criterion_changed branch; tests/ring14_ratify.rs:303-376 covers preserved and criterion_changed outcomes through the CLI.",
+      "confidence": 0.97,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T05:25:14.288Z",
+      "updated_at": "2026-07-19T05:25:48.654Z"
+    },
+    {
       "id": "f098cbd13d2add50460e0d2291ef81d4",
       "from_id": "d23f5c463fb1e4861",
       "to_id": "cde02370d4a4922184b5c0e523d12367",
@@ -13653,14 +13739,14 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "production paths return typed Results; no unwrap/expect/panic outside test modules",
       "evidence": "test-region-aware sweep 2026-07-19: unwrap/expect/panic hits in src are confined to cfg(test) modules; sole production exception src/travel.rs:227 expect() on the registered-projection invariant (infallible by construction, message names the invariant); anyhow::Result is the default error type",
       "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:01:11.555Z",
-      "updated_at": "2026-07-19T05:20:05.924Z"
+      "updated_at": "2026-07-19T05:25:48.662Z"
     },
     {
       "id": "f2f9408e58474e4fabb62ba621ec772e",
@@ -14029,6 +14115,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "07b77a71169c6125f2412560e0472c4e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed — cited evidence intact, cheap re-confirm",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "07da8fe4e63c14fc14008186a6127b0d",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -14089,6 +14182,13 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0950a847d7afcc73ed56c8e21a6607af",
+      "target_kind": "node",
+      "key": "waiver:journey",
+      "value": "A CLI journey cannot honestly automate the required TTY and typed human challenge without faking human presence (INV-8); tests/ring14_ratify.rs exercises the enforcement paths, while an actual ratification remains a human terminal session.",
       "truth_class": "asserted"
     },
     {
@@ -14344,6 +14444,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "173cf34dc91fcbc5e91f7b1797e6a4e3",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "17767eb6b1298b024c3531048d8f70f1",
       "target_kind": "node",
       "key": "content_hash",
@@ -14533,6 +14640,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "1a65f78451f6e4a8bdf5e3906162b68f",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "both relates endpoints changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "1a762d6a9153f77fcaa4c122d5fbf7b1",
       "target_kind": "node",
       "key": "content_hash",
@@ -14587,6 +14701,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/derived.rs\",\"start\":148,\"end\":168,\"hash\":\"cfb3df0d0151a966\"},{\"file\":\"src/commands/status_cmd.rs\",\"start\":59,\"end\":59,\"hash\":\"3a7c2d44cf77cb97\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "1b12b5bc3d26eb2a62978d08a541c628",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "1ca18428ac1f063f10e18c22026840f5",
@@ -15117,7 +15238,7 @@
       "target_id": "31db92e6363213dec048ef1094a3bf9b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5c01cf6df3f92ab2",
+      "value": "0e039476cc6a2f8a",
       "truth_class": "derived"
     },
     {
@@ -15138,7 +15259,7 @@
       "target_id": "31db92e6363213dec048ef1094a3bf9b",
       "target_kind": "node",
       "key": "loc",
-      "value": "865",
+      "value": "956",
       "truth_class": "derived"
     },
     {
@@ -15152,14 +15273,14 @@
       "target_id": "31db92e6363213dec048ef1094a3bf9b",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "22",
+      "value": "23",
       "truth_class": "derived"
     },
     {
       "target_id": "31db92e6363213dec048ef1094a3bf9b",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"IntentAddArgs\":\"2c6b9893bd9fce91\",\"IntentUpdateArgs\":\"00c8129e85ea0ab0\",\"check_aspect\":\"45deecfa3f335137\",\"check_level\":\"5b540e408921bfdf\",\"check_lifecycle\":\"f521ca2e38f0cf2c\",\"check_visibility\":\"2f3a22c27f205223\",\"create_intent\":\"58d61cefbd502bdc\",\"dispatch\":\"00a2eda0d288954a\",\"intent_add\":\"724517823d6b499f\",\"intent_confirm\":\"b76bcdb43ecb55ed\",\"intent_list\":\"16d8c47a2f568698\",\"intent_ratify\":\"1ca88af59b5f7081\",\"intent_ratify_by_policy\":\"4da249f68b559816\",\"intent_reactivate\":\"6a0a68566971bdba\",\"intent_remove\":\"8cd7f18132a83613\",\"intent_retire\":\"79c644668586bb34\",\"intent_show\":\"e4c129235aad3c3a\",\"intent_tag\":\"192715568686afbe\",\"intent_update\":\"d4e08e10bbaf8817\",\"intent_waive\":\"cd065c8b02ae98db\",\"is_ratified\":\"9d3e1961d16635c0\",\"tag_intent\":\"80e3d9f4dd36a493\"}",
+      "value": "{\"IntentAddArgs\":\"2c6b9893bd9fce91\",\"IntentUpdateArgs\":\"00c8129e85ea0ab0\",\"check_aspect\":\"45deecfa3f335137\",\"check_level\":\"5b540e408921bfdf\",\"check_lifecycle\":\"f521ca2e38f0cf2c\",\"check_visibility\":\"2f3a22c27f205223\",\"create_intent\":\"58d61cefbd502bdc\",\"dispatch\":\"eae2f4a3d97a77af\",\"intent_add\":\"724517823d6b499f\",\"intent_confirm\":\"b76bcdb43ecb55ed\",\"intent_impact\":\"8716cfd06cf5cb00\",\"intent_list\":\"16d8c47a2f568698\",\"intent_ratify\":\"1ca88af59b5f7081\",\"intent_ratify_by_policy\":\"4da249f68b559816\",\"intent_reactivate\":\"6a0a68566971bdba\",\"intent_remove\":\"8cd7f18132a83613\",\"intent_retire\":\"79c644668586bb34\",\"intent_show\":\"e4c129235aad3c3a\",\"intent_tag\":\"192715568686afbe\",\"intent_update\":\"d4e08e10bbaf8817\",\"intent_waive\":\"cd065c8b02ae98db\",\"is_ratified\":\"9d3e1961d16635c0\",\"tag_intent\":\"80e3d9f4dd36a493\"}",
       "truth_class": "derived"
     },
     {
@@ -15497,6 +15618,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/mod.rs\",\"start\":90,\"end\":90,\"hash\":\"1aecb5b5ee9b7eb2\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "4160a91c462f16b6e040f8e8698a8d4b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "418b5ebb5624aafa8df49c4f826c1d20",
@@ -16048,7 +16176,7 @@
       "target_id": "4f3230038d7aeaa1b2780f45373a37df",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ede02095b9081c09",
+      "value": "7751892cccf7460e",
       "truth_class": "derived"
     },
     {
@@ -16069,7 +16197,7 @@
       "target_id": "4f3230038d7aeaa1b2780f45373a37df",
       "target_kind": "node",
       "key": "loc",
-      "value": "1187",
+      "value": "1198",
       "truth_class": "derived"
     },
     {
@@ -16090,7 +16218,7 @@
       "target_id": "4f3230038d7aeaa1b2780f45373a37df",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"BootstrapCmd\":\"def1bad12c014cb1\",\"CodefileCmd\":\"c223817d7265c2fb\",\"DriveCmd\":\"fb2b061c94a8400f\",\"EdgeCmd\":\"71260bab4e379cf7\",\"FindingCmd\":\"1567b411c769996d\",\"GraphCmd\":\"3cc9d53f6ca0ec7f\",\"HookCmd\":\"294991f976dc9f58\",\"HypothesisCmd\":\"bcc2206e7257bc7f\",\"IgnoreCmd\":\"f9c39cc52fcc57fa\",\"InboxCmd\":\"b997abc467ae3cf8\",\"IntentCmd\":\"95962b5fdab2180c\",\"IntentTagCmd\":\"2fd96d64a986e780\",\"JourneyCmd\":\"c4c4dee1dc40927d\",\"JourneyCoverageCmd\":\"05c37118ef4bb96c\",\"JourneyInvariantCmd\":\"d764bb7cb40fc699\",\"LayerCmd\":\"2177d28d2dd26cb2\",\"NoteCmd\":\"56ab85f4437638a2\",\"PolicyCmd\":\"e364f24844539faa\",\"ProposalCmd\":\"079bec33ddce4e30\",\"ProposalItemCmd\":\"6a7205b69eb23e74\",\"QuestionCmd\":\"97939fb566387021\",\"RatificationPolicyCmd\":\"03e597f1c750d158\",\"RuleCmd\":\"ee8bb1c371b35252\",\"ScanCmd\":\"d77d05fdc1f6d3c9\",\"ScanFormatArg\":\"984d1856f8a626dc\",\"SurfaceCmd\":\"e44ef76f57090617\",\"TaskCmd\":\"d7fdf74b6556bfd7\",\"ThresholdCmd\":\"5a60d2004b86f5a7\",\"ValidationCmd\":\"3d13aa25c6b7f07e\",\"VocabCmd\":\"4b46bd49495a2ccf\",\"WikiCmd\":\"510c47fb12b1d4fa\",\"from\":\"5ec721d732f248d6\"}",
+      "value": "{\"BootstrapCmd\":\"def1bad12c014cb1\",\"CodefileCmd\":\"c223817d7265c2fb\",\"DriveCmd\":\"fb2b061c94a8400f\",\"EdgeCmd\":\"71260bab4e379cf7\",\"FindingCmd\":\"1567b411c769996d\",\"GraphCmd\":\"3cc9d53f6ca0ec7f\",\"HookCmd\":\"294991f976dc9f58\",\"HypothesisCmd\":\"bcc2206e7257bc7f\",\"IgnoreCmd\":\"f9c39cc52fcc57fa\",\"InboxCmd\":\"b997abc467ae3cf8\",\"IntentCmd\":\"4ef4ca939f5a658f\",\"IntentTagCmd\":\"2fd96d64a986e780\",\"JourneyCmd\":\"c4c4dee1dc40927d\",\"JourneyCoverageCmd\":\"05c37118ef4bb96c\",\"JourneyInvariantCmd\":\"d764bb7cb40fc699\",\"LayerCmd\":\"2177d28d2dd26cb2\",\"NoteCmd\":\"56ab85f4437638a2\",\"PolicyCmd\":\"e364f24844539faa\",\"ProposalCmd\":\"079bec33ddce4e30\",\"ProposalItemCmd\":\"6a7205b69eb23e74\",\"QuestionCmd\":\"97939fb566387021\",\"RatificationPolicyCmd\":\"03e597f1c750d158\",\"RuleCmd\":\"ee8bb1c371b35252\",\"ScanCmd\":\"d77d05fdc1f6d3c9\",\"ScanFormatArg\":\"984d1856f8a626dc\",\"SurfaceCmd\":\"e44ef76f57090617\",\"TaskCmd\":\"d7fdf74b6556bfd7\",\"ThresholdCmd\":\"5a60d2004b86f5a7\",\"ValidationCmd\":\"3d13aa25c6b7f07e\",\"VocabCmd\":\"4b46bd49495a2ccf\",\"WikiCmd\":\"510c47fb12b1d4fa\",\"from\":\"5ec721d732f248d6\"}",
       "truth_class": "derived"
     },
     {
@@ -16596,6 +16724,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/mod.rs\",\"start\":90,\"end\":90,\"hash\":\"1aecb5b5ee9b7eb2\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "5e7d9741cfa112c5ecca8a6055fefcc9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "5e80d2c7470bf91b08e2ee9d8aacf57e",
@@ -17473,6 +17608,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "7def42dfb9f0bf971342bd6bab730f2c",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "7df67ffb425a80067c9bece582699dc4",
       "target_kind": "node",
       "key": "content_hash",
@@ -17928,6 +18070,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "8db06e73c0cdb43262b87dc4f7701066",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "8de0686b8a40a014cb5f82b0d7854c52",
       "target_kind": "node",
       "key": "level",
@@ -18157,6 +18306,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/seed.rs\",\"start\":93,\"end\":210,\"hash\":\"3ac6c9c7503ffe19\"},{\"file\":\"src/fsglob.rs\",\"start\":21,\"end\":61,\"hash\":\"c94c9f2631e6a5a1\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "9231ebd6f356da168f0f5b0cfac80f94",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "92501666d68b902c3b699a71b51e1a9c",
@@ -19223,6 +19379,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "ac22d50ed2605b4ef35e0dd96d734201",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed — cited evidence intact, cheap re-confirm",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "ac317fd6f3a8d75f1c6fbc07ad296e4f",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -19447,6 +19610,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "b3d0529d9ba9bda33206e7914e258cf0",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "b56d433c98a18554691b97911c8f898f",
       "target_kind": "node",
       "key": "content_hash",
@@ -19508,6 +19678,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands.rs\",\"start\":192,\"end\":230,\"hash\":\"c3cf4fd2be443d98\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "b66de2e550d6449728ff4defc08a14d1",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
+      "truth_class": "derived"
     },
     {
       "target_id": "b937a0251723cab8ab606ea91999365f",
@@ -20215,6 +20392,13 @@
       "key": "locator",
       "value": "enum IntentCmd",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "cabb63ce7cb3e71c00a8865082a17991",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — cited evidence intact, cheap re-confirm",
+      "truth_class": "derived"
     },
     {
       "target_id": "cb2f877429474e87eda7f8be31db0640",
@@ -21904,11 +22088,25 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "e56229425a63eeb67ae20ca43cf10c1b",
+      "target_kind": "node",
+      "key": "waiver:journey",
+      "value": "The ratify queue is intentionally human-presence work: a non-TTY journey must be rejected and a TTY challenge cannot be automated by an LLM without violating INV-8. tests/ring14_ratify.rs:127-171 proves fail-closed wanted-rung and human-only queue routing.",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "e5c0e982e518d28fe8a95dcecd8b360e",
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands.rs\",\"start\":87,\"end\":93,\"hash\":\"640cb7a7f694b6cc\"},{\"file\":\"src/commands/status_cmd.rs\",\"start\":11,\"end\":45,\"hash\":\"4d3cdfee8573ed61\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "e5c0e982e518d28fe8a95dcecd8b360e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed — relationship evidence does not cover every changed dependency, conservative full re-inspection",
+      "truth_class": "derived"
     },
     {
       "target_id": "e6051a3a9462e118b02b3d46b6d9d0bb",
@@ -21930,6 +22128,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/signal/debt/git.rs\",\"start\":45,\"end\":45,\"hash\":\"70eafe2946b59b10\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "e65749710fe09b79dbc7d1901387cf8d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "content hash of src/commands/intent.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "e65ab1fe5ff0ab9cfdb39078d5648e7f",
@@ -22016,6 +22221,27 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "efc0bc12f2b8659e4fbaf9b44003036a",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/intent.rs\",\"start\":833,\"end\":905,\"hash\":\"4ab7a0c0255e46d2\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":303,\"end\":376,\"hash\":\"00eaefb71a91fc5f\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "efc0bc12f2b8659e4fbaf9b44003036a",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "intent_impact",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "efc0bc12f2b8659e4fbaf9b44003036a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'intent_impact' in src/commands/intent.rs changed — cited evidence intact, cheap re-confirm",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "f098cbd13d2add50460e0d2291ef81d4",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -22035,6 +22261,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/travel.rs\",\"start\":227,\"end\":227,\"hash\":\"4bfc118647a83fde\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "f22ee64afc8319d5a3a5a7b60f7995be",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "symbol 'IntentCmd' in src/cli/subcommands.rs changed",
+      "truth_class": "derived"
     },
     {
       "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",

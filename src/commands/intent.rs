@@ -82,6 +82,11 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             replaced_by,
         } => intent_retire(graph, key, reason, replaced_by, json),
         IntentCmd::Confirm { key } => intent_confirm(graph, key, json),
+        IntentCmd::Impact {
+            key,
+            classification,
+            evidence,
+        } => intent_impact(graph, key, classification, evidence, json),
         IntentCmd::Ratify {
             key,
             all,
@@ -811,6 +816,92 @@ fn intent_confirm(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
         }),
         "loom status",
         format!("confirmed '{}'", n.name),
+    )?;
+    Ok(())
+}
+
+/// Record the builder's post-change semantic assessment. This is deliberately
+/// not ratification: a changed criterion only stales wantedness and hands the
+/// decision back to the terminal-gated human ratify queue (INV-8).
+fn intent_impact(
+    graph: Option<&Path>,
+    key: String,
+    classification: String,
+    evidence: String,
+    json: bool,
+) -> Result<()> {
+    if !matches!(
+        classification.as_str(),
+        "preserved" | "changed_within_intent" | "criterion_changed"
+    ) {
+        bail!(
+            "impact classification must be preserved, changed_within_intent, or criterion_changed"
+        );
+    }
+    if crate::model::is_placeholder(&evidence) {
+        bail!("intent impact requires substantive --evidence");
+    }
+    let store = open(graph)?;
+    require_lane(&store, crate::registry::OwnerRole::Builder)?;
+    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
+    store.set_facet(
+        &n.id,
+        TargetKind::Node,
+        "semantic_impact",
+        &classification,
+        TruthClass::Asserted,
+    )?;
+    store.set_facet(
+        &n.id,
+        TargetKind::Node,
+        "semantic_impact_evidence",
+        &evidence,
+        TruthClass::Asserted,
+    )?;
+    store.add_note(
+        &n.id,
+        "decision",
+        &format!("semantic impact {classification}: {evidence}"),
+    )?;
+    let mut reconfirmation_required = false;
+    if classification == "criterion_changed"
+        && store
+            .get_facet(&n.id, TargetKind::Node, "ratification")?
+            .as_deref()
+            == Some("ratified")
+    {
+        store.set_facet(
+            &n.id,
+            TargetKind::Node,
+            "ratification",
+            "needs_reconfirmation",
+            TruthClass::Asserted,
+        )?;
+        store.add_note(
+            &n.id,
+            "ratify",
+            "ratification staled by semantic impact assessment",
+        )?;
+        reconfirmation_required = true;
+    }
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": node_json(&n),
+            "classification": classification,
+            "evidence": evidence,
+            "reconfirmation_required": reconfirmation_required,
+        }),
+        if reconfirmation_required {
+            "loom next --mode ratify"
+        } else {
+            "loom status"
+        },
+        format!(
+            "semantic impact for '{}' recorded as {classification}",
+            n.name
+        ),
     )?;
     Ok(())
 }

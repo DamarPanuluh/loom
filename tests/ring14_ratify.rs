@@ -294,6 +294,88 @@ fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
     assert!(message.contains("62b197cc"), "got: {message}");
 }
 
+// =========================================================================
+// 5c. A builder may assess code impact, but never silently reconfirm human
+// wantedness. Preserved behavior leaves ratification intact; a changed
+// criterion returns the intent to the human-only ratify queue.
+// =========================================================================
+#[test]
+fn semantic_impact_preserves_or_routes_human_reconfirmation() {
+    let _guard = CLI_LOCK.lock().unwrap();
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store.set_agent(Agent::Solo);
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "semantic impact is classified before reconfirmation",
+            "the LLM classifies whether a code change preserves or changes the intent criterion",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .ratify_intent(&intent.id, "human approved this behavior", "test fixture")
+        .unwrap();
+    drop(store);
+
+    let prior_agent = std::env::var_os("LOOM_AGENT");
+    std::env::set_var("LOOM_AGENT", "llm:builder");
+
+    loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Intent {
+            cmd: IntentCmd::Impact {
+                key: intent.name.clone(),
+                classification: "preserved".into(),
+                evidence: "src/commands/intent.rs: intent impact records an assessment".into(),
+            },
+        }),
+    })
+    .unwrap();
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(
+        store
+            .get_facet(&intent.id, TargetKind::Node, "semantic_impact")
+            .unwrap()
+            .as_deref(),
+        Some("preserved")
+    );
+    assert_eq!(
+        ratification(&store, &intent.id).as_deref(),
+        Some("ratified")
+    );
+    drop(store);
+
+    loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Intent {
+            cmd: IntentCmd::Impact {
+                key: intent.name.clone(),
+                classification: "criterion_changed".into(),
+                evidence: "src/commands/intent.rs: criterion changed branch stales ratification"
+                    .into(),
+            },
+        }),
+    })
+    .unwrap();
+
+    match prior_agent {
+        Some(value) => std::env::set_var("LOOM_AGENT", value),
+        None => std::env::remove_var("LOOM_AGENT"),
+    }
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(
+        ratification(&store, &intent.id).as_deref(),
+        Some("needs_reconfirmation")
+    );
+    assert_eq!(loom::workitem::queue_counts(&store).unwrap().ratify, 1);
+}
+
 #[test]
 fn ratification_provenance_survives_redefinition_staleness() {
     let tmp = Tmp::new();

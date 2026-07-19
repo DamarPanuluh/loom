@@ -121,6 +121,17 @@ pub enum IntentCmd {
     },
     /// Ratify the current meaning (resets the alignment clock).
     Confirm { key: String },
+    /// Record an evidence-backed semantic-impact assessment after a code change.
+    /// `criterion_changed` routes wantedness back to the human ratify queue.
+    Impact {
+        key: String,
+        /// preserved | changed_within_intent | criterion_changed
+        #[arg(long)]
+        classification: String,
+        /// Concrete code or runtime evidence supporting the classification.
+        #[arg(long)]
+        evidence: String,
+    },
     /// Tag from the registered vocabulary.
     Tag {
         #[command(subcommand)]
