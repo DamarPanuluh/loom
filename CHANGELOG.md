@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.25.0] - 2026-07-19
+- ratification + lived graph (rethink rings 1-5)
+
 ## [0.24.0] - 2026-07-08
 - Unify ownership smells on graph connectedness: `tangled_file` fires when ≥2 realizing owners of a file are not one connected neighborhood (relates/hierarchy/scenario-of/…); retire the `max_file_owners` count gate and fold former `overlapping_ownership` into the same rule; legacy `max_file_owners` in exports is ignored on load
 - Operator-feedback precision release: symbol-scoped staleness (sync keeps a per-symbol fingerprint map per codefile and spares realizing groundings whose locator symbol the change did not touch — reported as edges_spared; same-named symbols fold into one fingerprint, and no-locator/unresolvable-locator groundings stale file-scoped as before), evidence anchoring (every verdict stamps a fingerprint of each cited file:line span as an asserted evidence_spans facet; sync grades re-opens 'cited evidence intact, cheap re-confirm' vs 'cited evidence rewritten, full re-inspection', a rewritten cited span re-opens even an unchanged-symbol grounding, and citing lines that never existed fails closed at record time), and the vague_intent smell (an active intent whose description hedges without one observable outcome materializes as an adjudicable finding)
