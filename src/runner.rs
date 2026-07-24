@@ -218,6 +218,52 @@ pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<R
     ))
 }
 
+/// Scan a quality rule's own patterns over the files realizing an intent, and
+/// record what loom found — including finding nothing.
+///
+/// This is the answer to absence-shaped rules, which are otherwise unanchorable.
+/// "No hardcoded secrets in the code realizing X" cannot cite a span: there is
+/// nothing to point at. But it CAN be a run — *loom scanned these patterns over
+/// these files at these hashes and found zero hits* — and that is re-checkable,
+/// expiring the moment any covered file changes.
+///
+/// The machinery already existed and threw its answer away: `prescreen_for`
+/// computes exactly this to populate a quality packet, then discards it.
+pub fn prescreen_probe(
+    root: &Path,
+    rule_name: &str,
+    patterns: &[String],
+    files: &[String],
+) -> Option<RunRecord> {
+    if patterns.is_empty() || files.is_empty() {
+        return None;
+    }
+    let hits = crate::prescan::prescreen(root, files, patterns, 200).ok()?;
+    // Canonical, sorted rendering so re-scanning identical files is a
+    // byte-identical no-op rather than a fresh fact.
+    let mut lines: Vec<String> = hits
+        .iter()
+        .map(|h| format!("{}:{} {}", h.path, h.line, h.pattern))
+        .collect();
+    lines.sort();
+    let detail = lines.join("\n");
+    Some(record(
+        root,
+        RunProducer::Prescreen,
+        &format!(
+            "scan '{rule_name}' ({} pattern(s)) over {} realizing file(s)",
+            patterns.len(),
+            files.len()
+        ),
+        files,
+        patterns.len(),
+        i64::from(!hits.is_empty()),
+        detail.as_bytes(),
+        &[],
+        0,
+    ))
+}
+
 /// The files a run over this intent's code depends on: every file grounded to
 /// it. Used to build the `covered` set for a proof.
 pub fn files_grounding(store: &Store, intent_id: &str) -> Result<Vec<String>> {

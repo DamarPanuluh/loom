@@ -60,6 +60,8 @@ pub struct Shape {
     /// demanding a Run for one would make it unrecordable, which is worse than
     /// recording it honestly as attested-but-not-observed.
     pub runnable_proof: bool,
+    /// This quality rule carries patterns loom can scan for itself.
+    pub scannable_rule: bool,
 }
 
 pub fn required(
@@ -127,8 +129,12 @@ fn verdict_floor(
             CURRENT_MANUAL_PROOF,
             "attest the manual check with what you observed, citing file:line or a journal entry",
         ),
-        Some(EdgeKind::Governs) => Floor::new(
+        Some(EdgeKind::Governs) if shape.scannable_rule => Floor::new(
             CURRENT_QUALITY,
+            "loom scans the rule's patterns itself — record the verdict and it anchors",
+        ),
+        Some(EdgeKind::Governs) => Floor::new(
+            CURRENT_UNPATTERNED_QUALITY,
             "give the rule `patterns` so loom can scan for itself, or cite a span per \
              realizing file",
         ),
@@ -190,7 +196,12 @@ const CURRENT_SEAM_GROUNDING: Verification = Verification::Claimed;
 /// graph green without loom ever executing them.
 const CURRENT_PROOF: Verification = Verification::Verified;
 const CURRENT_MANUAL_PROOF: Verification = Verification::Cited;
-const CURRENT_QUALITY: Verification = Verification::Claimed;
+/// A rule that carries `patterns` is checkable by loom itself, including when
+/// what it asserts is an ABSENCE — loom scans and records finding nothing.
+/// A rule with no patterns cannot be scanned, so it settles at `cited`: point
+/// at what you inspected.
+const CURRENT_QUALITY: Verification = Verification::Verified;
+const CURRENT_UNPATTERNED_QUALITY: Verification = Verification::Claimed;
 const CURRENT_RELATIONSHIP: Verification = Verification::Claimed;
 const CURRENT_FINDING: Verification = Verification::Claimed;
 const CURRENT_RESOLVED_FINDING: Verification = Verification::Claimed;

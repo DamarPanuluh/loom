@@ -114,6 +114,15 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     ripple_runner_drift(store, root, &mut report)?;
     ripple_wiki_drift(store, &mut report)?;
     rebuild_smell_findings(store, &mut report)?;
+    // Pass R — re-check every anchor against the working tree and demote what
+    // no longer holds. One question asked of every fact ("does the thing this
+    // points at still say what it said?") instead of a per-edge-kind decision
+    // table.
+    //
+    // Without this a proof stays green after the code it covered moves, which
+    // is the failure the `covered` set exists to catch. It runs alongside the
+    // ripple matrix for now; the matrix is what this replaces.
+    report.edges_staled += store.reverify_all()?;
     Ok(report)
 }
 

@@ -273,6 +273,56 @@ impl Store {
                 }
             }
         }
+        // A quality verdict on a rule that carries patterns is checkable the
+        // same way: loom runs the scan itself. This is what lets an ABSENCE
+        // count as evidence — nothing to cite, but something to re-run.
+        if probe.is_none()
+            && a.run.is_none()
+            && edge_kind == Some(crate::model::EdgeKind::Governs)
+            && anchor::is_settling(a.state)
+        {
+            if let Subject::Edge(edge_id) = &a.subject {
+                if let Some(edge) = self.get_edge(edge_id)? {
+                    if let Some(rule) = self.get_node(&edge.from_id)? {
+                        let patterns: Vec<String> = rule
+                            .body
+                            .get("patterns")
+                            .and_then(|v| v.as_array())
+                            .map(|a| {
+                                a.iter()
+                                    .filter_map(|x| x.as_str().map(String::from))
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        let files = crate::runner::files_grounding(self, &edge.to_id)?;
+                        probe = crate::runner::prescreen_probe(
+                            &self.root, &rule.name, &patterns, &files,
+                        );
+                        // The floor follows what loom actually DID, not what it
+                        // could have tried. The scan fails closed on a file it
+                        // cannot read, and demanding `verified` from a scan that
+                        // never happened would refuse an honest verdict for
+                        // loom's own inability to look.
+                        shape.scannable_rule = probe.is_some();
+                        // Pattern hits contradict a `passing` verdict outright:
+                        // loom found the very shape the rule forbids. Refuse it
+                        // and print what it found, rather than storing a green
+                        // verdict beside the evidence against it.
+                        if let Some(run) = probe.as_ref() {
+                            if run.exit_code != 0 && a.state == "passing" {
+                                bail!(
+                                    "'{}' scanned these patterns and found hits — a passing \
+                                     verdict contradicts them:\n{}\n\nRecord `failing`, or cite \
+                                     a span per hit explaining why each is not what the rule means.",
+                                    rule.name,
+                                    run.stdout_excerpt.trim()
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if let Some(run) = a.run.map(|b| *b).or(probe) {
             let payload = Evidence::Run(run);
             rows.push(EvidenceRow {
@@ -546,6 +596,17 @@ impl Store {
             if strength.rank() < fact.verification.rank() {
                 demoted += 1;
             }
+            // A fact that has fallen below what counts is no longer settled
+            // truth, so the claim RE-OPENS and its lane serves it again.
+            // Demoting the fact while leaving the edge green would leave the
+            // graph reporting a verdict it no longer stands behind — the exact
+            // shape this whole spine exists to make impossible.
+            if fact.claim == Claim::Verdict && !strength.counts() && fact.verification.counts() {
+                self.write_edge_status(
+                    &fact.subject_id,
+                    InspectionStatus::NeedsReverification.as_str(),
+                )?;
+            }
             if strength != fact.verification {
                 let cause = checked
                     .iter()
@@ -580,6 +641,25 @@ impl Store {
             // Prose cannot rot mechanically — and never counts, so nothing turns
             // on it either way.
             Evidence::Claim { .. } => None,
+            // A LOCATOR run asserts "this symbol is here", so it expires when
+            // the symbol stops resolving — not when an unrelated line in the
+            // same file moves. Comparing file hashes would re-open every
+            // grounding in a file on any edit, destroying the symbol-scoped
+            // sparing that makes a large repo workable. Re-running the probe is
+            // both cheaper to reason about and exactly what the claim means.
+            Evidence::Run(run) if run.producer == crate::model::RunProducer::Locator => {
+                let file = run.covered.keys().next().cloned().unwrap_or_default();
+                let locator = run
+                    .command
+                    .strip_prefix("resolve '")
+                    .and_then(|r| r.split_once("' in "))
+                    .map(|(l, _)| l.to_string());
+                match crate::runner::locator_probe(&self.root, &file, locator.as_deref()) {
+                    Some(fresh) if fresh.exit_code == 0 => None,
+                    Some(_) => Some(StaleCause::AnchorMissing),
+                    None => Some(StaleCause::SpanFileDeleted),
+                }
+            }
             Evidence::Run(run) => crate::runner::covered_intact(&self.root, run)
                 .map(|_| StaleCause::RunCoveredFileChanged),
             Evidence::Span(stamp) => match std::fs::read_to_string(self.root.join(&stamp.file)) {
