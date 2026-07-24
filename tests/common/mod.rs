@@ -75,3 +75,53 @@ pub fn prove(root: &Path, intent_name: &str, proof_name: &str) {
         },
     });
 }
+
+/// Put an existing validation into a genuinely-passing state: point it at a
+/// trivial command and let loom run it.
+///
+/// For fixtures whose subject is drift detection or coverage, not proof
+/// semantics. The command is irrelevant to what they assert; what matters is
+/// that the passing state was EARNED by a run loom observed, because a
+/// hand-written passing verdict is no longer a state the graph can hold.
+#[allow(dead_code)]
+pub fn observe_passing(store: &loom::store::Store, val_name: &str) {
+    use loom::model::NodeType;
+    let val = store
+        .resolve_node(val_name, Some(NodeType::Validation))
+        .unwrap_or_else(|e| panic!("resolve validation {val_name}: {e}"));
+    let mut body = val.body.clone();
+    body["command"] = serde_json::json!("true");
+    store.set_node_body(&val.id, &body).unwrap();
+    let val = store.get_node(&val.id).unwrap().unwrap();
+    let outcome = loom::commands::observe_validation(store, &val)
+        .unwrap_or_else(|e| panic!("observe {val_name}: {e}"));
+    // A JOURNEY proof is not runnable by the validation runner — it is proven by
+    // `loom journey run`. loom says so by returning `Manual` rather than
+    // pretending, so the fixture attests it instead, citing the artifact the
+    // proof is about. Attested is visibly weaker than observed, which is the
+    // honest reading of a proof loom did not watch.
+    if let loom::proof::ProofOutcome::Manual { .. } = outcome {
+        let artifact = val
+            .body
+            .get("artifact")
+            .and_then(|a| a.as_str())
+            .unwrap_or_default()
+            .to_string();
+        for e in store
+            .edges_with(Some(loom::model::EdgeKind::Validates), Some(&val.id), None)
+            .unwrap()
+        {
+            store
+                .record_verdict(
+                    &e.id,
+                    loom::model::InspectionStatus::Passing,
+                    "attested proof",
+                    &format!("attested against {artifact}:1"),
+                    0.9,
+                    "test",
+                )
+                .unwrap_or_else(|err| panic!("attest {val_name}: {err}"));
+        }
+        store.set_node_status(&val.id, "passed").unwrap();
+    }
+}

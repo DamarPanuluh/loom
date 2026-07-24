@@ -134,22 +134,14 @@ fn intent_context_includes_validation_last_result_and_edge_state() {
             "--type",
             "test",
             "--command",
-            "cargo test ring15_context",
+            "true",
             "--intent",
             "operators can prove context",
         ],
     );
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "verdict",
-            "context proof",
-            "passed",
-            "--evidence",
-            "cargo test ring15_context: passed",
-        ],
-    );
+    // A runnable proof is RUN, never reported. The packet below shows a passing
+    // proof because loom watched it pass.
+    loom_ok(tmp.path(), &["validation", "run", "context proof"]);
 
     let packet = loom_json(tmp.path(), &["context", "operators can prove context"]);
     assert!(entities(&packet).iter().any(|entity| {

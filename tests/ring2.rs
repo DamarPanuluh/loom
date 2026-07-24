@@ -339,7 +339,7 @@ fn sync_ripples_upstream_change_to_integration_contract() {
             &validates.id,
             InspectionStatus::Passing,
             "contract holds",
-            "probed upstream",
+            "probed upstream — see vendor/up/lib.rs:1",
             0.9,
             "llm",
         )
@@ -429,7 +429,7 @@ fn sync_stales_journey_proof_when_artifact_drifts() {
             &validates.id,
             InspectionStatus::Passing,
             "journey passes end-to-end",
-            "journey run passed",
+            "journey run passed — see contracts/checkout.v1.json:1",
             0.9,
             "llm",
         )
@@ -511,7 +511,7 @@ fn sync_stales_journey_proof_when_artifact_disappears() {
             &validates.id,
             InspectionStatus::Passing,
             "journey passes",
-            "journey run passed",
+            "journey run passed — see contracts/checkout.v1.json:1",
             0.9,
             "llm",
         )

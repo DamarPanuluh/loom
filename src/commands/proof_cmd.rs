@@ -580,6 +580,71 @@ fn mark_validation(
     )?;
     Ok(())
 }
+/// Run one validation through loom and record what loom observed.
+///
+/// The library path behind `loom validation run` — the ONLY way a `validates`
+/// verdict reaches `verified`. Public because "let loom run it" is the correct
+/// move for every caller, not just the CLI: `absorb` binds observed runs, and a
+/// test fixture that wants a proven graph should get one the same way a
+/// production graph does, rather than through a seam that fabricates the record.
+pub fn observe_validation(
+    store: &Store,
+    val: &crate::model::Node,
+) -> Result<crate::proof::ProofOutcome> {
+    use crate::proof::ProofOutcome;
+    let ty = val
+        .body
+        .get("type")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<crate::model::ValidationType>().ok())
+        .unwrap_or(crate::model::ValidationType::Test);
+    let outcome = crate::proof::runner_for(ty).run(store.root(), val);
+    match &outcome {
+        ProofOutcome::Passed { evidence, run } => {
+            mark_validation(
+                store,
+                &val.id,
+                "passed",
+                evidence,
+                "",
+                Some((**run).clone()),
+            )?;
+        }
+        ProofOutcome::Failed { evidence, run, .. } => {
+            mark_validation(
+                store,
+                &val.id,
+                "failed",
+                evidence,
+                "",
+                Some((**run).clone()),
+            )?;
+        }
+        ProofOutcome::Blocked { reason } => {
+            mark_validation(store, &val.id, "blocked", "", reason, None)?;
+        }
+        // No runner applies. loom records nothing rather than guessing — a
+        // manual check is attested by a human, never inferred.
+        ProofOutcome::Manual { .. } => {}
+    }
+    Ok(outcome)
+}
+
+/// Register a command-shaped proof for an intent and run it. One call for the
+/// common case: "this behavior is proven, and here is loom watching it be so."
+pub fn prove_intent(store: &Store, intent_id: &str, name: &str, command: &str) -> Result<()> {
+    let val = store.add_node(
+        NodeType::Validation,
+        name,
+        "",
+        "not_run",
+        serde_json::json!({ "type": "test", "command": command }),
+    )?;
+    store.ensure_edge(EdgeKind::Validates, &val.id, intent_id)?;
+    observe_validation(store, &val)?;
+    Ok(())
+}
+
 pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: bool) -> Result<()> {
     let store = open(graph)?;
     let vals: Vec<_> = if all {

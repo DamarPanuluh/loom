@@ -892,33 +892,17 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
     // otherwise this test asserts "elaborate is last" from a graph where an
     // earlier lane still has work.
     for intent in [&a, &b] {
-        let proof = store
-            .add_node(
-                NodeType::Validation,
-                &format!("{}-proof", intent.name),
-                "",
-                "passed",
-                serde_json::json!({"type":"test","command":"true"}),
-            )
-            .unwrap();
-        let ve = store
-            .add_edge(
-                EdgeKind::Validates,
-                &proof.id,
-                &intent.id,
-                TruthClass::Asserted,
-            )
-            .unwrap();
-        store
-            .record_verdict(
-                &ve.id,
-                loom::model::InspectionStatus::Passing,
-                "proof ran and passed",
-                "src/auth.rs:1",
-                0.9,
-                "llm",
-            )
-            .unwrap();
+        // A REAL proof: loom runs the command and records what it observed.
+        // Hand-recording a passing verdict here is refused now — which is the
+        // point, since that is the same shortcut that made 54 of this graph's
+        // own proofs green without loom ever running them.
+        loom::commands::prove_intent(
+            &store,
+            &intent.id,
+            &format!("{}-proof", intent.name),
+            "true",
+        )
+        .unwrap();
     }
 
     // Now elaborate should surface (both intents still have open scenarios/

@@ -53,11 +53,30 @@ pub fn is_settling(state: &str) -> bool {
 /// `blocked` is always [`Verification::Claimed`]: an honestly blocked proof is a
 /// real record with a real reason, and forcing an anchor onto it would just
 /// teach workers to fabricate one. It stays visible and never counts as green.
+/// Extra shape the floor needs beyond the edge kind.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Shape {
+    /// This proof has a command loom can execute. A `manual_check` does not:
+    /// demanding a Run for one would make it unrecordable, which is worse than
+    /// recording it honestly as attested-but-not-observed.
+    pub runnable_proof: bool,
+}
+
 pub fn required(
     claim: Claim,
     edge_kind: Option<EdgeKind>,
     role: Option<GroundingRole>,
     state: &str,
+) -> Floor {
+    required_for(claim, edge_kind, role, state, Shape::default())
+}
+
+pub fn required_for(
+    claim: Claim,
+    edge_kind: Option<EdgeKind>,
+    role: Option<GroundingRole>,
+    state: &str,
+    shape: Shape,
 ) -> Floor {
     // An open problem needs no proof; a blocked one needs a reason, not an anchor.
     if matches!(
@@ -67,7 +86,7 @@ pub fn required(
         return Floor::new(Verification::Claimed, "record the concrete blocker");
     }
     match claim {
-        Claim::Verdict => verdict_floor(edge_kind, role, state),
+        Claim::Verdict => verdict_floor(edge_kind, role, state, shape),
         Claim::Adjudication => adjudication_floor(state),
         Claim::Ratification => Floor::new(
             CURRENT_RATIFICATION,
@@ -78,7 +97,12 @@ pub fn required(
     }
 }
 
-fn verdict_floor(edge_kind: Option<EdgeKind>, role: Option<GroundingRole>, _state: &str) -> Floor {
+fn verdict_floor(
+    edge_kind: Option<EdgeKind>,
+    role: Option<GroundingRole>,
+    _state: &str,
+    shape: Shape,
+) -> Floor {
     match edge_kind {
         // A realizing grounding is checkable: the locator must resolve to a live
         // symbol. loom re-resolves it itself, so this floor is reachable without
@@ -91,9 +115,17 @@ fn verdict_floor(edge_kind: Option<EdgeKind>, role: Option<GroundingRole>, _stat
             CURRENT_GROUNDING,
             "point --locator at the symbol that performs the behavior",
         ),
-        Some(EdgeKind::Validates) => Floor::new(
+        // A runnable proof must be RUN. A manual check cannot be, so it settles
+        // at `cited` — attested, visibly weaker than observed, and honest about
+        // which it is. Making both look the same is how a graph ends up
+        // reporting 59 proofs when it has watched 5.
+        Some(EdgeKind::Validates) if shape.runnable_proof => Floor::new(
             CURRENT_PROOF,
             "run the proof through loom (`loom validation run`), never report its outcome",
+        ),
+        Some(EdgeKind::Validates) => Floor::new(
+            CURRENT_MANUAL_PROOF,
+            "attest the manual check with what you observed, citing file:line or a journal entry",
         ),
         Some(EdgeKind::Governs) => Floor::new(
             CURRENT_QUALITY,
@@ -132,13 +164,12 @@ fn adjudication_floor(state: &str) -> Floor {
 
 const CURRENT_GROUNDING: Verification = Verification::Claimed;
 const CURRENT_SEAM_GROUNDING: Verification = Verification::Claimed;
-// STAGED: the machinery behind this is complete — `loom validation run` now
-// produces a RunRecord and `mark_validation` anchors the verdict to it, so
-// flipping this to `Verified` refuses caller-reported proof outcomes with
-// "run the proof through loom, never report its outcome". Flipped together
-// with the ~20 test fixtures that still hand-record a passing `validates`
-// verdict; `common::prove` is the honest replacement for them.
-const CURRENT_PROOF: Verification = Verification::Claimed;
+/// A proof is `verified` or it is not a proof. There is exactly one way to
+/// reach this floor: let loom run the command and observe the result. Reporting
+/// an outcome is refused — that move is what made 54 of 59 proofs in loom's own
+/// graph green without loom ever executing them.
+const CURRENT_PROOF: Verification = Verification::Verified;
+const CURRENT_MANUAL_PROOF: Verification = Verification::Cited;
 const CURRENT_QUALITY: Verification = Verification::Claimed;
 const CURRENT_RELATIONSHIP: Verification = Verification::Claimed;
 const CURRENT_FINDING: Verification = Verification::Claimed;

@@ -465,28 +465,10 @@ fn fully_grounded_no_residue_routes_complete() {
             "llm",
         )
         .unwrap();
-    let v = store
-        .add_node(
-            NodeType::Validation,
-            "proof",
-            "",
-            "passed",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let ve = store
-        .add_edge(EdgeKind::Validates, &v.id, &a.id, TruthClass::Asserted)
-        .unwrap();
-    store
-        .record_verdict(
-            &ve.id,
-            InspectionStatus::Passing,
-            "proof",
-            "cargo test proof",
-            1.0,
-            "llm",
-        )
-        .unwrap();
+    // A real proof: loom runs it and records what it observed. A
+    // hand-written passing verdict is refused now — it is the same
+    // shortcut that made this graph report proofs nobody ran.
+    loom::commands::prove_intent(&store, &a.id, "proof", "true").unwrap();
     ratify_all(&store);
     let before_export = ladder(&store).unwrap();
     assert_eq!(before_export.phase, "export");
@@ -559,34 +541,7 @@ fn registered_unowned_codefile_routes_to_coverage() {
             "llm",
         )
         .unwrap();
-    let proof = store
-        .add_node(
-            NodeType::Validation,
-            "proof",
-            "",
-            "passed",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let proof_edge = store
-        .add_edge(
-            EdgeKind::Validates,
-            &proof.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    store
-        .record_verdict(
-            &proof_edge.id,
-            InspectionStatus::Passing,
-            "proof",
-            "cargo test proof",
-            1.0,
-            "llm",
-        )
-        .unwrap();
-
+    loom::commands::prove_intent(&store, &intent.id, "proof", "true").unwrap();
     ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "coverage");
@@ -649,34 +604,7 @@ fn ignored_unowned_codefile_excluded_from_coverage_gate_and_queue() {
             "llm",
         )
         .unwrap();
-    let proof = store
-        .add_node(
-            NodeType::Validation,
-            "proof",
-            "",
-            "passed",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let proof_edge = store
-        .add_edge(
-            EdgeKind::Validates,
-            &proof.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    store
-        .record_verdict(
-            &proof_edge.id,
-            InspectionStatus::Passing,
-            "proof",
-            "cargo test proof",
-            1.0,
-            "llm",
-        )
-        .unwrap();
-
+    loom::commands::prove_intent(&store, &intent.id, "proof", "true").unwrap();
     // Pre-ignore: the unowned file is a real coverage gap — it heads the queue
     // and blocks the realized rung. (Sanity, so the test cannot pass on a
     // silently-empty graph.)
@@ -824,33 +752,7 @@ fn doctor_issue_routes_to_audit_after_earlier_gates_pass() {
             .unwrap();
     }
     for (intent, name) in [(&parent, "proof parent"), (&child, "proof child")] {
-        let proof = store
-            .add_node(
-                NodeType::Validation,
-                name,
-                "",
-                "passed",
-                serde_json::json!({}),
-            )
-            .unwrap();
-        let proof_edge = store
-            .add_edge(
-                EdgeKind::Validates,
-                &proof.id,
-                &intent.id,
-                TruthClass::Asserted,
-            )
-            .unwrap();
-        store
-            .record_verdict(
-                &proof_edge.id,
-                InspectionStatus::Passing,
-                "proof",
-                "cargo test proof",
-                1.0,
-                "llm",
-            )
-            .unwrap();
+        loom::commands::prove_intent(&store, &intent.id, name, "true").unwrap();
     }
 
     ratify_all(&store);
@@ -924,29 +826,10 @@ fn proven_rung_requires_each_implemented_leaf_to_have_passing_validation() {
             )
             .unwrap();
     }
-    let proof = store
-        .add_node(
-            NodeType::Validation,
-            "proof a",
-            "",
-            "passed",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let proof_edge = store
-        .add_edge(EdgeKind::Validates, &proof.id, &a.id, TruthClass::Asserted)
-        .unwrap();
-    store
-        .record_verdict(
-            &proof_edge.id,
-            InspectionStatus::Passing,
-            "proof",
-            "cargo test proof_a",
-            1.0,
-            "llm",
-        )
-        .unwrap();
-
+    // A real proof: loom runs it and records what it observed. A
+    // hand-written passing verdict is refused now — it is the same
+    // shortcut that made this graph report proofs nobody ran.
+    loom::commands::prove_intent(&store, &a.id, "proof a", "true").unwrap();
     ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "validate");
@@ -1006,21 +889,24 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
         )
         .unwrap();
 
+    // A runnable unit proof, actually run: the point of this test is that a
+    // passing UNIT proof does not satisfy the journey axis, and that only holds
+    // if the unit proof is genuinely passing.
     let unit = store
         .add_node(
             NodeType::Validation,
             "unit proof",
             "",
-            "passed",
+            "not_run",
             serde_json::json!({
                 "type": "test",
-                "command": "cargo test unit",
+                "command": "true",
                 "proof_kind": "unit",
                 "proof_level": "L2",
             }),
         )
         .unwrap();
-    let unit_edge = store
+    store
         .add_edge(
             EdgeKind::Validates,
             &unit.id,
@@ -1028,16 +914,7 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
             TruthClass::Asserted,
         )
         .unwrap();
-    store
-        .record_verdict(
-            &unit_edge.id,
-            InspectionStatus::Passing,
-            "unit proof passed",
-            "unit exit 0",
-            0.9,
-            "test",
-        )
-        .unwrap();
+    loom::commands::observe_validation(&store, &unit).unwrap();
 
     ratify_all(&store);
     let before = ladder(&store).unwrap();
@@ -1058,13 +935,13 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
             "passed",
             serde_json::json!({
                 "type": "test",
-                "command": "cargo test journey",
+                "command": "true",
                 "proof_kind": "journey",
                 "proof_level": "L5",
             }),
         )
         .unwrap();
-    let journey_edge = store
+    store
         .add_edge(
             EdgeKind::Validates,
             &journey.id,
@@ -1072,16 +949,7 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
             TruthClass::Asserted,
         )
         .unwrap();
-    store
-        .record_verdict(
-            &journey_edge.id,
-            InspectionStatus::Passing,
-            "journey proof passed",
-            "journey exit 0",
-            0.9,
-            "test",
-        )
-        .unwrap();
+    loom::commands::observe_validation(&store, &journey).unwrap();
 
     ratify_all(&store);
     let after = ladder(&store).unwrap();
@@ -1146,13 +1014,13 @@ fn proven_rung_honors_journey_axis_waiver() {
             "passed",
             serde_json::json!({
                 "type": "test",
-                "command": "cargo test unit",
+                "command": "true",
                 "proof_kind": "unit",
                 "proof_level": "L2",
             }),
         )
         .unwrap();
-    let unit_edge = store
+    store
         .add_edge(
             EdgeKind::Validates,
             &unit.id,
@@ -1160,16 +1028,7 @@ fn proven_rung_honors_journey_axis_waiver() {
             TruthClass::Asserted,
         )
         .unwrap();
-    store
-        .record_verdict(
-            &unit_edge.id,
-            InspectionStatus::Passing,
-            "unit proof passed",
-            "unit exit 0",
-            0.9,
-            "test",
-        )
-        .unwrap();
+    loom::commands::observe_validation(&store, &unit).unwrap();
 
     let before = ladder(&store).unwrap();
     assert_eq!(
@@ -1240,29 +1099,10 @@ fn findings_route_to_triage_until_judged() {
             "llm",
         )
         .unwrap();
-    let v = store
-        .add_node(
-            NodeType::Validation,
-            "proof",
-            "",
-            "passed",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let ve = store
-        .add_edge(EdgeKind::Validates, &v.id, &i.id, TruthClass::Asserted)
-        .unwrap();
-    store
-        .record_verdict(
-            &ve.id,
-            InspectionStatus::Passing,
-            "proof",
-            "cargo test proof",
-            1.0,
-            "llm",
-        )
-        .unwrap();
-
+    // A real proof: loom runs it and records what it observed. A
+    // hand-written passing verdict is refused now — it is the same
+    // shortcut that made this graph report proofs nobody ran.
+    loom::commands::prove_intent(&store, &i.id, "proof", "true").unwrap();
     // baseline: graph is clean but not complete until the travel export is fresh.
     ratify_all(&store);
     assert_eq!(ladder(&store).unwrap().phase, "export");
@@ -1365,26 +1205,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     store
         .record_verdict(&imp.id, InspectionStatus::Passing, "c", "e", 0.9, "llm")
         .unwrap();
-    let val = store
-        .add_node(
-            NodeType::Validation,
-            "pay test",
-            "",
-            "passed",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let ve = store
-        .add_edge(
-            EdgeKind::Validates,
-            &val.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    store
-        .record_verdict(&ve.id, InspectionStatus::Passing, "proof", "ok", 1.0, "llm")
-        .unwrap();
+    loom::commands::prove_intent(&store, &intent.id, "pay test", "true").unwrap();
 
     // Before seeding: hardened should be Met (no stale, no uninspected, no doctor, no pairs).
     ratify_all(&store);

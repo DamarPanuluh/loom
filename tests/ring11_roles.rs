@@ -1008,6 +1008,14 @@ fn observed_codefile_exempt_from_coverage_but_still_in_contract_plane() {
         tmp.path(),
         &["edge", "call", "boots through prepare", "Module::prepare"],
     );
+    write_file(
+        tmp.path(),
+        "vendor/tilde/module.rs",
+        "pub trait Module { fn prepare(&self, ctx: &Ctx); }",
+    );
+    // A contract proof loom cannot run is ATTESTED, not reported: the
+    // attestation must point at something re-checkable, so the citation is what
+    // makes it count. Prose alone leaves it visibly weaker than a run.
     loom_ok(
         tmp.path(),
         &[
@@ -1016,13 +1024,8 @@ fn observed_codefile_exempt_from_coverage_but_still_in_contract_plane() {
             "boots through prepare",
             "passed",
             "--evidence",
-            "booted against vendored tilde",
+            "booted against vendored tilde: vendor/tilde/module.rs:1",
         ],
-    );
-    write_file(
-        tmp.path(),
-        "vendor/tilde/module.rs",
-        "pub trait Module { fn prepare(&self, ctx: &Ctx); }",
     );
     loom_ok(tmp.path(), &["sync"]);
     let val = loom_json(tmp.path(), &["validation", "show", "boots through prepare"]);

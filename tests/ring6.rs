@@ -248,19 +248,18 @@ fn journey_proof_smell_fires_when_validation_is_too_shallow() {
             serde_json::json!({"proof_kind":"unit","proof_level":"L1"}),
         )
         .unwrap();
-    let edge = store
+    // Earned, not asserted: loom runs the proof and records what it saw.
+    store
         .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
         .unwrap();
-    store
-        .record_verdict(
-            &edge.id,
-            InspectionStatus::Passing,
-            "unit test passes",
-            "cargo test passed",
-            0.9,
-            "test",
-        )
-        .unwrap();
+    {
+        let mut body = validation.body.clone();
+        body["command"] = serde_json::json!("true");
+        body["type"] = serde_json::json!("test");
+        store.set_node_body(&validation.id, &body).unwrap();
+        let fresh = store.get_node(&validation.id).unwrap().unwrap();
+        loom::commands::observe_validation(&store, &fresh).unwrap();
+    }
     let smells = loom::signal::smells(&store).unwrap();
     assert!(smells
         .iter()
@@ -282,19 +281,18 @@ fn journey_proof_smell_silent_when_passing_l5_journey_proof_exists() {
             serde_json::json!({"proof_kind":"journey","proof_level":"L5"}),
         )
         .unwrap();
-    let edge = store
+    // Earned, not asserted: loom runs the proof and records what it saw.
+    store
         .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
         .unwrap();
-    store
-        .record_verdict(
-            &edge.id,
-            InspectionStatus::Passing,
-            "journey passes end-to-end",
-            "journey run passed",
-            0.9,
-            "test",
-        )
-        .unwrap();
+    {
+        let mut body = validation.body.clone();
+        body["command"] = serde_json::json!("true");
+        body["type"] = serde_json::json!("test");
+        store.set_node_body(&validation.id, &body).unwrap();
+        let fresh = store.get_node(&validation.id).unwrap().unwrap();
+        loom::commands::observe_validation(&store, &fresh).unwrap();
+    }
     let smells = loom::signal::smells(&store).unwrap();
     assert!(
         !smells
@@ -338,7 +336,7 @@ fn journey_proof_smell_re_fires_after_artifact_drift_resets_proof() {
             &edge.id,
             InspectionStatus::Passing,
             "journey passes end-to-end",
-            "journey run passed",
+            "journey run passed — see contracts/checkout.v1.json:1",
             0.9,
             "test",
         )
@@ -1538,13 +1536,15 @@ fn journey_map_reports_failing_journey_proof_as_unproven_gap() {
     let edge = store
         .ensure_edge(EdgeKind::Validates, &journey.id, &intent_id)
         .unwrap();
-    // Stamp the Validates edge failing — the journey ran and failed.
+    // The journey ran and failed. An attestation must point at something
+    // re-checkable, so the failure cites the spec it ran against.
+    tmp.write("journeys/checkout.yaml", "journey: checkout\nsteps: []\n");
     store
         .record_verdict(
             &edge.id,
             InspectionStatus::Failing,
             "checkout journey passes end-to-end",
-            "journey run failed at the payment step",
+            "journey run failed at the payment step — see journeys/checkout.yaml:1",
             0.9,
             "test",
         )
@@ -1698,19 +1698,18 @@ fn journey_map_classifies_proof_kind_journey_regardless_of_type() {
             serde_json::json!({"type":"test","proof_kind":"journey","proof_level":"L5"}),
         )
         .unwrap();
-    let edge = store
+    // Earned, not asserted: loom runs the proof and records what it saw.
+    store
         .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
         .unwrap();
-    store
-        .record_verdict(
-            &edge.id,
-            InspectionStatus::Passing,
-            "dogfood journey passes end-to-end",
-            "dogfood run passed",
-            0.9,
-            "test",
-        )
-        .unwrap();
+    {
+        let mut body = validation.body.clone();
+        body["command"] = serde_json::json!("true");
+        body["type"] = serde_json::json!("test");
+        store.set_node_body(&validation.id, &body).unwrap();
+        let fresh = store.get_node(&validation.id).unwrap().unwrap();
+        loom::commands::observe_validation(&store, &fresh).unwrap();
+    }
 
     drop(store);
 

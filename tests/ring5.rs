@@ -2545,17 +2545,19 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
         ],
     );
     // mark the validation passed via the CLI
+    // A proof is RUN, never reported. Point it at a trivial command
+    // (this test is about coverage, not the command) and let loom watch.
     loom_ok(
         tmp.path(),
         &[
             "validation",
-            "verdict",
+            "update",
             "checkout journey",
-            "passed",
-            "--evidence",
-            "journey green",
+            "--command",
+            "true",
         ],
     );
+    loom_ok(tmp.path(), &["validation", "run", "checkout journey"]);
 
     // before sync establishes the artifact hash, the edge is still uninspected
     // → still uncovered. Run sync to baseline, then record the verdict on the edge.
@@ -2564,7 +2566,7 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
     // Passing verdict to count as a current proof. Use the store directly to
     // stamp the edge (mirrors what `loom journey run` does on a green run).
     {
-        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::model::NodeType;
         use loom::store::Store;
         let store = Store::open(tmp.path()).unwrap();
         let val = store
@@ -2573,22 +2575,9 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        let e = store
-            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
-            .unwrap()
-            .into_iter()
-            .next()
-            .unwrap();
-        store
-            .record_verdict(
-                &e.id,
-                InspectionStatus::Passing,
-                "journey green",
-                "journey passed",
-                0.9,
-                "test",
-            )
-            .unwrap();
+        // Earned, not asserted: loom runs it and records what it saw.
+        let _ = &intent;
+        observe_passing(&store, &val.name);
     }
 
     let covered = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
@@ -2662,19 +2651,15 @@ fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
             "checkout completes",
         ],
     );
+    // A proof is RUN, never reported. Point it at a trivial command
+    // (this test is about coverage, not the command) and let loom watch.
     loom_ok(
         tmp.path(),
-        &[
-            "validation",
-            "verdict",
-            "unit checkout",
-            "passed",
-            "--evidence",
-            "unit green",
-        ],
+        &["validation", "update", "unit checkout", "--command", "true"],
     );
+    loom_ok(tmp.path(), &["validation", "run", "unit checkout"]);
     {
-        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::model::NodeType;
         use loom::store::Store;
         let store = Store::open(tmp.path()).unwrap();
         let val = store
@@ -2683,22 +2668,9 @@ fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        let e = store
-            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
-            .unwrap()
-            .into_iter()
-            .next()
-            .unwrap();
-        store
-            .record_verdict(
-                &e.id,
-                InspectionStatus::Passing,
-                "unit green",
-                "test passed",
-                0.9,
-                "test",
-            )
-            .unwrap();
+        // Earned, not asserted: loom runs it and records what it saw.
+        let _ = &intent;
+        observe_passing(&store, &val.name);
     }
     let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
     let row = v.as_array().unwrap().first().unwrap();
@@ -3013,7 +2985,7 @@ fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
         ],
     );
     {
-        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::model::NodeType;
         use loom::store::Store;
         let store = Store::open(tmp.path()).unwrap();
         let val = store
@@ -3022,23 +2994,9 @@ fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        store.set_node_status(&val.id, "passed").unwrap();
-        let e = store
-            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
-            .unwrap()
-            .into_iter()
-            .next()
-            .unwrap();
-        store
-            .record_verdict(
-                &e.id,
-                InspectionStatus::Passing,
-                "journey green",
-                "journey passed",
-                0.9,
-                "test",
-            )
-            .unwrap();
+        // Earned, not asserted: loom runs it and records what it saw.
+        let _ = &intent;
+        observe_passing(&store, &val.name);
     }
     let findings = loom_json_out(tmp.path(), &["journey", "coverage", "drift", "--json"]);
     assert_eq!(
@@ -3158,7 +3116,7 @@ fn journey_coverage_drift_reports_contract_artifact_mismatch() {
         ],
     );
     {
-        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::model::NodeType;
         use loom::store::Store;
         let store = Store::open(tmp.path()).unwrap();
         let val = store
@@ -3167,23 +3125,9 @@ fn journey_coverage_drift_reports_contract_artifact_mismatch() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        store.set_node_status(&val.id, "passed").unwrap();
-        let e = store
-            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
-            .unwrap()
-            .into_iter()
-            .next()
-            .unwrap();
-        store
-            .record_verdict(
-                &e.id,
-                InspectionStatus::Passing,
-                "journey green",
-                "journey passed",
-                0.9,
-                "test",
-            )
-            .unwrap();
+        // Earned, not asserted: loom runs it and records what it saw.
+        let _ = &intent;
+        observe_passing(&store, &val.name);
     }
     let findings = loom_json_err(tmp.path(), &["journey", "coverage", "drift", "--json"]);
     let arr = findings.as_array().unwrap();
@@ -3254,7 +3198,7 @@ fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
         ],
     );
     {
-        use loom::model::{EdgeKind, InspectionStatus, NodeType};
+        use loom::model::NodeType;
         use loom::store::Store;
         let store = Store::open(tmp.path()).unwrap();
         let intent = store
@@ -3265,22 +3209,9 @@ fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
                 .resolve_node(name, Some(NodeType::Validation))
                 .unwrap();
             store.set_node_status(&val.id, "passed").unwrap();
-            let e = store
-                .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
-                .unwrap()
-                .into_iter()
-                .next()
-                .unwrap();
-            store
-                .record_verdict(
-                    &e.id,
-                    InspectionStatus::Passing,
-                    "journey green",
-                    "journey passed",
-                    0.9,
-                    "test",
-                )
-                .unwrap();
+            // Earned, not asserted: loom runs it and records what it saw.
+            let _ = &intent;
+            observe_passing(&store, &val.name);
         }
     }
     let findings = loom_json_out(tmp.path(), &["journey", "coverage", "drift", "--json"]);
@@ -3298,7 +3229,7 @@ fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
 /// breakage; loom's job is to make the stale proof tracked work again.
 #[test]
 fn sync_stales_journey_proof_when_runner_ref_source_changes() {
-    use loom::model::{EdgeKind, InspectionStatus, NodeType};
+    use loom::model::NodeType;
     use loom::store::Store;
 
     let tmp = Tmp::new();
@@ -3375,23 +3306,9 @@ fn sync_stales_journey_proof_when_runner_ref_source_changes() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        store.set_node_status(&val.id, "passed").unwrap();
-        let e = store
-            .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
-            .unwrap()
-            .into_iter()
-            .next()
-            .unwrap();
-        store
-            .record_verdict(
-                &e.id,
-                InspectionStatus::Passing,
-                "journey green",
-                "journey passed",
-                0.9,
-                "test",
-            )
-            .unwrap();
+        // Earned, not asserted: loom runs it and records what it saw.
+        let _ = &intent;
+        observe_passing(&store, &val.name);
     }
     // First sync SEEDS the runner_ref hash — it must NOT stale the fresh proof.
     loom_ok(tmp.path(), &["sync"]);
@@ -3546,7 +3463,7 @@ fn journey_prompt_ungrounded_intent_steers_to_http_proof() {
 /// A proof stays passed. Guards the over-stale bug the artifact match fixes.
 #[test]
 fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
-    use loom::model::{EdgeKind, InspectionStatus, NodeType};
+    use loom::model::NodeType;
     use loom::store::Store;
 
     let tmp = Tmp::new();
@@ -3628,22 +3545,9 @@ fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
                 .resolve_node(name, Some(NodeType::Validation))
                 .unwrap();
             store.set_node_status(&val.id, "passed").unwrap();
-            let e = store
-                .edges_with(Some(EdgeKind::Validates), Some(&val.id), Some(&intent.id))
-                .unwrap()
-                .into_iter()
-                .next()
-                .unwrap();
-            store
-                .record_verdict(
-                    &e.id,
-                    InspectionStatus::Passing,
-                    "journey green",
-                    "journey passed",
-                    0.9,
-                    "test",
-                )
-                .unwrap();
+            // Earned, not asserted: loom runs it and records what it saw.
+            let _ = &intent;
+            observe_passing(&store, &val.name);
         }
     }
     loom_ok(tmp.path(), &["sync"]); // seed

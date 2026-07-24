@@ -123,28 +123,7 @@ fn build_clean_graph(tmp: &Tmp) -> Store {
     // real work and the graph is not clean. (`sys` is a hierarchy parent —
     // proven through its children.)
     for (intent, name) in [(&auth, "login proof"), (&cart, "cart proof")] {
-        let v = store
-            .add_node(
-                NodeType::Validation,
-                name,
-                "",
-                "passed",
-                serde_json::json!({"type":"test","command":"true"}),
-            )
-            .unwrap();
-        let ve = store
-            .add_edge(EdgeKind::Validates, &v.id, &intent.id, TruthClass::Asserted)
-            .unwrap();
-        store
-            .record_verdict(
-                &ve.id,
-                InspectionStatus::Passing,
-                "proof ran and passed",
-                "src/auth.rs:1",
-                0.95,
-                "llm",
-            )
-            .unwrap();
+        loom::commands::prove_intent(&store, &intent.id, name, "true").unwrap();
     }
     // arm duplicate detection with distinct vocab tags (no collisions)
     for (id, term) in [(&sys.id, "system"), (&auth.id, "auth"), (&cart.id, "cart")] {

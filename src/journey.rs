@@ -537,6 +537,15 @@ fn run_http_step(
 ///
 /// Resolves the journey validation (repairing duplicates when needed). Mutates
 /// `outcomes` when a step intent cannot be resolved (marks that step failed).
+/// The intent NAME a step targets, for matching spec steps back to the intent
+/// their verdict aggregates.
+fn intent_name<'a>(store: &Store, intent_id: &'a str) -> std::borrow::Cow<'a, str> {
+    match store.get_node(intent_id) {
+        Ok(Some(n)) => std::borrow::Cow::Owned(n.name),
+        _ => std::borrow::Cow::Borrowed(intent_id),
+    }
+}
+
 pub fn record_outcomes(
     store: &Store,
     spec: &JourneySpec,
@@ -573,12 +582,56 @@ pub fn record_outcomes(
     // dirties updated_at even when the final evidence is byte-identical.
     for (intent_id, (status, details)) in intent_outcomes {
         let evidence = details.join(" | ");
+        // loom RAN these steps, so the verdict is anchored to the run — not to
+        // a sentence about it. `assertions` counts the content checks the spec
+        // actually made (`exit_code` deliberately excluded: an exit code proves
+        // liveness, not behavior), and `covered` is the code the proof
+        // exercised, so the proof expires when that code moves.
+        let assertions: usize = spec
+            .steps
+            .iter()
+            .filter(|st| st.intent == *intent_name(store, &intent_id))
+            .map(|st| {
+                st.expect.body.len()
+                    + st.expect.exists.len()
+                    + st.expect.stdout_contains.len()
+                    + st.expect.stderr_contains.len()
+            })
+            .sum();
+        let covered = crate::runner::files_grounding(store, &intent_id)?;
+        let transcript: String = outcomes
+            .iter()
+            .map(|o| o.transcript.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let run = crate::runner::record(
+            store.root(),
+            crate::model::RunProducer::Journey,
+            &format!("loom journey run '{}'", spec.journey),
+            &covered,
+            assertions,
+            i64::from(status != InspectionStatus::Passing),
+            transcript.as_bytes(),
+            &[],
+            0,
+        );
         for e in store.edges_with(
             Some(EdgeKind::Validates),
             Some(&journey.id),
             Some(&intent_id),
         )? {
-            store.record_verdict(&e.id, status, "journey steps", &evidence, 1.0, "journey")?;
+            store.assert_fact(
+                crate::store::Assertion::new(
+                    crate::store::Subject::Edge(e.id.clone()),
+                    crate::model::Claim::Verdict,
+                    status.as_str(),
+                    "journey",
+                )
+                .criterion("journey steps")
+                .confidence(1.0)
+                .cited(crate::evidence::cite(store.root(), &evidence)?)
+                .observed(run.clone()),
+            )?;
         }
     }
     if let Some(idx) = first_fail_idx {

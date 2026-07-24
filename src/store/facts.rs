@@ -135,6 +135,7 @@ impl Store {
     /// Record an asserted fact. See the module header for the full contract.
     pub fn assert_fact(&self, a: Assertion<'_>) -> Result<FactView> {
         // ---- 1. subject resolves, and the claim fits it ----------------------
+        let mut shape = anchor::Shape::default();
         let (edge_kind, role) = match (&a.subject, a.claim) {
             (Subject::Edge(id), Claim::Verdict) => {
                 let edge = self
@@ -143,6 +144,25 @@ impl Store {
                 if edge.truth_class != crate::model::TruthClass::Asserted {
                     bail!("edge '{id}' is derived — sync owns its status, not a verdict");
                 }
+                // A proof's floor depends on whether loom CAN run it.
+                shape.runnable_proof = edge.kind == crate::model::EdgeKind::Validates
+                    && self
+                        .get_node(&edge.from_id)?
+                        .map(|v| {
+                            let command =
+                                v.body.get("command").and_then(|c| c.as_str()).unwrap_or("");
+                            let ty = v
+                                .body
+                                .get("type")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("test");
+                            // A journey is proven by `loom journey run`, not by
+                            // the validation runner — which reports `Manual`
+                            // rather than pretending. Classing it runnable here
+                            // would demand a Run nothing in this path produces.
+                            !command.trim().is_empty() && !matches!(ty, "manual_check" | "journey")
+                        })
+                        .unwrap_or(false);
                 (Some(edge.kind), Some(self.grounding_role(id)?))
             }
             (Subject::Edge(_), other) => {
@@ -245,7 +265,7 @@ impl Store {
 
         // ---- 6. the floor ----------------------------------------------------
         let strength = level(&rows);
-        let floor = anchor::required(a.claim, edge_kind, role, a.state);
+        let floor = anchor::required_for(a.claim, edge_kind, role, a.state, shape);
         if a.below_floor.is_none() && strength.rank() < floor.required.rank() {
             bail!(
                 "'{}' needs {} evidence but this is only {} — {}",
