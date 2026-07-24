@@ -214,7 +214,7 @@ fn reclassify_changed_role_reopens_settled_claim() {
     // ORIGINAL criterion/evidence preserved (history kept, not wiped).
     let after = store.get_edge(&edge.id).unwrap().unwrap();
     assert_eq!(after.criterion, "criterion: routes order");
-    assert_eq!(after.evidence, "src/order.rs:12");
+    assert_eq!(store.verdict_prose(&after.id).unwrap(), "src/order.rs:12");
 
     // same-role reclassify on a SETTLED claim does NOT re-open: use a fresh
     // consumes edge that is still passing (not the one just re-opened above,
@@ -897,10 +897,19 @@ fn m7_unsupported_export_format_is_rejected() {
         Export::from_json(bad).is_err(),
         "an export with format 999 must be rejected (M-7)"
     );
-    // sanity: format 1 still parses.
-    let ok = r#"{"format":1,"graph_id":"g","name":"n","observed":false,
+    // sanity: the current format still parses. Format 1 is deliberately NOT
+    // accepted — it predates the evidence spine, and silently importing its
+    // verdicts would reintroduce exactly the unanchored facts the spine exists
+    // to refuse. `loom carry-forward` is the explicit path for those.
+    let ok = r#"{"format":2,"graph_id":"g","name":"n","observed":false,
                   "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
     assert!(Export::from_json(ok).is_ok());
+    let legacy = r#"{"format":1,"graph_id":"g","name":"n","observed":false,
+                  "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
+    assert!(
+        Export::from_json(legacy).is_err(),
+        "a pre-evidence-spine export must not import silently"
+    );
 }
 
 // =========================================================================

@@ -313,7 +313,7 @@ fn validate_failing_command_records_failure() {
         .edges_with(Some(EdgeKind::Validates), Some(&proof.id), None)
         .unwrap();
     assert!(!edges.is_empty(), "validates edge exists for the proof");
-    let evidence = &edges[0].evidence;
+    let evidence = &store.verdict_prose(&edges[0].id).unwrap();
     assert!(
         evidence.contains(stderr_sentinel),
         "edge evidence carries the stderr excerpt, not just the exit code: {evidence:?}",

@@ -339,7 +339,7 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
             name,
             locator,
             e.status.as_str().to_string(),
-            e.evidence,
+            store.verdict_prose(&e.id)?,
             grole,
         ));
     }

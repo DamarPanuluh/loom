@@ -303,7 +303,7 @@ fn project_groundings(store: &Store, intent_id: &str) -> Result<Vec<FindGroundin
                 .unwrap_or_default(),
             role: store.grounding_role(&edge.id)?.as_str().into(),
             status: edge.status.as_str().into(),
-            evidence: edge.evidence,
+            evidence: store.verdict_prose(&edge.id)?,
         });
     }
     Ok(groundings)

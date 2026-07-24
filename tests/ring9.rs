@@ -344,7 +344,8 @@ fn record_verdict_rejects_placeholder_text_without_partial_write() {
         "HONESTY GATE: rejected placeholder evidence must not persist criterion"
     );
     assert_eq!(
-        unchanged.evidence, "",
+        store.verdict_prose(&unchanged.id).unwrap(),
+        "",
         "HONESTY GATE: rejected placeholder evidence must not persist evidence"
     );
 
@@ -372,7 +373,8 @@ fn record_verdict_rejects_placeholder_text_without_partial_write() {
         "HONESTY GATE: rejected placeholder criterion must not persist criterion"
     );
     assert_eq!(
-        still_unchanged.evidence, "",
+        store.verdict_prose(&still_unchanged.id).unwrap(),
+        "",
         "HONESTY GATE: rejected placeholder criterion must not persist evidence"
     );
 
@@ -392,7 +394,8 @@ fn record_verdict_rejects_placeholder_text_without_partial_write() {
         "HONESTY GATE: accepted substantive verdict must be persisted as passing"
     );
     assert_eq!(
-        accepted.evidence, "inspected command output linked the two intents before truncation …",
+        store.verdict_prose(&accepted.id).unwrap(),
+        "inspected command output linked the two intents before truncation …",
         "HONESTY GATE: substantive trailing ellipsis must be preserved"
     );
 }

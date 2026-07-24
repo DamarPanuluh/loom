@@ -21,6 +21,12 @@ pub struct Export {
     pub observed: bool,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    /// The asserted claims and their anchors. Empty on a graph with no verdicts,
+    /// so a bare structural export keeps its exact byte shape.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub facts: Vec<crate::evidence::Fact>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence: Vec<crate::evidence::EvidenceRow>,
     pub facets: Vec<Facet>,
     pub tags: Vec<Tag>,
     /// Portable repo config (allowlisted meta keys: layer order, coverage
@@ -31,7 +37,7 @@ pub struct Export {
 }
 
 /// Current export format version.
-pub const FORMAT: u32 = 1;
+pub const FORMAT: u32 = 2;
 
 impl Export {
     pub fn from_snapshot(snap: Snapshot) -> Export {
@@ -42,6 +48,8 @@ impl Export {
             observed: snap.identity.observed,
             nodes: snap.nodes,
             edges: snap.edges,
+            facts: snap.facts,
+            evidence: snap.evidence,
             facets: snap.facets,
             tags: snap.tags,
             config: snap.config,
@@ -50,6 +58,8 @@ impl Export {
 
     pub fn into_snapshot(self) -> Snapshot {
         Snapshot {
+            facts: self.facts,
+            evidence: self.evidence,
             identity: Identity {
                 graph_id: self.graph_id,
                 name: self.name,
@@ -235,6 +245,8 @@ mod tests {
     #[test]
     fn empty_export_is_deterministic() {
         let e = Export {
+            facts: Vec::new(),
+            evidence: Vec::new(),
             format: FORMAT,
             graph_id: "g1".into(),
             name: "demo".into(),
@@ -248,7 +260,7 @@ mod tests {
         let json = e.to_json().unwrap();
         insta::assert_snapshot!(json, @r###"
 {
-  "format": 1,
+  "format": 2,
   "graph_id": "g1",
   "name": "demo",
   "observed": false,
@@ -268,6 +280,8 @@ mod tests {
         let mut config = std::collections::BTreeMap::new();
         config.insert("layer_order".to_string(), r#"["api","domain"]"#.to_string());
         let e = Export {
+            facts: Vec::new(),
+            evidence: Vec::new(),
             format: FORMAT,
             graph_id: "g1".into(),
             name: "demo".into(),
@@ -281,11 +295,14 @@ mod tests {
         let json = e.to_json().unwrap();
         assert!(json.contains("\"layer_order\""));
         assert_eq!(Export::from_json(&json).unwrap(), e);
-        // …and a pre-config export (no `config` field) still parses.
-        let legacy = r#"{"format":1,"graph_id":"g","name":"n","observed":false,
-                         "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
-        let parsed = Export::from_json(legacy).unwrap();
+        // …and an export without the optional sections still parses: `config`,
+        // `facts` and `evidence` are all absent-when-empty, so a structural
+        // export keeps its exact byte shape.
+        let minimal = r#"{"format":2,"graph_id":"g","name":"n","observed":false,
+                          "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
+        let parsed = Export::from_json(minimal).unwrap();
         assert!(parsed.config.is_empty());
+        assert!(parsed.facts.is_empty());
     }
 
     #[test]
@@ -296,6 +313,8 @@ mod tests {
             r#"[{"name":"lint","command":"cargo lint"}]"#.into(),
         );
         let mut snapshot = Snapshot {
+            facts: Vec::new(),
+            evidence: Vec::new(),
             identity: Identity {
                 graph_id: "g".into(),
                 name: "n".into(),
@@ -343,6 +362,8 @@ mod tests {
         // Rendering through the seam is byte-identical to the direct export
         // path, so routing the engine through the registry changed no bytes.
         let snap = Snapshot {
+            facts: Vec::new(),
+            evidence: Vec::new(),
             identity: Identity {
                 graph_id: "g1".into(),
                 name: "demo".into(),
@@ -368,6 +389,8 @@ mod tests {
             observed in any::<bool>(),
         ) {
             let export = Export {
+                facts: Vec::new(),
+                evidence: Vec::new(),
                 format: FORMAT,
                 graph_id,
                 name,

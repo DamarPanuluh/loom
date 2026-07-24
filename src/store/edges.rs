@@ -65,9 +65,9 @@ impl Store {
     pub fn get_edge(&self, id: &str) -> Result<Option<Edge>> {
         self.conn
             .query_row(
-                "SELECT id,from_id,to_id,kind,truth_class,status,criterion,evidence,
+                "SELECT id,from_id,to_id,kind,truth_class,status,criterion,
                         confidence,depends_on,inspected_by,created_at,updated_at
-                 FROM edge WHERE id=?1",
+                 FROM edge_view WHERE id=?1",
                 params![id],
                 row_to_edge,
             )
@@ -84,7 +84,7 @@ impl Store {
             return Ok(e);
         }
         let mut stmt = self.conn.prepare(&format!(
-            "SELECT {EDGE_COLS} FROM edge WHERE id LIKE ?1 ORDER BY id"
+            "SELECT {EDGE_COLS} FROM edge_view WHERE id LIKE ?1 ORDER BY id"
         ))?;
         let matches = stmt
             .query_map(params![format!("{key}%")], row_to_edge)?
@@ -96,8 +96,16 @@ impl Store {
         }
     }
 
-    /// Record an asserted verdict on an edge. This is the ONLY path that writes
-    /// asserted statuses (INV-5). Enforces the evidence gate (INV-4, INV-6).
+    /// Record an asserted verdict on an edge.
+    ///
+    /// This is now a BUILDER over [`Store::assert_fact`], not a second write
+    /// path: it turns the caller's prose into whatever anchors that prose
+    /// actually carries (`evidence::cite`) and hands the assertion to the one
+    /// chokepoint, which owns the authority checks, the anchor floor, and the
+    /// write. Every validation that used to live here moved there — including
+    /// the placeholder lint, now demoted from "the gate" to one hygiene check
+    /// among several, because rejecting "TBD" while accepting any fluent
+    /// sentence was never a gate at all.
     pub fn record_verdict(
         &self,
         edge_id: &str,
@@ -107,77 +115,28 @@ impl Store {
         confidence: f64,
         inspected_by: &str,
     ) -> Result<Edge> {
+        let cited = crate::evidence::cite(&self.root, evidence)?;
         let edge = self
             .get_edge(edge_id)?
             .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
-        if edge.truth_class != TruthClass::Asserted {
-            bail!("record_verdict is for asserted edges; '{edge_id}' is derived");
-        }
-        self.check_lane(registry::spec(edge.kind).owner)?;
-        match status {
-            InspectionStatus::Passing | InspectionStatus::Failing => {
-                if crate::model::is_placeholder(criterion) || crate::model::is_placeholder(evidence)
-                {
-                    bail!("{status} verdict requires substantive criterion and evidence (not a placeholder like '…' or '<reason>')");
-                }
-            }
-            InspectionStatus::Independent => {
-                // INV-6: a measured outcome bears a criterion; INV-4: and
-                // evidence of non-applicability. Both are required (H-2).
-                if crate::model::is_placeholder(criterion) || crate::model::is_placeholder(evidence)
-                {
-                    bail!("independent verdict requires substantive criterion and evidence (not a placeholder like '…' or '<reason>')");
-                }
-            }
-            InspectionStatus::Blocked => {
-                if crate::model::is_placeholder(evidence) {
-                    bail!("blocked requires a substantive reason (evidence), not a placeholder");
-                }
-            }
-            InspectionStatus::Uninspected | InspectionStatus::NeedsReverification => {}
-            InspectionStatus::Current => {
-                bail!("'current' is a derived status; not valid for a verdict");
-            }
-        }
-        if !(0.0..=1.0).contains(&confidence) {
-            bail!("confidence must be in [0,1], got {confidence}");
-        }
-        // Idempotent at the boundary: once validation has passed, an identical
-        // re-record is a no-op — it must not bump `updated_at` (which is exported,
-        // so a repeat would dirty `loom.graph.json`) nor rewrite unchanged rows.
-        // Validation runs FIRST, so an invalid input still fails closed above; a
-        // settled edge in this exact state already has no `stale_cause` facet, so
-        // skipping the clear below is safe.
-        if edge.status == status
-            && edge.criterion == criterion
-            && edge.evidence == evidence
-            && edge.confidence.to_bits() == confidence.to_bits()
-            && edge.inspected_by == inspected_by
-        {
-            return Ok(edge);
-        }
-        // Evidence anchoring: stamp a fingerprint of every file:line span the
-        // evidence cites, so sync can tell "cited span untouched" from
-        // "rewritten" — and a citation into lines that never existed fails
-        // closed HERE, before anything is written (integrity gate on the
-        // recorder). Runs after the idempotence check so a byte-identical
-        // re-record stays a no-op even when the cited file drifted since.
-        let stamps = crate::evidence::stamp(&self.root, evidence)?;
-        let now = now(&self.conn)?;
-        self.conn.execute(
-            "UPDATE edge SET status=?2,criterion=?3,evidence=?4,confidence=?5,
-                    inspected_by=?6,updated_at=?7 WHERE id=?1",
-            params![
-                edge_id,
+        self.assert_fact(
+            crate::store::Assertion::new(
+                crate::store::Subject::Edge(edge_id.to_string()),
+                crate::model::Claim::Verdict,
                 status.as_str(),
-                criterion,
-                evidence,
-                confidence,
                 inspected_by,
-                now
-            ],
+            )
+            .criterion(criterion)
+            .confidence(confidence)
+            .cited(cited),
         )?;
         self.clear_facet(edge_id, TargetKind::Edge, "stale_cause")?;
+        // BRIDGE: the cited spans now live as `Evidence::Span` rows on the
+        // fact, which is where `reverify_all` reads them. Sync's per-edge-kind
+        // ripple matrix still reads the old `evidence_spans` facet, so it is
+        // written here too until that matrix is replaced by the uniform
+        // re-verification pass — then both this write and the facet go.
+        let stamps = crate::evidence::stamp(&self.root, evidence)?;
         if stamps.is_empty() {
             self.clear_facet(
                 edge_id,
@@ -195,8 +154,7 @@ impl Store {
         }
         // Relates edges record cited codefile ids in depends_on so sync can
         // reopen the claim when those files change, without one-sided intent
-        // fanout. Other kinds keep depends_on empty (federation uses DependsOn
-        // edges, not this column).
+        // fanout. (Superseded by the same pass.)
         if edge.kind == EdgeKind::Relates {
             let mut refs: Vec<String> = Vec::new();
             for stamp in &stamps {
@@ -493,9 +451,9 @@ impl Store {
         let mut stmt;
         let rows = if let Some(k) = kind {
             stmt = self.conn.prepare(
-                "SELECT id,from_id,to_id,kind,truth_class,status,criterion,evidence,
+                "SELECT id,from_id,to_id,kind,truth_class,status,criterion,
                         confidence,depends_on,inspected_by,created_at,updated_at
-                 FROM edge WHERE kind=?1 ORDER BY id LIMIT ?2 OFFSET ?3",
+                 FROM edge_view WHERE kind=?1 ORDER BY id LIMIT ?2 OFFSET ?3",
             )?;
             stmt.query_map(
                 params![k.as_str(), limit as i64, offset as i64],
@@ -503,9 +461,9 @@ impl Store {
             )?
         } else {
             stmt = self.conn.prepare(
-                "SELECT id,from_id,to_id,kind,truth_class,status,criterion,evidence,
+                "SELECT id,from_id,to_id,kind,truth_class,status,criterion,
                         confidence,depends_on,inspected_by,created_at,updated_at
-                 FROM edge ORDER BY id LIMIT ?1 OFFSET ?2",
+                 FROM edge_view ORDER BY id LIMIT ?1 OFFSET ?2",
             )?;
             stmt.query_map(params![limit as i64, offset as i64], row_to_edge)?
         };
@@ -540,7 +498,7 @@ impl Store {
         let placeholders: Vec<String> =
             (0..statuses.len()).map(|i| format!("?{}", i + 2)).collect();
         let sql = format!(
-            "SELECT {EDGE_COLS} FROM edge WHERE truth_class=?1 AND status IN ({}) ORDER BY id",
+            "SELECT {EDGE_COLS} FROM edge_view WHERE truth_class=?1 AND status IN ({}) ORDER BY id",
             placeholders.join(",")
         );
         let mut args: Vec<String> = vec![truth.as_str().to_string()];

@@ -115,6 +115,11 @@ impl Store {
         let identity = self.identity()?;
         let nodes = self.list_all_nodes()?;
         let edges = self.list_edges(None, usize::MAX)?;
+        let facts = self.all_facts()?;
+        let mut evidence = Vec::new();
+        for f in &facts {
+            evidence.extend(self.evidence_for(&f.id)?);
+        }
         let facets = self.list_all_facets()?;
         let tags = self.list_all_tags()?;
         let mut config = std::collections::BTreeMap::new();
@@ -127,6 +132,8 @@ impl Store {
             identity,
             nodes,
             edges,
+            facts,
+            evidence,
             facets,
             tags,
             config,
@@ -338,9 +345,9 @@ impl Store {
         }
         for e in &snap.edges {
             tx.execute(
-                "INSERT INTO edge(id,from_id,to_id,kind,truth_class,status,criterion,evidence,
-                        confidence,depends_on,inspected_by,created_at,updated_at)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
+                "INSERT INTO edge(id,from_id,to_id,kind,truth_class,status,
+                        depends_on,created_at,updated_at)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
                 params![
                     e.id,
                     e.from_id,
@@ -348,13 +355,49 @@ impl Store {
                     e.kind.as_str(),
                     e.truth_class.as_str(),
                     e.status.as_str(),
-                    e.criterion,
-                    e.evidence,
-                    e.confidence,
                     e.depends_on.to_string(),
-                    e.inspected_by,
                     e.created_at,
                     e.updated_at
+                ],
+            )?;
+        }
+        // Facts and their anchors travel, but their STRENGTH does not: an
+        // exported `verified` is a claim about another filesystem. Every fact
+        // lands at whatever its evidence earns HERE, and `verify_imported`
+        // (below) re-checks each anchor against this working tree before the
+        // transaction closes. This is what stops an import smuggling in a
+        // verified fact whose covered files do not exist locally.
+        for fact in &snap.facts {
+            tx.execute(
+                "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,\
+                                   verification,confidence,asserted_by,asserted_at,stale)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+                params![
+                    fact.id,
+                    fact.subject_kind.as_str(),
+                    fact.subject_id,
+                    fact.claim.as_str(),
+                    fact.state,
+                    fact.criterion,
+                    // Provisional; recomputed below from what re-checks locally.
+                    crate::model::Verification::Claimed.as_str(),
+                    fact.confidence,
+                    fact.asserted_by,
+                    fact.asserted_at,
+                    "",
+                ],
+            )?;
+        }
+        for row in &snap.evidence {
+            tx.execute(
+                "INSERT INTO evidence (id,fact_id,payload,kind,recorded_at,holds,expiry_reason)
+                 VALUES (?1,?2,?3,?4,?5,1,'')",
+                params![
+                    row.id,
+                    row.fact_id,
+                    serde_json::to_string(&row.payload)?,
+                    row.payload.kind().as_str(),
+                    row.recorded_at,
                 ],
             )?;
         }
@@ -388,6 +431,11 @@ impl Store {
             )?;
         }
         tx.commit()?;
+        // Phase 3, mandatory: every imported anchor is re-checked against THIS
+        // working tree. Whatever the export claimed, a fact keeps only the
+        // strength its evidence earns here. Without this, `import` is a door
+        // straight past the write boundary — which is exactly what it used to be.
+        self.reverify_all()?;
         Ok(report)
     }
 }

@@ -469,9 +469,13 @@ fn edge_show(store: &Store, edge_id: String, json: bool) -> Result<()> {
         if !e.criterion.is_empty() {
             println!("  criterion: {}", e.criterion);
         }
-        if !e.evidence.is_empty() {
-            println!("  evidence: {}", e.evidence);
+        let prose = store.verdict_prose(&e.id)?;
+        if !prose.is_empty() {
+            println!("  evidence: {prose}");
         }
+        // How strongly the verdict is anchored — the number that decides whether
+        // it counts toward a rung, printed next to the claim it qualifies.
+        println!("  anchored: {}", store.edge_verification(&e.id)?);
         for (k, val) in &facets {
             println!("  {k}: {val}");
         }

@@ -838,20 +838,23 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
         // passing/failing/independent require substantive criterion AND evidence;
         // blocked requires a substantive reason (stored in evidence).
         if e.truth_class == TruthClass::Asserted {
+            // A settled verdict standing on nothing loom can re-check. The old
+            // check looked for placeholder PROSE, which caught "TBD" and missed
+            // every plausible sentence; this one asks whether any anchor is
+            // still live. It fires on facts carried forward from before the
+            // evidence spine and on facts whose anchors have all since broken.
             let vacuous_field = match e.status {
                 crate::model::InspectionStatus::Passing
                 | crate::model::InspectionStatus::Failing
                 | crate::model::InspectionStatus::Independent => {
                     if crate::model::is_placeholder(&e.criterion) {
                         Some("criterion")
-                    } else if crate::model::is_placeholder(&e.evidence) {
+                    } else if store.edge_verification(&e.id)? == crate::model::Verification::Expired
+                    {
                         Some("evidence")
                     } else {
                         None
                     }
-                }
-                crate::model::InspectionStatus::Blocked => {
-                    crate::model::is_placeholder(&e.evidence).then_some("reason")
                 }
                 _ => None,
             };

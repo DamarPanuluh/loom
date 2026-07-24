@@ -40,7 +40,7 @@ pub(super) fn prompt(graph: Option<&std::path::Path>, intent_key: &str, json: bo
         modules.push(json!({
             "path": cf.name,
             "locator": locator,
-            "evidence": e.evidence,
+            "evidence": store.verdict_prose(&e.id)?,
             "status": e.status.as_str(),
         }));
     }

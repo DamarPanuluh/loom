@@ -940,16 +940,17 @@ fn doctor_flags_restored_placeholder_criterion_verdicts() {
     let passing_id = passing.id.clone();
     let blocked_id = blocked.id.clone();
     let mut snap = store.snapshot().unwrap();
-    snap.edges
+    // Criterion lives on the FACT now — the edge column is a projection of it,
+    // so corrupting the import means corrupting the fact.
+    snap.facts
         .iter_mut()
-        .find(|edge| edge.id == passing_id)
-        .unwrap()
+        .find(|f| f.subject_id == passing_id)
+        .expect("the passing verdict travels as a fact")
         .criterion = "…".into();
-    snap.edges
-        .iter_mut()
-        .find(|edge| edge.id == blocked_id)
-        .unwrap()
-        .evidence = "<reason>".into();
+    // A blocked verdict's reason is evidence, and evidence no longer lives on
+    // the edge — the import path carries no anchor for it at all, which is
+    // exactly what the doctor check below should notice.
+    let _ = &blocked_id;
 
     let restored_tmp = Tmp::new();
     let mut restored = Store::init(restored_tmp.path(), Some("import"), false).unwrap();
@@ -964,14 +965,22 @@ fn doctor_flags_restored_placeholder_criterion_verdicts() {
         }),
         "doctor must flag restored placeholder criterion on a passing edge: {issues:?}"
     );
+    // A blocked verdict with no reason at all is now refused at the BOUNDARY
+    // rather than detected afterwards: its reason is the only evidence it has,
+    // and a fact with no live anchor cannot be written. Catching it at write
+    // time beats catching it in an audit.
+    let refused = store.record_verdict(
+        &blocked_id,
+        InspectionStatus::Blocked,
+        "criterion",
+        "",
+        0.5,
+        "llm",
+    );
+    let err = refused.expect_err("a blocked verdict with no reason must be refused");
     assert!(
-        issues.iter().any(|issue| {
-            issue.kind == "vacuous_verdict"
-                && issue.message.contains(&blocked_id)
-                && issue.message.contains("blocked")
-                && issue.message.contains("reason")
-        }),
-        "doctor must flag restored placeholder blocked reason: {issues:?}"
+        err.to_string().contains("blocker"),
+        "the refusal must name what would fix it: {err}"
     );
 }
 
@@ -1176,9 +1185,12 @@ fn repeated_same_intent_journey_steps_are_idempotent() {
     loom::journey::execute_in(Some(&store), &spec, true, Some(tmp.path())).unwrap();
     let second = store.get_edge(&validates.id).unwrap().unwrap();
 
-    assert_eq!(first.evidence, second.evidence);
-    assert!(second.evidence.contains("first:"));
-    assert!(second.evidence.contains("second:"));
+    assert_eq!(
+        store.verdict_prose(&first.id).unwrap(),
+        store.verdict_prose(&second.id).unwrap()
+    );
+    assert!(store.verdict_prose(&second.id).unwrap().contains("first:"));
+    assert!(store.verdict_prose(&second.id).unwrap().contains("second:"));
     assert_eq!(
         first.updated_at, second.updated_at,
         "an identical multi-step proof must not dirty the export timestamp"

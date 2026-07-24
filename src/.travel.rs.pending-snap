@@ -1,0 +1,11 @@
+{"run_id":"1784920699-425713000","line":261,"new":{"module_name":"loom__travel__tests","snapshot_name":"empty_export_is_deterministic","metadata":{"source":"src/travel.rs","assertion_line":261,"expression":"json"},"snapshot":"{\n  \"format\": 2,\n  \"graph_id\": \"g1\",\n  \"name\": \"demo\",\n  \"observed\": false,\n  \"nodes\": [],\n  \"edges\": [],\n  \"facets\": [],\n  \"tags\": []\n}"},"old":{"module_name":"loom__travel__tests","metadata":{},"snapshot":"{\n  \"format\": 1,\n  \"graph_id\": \"g1\",\n  \"name\": \"demo\",\n  \"observed\": false,\n  \"nodes\": [],\n  \"edges\": [],\n  \"facets\": [],\n  \"tags\": []\n}"}}
+{"run_id":"1784920704-166501000","line":261,"new":{"module_name":"loom__travel__tests","snapshot_name":"empty_export_is_deterministic","metadata":{"source":"src/travel.rs","assertion_line":261,"expression":"json"},"snapshot":"{\n  \"format\": 2,\n  \"graph_id\": \"g1\",\n  \"name\": \"demo\",\n  \"observed\": false,\n  \"nodes\": [],\n  \"edges\": [],\n  \"facets\": [],\n  \"tags\": []\n}"},"old":{"module_name":"loom__travel__tests","metadata":{},"snapshot":"{\n  \"format\": 1,\n  \"graph_id\": \"g1\",\n  \"name\": \"demo\",\n  \"observed\": false,\n  \"nodes\": [],\n  \"edges\": [],\n  \"facets\": [],\n  \"tags\": []\n}"}}
+{"run_id":"1784920738-735294000","line":261,"new":null,"old":null}
+{"run_id":"1784920790-866877000","line":261,"new":null,"old":null}
+{"run_id":"1784920816-242483000","line":261,"new":null,"old":null}
+{"run_id":"1784920855-516726000","line":261,"new":null,"old":null}
+{"run_id":"1784920906-788708000","line":261,"new":null,"old":null}
+{"run_id":"1784920977-651607000","line":261,"new":null,"old":null}
+{"run_id":"1784921010-272044000","line":261,"new":null,"old":null}
+{"run_id":"1784921056-610250000","line":261,"new":null,"old":null}
+{"run_id":"1784921101-693206000","line":261,"new":null,"old":null}

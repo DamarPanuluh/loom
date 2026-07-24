@@ -145,7 +145,7 @@ impl Store {
         from: Option<&str>,
         to: Option<&str>,
     ) -> Result<Vec<Edge>> {
-        let mut sql = format!("SELECT {EDGE_COLS} FROM edge WHERE 1=1");
+        let mut sql = format!("SELECT {EDGE_COLS} FROM edge_view WHERE 1=1");
         let mut args: Vec<String> = Vec::new();
         if let Some(k) = kind {
             sql.push_str(&format!(" AND kind=?{}", args.len() + 1));

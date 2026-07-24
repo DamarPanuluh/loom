@@ -375,10 +375,12 @@ pub struct Edge {
     pub kind: EdgeKind,
     pub truth_class: TruthClass,
     pub status: InspectionStatus,
+    /// PROJECTIONS of this edge's `verdict` fact — read-only. `evidence` is
+    /// gone entirely: an edge no longer carries a prose justification, because
+    /// prose is one kind of evidence among several and the weakest one. Read
+    /// the fact and its evidence rows instead.
     #[serde(default)]
     pub criterion: String,
-    #[serde(default)]
-    pub evidence: String,
     #[serde(default)]
     pub confidence: f64,
     #[serde(default = "empty_array")]

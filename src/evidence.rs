@@ -330,7 +330,12 @@ pub fn cite(root: &Path, prose: &str) -> Result<Vec<CitedEvidence>> {
         out.push(CitedEvidence::Journal(id.to_string()));
     }
     out.extend(stamp(root, prose)?.into_iter().map(CitedEvidence::Span));
-    if !prose.trim().is_empty() {
+    // Placeholder prose ("…", "TBD", "<reason>") is not weak evidence — it is
+    // NO evidence, so it produces no row at all. The floor then refuses the
+    // write for the honest reason: there is nothing here to re-check. This is
+    // where the old `is_placeholder` gate went: from a special case to a
+    // consequence of the lattice.
+    if !crate::model::is_placeholder(prose) {
         out.push(CitedEvidence::Claim(prose.trim().to_string()));
     }
     Ok(out)

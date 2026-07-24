@@ -585,6 +585,8 @@ mod tests {
 
     fn empty_snap(nodes: Vec<Node>) -> Snapshot {
         Snapshot {
+            facts: Vec::new(),
+            evidence: Vec::new(),
             identity: Identity {
                 graph_id: "g".into(),
                 name: "t".into(),

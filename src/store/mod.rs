@@ -37,6 +37,12 @@ pub struct Snapshot {
     pub identity: Identity,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    /// Asserted claims and the anchors behind them. These travel so verification
+    /// strength can travel — but strength is RECOMPUTED on import, because a
+    /// claim of `verified` from another machine is a claim until this filesystem
+    /// agrees.
+    pub facts: Vec<crate::evidence::Fact>,
+    pub evidence: Vec<crate::evidence::EvidenceRow>,
     pub facets: Vec<Facet>,
     pub tags: Vec<Tag>,
     /// Portable repo config from the meta table — ONLY the allowlisted keys in
@@ -415,9 +421,78 @@ pub(crate) use derived::{DebtPromotionInput, DebtPromotionResult};
 
 mod edges;
 mod facets;
+/// The write boundary: every asserted fact enters through `assert_fact`.
+pub mod facts;
 mod nodes;
+pub use facts::{edge_verdict, Assertion, FactView, Subject};
 
 // ---- helpers -------------------------------------------------------------
+
+/// Migration 3 — the evidence spine.
+///
+/// `fact` becomes the home of every asserted claim. Without it `assert_fact`
+/// cannot be a chokepoint: adjudication and ratification lived in `facet`, and
+/// `set_facet` is a public primitive every command reaches for directly.
+///
+/// The verdict columns leave `edge` and come back as a VIEW projected from the
+/// fact. Readers keep working unchanged; writers lose the ability to set them at
+/// all, because there is no longer a column to write.
+///
+/// This is a hardcut, not a data migration: every asserted verdict is reset,
+/// because not one of them was anchored to anything loom could re-check. The
+/// ladder going red afterwards is the point.
+const MIGRATION_3_EVIDENCE_SPINE: &str = r#"
+CREATE TABLE fact (
+    id           TEXT PRIMARY KEY,
+    subject_kind TEXT NOT NULL CHECK (subject_kind IN ('node','edge')),
+    subject_id   TEXT NOT NULL,
+    claim        TEXT NOT NULL CHECK (claim IN ('verdict','observation','adjudication','ratification')),
+    state        TEXT NOT NULL,
+    criterion    TEXT NOT NULL DEFAULT '',
+    verification TEXT NOT NULL CHECK (verification IN ('verified','cited','claimed','expired')),
+    confidence   REAL NOT NULL DEFAULT 0,
+    asserted_by  TEXT NOT NULL DEFAULT '',
+    asserted_at  TEXT NOT NULL,
+    stale        TEXT NOT NULL DEFAULT '',
+    UNIQUE (subject_kind, subject_id, claim)
+);
+CREATE INDEX idx_fact_subject      ON fact(subject_kind, subject_id);
+CREATE INDEX idx_fact_verification ON fact(verification, claim);
+CREATE INDEX idx_fact_claim_state  ON fact(claim, state);
+
+CREATE TABLE evidence (
+    id            TEXT PRIMARY KEY,
+    fact_id       TEXT NOT NULL REFERENCES fact(id) ON DELETE CASCADE,
+    payload       TEXT NOT NULL DEFAULT '{}',
+    kind          TEXT NOT NULL CHECK (kind IN ('run','span','journal','claim')),
+    recorded_at   TEXT NOT NULL,
+    holds         INTEGER NOT NULL DEFAULT 1,
+    expiry_reason TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX idx_evidence_fact  ON evidence(fact_id, kind);
+CREATE INDEX idx_evidence_holds ON evidence(holds);
+
+ALTER TABLE edge DROP COLUMN criterion;
+ALTER TABLE edge DROP COLUMN evidence;
+ALTER TABLE edge DROP COLUMN confidence;
+ALTER TABLE edge DROP COLUMN inspected_by;
+
+CREATE VIEW edge_view AS
+SELECT e.id, e.from_id, e.to_id, e.kind, e.truth_class, e.status,
+       e.depends_on, e.created_at, e.updated_at,
+       COALESCE(f.criterion, '')   AS criterion,
+       COALESCE(f.confidence, 0.0) AS confidence,
+       COALESCE(f.asserted_by, '') AS inspected_by
+FROM edge e
+LEFT JOIN fact f
+  ON f.subject_kind = 'edge' AND f.subject_id = e.id AND f.claim = 'verdict';
+
+UPDATE edge SET status = 'uninspected' WHERE truth_class = 'asserted';
+DELETE FROM facet WHERE key IN (
+    'evidence_spans', 'stale_cause', 'adjudication',
+    'ratification', 'ratified_by', 'ratified_at', 'ratified_presence'
+);
+"#;
 
 fn schema_migrations() -> Migrations<'static> {
     Migrations::new(vec![
@@ -426,6 +501,7 @@ fn schema_migrations() -> Migrations<'static> {
             "CREATE INDEX IF NOT EXISTS idx_tag_term ON tag(term);
              CREATE INDEX IF NOT EXISTS idx_facet_key_value ON facet(key, value);",
         ),
+        M::up(MIGRATION_3_EVIDENCE_SPINE),
     ])
 }
 
@@ -633,8 +709,11 @@ where
 const NODE_COLS: &str =
     "id,node_type,name,description,status,truth_class,body,created_at,updated_at";
 
-/// Column list for edge SELECTs.
-const EDGE_COLS: &str = "id,from_id,to_id,kind,truth_class,status,criterion,evidence,\
+/// Column list for edge SELECTs. Read from `edge_view`, never `edge`: the
+/// verdict fields (`criterion`, `confidence`, `inspected_by`) are PROJECTIONS of
+/// the edge's `verdict` fact, so an edge row cannot disagree with the fact that
+/// justifies it — there is no column to write them into.
+const EDGE_COLS: &str = "id,from_id,to_id,kind,truth_class,status,criterion,\
                          confidence,depends_on,inspected_by,created_at,updated_at";
 
 fn row_to_node(r: &rusqlite::Row) -> rusqlite::Result<Node> {
@@ -664,7 +743,6 @@ fn row_to_edge(r: &rusqlite::Row) -> rusqlite::Result<Edge> {
         truth_class: parse_named(r, "truth_class")?,
         status: parse_named(r, "status")?,
         criterion: r.get("criterion")?,
-        evidence: r.get("evidence")?,
         confidence: r.get("confidence")?,
         depends_on: serde_json::from_str(&depends_str).map_err(|e| {
             rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))

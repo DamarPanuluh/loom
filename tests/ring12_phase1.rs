@@ -135,7 +135,8 @@ fn apply_batch_creates_intents_groundings_relationships_and_records_verdicts() {
         "contract 1: the recorded criterion persisted on the edge"
     );
     assert_eq!(
-        edge.evidence, "test capture_settles passes",
+        store.verdict_prose(&edge.id).unwrap(),
+        "test capture_settles passes",
         "contract 1: the recorded evidence persisted on the edge"
     );
 
@@ -423,7 +424,8 @@ fn record_verdict_identical_rerecord_is_a_noop_preserving_updated_at() {
         "contract 5: criterion unchanged after identical re-record"
     );
     assert_eq!(
-        after_second.evidence, "epsilon evidence",
+        store.verdict_prose(&after_second.id).unwrap(),
+        "epsilon evidence",
         "contract 5: evidence unchanged after identical re-record"
     );
 }
@@ -500,7 +502,8 @@ fn record_verdict_still_rejects_placeholder_evidence_after_a_settled_verdict() {
         "contract 6: settled edge state survived the rejected re-record"
     );
     assert_eq!(
-        after.evidence, "zeta evidence",
+        store.verdict_prose(&after.id).unwrap(),
+        "zeta evidence",
         "contract 6: settled edge evidence survived the rejected re-record"
     );
 }
