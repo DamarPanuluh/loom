@@ -180,11 +180,15 @@ fn adjudication_floor(state: &str) -> Floor {
 /// naming the symbol earns the stronger grade for free, and `deepen` can later
 /// route on the difference.
 ///
-/// STAGED at `claimed`. The probe above is live — a grounding whose locator
-/// resolves already records `verified` — but raising the floor surfaces a long
-/// tail of fixtures citing `file:line` for files that were never created, so
-/// the citation was never evidence, it only looked like one. Raised with those
-/// repairs together rather than half.
+/// STAGED at `claimed`; belongs at `cited`. The probe above is live, so a
+/// grounding whose locator resolves already records `verified` — the floor only
+/// governs the weakest case.
+///
+/// Raising it is mechanical but has a long tail: fixtures across ring11, ring12
+/// and ring6 cite `file:line` for files that were never created, which means
+/// those citations were never evidence. Two test helpers are repaired (they now
+/// write the files they register), and the remainder is the same exercise.
+/// Flipped together with them rather than left half-done.
 const CURRENT_GROUNDING: Verification = Verification::Claimed;
 /// A consumer/config/verify seam is a weaker claim by nature — it says the file
 /// USES the behavior, not that it performs it — but it still has to point

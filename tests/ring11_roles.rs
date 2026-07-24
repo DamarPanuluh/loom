@@ -30,11 +30,47 @@ fn seed_intent(store: &Store, name: &str) -> String {
         .id
 }
 
+/// Register a codefile AND put it on disk.
+///
+/// A registered path with no file behind it is a fiction: any `file:line`
+/// citation into it is silently skipped, so a verdict "citing" it was never
+/// anchored to anything. Once the grounding floor demands `cited`, these
+/// fixtures stop compiling green — correctly, because they never proved what
+/// they claimed to.
 fn seed_codefile(store: &Store, path: &str) -> String {
+    let full = store.root().join(path);
+    std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+    // Only create what is missing: a fixture that deliberately wrote content
+    // here is testing that content, and a helper must never clobber it.
+    if !full.exists() {
+        let body: String = std::iter::once("pub fn behavior() {}\n".to_string())
+            .chain((2..=40).map(|n| format!("// line {n}\n")))
+            .collect();
+        std::fs::write(&full, body).unwrap();
+    }
     store
         .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
         .unwrap()
         .id
+}
+
+/// The evidence a grounding fixture cites: a real span in the file it grounds.
+fn cite(path: &str) -> String {
+    format!("{path}:1")
+}
+
+/// A citation that resolves, for fixtures whose subject is not the evidence.
+///
+/// The floor demands a grounding POINT at code. These tests are about roles,
+/// rehoming and staleness, not about what makes a citation good — so they get a
+/// real file and a real span, rather than a placeholder that only looked like
+/// one.
+fn anchored(store: &Store) -> String {
+    let p = store.root().join("fixture.rs");
+    if !p.exists() {
+        std::fs::write(&p, "pub fn fixture() {}\n").unwrap();
+    }
+    "fixture.rs:1".to_string()
 }
 
 /// Write `content` to `root/<rel>` creating parent dirs.
@@ -227,7 +263,14 @@ fn reclassify_changed_role_reopens_settled_claim() {
         .set_grounding_role(&edge2.id, GroundingRole::Consumes)
         .unwrap();
     store
-        .record_verdict(&edge2.id, InspectionStatus::Passing, "c", "e", 0.9, "llm")
+        .record_verdict(
+            &edge2.id,
+            InspectionStatus::Passing,
+            "c",
+            &anchored(&store),
+            0.9,
+            "llm",
+        )
         .unwrap();
     let (e2_after, _, reopened2) = store
         .reclassify_grounding(&edge2.id, GroundingRole::Consumes, "no-op rename")
@@ -293,7 +336,7 @@ fn consumes_seam_drift_stales_only_when_seam_gone() {
             &real_edge.id,
             InspectionStatus::Passing,
             "c",
-            "e",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -303,7 +346,7 @@ fn consumes_seam_drift_stales_only_when_seam_gone() {
             &cons_edge.id,
             InspectionStatus::Passing,
             "calls route",
-            "e",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -385,7 +428,7 @@ fn export_import_roundtrips_role_and_doctor_green() {
             &edge.id,
             InspectionStatus::Passing,
             "calls /api/load",
-            "e",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -489,7 +532,14 @@ fn rehome_supersedes_old_and_creates_new_carrying_role() {
     );
     // settle it so we can observe the re-open on the successor.
     store
-        .record_verdict(&edge.id, InspectionStatus::Passing, "c", "e", 0.9, "llm")
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "c",
+            &cite("src/widget.rs"),
+            0.9,
+            "llm",
+        )
         .unwrap();
 
     let (old, new) = store
@@ -557,7 +607,7 @@ fn doctor_flags_consumes_without_seam_and_clears_with_route() {
             &e_a.id,
             InspectionStatus::Passing,
             "works fine",
-            "e",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -582,7 +632,7 @@ fn doctor_flags_consumes_without_seam_and_clears_with_route() {
             &e_b.id,
             InspectionStatus::Passing,
             "calls /api/widgets",
-            "e",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -623,7 +673,14 @@ fn h1_redefine_intent_reopens_realizing_grounding() {
         .add_edge(EdgeKind::Implements, &intent, &file, TruthClass::Asserted)
         .unwrap();
     store
-        .record_verdict(&edge.id, InspectionStatus::Passing, "c", "e", 0.9, "llm")
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "c",
+            &cite("src/order.rs"),
+            0.9,
+            "llm",
+        )
         .unwrap();
     assert_eq!(
         store.get_edge(&edge.id).unwrap().unwrap().status,
@@ -652,7 +709,14 @@ fn h2_independent_verdict_requires_criterion_and_evidence() {
     // empty criterion, non-empty evidence -> error.
     assert!(
         store
-            .record_verdict(&edge.id, InspectionStatus::Independent, "", "e", 0.9, "llm")
+            .record_verdict(
+                &edge.id,
+                InspectionStatus::Independent,
+                "",
+                &anchored(&store),
+                0.9,
+                "llm"
+            )
             .is_err(),
         "independent verdict with empty criterion must error (H-2)"
     );
@@ -662,7 +726,7 @@ fn h2_independent_verdict_requires_criterion_and_evidence() {
             &edge.id,
             InspectionStatus::Independent,
             "c",
-            "e",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -815,7 +879,14 @@ fn h12_observed_graph_zeroes_active_lane_queues() {
             .add_edge(EdgeKind::Implements, &intent, &file, TruthClass::Asserted)
             .unwrap();
         store
-            .record_verdict(&edge.id, InspectionStatus::Failing, "c", "e", 0.9, "llm")
+            .record_verdict(
+                &edge.id,
+                InspectionStatus::Failing,
+                "c",
+                &anchored(&store),
+                0.9,
+                "llm",
+            )
             .unwrap();
         // elaborate queue: a user_visible feature intent with open completeness
         // axes (no scenarios/prerequisites/boundary recorded -> open > 0).

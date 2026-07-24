@@ -22,12 +22,37 @@ use serde_json::json;
 
 // ---- shared helpers --------------------------------------------------------
 
-/// Seed a CodeFile node and return its id.
+/// Seed a CodeFile node AND put the file on disk.
+///
+/// A registered path with no file behind it is a fiction: a `file:line`
+/// citation into it is silently skipped, so a verdict "citing" it anchors
+/// nothing. With the grounding floor demanding `cited`, such a fixture stops
+/// compiling green — correctly, because it never proved what it claimed.
 fn seed_codefile(store: &Store, path: &str) -> String {
+    let full = store.root().join(path);
+    std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+    // Only create what is missing: a fixture that deliberately wrote content
+    // here is testing that content, and a helper must never clobber it.
+    if !full.exists() {
+        let body: String = std::iter::once("pub fn behavior() {}\n".to_string())
+            .chain((2..=40).map(|n| format!("// line {n}\n")))
+            .collect();
+        std::fs::write(&full, body).unwrap();
+    }
     store
         .add_node(NodeType::CodeFile, path, "", "", json!({}))
         .unwrap()
         .id
+}
+
+/// A citation that resolves, for fixtures whose subject is not the evidence.
+#[allow(dead_code)]
+fn anchored(store: &Store) -> String {
+    let p = store.root().join("fixture.rs");
+    if !p.exists() {
+        std::fs::write(&p, "pub fn fixture() {}\n").unwrap();
+    }
+    "fixture.rs:1".to_string()
 }
 
 /// Count intents in the store.
@@ -93,11 +118,11 @@ fn apply_batch_creates_intents_groundings_relationships_and_records_verdicts() {
   ],
   "groundings": [
     { "intent": "payment can be captured", "codefile": "src/a.rs", "locator": "capture", "role": "realizes",
-      "verdict": { "verdict": "ground", "criterion": "capture() settles the charge", "evidence": "test capture_settles passes", "confidence": 0.9 } }
+      "verdict": { "verdict": "ground", "criterion": "capture() settles the charge", "evidence": "test capture_settles passes — src/a.rs:1", "confidence": 0.9 } }
   ],
   "relationships": [
     { "kind": "requires", "from": "payment can be refunded", "to": "payment can be captured",
-      "verdict": { "verdict": "ground", "criterion": "refund needs a prior capture", "evidence": "refund path reads capture record" } }
+      "verdict": { "verdict": "ground", "criterion": "refund needs a prior capture", "evidence": "refund path reads capture record — src/a.rs:2" } }
   ]
 }
 "#,
@@ -136,7 +161,7 @@ fn apply_batch_creates_intents_groundings_relationships_and_records_verdicts() {
     );
     assert_eq!(
         store.verdict_prose(&edge.id).unwrap(),
-        "test capture_settles passes",
+        "test capture_settles passes — src/a.rs:1",
         "contract 1: the recorded evidence persisted on the edge"
     );
 
@@ -232,7 +257,7 @@ fn apply_edges_and_verdicts_are_idempotent_on_reapply() {
   ],
   "groundings": [
     { "intent": "gamma works", "codefile": "src/a.rs", "locator": "g", "role": "realizes",
-      "verdict": { "verdict": "ground", "criterion": "gamma criterion", "evidence": "gamma evidence", "confidence": 0.9 } }
+      "verdict": { "verdict": "ground", "criterion": "gamma criterion", "evidence": "gamma evidence — src/a.rs:1", "confidence": 0.9 } }
   ]
 }
 "#,
@@ -259,7 +284,7 @@ fn apply_edges_and_verdicts_are_idempotent_on_reapply() {
         r#"{
   "groundings": [
     { "intent": "gamma works", "codefile": "src/a.rs", "locator": "g", "role": "realizes",
-      "verdict": { "verdict": "ground", "criterion": "gamma criterion", "evidence": "gamma evidence", "confidence": 0.9 } }
+      "verdict": { "verdict": "ground", "criterion": "gamma criterion", "evidence": "gamma evidence — src/a.rs:1", "confidence": 0.9 } }
   ]
 }
 "#,
@@ -304,7 +329,7 @@ fn apply_reapplying_intent_declarations_is_rejected_and_leaves_graph_unchanged()
   ],
   "groundings": [
     { "intent": "delta works", "codefile": "src/a.rs", "locator": "d", "role": "realizes",
-      "verdict": { "verdict": "ground", "criterion": "delta criterion", "evidence": "delta evidence", "confidence": 0.9 } }
+      "verdict": { "verdict": "ground", "criterion": "delta criterion", "evidence": "delta evidence — src/a.rs:2", "confidence": 0.9 } }
   ]
 }
 "#,
@@ -827,7 +852,11 @@ fn calibrate_proposes_above_floors_and_errors_without_codefiles() {
     // store.)
     let empty = Tmp::new();
     let empty_store = Store::init(empty.path(), Some("t"), false).unwrap();
-    seed_codefile(&empty_store, "src/missing.rs");
+    // Registered WITHOUT writing the file — `seed_codefile` now creates one, and
+    // the whole point here is a path with nothing behind it.
+    empty_store
+        .add_node(NodeType::CodeFile, "src/missing.rs", "", "", json!({}))
+        .unwrap();
     let err = loom::thresholds::calibrate(&empty_store, empty.path())
         .expect_err("contract 11: unreadable codefile must error");
     let msg = format!("{err}");
