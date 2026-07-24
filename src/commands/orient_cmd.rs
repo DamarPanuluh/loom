@@ -121,6 +121,22 @@ fn phase_in_plain_english(phase: &str) -> (&'static str, &'static str) {
             "There are relationships worth understanding.",
             "Inspect the next pair and record what the code actually shows.",
         ),
+        "review" => (
+            "Some verdicts were recorded with honest uncertainty.",
+            "Re-inspect the least confident one independently and settle it.",
+        ),
+        "prove" => (
+            "There are proposed changes nobody has tested yet.",
+            "Take the next hypothesis and find out whether it holds.",
+        ),
+        "elaborate" => (
+            "Some user-visible ideas are only half-described.",
+            "Fill in the sad paths, prerequisites, and proofs around the next one.",
+        ),
+        "ratify" => (
+            "The graph found behavior your judgment hasn't spoken to.",
+            "Keep it or kill it — loom has already gathered the evidence.",
+        ),
         "audit" => (
             "There are open issues or code smells to look at.",
             "Work through what loom flagged — fix each, or consciously accept it.",
@@ -128,6 +144,10 @@ fn phase_in_plain_english(phase: &str) -> (&'static str, &'static str) {
         "triage" => (
             "There are findings waiting on a decision.",
             "Confirm each into work, or dismiss it with a reason.",
+        ),
+        "deepen" => (
+            "Everything owed is done; now the graph gets harder on itself.",
+            "Strengthen the weakest proof under the code most depended on.",
         ),
         "export" => (
             "Your graph has changes that aren't in the shareable snapshot yet.",
@@ -184,37 +204,24 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         "  - recommended: {}              (phase: {})",
         ladder.next_command, ladder.phase
     );
-    let queues = crate::workitem::queue_counts(&store)?;
-    if queues.fix > 0 {
+    // The offer IS the ladder's gate — one decision structure. Before the lane
+    // table this was a hand-maintained if-chain that could disagree with both
+    // the compass and the queue depths.
+    let open_rungs: Vec<&crate::maturity::Rung> = ladder
+        .rungs
+        .iter()
+        .filter(|r| r.state == crate::maturity::RungState::Unmet && r.lane.serves_items())
+        .collect();
+    if let Some(gate) = open_rungs.first() {
         println!(
-            "  - repair {} failing claim(s)       [loom next --mode fix]",
-            queues.fix
+            "  - {} — {}   [{}]",
+            gate.name,
+            gate.detail,
+            gate.lane.next_command()
         );
-    } else if queues.build > 0 {
-        println!(
-            "  - build {} unrealized intent(s)    [loom next --mode build]",
-            queues.build
-        );
-    } else if queues.coverage > 0 {
-        println!(
-            "  - own {} uncovered codefile(s)     [loom next --mode coverage]",
-            queues.coverage
-        );
-    } else if queues.validate > 0 {
-        println!(
-            "  - prove {} open proof claim(s)     [loom next --mode validate]",
-            queues.validate
-        );
-    } else if queues.quality > 0 {
-        println!(
-            "  - measure {} quality claim(s)      [loom next --mode quality]",
-            queues.quality
-        );
-    } else if queues.analyze > 0 {
-        println!(
-            "  - inspect {} claim(s)              [loom next --mode analyze]",
-            queues.analyze
-        );
+        for r in open_rungs.iter().skip(1).take(2) {
+            println!("  - then {}: {}", r.name, r.detail);
+        }
     } else if intents == 0 && codefiles == 0 {
         println!("  - fresh graph — nothing mapped yet. Start here:");
         println!("      loom guide                  the driving loop + roles");
@@ -226,7 +233,7 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
             "      loom bootstrap suggest      Proposal of planned intents from code/tests/README"
         );
         println!("      loom intent add --name <pillar>   or seed one by hand");
-    } else if queues.prove + queues.triage + queues.review + queues.elaborate == 0 {
+    } else {
         println!("  - graph is settled; map more, or just get to work");
     }
     if pulse.open_questions > 0 {
@@ -369,7 +376,15 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "timeboxed_activity": "loom task add '<title>' --kind spike --target '<intent>' — close with a result (lands as a note on the target intent); targetless stays diary-only"
                 },
                 "roles": ["builder", "analyzer", "fixer", "validator", "quality", "monitor"],
-                "rung_gates": ["seeded", "realized", "proven", "hardened", "excellent", "exported"],
+                // Derived from the lane table so this can never drift from the
+                // ladder it describes.
+                "rung_gates": crate::lane::Lane::LADDER.iter().map(|l| l.rung()).collect::<Vec<_>>(),
+                "lanes": crate::lane::Lane::LADDER.iter().map(|l| serde_json::json!({
+                    "lane": l.as_str(),
+                    "rung": l.rung(),
+                    "axis": l.axis().as_str(),
+                    "human_only": l.human_only(),
+                })).collect::<Vec<_>>(),
                 "closeout": ["loom coverage", "loom doctor", "loom next --all", "loom export", "loom export --check"],
                 "operator_loops": operator_loops(),
                 "truth_axes": truth_axis_matrix(),

@@ -441,8 +441,7 @@ fn inv3_debt_never_gates_or_queues() {
         )
         .unwrap();
     let ladder_isolated = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
-    let queues_isolated =
-        serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+    let queues_isolated = serde_json::to_value(loom::maturity::depths(&store).unwrap()).unwrap();
 
     // Grow the outlier tenfold: a *pure* statistical change. Nothing routed,
     // nothing gated may move.
@@ -454,7 +453,7 @@ fn inv3_debt_never_gates_or_queues() {
         .iter()
         .any(|d| d.kind == "size_outlier"));
     let ladder_after = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
-    let queues_after = serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+    let queues_after = serde_json::to_value(loom::maturity::depths(&store).unwrap()).unwrap();
     assert_eq!(
         ladder_isolated, ladder_after,
         "a statistical signal must never be a maturity gate input"
@@ -537,8 +536,7 @@ fn debt_detects_git_cochange_and_is_advisory() {
     let snap_before = store.snapshot().unwrap();
     let edges_before = store.list_edges(None, usize::MAX).unwrap().len();
     let ladder_before = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
-    let queues_before =
-        serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+    let queues_before = serde_json::to_value(loom::maturity::depths(&store).unwrap()).unwrap();
 
     let debt1 = loom::signal::debt(&store).unwrap();
     let debt2 = loom::signal::debt(&store).unwrap();
@@ -595,7 +593,7 @@ fn debt_detects_git_cochange_and_is_advisory() {
     let snap_after = store.snapshot().unwrap();
     let edges_after = store.list_edges(None, usize::MAX).unwrap().len();
     let ladder_after = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
-    let queues_after = serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+    let queues_after = serde_json::to_value(loom::maturity::depths(&store).unwrap()).unwrap();
     assert_eq!(
         snap_before, snap_after,
         "debt must not mutate the graph snapshot"

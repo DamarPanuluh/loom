@@ -875,7 +875,7 @@ fn promote_keeps_raw_debt_advisory_and_serves_finding_via_triage() {
     };
     let queues_before = {
         let store = Store::open(tmp.path()).unwrap();
-        serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap()
+        serde_json::to_value(loom::maturity::depths(&store).unwrap()).unwrap()
     };
 
     let (cluster_id, _) = live_size_outlier_cluster(tmp.path());
@@ -992,8 +992,7 @@ fn promote_keeps_raw_debt_advisory_and_serves_finding_via_triage() {
     {
         let store = Store::open(tmp.path()).unwrap();
         let ladder_after = serde_json::to_value(loom::maturity::ladder(&store).unwrap()).unwrap();
-        let queues_after =
-            serde_json::to_value(loom::workitem::queue_counts(&store).unwrap()).unwrap();
+        let queues_after = serde_json::to_value(loom::maturity::depths(&store).unwrap()).unwrap();
 
         // Growing the statistical signal alone would not move these; after
         // promote, triage count may rise by the new untriaged Finding only.

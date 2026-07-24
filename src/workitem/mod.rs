@@ -9,6 +9,7 @@ mod context;
 mod contracts;
 mod queues;
 
+use crate::lane::Lane;
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
@@ -19,43 +20,8 @@ use queues::{
     analyze_item, build_item, coverage_item, elaborate_item, fix_item, prove_item, quality_item,
     ratify_item, review_item, triage_item, validate_item,
 };
-pub use queues::{queue_counts, queue_items, QueueCounts, QueueEntry};
+pub use queues::{queue_items, QueueEntry};
 use serde::Serialize;
-
-/// The queue a `loom next` request targets (ring 3 subset).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    Build,
-    Coverage,
-    Fix,
-    Analyze,
-    Quality,
-    Validate,
-    Prove,
-    Triage,
-    Review,
-    Elaborate,
-    Ratify,
-}
-
-impl Mode {
-    pub fn parse(s: &str) -> Option<Mode> {
-        match s {
-            "build" => Some(Mode::Build),
-            "coverage" => Some(Mode::Coverage),
-            "fix" => Some(Mode::Fix),
-            "analyze" | "discovery" => Some(Mode::Analyze),
-            "quality" => Some(Mode::Quality),
-            "validate" => Some(Mode::Validate),
-            "prove" => Some(Mode::Prove),
-            "triage" => Some(Mode::Triage),
-            "review" => Some(Mode::Review),
-            "elaborate" => Some(Mode::Elaborate),
-            "ratify" => Some(Mode::Ratify),
-            _ => None,
-        }
-    }
-}
 
 /// The role/mindset contract the LLM adopts for one work item.
 #[derive(Debug, Clone, Serialize)]
@@ -184,8 +150,8 @@ pub struct Target {
 /// Compute the next work item, then stamp the policy's human gate on it. Gate
 /// placement is portable config ([`crate::policy`]): a repo can require human
 /// sign-off for a lane's writes without a code change (default: no lane gated).
-pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
-    let mut item = next_inner(store, mode)?;
+pub fn next(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
+    let mut item = next_inner(store, lane)?;
     if let Some(w) = item.as_mut() {
         let policy = crate::policy::load(store)?;
         if policy.gates_role(&w.owner_role) {
@@ -198,77 +164,53 @@ pub fn next(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
     Ok(item)
 }
 
-/// Compute the next work item for a mode, or the highest-priority item overall.
-fn next_inner(store: &Store, mode: Option<Mode>) -> Result<Option<WorkItem>> {
+/// Compile the work packet for one lane. The single dispatch point: adding a
+/// lane means adding an arm here and an entry in `Lane::LADDER`, never a new
+/// priority list.
+pub(crate) fn lane_item(store: &Store, lane: Lane) -> Result<Option<WorkItem>> {
     // An observed graph maps code the driver does not own: discovery, quality,
     // and validation work only — the build and fix lanes are disabled, because a
     // monitor cannot change the upstream it watches (docs/commands.md:90).
-    let observed = store.identity()?.observed;
-    match mode {
-        Some(Mode::Build) | Some(Mode::Fix) | Some(Mode::Coverage) if observed => Ok(None),
-        Some(Mode::Build) => build_item(store),
-        Some(Mode::Coverage) => coverage_item(store),
-        Some(Mode::Fix) => fix_item(store),
-        Some(Mode::Analyze) => analyze_item(store),
-        Some(Mode::Quality) => quality_item(store),
-        Some(Mode::Validate) => validate_item(store),
-        Some(Mode::Prove) => prove_item(store),
-        Some(Mode::Triage) => triage_item(store),
-        Some(Mode::Review) => review_item(store),
-        // Human-presence queue: served ONLY on explicit request. Default `next`
-        // keeps serving autonomously-drainable work — an LLM driver must never
-        // be routed into a write it is denied (INV-8); ratify packets batch for
-        // the next human session instead.
-        Some(Mode::Ratify) => ratify_item(store),
-        Some(Mode::Elaborate) if observed => Ok(None),
-        Some(Mode::Elaborate) => elaborate_item(store),
+    if lane.observed_disabled() && store.identity()?.observed {
+        return Ok(None);
+    }
+    match lane {
+        Lane::Build => build_item(store),
+        Lane::Coverage => coverage_item(store),
+        Lane::Fix => fix_item(store),
+        Lane::Analyze => analyze_item(store),
+        Lane::Quality => quality_item(store),
+        Lane::Validate => validate_item(store),
+        Lane::Prove => prove_item(store),
+        Lane::Triage => triage_item(store),
+        Lane::Review => review_item(store),
+        Lane::Divergence => ratify_item(store),
+        Lane::Elaborate => elaborate_item(store),
+        // Lanes that route to a whole-graph command rather than a per-item
+        // packet (`loom door`, `loom doctor`, `loom export`).
+        Lane::Seed | Lane::Audit | Lane::Export | Lane::Deepen => Ok(None),
+    }
+}
+
+/// Compute the next work item for a lane, or the highest-priority item overall.
+///
+/// The default (no lane) walks `Lane::LADDER` in order — the SAME order the
+/// maturity rungs and the compass use. There is no second priority list to keep
+/// in step.
+fn next_inner(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
+    match lane {
+        Some(l) => lane_item(store, l),
         None => {
-            // Priority: repair failing verdicts, then validate, then build,
-            // then coverage, then measure quality, then inspect relationship
-            // claims (stale before uninspected, inside analyze), and finally
-            // triage derived code flags after asserted graph residue is clean.
-            // On an observed graph the fix/build lanes are skipped entirely.
-            if !observed {
-                if let Some(w) = fix_item(store)? {
+            for &l in Lane::LADDER {
+                // Human-presence lanes are served ONLY on explicit request: an
+                // LLM driver must never be routed into a write it is denied
+                // (INV-8). Those packets batch for the next human session.
+                if l.human_only() || !l.serves_items() {
+                    continue;
+                }
+                if let Some(w) = lane_item(store, l)? {
                     return Ok(Some(w));
                 }
-            }
-            if let Some(w) = validate_item(store)? {
-                return Ok(Some(w));
-            }
-            if !observed {
-                if let Some(w) = build_item(store)? {
-                    return Ok(Some(w));
-                }
-            }
-            if !observed {
-                if let Some(w) = coverage_item(store)? {
-                    return Ok(Some(w));
-                }
-            }
-            if let Some(w) = quality_item(store)? {
-                return Ok(Some(w));
-            }
-            if let Some(w) = analyze_item(store)? {
-                return Ok(Some(w));
-            }
-            if let Some(w) = triage_item(store)? {
-                return Ok(Some(w));
-            }
-            if let Some(w) = review_item(store)? {
-                return Ok(Some(w));
-            }
-            // Proposed hypotheses are real, operator-queued investigation work;
-            // surface them before elaboration (which invents NEW surroundings) so
-            // `loom next` never strands them behind --mode prove (M-1).
-            if let Some(w) = prove_item(store)? {
-                return Ok(Some(w));
-            }
-            // Last: grow the surroundings of user-visible ideas. Elaboration
-            // creates NEW work, so it only surfaces once existing debts are
-            // drained.
-            if !observed {
-                return elaborate_item(store);
             }
             Ok(None)
         }

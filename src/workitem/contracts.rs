@@ -441,6 +441,53 @@ pub(super) fn validator_contract(
     })
 }
 
+/// An implemented intent carrying no passing proof. Distinct from
+/// `validator_contract`, which re-runs an EXISTING proof: here the proof itself
+/// is the missing form, so the packet's job is to get one registered and run.
+pub(super) fn unproven_contract(intent: &Node, has_registered_proof: bool) -> PromptContract {
+    let name = q(&intent.name);
+    PromptContract {
+        role: "validator".into(),
+        mindset: "An implemented claim with no passing proof is a claim, not truth. Write a proof \
+                  that would FAIL if this behavior broke — a check that only asserts the process \
+                  exited 0 proves liveness, not behavior."
+            .into(),
+        why_now: if has_registered_proof {
+            "implemented, proof registered, none passing".into()
+        } else {
+            "implemented with no registered proof at all".into()
+        },
+        allowed_actions: vec![
+            format!("loom intent show {}", q(&intent.id)),
+            "read the grounded files listed in this packet's read set".into(),
+            format!(
+                "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent {name}"
+            ),
+            format!("loom validation run {name}"),
+            "for a user-visible flow: loom journey add <spec> then loom journey run <spec>".into(),
+            FINDING_ADD_ACTION.into(),
+        ],
+        forbidden_actions: vec![
+            "recording a passing result without running the command".into(),
+            "asserting only an exit code when the behavior has observable output".into(),
+            "editing code to make a proof pass".into(),
+            NON_BLOCKING_SMELL_RULE.into(),
+        ],
+        required_evidence:
+            "the command loom ran, its exit status, and the assertion that would have caught a \
+             regression"
+                .into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!(
+            "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent {name}  then  loom validation run {name}"
+        ),
+        stop_condition: "stop once one proof for this intent has actually run".into(),
+        human_gate: None,
+    }
+}
+
 /// Independent re-inspection of a verdict recorded below the confidence floor.
 /// The reviewer forms their own hypothesis BEFORE reading the recorded
 /// evidence, then confirms or overturns with honest confidence.

@@ -36,6 +36,10 @@ pub enum TruthAxis {
     Signal,
     /// The world-facing projection. Authoritative form: the exported graph file.
     Projection,
+    /// Where the graph is thinnest relative to what depends on it. Authoritative
+    /// form: stronger proof on high-blast-radius behavior. Unlike every other
+    /// axis this one never closes — it re-ranks.
+    Risk,
 }
 
 /// Every axis, ladder order. The self-teaching guide walks this.
@@ -46,6 +50,7 @@ pub const TRUTH_AXES: &[TruthAxis] = &[
     TruthAxis::Verdict,
     TruthAxis::Signal,
     TruthAxis::Projection,
+    TruthAxis::Risk,
 ];
 
 /// The concrete guidance for one axis: how to make it true, what NOT to write
@@ -76,6 +81,7 @@ impl TruthAxis {
             TruthAxis::Verdict => "verdict",
             TruthAxis::Signal => "signal",
             TruthAxis::Projection => "projection",
+            TruthAxis::Risk => "risk",
         }
     }
 
@@ -156,31 +162,27 @@ impl TruthAxis {
                 forbidden_write: "hand-editing the exported file".into(),
                 after_write: "loom export --check".into(),
             },
+            TruthAxis::Risk => TruthGap {
+                axis: self,
+                missing_form: "widely-depended-on behavior rests on the weakest proof in the graph"
+                    .into(),
+                correct_when: "no behavior's blast radius outruns the strength of the proof \
+                               covering it — the proof asserts what the behavior DOES, not merely \
+                               that the process exited 0, and it still holds against a frozen \
+                               baseline"
+                    .into(),
+                authoritative_write:
+                    "strengthen the proof named in the packet, then re-run it through loom".into(),
+                forbidden_write: "weakening the assertion to make the run pass".into(),
+                after_write: "loom status".into(),
+            },
         }
     }
 }
 
-/// Map a maturity phase + its compass command to the axis it is about. Phases
-/// are stable strings owned by `maturity::compass`. `audit` is overloaded — a
-/// `loom doctor` audit is graph-integrity (Verdict), a `loom smells` audit is
-/// finding adjudication (Signal) — so the command disambiguates it. The terminal
-/// `complete` phase (and any unknown phase) has no open axis and returns `None`.
-pub fn axis_for_phase(phase: &str, next_command: &str) -> Option<TruthAxis> {
-    match phase {
-        "seed" => Some(TruthAxis::Intent),
-        // Ratification closes intent truth: whether the behavior is WANTED.
-        "ratify" => Some(TruthAxis::Intent),
-        "build" => Some(TruthAxis::Implementation),
-        "coverage" => Some(TruthAxis::Implementation),
-        "validate" => Some(TruthAxis::Proof),
-        "fix" | "analyze" | "quality" => Some(TruthAxis::Verdict),
-        "audit" if next_command.contains("doctor") => Some(TruthAxis::Verdict),
-        "audit" => Some(TruthAxis::Signal),
-        "triage" => Some(TruthAxis::Signal),
-        "export" => Some(TruthAxis::Projection),
-        _ => None,
-    }
-}
+// NOTE: `axis_for_phase(phase, next_command)` used to map a compass phase string
+// back to an axis, disambiguating an overloaded `audit` arm by grepping the
+// command text. `Lane::axis()` replaces it: one axis per lane, no strings.
 
 #[cfg(test)]
 mod tests {
@@ -201,29 +203,18 @@ mod tests {
     }
 
     #[test]
-    fn known_phases_map_to_axes_and_complete_is_none() {
-        assert_eq!(axis_for_phase("seed", ""), Some(TruthAxis::Intent));
-        assert_eq!(axis_for_phase("build", ""), Some(TruthAxis::Implementation));
+    fn every_lane_names_exactly_one_axis() {
+        // The replacement for `axis_for_phase`: the mapping is total and needs
+        // no command-text disambiguation.
+        for lane in crate::lane::Lane::LADDER {
+            let gap = lane.axis().gap();
+            assert_eq!(gap.axis, lane.axis());
+        }
         assert_eq!(
-            axis_for_phase("coverage", "loom coverage"),
-            Some(TruthAxis::Implementation)
+            crate::lane::Lane::Validate.axis(),
+            TruthAxis::Proof,
+            "the validate lane closes proof truth"
         );
-        assert_eq!(
-            axis_for_phase("validate", "loom next --mode validate"),
-            Some(TruthAxis::Proof)
-        );
-        assert_eq!(axis_for_phase("fix", ""), Some(TruthAxis::Verdict));
-        assert_eq!(axis_for_phase("analyze", ""), Some(TruthAxis::Verdict));
-        assert_eq!(
-            axis_for_phase("audit", "loom doctor"),
-            Some(TruthAxis::Verdict)
-        );
-        assert_eq!(
-            axis_for_phase("audit", "loom smells"),
-            Some(TruthAxis::Signal)
-        );
-        assert_eq!(axis_for_phase("triage", ""), Some(TruthAxis::Signal));
-        assert_eq!(axis_for_phase("export", ""), Some(TruthAxis::Projection));
-        assert_eq!(axis_for_phase("complete", "loom status"), None);
+        assert_eq!(crate::lane::Lane::Deepen.axis(), TruthAxis::Risk);
     }
 }

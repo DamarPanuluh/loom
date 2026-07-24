@@ -252,7 +252,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let edges = store.list_edges(None, usize::MAX)?.len();
     let ladder = crate::maturity::ladder(&store)?;
     let pulse = workitem::graph_state(&store)?;
-    let queues = workitem::queue_counts(&store)?;
+    let queues = crate::maturity::depths(&store)?;
     let validation_summary = crate::maturity::validation_summary(&store)?;
     let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
         code_ownership_summary(&store)?;
@@ -304,7 +304,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let ownership_gate = if unowned_codefiles.is_empty() {
         "coverage gate clear"
     } else {
-        "blocks realized rung"
+        "blocks covered rung"
     };
     println!(
         "  code ownership: {owned_codefiles}/{registered_codefiles} owned, {} unowned ({ownership_gate}){}",
@@ -341,8 +341,9 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
             crate::maturity::RungState::Met => "✓",
             crate::maturity::RungState::Unmet => "·",
             crate::maturity::RungState::NotApplicable => "—",
+            crate::maturity::RungState::Open => "∞",
         };
-        println!("    {mark} {:<12} {}", r.name, r.detail);
+        println!("    {mark} {:<13} {}", r.name, r.detail);
     }
     let df = &ladder.derived_floor;
     println!(
@@ -355,20 +356,21 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         "  compass: phase={} → {}",
         ladder.phase, ladder.next_command
     );
+    // One line per lane that has work, in ladder order — the same order the
+    // rungs above are climbed, so the queue line reads as the work behind them.
+    let backlog: Vec<String> = crate::lane::Lane::LADDER
+        .iter()
+        .filter(|l| l.serves_items() && !l.human_only())
+        .map(|l| format!("{}={}", l.as_str(), queues.get(*l)))
+        .collect();
     println!(
-        "  queues: fix={} validate={} build={} coverage={} quality={} analyze={} prove={} triage={} review={} elaborate={}{}{}",
-        queues.fix,
-        queues.validate,
-        queues.build,
-        queues.coverage,
-        queues.quality,
-        queues.analyze,
-        queues.prove,
-        queues.triage,
-        queues.review,
-        queues.elaborate,
-        if queues.ratify > 0 {
-            format!("  ({} intent(s) awaiting human ratification)", queues.ratify)
+        "  queues: {}{}{}",
+        backlog.join(" "),
+        if queues.get(crate::lane::Lane::Divergence) > 0 {
+            format!(
+                "  ({} awaiting the human)",
+                queues.get(crate::lane::Lane::Divergence)
+            )
         } else {
             String::new()
         },
@@ -387,20 +389,12 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
     // Queue depths: `--all` serves the TOP item of each queue, not every item.
     // Surface the depth alongside so "one line per queue" never reads as "this
     // queue holds one item" (the counts also live in `loom status`).
-    let counts = workitem::queue_counts(&store)?;
-    let modes = [
-        ("fix", workitem::Mode::Fix, counts.fix),
-        ("validate", workitem::Mode::Validate, counts.validate),
-        ("build", workitem::Mode::Build, counts.build),
-        ("coverage", workitem::Mode::Coverage, counts.coverage),
-        ("quality", workitem::Mode::Quality, counts.quality),
-        ("prove", workitem::Mode::Prove, counts.prove),
-        ("analyze", workitem::Mode::Analyze, counts.analyze),
-        ("triage", workitem::Mode::Triage, counts.triage),
-        ("review", workitem::Mode::Review, counts.review),
-        ("elaborate", workitem::Mode::Elaborate, counts.elaborate),
-        ("ratify", workitem::Mode::Ratify, counts.ratify),
-    ];
+    let counts = crate::maturity::depths(&store)?;
+    let modes: Vec<(&'static str, crate::lane::Lane, usize)> = crate::lane::Lane::LADDER
+        .iter()
+        .filter(|l| l.serves_items())
+        .map(|&l| (l.as_str(), l, counts.get(l)))
+        .collect();
     if json {
         let mut queues = serde_json::Map::new();
         for (name, m, _) in modes {
@@ -410,9 +404,9 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
         let out = serde_json::json!({
             "compass": { "phase": ladder.phase, "next_command": ladder.next_command },
             "graph_state": pulse,
-            // Top item per queue (the closeout view). Depths are in `queue_counts`.
+            // Top item per queue (the closeout view). Depths are in `queue_depths`.
             "queues": queues,
-            "queue_counts": counts,
+            "queue_depths": counts,
         });
         println!("{}", serde_json::to_string_pretty(&out)?);
     } else {
@@ -486,7 +480,7 @@ pub(crate) fn mode_cmd(graph: Option<&Path>, set: Option<bool>, json: bool) -> R
 /// as hundreds deep.
 pub(crate) fn queue_list(graph: Option<&Path>, mode: &str, json: bool) -> Result<()> {
     let store = open_read(graph)?;
-    let parsed = workitem::Mode::parse(mode).ok_or_else(|| anyhow!("unknown mode '{mode}'"))?;
+    let parsed = crate::lane::Lane::parse(mode).ok_or_else(|| anyhow!("unknown mode '{mode}'"))?;
     let items = workitem::queue_items(&store, parsed)?;
     if json {
         let out = serde_json::json!({
@@ -545,7 +539,7 @@ pub(crate) fn require_lane(store: &Store, owner: crate::registry::OwnerRole) -> 
 pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> Result<()> {
     let store = open_read(graph)?;
     let parsed = match mode {
-        Some(m) => Some(workitem::Mode::parse(m).ok_or_else(|| anyhow!("unknown mode '{m}'"))?),
+        Some(m) => Some(crate::lane::Lane::parse(m).ok_or_else(|| anyhow!("unknown mode '{m}'"))?),
         None => None,
     };
     let item = workitem::next(&store, parsed)?;

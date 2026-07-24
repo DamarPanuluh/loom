@@ -6,12 +6,13 @@
 //! violated behavior.
 
 use loom::completeness::{self, AXES};
+use loom::lane::Lane;
 use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use loom::packs;
 use loom::scan;
 use loom::store::Store;
 use loom::travel::Export;
-use loom::workitem::{self, graph_state, Mode};
+use loom::workitem::{self, graph_state};
 mod common;
 use common::*;
 
@@ -742,25 +743,25 @@ fn question_close_deferred_closes_questions_axis() {
 
 #[test]
 fn mode_parse_elaborate_yields_elaborate_mode() {
-    // Contract 4: Mode::parse("elaborate") returns Some(Mode::Elaborate).
+    // Contract 4: Lane::parse("elaborate") returns Some(Lane::Elaborate).
     assert_eq!(
-        Mode::parse("elaborate"),
-        Some(Mode::Elaborate),
-        "contract 4: Mode::parse(\"elaborate\") yields Mode::Elaborate"
+        Lane::parse("elaborate"),
+        Some(Lane::Elaborate),
+        "contract 4: Lane::parse(\"elaborate\") yields Lane::Elaborate"
     );
 }
 
 #[test]
 fn elaborate_serves_incomplete_user_visible_feature_intent() {
     // Contract 4: with one incomplete user_visible feature intent,
-    // next(store, Some(Mode::Elaborate)) serves mode=elaborate, owner_role=
+    // next(store, Some(Lane::Elaborate)) serves mode=elaborate, owner_role=
     // builder, scorecard Some (JSON contains axes), and prompt_contract.
     // write_back non-empty.
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let _intent = feature_intent(&store, "user can log in", Some("user_visible"));
 
-    let item = workitem::next(&store, Some(Mode::Elaborate))
+    let item = workitem::next(&store, Some(Lane::Elaborate))
         .unwrap()
         .expect("contract 4: elaborate serves an incomplete user-visible feature intent");
     assert_eq!(
@@ -795,7 +796,7 @@ fn elaborate_returns_none_when_no_user_visible_feature_intents() {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     // An internal feature intent only — not user_visible.
     let _internal = feature_intent(&store, "persist session token", None);
-    let item = workitem::next(&store, Some(Mode::Elaborate)).unwrap();
+    let item = workitem::next(&store, Some(Lane::Elaborate)).unwrap();
     assert!(
         item.is_none(),
         "contract 4: elaborate returns None when no user_visible feature intent is incomplete"
@@ -878,6 +879,41 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
                 &impl_edge.id,
                 loom::model::InspectionStatus::Passing,
                 "grounded and inspected",
+                "src/auth.rs:1",
+                0.9,
+                "llm",
+            )
+            .unwrap();
+    }
+
+    // Both intents are implemented with no passing proof, which is real
+    // validate work — the `proven` rung counts them and the lane now serves
+    // them. Give each a passing proof so the validate queue genuinely drains;
+    // otherwise this test asserts "elaborate is last" from a graph where an
+    // earlier lane still has work.
+    for intent in [&a, &b] {
+        let proof = store
+            .add_node(
+                NodeType::Validation,
+                &format!("{}-proof", intent.name),
+                "",
+                "passed",
+                serde_json::json!({"type":"test","command":"true"}),
+            )
+            .unwrap();
+        let ve = store
+            .add_edge(
+                EdgeKind::Validates,
+                &proof.id,
+                &intent.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .record_verdict(
+                &ve.id,
+                loom::model::InspectionStatus::Passing,
+                "proof ran and passed",
                 "src/auth.rs:1",
                 0.9,
                 "llm",
@@ -1025,7 +1061,7 @@ fn quality_work_item_carries_pre_screened_hits_for_grounded_intent() {
     // The quality queue serves the uninspected governs edge, and the packet's
     // pre_screened_hits come from prescreen_for running the rule's patterns
     // over the intent's grounded file.
-    let item = workitem::next(&store, Some(Mode::Quality))
+    let item = workitem::next(&store, Some(Lane::Quality))
         .unwrap()
         .expect("contract 5: quality queue serves the unmeasured rule×intent pair");
     assert_eq!(
@@ -1092,7 +1128,7 @@ fn quality_packet_reads_and_prescreens_every_grounded_file() {
         .ensure_edge(EdgeKind::Governs, &rule.id, &intent.id)
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Quality))
+    let item = workitem::next(&store, Some(Lane::Quality))
         .unwrap()
         .expect("quality item");
     assert_eq!(item.context.read_set.len(), 9);

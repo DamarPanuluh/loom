@@ -5,9 +5,10 @@
 //! messages are prefixed with the numbered contract so a red run points at the
 //! violated behavior.
 
+use loom::lane::Lane;
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
-use loom::workitem::{self, Mode};
+use loom::workitem;
 use std::path::Path;
 
 mod common;
@@ -67,7 +68,7 @@ fn queue_items_returns_full_depth_not_just_the_top() {
         implemented_intent(&store, name);
     }
 
-    let roster = workitem::queue_items(&store, Mode::Build).unwrap();
+    let roster = workitem::queue_items(&store, Lane::Build).unwrap();
     assert_eq!(
         roster.len(),
         3,
@@ -76,11 +77,11 @@ fn queue_items_returns_full_depth_not_just_the_top() {
     // Matches the queue count reported by `loom status`.
     assert_eq!(
         roster.len(),
-        workitem::queue_counts(&store).unwrap().build,
+        loom::maturity::depths(&store).unwrap().get(Lane::Build),
         "roster depth equals the queue count status reports"
     );
     // Entry 0 is the same target the singular lane serves — the roster is faithful.
-    let top = workitem::next(&store, Some(Mode::Build)).unwrap().unwrap();
+    let top = workitem::next(&store, Some(Lane::Build)).unwrap().unwrap();
     assert_eq!(roster[0].target.name, top.target.name);
     // Sorted by name (all same lifecycle rank), so the depth view is stable.
     assert_eq!(roster[0].target.name, "alpha behavior");
@@ -95,7 +96,7 @@ fn queue_items_empty_for_a_disabled_lane_on_an_observed_graph() {
     let store = Store::init(tmp.path(), Some("t"), true).unwrap(); // observed
     implemented_intent(&store, "some behavior"); // ungrounded → would be build work
     assert!(
-        workitem::queue_items(&store, Mode::Build)
+        workitem::queue_items(&store, Lane::Build)
             .unwrap()
             .is_empty(),
         "observed graph: the build roster is empty (lane disabled)"
@@ -120,15 +121,15 @@ fn review_queue_serves_low_confidence_passing_verdict() {
     let intent = implemented_intent(&store, "config loads secrets from env");
     passing_governs(&store, &rule, &intent, 0.4);
 
-    let item = workitem::next(&store, Some(Mode::Review)).unwrap().expect(
+    let item = workitem::next(&store, Some(Lane::Review)).unwrap().expect(
         "REVIEW QUEUE: a passing verdict with confidence in (0,0.7) must be served by review mode",
     );
 
     // Mode string parse works.
     assert_eq!(
-        Mode::parse("review"),
-        Some(Mode::Review),
-        "REVIEW QUEUE: Mode::parse(\"review\") must yield Mode::Review"
+        Lane::parse("review"),
+        Some(Lane::Review),
+        "REVIEW QUEUE: Lane::parse(\"review\") must yield Lane::Review"
     );
     assert_eq!(
         item.mode, "review",
@@ -196,7 +197,7 @@ fn review_queue_serves_low_confidence_independent_verdict() {
         )
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Review)).unwrap().expect(
+    let item = workitem::next(&store, Some(Lane::Review)).unwrap().expect(
         "REVIEW QUEUE: an independent verdict with confidence in (0,0.7) must be served by review",
     );
     assert_eq!(
@@ -221,7 +222,7 @@ fn review_queue_excludes_high_confidence_and_failing_verdicts() {
     // A confidence >= 0.7 passing verdict — must NOT be served by review.
     passing_governs(&store, &rule, &intent, 0.8);
     assert!(
-        workitem::next(&store, Some(Mode::Review))
+        workitem::next(&store, Some(Lane::Review))
             .unwrap()
             .is_none(),
         "REVIEW QUEUE: a confidence >= 0.7 verdict must not be served by review"
@@ -249,7 +250,7 @@ fn review_queue_excludes_high_confidence_and_failing_verdicts() {
         )
         .unwrap();
     assert!(
-        workitem::next(&store, Some(Mode::Review))
+        workitem::next(&store, Some(Lane::Review))
             .unwrap()
             .is_none(),
         "REVIEW QUEUE: a failing verdict must not be served by review (it routes to fix)"
@@ -278,7 +279,7 @@ fn review_queue_serves_low_confidence_relates_as_analyzer() {
         )
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Review))
+    let item = workitem::next(&store, Some(Lane::Review))
         .unwrap()
         .expect("REVIEW QUEUE: a low-confidence relates verdict must be served by review");
     assert_eq!(
@@ -551,7 +552,7 @@ fn queue_modes_never_serve_the_same_edge() {
         .unwrap();
 
     // fix serves the failing governs edge (role fixer).
-    let fix_item = workitem::next(&store, Some(Mode::Fix))
+    let fix_item = workitem::next(&store, Some(Lane::Fix))
         .unwrap()
         .expect("QUEUE DISJOINTNESS: fix must serve the failing governs edge");
     assert_eq!(
@@ -581,12 +582,12 @@ fn queue_modes_never_serve_the_same_edge() {
         )
         .unwrap();
     assert!(
-        workitem::next(&store, Some(Mode::Fix)).unwrap().is_none(),
+        workitem::next(&store, Some(Lane::Fix)).unwrap().is_none(),
         "QUEUE DISJOINTNESS: fix must drain once no verdict is failing — stale remeasurement is analyze work"
     );
 
     // analyze serves ONLY the stale relates, never the stale governs.
-    let a_item = workitem::next(&store, Some(Mode::Analyze))
+    let a_item = workitem::next(&store, Some(Lane::Analyze))
         .unwrap()
         .expect("QUEUE DISJOINTNESS: analyze must serve the stale non-governs/validates edge");
     assert_eq!(
@@ -607,7 +608,7 @@ fn queue_modes_never_serve_the_same_edge() {
     );
 
     // quality serves the stale governs edge.
-    let q_item = workitem::next(&store, Some(Mode::Quality))
+    let q_item = workitem::next(&store, Some(Lane::Quality))
         .unwrap()
         .expect("QUEUE DISJOINTNESS: quality must serve the stale governs edge");
     assert_eq!(
@@ -620,7 +621,7 @@ fn queue_modes_never_serve_the_same_edge() {
     );
 
     // validate serves the uninspected validates edge.
-    let v_item = workitem::next(&store, Some(Mode::Validate))
+    let v_item = workitem::next(&store, Some(Lane::Validate))
         .unwrap()
         .expect("QUEUE DISJOINTNESS: validate must serve the uninspected validates edge");
     assert_eq!(
@@ -685,7 +686,7 @@ fn unmeasured_pair_fallback_serves_leaf_intent_only() {
         )
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Quality)).unwrap().expect(
+    let item = workitem::next(&store, Some(Lane::Quality)).unwrap().expect(
         "UNMEASURED PAIR: a seeded pack with an unmeasured leaf intent must serve a quality item",
     );
 
@@ -757,7 +758,7 @@ fn build_packet_includes_intent_description_in_linked_entities() {
         )
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("SELF-CONTAINED PACKETS: a planned intent must be served by build mode");
 
@@ -834,7 +835,7 @@ fn edge_packet_read_set_carries_codefile_path_and_locator() {
         .stale_edge(&imp.id, "content hash of src/x.rs changed")
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Analyze))
+    let item = workitem::next(&store, Some(Lane::Analyze))
         .unwrap()
         .expect("SELF-CONTAINED PACKETS: a stale implements edge must be served by analyze");
 
@@ -900,7 +901,7 @@ fn work_item_serialization_includes_truth_gap_correct_when() {
         )
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("TRUTH GAP CRITERIA: build must serve a planned intent");
 

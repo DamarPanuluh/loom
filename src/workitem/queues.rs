@@ -11,7 +11,7 @@ use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, elaborator_contract, fixer_contract,
     inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
     ratify_contract, reviewer_contract, structural_finding_triage_contract, triage_contract,
-    validator_contract,
+    unproven_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -440,7 +440,68 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             "proof went stale — a dependency changed; re-run it",
         )?));
     }
+    // An implemented leaf intent with NO passing proof at all counts toward the
+    // `proven` rung, so the lane must serve it — otherwise the compass points
+    // here and the queue answers "no work", which is the disagreement the lane
+    // table exists to make impossible.
+    if let Some(intent) = unproven_implemented_intents(store)?.into_iter().next() {
+        let has_any = !store
+            .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?
+            .is_empty();
+        let reason = if has_any {
+            format!(
+                "'{}' is implemented and has registered proof(s), but none is passing — run them",
+                intent.name
+            )
+        } else {
+            format!(
+                "'{}' is implemented with no registered proof — an unproven claim is not truth",
+                intent.name
+            )
+        };
+        return Ok(Some(WorkItem {
+            mode: "validate".into(),
+            owner_role: "validator".into(),
+            effort: "mid".into(),
+            routing_hint: super::hint_judgment(),
+            reason,
+            target: node_target(&intent),
+            stale_causes: Vec::new(),
+            prompt_contract: unproven_contract(&intent, has_any),
+            context: node_context(
+                store,
+                &intent,
+                "Read the behavior and its grounded code, then register a proof that would FAIL if the behavior broke.",
+            )?,
+            scorecard: None,
+            truth_gap: crate::truth::TruthAxis::Proof.gap(),
+            next_step: "after the proof runs, run `loom status`".into(),
+        }));
+    }
     Ok(None)
+}
+
+/// Implemented LEAF intents with no passing `validates` edge. Hierarchy parents
+/// are proven through their children, so they are exempt. Shared by the validate
+/// lane and the `proven` rung — one predicate, no drift.
+pub(crate) fn unproven_implemented_intents(store: &Store) -> Result<Vec<Node>> {
+    let parents: std::collections::HashSet<String> = store
+        .list_edges(Some(EdgeKind::Hierarchy), usize::MAX)?
+        .into_iter()
+        .map(|e| e.from_id)
+        .collect();
+    let mut out = Vec::new();
+    for n in store.nodes_by_status(NodeType::Intent, &["implemented"])? {
+        if parents.contains(&n.id) {
+            continue;
+        }
+        let proofs = store.edges_with(Some(EdgeKind::Validates), None, Some(&n.id))?;
+        if !proofs.iter().any(|e| e.status == InspectionStatus::Passing) {
+            out.push(n);
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(out)
 }
 
 /// Serve the lowest-confidence recorded verdict for independent re-inspection.
@@ -861,112 +922,10 @@ pub(super) fn prescreen_for(
     crate::prescan::prescreen(store.root(), &files, &patterns, 20)
 }
 
-/// Per-queue backlog counts mirroring the EXACT serving partition of each
-/// queue above — the status surface reads this so it can never disagree with
-/// what `loom next --mode <m>` would actually serve.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct QueueCounts {
-    /// active intents that are unratified or need re-confirmation (human-only).
-    pub ratify: usize,
-    pub build: usize,
-    pub coverage: usize,
-    /// failing (any kind) + stale relationship/grounding claims.
-    pub fix: usize,
-    /// uninspected relationship/grounding claims.
-    pub analyze: usize,
-    /// open governs edges (uninspected + stale) plus never-measured
-    /// rule×root-intent pairs.
-    pub quality: usize,
-    /// open validates edges (unrun + stale).
-    pub validate: usize,
-    /// recorded verdicts below the review confidence floor.
-    pub review: usize,
-    /// unjudged/stale findings + new inbox items.
-    pub triage: usize,
-    /// proposed hypotheses awaiting proof.
-    pub prove: usize,
-    /// user-visible feature intents with open completeness axes.
-    pub elaborate: usize,
-}
-
-pub fn queue_counts(store: &Store) -> Result<QueueCounts> {
-    use crate::model::TruthClass;
-    // An observed graph disables the build/fix/coverage/elaborate lanes in
-    // `next`; the counts MUST mirror that or `status` disagrees with what the
-    // queues actually serve (H-12).
-    let observed = store.identity()?.observed;
-    let failing = store
-        .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
-        .len();
-    let stale = store.live_edges_by_status(
-        TruthClass::Asserted,
-        &[InspectionStatus::NeedsReverification],
-    )?;
-    let uninspected =
-        store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?;
-    let split = |edges: &[Edge]| -> (usize, usize, usize) {
-        let governs = edges.iter().filter(|e| e.kind == EdgeKind::Governs).count();
-        let validates = edges
-            .iter()
-            .filter(|e| e.kind == EdgeKind::Validates)
-            .count();
-        (edges.len() - governs - validates, governs, validates)
-    };
-    let (stale_rel, stale_gov, stale_val) = split(&stale);
-    let (unin_rel, unin_gov, unin_val) = split(&uninspected);
-
-    // Never-measured rule × root implemented intent pairs — shared predicate.
-    let pairs = unmeasured_quality_pairs(store)?.len();
-
-    let floor = crate::policy::load(store)?.review_confidence_floor;
-    let review = store
-        .live_edges_by_status(
-            TruthClass::Asserted,
-            &[InspectionStatus::Passing, InspectionStatus::Independent],
-        )?
-        .into_iter()
-        .filter(|e| e.confidence > 0.0 && e.confidence < floor)
-        .count();
-    let findings = crate::signal::triage_findings(store)?.len();
-    let inbox_new = store
-        .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
-        .into_iter()
-        .filter(|n| n.status == "new")
-        .count();
-    Ok(QueueCounts {
-        ratify: unratified_intents(store)?.len(),
-        build: if observed {
-            0
-        } else {
-            store
-                .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
-                .len()
-                + ungrounded_implemented_intents(store)?.len()
-        },
-        coverage: if observed {
-            0
-        } else {
-            crate::commands::unowned_codefiles(store)?.len()
-        },
-        fix: if observed { 0 } else { failing },
-        analyze: unin_rel + stale_rel,
-        quality: stale_gov + unin_gov + pairs,
-        validate: stale_val + unin_val,
-        review,
-        triage: findings + inbox_new,
-        prove: store
-            .nodes_by_status(NodeType::Hypothesis, &["proposed"])?
-            .len(),
-        elaborate: if observed {
-            0
-        } else {
-            crate::completeness::all_scorecards(store)?
-                .iter()
-                .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
-                .count()
-        },
-    })
-}
+// NOTE: `QueueCounts` + `queue_counts` lived here and recomputed, with a second
+// set of predicates, what the maturity rungs already counted. They are replaced
+// by `crate::lane::QueueDepths`, projected from the single `LadderInputs::gather`
+// — one gather, one predicate per lane, no drift.
 
 /// One lightweight row in a queue roster: what/why/effort, without the full
 /// prompt contract or traversal context a served work item carries. This is the
@@ -1063,22 +1022,16 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
 /// are lightweight (see `QueueEntry`). Observed graphs disable the
 /// build/fix/coverage/elaborate lanes, so those roster empty here too, matching
 /// `next` and `queue_counts`.
-pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> {
-    use super::Mode;
+pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEntry>> {
+    use crate::lane::Lane;
     use crate::model::TruthClass;
-    let observed = store.identity()?.observed;
-    if observed
-        && matches!(
-            mode,
-            Mode::Build | Mode::Fix | Mode::Coverage | Mode::Elaborate
-        )
-    {
+    if lane.observed_disabled() && store.identity()?.observed {
         return Ok(Vec::new());
     }
     let not_measured_lane = |e: &Edge| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates);
     let mut out = Vec::new();
-    match mode {
-        Mode::Fix => {
+    match lane {
+        Lane::Fix => {
             for e in
                 store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
             {
@@ -1090,7 +1043,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 )?);
             }
         }
-        Mode::Analyze => {
+        Lane::Analyze => {
             for e in store
                 .live_edges_by_status(
                     TruthClass::Asserted,
@@ -1119,7 +1072,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 )?);
             }
         }
-        Mode::Validate => {
+        Lane::Validate => {
             let validates = store.edges_with(Some(EdgeKind::Validates), None, None)?;
             for e in validates
                 .iter()
@@ -1139,7 +1092,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 )?);
             }
         }
-        Mode::Quality => {
+        Lane::Quality => {
             let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
             for e in governs
                 .iter()
@@ -1160,7 +1113,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
             }
             out.extend(unmeasured_pair_entries(store)?);
         }
-        Mode::Build => {
+        Lane::Build => {
             let mut intents =
                 store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
             intents.extend(ungrounded_implemented_intents(store)?);
@@ -1190,7 +1143,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
             }
             out.extend(blocked);
         }
-        Mode::Coverage => {
+        Lane::Coverage => {
             for cf in crate::commands::unowned_codefiles(store)? {
                 let missing = !store.root().join(&cf.name).exists();
                 let reason = if missing {
@@ -1201,7 +1154,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 out.push(node_entry("coverage", "low", &cf, reason.into()));
             }
         }
-        Mode::Prove => {
+        Lane::Prove => {
             for h in store.nodes_by_status(NodeType::Hypothesis, &["proposed"])? {
                 out.push(node_entry(
                     "prove",
@@ -1211,7 +1164,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 ));
             }
         }
-        Mode::Triage => {
+        Lane::Triage => {
             for fv in crate::signal::triage_findings(store)? {
                 let structural = is_structural_size_finding(&fv.node);
                 let reason = if fv.stale {
@@ -1237,7 +1190,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 ));
             }
         }
-        Mode::Review => {
+        Lane::Review => {
             let floor = crate::policy::load(store)?.review_confidence_floor;
             let mut candidates: Vec<Edge> = store
                 .live_edges_by_status(
@@ -1261,7 +1214,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 out.push(edge_entry(store, e, "review", &reason)?);
             }
         }
-        Mode::Elaborate => {
+        Lane::Elaborate => {
             for card in crate::completeness::all_scorecards(store)?
                 .into_iter()
                 .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
@@ -1278,7 +1231,7 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 out.push(node_entry("elaborate", "high", &intent, reason));
             }
         }
-        Mode::Ratify => {
+        Lane::Divergence => {
             for n in unratified_intents(store)? {
                 let state = store
                     .get_facet(&n.id, TargetKind::Node, "ratification")?
@@ -1291,6 +1244,9 @@ pub fn queue_items(store: &Store, mode: super::Mode) -> Result<Vec<QueueEntry>> 
                 out.push(node_entry("ratify", "low", &n, reason.into()));
             }
         }
+        // Lanes that route to a whole-graph command instead of a per-item
+        // roster (`loom door`, `loom doctor`, `loom export`).
+        Lane::Seed | Lane::Audit | Lane::Export | Lane::Deepen => {}
     }
     Ok(out)
 }

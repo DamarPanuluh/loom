@@ -464,8 +464,8 @@ fn evidence_refines_cause() {
 
     // Cheap vs full grading must reach the work packet / roster so orchestrators
     // can route mechanical residue without mid-tier inspection.
-    use loom::workitem::{self, Mode};
-    let roster = workitem::queue_items(&store, Mode::Analyze).unwrap();
+    use loom::{lane::Lane, workitem};
+    let roster = workitem::queue_items(&store, Lane::Analyze).unwrap();
     let row_a = roster
         .iter()
         .find(|r| r.target.id == e_a)
@@ -481,7 +481,7 @@ fn evidence_refines_cause() {
     assert_eq!(row_b.cause_class.as_deref(), Some("full"));
     assert_eq!(row_b.routing_hint.as_deref(), Some("judgment"));
 
-    let packet = workitem::next(&store, Some(Mode::Analyze))
+    let packet = workitem::next(&store, Some(Lane::Analyze))
         .unwrap()
         .expect("analyze serves a packet");
     // Top of queue is stable by edge order; whichever is first must carry a hint.
@@ -934,8 +934,8 @@ fn localized_edit_produces_at_most_three_full_judgment_packets() {
         InspectionStatus::NeedsReverification
     );
 
-    use loom::workitem::{self, Mode};
-    let full_judgment = workitem::queue_items(&store, Mode::Analyze)
+    use loom::{lane::Lane, workitem};
+    let full_judgment = workitem::queue_items(&store, Lane::Analyze)
         .unwrap()
         .into_iter()
         .filter(|item| {

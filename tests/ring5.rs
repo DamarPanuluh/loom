@@ -4,9 +4,10 @@ use loom::cli::{
     Cli, CodefileCmd, Command, EdgeCmd, HypothesisCmd, IntentCmd, JourneyCmd, LayerCmd,
     ValidationCmd, WikiCmd,
 };
+use loom::lane::Lane;
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
-use loom::workitem::{self, Mode};
+use loom::workitem;
 use std::path::Path;
 
 mod common;
@@ -69,7 +70,7 @@ fn quality_queue_serves_then_clears_on_verdict() {
         .unwrap();
 
     // quality queue serves the uninspected governs edge with the rule's guide
-    let item = workitem::next(&store, Some(Mode::Quality))
+    let item = workitem::next(&store, Some(Lane::Quality))
         .unwrap()
         .unwrap();
     assert_eq!(item.owner_role, "quality");
@@ -92,7 +93,7 @@ fn quality_queue_serves_then_clears_on_verdict() {
     // The settled edge leaves the queue, but seeding created 4 sibling rules
     // that were never measured against this root intent: the queue proposes
     // the first unmeasured pair instead of going quiet.
-    let pair = workitem::next(&store, Some(Mode::Quality))
+    let pair = workitem::next(&store, Some(Lane::Quality))
         .unwrap()
         .expect("unmeasured rule×intent pairs are open quality work");
     assert_eq!(pair.target.kind, "rule_intent_pair");
@@ -125,7 +126,7 @@ fn quality_queue_serves_then_clears_on_verdict() {
                 .unwrap();
         }
     }
-    assert!(workitem::next(&store, Some(Mode::Quality))
+    assert!(workitem::next(&store, Some(Lane::Quality))
         .unwrap()
         .is_none());
 }
@@ -410,7 +411,7 @@ fn hypothesis_invisible_until_adopted() {
     let before_planned = before
         .rungs
         .iter()
-        .find(|r| r.name == "realized")
+        .find(|r| r.name == "grounded")
         .unwrap()
         .detail
         .clone();
@@ -433,7 +434,7 @@ fn hypothesis_invisible_until_adopted() {
     let mid_planned = mid
         .rungs
         .iter()
-        .find(|r| r.name == "realized")
+        .find(|r| r.name == "grounded")
         .unwrap()
         .detail
         .clone();
@@ -443,7 +444,7 @@ fn hypothesis_invisible_until_adopted() {
     );
 
     // prove queue serves it
-    assert!(workitem::next(&store, Some(Mode::Prove)).unwrap().is_some());
+    assert!(workitem::next(&store, Some(Lane::Prove)).unwrap().is_some());
 
     // adopt → a planned intent appears (now visible as build work)
     store.set_node_status(&h.id, "supported").unwrap();
@@ -457,7 +458,7 @@ fn hypothesis_invisible_until_adopted() {
             serde_json::json!({}),
         )
         .unwrap();
-    assert!(workitem::next(&store, Some(Mode::Build)).unwrap().is_some());
+    assert!(workitem::next(&store, Some(Lane::Build)).unwrap().is_some());
 }
 
 // ---- journey model ---------------------------------------------------------
@@ -1119,11 +1120,11 @@ fn observed_graph_disables_build_and_fix_lanes() {
         )
         .unwrap();
     assert!(
-        workitem::next(&store, Some(Mode::Build)).unwrap().is_none(),
+        workitem::next(&store, Some(Lane::Build)).unwrap().is_none(),
         "an observed graph offers no build work"
     );
     assert!(
-        workitem::next(&store, Some(Mode::Fix)).unwrap().is_none(),
+        workitem::next(&store, Some(Lane::Fix)).unwrap().is_none(),
         "an observed graph offers no fix work"
     );
 
@@ -1140,7 +1141,7 @@ fn observed_graph_disables_build_and_fix_lanes() {
         )
         .unwrap();
     assert!(
-        workitem::next(&owned, Some(Mode::Build)).unwrap().is_some(),
+        workitem::next(&owned, Some(Lane::Build)).unwrap().is_some(),
         "an owned graph offers build work for a planned intent"
     );
 }
@@ -4082,7 +4083,7 @@ fn build_packet_caps_notes_and_flags_overflow() {
             .add_note(&intent.id, "context", &format!("SENTINEL-note-{i}"))
             .unwrap();
     }
-    let wi = workitem::next(&store, Some(Mode::Build))
+    let wi = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("a build item for the planned intent");
     // Tight-loop insertion means same-millisecond timestamps; id tiebreak is
@@ -4445,7 +4446,7 @@ fn prove_refuted_next_step_does_not_adopt() {
     );
 }
 
-/// Contract: the prove-queue work item (`workitem::next(Mode::Prove)`) teaches
+/// Contract: the prove-queue work item (`workitem::next(Lane::Prove)`) teaches
 /// the full PoC lifecycle in three places:
 ///   • `next_step` names both "adopt" and the concrete hypothesis name
 ///   • `prompt_contract.allowed_actions` has an entry containing "adopt"
@@ -4478,7 +4479,7 @@ fn prove_packet_teaches_adopt_lifecycle() {
         .ensure_edge(EdgeKind::Targets, &hyp.id, &intent.id)
         .unwrap();
 
-    let wi = workitem::next(&store, Some(Mode::Prove))
+    let wi = workitem::next(&store, Some(Lane::Prove))
         .unwrap()
         .expect("prove queue must serve the proposed hypothesis");
 
@@ -4507,7 +4508,7 @@ fn prove_packet_teaches_adopt_lifecycle() {
     );
 }
 
-/// Contract: the build-queue work item (`workitem::next(Mode::Build)`)
+/// Contract: the build-queue work item (`workitem::next(Lane::Build)`)
 /// `context.purpose` names `note` entities as the prior record, so an LLM
 /// receiving the packet knows to read them before coding. Substrings checked:
 /// "note" AND "prior". No notes need to exist — the purpose string is
@@ -4527,7 +4528,7 @@ fn build_packet_purpose_names_notes_as_prior_record() {
         )
         .unwrap();
 
-    let wi = workitem::next(&store, Some(Mode::Build))
+    let wi = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("build queue must serve the planned intent");
 

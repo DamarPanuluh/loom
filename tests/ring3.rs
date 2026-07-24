@@ -2,10 +2,11 @@
 //! materialization (INV-1), asserted residue routing, prompt contracts, and
 //! intent-redefinition ripple.
 
+use loom::lane::Lane;
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
 use loom::registry::OwnerRole;
 use loom::store::{Agent, Store};
-use loom::workitem::{self, Mode};
+use loom::workitem;
 mod common;
 use common::*;
 
@@ -148,7 +149,7 @@ fn next_build_serves_planned_intent_with_contract() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     intent(&store, "payment can be captured");
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .expect("next build ok")
         .expect("build item exists");
     assert_eq!(item.mode, "build");
@@ -167,7 +168,7 @@ fn next_build_context_points_to_target_and_codefile_survey() {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let target_id = intent(&store, "payment can be captured");
 
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .expect("next build ok")
         .expect("build item exists");
 
@@ -195,7 +196,7 @@ fn next_items_carry_the_right_truth_axis() {
     let b = intent(&store, "intent b");
 
     // build → implementation truth
-    let build = workitem::next(&store, Some(Mode::Build))
+    let build = workitem::next(&store, Some(Lane::Build))
         .expect("next build ok")
         .expect("build item exists");
     assert_eq!(build.truth_gap.axis, TruthAxis::Implementation);
@@ -205,7 +206,7 @@ fn next_items_carry_the_right_truth_axis() {
     store
         .add_edge(EdgeKind::Relates, &a, &b, TruthClass::Asserted)
         .unwrap();
-    let analyze = workitem::next(&store, Some(Mode::Analyze))
+    let analyze = workitem::next(&store, Some(Lane::Analyze))
         .expect("next analyze ok")
         .expect("analyze item exists");
     assert_eq!(analyze.truth_gap.axis, TruthAxis::Verdict);
@@ -223,7 +224,7 @@ fn next_items_carry_the_right_truth_axis() {
     store
         .add_edge(EdgeKind::Validates, &v.id, &a, TruthClass::Asserted)
         .unwrap();
-    let validate = workitem::next(&store, Some(Mode::Validate))
+    let validate = workitem::next(&store, Some(Lane::Validate))
         .expect("next validate ok")
         .expect("validate item exists");
     assert_eq!(validate.truth_gap.axis, TruthAxis::Proof);
@@ -266,7 +267,7 @@ fn next_edge_context_points_to_endpoints_edge_and_grounded_codefile() {
         .add_edge(EdgeKind::Relates, &a, &b, TruthClass::Asserted)
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Analyze))
+    let item = workitem::next(&store, Some(Lane::Analyze))
         .expect("next analyze ok")
         .expect("analyze item exists");
 
@@ -310,14 +311,14 @@ fn next_analyze_serves_uninspected_claim() {
         .add_edge(EdgeKind::Relates, &a, &b, TruthClass::Asserted)
         .unwrap();
     // uninspected → analyze queue serves it
-    let item = workitem::next(&store, Some(Mode::Analyze))
+    let item = workitem::next(&store, Some(Lane::Analyze))
         .expect("next analyze ok")
         .expect("analyze item exists");
     assert_eq!(item.owner_role, "analyzer");
     assert_eq!(item.target.kind, "edge");
 
     // build queue empty (no planned intents need build? they are planned) -> build serves them
-    let build = workitem::next(&store, Some(Mode::Build)).unwrap();
+    let build = workitem::next(&store, Some(Lane::Build)).unwrap();
     assert!(build.is_some(), "planned intents are build work");
 }
 
@@ -405,7 +406,7 @@ fn build_queue_serves_prerequisites_before_dependents() {
         .unwrap();
 
     // The prerequisite is served first, even though the dependent sorts earlier.
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("a build item");
     assert_eq!(
@@ -415,7 +416,7 @@ fn build_queue_serves_prerequisites_before_dependents() {
 
     // Once the prerequisite is implemented, the dependent becomes ready.
     store.set_node_status(&prereq, "implemented").unwrap();
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("a build item");
     assert_eq!(
@@ -438,7 +439,7 @@ fn build_queue_does_not_stall_on_a_requires_cycle() {
         .unwrap();
     // Neither is ready (each requires the other), but the lane must not stall:
     // it serves the top-ranked candidate carrying a blocked reason.
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("a build item even under a requires cycle");
     assert!(

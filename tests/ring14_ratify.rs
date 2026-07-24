@@ -3,10 +3,11 @@
 //! Real SQLite, no mocks. The contract under test (docs/rethink-lived-graph.md):
 //! anyone may mint an intent, only a human may ratify one (INV-8, fail closed);
 //! absent ratification reads as unratified (never presumed); redefinition
-//! stales ratification; the `wanted` rung, the ratify queue count, and the
-//! served ratify work item all agree because they share one predicate.
+//! stales ratification; the `converged` rung, the divergence queue depth, and
+//! the served ratify work item all agree because they share one predicate.
 
 use loom::cli::{Cli, Command, IntentCmd};
+use loom::lane::Lane;
 use loom::model::{NodeType, TargetKind};
 use loom::registry::OwnerRole;
 use loom::store::{Agent, Store};
@@ -139,16 +140,27 @@ fn absent_ratification_is_unratified_and_gates_the_wanted_rung() {
 
     // Shared predicate sees it; queue count agrees; ladder rung is unmet.
     assert_eq!(loom::workitem::unratified_intents(&store).unwrap().len(), 1);
-    assert_eq!(loom::workitem::queue_counts(&store).unwrap().ratify, 1);
+    assert_eq!(
+        loom::maturity::depths(&store)
+            .unwrap()
+            .get(Lane::Divergence),
+        1
+    );
     let ladder = loom::maturity::ladder(&store).unwrap();
-    let wanted = ladder.rungs.iter().find(|r| r.name == "wanted").unwrap();
+    let wanted = ladder.rungs.iter().find(|r| r.name == "converged").unwrap();
     assert_eq!(wanted.state, loom::maturity::RungState::Unmet);
-    // The compass routes the human at it (nothing failing outranks it here).
-    assert_eq!(ladder.phase, "ratify");
-    assert!(ladder.next_command.contains("--mode ratify"));
+    // The inversion: `converged` sits ABOVE the lanes an LLM can drain, so a
+    // planned intent outranks the human question. The human is asked last,
+    // about the fewest items — never as the gate that blocks realization.
+    assert_eq!(ladder.phase, "build");
+    assert_eq!(
+        loom::lane::Lane::Divergence.rung(),
+        "converged",
+        "the human-presence rung is the divergence rung"
+    );
 
     // The served work item targets the same intent, human-gated.
-    let item = loom::workitem::next(&store, loom::workitem::Mode::parse("ratify"))
+    let item = loom::workitem::next(&store, loom::lane::Lane::parse("ratify"))
         .unwrap()
         .expect("ratify queue must serve the unratified intent");
     assert_eq!(item.target.id, intent.id);
@@ -165,9 +177,14 @@ fn absent_ratification_is_unratified_and_gates_the_wanted_rung() {
         .ratify_intent(&intent.id, "curated dogfood spine", "test fixture")
         .unwrap();
     assert_eq!(loom::workitem::unratified_intents(&store).unwrap().len(), 0);
-    assert_eq!(loom::workitem::queue_counts(&store).unwrap().ratify, 0);
+    assert_eq!(
+        loom::maturity::depths(&store)
+            .unwrap()
+            .get(Lane::Divergence),
+        0
+    );
     let ladder = loom::maturity::ladder(&store).unwrap();
-    let wanted = ladder.rungs.iter().find(|r| r.name == "wanted").unwrap();
+    let wanted = ladder.rungs.iter().find(|r| r.name == "converged").unwrap();
     assert_eq!(wanted.state, loom::maturity::RungState::Met);
 }
 
@@ -204,7 +221,12 @@ fn redefinition_stales_ratification() {
         "a redefined intent is no longer known-wanted"
     );
     // …and it is back in the ratify queue.
-    assert_eq!(loom::workitem::queue_counts(&store).unwrap().ratify, 1);
+    assert_eq!(
+        loom::maturity::depths(&store)
+            .unwrap()
+            .get(Lane::Divergence),
+        1
+    );
 }
 
 // =========================================================================
@@ -373,7 +395,12 @@ fn semantic_impact_preserves_or_routes_human_reconfirmation() {
         ratification(&store, &intent.id).as_deref(),
         Some("needs_reconfirmation")
     );
-    assert_eq!(loom::workitem::queue_counts(&store).unwrap().ratify, 1);
+    assert_eq!(
+        loom::maturity::depths(&store)
+            .unwrap()
+            .get(Lane::Divergence),
+        1
+    );
 }
 
 #[test]
@@ -446,5 +473,10 @@ fn solo_mint_is_born_ratified_with_human_origin() {
         Some("human")
     );
     assert_eq!(ratification(&store, &n.id).as_deref(), Some("ratified"));
-    assert_eq!(loom::workitem::queue_counts(&store).unwrap().ratify, 0);
+    assert_eq!(
+        loom::maturity::depths(&store)
+            .unwrap()
+            .get(Lane::Divergence),
+        0
+    );
 }

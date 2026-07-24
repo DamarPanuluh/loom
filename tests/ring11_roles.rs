@@ -9,6 +9,7 @@
 //! `--json` surface (the `pub(crate)` summary helpers have no other
 //! externally observable proxy).
 
+use loom::lane::Lane;
 use loom::model::{EdgeKind, GroundingRole, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::registry::OwnerRole;
 use loom::store::{Agent, Store};
@@ -851,29 +852,37 @@ fn h12_observed_graph_zeroes_active_lane_queues() {
 
     let tmp_obs = Tmp::new();
     let obs = build(tmp_obs.path(), true);
-    let obs_q = loom::workitem::queue_counts(&obs).unwrap();
-    assert_eq!(obs_q.build, 0, "observed: build queue zeroed");
-    assert_eq!(obs_q.coverage, 0, "observed: coverage queue zeroed");
-    assert_eq!(obs_q.fix, 0, "observed: fix queue zeroed");
-    assert_eq!(obs_q.elaborate, 0, "observed: elaborate queue zeroed");
+    let obs_q = loom::maturity::depths(&obs).unwrap();
+    assert_eq!(obs_q.get(Lane::Build), 0, "observed: build queue zeroed");
+    assert_eq!(
+        obs_q.get(Lane::Coverage),
+        0,
+        "observed: coverage queue zeroed"
+    );
+    assert_eq!(obs_q.get(Lane::Fix), 0, "observed: fix queue zeroed");
+    assert_eq!(
+        obs_q.get(Lane::Elaborate),
+        0,
+        "observed: elaborate queue zeroed"
+    );
 
     let tmp_act = Tmp::new();
     let act = build(tmp_act.path(), false);
-    let act_q = loom::workitem::queue_counts(&act).unwrap();
+    let act_q = loom::maturity::depths(&act).unwrap();
     assert!(
-        act_q.build > 0,
+        act_q.get(Lane::Build) > 0,
         "non-observed: build queue populated (planned intent)"
     );
     assert!(
-        act_q.coverage > 0,
+        act_q.get(Lane::Coverage) > 0,
         "non-observed: coverage queue populated (unowned file)"
     );
     assert!(
-        act_q.fix > 0,
+        act_q.get(Lane::Fix) > 0,
         "non-observed: fix queue populated (failing edge)"
     );
     assert!(
-        act_q.elaborate > 0,
+        act_q.get(Lane::Elaborate) > 0,
         "non-observed: elaborate queue populated (user_visible feature with open axes)"
     );
 }

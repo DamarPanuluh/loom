@@ -1,10 +1,11 @@
 //! Ring 4 tests — maturity ladder + compass routing.
 
+use loom::lane::Lane;
 use loom::maturity::{ladder, RungState};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::travel;
-use loom::workitem::{self, Mode};
+use loom::workitem;
 mod common;
 use common::*;
 
@@ -134,12 +135,13 @@ fn implemented_but_ungrounded_intent_routes_to_a_nonempty_build_queue() {
 
     // The build queue is non-empty and serves exactly that intent — the compass
     // and the queue partition agree.
-    let counts = workitem::queue_counts(&store).unwrap();
+    let counts = loom::maturity::depths(&store).unwrap();
     assert_eq!(
-        counts.build, 1,
+        counts.get(Lane::Build),
+        1,
         "the ungrounded intent is counted in the build queue"
     );
-    let item = workitem::next(&store, Some(Mode::Build))
+    let item = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("build queue must serve the ungrounded implemented intent, not return None");
     assert_eq!(item.mode, "build");
@@ -178,7 +180,7 @@ fn graph_mode_is_settable_after_init_and_takes_effect() {
         )
         .unwrap();
     assert_eq!(
-        workitem::queue_counts(&store).unwrap().build,
+        loom::maturity::depths(&store).unwrap().get(Lane::Build),
         1,
         "owned graph serves the ungrounded intent as build work"
     );
@@ -190,7 +192,7 @@ fn graph_mode_is_settable_after_init_and_takes_effect() {
         "mode set to observed persists"
     );
     assert_eq!(
-        workitem::queue_counts(&store).unwrap().build,
+        loom::maturity::depths(&store).unwrap().get(Lane::Build),
         0,
         "observed graph disables the build lane"
     );
@@ -201,7 +203,7 @@ fn graph_mode_is_settable_after_init_and_takes_effect() {
         !store.identity().unwrap().observed,
         "mode set back to owned"
     );
-    assert_eq!(workitem::queue_counts(&store).unwrap().build, 1);
+    assert_eq!(loom::maturity::depths(&store).unwrap().get(Lane::Build), 1);
 }
 
 #[test]
@@ -243,7 +245,7 @@ fn analyze_packet_carries_the_lane_that_owns_the_write() {
         .unwrap();
     ratify_all(&store);
 
-    let item = workitem::next(&store, Some(Mode::Analyze))
+    let item = workitem::next(&store, Some(Lane::Analyze))
         .unwrap()
         .expect("uninspected implements claim is analyze work");
     assert_eq!(item.target.id, edge.id);
@@ -251,7 +253,7 @@ fn analyze_packet_carries_the_lane_that_owns_the_write() {
         item.owner_role, "builder",
         "packet must name the registry owner of the write, not the mode's default lane"
     );
-    let roster = workitem::queue_items(&store, Mode::Analyze).unwrap();
+    let roster = workitem::queue_items(&store, Lane::Analyze).unwrap();
     assert_eq!(roster[0].owner_role.as_deref(), Some("builder"));
 
     // The promise must be real: the named lane's write is accepted.
@@ -272,7 +274,7 @@ fn analyze_packet_carries_the_lane_that_owns_the_write() {
 #[test]
 fn observed_graph_compass_never_routes_to_a_disabled_lane() {
     // Regression: on an observed graph the build/coverage/fix lanes are disabled
-    // (`queue_counts` forces them to 0). An ungrounded implemented intent leaves
+    // (`Lane::depth` forces them to 0). An ungrounded implemented intent leaves
     // the `realized` rung Unmet, but the compass must NOT route to `build` — that
     // lane returns nothing here, a pure dead end. It routes to `validate` instead
     // (which IS enabled on observed graphs), matching what the queues can serve.
@@ -288,13 +290,15 @@ fn observed_graph_compass_never_routes_to_a_disabled_lane() {
         )
         .unwrap();
 
-    let counts = workitem::queue_counts(&store).unwrap();
+    let counts = loom::maturity::depths(&store).unwrap();
     assert_eq!(
-        counts.build, 0,
+        counts.get(Lane::Build),
+        0,
         "build lane is disabled on an observed graph"
     );
     assert_eq!(
-        counts.coverage, 0,
+        counts.get(Lane::Coverage),
+        0,
         "coverage lane is disabled on an observed graph"
     );
 
@@ -341,32 +345,32 @@ fn rungs_above_the_lowest_unmet_rung_are_marked_blocked() {
     ratify_all(&store);
     let l = ladder(&store).unwrap();
 
-    // The gate is the lowest Unmet rung: `realized` at index 2 (after seeded
-    // and the fixture-ratified `wanted`).
+    // The gate is the lowest Unmet rung: `grounded` at index 2 (after seeded
+    // and repaired).
     let gate = l.rungs.iter().position(|r| r.state == RungState::Unmet);
-    assert_eq!(gate, Some(2), "realized is the lowest unmet rung");
+    assert_eq!(gate, Some(2), "grounded is the lowest unmet rung");
 
     // Gate and everything below it are never blocked.
     assert!(!l.rungs[0].blocked, "seeded (below gate) is not blocked");
-    assert!(!l.rungs[1].blocked, "wanted (below gate) is not blocked");
+    assert!(!l.rungs[1].blocked, "repaired (below gate) is not blocked");
     assert!(!l.rungs[2].blocked, "the gate rung itself is not blocked");
     assert_eq!(l.rungs[2].blocked_by, None);
 
-    // Every rung above the gate is blocked by it — including `excellent`, which
-    // is independently Met but must not read as satisfied above unmet `realized`.
+    // Every rung above the gate is blocked by it — including a rung that is
+    // independently Met but must not read as satisfied above an unmet lower rung.
     for r in &l.rungs[3..] {
         assert!(
             r.blocked,
             "{} sits above the gate and must be blocked",
             r.name
         );
-        assert_eq!(r.blocked_by.as_deref(), Some("realized"));
+        assert_eq!(r.blocked_by.as_deref(), Some("grounded"));
     }
-    let excellent = l.rungs.iter().find(|r| r.name == "excellent").unwrap();
+    let excellent = l.rungs.iter().find(|r| r.name == "triaged").unwrap();
     assert_eq!(
         excellent.state,
         RungState::Met,
-        "excellent's own truth is unchanged"
+        "the triaged rung's own truth is unchanged"
     );
     assert!(
         excellent.blocked,
@@ -420,8 +424,8 @@ fn stale_edge_routes_to_fix() {
         .unwrap();
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "fix");
-    // hardened unmet because of the failing edge
-    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    // repaired unmet because of the failing edge
+    let hardened = l.rungs.iter().find(|r| r.name == "repaired").unwrap();
     assert_eq!(hardened.state, RungState::Unmet);
 }
 
@@ -489,7 +493,7 @@ fn fully_grounded_no_residue_routes_complete() {
     let exported = before_export
         .rungs
         .iter()
-        .find(|r| r.name == "exported")
+        .find(|r| r.name == "published")
         .unwrap();
     assert_eq!(exported.state, RungState::Unmet);
     travel::export_to_file(&store).unwrap();
@@ -499,7 +503,7 @@ fn fully_grounded_no_residue_routes_complete() {
         after_export
             .rungs
             .iter()
-            .find(|r| r.name == "exported")
+            .find(|r| r.name == "published")
             .unwrap()
             .state,
         RungState::Met
@@ -587,7 +591,7 @@ fn registered_unowned_codefile_routes_to_coverage() {
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "coverage");
     assert_eq!(l.next_command, "loom coverage");
-    let realized = l.rungs.iter().find(|r| r.name == "realized").unwrap();
+    let realized = l.rungs.iter().find(|r| r.name == "covered").unwrap();
     assert_eq!(realized.state, RungState::Unmet);
     assert!(realized.detail.contains("1 unowned codefile(s)"));
     assert_eq!(l.truth_axis, Some(loom::truth::TruthAxis::Implementation));
@@ -676,7 +680,7 @@ fn ignored_unowned_codefile_excluded_from_coverage_gate_and_queue() {
     // Pre-ignore: the unowned file is a real coverage gap — it heads the queue
     // and blocks the realized rung. (Sanity, so the test cannot pass on a
     // silently-empty graph.)
-    let before = workitem::next(&store, Some(Mode::Coverage)).unwrap();
+    let before = workitem::next(&store, Some(Lane::Coverage)).unwrap();
     let before = before.expect("unowned codefile must surface a coverage work item");
     assert_eq!(before.mode, "coverage");
     assert_eq!(before.target.name, "src/vendored.rs");
@@ -684,7 +688,7 @@ fn ignored_unowned_codefile_excluded_from_coverage_gate_and_queue() {
         .unwrap()
         .rungs
         .into_iter()
-        .find(|r| r.name == "realized")
+        .find(|r| r.name == "covered")
         .unwrap();
     assert_eq!(realized_before.state, RungState::Unmet);
     assert!(realized_before.detail.contains("1 unowned codefile(s)"));
@@ -705,7 +709,7 @@ fn ignored_unowned_codefile_excluded_from_coverage_gate_and_queue() {
     // Post-ignore: the deliberately-excluded file is no longer a gap — the
     // queue drains and the realized rung is unblocked by ownership.
     assert!(
-        workitem::next(&store, Some(Mode::Coverage))
+        workitem::next(&store, Some(Lane::Coverage))
             .unwrap()
             .is_none(),
         "an ignored file must not surface as coverage work"
@@ -714,7 +718,7 @@ fn ignored_unowned_codefile_excluded_from_coverage_gate_and_queue() {
         .unwrap()
         .rungs
         .into_iter()
-        .find(|r| r.name == "realized")
+        .find(|r| r.name == "covered")
         .unwrap();
     assert!(
         realized_after.detail.contains("0 unowned codefile(s)"),
@@ -853,11 +857,11 @@ fn doctor_issue_routes_to_audit_after_earlier_gates_pass() {
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "audit");
     assert_eq!(l.next_command, "loom doctor");
-    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    let hardened = l.rungs.iter().find(|r| r.name == "sound").unwrap();
     assert_eq!(hardened.state, RungState::Unmet);
     assert!(hardened.detail.contains("1 doctor issue(s)"));
-    // audit-by-doctor is graph-integrity, so it maps to the verdict axis, not signal.
-    assert_eq!(l.truth_axis, Some(loom::truth::TruthAxis::Verdict));
+    // The audit lane adjudicates flagged observations — one axis per lane.
+    assert_eq!(l.truth_axis, Some(loom::truth::TruthAxis::Signal));
 }
 
 #[test]
@@ -1278,7 +1282,7 @@ fn findings_route_to_triage_until_judged() {
         )
         .unwrap();
     let l = ladder(&store).unwrap();
-    let excellent = l.rungs.iter().find(|r| r.name == "excellent").unwrap();
+    let excellent = l.rungs.iter().find(|r| r.name == "triaged").unwrap();
     assert_eq!(excellent.state, RungState::Unmet);
     assert_eq!(l.phase, "triage");
     assert_eq!(l.next_command, "loom next --mode triage");
@@ -1293,7 +1297,7 @@ fn findings_route_to_triage_until_judged() {
         .record_finding_verdict(&f.id, "justified", "cohesive")
         .unwrap();
     let judged = ladder(&store).unwrap();
-    let judged_excellent = judged.rungs.iter().find(|r| r.name == "excellent").unwrap();
+    let judged_excellent = judged.rungs.iter().find(|r| r.name == "triaged").unwrap();
     assert_eq!(judged.phase, "export");
     assert_eq!(judged.next_command, "loom export && loom export --check");
     assert_eq!(judged_excellent.state, RungState::Met);
@@ -1317,7 +1321,7 @@ fn excellent_rung_when_not_applicable_hides_untriaged_count() {
         )
         .unwrap();
     let l = ladder(&store).unwrap();
-    let excellent = l.rungs.iter().find(|r| r.name == "excellent").unwrap();
+    let excellent = l.rungs.iter().find(|r| r.name == "triaged").unwrap();
     assert_eq!(excellent.state, RungState::NotApplicable);
     assert!(!excellent.detail.contains("untriaged"));
     assert_eq!(l.phase, "seed");
@@ -1385,7 +1389,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     // Before seeding: hardened should be Met (no stale, no uninspected, no doctor, no pairs).
     ratify_all(&store);
     let l = ladder(&store).unwrap();
-    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    let hardened = l.rungs.iter().find(|r| r.name == "measured").unwrap();
     assert_eq!(
         hardened.state,
         RungState::Met,
@@ -1399,14 +1403,14 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     // Now hardened must be Unmet: unmeasured pairs block it.
     ratify_all(&store);
     let l = ladder(&store).unwrap();
-    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    let hardened = l.rungs.iter().find(|r| r.name == "measured").unwrap();
     assert_eq!(
         hardened.state,
         RungState::Unmet,
         "hardened is Unmet when seeded rules have unmeasured pairs"
     );
     assert!(
-        hardened.detail.contains("unmeasured quality pair"),
+        hardened.detail.contains("never-measured rule pair"),
         "hardened detail mentions unmeasured quality pairs: {}",
         hardened.detail
     );
@@ -1442,7 +1446,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     // Now hardened should be Met.
     ratify_all(&store);
     let l = ladder(&store).unwrap();
-    let hardened = l.rungs.iter().find(|r| r.name == "hardened").unwrap();
+    let hardened = l.rungs.iter().find(|r| r.name == "measured").unwrap();
     assert_eq!(
         hardened.state,
         RungState::Met,

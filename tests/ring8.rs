@@ -1,9 +1,10 @@
 //! Ring 8 tests — durable finding triage.
 
+use loom::lane::Lane;
 use loom::maturity::{ladder, RungState};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
-use loom::workitem::{self, Mode};
+use loom::workitem;
 mod common;
 use common::*;
 
@@ -258,7 +259,7 @@ fn triage_mode_serves_findings_until_verdict_is_recorded() {
     mature_graph_with_codefile(&store);
     let finding = derived_finding(&store);
 
-    let item = workitem::next(&store, Some(Mode::Triage))
+    let item = workitem::next(&store, Some(Lane::Triage))
         .unwrap()
         .expect("untriaged finding is served");
     assert_eq!(item.mode, "triage");
@@ -279,7 +280,7 @@ fn triage_mode_serves_findings_until_verdict_is_recorded() {
     store
         .record_finding_verdict(&finding.id, "justified", "cohesive")
         .unwrap();
-    assert!(workitem::next(&store, Some(Mode::Triage))
+    assert!(workitem::next(&store, Some(Lane::Triage))
         .unwrap()
         .is_none());
     let judged = ladder(&store).unwrap();
@@ -296,7 +297,7 @@ fn triage_item_surfaces_owning_intents_as_cohesion_evidence() {
         .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
         .unwrap();
 
-    let item = workitem::next(&store, Some(Mode::Triage))
+    let item = workitem::next(&store, Some(Lane::Triage))
         .unwrap()
         .expect("untriaged finding is served");
     // The judgment input comes from the graph, not grep: the flagged file's
@@ -334,12 +335,16 @@ fn graph_state_counts_needed_findings() {
 }
 #[test]
 fn excellent_rung_counts_needed_blocked_but_not_justified() {
+    // Open SMELLS belong to the `sound` rung (audit lane); untriaged/stale
+    // findings belong to `triaged`. A smell adjudicated `needed` is triaged but
+    // not resolved, so it clears `triaged` and still holds `sound` open — which
+    // is exactly the split this rung separation exists to express.
     fn excellent_state(store: &Store) -> RungState {
         ladder(store)
             .unwrap()
             .rungs
             .into_iter()
-            .find(|r| r.name == "excellent")
+            .find(|r| r.name == "sound")
             .unwrap()
             .state
     }

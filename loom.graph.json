@@ -105,6 +105,34 @@
       "updated_at": "2026-07-18T14:18:50.533Z"
     },
     {
+      "id": "0989e22207445814fab7afe3f5fdf71a",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: ratify_item serves needs_reconfirmation with re-confirm reason; redefine_intent + queue_counts agree (ring14 redefinition_stales_ratification).",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "c09c07319403d3512ded1904c46a4505"
+      },
+      "created_at": "2026-07-19T18:18:29.111Z",
+      "updated_at": "2026-07-19T18:18:29.111Z"
+    },
+    {
+      "id": "09b409f223d650e75355a0f403df38ee",
+      "type": "validation",
+      "name": "ring14 proves redefinition stales ratification",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring14_ratify redefinition_stales_ratification -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-07-19T18:17:44.939Z",
+      "updated_at": "2026-07-19T18:17:46.526Z"
+    },
+    {
       "id": "09e635194df6f25c91db3aa1f8da7c36",
       "type": "note",
       "name": "note:ratify",
@@ -142,6 +170,19 @@
       },
       "created_at": "2026-07-09T05:17:22.299Z",
       "updated_at": "2026-07-09T05:17:22.299Z"
+    },
+    {
+      "id": "0f4d7574144892f3fc485dbac33d0900",
+      "type": "intent",
+      "name": "redefining a ratified intent stales ratification to needs_reconfirmation",
+      "description": "after a successful human ratification, updating the intent description without --reword sets ratification to needs_reconfirmation and returns the intent to the ratify queue",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-19T18:13:12.115Z",
+      "updated_at": "2026-07-19T18:16:04.266Z"
     },
     {
       "id": "0f4f847902602509f2d0d1bdd9a2e04c",
@@ -183,6 +224,19 @@
       "updated_at": "2026-07-18T20:06:43.899Z"
     },
     {
+      "id": "10b39e737268e23369169078438e0ff2",
+      "type": "intent",
+      "name": "compass points at ratify when unratified intents exist and nothing outranks them",
+      "description": "with at least one unratified intent and no higher-priority failing work, maturity phase is ratify and next_command contains --mode ratify",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-19T18:18:13.672Z",
+      "updated_at": "2026-07-19T18:18:29.080Z"
+    },
+    {
       "id": "11dcc7c1219770fcd321b419909dc092",
       "type": "codefile",
       "name": "src/commands/status_cmd.rs",
@@ -192,6 +246,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.631Z",
       "updated_at": "2026-07-09T04:59:38.631Z"
+    },
+    {
+      "id": "129ba5e07bf046783312688de1a49d86",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: compass returns phase=ratify when queues.ratify>0 after fix is clear (maturity.rs:274-276); ring14 lines 146-148.",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "10b39e737268e23369169078438e0ff2"
+      },
+      "created_at": "2026-07-19T18:18:29.080Z",
+      "updated_at": "2026-07-19T18:18:29.080Z"
     },
     {
       "id": "12dfc198d888a1c178f2d7203602bc16",
@@ -639,6 +707,20 @@
       "updated_at": "2026-07-18T19:20:32.870Z"
     },
     {
+      "id": "2f931d4fe50ec9a6177bd67ffd68b07b",
+      "type": "validation",
+      "name": "ring14 proves plain next never serves ratify",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring14_ratify absent_ratification_is_unratified_and_gates_the_wanted_rung -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-07-19T18:18:40.656Z",
+      "updated_at": "2026-07-19T18:18:41.734Z"
+    },
+    {
       "id": "30406584948e123aed3e6c7210b9b8f9",
       "type": "validation",
       "name": "maturity leaf grounding",
@@ -986,6 +1068,20 @@
       },
       "created_at": "2026-07-09T05:01:14.541Z",
       "updated_at": "2026-07-09T05:01:14.541Z"
+    },
+    {
+      "id": "45639fa9ad0bad3a7496f253467ba67e",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: require_human_authority bails INV-8 for every llm:* lane before ratify_intent_as writes any facet (ring14 inv8_ratify_rejects_every_llm_lane).",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "b57f79151062b9109d79e7a552ee37f0"
+      },
+      "created_at": "2026-07-19T18:16:04.212Z",
+      "updated_at": "2026-07-19T18:16:04.212Z"
     },
     {
       "id": "46d16fdebd7194e74c9ea3094439ac57",
@@ -1398,6 +1494,20 @@
       "updated_at": "2026-07-09T05:00:57.456Z"
     },
     {
+      "id": "5fc787584b1f442edc3c64e7bdd89041",
+      "type": "validation",
+      "name": "ring14 proves llm-lane ratification is denied (INV-8)",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring14_ratify inv8_ratify_rejects_every_llm_lane -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-07-19T18:17:44.894Z",
+      "updated_at": "2026-07-19T18:17:46.245Z"
+    },
+    {
       "id": "60cba87536facf7d78552f2ed29da0d2",
       "type": "intent",
       "name": "the statement grammar lives in one module and every gate derives from it",
@@ -1718,6 +1828,20 @@
       "updated_at": "2026-07-18T19:20:32.573Z"
     },
     {
+      "id": "6d5d4a1ce6154a58ffc3fdc5e840fbc0",
+      "type": "validation",
+      "name": "ring14 proves absent ratification gates wanted",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring14_ratify absent_ratification_is_unratified_and_gates_the_wanted_rung -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-07-19T18:17:44.924Z",
+      "updated_at": "2026-07-19T18:17:45.885Z"
+    },
+    {
       "id": "6ed438ec96b4a9c5282ac95159765b32",
       "type": "codefile",
       "name": "src/signal/debt/cochange.rs",
@@ -1851,6 +1975,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.634Z",
       "updated_at": "2026-07-09T04:59:38.634Z"
+    },
+    {
+      "id": "74402508c633e720d4ecdd95c1a27dd5",
+      "type": "intent",
+      "name": "absent ratification reads as unratified and gates the wanted rung",
+      "description": "with no ratification facet, unratified_intents includes the intent, the ratify queue is non-zero, and the wanted rung is unmet — wantedness is never presumed",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-19T18:13:12.087Z",
+      "updated_at": "2026-07-19T18:16:04.092Z"
     },
     {
       "id": "75c5c4a1e26db9b1fc38db64b05479e3",
@@ -2538,6 +2675,20 @@
       "updated_at": "2026-07-09T05:40:57.262Z"
     },
     {
+      "id": "9b3bc55ea43150577eae7bdc9221e40f",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: redefine_intent sets ratification to needs_reconfirmation when a ratified criterion changes, returning the intent to the ratify queue (ring14 redefinition_stales_ratification).",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "0f4d7574144892f3fc485dbac33d0900"
+      },
+      "created_at": "2026-07-19T18:16:04.266Z",
+      "updated_at": "2026-07-19T18:16:04.266Z"
+    },
+    {
       "id": "9d1bb7be7546ccaa9532c7db8711c2b6",
       "type": "intent",
       "name": "a human-authored policy can ratify matching intents mechanically",
@@ -2694,6 +2845,20 @@
       },
       "created_at": "2026-07-18T19:20:32.829Z",
       "updated_at": "2026-07-18T19:20:32.829Z"
+    },
+    {
+      "id": "a30dff03b26ea7476b7e3fe4b66453bd",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: Behavior already lives in unratified_intents: missing ratification facet defaults to unratified, which feeds the ratify queue and wanted rung (ring14 absent_ratification_is_unratified_and_gates_the_wanted_rung).",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "74402508c633e720d4ecdd95c1a27dd5"
+      },
+      "created_at": "2026-07-19T18:16:04.094Z",
+      "updated_at": "2026-07-19T18:16:04.094Z"
     },
     {
       "id": "a370e4e51b3ec919c0022ccb90420dd7",
@@ -2905,6 +3070,20 @@
       "updated_at": "2026-07-18T19:01:59.501Z"
     },
     {
+      "id": "ad31e9d9d76ee16fda6218233dc723d5",
+      "type": "validation",
+      "name": "ring14 proves compass points at ratify for unratified",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring14_ratify absent_ratification_is_unratified_and_gates_the_wanted_rung -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-07-19T18:18:40.671Z",
+      "updated_at": "2026-07-19T18:18:41.297Z"
+    },
+    {
       "id": "ad6db46cac0dda664da0b4dedb5987d3",
       "type": "validation",
       "name": "work packet contracts",
@@ -3082,6 +3261,20 @@
       "updated_at": "2026-07-18T14:36:51.329Z"
     },
     {
+      "id": "b45f1117d037cbfb424b93755f3db826",
+      "type": "note",
+      "name": "note:decision",
+      "description": "lifecycle implemented: next_inner None branch never calls ratify_item; Mode::Ratify is explicit-only (ring14 lines 158-161).",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "d31b85e49d60d44c71b8f0b83d9b0787"
+      },
+      "created_at": "2026-07-19T18:18:29.050Z",
+      "updated_at": "2026-07-19T18:18:29.050Z"
+    },
+    {
       "id": "b4817112203f1753162eccd2dfdfd2bf",
       "type": "note",
       "name": "note:decision",
@@ -3105,6 +3298,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.636Z",
       "updated_at": "2026-07-09T04:59:38.636Z"
+    },
+    {
+      "id": "b57f79151062b9109d79e7a552ee37f0",
+      "type": "intent",
+      "name": "an llm lane attempting ratification is denied without writing a facet",
+      "description": "when any llm:* agent calls ratify, the write fails naming INV-8 and the ratification facet remains absent (fail closed)",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-19T18:13:12.036Z",
+      "updated_at": "2026-07-19T18:16:04.212Z"
     },
     {
       "id": "b7cd7363d066d0bf027f975d8bc56f9e",
@@ -3204,6 +3410,19 @@
       "body": {},
       "created_at": "2026-07-10T10:33:28.266Z",
       "updated_at": "2026-07-10T10:33:28.266Z"
+    },
+    {
+      "id": "c09c07319403d3512ded1904c46a4505",
+      "type": "intent",
+      "name": "needs_reconfirmation intents re-enter the ratify queue",
+      "description": "after redefinition stales ratification to needs_reconfirmation, queue_counts.ratify is non-zero and ratify_item serves that intent with a re-confirm reason",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-19T18:18:13.704Z",
+      "updated_at": "2026-07-19T18:18:29.111Z"
     },
     {
       "id": "c1f78c0db4fade0fc51d6af46430c1d1",
@@ -3515,6 +3734,20 @@
       },
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d02b10b15dc655c27a6b9b21b0649ece",
+      "type": "validation",
+      "name": "ring14 proves needs_reconfirmation re-enters ratify queue",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring14_ratify redefinition_stales_ratification -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-07-19T18:18:40.687Z",
+      "updated_at": "2026-07-19T18:18:41.504Z"
     },
     {
       "id": "d032daa88d799810a",
@@ -3974,6 +4207,19 @@
       "updated_at": ""
     },
     {
+      "id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "type": "intent",
+      "name": "plain loom next never serves a human-only ratify packet",
+      "description": "when the default next router runs without --mode ratify, no work item with mode=ratify is returned — human-presence work is never drained autonomously",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-19T18:18:13.634Z",
+      "updated_at": "2026-07-19T18:18:29.050Z"
+    },
+    {
       "id": "d363c27f2bc0ff1d50f5aed32dd4d465",
       "type": "note",
       "name": "note:context",
@@ -4385,7 +4631,7 @@
     {
       "id": "d6a3bcd44671a3b56",
       "type": "finding",
-      "name": "src/workitem/queues.rs is realized by 4 intents with no recorded relationship connecting them",
+      "name": "src/workitem/queues.rs is realized by 6 intents with no recorded relationship connecting them",
       "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
       "status": "tangled_file",
       "truth_class": "derived",
@@ -4655,7 +4901,7 @@
     {
       "id": "d93fd161115941d2c",
       "type": "finding",
-      "name": "src/store/nodes.rs is realized by 4 intents with no recorded relationship connecting them",
+      "name": "src/store/nodes.rs is realized by 6 intents with no recorded relationship connecting them",
       "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
       "status": "tangled_file",
       "truth_class": "derived",
@@ -4899,7 +5145,7 @@
     {
       "id": "da9cd391fe6fdca3c",
       "type": "finding",
-      "name": "'maturity counts only leaf intents as needing grounding' and 'unratified intents route to a human-only ratify queue' both realize src/maturity.rs with no relationship connecting them",
+      "name": "src/maturity.rs is realized by 3 intents with no recorded relationship connecting them",
       "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
       "status": "tangled_file",
       "truth_class": "derived",
@@ -6113,6 +6359,21 @@
       "updated_at": "2026-07-19T02:39:41.584Z"
     },
     {
+      "id": "035641c28a415b0eb6254d84dc19b79b",
+      "from_id": "b57f79151062b9109d79e7a552ee37f0",
+      "to_id": "b56d433c98a18554691b97911c8f898f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "any llm:* agent calling ratify is rejected naming INV-8 and no ratification facet is written",
+      "evidence": "src/store/nodes.rs:20-28 require_human_authority bails INV-8 for Agent::Lane; src/store/nodes.rs:525 ratify_intent_as calls it before every facet write; tests/ring14_ratify.rs:50-79 inv8_ratify_rejects_every_llm_lane asserts deny + absent facet",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:16:04.147Z",
+      "updated_at": "2026-07-19T18:17:05.279Z"
+    },
+    {
       "id": "043bb394cb3afdbb18c163116565f054",
       "from_id": "d2e01de8af8327d1b",
       "to_id": "4c48d826cb3f799e0e88c06796c4f704",
@@ -6702,6 +6963,23 @@
       "updated_at": "2026-07-10T05:09:14.378Z"
     },
     {
+      "id": "1d78670cb37e05dac5296ac2200afe47",
+      "from_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
+      "kind": "relates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "ratify exclusion from default next is part of the same next-router priority contract",
+      "evidence": "src/workitem/mod.rs:218-222 documents Mode::Ratify as explicit-only inside next_inner; the priority ladder at 225-249 is the same function that omits ratify from autonomous drain",
+      "confidence": 0.9,
+      "depends_on": [
+        "1e0dbf429488355d9494ea5ec55932e4"
+      ],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:19:18.531Z",
+      "updated_at": "2026-07-19T18:19:18.545Z"
+    },
+    {
       "id": "1d9dab3b1be1727ef8feacce0f52a0f3",
       "from_id": "5642addfb850287a078449f05abd81b6",
       "to_id": "0f6c0961ed42fd973adc8c54b1526297",
@@ -6880,6 +7158,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.420Z",
       "updated_at": "2026-07-19T05:20:06.421Z"
+    },
+    {
+      "id": "27a61927eb5b4a33e3578c17c9881838",
+      "from_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "to_id": "1e0dbf429488355d9494ea5ec55932e4",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "default next never returns mode=ratify; ratify requires explicit Mode::Ratify",
+      "evidence": "src/workitem/mod.rs:218-222 Mode::Ratify only on explicit request; src/workitem/mod.rs:225-249 None branch never calls ratify_item; tests/ring14_ratify.rs:158-161",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:29.028Z",
+      "updated_at": "2026-07-19T18:18:40.546Z"
     },
     {
       "id": "28d606458b28f06efbc4a80c3e3e9298",
@@ -7125,6 +7418,21 @@
       "updated_at": "2026-07-18T19:14:47.858Z"
     },
     {
+      "id": "36df81ace25202be06746fa379f77681",
+      "from_id": "c09c07319403d3512ded1904c46a4505",
+      "to_id": "8c09800873ec56699ca584e7da49a20e",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "needs_reconfirmation intents are served by ratify_item with a re-confirm reason",
+      "evidence": "src/workitem/queues.rs:607-611 needs_reconfirmation reason branch; tests/ring14_ratify.rs:178-208 queue_counts.ratify==1 after redefine",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:29.095Z",
+      "updated_at": "2026-07-19T18:18:40.572Z"
+    },
+    {
       "id": "388cc8aff8b6b92b9f0e5f40b3a47ee0",
       "from_id": "8888575022b4e86b0862b5d6a8b91f00",
       "to_id": "532576fe14cb8bc3d398797ca58f08c0",
@@ -7341,13 +7649,13 @@
       "kind": "validates",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "proof",
-      "evidence": "Observed loom journey run journeys/find-grounding.yaml: 1/1 steps passed; exit 0.",
+      "criterion": "journey steps",
+      "evidence": "find next router: `loom find 'next router' --json` exit 0",
       "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "llm",
+      "inspected_by": "journey",
       "created_at": "2026-07-09T05:40:55.088Z",
-      "updated_at": "2026-07-18T19:12:09.346Z"
+      "updated_at": "2026-07-24T17:39:49.317Z"
     },
     {
       "id": "4160a91c462f16b6e040f8e8698a8d4b",
@@ -7516,6 +7824,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.567Z",
       "updated_at": "2026-07-18T19:13:40.265Z"
+    },
+    {
+      "id": "4648a89f661842e59f4e623eea54c8f2",
+      "from_id": "d02b10b15dc655c27a6b9b21b0649ece",
+      "to_id": "c09c07319403d3512ded1904c46a4505",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring14_ratify redefinition_stales_ratification -- --exact` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:40.687Z",
+      "updated_at": "2026-07-19T18:18:41.504Z"
     },
     {
       "id": "46c67fbe41e0c086be3e33fc41a90e02",
@@ -8050,6 +8373,21 @@
       "updated_at": "2026-07-09T04:59:40.831Z"
     },
     {
+      "id": "5906d9aa9a1ea2a00a17aef9ce5f26ce",
+      "from_id": "10b39e737268e23369169078438e0ff2",
+      "to_id": "7ea392c6f00c1e88b731ab0331e898f2",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compass phase is ratify when ratify queue is non-empty and fix does not outrank",
+      "evidence": "src/maturity.rs:274-276 compass returns ratify when queues.ratify>0; tests/ring14_ratify.rs:146-148 assert phase ratify and next_command contains --mode ratify",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:29.065Z",
+      "updated_at": "2026-07-19T18:18:40.590Z"
+    },
+    {
       "id": "5958139c6b8e80f92f46a0ec4f43cc8d",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "2d80bfcecf56406519d64617d0d7236d",
@@ -8318,6 +8656,36 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:55:18.415Z",
       "updated_at": "2026-07-19T05:18:23.383Z"
+    },
+    {
+      "id": "64271b4efe34cb35f643f841c5839aa5",
+      "from_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "to_id": "0950a847d7afcc73ed56c8e21a6607af",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "fail-closed absence of ratification is a surrounding case of the parent happy-path ratification write",
+      "evidence": "parent description requires fail-closed unratified-by-default; scenario names the absent-facet path; src/workitem/queues.rs:583-586 defaults missing facet to unratified; tests/ring14_ratify.rs:127-171 proves queue + wanted rung agree",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:13:12.101Z",
+      "updated_at": "2026-07-19T18:17:05.307Z"
+    },
+    {
+      "id": "64b10fe02573cd14ae3f9bc8ab089139",
+      "from_id": "c09c07319403d3512ded1904c46a4505",
+      "to_id": "e56229425a63eeb67ae20ca43cf10c1b",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "re-confirmation after stale ratification is an edge surrounding of the human-only ratify queue",
+      "evidence": "parent routes unratified including needs_reconfirmation; scenario isolates re-entry; src/workitem/queues.rs:607-611 + tests/ring14_ratify.rs:206-207",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:13.720Z",
+      "updated_at": "2026-07-19T18:18:40.606Z"
     },
     {
       "id": "64bf62955824e2599d2d80123842c167",
@@ -8590,6 +8958,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:09:26.473Z",
       "updated_at": "2026-07-10T10:48:34.547Z"
+    },
+    {
+      "id": "7246cf6834dcdef0d98fe11018e45104",
+      "from_id": "b57f79151062b9109d79e7a552ee37f0",
+      "to_id": "0950a847d7afcc73ed56c8e21a6607af",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "llm-lane denial is the sad path of the parent human-only ratification write (INV-8)",
+      "evidence": "parent description: every llm:* lane is denied the write (INV-8, fail closed); scenario isolates that denial; src/store/nodes.rs:20-28 + tests/ring14_ratify.rs:50-79",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:13:12.069Z",
+      "updated_at": "2026-07-19T18:17:05.324Z"
     },
     {
       "id": "74402186b0957bd4a42b881593934c30",
@@ -8953,6 +9336,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-18T19:15:10.153Z",
       "updated_at": "2026-07-18T19:15:10.156Z"
+    },
+    {
+      "id": "83c62b6947095e2a8df105b5e9b25d25",
+      "from_id": "0f4d7574144892f3fc485dbac33d0900",
+      "to_id": "b56d433c98a18554691b97911c8f898f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "redefining a ratified intent sets ratification to needs_reconfirmation and returns it to the ratify queue",
+      "evidence": "src/store/nodes.rs:428-442 redefine_intent stales ratified → needs_reconfirmation; tests/ring14_ratify.rs:178-208 redefinition_stales_ratification asserts facet + queue count",
+      "confidence": 0.93,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:16:04.236Z",
+      "updated_at": "2026-07-19T18:17:05.340Z"
     },
     {
       "id": "83f9e9bf573c6da1602d02df6bb16ba1",
@@ -9495,6 +9893,21 @@
       "updated_at": "2026-07-18T14:50:44.649Z"
     },
     {
+      "id": "99e26dc43546cc36370696763d7c6de7",
+      "from_id": "10b39e737268e23369169078438e0ff2",
+      "to_id": "e56229425a63eeb67ae20ca43cf10c1b",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compass pointing at ratify is the fallback routing when unratified work exists",
+      "evidence": "parent description: compass points at loom next --mode ratify; scenario isolates that; src/maturity.rs:274-276 + tests/ring14_ratify.rs:146-148",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:13.689Z",
+      "updated_at": "2026-07-19T18:18:40.622Z"
+    },
+    {
       "id": "9a5d25b4e7360d744cec4a41671a2826",
       "from_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "to_id": "a4f33445f41fe63afb99940ec509ac4a",
@@ -10020,6 +10433,23 @@
       "updated_at": "2026-07-19T05:20:06.001Z"
     },
     {
+      "id": "b072b86aca441fb93a121f0368f74bda",
+      "from_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "to_id": "e35fe452b1e6408ed91d6b60c683fcdf",
+      "kind": "relates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "both are outcomes of next_inner over the same Mode dispatch",
+      "evidence": "src/workitem/mod.rs:202-276 next_inner returns Ok(None) when lanes are empty and never selects ratify without Mode::Ratify — same router function, two observable outcomes",
+      "confidence": 0.9,
+      "depends_on": [
+        "1e0dbf429488355d9494ea5ec55932e4"
+      ],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:19:18.572Z",
+      "updated_at": "2026-07-19T18:19:18.574Z"
+    },
+    {
       "id": "b2776ac40f49caec75a5085d8931de6e",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "1d135280c7bb80c6764f635a7d7fbe35",
@@ -10108,6 +10538,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:11:00.758Z",
       "updated_at": "2026-07-19T06:16:41.754Z"
+    },
+    {
+      "id": "b86812beecf40755d23aa460d8e759b6",
+      "from_id": "6d5d4a1ce6154a58ffc3fdc5e840fbc0",
+      "to_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring14_ratify absent_ratification_is_unratified_and_gates_the_wanted_rung -- --exact` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:17:44.924Z",
+      "updated_at": "2026-07-19T18:17:45.884Z"
     },
     {
       "id": "b937a0251723cab8ab606ea91999365f",
@@ -10426,6 +10871,36 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:40.925Z",
       "updated_at": "2026-07-10T05:10:17.524Z"
+    },
+    {
+      "id": "c7056d9abbebd1ba0418b5906505200a",
+      "from_id": "0f4d7574144892f3fc485dbac33d0900",
+      "to_id": "0950a847d7afcc73ed56c8e21a6607af",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "criterion-changing redefinition is the edge case where prior wantedness rots, as named on the parent",
+      "evidence": "parent description: redefining a ratified intent stales its ratification to needs_reconfirmation; scenario isolates that path; src/store/nodes.rs:428-442 + tests/ring14_ratify.rs:178-208",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:13:12.130Z",
+      "updated_at": "2026-07-19T18:17:05.355Z"
+    },
+    {
+      "id": "c7ccc1fa39f56b0b3f87731f7daab20d",
+      "from_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "to_id": "e56229425a63eeb67ae20ca43cf10c1b",
+      "kind": "scenario_of",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "autonomous next never draining ratify is the sad path of the human-only queue contract",
+      "evidence": "parent description: plain loom next never serves ratify packets; scenario isolates that; src/workitem/mod.rs:218-222 + tests/ring14_ratify.rs:158-161",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:13.656Z",
+      "updated_at": "2026-07-19T18:18:40.638Z"
     },
     {
       "id": "c8206a7854612ac07878ec67a541aa14",
@@ -13045,6 +13520,21 @@
       "updated_at": ""
     },
     {
+      "id": "ddde16cf9d02743b1c5730c9f6f1e118",
+      "from_id": "5fc787584b1f442edc3c64e7bdd89041",
+      "to_id": "b57f79151062b9109d79e7a552ee37f0",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring14_ratify inv8_ratify_rejects_every_llm_lane -- --exact` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:17:44.896Z",
+      "updated_at": "2026-07-19T18:17:46.245Z"
+    },
+    {
       "id": "dde3f79cf92fec746",
       "from_id": "d1d2f2378b9b8e235",
       "to_id": "37c6462c5b09e1be1f07c039d2ba3cec",
@@ -13711,13 +14201,13 @@
       "kind": "validates",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "proof",
-      "evidence": "observed run: ./target/debug/loom journey run journeys/next-router.yaml, 1/1 step(s) passed; 2026-07-19",
+      "criterion": "journey steps",
+      "evidence": "status exposes router inputs: `loom status --json` exit 0",
       "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "llm",
+      "inspected_by": "journey",
       "created_at": "2026-07-09T05:40:55.129Z",
-      "updated_at": "2026-07-19T02:41:37.204Z"
+      "updated_at": "2026-07-24T17:39:49.453Z"
     },
     {
       "id": "ef5f30a4cd4a6ae377e181afcbbec065",
@@ -13780,6 +14270,21 @@
       "updated_at": "2026-07-19T05:20:05.905Z"
     },
     {
+      "id": "f09cc00e91a8e6528bdb9f2f923f51e2",
+      "from_id": "09b409f223d650e75355a0f403df38ee",
+      "to_id": "0f4d7574144892f3fc485dbac33d0900",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring14_ratify redefinition_stales_ratification -- --exact` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:17:44.939Z",
+      "updated_at": "2026-07-19T18:17:46.525Z"
+    },
+    {
       "id": "f1436b3b36145e0f23f566aadd1c10b8",
       "from_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "to_id": "4c48d826cb3f799e0e88c06796c4f704",
@@ -13793,6 +14298,36 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:40.704Z",
       "updated_at": "2026-07-09T04:59:40.731Z"
+    },
+    {
+      "id": "f14950e18a61c3c4c6c810ee87be1827",
+      "from_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "to_id": "8c09800873ec56699ca584e7da49a20e",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "missing ratification facet reads as unratified and feeds the wanted-rung / ratify-queue predicate",
+      "evidence": "src/workitem/queues.rs:583-586 unwrap_or unratified; src/maturity.rs:187 counts unratified_intents for wanted; tests/ring14_ratify.rs:127-171 absent_ratification_is_unratified_and_gates_the_wanted_rung",
+      "confidence": 0.92,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:16:04.026Z",
+      "updated_at": "2026-07-19T18:17:05.373Z"
+    },
+    {
+      "id": "f160a018aa5498dea92bbd6a79b66a2f",
+      "from_id": "ad31e9d9d76ee16fda6218233dc723d5",
+      "to_id": "10b39e737268e23369169078438e0ff2",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring14_ratify absent_ratification_is_unratified_and_gates_the_wanted_rung -- --exact` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:40.672Z",
+      "updated_at": "2026-07-19T18:18:41.297Z"
     },
     {
       "id": "f20cbd1a9e71b2c31753f716764cc3f0",
@@ -13913,6 +14448,21 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.843Z",
       "updated_at": "2026-07-09T20:41:23.453Z"
+    },
+    {
+      "id": "f9e864fa853cc714c9d52734ce50f160",
+      "from_id": "2f931d4fe50ec9a6177bd67ffd68b07b",
+      "to_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "evidence": "`cargo test --test ring14_ratify absent_ratification_is_unratified_and_gates_the_wanted_rung -- --exact` exit 0",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-07-19T18:18:40.656Z",
+      "updated_at": "2026-07-19T18:18:41.733Z"
     },
     {
       "id": "fcf105fc0e688436c1cec4327751457f",
@@ -14170,6 +14720,20 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "035641c28a415b0eb6254d84dc19b79b",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/store/nodes.rs\",\"start\":20,\"end\":28,\"hash\":\"f1857c867dc89ab7\"},{\"file\":\"src/store/nodes.rs\",\"start\":525,\"end\":525,\"hash\":\"fa3c5f956ba39563\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":50,\"end\":79,\"hash\":\"60a9c654ca13cb3c\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "035641c28a415b0eb6254d84dc19b79b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn require_human_authority",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "043bb394cb3afdbb18c163116565f054",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -14366,6 +14930,41 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "0f4d7574144892f3fc485dbac33d0900",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "edge_case",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0f4d7574144892f3fc485dbac33d0900",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0f4d7574144892f3fc485dbac33d0900",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "human",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0f4d7574144892f3fc485dbac33d0900",
+      "target_kind": "node",
+      "key": "ratification",
+      "value": "ratified",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0f4d7574144892f3fc485dbac33d0900",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "0f6c0961ed42fd973adc8c54b1526297",
       "target_kind": "node",
       "key": "content_hash",
@@ -14426,6 +15025,41 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "module quality rule packs",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "10b39e737268e23369169078438e0ff2",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "fallback",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "10b39e737268e23369169078438e0ff2",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "10b39e737268e23369169078438e0ff2",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "human",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "10b39e737268e23369169078438e0ff2",
+      "target_kind": "node",
+      "key": "ratification",
+      "value": "ratified",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "10b39e737268e23369169078438e0ff2",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -14814,6 +15448,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "1d78670cb37e05dac5296ac2200afe47",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/mod.rs\",\"start\":218,\"end\":222,\"hash\":\"a2a37f0cd9901c25\"}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "1d9dab3b1be1727ef8feacce0f52a0f3",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -15084,6 +15725,20 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/derived.rs\",\"start\":148,\"end\":168,\"hash\":\"cfb3df0d0151a966\"},{\"file\":\"src/commands/status_cmd.rs\",\"start\":59,\"end\":59,\"hash\":\"3a7c2d44cf77cb97\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "27a61927eb5b4a33e3578c17c9881838",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/mod.rs\",\"start\":218,\"end\":222,\"hash\":\"a2a37f0cd9901c25\"},{\"file\":\"src/workitem/mod.rs\",\"start\":225,\"end\":249,\"hash\":\"cac123a7e566da39\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":158,\"end\":161,\"hash\":\"3833affde5b9633c\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "27a61927eb5b4a33e3578c17c9881838",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn next_inner",
       "truth_class": "asserted"
     },
     {
@@ -15470,6 +16125,20 @@
       "key": "artifact_hash",
       "value": "17433eecea9d17fe",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "36df81ace25202be06746fa379f77681",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/queues.rs\",\"start\":607,\"end\":611,\"hash\":\"93b92cb1f4a3fdfd\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":178,\"end\":208,\"hash\":\"0a822ad1ad872a97\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "36df81ace25202be06746fa379f77681",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn ratify_item",
+      "truth_class": "asserted"
     },
     {
       "target_id": "37c6462c5b09e1be1f07c039d2ba3cec",
@@ -16613,6 +17282,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "5906d9aa9a1ea2a00a17aef9ce5f26ce",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/maturity.rs\",\"start\":274,\"end\":276,\"hash\":\"18c7b19b7448cbbc\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":146,\"end\":148,\"hash\":\"440441a18839d972\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5906d9aa9a1ea2a00a17aef9ce5f26ce",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn compass",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "5958139c6b8e80f92f46a0ec4f43cc8d",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -16991,6 +17674,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "64271b4efe34cb35f643f841c5839aa5",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/queues.rs\",\"start\":583,\"end\":586,\"hash\":\"85a55fcc63fc78d8\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":127,\"end\":171,\"hash\":\"f17549da42498353\"}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "64843b54ee6a091c3c23ff2d4d628d2a",
       "target_kind": "node",
       "key": "level",
@@ -17023,6 +17713,13 @@
       "target_kind": "node",
       "key": "ratified_by",
       "value": "human",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "64b10fe02573cd14ae3f9bc8ab089139",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/queues.rs\",\"start\":607,\"end\":611,\"hash\":\"93b92cb1f4a3fdfd\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":206,\"end\":207,\"hash\":\"01674bbe10176003\"}]",
       "truth_class": "asserted"
     },
     {
@@ -17481,6 +18178,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "7246cf6834dcdef0d98fe11018e45104",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/store/nodes.rs\",\"start\":20,\"end\":28,\"hash\":\"f1857c867dc89ab7\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":50,\"end\":79,\"hash\":\"60a9c654ca13cb3c\"}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "73bd3c64daca91797965b663f5a950cc",
       "target_kind": "node",
       "key": "content_hash",
@@ -17528,6 +18232,41 @@
       "key": "symbol_fingerprints",
       "value": "{\"Edge\":\"df74257210c21293\",\"Facet\":\"ce61eeabc04bd4b5\",\"Node\":\"d6adc5ebf14ba9bd\",\"ParseEnumError\":\"643b5817b180ce7b\",\"Tag\":\"9f189c5c395e12ce\",\"default_asserted\":\"0e16f4fbd3086d19\",\"empty_array\":\"212afb48d50ec08b\",\"empty_object\":\"8e0ac3c81eb611ff\",\"fmt\":\"dce66b54e17f1442\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "fallback",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "human",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "target_kind": "node",
+      "key": "ratification",
+      "value": "ratified",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "74402508c633e720d4ecdd95c1a27dd5",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
     },
     {
       "target_id": "76b4f65a6eeeaa55defcce1bc19e60ea",
@@ -17800,6 +18539,20 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/mod.rs\",\"start\":90,\"end\":90,\"hash\":\"1aecb5b5ee9b7eb2\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83c62b6947095e2a8df105b5e9b25d25",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/store/nodes.rs\",\"start\":428,\"end\":442,\"hash\":\"477f7d2059cb77c3\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":178,\"end\":208,\"hash\":\"0a822ad1ad872a97\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83c62b6947095e2a8df105b5e9b25d25",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn redefine_intent",
       "truth_class": "asserted"
     },
     {
@@ -18675,6 +19428,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/travel.rs\",\"start\":227,\"end\":227,\"hash\":\"4bfc118647a83fde\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "99e26dc43546cc36370696763d7c6de7",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/maturity.rs\",\"start\":274,\"end\":276,\"hash\":\"18c7b19b7448cbbc\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":146,\"end\":148,\"hash\":\"440441a18839d972\"}]",
       "truth_class": "asserted"
     },
     {
@@ -19574,6 +20334,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "b072b86aca441fb93a121f0368f74bda",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/mod.rs\",\"start\":202,\"end\":276,\"hash\":\"616a388dd4e095fc\"}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "b1082d74b231b22be2aaa977c34ab03d",
       "target_kind": "node",
       "key": "content_hash",
@@ -19698,6 +20465,41 @@
       "key": "symbol_fingerprints",
       "value": "{\"add_node\":\"cfa7cf1263157a43\",\"add_note\":\"8f488622bbebe949\",\"count_nodes\":\"a6fd50059e0c4c96\",\"current_timestamp\":\"f07a70986ea3a869\",\"delete_edge\":\"17a4202f81381754\",\"delete_node\":\"8930f81cccb3e113\",\"find_nodes_by\":\"3c51f14e136ee773\",\"get_node\":\"d8286c51385ab8f9\",\"list_nodes\":\"025cebf002b2dff5\",\"list_nodes_page\":\"eb0563607d0166bc\",\"notes_for\":\"90767b06d17a86be\",\"ratify_intent\":\"fb5f6747bfd8a1b2\",\"ratify_intent_as\":\"16ec82769e1c7f6c\",\"ratify_intent_by_policy\":\"775aff368fe9749a\",\"redefine_intent\":\"00b7a36e31bc30bf\",\"remove_vocab_term\":\"b22fdc8b69a2d7e9\",\"require_human_authority\":\"f1857c867dc89ab7\",\"resolve_node\":\"5fb6704d9bd667ce\",\"retire_intent\":\"da07301e500ef6c5\",\"set_node_body\":\"3ee18e1da68e12f6\",\"update_node\":\"194f7fd92eaa8135\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "b57f79151062b9109d79e7a552ee37f0",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "sad",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b57f79151062b9109d79e7a552ee37f0",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b57f79151062b9109d79e7a552ee37f0",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "human",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b57f79151062b9109d79e7a552ee37f0",
+      "target_kind": "node",
+      "key": "ratification",
+      "value": "ratified",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b57f79151062b9109d79e7a552ee37f0",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
     },
     {
       "target_id": "b6332c77e2bb9ef69cb2395ee11ea833",
@@ -20036,6 +20838,41 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "c09c07319403d3512ded1904c46a4505",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "edge_case",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c09c07319403d3512ded1904c46a4505",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c09c07319403d3512ded1904c46a4505",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "human",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c09c07319403d3512ded1904c46a4505",
+      "target_kind": "node",
+      "key": "ratification",
+      "value": "ratified",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c09c07319403d3512ded1904c46a4505",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "c0d3c73a0524467bce36de801364c667",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -20285,6 +21122,20 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T21:05:28.033Z\",\"hash\":\"f88112f3f8371acb\",\"reason\":\"prescreen now returns Result and its contract explicitly says invalid regexes and unreadable grounded files are errors; focused tests cover both failure paths\",\"verdict\":\"resolved\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c7056d9abbebd1ba0418b5906505200a",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/store/nodes.rs\",\"start\":428,\"end\":442,\"hash\":\"477f7d2059cb77c3\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":178,\"end\":208,\"hash\":\"0a822ad1ad872a97\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c7ccc1fa39f56b0b3f87731f7daab20d",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/mod.rs\",\"start\":218,\"end\":222,\"hash\":\"a2a37f0cd9901c25\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":158,\"end\":161,\"hash\":\"3833affde5b9633c\"}]",
       "truth_class": "asserted"
     },
     {
@@ -20908,6 +21759,41 @@
       "target_kind": "node",
       "key": "adjudication",
       "value": "{\"at\":\"2026-07-09T04:59:49.391Z\",\"hash\":\"8d56a4d3540678f4\",\"metric\":22,\"reason\":\"src/store/facets.rs: file-level cohesion already judged in dogfood; symbol-level split deferred to a dedicated judgment pass\",\"verdict\":\"deferred\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "target_kind": "node",
+      "key": "aspect",
+      "value": "sad",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "human",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "target_kind": "node",
+      "key": "ratification",
+      "value": "ratified",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d31b85e49d60d44c71b8f0b83d9b0787",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -22259,6 +23145,20 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/mod.rs\",\"start\":90,\"end\":90,\"hash\":\"1aecb5b5ee9b7eb2\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f14950e18a61c3c4c6c810ee87be1827",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/queues.rs\",\"start\":583,\"end\":586,\"hash\":\"85a55fcc63fc78d8\"},{\"file\":\"src/maturity.rs\",\"start\":187,\"end\":187,\"hash\":\"cfa9ee72ec758c80\"},{\"file\":\"tests/ring14_ratify.rs\",\"start\":127,\"end\":171,\"hash\":\"f17549da42498353\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f14950e18a61c3c4c6c810ee87be1827",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn unratified_intents",
       "truth_class": "asserted"
     },
     {

@@ -24,6 +24,7 @@ pub mod fsglob;
 pub mod grammar;
 pub mod journal;
 pub mod journey;
+pub mod lane;
 pub mod maturity;
 pub mod model;
 pub mod packs;

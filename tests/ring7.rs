@@ -119,6 +119,33 @@ fn build_clean_graph(tmp: &Tmp) -> Store {
             )
             .unwrap();
     }
+    // Each implemented LEAF needs a passing proof, or the validate lane has
+    // real work and the graph is not clean. (`sys` is a hierarchy parent —
+    // proven through its children.)
+    for (intent, name) in [(&auth, "login proof"), (&cart, "cart proof")] {
+        let v = store
+            .add_node(
+                NodeType::Validation,
+                name,
+                "",
+                "passed",
+                serde_json::json!({"type":"test","command":"true"}),
+            )
+            .unwrap();
+        let ve = store
+            .add_edge(EdgeKind::Validates, &v.id, &intent.id, TruthClass::Asserted)
+            .unwrap();
+        store
+            .record_verdict(
+                &ve.id,
+                InspectionStatus::Passing,
+                "proof ran and passed",
+                "src/auth.rs:1",
+                0.95,
+                "llm",
+            )
+            .unwrap();
+    }
     // arm duplicate detection with distinct vocab tags (no collisions)
     for (id, term) in [(&sys.id, "system"), (&auth.id, "auth"), (&cart.id, "cart")] {
         store.add_vocab_term(term, "demo plane").unwrap();
@@ -176,10 +203,11 @@ fn dogfood_maturity_is_meaningful_not_seed() {
             .unwrap_or(false)
     };
     assert!(met("seeded"));
-    assert!(met("realized"));
+    assert!(met("grounded"));
+    assert!(met("covered"));
     assert!(
-        met("hardened"),
-        "no asserted residue should leave hardened met"
+        met("inspected") && met("measured"),
+        "no asserted residue should leave the verdict rungs met"
     );
 }
 
