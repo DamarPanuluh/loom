@@ -813,6 +813,14 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
     // single failing edge is resolved every other queue is empty and elaborate
     // is the only remaining work.
     let tmp = Tmp::new();
+    // The groundings below cite this file, so it has to exist: a citation into a
+    // file that is not there is not evidence.
+    tmp.write(
+        "src/auth.rs",
+        &(1..=60)
+            .map(|n| format!("// auth line {n}\n"))
+            .collect::<String>(),
+    );
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let a = feature_intent(&store, "user can log in", Some("user_visible"));
     let b = feature_intent(&store, "user can log out", Some("user_visible"));

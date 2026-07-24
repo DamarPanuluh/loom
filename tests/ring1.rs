@@ -35,6 +35,12 @@ fn seed_codefile(store: &Store, path: &str) -> String {
 #[test]
 fn inv6_passing_requires_criterion_and_evidence() {
     let tmp = Tmp::new();
+    // The evidence below cites this file; a citation into a file that does not
+    // exist has never been evidence, it only looked like it.
+    tmp.write(
+        "src/payment.rs",
+        "pub fn capture() {}\n// line 2\n// 3\n// 4\n// 5\n// 6\n// 7\n// 8\n// 9\n// 10\n",
+    );
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = seed_intent(&store, "payment can be captured");
     let file = seed_codefile(&store, "src/payment.rs");
@@ -223,6 +229,7 @@ fn exposes_is_asserted_only() {
 #[test]
 fn export_is_byte_deterministic_and_roundtrips() {
     let tmp = Tmp::new();
+    tmp.write("src/payment.rs", "pub fn capture() {}\n");
     let store = Store::init(tmp.path(), Some("demo"), false).unwrap();
     let intent = seed_intent(&store, "payment can be captured");
     let file = seed_codefile(&store, "src/payment.rs");
@@ -260,8 +267,14 @@ fn export_is_byte_deterministic_and_roundtrips() {
         .unwrap();
     assert_eq!(json_a, json_b, "same graph must export byte-identically");
 
-    // round-trip into a fresh store
+    // Round-trip into a fresh store — carrying the CODE too. Verification
+    // strength is recomputed against the importing tree by design: a span
+    // citation into a file that tree does not have is not evidence there, so an
+    // import without the code round-trips weaker on purpose. Federation reads
+    // that delta as signal; a round-trip test has to supply the code to compare
+    // like with like.
     let tmp2 = Tmp::new();
+    tmp2.write("src/payment.rs", "pub fn capture() {}\n");
     let mut store2 = Store::init(tmp2.path(), None, false).unwrap();
     let export = Export::from_json(&json_a).unwrap();
     store2.restore(&export.into_snapshot()).unwrap();

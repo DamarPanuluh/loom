@@ -251,8 +251,30 @@ impl Store {
                 expiry_reason: None,
             });
         }
-        if let Some(run) = a.run {
-            let payload = Evidence::Run(*run);
+        // loom checks the grounding claim itself: does the locator still name a
+        // live symbol in that file? A worker asserting "the behavior lives here"
+        // no longer has to be believed — and no longer has to be doubted either.
+        let mut probe: Option<RunRecord> = None;
+        if a.run.is_none()
+            && edge_kind == Some(crate::model::EdgeKind::Implements)
+            && anchor::is_settling(a.state)
+        {
+            if let Subject::Edge(edge_id) = &a.subject {
+                if let Some(edge) = self.get_edge(edge_id)? {
+                    if let Some(file) = self.get_node(&edge.to_id)? {
+                        let locator = self.get_facet(edge_id, TargetKind::Edge, "locator")?;
+                        probe = crate::runner::locator_probe(
+                            &self.root,
+                            &file.name,
+                            locator.as_deref(),
+                        )
+                        .filter(|r| r.exit_code == 0);
+                    }
+                }
+            }
+        }
+        if let Some(run) = a.run.map(|b| *b).or(probe) {
+            let payload = Evidence::Run(run);
             rows.push(EvidenceRow {
                 id: EvidenceRow::id_for(&fact_id, &payload),
                 fact_id: fact_id.clone(),

@@ -172,6 +172,52 @@ fn excerpt(bytes: &[u8]) -> String {
     String::from_utf8_lossy(&bytes[..take]).to_string()
 }
 
+/// Re-resolve a grounding's locator against the live symbol table.
+///
+/// This is loom checking a claim for itself rather than believing prose about
+/// it: "the behavior lives at `fn capture_payment` in src/pay.rs" is either
+/// true of the file on disk right now or it is not, and loom can look. The
+/// result is a Run because it IS one — an observation loom made, expiring when
+/// the file changes.
+pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<RunRecord> {
+    let content = std::fs::read_to_string(root.join(file)).ok()?;
+    let locator = locator.map(str::trim).filter(|l| !l.is_empty())?;
+    let extraction = crate::extract::extract(file, &content);
+    // The same candidate expansion the ripple uses: verbatim, the last
+    // whitespace token with any `:line` suffix stripped, then its final `::`
+    // segment. `fn capture_payment`, `capture_payment:88`, `Store::open`.
+    let mut candidates: Vec<String> = vec![locator.to_string()];
+    if let Some(tok) = locator.split_whitespace().next_back() {
+        let tok = tok.split(':').next().unwrap_or(tok);
+        candidates.push(tok.to_string());
+        if let Some(seg) = tok.rsplit("::").next() {
+            candidates.push(seg.to_string());
+        }
+    }
+    let hit = extraction
+        .symbols
+        .iter()
+        .find(|sym| candidates.iter().any(|c| c == &sym.name));
+    let (exit_code, detail) = match hit {
+        Some(sym) => (
+            0,
+            format!("{} '{}' at {}:{}", sym.kind, sym.name, file, sym.line_start),
+        ),
+        None => (1, format!("no live symbol matching '{locator}' in {file}")),
+    };
+    Some(record(
+        root,
+        RunProducer::Locator,
+        &format!("resolve '{locator}' in {file}"),
+        std::slice::from_ref(&file.to_string()),
+        1,
+        exit_code,
+        detail.as_bytes(),
+        &[],
+        0,
+    ))
+}
+
 /// The files a run over this intent's code depends on: every file grounded to
 /// it. Used to build the `covered` set for a proof.
 pub fn files_grounding(store: &Store, intent_id: &str) -> Result<Vec<String>> {

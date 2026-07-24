@@ -162,7 +162,27 @@ fn adjudication_floor(state: &str) -> Floor {
 // yet REFUSE the weak ones.
 // ---------------------------------------------------------------------------
 
+/// A grounding must POINT AT THE CODE — a sentence saying the behavior lives
+/// here is not a grounding. Two ways to clear this floor, and loom grades them
+/// differently on purpose:
+///
+/// - a `--locator` that resolves to a live symbol, which loom re-resolves
+///   itself and records as a Run (`verified` — loom looked);
+/// - a `file:line` citation, fingerprinted and re-checked on change (`cited`).
+///
+/// File-scoped groundings are legitimate, so the floor belongs at `cited`;
+/// naming the symbol earns the stronger grade for free, and `deepen` can later
+/// route on the difference.
+///
+/// STAGED at `claimed`. The probe above is live — a grounding whose locator
+/// resolves already records `verified` — but raising the floor surfaces a long
+/// tail of fixtures citing `file:line` for files that were never created, so
+/// the citation was never evidence, it only looked like one. Raised with those
+/// repairs together rather than half.
 const CURRENT_GROUNDING: Verification = Verification::Claimed;
+/// A consumer/config/verify seam is a weaker claim by nature — it says the file
+/// USES the behavior, not that it performs it — but it still has to point
+/// somewhere. Staged with the grounding floor above.
 const CURRENT_SEAM_GROUNDING: Verification = Verification::Claimed;
 /// A proof is `verified` or it is not a proof. There is exactly one way to
 /// reach this floor: let loom run the command and observe the result. Reporting
