@@ -187,11 +187,7 @@ impl Store {
             InspectionStatus::Passing
             | InspectionStatus::Failing
             | InspectionStatus::Independent => {
-                let now = now(&self.conn)?;
-                self.conn.execute(
-                    "UPDATE edge SET status='needs_reverification',updated_at=?2 WHERE id=?1",
-                    params![edge_id, now],
-                )?;
+                self.write_edge_status(edge_id, InspectionStatus::NeedsReverification.as_str())?;
                 self.set_facet(
                     edge_id,
                     TargetKind::Edge,
@@ -216,11 +212,7 @@ impl Store {
         if edge.truth_class != TruthClass::Asserted || edge.status != InspectionStatus::Passing {
             return Ok(false);
         }
-        let now = now(&self.conn)?;
-        self.conn.execute(
-            "UPDATE edge SET status=?2,updated_at=?3 WHERE id=?1",
-            params![edge_id, InspectionStatus::NeedsReverification.as_str(), now],
-        )?;
+        self.write_edge_status(edge_id, InspectionStatus::NeedsReverification.as_str())?;
         Ok(true)
     }
 
@@ -492,24 +484,37 @@ impl Store {
         verdict: &str,
         reason: &str,
     ) -> Result<()> {
+        // The judgment itself is a FACT: it goes through the write boundary,
+        // where it picks up its anchors and its floor.
+        let cited = crate::evidence::cite(self.root(), reason)?;
+        self.assert_fact(
+            crate::store::Assertion::new(
+                crate::store::Subject::Node(finding_id.to_string()),
+                crate::model::Claim::Adjudication,
+                verdict,
+                "llm",
+            )
+            .criterion(reason)
+            .confidence(1.0)
+            .cited(cited),
+        )?;
+        // The hash/metric stamp is DERIVED bookkeeping, not a claim: it records
+        // what the world looked like when the judgment was made, so a resolving
+        // verdict can be band-staled instead of reopening on every byte change.
+        // Kept as a separate derived facet precisely so it cannot be mistaken
+        // for — or used to forge — the judgment.
         let hash = self.finding_codefile_hash(finding_id)?.unwrap_or_default();
         let metric = self.finding_metric(finding_id)?;
-        let at = now(&self.conn)?;
-        let mut adjudication = serde_json::json!({
-            "verdict": verdict,
-            "reason": reason,
-            "hash": hash,
-            "at": at,
-        });
+        let mut stamp = serde_json::json!({ "hash": hash, "at": now(&self.conn)? });
         if let Some(m) = metric {
-            adjudication["metric"] = serde_json::json!(m);
+            stamp["metric"] = serde_json::json!(m);
         }
         self.set_facet(
             finding_id,
             TargetKind::Node,
-            "adjudication",
-            &adjudication.to_string(),
-            TruthClass::Asserted,
+            "adjudication_stamp",
+            &stamp.to_string(),
+            TruthClass::Derived,
         )
     }
 

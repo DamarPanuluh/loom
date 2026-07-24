@@ -183,8 +183,13 @@ impl Store {
 
         // ---- 3. authority ----------------------------------------------------
         match a.claim {
-            // INV-8: ratification authority is human-only.
-            Claim::Ratification => self.require_human_authority()?,
+            // INV-8: ratification authority is human-only — but only GRANTING
+            // it is an act of authority. Demoting to `needs_reconfirmation` or
+            // `unratified` is a loss of standing, which sync performs whenever
+            // meaning drifts; requiring a human there would mean stale
+            // wantedness could only be noticed by the person it was hidden from.
+            Claim::Ratification if a.state == "ratified" => self.require_human_authority()?,
+            Claim::Ratification => {}
             // INV-7: the lane that owns this edge kind owns its verdict.
             Claim::Verdict => {
                 if let Some(kind) = edge_kind {
@@ -254,6 +259,19 @@ impl Store {
             .below_floor
             .map(|cause| StaleReason::new(cause, Vec::new(), recorded_at.clone()));
 
+        // A ratification DEMOTION changes standing, not authorship: the human
+        // who said yes still said yes, and overwriting them with "sync" would
+        // erase the provenance the demotion exists to protect.
+        let (asserted_by, asserted_at) = if a.claim == Claim::Ratification && a.state != "ratified"
+        {
+            match self.fact_by_id(&fact_id)? {
+                Some(prior) => (prior.fact.asserted_by, prior.fact.asserted_at),
+                None => (a.asserted_by.to_string(), recorded_at.clone()),
+            }
+        } else {
+            (a.asserted_by.to_string(), recorded_at.clone())
+        };
+
         let fact = Fact {
             id: fact_id.clone(),
             subject_kind: a.subject.kind(),
@@ -263,8 +281,8 @@ impl Store {
             criterion: a.criterion.to_string(),
             verification: strength,
             confidence: a.confidence,
-            asserted_by: a.asserted_by.to_string(),
-            asserted_at: recorded_at,
+            asserted_by,
+            asserted_at,
             stale,
         };
 
@@ -357,10 +375,7 @@ impl Store {
         match fact.claim {
             Claim::Verdict => {
                 let status = InspectionStatus::from_str(&fact.state)?;
-                self.conn.execute(
-                    "UPDATE edge SET status = ?1, updated_at = ?2 WHERE id = ?3",
-                    rusqlite::params![status.as_str(), fact.asserted_at, fact.subject_id],
-                )?;
+                self.write_edge_status(&fact.subject_id, status.as_str())?;
             }
             // Node-level projections (validation status, finding adjudication,
             // ratification) land as the caller's own node write for now; the
@@ -368,6 +383,24 @@ impl Store {
             // side-door closure.
             Claim::Adjudication | Claim::Observation | Claim::Ratification => {}
         }
+        Ok(())
+    }
+
+    /// Write an edge's status column. **The only place that SQL exists.**
+    ///
+    /// `edge.status` stays a real column because the queues page on it, which
+    /// makes it the one piece of asserted truth living outside the `fact` table.
+    /// Funnelling every writer through here is what lets a test assert, by
+    /// scanning the source, that no other module can move it — the check that
+    /// would have caught `restore_inner` writing raw SQL past every gate.
+    ///
+    /// Callers: `assert_fact` (asserted verdicts), `expire_fact` (anchors
+    /// broke), `set_derived_status` (INV-5, sync-owned), and sync's staling.
+    pub(crate) fn write_edge_status(&self, edge_id: &str, status: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE edge SET status = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![status, now(&self.conn)?, edge_id],
+        )?;
         Ok(())
     }
 
@@ -543,9 +576,9 @@ impl Store {
             ) {
                 return Ok(false);
             }
-            self.conn.execute(
-                "UPDATE edge SET status = 'needs_reverification', updated_at = ?1 WHERE id = ?2",
-                rusqlite::params![now(&self.conn)?, view.fact.subject_id],
+            self.write_edge_status(
+                &view.fact.subject_id,
+                InspectionStatus::NeedsReverification.as_str(),
             )?;
         }
         self.conn.execute(
@@ -665,4 +698,84 @@ impl Store {
             .map(|v| v.fact.verification)
             .unwrap_or(Verification::Expired))
     }
+}
+
+impl Store {
+    /// An intent's wantedness. Absence reads as `unratified` — wantedness is
+    /// never presumed, and a graph that has never been asked has not said yes.
+    pub fn ratification(&self, intent_id: &str) -> Result<String> {
+        Ok(self
+            .fact(&Subject::Node(intent_id.to_string()), Claim::Ratification)?
+            .map(|v| v.fact.state)
+            .unwrap_or_else(|| "unratified".to_string()))
+    }
+
+    /// Who recorded the ratification, and when.
+    pub fn ratified_by(&self, intent_id: &str) -> Result<Option<(String, String)>> {
+        Ok(self
+            .fact(&Subject::Node(intent_id.to_string()), Claim::Ratification)?
+            .map(|v| (v.fact.asserted_by, v.fact.asserted_at)))
+    }
+
+    /// The presence descriptor recorded with the ratification (`tty+challenge`
+    /// when a human answered a live challenge). Stored as the fact's criterion:
+    /// it is what would falsify "a human did this".
+    pub fn ratified_presence(&self, intent_id: &str) -> Result<Option<String>> {
+        Ok(self
+            .fact(&Subject::Node(intent_id.to_string()), Claim::Ratification)?
+            .map(|v| v.fact.criterion)
+            .filter(|c| !c.is_empty()))
+    }
+}
+
+/// Insert facts + evidence imported from a snapshot, inside the caller's
+/// transaction.
+///
+/// This lives in the chokepoint module ON PURPOSE. Import is the one path that
+/// legitimately writes facts it did not derive, and when that SQL lived in
+/// `facets.rs` it was a second door with no gate behind it — the door the
+/// chokepoint test exists to find. Keeping it here means every statement that
+/// can move asserted truth is in one reviewable file, and the strength each
+/// fact lands at is not the exporter's claim: `verification` is forced to
+/// `claimed` here, and `reverify_all` re-earns it against the local tree
+/// immediately after the transaction commits.
+pub(super) fn insert_imported(
+    tx: &rusqlite::Transaction<'_>,
+    facts: &[Fact],
+    evidence: &[EvidenceRow],
+) -> Result<()> {
+    for fact in facts {
+        tx.execute(
+            "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,\
+                               verification,confidence,asserted_by,asserted_at,stale)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+            rusqlite::params![
+                fact.id,
+                fact.subject_kind.as_str(),
+                fact.subject_id,
+                fact.claim.as_str(),
+                fact.state,
+                fact.criterion,
+                Verification::Claimed.as_str(),
+                fact.confidence,
+                fact.asserted_by,
+                fact.asserted_at,
+                "",
+            ],
+        )?;
+    }
+    for row in evidence {
+        tx.execute(
+            "INSERT INTO evidence (id,fact_id,payload,kind,recorded_at,holds,expiry_reason)
+             VALUES (?1,?2,?3,?4,?5,1,\'\')",
+            rusqlite::params![
+                row.id,
+                row.fact_id,
+                serde_json::to_string(&row.payload)?,
+                row.payload.kind().as_str(),
+                row.recorded_at,
+            ],
+        )?;
+    }
+    Ok(())
 }

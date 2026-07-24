@@ -66,16 +66,14 @@ fn policy_ratifies_only_matching_intents_with_machine_attribution() {
         vec![&matching.id]
     );
     assert_eq!(
-        store
-            .get_facet(&matching.id, TargetKind::Node, "ratification")
-            .unwrap()
-            .as_deref(),
+        Some(store.ratification(&matching.id).unwrap()).as_deref(),
         Some("ratified")
     );
     assert_eq!(
         store
-            .get_facet(&matching.id, TargetKind::Node, "ratified_by")
+            .ratified_by(&matching.id)
             .unwrap()
+            .map(|(by, _)| by)
             .as_deref(),
         Some("policy:llm-refactor")
     );
@@ -85,8 +83,12 @@ fn policy_ratifies_only_matching_intents_with_machine_attribution() {
         .contains("by policy 'llm-refactor' (human-authored 2026-07-19)"));
     assert_eq!(
         store
-            .get_facet(&non_matching.id, TargetKind::Node, "ratification")
-            .unwrap(),
+            .fact(
+                &loom::store::Subject::Node(non_matching.id.clone()),
+                loom::model::Claim::Ratification,
+            )
+            .unwrap()
+            .map(|v| v.fact.state),
         None,
         "the policy must leave non-matching intents untouched"
     );

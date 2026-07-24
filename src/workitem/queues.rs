@@ -648,7 +648,8 @@ pub fn unratified_intents(store: &Store) -> Result<Vec<Node>> {
             continue;
         }
         let state = store
-            .get_facet(&n.id, crate::model::TargetKind::Node, "ratification")?
+            .ratification(&n.id)
+            .map(Some)?
             .unwrap_or_else(|| "unratified".into());
         if state != "ratified" {
             out.push(n);
@@ -669,7 +670,8 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
         .get_facet(&n.id, crate::model::TargetKind::Node, "origin")?
         .unwrap_or_else(|| "unknown".into());
     let state = store
-        .get_facet(&n.id, crate::model::TargetKind::Node, "ratification")?
+        .ratification(&n.id)
+        .map(Some)?
         .unwrap_or_else(|| "unratified".into());
     let reason = if state == "needs_reconfirmation" {
         format!(
@@ -1244,7 +1246,8 @@ pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEn
         Lane::Divergence => {
             for n in unratified_intents(store)? {
                 let state = store
-                    .get_facet(&n.id, TargetKind::Node, "ratification")?
+                    .ratification(&n.id)
+                    .map(Some)?
                     .unwrap_or_else(|| "unratified".into());
                 let reason = if state == "needs_reconfirmation" {
                     "redefined after ratification — human must re-confirm it is wanted"

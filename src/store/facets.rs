@@ -26,6 +26,22 @@ impl Store {
         Ok(())
     }
 
+    /// Facet keys that are no longer facets: they became `fact` rows, and a
+    /// write here would be a second, ungated way to say the same thing.
+    ///
+    /// This is the door that mattered most. `adjudication` and `ratification`
+    /// lived as facets, and `set_facet` is a public primitive every command
+    /// reaches for — so "only a human may ratify" was enforced in
+    /// `ratify_intent` and bypassed by one `set_facet` call. Naming the keys
+    /// here makes the bypass impossible rather than merely discouraged.
+    const RESERVED_FACET_KEYS: &'static [&'static str] = &[
+        "adjudication",
+        "ratification",
+        "ratified_by",
+        "ratified_at",
+        "ratified_presence",
+    ];
+
     pub fn set_facet(
         &self,
         target_id: &str,
@@ -34,6 +50,13 @@ impl Store {
         value: &str,
         truth_class: TruthClass,
     ) -> Result<()> {
+        if Self::RESERVED_FACET_KEYS.contains(&key) {
+            bail!(
+                "'{key}' is an asserted fact, not a facet — record it through the write \
+                 boundary (loom finding verdict / loom intent ratify) so it carries evidence \
+                 loom can re-check"
+            );
+        }
         self.require_annotation_target(target_id, target_kind)?;
         self.conn.execute(
             "INSERT INTO facet(target_id,target_kind,key,value,truth_class)
@@ -367,40 +390,7 @@ impl Store {
         // (below) re-checks each anchor against this working tree before the
         // transaction closes. This is what stops an import smuggling in a
         // verified fact whose covered files do not exist locally.
-        for fact in &snap.facts {
-            tx.execute(
-                "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,\
-                                   verification,confidence,asserted_by,asserted_at,stale)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
-                params![
-                    fact.id,
-                    fact.subject_kind.as_str(),
-                    fact.subject_id,
-                    fact.claim.as_str(),
-                    fact.state,
-                    fact.criterion,
-                    // Provisional; recomputed below from what re-checks locally.
-                    crate::model::Verification::Claimed.as_str(),
-                    fact.confidence,
-                    fact.asserted_by,
-                    fact.asserted_at,
-                    "",
-                ],
-            )?;
-        }
-        for row in &snap.evidence {
-            tx.execute(
-                "INSERT INTO evidence (id,fact_id,payload,kind,recorded_at,holds,expiry_reason)
-                 VALUES (?1,?2,?3,?4,?5,1,'')",
-                params![
-                    row.id,
-                    row.fact_id,
-                    serde_json::to_string(&row.payload)?,
-                    row.payload.kind().as_str(),
-                    row.recorded_at,
-                ],
-            )?;
-        }
+        super::facts::insert_imported(&tx, &snap.facts, &snap.evidence)?;
         for f in &facets {
             tx.execute(
                 "INSERT INTO facet(target_id,target_kind,key,value,truth_class)

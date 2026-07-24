@@ -52,17 +52,47 @@ pub struct FindingView {
     pub stale: bool,
 }
 
-#[derive(Deserialize)]
+/// A finding's judgment, reassembled from the fact (verdict + reason) and the
+/// derived stamp (what the world looked like when it was judged). Split so the
+/// judgment travels through the write boundary while its bookkeeping stays
+/// derived — a stamp cannot be used to forge a verdict.
 struct Adjudication {
     verdict: String,
     reason: String,
     hash: String,
     /// Metric observed when the verdict was recorded (loc, complexity, …).
     /// Absent on pre-banding adjudications — those fall back to hash-only stale.
+    metric: Option<u64>,
+}
+
+#[derive(Deserialize, Default)]
+struct AdjudicationStamp {
+    #[serde(default)]
+    hash: String,
     #[serde(default)]
     metric: Option<u64>,
-    #[serde(rename = "at")]
-    _at: String,
+}
+
+/// Read a finding's adjudication: the fact carries the judgment, the derived
+/// stamp carries the staleness band.
+fn adjudication(store: &Store, node_id: &str) -> Result<Option<Adjudication>> {
+    let Some(view) = store.fact(
+        &crate::store::Subject::Node(node_id.to_string()),
+        crate::model::Claim::Adjudication,
+    )?
+    else {
+        return Ok(None);
+    };
+    let stamp: AdjudicationStamp = store
+        .get_facet(node_id, TargetKind::Node, "adjudication_stamp")?
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_default();
+    Ok(Some(Adjudication {
+        verdict: view.fact.state,
+        reason: view.fact.criterion,
+        hash: stamp.hash,
+        metric: stamp.metric,
+    }))
 }
 
 /// Resolving adjudications (`justified`/`rejected`/`deferred`/`duplicate`/`resolved`) stay
@@ -112,10 +142,7 @@ pub fn smell_det_key(identity: &str) -> String {
 /// Reads the asserted `adjudication` facet directly, so it also resolves for
 /// ids whose derived node has not been rebuilt yet.
 pub fn adjudication_of(store: &Store, node_id: &str) -> Result<Option<(String, String)>> {
-    let Some(raw) = store.get_facet(node_id, TargetKind::Node, "adjudication")? else {
-        return Ok(None);
-    };
-    let Ok(adj) = serde_json::from_str::<Adjudication>(&raw) else {
+    let Some(adj) = adjudication(store, node_id)? else {
         return Ok(None);
     };
     if !matches!(
@@ -695,17 +722,7 @@ fn vague_intent_smells(intents: &[&Node]) -> Vec<Smell> {
 pub fn findings_view(store: &Store) -> Result<Vec<FindingView>> {
     let mut out = Vec::new();
     for node in store.list_nodes(Some(NodeType::Finding), usize::MAX)? {
-        let Some(raw) = store.get_facet(&node.id, TargetKind::Node, "adjudication")? else {
-            out.push(FindingView {
-                node,
-                state: "untriaged".into(),
-                reason: String::new(),
-                stale: false,
-            });
-            continue;
-        };
-
-        let Ok(adj) = serde_json::from_str::<Adjudication>(&raw) else {
+        let Some(adj) = adjudication(store, &node.id)? else {
             out.push(FindingView {
                 node,
                 state: "untriaged".into(),

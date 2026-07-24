@@ -115,13 +115,13 @@ fn finding_adjudication_survives_derived_graph_wipe() {
     let rebuilt = derived_finding(&store);
     assert_eq!(rebuilt.id, finding.id);
 
-    let raw = store
-        .get_facet(&finding.id, TargetKind::Node, "adjudication")
+    // The judgment is an asserted FACT now, keyed by the finding's deterministic
+    // id — so it survives a derived wipe exactly as the facet did, and for a
+    // better reason: it went through the write boundary and carries its anchors.
+    let judged = loom::signal::adjudication_of(&store, &finding.id)
         .unwrap()
-        .expect("asserted adjudication facet survives derived wipe");
-    let value: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(value["verdict"], "justified");
-    assert_eq!(value["reason"], "cohesive");
+        .expect("the asserted adjudication survives a derived wipe");
+    assert_eq!(judged, ("justified".to_string(), "cohesive".to_string()));
 }
 
 #[test]

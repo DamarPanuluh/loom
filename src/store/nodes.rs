@@ -428,17 +428,21 @@ impl Store {
         // Wantedness rots with meaning: a ratified intent whose criterion
         // changed is no longer known-wanted. Stale the ratification exactly as
         // the loop below stales verdicts; the ratify queue re-serves it.
-        if self
-            .get_facet(id, TargetKind::Node, "ratification")?
-            .as_deref()
-            == Some("ratified")
-        {
-            self.set_facet(
-                id,
-                TargetKind::Node,
-                "ratification",
-                "needs_reconfirmation",
-                TruthClass::Asserted,
+        if self.ratification(id)? == "ratified" {
+            // Demotion, not authorization: no human is required to notice that
+            // meaning drifted, and requiring one would mean stale wantedness
+            // could only be spotted by the person it was hidden from.
+            self.assert_fact(
+                crate::store::Assertion::new(
+                    crate::store::Subject::Node(id.to_string()),
+                    crate::model::Claim::Ratification,
+                    "needs_reconfirmation",
+                    "sync",
+                )
+                .criterion("redefined after ratification")
+                .cited(vec![crate::evidence::CitedEvidence::Claim(
+                    "the criterion the authority approved was rewritten".into(),
+                )]),
             )?;
             self.add_note(id, "ratify", "ratification staled by redefinition")?;
         }
@@ -522,56 +526,25 @@ impl Store {
         presence: &str,
         ratified_by: &str,
     ) -> Result<()> {
-        self.require_human_authority()?;
+        if presence.trim().is_empty() {
+            bail!("ratification requires a human-presence descriptor")
+        }
+        // The prose anchors the WANT; the journal entry below anchors the ACT.
+        // Both are required: without this check the journal ref loom writes
+        // itself would make every ratification self-anchoring, which is the
+        // circularity the whole evidence spine exists to refuse.
         if crate::model::is_placeholder(evidence) {
             bail!(
                 "ratification needs substantive evidence: why this behavior is wanted \
                  (an utterance, a source doc, a decision)"
             );
         }
-        if presence.trim().is_empty() {
-            bail!("ratification requires a human-presence descriptor")
-        }
-        let intent = self
-            .get_node(id)?
-            .ok_or_else(|| anyhow!("no intent '{id}'"))?;
-        if intent.node_type != NodeType::Intent {
-            bail!("'{id}' is not an intent");
-        }
-        if intent.status == "deprecated" {
-            bail!("cannot ratify a deprecated intent — reactivate it first");
-        }
-        self.set_facet(
-            id,
-            TargetKind::Node,
-            "ratification",
-            "ratified",
-            TruthClass::Asserted,
-        )?;
-        self.set_facet(
-            id,
-            TargetKind::Node,
-            "ratified_by",
-            ratified_by,
-            TruthClass::Asserted,
-        )?;
-        let ratified_at = now(&self.conn)?;
-        self.set_facet(
-            id,
-            TargetKind::Node,
-            "ratified_at",
-            &ratified_at,
-            TruthClass::Asserted,
-        )?;
-        self.set_facet(
-            id,
-            TargetKind::Node,
-            "ratified_presence",
-            presence,
-            TruthClass::Asserted,
-        )?;
-        self.add_note(id, "ratify", &format!("ratified: {evidence}"))?;
-        crate::journal::append(
+        // The journal entry is written FIRST, so the ref the fact cites is real
+        // by construction rather than by convention. This is also what makes
+        // "every ratified intent has a journal entry behind it" a checkable
+        // invariant — the predicate that identifies the 39 facet-only
+        // ratifications this graph carried from before the spine.
+        let entry = crate::journal::append(
             self.root(),
             "ratification",
             id,
@@ -581,6 +554,27 @@ impl Store {
                 "presence": presence,
             }),
         )?;
+        let mut cited = crate::evidence::cite(self.root(), evidence)?;
+        cited.push(crate::evidence::CitedEvidence::Journal(entry.id.clone()));
+        // Authority (INV-8), the deprecated check, and the evidence floor all
+        // live at the boundary now — this function only shapes the assertion.
+        self.assert_fact(
+            crate::store::Assertion::new(
+                crate::store::Subject::Node(id.to_string()),
+                crate::model::Claim::Ratification,
+                "ratified",
+                ratified_by,
+            )
+            .criterion(presence)
+            .confidence(1.0)
+            .cited(cited),
+        )?;
+        // A mint-time ratification writes no note: the fact and the journal
+        // entry already record that the minting act WAS the ratification, and a
+        // note on every solo mint is pure audit-trail bloat.
+        if presence != "mint" {
+            self.add_note(id, "ratify", &format!("ratified: {evidence}"))?;
+        }
         Ok(())
     }
 

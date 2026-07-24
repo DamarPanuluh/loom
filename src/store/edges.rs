@@ -200,11 +200,9 @@ impl Store {
         if status != InspectionStatus::Current {
             bail!("a derived edge may only be set to 'current', not '{status}' (INV-5)");
         }
-        let now = now(&self.conn)?;
-        self.conn.execute(
-            "UPDATE edge SET status=?2,updated_at=?3 WHERE id=?1",
-            params![edge_id, status.as_str(), now],
-        )?;
+        // Routed through the one status writer, so a source scan can prove no
+        // other module moves an edge's status (see `facts::write_edge_status`).
+        self.write_edge_status(edge_id, status.as_str())?;
         Ok(())
     }
 

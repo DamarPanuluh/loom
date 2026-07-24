@@ -138,10 +138,7 @@ pub fn apply_ratification_policy(
     let mut ratified = Vec::new();
     for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
         if intent.status == "deprecated"
-            || store
-                .get_facet(&intent.id, TargetKind::Node, "ratification")?
-                .as_deref()
-                == Some("ratified")
+            || store.ratification(&intent.id).map(Some)?.as_deref() == Some("ratified")
         {
             continue;
         }

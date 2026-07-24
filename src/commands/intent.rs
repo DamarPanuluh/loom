@@ -97,13 +97,22 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
     }
 }
 
-/// Is this intent ratified? Absent facet = unratified (fail closed: wantedness
+/// Shape a ratification-state assertion. Demotions (`needs_reconfirmation`)
+/// need no human authority — noticing that meaning drifted is not an act of
+/// approval.
+fn loom_assertion<'a>(id: &'a str, state: &'a str) -> crate::store::Assertion<'a> {
+    crate::store::Assertion::new(
+        crate::store::Subject::Node(id.to_string()),
+        crate::model::Claim::Ratification,
+        state,
+        "sync",
+    )
+}
+
+/// Is this intent ratified? Absence = unratified (fail closed: wantedness
 /// is never presumed).
 pub(crate) fn is_ratified(store: &Store, intent_id: &str) -> Result<bool> {
-    Ok(store
-        .get_facet(intent_id, TargetKind::Node, "ratification")?
-        .as_deref()
-        == Some("ratified"))
+    Ok(store.ratification(intent_id)? == "ratified")
 }
 
 pub(crate) struct IntentAddArgs {
@@ -247,10 +256,8 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
     // ratify. A solo (human-at-the-keyboard) mint is itself a ratification act —
     // the minting utterance is the evidence. A declared `llm:*` lane mints an
     // unratified intent that stays honestly failing until a human ratifies it.
-    let (origin, ratification) = match store.agent() {
-        crate::store::Agent::Solo => ("human", "ratified"),
-        crate::store::Agent::Lane(_) => ("llm", "unratified"),
-    };
+    let solo = matches!(store.agent(), crate::store::Agent::Solo);
+    let origin = if solo { "human" } else { "llm" };
     store.set_facet(
         &node.id,
         TargetKind::Node,
@@ -258,16 +265,20 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
         origin,
         TruthClass::Asserted,
     )?;
-    store.set_facet(
-        &node.id,
-        TargetKind::Node,
-        "ratification",
-        ratification,
-        TruthClass::Asserted,
-    )?;
-    // No birth note: `origin=human` + `ratification=ratified` already record
-    // that the minting act was the ratification; a note on every solo mint
-    // would only bloat the audit trail.
+    if solo {
+        // A born-ratified intent now goes through the SAME boundary as an
+        // explicit `loom intent ratify`: the evidence gate, INV-8, and the
+        // journal entry. It used to be a raw `set_facet`, which is precisely how
+        // a ratification could exist with no evidence and no journal behind it —
+        // the shape 39 of this graph's own ratifications had.
+        store.ratify_intent(
+            &node.id,
+            &format!("minted at a terminal: {}", args.description.trim()),
+            "mint",
+        )?;
+    }
+    // An unratified intent needs no facet: ABSENCE reads as unratified
+    // everywhere. Wantedness is never presumed, so there is nothing to write.
     Ok(node)
 }
 
@@ -441,7 +452,8 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     let aspect = store.get_facet(&n.id, TargetKind::Node, "aspect")?;
     let origin = store.get_facet(&n.id, TargetKind::Node, "origin")?;
     let ratification = store
-        .get_facet(&n.id, TargetKind::Node, "ratification")?
+        .ratification(&n.id)
+        .map(Some)?
         .unwrap_or_else(|| "unratified".into());
     let ratified_by = store.get_facet(&n.id, TargetKind::Node, "ratified_by")?;
     let ratified_at = store.get_facet(&n.id, TargetKind::Node, "ratified_at")?;
@@ -865,17 +877,14 @@ fn intent_impact(
     )?;
     let mut reconfirmation_required = false;
     if classification == "criterion_changed"
-        && store
-            .get_facet(&n.id, TargetKind::Node, "ratification")?
-            .as_deref()
-            == Some("ratified")
+        && store.ratification(&n.id).map(Some)?.as_deref() == Some("ratified")
     {
-        store.set_facet(
-            &n.id,
-            TargetKind::Node,
-            "ratification",
-            "needs_reconfirmation",
-            TruthClass::Asserted,
+        store.assert_fact(
+            loom_assertion(&n.id, "needs_reconfirmation")
+                .criterion("criterion changed since ratification")
+                .cited(vec![crate::evidence::CitedEvidence::Claim(
+                    evidence.trim().to_string(),
+                )]),
         )?;
         store.add_note(
             &n.id,

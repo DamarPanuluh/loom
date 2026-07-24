@@ -20,8 +20,12 @@ static CLI_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn ratification(store: &Store, id: &str) -> Option<String> {
     store
-        .get_facet(id, TargetKind::Node, "ratification")
+        .fact(
+            &loom::store::Subject::Node(id.to_string()),
+            loom::model::Claim::Ratification,
+        )
         .unwrap()
+        .map(|v| v.fact.state)
 }
 
 fn cli_add_intent(root: &std::path::Path, name: &str) {
@@ -256,23 +260,22 @@ fn ratification_records_human_and_timestamp() {
 
     assert_eq!(
         store
-            .get_facet(&intent.id, TargetKind::Node, "ratified_by")
+            .ratified_by(&intent.id)
+            .map(|o| o.map(|(by, _)| by))
             .unwrap()
             .as_deref(),
         Some("human")
     );
     assert!(
         store
-            .get_facet(&intent.id, TargetKind::Node, "ratified_at")
+            .ratified_by(&intent.id)
+            .map(|o| o.map(|(_, at)| at))
             .unwrap()
             .is_some(),
         "a ratification must record when the human asserted it"
     );
     assert_eq!(
-        store
-            .get_facet(&intent.id, TargetKind::Node, "ratified_presence")
-            .unwrap()
-            .as_deref(),
+        store.ratified_presence(&intent.id).unwrap().as_deref(),
         Some("test fixture"),
         "new ratifications retain their demonstrated-presence descriptor"
     );
@@ -424,7 +427,8 @@ fn ratification_provenance_survives_redefinition_staleness() {
         )
         .unwrap();
     let ratified_at = store
-        .get_facet(&intent.id, TargetKind::Node, "ratified_at")
+        .ratified_by(&intent.id)
+        .map(|o| o.map(|(_, at)| at))
         .unwrap();
 
     store
@@ -437,14 +441,16 @@ fn ratification_provenance_survives_redefinition_staleness() {
     );
     assert_eq!(
         store
-            .get_facet(&intent.id, TargetKind::Node, "ratified_by")
+            .ratified_by(&intent.id)
+            .map(|o| o.map(|(by, _)| by))
             .unwrap()
             .as_deref(),
         Some("human")
     );
     assert_eq!(
         store
-            .get_facet(&intent.id, TargetKind::Node, "ratified_at")
+            .ratified_by(&intent.id)
+            .map(|o| o.map(|(_, at)| at))
             .unwrap(),
         ratified_at
     );

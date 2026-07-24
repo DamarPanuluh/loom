@@ -384,7 +384,8 @@ fn intent_entity(store: &Store, role: &str, intent: &Node) -> Result<LinkedEntit
     facets.insert(
         "ratification".into(),
         store
-            .get_facet(&intent.id, TargetKind::Node, "ratification")?
+            .ratification(&intent.id)
+            .map(Some)?
             .unwrap_or_else(|| "unratified".into()),
     );
     Ok(LinkedEntity {
