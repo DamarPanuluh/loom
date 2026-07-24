@@ -11,6 +11,10 @@ struct LangSpec {
     imports: &'static [&'static str],
     /// Node kinds measured as callables (complexity / nesting / args).
     callables: &'static [&'static str],
+    /// Whether `const x = …` bindings are declarations in this language. True
+    /// for JS/TS, where the dominant function idiom is an arrow assigned to a
+    /// const; false for Python/Go, where an assignment is just an assignment.
+    declarators: bool,
     metrics: &'static MetricSpec,
 }
 
@@ -21,6 +25,7 @@ const PYTHON_SPEC: LangSpec = LangSpec {
     ],
     imports: &["import_statement", "import_from_statement"],
     callables: &["function_definition"],
+    declarators: false,
     metrics: &PYTHON_METRICS,
 };
 
@@ -32,6 +37,7 @@ const GO_SPEC: LangSpec = LangSpec {
     ],
     imports: &["import_declaration"],
     callables: &["function_declaration", "method_declaration"],
+    declarators: false,
     metrics: &GO_METRICS,
 };
 
@@ -48,6 +54,7 @@ const JS_SPEC: LangSpec = LangSpec {
         "generator_function_declaration",
         "method_definition",
     ],
+    declarators: true,
     metrics: &JS_METRICS,
 };
 
@@ -63,6 +70,7 @@ const TS_SPEC: LangSpec = LangSpec {
     ],
     imports: &["import_statement"],
     callables: &["function_declaration", "method_definition"],
+    declarators: true,
     metrics: &TS_METRICS,
 };
 
@@ -108,6 +116,41 @@ fn generic_extract(
                 });
             }
         }
+        // `variable_declarator` — the JS/TS idiom the declaration-kind list
+        // cannot see. Found on a real polyglot repo: loom extracted 7 of 10
+        // declarations from a TypeScript file, and all three it missed were
+        // `export const …`. That matters far beyond a count, because
+        // `export const handler = async () => {}` is how MOST functions in
+        // idiomatic TS/JS are written — so locators could not point at them,
+        // coverage could not see them, and a call graph would find neither
+        // their callers nor their callees.
+        //
+        // The initializer decides the kind: an arrow/function expression is a
+        // function (and gets the metric walk); anything else is a binding.
+        if spec.declarators && kind == "variable_declarator" {
+            if let Some(name) = child_name(&node, bytes) {
+                let init = node.child_by_field_name("value");
+                let is_fn = init.is_some_and(|v| {
+                    matches!(
+                        v.kind(),
+                        "arrow_function" | "function_expression" | "function"
+                    )
+                });
+                let m = match (is_fn, init) {
+                    (true, Some(v)) => measure(&v, bytes, spec.metrics),
+                    _ => Default::default(),
+                };
+                symbols.push(Symbol {
+                    name,
+                    kind: if is_fn { "function" } else { "binding" }.into(),
+                    line_start: node.start_position().row + 1,
+                    line_end: node.end_position().row + 1,
+                    complexity: m.complexity,
+                    max_nesting: m.max_nesting,
+                    arg_count: m.arg_count,
+                });
+            }
+        }
         if spec.imports.contains(&kind) {
             if let Ok(text) = node.utf8_text(bytes) {
                 let t = text.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -138,4 +181,51 @@ pub(super) fn extract(language: Language, content: &str) -> (Vec<Symbol>, Vec<St
         _ => return (Vec::new(), Vec::new(), 0),
     };
     generic_extract(content, &lang, spec)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression from the first foreign repo loom was ever pointed at: it
+    /// extracted 7 of 10 declarations from a real TypeScript file, and all
+    /// three misses were `export const …`. The count is the small part — the
+    /// arrow-const is how most functions in idiomatic TS/JS are written, so
+    /// missing it blinds locators, coverage, and any call graph built on top.
+    #[test]
+    fn typescript_sees_const_bindings_and_arrow_functions() {
+        let src = r#"
+export interface Channel { id: string }
+export type Member = { kind: 'human' };
+export const AGENTS: Record<string, number> = {};
+export const handler = async (id: string) => { return id; };
+export function getChannel(id: string) { return id; }
+"#;
+        let (symbols, _, _) = extract(Language::TypeScript, src);
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+        for expected in ["Channel", "Member", "AGENTS", "handler", "getChannel"] {
+            assert!(names.contains(&expected), "missing {expected}: {names:?}");
+        }
+        // The initializer decides the kind: an arrow is a function, a record is
+        // a binding. Conflating them would let a detector treat data as code.
+        let kind = |n: &str| {
+            symbols
+                .iter()
+                .find(|s| s.name == n)
+                .map(|s| s.kind.as_str())
+                .unwrap_or("")
+        };
+        assert_eq!(kind("handler"), "function");
+        assert_eq!(kind("AGENTS"), "binding");
+    }
+
+    /// A language where `x = …` is an assignment, not a declaration, must not
+    /// grow phantom symbols from the same walk.
+    #[test]
+    fn python_assignments_are_not_declarations() {
+        let src = "AGENTS = {}\n\ndef get_channel(cid):\n    local = cid\n    return local\n";
+        let (symbols, _, _) = extract(Language::Python, src);
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["get_channel"], "got {names:?}");
+    }
 }
