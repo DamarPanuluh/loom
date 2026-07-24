@@ -14,7 +14,13 @@ use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Serialize)]
-struct ContextPacket {
+pub(crate) struct ContextPacket {
+    /// Identifies this serving of the packet. Minted at the boundary where the
+    /// packet leaves the process (CLI or MCP), journaled as `packet_served`, so
+    /// a later verified write can be traced back to the context that informed
+    /// it. Absent when the packet is assembled but not served.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) packet_id: Option<String>,
     target: LinkedEntity,
     context: TraversalContext,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -23,28 +29,54 @@ struct ContextPacket {
     staleness_flags: Vec<String>,
 }
 
+impl ContextPacket {
+    pub(crate) fn target_id(&self) -> &str {
+        &self.target.id
+    }
+}
+
 /// Resolve an intent first, then an exact registered codefile path, then the
 /// same keyword score used by `loom door`. A query has no fabricated target:
 /// its closest intent candidates are the packet's targets.
 pub(crate) fn context_cmd(graph: Option<&std::path::Path>, input: &str, json: bool) -> Result<()> {
     let store = open_read(graph)?;
+    render(served_context(&store, input)?, json)
+}
+
+/// Assemble a packet AND record that it was served. Both the CLI and the
+/// `loom_context` MCP tool go through here, so the efficacy denominator counts
+/// every real serving exactly once.
+pub(crate) fn served_context(store: &Store, input: &str) -> Result<ContextPacket> {
+    let mut packet = context_packet(store, input)?;
+    packet.packet_id = Some(crate::packet::serve_one(
+        store.root(),
+        "context",
+        packet.target_id(),
+    )?);
+    Ok(packet)
+}
+
+/// Assemble the packet without serving it. The one implementation behind both
+/// `loom context` and the `loom_context` MCP tool — a second assembler is how
+/// the text and `--json` surfaces drifted apart in the first place.
+pub(crate) fn context_packet(store: &Store, input: &str) -> Result<ContextPacket> {
     let input = input.trim();
     if input.is_empty() {
         bail!("context needs an intent, registered codefile path, or query");
     }
 
     if let Ok(intent) = store.resolve_node(input, Some(NodeType::Intent)) {
-        return render_node_packet(&store, intent, "intent", json);
+        return node_packet(store, intent, "intent");
     }
     if let Some(file) = store
         .codefiles()?
         .into_iter()
         .find(|file| file.name == input)
     {
-        return render_node_packet(&store, file, "codefile", json);
+        return node_packet(store, file, "codefile");
     }
 
-    let hits = super::discover_cmd::keyword_hits(&store, input, &[NodeType::Intent], 5)?;
+    let hits = super::discover_cmd::keyword_hits(store, input, &[NodeType::Intent], 5)?;
     if hits.is_empty() {
         bail!(
             "could not resolve '{input}' as an intent, registered codefile path, or related intent query"
@@ -58,7 +90,7 @@ pub(crate) fn context_cmd(graph: Option<&std::path::Path>, input: &str, json: bo
             .get_node(&id)?
             .expect("keyword_hits returns existing node ids");
         append_intent(
-            &store,
+            store,
             &intent,
             "query_match",
             &mut context,
@@ -78,18 +110,16 @@ pub(crate) fn context_cmd(graph: Option<&std::path::Path>, input: &str, json: bo
         locator: None,
         facets: None,
     };
-    render(
-        ContextPacket {
-            target,
-            context,
-            completeness: None,
-            staleness_flags,
-        },
-        json,
-    )
+    Ok(ContextPacket {
+        packet_id: None,
+        target,
+        context,
+        completeness: None,
+        staleness_flags,
+    })
 }
 
-fn render_node_packet(store: &Store, node: Node, target_kind: &str, json: bool) -> Result<()> {
+fn node_packet(store: &Store, node: Node, target_kind: &str) -> Result<ContextPacket> {
     let mut context = empty_context(format!(
         "Read-only context for {target_kind} '{}'",
         node.name
@@ -124,15 +154,13 @@ fn render_node_packet(store: &Store, node: Node, target_kind: &str, json: bool) 
     let completeness = (node.node_type == NodeType::Intent)
         .then(|| crate::completeness::scorecard(store, &node))
         .transpose()?;
-    render(
-        ContextPacket {
-            target,
-            context,
-            completeness,
-            staleness_flags,
-        },
-        json,
-    )
+    Ok(ContextPacket {
+        packet_id: None,
+        target,
+        context,
+        completeness,
+        staleness_flags,
+    })
 }
 
 fn empty_context(purpose: String) -> TraversalContext {

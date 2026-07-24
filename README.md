@@ -176,7 +176,26 @@ proposal    Proposal capture and item adoption
 journey     Journey proof, coverage, and invariant commands
 wiki        Reader-first wiki pages tracked as a graph projection
 graph       Cross-graph federation (link/unlink/list upstreams)
+mcp         Serve loom in-band over MCP (stdio JSON-RPC)
 ```
+
+## In-band delivery
+
+`loom mcp serve` speaks MCP over stdio, so an agent pulls context as a tool call
+instead of shelling out. Register it with any MCP client:
+
+```json
+{ "command": "loom", "args": ["mcp", "serve", "--graph", "/path/to/repo"] }
+```
+
+Tools: `loom_status` (ladder, compass, queue depths), `loom_next` (the next work
+packet with its prompt contract), `loom_context` (read-only context for an
+intent, a file, or a query). Each is a thin wrapper over the same function the
+CLI calls — a tool and its CLI twin cannot report different numbers.
+
+Every served packet carries a `packet_id` and appends one `packet_served` entry
+to the append-only journal. That record is what makes "did loom's context
+actually change the outcome?" a measurable question rather than a claim.
 
 `docs/commands.md` describes the shipped CLI surface plus explicitly marked removed/deferred names. Treat the compiled CLI help as the source of truth for what is implemented now.
 

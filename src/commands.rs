@@ -39,6 +39,10 @@ mod status_cmd;
 mod wiki;
 pub use crate::grammar::looks_like_symbol;
 pub(crate) use status_cmd::require_lane;
+// The in-band surface: `crate::mcp` calls exactly these, so an MCP tool and its
+// CLI twin can never diverge.
+pub(crate) use context_cmd::served_context;
+pub(crate) use status_cmd::{next_output, status_value};
 
 /// Dispatch a parsed CLI invocation.
 pub fn run(cli: Cli) -> Result<()> {
@@ -157,6 +161,9 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Drive { cmd } => drive_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Hook { cmd } => hook_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Mcp { cmd } => match cmd {
+            crate::cli::McpCmd::Serve => crate::mcp::serve(cli.graph.as_deref()),
+        },
         Command::Wiki { cmd } => wiki::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Scan { cmd } => diagnostics_cmd::scan_cmd(cli.graph.as_deref(), cmd, cli.json),
         Command::Calibrate { write } => {

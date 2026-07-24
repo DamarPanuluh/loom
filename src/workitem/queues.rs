@@ -116,6 +116,7 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
         },
     };
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "build".into(),
         owner_role: "builder".into(),
         effort: "mid".into(),
@@ -164,6 +165,7 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
         )
     };
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "coverage".into(),
         owner_role: "builder".into(),
         effort: "low".into(),
@@ -379,6 +381,7 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
         command: format!("loom rule show {}", rule.id),
     });
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "quality".into(),
         owner_role: "quality".into(),
         effort,
@@ -460,6 +463,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             )
         };
         return Ok(Some(WorkItem {
+            packet_id: None,
             mode: "validate".into(),
             owner_role: "validator".into(),
             effort: "mid".into(),
@@ -563,6 +567,7 @@ pub(super) fn elaborate_item(store: &Store) -> Result<Option<WorkItem>> {
         open_names.join(", ")
     );
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "elaborate".into(),
         owner_role: "builder".into(),
         effort: "high".into(),
@@ -588,6 +593,7 @@ pub(super) fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
         return Ok(None);
     };
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "prove".into(),
         owner_role: "analyzer".into(),
         effort: "high".into(),
@@ -677,6 +683,7 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
         )
     };
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "ratify".into(),
         owner_role: "human".into(),
         effort: "low".into(),
@@ -756,6 +763,7 @@ pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
         )
     };
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort,
@@ -789,6 +797,7 @@ fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
     };
     let short = &item.id[..8.min(item.id.len())];
     Ok(Some(WorkItem {
+        packet_id: None,
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort: "low".into(),
@@ -862,6 +871,7 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
         context.read_set.len(),
     );
     Ok(WorkItem {
+        packet_id: None,
         mode: mode.into(),
         owner_role: role.into(),
         effort,

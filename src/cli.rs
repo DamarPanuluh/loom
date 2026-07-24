@@ -279,6 +279,13 @@ pub enum Command {
         #[command(subcommand)]
         cmd: HookCmd,
     },
+    /// Serve loom in-band over MCP (stdio JSON-RPC), so an agent pulls context
+    /// as a tool call instead of shelling out. Speaks on stdin/stdout: run it
+    /// from an MCP client, not interactively.
+    Mcp {
+        #[command(subcommand)]
+        cmd: McpCmd,
+    },
     /// Reader-first wiki pages, tracked as a projection of the graph: record a
     /// page's documented intents, get the next page to write, list, or remove.
     Wiki {

@@ -108,6 +108,11 @@ pub struct FileRead {
 /// A promptable unit of work.
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkItem {
+    /// Identifies this serving of the packet. Minted at the boundary where the
+    /// packet leaves the process (CLI or MCP), never during assembly — see
+    /// [`crate::packet`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub packet_id: Option<String>,
     pub mode: String,
     pub owner_role: String,
     pub effort: String,

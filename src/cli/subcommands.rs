@@ -872,6 +872,14 @@ pub enum HookCmd {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum McpCmd {
+    /// Speak MCP over stdio until stdin closes. Register it with an MCP client
+    /// as `loom mcp serve` (add `--graph <path>` when the client's working
+    /// directory is not the repo).
+    Serve,
+}
+
+#[derive(Subcommand, Debug)]
 pub enum JourneyCoverageCmd {
     /// Mark a flow as needing a journey proof, linked to an intent.
     Add {

@@ -242,8 +242,51 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool) -> Result<
     }
     Ok(())
 }
+/// The machine-readable graph pulse. One implementation behind `loom status
+/// --json` and the `loom_status` MCP tool — the text renderer below reads the
+/// same values, so no surface can report a number another surface does not.
+pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
+    let id = store.identity()?;
+    let ladder = crate::maturity::ladder(store)?;
+    let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
+        code_ownership_summary(store)?;
+    Ok(serde_json::json!({
+        "graph": {
+            "name": id.name,
+            "graph_id": id.graph_id,
+            "schema_version": id.schema_version,
+            "observed": id.observed,
+        },
+        "counts": {
+            "intents": store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len(),
+            "codefiles": store.list_nodes(Some(NodeType::CodeFile), usize::MAX)?.len(),
+            "edges": store.list_edges(None, usize::MAX)?.len(),
+        },
+        "compass": { "phase": ladder.phase, "rung": ladder.rung, "next_command": ladder.next_command },
+        "maturity": ladder,
+        "graph_state": workitem::graph_state(store)?,
+        "queues": crate::maturity::depths(store)?,
+        "validation_summary": crate::maturity::validation_summary(store)?,
+        "code_ownership": {
+            "registered": registered_codefiles,
+            "owned": owned_codefiles,
+            "unowned": unowned_codefiles.len(),
+            "unowned_files": unowned_codefiles,
+            "observed": observed_codefiles,
+            "blocking": !unowned_codefiles.is_empty(),
+        },
+        "detectors": {
+            "layering": super::domain_cmd::layer_detector_state(store)?,
+        },
+    }))
+}
+
 pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open_read(graph)?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&status_value(&store)?)?);
+        return Ok(());
+    }
     let id = store.identity()?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
     let files = store
@@ -253,43 +296,9 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let ladder = crate::maturity::ladder(&store)?;
     let pulse = workitem::graph_state(&store)?;
     let queues = crate::maturity::depths(&store)?;
-    let validation_summary = crate::maturity::validation_summary(&store)?;
     let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
         code_ownership_summary(&store)?;
     let layering = super::domain_cmd::layer_detector_state(&store)?;
-    if json {
-        let out = serde_json::json!({
-            "graph": {
-                "name": id.name,
-                "graph_id": id.graph_id,
-                "schema_version": id.schema_version,
-                "observed": id.observed,
-            },
-            "counts": {
-                "intents": intents,
-                "codefiles": files,
-                "edges": edges,
-            },
-            "compass": { "phase": ladder.phase, "next_command": ladder.next_command },
-            "maturity": ladder,
-            "graph_state": pulse,
-            "queues": queues,
-            "validation_summary": validation_summary,
-            "code_ownership": {
-                "registered": registered_codefiles,
-                "owned": owned_codefiles,
-                "unowned": unowned_codefiles.len(),
-                "unowned_files": unowned_codefiles,
-                "observed": observed_codefiles,
-                "blocking": !unowned_codefiles.is_empty(),
-            },
-            "detectors": {
-                "layering": layering,
-            },
-        });
-        println!("{}", serde_json::to_string_pretty(&out)?);
-        return Ok(());
-    }
     println!(
         "graph: {} ({}){}",
         id.name,
@@ -536,14 +545,32 @@ pub(crate) fn require_lane(store: &Store, owner: crate::registry::OwnerRole) -> 
         ),
     }
 }
-pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> Result<()> {
-    let store = open_read(graph)?;
+/// Serve one work packet, stamping and journaling its id. The one
+/// implementation behind `loom next` and the `loom_next` MCP tool.
+pub(crate) fn next_output(store: &Store, mode: Option<&str>) -> Result<workitem::NextOutput> {
     let parsed = match mode {
         Some(m) => Some(crate::lane::Lane::parse(m).ok_or_else(|| anyhow!("unknown mode '{m}'"))?),
         None => None,
     };
-    let item = workitem::next(&store, parsed)?;
-    let pulse = workitem::graph_state(&store)?;
+    let mut item = workitem::next(store, parsed)?;
+    if let Some(w) = item.as_mut() {
+        w.packet_id = Some(crate::packet::serve_one(
+            store.root(),
+            &w.mode,
+            &w.target.id,
+        )?);
+    }
+    Ok(workitem::NextOutput {
+        work_item: item,
+        graph_state: workitem::graph_state(store)?,
+    })
+}
+
+pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> Result<()> {
+    let store = open_read(graph)?;
+    let out = next_output(&store, mode)?;
+    let item = out.work_item;
+    let pulse = out.graph_state;
     if json {
         let out = workitem::NextOutput {
             work_item: item,
