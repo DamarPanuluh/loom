@@ -19,8 +19,21 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             let matched = crate::fsglob::expand(&root, &path)?;
             let targets: Vec<String> = if is_glob {
                 // A glob that matched nothing is not a literal path — it just
-                // means no files exist yet.  `remember_glob` below still
-                // records it so `rescan`/`sync` will pick up future arrivals.
+                // means no files exist yet. `remember_glob` below still records
+                // it so `rescan`/`sync` will pick up future arrivals. But
+                // silently registering nothing is loom's worst first
+                // impression, so when the tree HAS source files this glob did
+                // not reach, say which globs would have.
+                if matched.is_empty() {
+                    let want = path.rsplit('.').next().filter(|e| !e.contains('/'));
+                    let suggestions = crate::fsglob::suggest(&root, want);
+                    if !suggestions.is_empty() && !json {
+                        eprintln!("'{path}' matched no files. This tree has:");
+                        for (glob, n) in &suggestions {
+                            eprintln!("  loom codefile add '{glob}'   ({n} file(s))");
+                        }
+                    }
+                }
                 matched
             } else if matched.is_empty() {
                 // No glob metacharacters and no on-disk hit: treat as a literal
