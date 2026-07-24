@@ -246,20 +246,63 @@ pub fn calibrate(store: &Store, root: &Path) -> Result<Calibration> {
 }
 
 /// The fitted gate for one metric: the calibration quantile of the sample,
-/// rounded up to `step`, clamped to `floor`. No samples (a repo of pure config
-/// files has no callables) keeps the current gate — never propose from nothing.
-fn fitted(samples: &mut [f64], floor: f64, step: f64, fallback: f64) -> f64 {
+/// rounded up to `step`, clamped to `floor`, and **never tightened below the
+/// gate already in force**. No samples (a repo of pure config files has no
+/// callables) keeps the current gate — never propose from nothing.
+///
+/// The one-way clamp is load-bearing, and it was missing. A pure quantile
+/// always flags ~5% of symbols no matter how good the code is: it cannot ever
+/// report "this codebase is clean", and it manufactures work in proportion to
+/// repo size. Measured on a real 270-file repo loom had never seen, calibration
+/// nearly DOUBLED the triage queue — 198 findings to 373 — by tightening four
+/// of five gates below their defaults. That is the v1 debt wall, reintroduced
+/// by the feature built to prevent it.
+///
+/// The two numbers mean different things, and only one of them is about this
+/// repo. The default says "this is bad in ANY codebase". The quantile says
+/// "this codebase's normal runs looser than that". Calibration exists to relax
+/// a universal gate that does not fit — never to invent a stricter one out of
+/// local averages, which flags code that is fine by any absolute standard for
+/// the crime of sitting above its neighbours.
+fn fitted(samples: &mut [f64], floor: f64, step: f64, current: f64) -> f64 {
     if samples.is_empty() {
-        return fallback;
+        return current;
     }
     samples.sort_by(f64::total_cmp);
     let q = crate::signal::quantile(samples, CALIBRATION_QUANTILE);
-    ((q / step).ceil() * step).max(floor)
+    ((q / step).ceil() * step).max(floor).max(current)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Calibration may only ever RELAX. Found by running loom against a real
+    /// 270-file repository it had never seen: calibration nearly doubled the
+    /// triage queue (198 findings to 373) by fitting four of five gates BELOW
+    /// their universal defaults — the v1 debt wall, rebuilt by the feature that
+    /// exists to prevent it.
+    #[test]
+    fn calibration_never_tightens_below_the_gate_in_force() {
+        // A codebase of uniformly small symbols: its 95th percentile sits far
+        // under any sane universal gate.
+        let mut tidy: Vec<f64> = (1..=100).map(|n| f64::from(n % 8)).collect();
+        assert_eq!(
+            fitted(&mut tidy, 1.0, 1.0, 20.0),
+            20.0,
+            "good code must not manufacture findings by being good"
+        );
+
+        // A codebase that genuinely runs larger: relaxing IS the point.
+        let mut sprawling: Vec<f64> = (1..=100).map(|n| f64::from(n) * 30.0).collect();
+        assert!(
+            fitted(&mut sprawling, 1.0, 10.0, 600.0) > 600.0,
+            "a gate that does not fit this repo must relax"
+        );
+
+        // No samples: keep what is in force rather than proposing from nothing.
+        assert_eq!(fitted(&mut [], 1.0, 1.0, 6.0), 6.0);
+    }
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
