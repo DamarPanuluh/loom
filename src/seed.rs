@@ -231,6 +231,9 @@ fn ensure_builtin_rules(store: &Store) -> Result<std::collections::HashMap<&'sta
 /// plane stays byte-rebuildable (INV-2).
 pub const SYMBOL_FINGERPRINTS_KEY: &str = "symbol_fingerprints";
 
+/// Derived facet holding this file's outgoing calls as `caller>callee`.
+pub const CALLS_KEY: &str = "calls";
+
 /// Per-symbol fingerprints of one extraction: symbol name → FNV fingerprint of
 /// the symbol's span text. Same-named symbols (e.g. `new` on two impl blocks)
 /// FOLD into one fingerprint in file order, so an edit to ANY of them changes
@@ -311,6 +314,20 @@ fn write_facets(
         TargetKind::Node,
         SYMBOL_FINGERPRINTS_KEY,
         &fingerprints_json(regions),
+        d,
+    )?;
+    // The call sites this file makes, as `caller>callee` pairs. Sorted and
+    // deduped by extraction, so a wipe/rebuild is byte-identical (INV-2).
+    let calls: Vec<String> = ex
+        .calls
+        .iter()
+        .map(|c| format!("{}>{}", c.from, c.callee))
+        .collect();
+    store.set_facet(
+        cf_id,
+        TargetKind::Node,
+        CALLS_KEY,
+        &serde_json::to_string(&calls).unwrap_or_else(|_| "[]".into()),
         d,
     )?;
     Ok(())

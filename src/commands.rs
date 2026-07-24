@@ -164,6 +164,9 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Drive { cmd } => drive_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Hook { cmd } => hook_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Impact { target, depth } => {
+            diagnostics_cmd::impact_cmd(cli.graph.as_deref(), &target, depth, cli.json)
+        }
         Command::Mcp { cmd } => match cmd {
             crate::cli::McpCmd::Serve => crate::mcp::serve(cli.graph.as_deref()),
         },

@@ -6,6 +6,7 @@
 //! so the derived plane is rebuildable (INV-2).
 
 use std::path::Path;
+mod calls;
 mod langs;
 mod metrics;
 mod rust;
@@ -142,6 +143,19 @@ pub struct Symbol {
     pub arg_count: u32,
 }
 
+/// One observed call: which symbol makes it, and the callee's written name.
+///
+/// The name is what the source says, not a resolved target — resolution needs
+/// the whole repo and belongs in `callgraph`. Keeping extraction per-file and
+/// pure is what lets the derived plane stay rebuildable (INV-2).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallSite {
+    /// The enclosing symbol, or empty at file scope.
+    pub from: String,
+    /// The callee as written: `capture`, `Store::open`, `self.flush`.
+    pub callee: String,
+}
+
 /// The derived facts of one file.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Extraction {
@@ -154,6 +168,10 @@ pub struct Extraction {
     /// Production unwrap()/panic! sites (AST-counted, excludes test modules and
     /// string/comment text). 0 for non-Rust.
     pub panic_sites: usize,
+    /// Calls made in this file, sorted. The raw material of the call graph:
+    /// "what breaks if I change this" is the one question an agent cannot
+    /// cheaply rebuild per session, and the one loom is best placed to answer.
+    pub calls: Vec<CallSite>,
 }
 
 /// Extract derived facts from a file's content.
@@ -167,6 +185,9 @@ pub fn extract(path: &str, content: &str) -> Extraction {
         Language::Other => (Vec::new(), Vec::new(), 0),
         other => langs::extract(other, content),
     };
+    // Calls are attributed to the enclosing symbol by line range, so the walk
+    // stays per-node and the attribution stays one sorted pass.
+    let calls = calls::extract(language, content, &symbols);
     Extraction {
         language,
         role,
@@ -175,6 +196,7 @@ pub fn extract(path: &str, content: &str) -> Extraction {
         symbols,
         imports,
         panic_sites,
+        calls,
     }
 }
 

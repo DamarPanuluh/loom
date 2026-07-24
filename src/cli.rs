@@ -279,6 +279,15 @@ pub enum Command {
         #[command(subcommand)]
         cmd: HookCmd,
     },
+    /// What a change here could reach: the symbols that transitively call it,
+    /// the intents they belong to, and how well each proves them.
+    Impact {
+        /// A symbol name, or a registered codefile path.
+        target: String,
+        /// How many call hops to walk back (default 3).
+        #[arg(long, default_value_t = 3)]
+        depth: usize,
+    },
     /// Serve loom in-band over MCP (stdio JSON-RPC), so an agent pulls context
     /// as a tool call instead of shelling out. Speaks on stdin/stdout: run it
     /// from an MCP client, not interactively.

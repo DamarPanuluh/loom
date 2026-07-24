@@ -14,6 +14,7 @@
 
 pub mod anchor;
 pub mod artifact;
+pub mod callgraph;
 pub mod cli;
 pub mod commands;
 pub mod completeness;
