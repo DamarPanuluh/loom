@@ -252,3 +252,71 @@ fn every_gate_lane_serves_the_work_it_points_at() {
         );
     }
 }
+
+/// A fresh intent's packet must propose WHERE to look, not hand back a listing
+/// command. Found by pointing loom at a repository it had never seen: on
+/// anything larger than a toy, "survey the registered codefiles" is the moment a
+/// sidekick is least useful.
+#[test]
+fn a_fresh_intent_packet_proposes_candidate_files() {
+    let tmp = Tmp::new();
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    // One file whose symbols echo the intent, one that has nothing to do with it.
+    std::fs::write(
+        tmp.path().join("src/ruang.rs"),
+        "pub fn create_communal_ruang() {}\npub fn authorize_ruang_read() {}\n",
+    )
+    .unwrap();
+    std::fs::write(tmp.path().join("src/telemetry.rs"), "pub fn flush() {}\n").unwrap();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    for path in ["src/ruang.rs", "src/telemetry.rs"] {
+        store
+            .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
+            .unwrap();
+    }
+    loom::sync::run(&store, tmp.path()).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "a channel can be opened in a ruang",
+            "opening a channel makes it visible to its ruang members",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .ratify_intent(&intent.id, "test fixture: wanted", "test fixture")
+        .unwrap();
+
+    let item = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("a planned intent is build work");
+    let reads: Vec<&str> = item
+        .context
+        .read_set
+        .iter()
+        .map(|r| r.path.as_str())
+        .collect();
+    assert!(
+        reads.contains(&"src/ruang.rs"),
+        "the file whose SYMBOLS echo the intent must be proposed: {reads:?}"
+    );
+    assert!(
+        !reads.contains(&"src/telemetry.rs"),
+        "an unrelated file must not be proposed: {reads:?}"
+    );
+    // The proposal names what matched and stays honest about its own weight:
+    // a place to look, never a grounding.
+    let why = &item
+        .context
+        .read_set
+        .iter()
+        .find(|r| r.path == "src/ruang.rs")
+        .unwrap()
+        .why;
+    assert!(why.contains("ruang"), "names the matched symbols: {why}");
+    assert!(
+        why.contains("confirm"),
+        "a candidate is a hint, not a verdict: {why}"
+    );
+}

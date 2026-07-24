@@ -125,15 +125,95 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
         target: node_target(&intent),
         stale_causes: Vec::new(),
         prompt_contract: builder_contract(&intent),
-        context: node_context(
-            store,
-            &intent,
-            "Understand the behavior and likely implementation files before coding. Any inlined `note` entities are the prior record — adopted PoC/experiment evidence and past decisions — read them first; they say what was already tried and why.",
-        )?,
+        context: {
+            let mut ctx = node_context(
+                store,
+                &intent,
+                "Understand the behavior and likely implementation files before coding. Any inlined `note` entities are the prior record — adopted PoC/experiment evidence and past decisions — read them first; they say what was already tried and why.",
+            )?;
+            // Propose where to look. On a repository of any size, "survey the
+            // registered codefiles" is not help.
+            for (path, symbols) in candidate_files(store, &intent)? {
+                let why = if symbols.is_empty() {
+                    "candidate — the path echoes this behavior's language; confirm by reading"
+                        .into()
+                } else {
+                    format!(
+                        "candidate — defines {}; confirm it PERFORMS the behavior before grounding",
+                        symbols.join(", ")
+                    )
+                };
+                ctx.read_set.push(crate::workitem::FileRead {
+                    path,
+                    locator: None,
+                    why,
+                });
+            }
+            ctx
+        },
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Implementation.gap(),
         next_step: "after grounding + sync, run `loom status`".into(),
     }))
+}
+
+/// Files that plausibly realize an intent, ranked by how much of the intent's
+/// language appears in the SYMBOLS loom extracted from them.
+///
+/// A fresh intent's packet used to say "survey registered codefiles", which on
+/// a real repository means "read seventy paths and guess" — the moment a
+/// sidekick is least useful. loom already knows every file's symbol names from
+/// extraction, so it can propose candidates instead of a listing command.
+///
+/// Deliberately weak evidence: these are places to LOOK, never a grounding.
+/// Matching `getChannel` to "a channel can be opened" is a hint, and the packet
+/// says so — the builder still has to read the code and point the locator.
+pub(crate) fn candidate_files(store: &Store, intent: &Node) -> Result<Vec<(String, Vec<String>)>> {
+    let terms: Vec<String> = format!("{} {}", intent.name, intent.description)
+        .to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|t| t.len() > 3)
+        .map(str::to_string)
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    if terms.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut scored: Vec<(usize, String, Vec<String>)> = Vec::new();
+    for cf in store.codefiles()? {
+        // Already grounded to this intent? Then it is not a candidate, it is
+        // the answer, and the read set carries it by another route.
+        let raw = store.get_facet(&cf.id, TargetKind::Node, "symbol_fingerprints")?;
+        let symbols: Vec<String> = raw
+            .and_then(|r| {
+                serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&r).ok()
+            })
+            .map(|m| m.keys().cloned().collect())
+            .unwrap_or_default();
+        let mut matched: Vec<String> = Vec::new();
+        for sym in &symbols {
+            let lower = sym.to_lowercase();
+            if terms.iter().any(|t| lower.contains(t.as_str())) {
+                matched.push(sym.clone());
+            }
+        }
+        // The path counts for less than a symbol: a directory named `channel`
+        // is a weaker signal than a function named `openChannel`.
+        let path_hits = terms
+            .iter()
+            .filter(|t| cf.name.to_lowercase().contains(t.as_str()))
+            .count();
+        let score = matched.len() * 2 + path_hits;
+        if score > 0 {
+            matched.sort();
+            matched.truncate(4);
+            scored.push((score, cf.name.clone(), matched));
+        }
+    }
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+    scored.truncate(5);
+    Ok(scored.into_iter().map(|(_, f, m)| (f, m)).collect())
 }
 
 pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
