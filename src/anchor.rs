@@ -132,6 +132,12 @@ fn adjudication_floor(state: &str) -> Floor {
 
 const CURRENT_GROUNDING: Verification = Verification::Claimed;
 const CURRENT_SEAM_GROUNDING: Verification = Verification::Claimed;
+// STAGED: the machinery behind this is complete — `loom validation run` now
+// produces a RunRecord and `mark_validation` anchors the verdict to it, so
+// flipping this to `Verified` refuses caller-reported proof outcomes with
+// "run the proof through loom, never report its outcome". Flipped together
+// with the ~20 test fixtures that still hand-record a passing `validates`
+// verdict; `common::prove` is the honest replacement for them.
 const CURRENT_PROOF: Verification = Verification::Claimed;
 const CURRENT_QUALITY: Verification = Verification::Claimed;
 const CURRENT_RELATIONSHIP: Verification = Verification::Claimed;

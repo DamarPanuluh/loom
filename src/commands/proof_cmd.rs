@@ -327,7 +327,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             reason,
         } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
-            mark_validation(&store, &val.id, &outcome, &evidence, &reason)?;
+            mark_validation(&store, &val.id, &outcome, &evidence, &reason, None)?;
             pulse::emit_line(
                 &store,
                 json,
@@ -495,12 +495,38 @@ fn validation_targets(store: &Store, val_id: &str) -> Result<Vec<serde_json::Val
     }
     Ok(out)
 }
+/// Record a validation's outcome.
+///
+/// `run` is the observation loom made. When it is `Some`, the verdict is
+/// anchored `verified` — loom watched this happen. When it is `None`, the
+/// caller is REPORTING an outcome, which for a command-shaped proof is exactly
+/// the move that produced 54 unearned green proofs in this graph; the anchor
+/// floor refuses it.
+/// The file→hash set a proof over this intent depends on: every file grounding
+/// it. This is what makes a passing proof expire when the code moves.
+fn covered_hashes(
+    store: &Store,
+    intent_id: &str,
+) -> Result<std::collections::BTreeMap<String, String>> {
+    let files = crate::runner::files_grounding(store, intent_id)?;
+    Ok(files
+        .into_iter()
+        .map(|f| {
+            let hash = std::fs::read_to_string(store.root().join(&f))
+                .map(|c| crate::artifact::fingerprint(&c))
+                .unwrap_or_default();
+            (f, hash)
+        })
+        .collect())
+}
+
 fn mark_validation(
     store: &Store,
     val_id: &str,
     result: &str,
     evidence: &str,
     reason: &str,
+    run: Option<crate::evidence::RunRecord>,
 ) -> Result<()> {
     let (node_status, edge_status, ev) = match result {
         "passed" => ("passed", InspectionStatus::Passing, evidence),
@@ -525,7 +551,25 @@ fn mark_validation(
     // keeps the mark atomic — a rejected verdict never leaves the validation
     // showing `passed` while the command exits non-zero.
     for e in store.edges_with(Some(EdgeKind::Validates), Some(val_id), None)? {
-        store.record_verdict(&e.id, edge_status, "proof", ev, 1.0, "llm")?;
+        // A proof run anchors the code it exercised: every file grounding the
+        // intent it validates. Any later edit to one of those expires the run,
+        // so a passing proof stops counting the moment the behavior moves
+        // beneath it.
+        let mut assertion = crate::store::Assertion::new(
+            crate::store::Subject::Edge(e.id.clone()),
+            crate::model::Claim::Verdict,
+            edge_status.as_str(),
+            "loom",
+        )
+        .criterion("proof")
+        .confidence(1.0)
+        .cited(crate::evidence::cite(store.root(), ev)?);
+        if let Some(run) = run.clone() {
+            let mut run = run;
+            run.covered = covered_hashes(store, &e.to_id)?;
+            assertion = assertion.observed(run);
+        }
+        store.assert_fact(assertion)?;
     }
     store.set_node_status(val_id, node_status)?;
     crate::journal::append(
@@ -594,9 +638,9 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
         // The engine records every outcome uniformly; the runner keyed by the
         // validation type owns how the proof is actually attempted.
         match crate::proof::runner_for(ty).run(&root, v) {
-            crate::proof::ProofOutcome::Passed { evidence } => {
+            crate::proof::ProofOutcome::Passed { evidence, run } => {
                 let store = open(Some(&root))?;
-                mark_validation(&store, &v.id, "passed", &evidence, "")?;
+                mark_validation(&store, &v.id, "passed", &evidence, "", Some(*run))?;
                 drop(store);
                 results.push(serde_json::json!({
                     "id": v.id,
@@ -610,9 +654,10 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
                 evidence,
                 exit_code,
                 output,
+                run,
             } => {
                 let store = open(Some(&root))?;
-                mark_validation(&store, &v.id, "failed", &evidence, "")?;
+                mark_validation(&store, &v.id, "failed", &evidence, "", Some(*run))?;
                 drop(store);
                 let mut row = serde_json::json!({
                     "id": v.id,
@@ -627,7 +672,7 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
             }
             crate::proof::ProofOutcome::Blocked { reason } => {
                 let store = open(Some(&root))?;
-                mark_validation(&store, &v.id, "blocked", "", &reason)?;
+                mark_validation(&store, &v.id, "blocked", "", &reason, None)?;
                 drop(store);
                 results.push(serde_json::json!({
                     "id": v.id,

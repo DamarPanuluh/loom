@@ -21,13 +21,19 @@ const VALIDATION_OUTPUT_EXCERPT_BYTES: usize = 8192;
 /// runners — that uniformity is the point of the seam.
 #[derive(Debug, Clone)]
 pub enum ProofOutcome {
-    /// The proof passed; `evidence` is the observed proof (e.g. `exit 0`).
-    Passed { evidence: String },
+    /// The proof passed. Carries the RECORD of the run loom performed — not a
+    /// sentence about it. This is the difference between "54 of 59 proofs
+    /// passed" and "an agent wrote that 54 of 59 proofs passed".
+    Passed {
+        evidence: String,
+        run: Box<crate::evidence::RunRecord>,
+    },
     /// The proof failed; carries the row detail the recorder surfaces.
     Failed {
         evidence: String,
         exit_code: i64,
         output: serde_json::Value,
+        run: Box<crate::evidence::RunRecord>,
     },
     /// The proof could not complete (timeout, spawn error, or a missing
     /// prerequisite the runner names). Honest, and never forgotten.
@@ -83,13 +89,16 @@ impl ProofRunner for CommandProofRunner {
             };
         }
         let timeout_secs = validation_timeout_secs(v);
+        let started = std::time::Instant::now();
         match run_validation_command(root, &command, timeout_secs) {
             Ok(Some(o)) if o.status.success() => ProofOutcome::Passed {
                 evidence: format!("`{command}` exit 0"),
+                run: Box::new(observation(root, &command, &o, started)),
             },
             Ok(Some(o)) => {
                 let code = o.status.code().unwrap_or(-1);
                 let output = validation_output_json(&o);
+                let run = Box::new(observation(root, &command, &o, started));
                 let stderr_excerpt = output["stderr"].as_str().unwrap_or("").trim();
                 let stdout_excerpt = output["stdout"].as_str().unwrap_or("").trim();
                 let excerpt = if stderr_excerpt.is_empty() {
@@ -109,6 +118,7 @@ impl ProofRunner for CommandProofRunner {
                     evidence,
                     exit_code: code,
                     output,
+                    run,
                 }
             }
             Ok(None) => ProofOutcome::Blocked {
@@ -144,6 +154,30 @@ impl ProofRunner for JourneyProofRunner {
             reason: "journey — run via `loom journey run <spec>`".into(),
         }
     }
+}
+
+/// Turn an observed subprocess into a [`crate::evidence::RunRecord`].
+///
+/// `covered` is deliberately left for the caller to fill from the intents this
+/// proof validates: a run anchors the code it exercised, and the caller is the
+/// only layer that knows which files those are.
+fn observation(
+    root: &Path,
+    command: &str,
+    o: &process_control::Output,
+    started: std::time::Instant,
+) -> crate::evidence::RunRecord {
+    crate::runner::record(
+        root,
+        crate::model::RunProducer::Command,
+        command,
+        &[],
+        0,
+        o.status.code().unwrap_or(-1),
+        &o.stdout,
+        &o.stderr,
+        started.elapsed().as_millis() as u64,
+    )
 }
 
 /// The configured (or default) subprocess timeout for a validation.
@@ -232,7 +266,10 @@ mod tests {
         let root = std::env::temp_dir();
         let runner = runner_for(ValidationType::Test);
         match runner.run(&root, &val("test", "true")) {
-            ProofOutcome::Passed { evidence } => assert!(evidence.contains("exit 0")),
+            ProofOutcome::Passed { evidence, run } => {
+                assert!(evidence.contains("exit 0"));
+                assert_eq!(run.exit_code, 0, "loom observed the run itself");
+            }
             o => panic!("`true` should pass, got {o:?}"),
         }
         match runner.run(&root, &val("test", "exit 7")) {
