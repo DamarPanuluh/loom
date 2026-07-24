@@ -12,6 +12,7 @@
 //! - `commands` — CLI command handlers.
 //! - `cli`      — clap command surface.
 
+pub mod anchor;
 pub mod artifact;
 pub mod cli;
 pub mod commands;
@@ -34,6 +35,7 @@ pub mod policy;
 pub mod prescan;
 pub mod proof;
 pub mod registry;
+pub mod runner;
 pub mod scan;
 pub mod seed;
 pub mod signal;

@@ -83,6 +83,12 @@ pub fn reference(entry: &Entry) -> String {
     format!("journal:{}", entry.id)
 }
 
+/// The journal's clock, shared so every append-only record and every observed
+/// run agree on what "now" means.
+pub fn now_iso() -> String {
+    timestamp()
+}
+
 fn timestamp() -> String {
     let millis = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

@@ -201,6 +201,138 @@ str_enum! {
     }
 }
 
+str_enum! {
+    /// What KIND of assertion a fact makes about its subject. One row per
+    /// (subject, claim), so a fact has exactly one current state.
+    ///
+    /// - `Verdict` — an edge verdict: passing / failing / independent / blocked.
+    /// - `Observation` — an observation about a node (finding intake).
+    /// - `Adjudication` — a finding verdict: needed / justified / rejected / …
+    /// - `Ratification` — wantedness: does the authority want this behavior?
+    Claim {
+        Verdict => "verdict",
+        Observation => "observation",
+        Adjudication => "adjudication",
+        Ratification => "ratification",
+    }
+}
+
+str_enum! {
+    /// How strongly a fact is anchored — the strength lattice, ordered
+    /// `Verified > Cited > Claimed > Expired`.
+    ///
+    /// This is the organizing idea of the evidence spine: loom records what an
+    /// agent asserts, but only counts what loom can independently RE-CHECK. A
+    /// `Claimed` fact is a real record and a real part of the audit trail; it
+    /// simply never satisfies a maturity rung, so it never settles and stays in
+    /// its lane's queue.
+    ///
+    /// - `Verified` — loom ran something and observed the result itself.
+    /// - `Cited` — the fact cites spans or journal entries that still resolve.
+    /// - `Claimed` — prose only. Recorded, never counted.
+    /// - `Expired` — every anchor this fact had has since broken.
+    Verification {
+        Verified => "verified",
+        Cited => "cited",
+        Claimed => "claimed",
+        Expired => "expired",
+    }
+}
+
+impl Verification {
+    /// Rank on the strength lattice; higher is stronger.
+    pub fn rank(self) -> u8 {
+        match self {
+            Verification::Expired => 0,
+            Verification::Claimed => 1,
+            Verification::Cited => 2,
+            Verification::Verified => 3,
+        }
+    }
+
+    /// Whether a fact at this strength may satisfy a maturity rung.
+    pub fn counts(self) -> bool {
+        self.rank() >= Verification::Cited.rank()
+    }
+}
+
+str_enum! {
+    /// The form of one piece of evidence.
+    ///
+    /// - `Run` — a command loom executed. Never accepted from a caller.
+    /// - `Span` — a cited file span, fingerprinted at assert time.
+    /// - `Journal` — a `journal:<id>` reference into the append-only journal.
+    /// - `Claim` — free prose.
+    EvidenceKind {
+        Run => "run",
+        Span => "span",
+        Journal => "journal",
+        Claim => "claim",
+    }
+}
+
+str_enum! {
+    /// Which of loom's own probes produced a `Run`.
+    ///
+    /// - `Command` / `Journey` — a validation command or journey replay.
+    /// - `Prescreen` — a quality rule's patterns scanned over the grounded
+    ///   files. This is how an ABSENCE ("no hardcoded secrets here") becomes
+    ///   re-checkable: loom ran the scan itself and found nothing.
+    /// - `Locator` — a grounding locator re-resolved against live symbols.
+    /// - `Detector` — a structural finding's own predicate, re-evaluated.
+    RunProducer {
+        Command => "command",
+        Journey => "journey",
+        Prescreen => "prescreen",
+        Locator => "locator",
+        Detector => "detector",
+    }
+}
+
+str_enum! {
+    /// Why a fact was re-opened. Replaces the prose `stale_cause` string whose
+    /// routing class downstream code recovered by substring matching.
+    StaleCause {
+        RunCoveredFileChanged => "run_covered_file_changed",
+        RunCommandChanged => "run_command_changed",
+        SpanRewritten => "span_rewritten",
+        SpanFileDeleted => "span_file_deleted",
+        JournalMissing => "journal_missing",
+        SubjectRedefined => "subject_redefined",
+        RoleChanged => "role_changed",
+        Rehomed => "rehomed",
+        AnchorMissing => "anchor_missing",
+    }
+}
+
+str_enum! {
+    /// What re-opening this fact will cost — the router's cost class.
+    ///
+    /// - `Reconfirm` — anchors still hold; confirm the unchanged claim.
+    /// - `Reinspect` — an anchor was rewritten; inspect afresh.
+    /// - `Reanchor` — the fact has no live anchor at all; find one.
+    Rework {
+        Reconfirm => "reconfirm",
+        Reinspect => "reinspect",
+        Reanchor => "reanchor",
+    }
+}
+
+impl StaleCause {
+    /// The cost class this cause implies.
+    pub fn rework(self) -> Rework {
+        match self {
+            StaleCause::AnchorMissing | StaleCause::JournalMissing => Rework::Reanchor,
+            StaleCause::SpanRewritten
+            | StaleCause::SpanFileDeleted
+            | StaleCause::SubjectRedefined
+            | StaleCause::RoleChanged
+            | StaleCause::Rehomed => Rework::Reinspect,
+            StaleCause::RunCoveredFileChanged | StaleCause::RunCommandChanged => Rework::Reconfirm,
+        }
+    }
+}
+
 /// A node row. Type-specific structured fields live in `body` (JSON); queryable
 /// attributes live as facets. `status` carries the per-type lifecycle string
 /// (Intent lifecycle, Validation last_result, Hypothesis status, …).
