@@ -12,6 +12,7 @@
 //! - `commands` — CLI command handlers.
 //! - `cli`      — clap command surface.
 
+pub mod absorb;
 pub mod anchor;
 pub mod artifact;
 pub mod audit;

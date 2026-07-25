@@ -288,6 +288,15 @@ pub enum Command {
         #[arg(long, default_value_t = 3)]
         depth: usize,
     },
+    /// Read the working tree and propose the graph mutations it implies:
+    /// new symbols in owned files, symbols whose callers all belong to one
+    /// behavior, locators pointing at code that moved, files nothing owns.
+    /// Observes only — the batch lands as a Proposal you confirm.
+    Absorb {
+        /// Adopt every item that needs nothing from you.
+        #[arg(long)]
+        confirm: bool,
+    },
     /// Turn the falsifiability claim on loom's own record: fabricated
     /// ratifications, judgment bursts too fast to have been made one at a
     /// time, and settled claims standing on nothing re-checkable.

@@ -7,7 +7,7 @@
 //! around INV-4/5/6. No store writes happen here.
 
 use super::queues::prescreen_for;
-use super::{q, PromptContract};
+use super::{q, EvidenceClause, PromptContract};
 use crate::model::{Edge, EdgeKind, Node};
 use crate::store::Store;
 use crate::Result;
@@ -54,6 +54,7 @@ pub(super) fn elaborator_contract(
             "proposing scenarios that restate the happy path".into(),
             "waiving an axis just to close it (a waiver needs a real reason)".into(),
         ],
+        evidence_clauses: Vec::new(),
         required_evidence: "every open axis closed by an artifact, a waiver, or a question — never by silence".into(),
         evidence_template: None,
         examples: None,
@@ -120,6 +121,12 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
             "loom validation verdict passed (validator lane)".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
+        evidence_clauses: vec![
+            EvidenceClause::CitesSpans { n: 1 },
+            EvidenceClause::VerificationAtLeast {
+                level: "cited".into(),
+            },
+        ],
         required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
         evidence_template: None,
         examples: None,
@@ -156,6 +163,7 @@ pub(super) fn missing_codefile_contract(codefile: &Node) -> PromptContract {
             "grounding an intent to the missing file".into(),
             "inventing an intent to keep a dead registration alive".into(),
         ],
+        evidence_clauses: Vec::new(),
         required_evidence: "the successor registration + re-grounding, or the removal of the dead registration".into(),
         evidence_template: None,
         examples: None,
@@ -199,6 +207,7 @@ pub(super) fn coverage_contract(codefile: &Node) -> PromptContract {
             "inventing an intent with no behavioral description".into(),
             "loom rule verdict passing (quality lane)".into(),
         ],
+        evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
         required_evidence: "file read; a realizing owner chosen with a locator, OR a new realizing intent for this surface plus consumes edges to what it calls, OR a reason to unregister".into(),
         evidence_template: None,
         examples: Some(serde_json::json!([
@@ -238,6 +247,7 @@ pub(super) fn analyzer_contract(edge: &Edge, from_name: &str, to_name: &str) -> 
             "record a verdict from name similarity or assumption".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
+        evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
         required_evidence: "file/line locators, validation output, or runtime evidence".into(),
         evidence_template: None,
         examples: None,
@@ -275,6 +285,7 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
             "suppress the symptom without a root-cause fix".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
+        evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
         required_evidence: "Loom context checked, relevant code inspected, code change, sync clean, the failing criterion now addressed at its cause".into(),
         evidence_template: None,
         examples: None,
@@ -373,6 +384,7 @@ pub(super) fn quality_contract_body(
             "mark independent without evidence the rule does not apply".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
+        evidence_clauses: Vec::new(),
         required_evidence: "file/line locators showing compliance, violation, or non-applicability"
             .into(),
         evidence_template,
@@ -430,6 +442,12 @@ pub(super) fn validator_contract(
             "mark passed without observed proof".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
+        evidence_clauses: vec![
+            EvidenceClause::CitesRun,
+            EvidenceClause::VerificationAtLeast {
+                level: "verified".into(),
+            },
+        ],
         required_evidence:
             "command output, test count, failure message, or a concrete blocker reason".into(),
         evidence_template: None,
@@ -472,6 +490,12 @@ pub(super) fn unproven_contract(intent: &Node, has_registered_proof: bool) -> Pr
             "asserting only an exit code when the behavior has observable output".into(),
             "editing code to make a proof pass".into(),
             NON_BLOCKING_SMELL_RULE.into(),
+        ],
+        evidence_clauses: vec![
+            EvidenceClause::CitesRun,
+            EvidenceClause::ProofStrengthAtLeast {
+                grade: "S2".into(),
+            },
         ],
         required_evidence:
             "the command loom ran, its exit status, and the assertion that would have caught a \
@@ -522,6 +546,7 @@ pub(super) fn reviewer_contract(
             "inheriting the prior confidence instead of stating your own".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
+        evidence_clauses: Vec::new(),
         required_evidence: "fresh file/line or runtime evidence; state explicitly whether the prior verdict was confirmed or overturned".into(),
         evidence_template: None,
         examples: None,
@@ -552,6 +577,7 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
             "adopt the hypothesis before proving it".into(),
             "edit code".into(),
         ],
+        evidence_clauses: Vec::new(),
         required_evidence: "code evidence that the claim holds or fails".into(),
         evidence_template: None,
         examples: None,
@@ -581,6 +607,7 @@ pub(super) fn triage_contract(id: &str) -> PromptContract {
             "edit code here (mark it needed, then fix in build/fix)".into(),
             "justified without a concrete reason".into(),
         ],
+        evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
         required_evidence: "a concrete reason: what to do, why it is fine/false/deferred, what blocks it, what it duplicates, or the observed repair"
             .into(),
         evidence_template: None,
@@ -615,6 +642,7 @@ pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
             "justified from owner-count alone without reading the file structure".into(),
             "batch-reaffirm / mechanical closeout of this packet".into(),
         ],
+        evidence_clauses: Vec::new(),
         required_evidence: "name the concern(s) you saw: one → justified with that name; several unrelated → needed with a split plan; false gate → rejected"
             .into(),
         evidence_template: None,
@@ -645,6 +673,12 @@ pub(super) fn ratify_contract(id: &str) -> PromptContract {
             "ratifying from an llm:* lane (INV-8 — the write boundary rejects it; do not work around it)".into(),
             "treating silence or plausibility as ratification".into(),
         ],
+        evidence_clauses: vec![
+            EvidenceClause::Prose,
+            EvidenceClause::VerificationAtLeast {
+                level: "cited".into(),
+            },
+        ],
         required_evidence: "the human's reason this behavior is wanted: an utterance, a source doc, a decision"
             .into(),
         evidence_template: None,
@@ -673,6 +707,7 @@ pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
             "leave the item new after using it".into(),
             "drop context without recording the disposition".into(),
         ],
+        evidence_clauses: Vec::new(),
         required_evidence: "the durable destination or concrete rejection reason".into(),
         evidence_template: None,
         examples: None,
@@ -709,6 +744,12 @@ pub(super) fn deepen_contract(id: &str, next_move: &str) -> PromptContract {
              never asserted"
                 .into(),
         ],
+        evidence_clauses: vec![
+            EvidenceClause::CitesRun,
+            EvidenceClause::Produces {
+                what: "a proof grade higher than the current one".into(),
+            },
+        ],
         required_evidence: "a proof loom ran, whose new grade is higher than the old one".into(),
         evidence_template: None,
         examples: None,
@@ -741,6 +782,9 @@ pub(super) fn audit_contract(remedy: &str) -> PromptContract {
             "re-asserting the flagged claim to clear the finding".into(),
             "deleting the record instead of correcting it".into(),
         ],
+        evidence_clauses: vec![EvidenceClause::Produces {
+            what: "either the missing anchor, or a withdrawal of the claim".into(),
+        }],
         required_evidence: "either the anchor that was missing, or a withdrawal of the claim"
             .into(),
         evidence_template: None,

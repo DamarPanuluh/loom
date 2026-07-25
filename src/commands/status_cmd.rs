@@ -694,7 +694,42 @@ fn print_work_item(item: &workitem::WorkItem) {
         println!("    - {f}");
     }
     println!("  evidence: {}", c.required_evidence);
+    // The checkable form of the same requirement. Printed under the prose
+    // because a worker reads the sentence first and is REFUSED by the clause.
+    for clause in &c.evidence_clauses {
+        println!("    ▸ {}", clause.describe());
+    }
+    if let Some(t) = &c.evidence_template {
+        println!("    template: {t}");
+    }
+    // These three were JSON-only, which meant a policy-configured human gate
+    // was invisible to every text-mode worker — the packet said "go ahead" to
+    // exactly the readers who most needed to be told to stop.
+    if let Some(examples) = &c.examples {
+        println!("  examples:");
+        for (label, value) in ["good", "bad"]
+            .iter()
+            .filter_map(|k| examples.get(*k).and_then(|v| v.as_str()).map(|v| (*k, v)))
+        {
+            println!("    {label}: {value}");
+        }
+    }
+    if !c.pre_screened_hits.is_empty() {
+        println!(
+            "  loom already scanned for this and found {} hit(s):",
+            c.pre_screened_hits.len()
+        );
+        for hit in &c.pre_screened_hits {
+            println!(
+                "    - {}:{} [{}] {}",
+                hit.path, hit.line, hit.pattern, hit.excerpt
+            );
+        }
+    }
     println!("  write-back: {}", c.write_back);
     println!("  stop: {}", c.stop_condition);
+    if let Some(gate) = &c.human_gate {
+        println!("  ⚠ HUMAN GATE: {gate}");
+    }
     println!("  next_step: {}", item.next_step);
 }

@@ -1226,3 +1226,54 @@ pub(crate) fn deepen_cmd(graph: Option<&Path>, limit: usize, json: bool) -> Resu
     }
     Ok(())
 }
+
+/// Observe the working tree and propose what the graph is missing.
+pub(crate) fn absorb_cmd(graph: Option<&Path>, confirm: bool, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let root = store.root().to_path_buf();
+    let items = crate::absorb::observe(&store, &root)?;
+    if items.is_empty() {
+        if json {
+            println!("{}", serde_json::json!({ "items": [], "proposal": null }));
+        } else {
+            println!("nothing to absorb — the graph already reflects the tree");
+        }
+        return Ok(());
+    }
+    let proposal = crate::absorb::record(&store, &items)?;
+
+    // `--confirm` adopts only what needs nothing from a human. The behavioral
+    // criterion is the one thing loom cannot derive, so an item that wants one
+    // is always left for a person.
+    let ready: Vec<&crate::absorb::Item> = items.iter().filter(|i| i.needs.is_empty()).collect();
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "proposal": proposal.id,
+                "items": items,
+                "ready": ready.len(),
+                "needs_you": items.len() - ready.len(),
+            }))?
+        );
+        return Ok(());
+    }
+    println!(
+        "absorbed {} observation(s) into proposal {} ({} ready, {} need you)",
+        items.len(),
+        &proposal.id[..8.min(proposal.id.len())],
+        ready.len(),
+        items.len() - ready.len()
+    );
+    for (i, item) in items.iter().enumerate() {
+        println!("  {}. [{}] {}", i + 1, item.kind.as_str(), item.text);
+        for need in &item.needs {
+            println!("     needs: {need}");
+        }
+    }
+    if confirm {
+        println!("\nadopt with: loom proposal item adopt {} <n>", 
+            &proposal.id[..8.min(proposal.id.len())]);
+    }
+    Ok(())
+}

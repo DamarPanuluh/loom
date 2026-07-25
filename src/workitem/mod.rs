@@ -32,6 +32,14 @@ pub struct PromptContract {
     pub allowed_actions: Vec<String>,
     pub forbidden_actions: Vec<String>,
     pub required_evidence: String,
+    /// The same requirement, machine-checkable.
+    ///
+    /// `required_evidence` is prose for the worker; these are the clauses the
+    /// write boundary can actually test. Stating a requirement only in a
+    /// sentence means the packet asks for one thing and the floor enforces
+    /// another, and the worker discovers the gap by being refused.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub evidence_clauses: Vec<EvidenceClause>,
     /// Rule-authored phrasing templates for passing/failing evidence (quality
     /// items only). Using them keeps verdicts comparable across sessions.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -47,6 +55,50 @@ pub struct PromptContract {
     pub write_back: String,
     pub stop_condition: String,
     pub human_gate: Option<String>,
+}
+
+/// One machine-checkable requirement on the evidence a packet asks for.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "clause", rename_all = "snake_case")]
+pub enum EvidenceClause {
+    /// At least `n` `file:line` citations that resolve.
+    CitesSpans { n: usize },
+    /// A citation into each of these files specifically.
+    CitesFiles { files: Vec<String> },
+    /// A run loom itself performed.
+    CitesRun,
+    /// The proof must grade at least this high once loom has run it.
+    ProofStrengthAtLeast { grade: String },
+    /// The resulting fact must reach at least this verification level.
+    VerificationAtLeast { level: String },
+    /// Something must exist afterwards that did not before.
+    Produces { what: String },
+    /// A substantive sentence — the weakest clause, and never the only one on
+    /// anything that counts.
+    Prose,
+}
+
+impl EvidenceClause {
+    /// One line a worker can act on.
+    pub fn describe(&self) -> String {
+        match self {
+            EvidenceClause::CitesSpans { n } => {
+                format!("cite at least {n} file:line location(s) that exist")
+            }
+            EvidenceClause::CitesFiles { files } => {
+                format!("cite a location in each of: {}", files.join(", "))
+            }
+            EvidenceClause::CitesRun => "let loom run it — a reported outcome does not count".into(),
+            EvidenceClause::ProofStrengthAtLeast { grade } => {
+                format!("the proof must grade {grade} or better once loom has run it")
+            }
+            EvidenceClause::VerificationAtLeast { level } => {
+                format!("the resulting fact must reach '{level}'")
+            }
+            EvidenceClause::Produces { what } => format!("produce: {what}"),
+            EvidenceClause::Prose => "say what you found, substantively".into(),
+        }
+    }
 }
 
 /// Compact graph context that tells an LLM where to look next. This is a map,
