@@ -11115,6 +11115,20 @@
       "updated_at": "2026-07-19T05:20:05.725Z"
     },
     {
+      "id": "8019be48fb7dc596551e52046fbb2afe",
+      "from_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "to_id": "5295cf0947be4511a73ce711d452e079",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T19:57:48.158Z",
+      "updated_at": "2026-07-25T19:57:48.158Z"
+    },
+    {
       "id": "8109484f3a86d31d49f7675a696e5df9",
       "from_id": "d23f5c463fb1e4861",
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
@@ -11701,6 +11715,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:11:00.772Z",
       "updated_at": "2026-07-19T05:18:23.385Z"
+    },
+    {
+      "id": "9893557b90dc4763f10836ce129023f0",
+      "from_id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "to_id": "f38f26335f02a23e2691c6b0025609e3",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T19:57:48.158Z",
+      "updated_at": "2026-07-25T19:57:48.158Z"
     },
     {
       "id": "99248f0b1333da6011308ddd74c78255",
@@ -16847,6 +16875,18 @@
       "asserted_at": "2026-07-25T10:09:50.860Z"
     },
     {
+      "id": "f4a8d1151f57fb550",
+      "subject_kind": "node",
+      "subject_id": "d1386a22f1b44e5b4",
+      "claim": "adjudication",
+      "state": "justified",
+      "criterion": "a declarative table, not logic: 228 lines of eight tool definitions, each pairing a JSON schema with the closure that serves it. Splitting it would separate every tool's schema from its handler — the one place they must be read together — and the complexity score is 1 because there is no branching to follow",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm",
+      "asserted_at": "2026-07-25T19:56:44.723Z"
+    },
+    {
       "id": "f4b8404e21252d793",
       "subject_kind": "edge",
       "subject_id": "95bac7d41a08fb54e8ebd0325380001d",
@@ -18107,6 +18147,27 @@
         "text": "observed by loom: `cargo test --test ring25_audit_deepen -q` exited 0"
       },
       "recorded_at": "2026-07-25T10:09:50.860Z"
+    },
+    {
+      "id": "e2c2372c6fef99834",
+      "fact_id": "f4a8d1151f57fb550",
+      "payload": {
+        "kind": "span",
+        "file": "src/mcp.rs",
+        "start": 35,
+        "end": 35,
+        "hash": "962c4aa1aef4e6df"
+      },
+      "recorded_at": "2026-07-25T19:56:44.723Z"
+    },
+    {
+      "id": "e9993e8a5e678c6b2",
+      "fact_id": "f4a8d1151f57fb550",
+      "payload": {
+        "kind": "claim",
+        "text": "src/mcp.rs:35"
+      },
+      "recorded_at": "2026-07-25T19:56:44.723Z"
     },
     {
       "id": "e1d2e97c81ca66e53",
@@ -24946,6 +25007,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "8019be48fb7dc596551e52046fbb2afe",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "801a7482a892d6c368b2badb7d013574",
       "target_kind": "node",
       "key": "calls",
@@ -25952,6 +26020,13 @@
       "key": "symbol_fingerprints",
       "value": "{\"Entry\":\"0be689017feacdaf\",\"append\":\"25b8f89b7c339008\",\"exists\":\"47513d3216053dcb\",\"now_iso\":\"17f8b5475d2ffd48\",\"path\":\"c84d382e7760cf53\",\"read\":\"a2d6c59fe9ebcafc\",\"reference\":\"e4b2aae8bab91355\",\"timestamp\":\"9271f21d6b477d33\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "9893557b90dc4763f10836ce129023f0",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
     },
     {
       "target_id": "9926afe98b7796517e008df1f27e097a",
@@ -28471,6 +28546,13 @@
       "target_kind": "edge",
       "key": "stale_cause",
       "value": "cargo test --test ring1 -q no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "d1386a22f1b44e5b4",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-07-25T19:56:44.725Z\",\"hash\":\"9dc761ee7847bc70\",\"metric\":228}",
       "truth_class": "derived"
     },
     {
