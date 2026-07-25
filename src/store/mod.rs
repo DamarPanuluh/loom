@@ -303,6 +303,19 @@ impl Store {
         // is an explicit "run a write command first", never a silent read of an
         // older shape.
         let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        // Older graph: a write command migrates it forward. NEWER graph: this
+        // binary is behind, and there is nothing the operator can run to fix
+        // that here — telling them to `loom sync` invites an action that fails
+        // with raw migration-library jargon, which is how a clear failure
+        // becomes a confusing one.
+        if user_version > SCHEMA_VERSION {
+            bail!(
+                "this graph is v{user_version}; this loom understands v{SCHEMA_VERSION}. \
+                 It was written by a newer loom — upgrade this one \
+                 (`cargo install --path .`) rather than migrating the graph, which \
+                 only ever moves forward"
+            );
+        }
         if user_version != SCHEMA_VERSION {
             bail!(
                 "graph schema (v{user_version}) needs migration to v{SCHEMA_VERSION} — run a \
@@ -507,6 +520,18 @@ fn schema_migrations() -> Migrations<'static> {
 
 fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
     adopt_legacy_schema_version(conn)?;
+    // Refuse a graph from the future BEFORE handing it to the migrator, which
+    // reports it as "migration number that is too high" — an accurate sentence
+    // about its own internals and a useless one to the person holding an old
+    // binary. Migrations only move forward; the fix is always to upgrade loom.
+    let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    if user_version > SCHEMA_VERSION {
+        bail!(
+            "this graph is v{user_version}; this loom understands v{SCHEMA_VERSION}. \
+             It was written by a newer loom — upgrade this one \
+             (`cargo install --path .`). The graph is untouched."
+        );
+    }
     schema_migrations()
         .to_latest(conn)
         .context("migrating graph schema")?;

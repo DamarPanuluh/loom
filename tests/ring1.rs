@@ -826,3 +826,42 @@ fn set_node_body_roundtrips() {
     assert_eq!(got.body["kind"], "sdk_method");
     assert_eq!(got.body["identity"], "/x");
 }
+
+/// A graph from the future is refused with a sentence about what to do, on
+/// BOTH the read and the write path.
+///
+/// The migrator's own message — "migration number that is too high" — is
+/// accurate about its internals and useless to the person holding an old
+/// binary. Worse, the read path used to tell them to run a write command,
+/// which is an instruction that cannot succeed: migrations only move forward.
+#[test]
+fn a_graph_from_the_future_says_upgrade_rather_than_migrate() {
+    let tmp = Tmp::new();
+    {
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        drop(store);
+    }
+    // Stamp the graph as written by a loom newer than this one.
+    let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
+    conn.pragma_update(None, "user_version", loom::SCHEMA_VERSION + 1)
+        .unwrap();
+    drop(conn);
+
+    for open in [
+        Store::open as fn(&std::path::Path) -> loom::Result<Store>,
+        Store::open_read as fn(&std::path::Path) -> loom::Result<Store>,
+    ] {
+        let msg = match open(tmp.path()) {
+            Ok(_) => panic!("a future graph must be refused"),
+            Err(e) => format!("{e}"),
+        };
+        assert!(
+            msg.contains("newer loom") && msg.contains("upgrade"),
+            "the refusal must name the fix: {msg}"
+        );
+        assert!(
+            !msg.contains("too high"),
+            "never surface the migrator's internal phrasing: {msg}"
+        );
+    }
+}
