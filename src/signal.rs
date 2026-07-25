@@ -601,10 +601,17 @@ fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
             .get(intent.id.as_str())
             .cloned()
             .unwrap_or_default();
+        // Gate on the PROPERTY, not the label. `proof_kind == "journey"` was a
+        // stand-in for "this proof exercises the real path" from before strength
+        // was derived — and S3 now says exactly that, checked from the call
+        // graph rather than taken from a tag someone typed. Requiring both
+        // meant a suite whose call closure demonstrably reaches the grounded
+        // symbol still read as "does not reach the code it proves", which is
+        // the opposite of what the graph knew. The boundary crossing a journey
+        // is really for is S5, and it is scored there.
         let has_journey = validations.iter().any(|(validation, edge)| {
             edge.status == InspectionStatus::Passing
                 && validation.status == "passed"
-                && validation.body.get("proof_kind").and_then(|v| v.as_str()) == Some("journey")
                 && strength_from(snap, &validation.id) >= crate::proofstrength::Strength::END_TO_END
         });
         if has_journey {
