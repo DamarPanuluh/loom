@@ -313,7 +313,6 @@ fn retiring_a_behavior_stops_its_claims_counting_as_debt() {
             .find(|r| r.name == "repaired")
             .unwrap()
             .state
-            .clone()
     };
     assert_eq!(
         repaired(&before),
