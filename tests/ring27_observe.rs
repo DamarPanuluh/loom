@@ -143,13 +143,24 @@ fn an_observed_run_binds_and_grades_as_liveness() {
 
 /// Running the same command twice updates one proof rather than littering the
 /// graph with near-duplicates — otherwise habitual use would be self-defeating.
+///
+/// And the SECOND run must report the same grade as the first. It used to read
+/// the grade off a node looked up by the name loom would have minted, so every
+/// run that reused an existing proof — which is the common case, since proofs
+/// are keyed on the command for exactly this reason — reported S0 for a proof
+/// the graph had already graded S1.
 #[test]
 fn the_same_command_twice_is_one_proof() {
     let tmp = Tmp::new();
     let _intent = graph(tmp.path());
 
-    observe(tmp.path(), Some("an order can be placed"), &["true"]);
-    observe(tmp.path(), Some("an order can be placed"), &["true"]);
+    let first = observe(tmp.path(), Some("an order can be placed"), &["true"]);
+    let second = observe(tmp.path(), Some("an order can be placed"), &["true"]);
+    assert_eq!(first["strength"], "S1", "{first}");
+    assert_eq!(
+        second["strength"], first["strength"],
+        "a repeat run reports the grade of the proof it bound to: {second}"
+    );
 
     let store = Store::open(tmp.path()).unwrap();
     let vals = store

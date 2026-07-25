@@ -412,11 +412,27 @@ pub(super) fn validator_contract(
                 .map(String::from)
         })
         .unwrap_or_default();
-    let write_back = format!(
-        "loom validation run {}  (or)  {}",
-        q(intent_name),
+    // A runnable proof cannot be verdicted by hand — the floor demands a Run,
+    // and offering `validation verdict` here sends the worker at a wall the
+    // write boundary will refuse. Offer it ONLY for a manual check, which is
+    // the one shape that has no command for loom to execute.
+    let runnable = !command.trim().is_empty()
+        && !matches!(
+            val.as_ref()
+                .and_then(|n| n.body.get("type").and_then(|t| t.as_str()))
+                .unwrap_or("test"),
+            "manual_check"
+        );
+    let write_back = if runnable {
+        format!(
+            "loom observe --for {} -- {}   (or)   loom validation run {}",
+            q(intent_name),
+            if command.is_empty() { "<cmd>" } else { &command },
+            q(intent_name)
+        )
+    } else {
         verdict_write_back(edge, val_name, intent_name)
-    );
+    };
     Ok(PromptContract {
         role: "validator".into(),
         mindset:
@@ -424,19 +440,25 @@ pub(super) fn validator_contract(
                   to make a proof pass. A blocked proof is honest — record it with a reason."
                 .into(),
         why_now: format!("validates edge is {}", edge.status),
-        allowed_actions: vec![
-            format!(
-                "run: {}",
-                if command.is_empty() {
-                    "<no command — manual_check>".into()
-                } else {
+        allowed_actions: {
+            let mut actions = Vec::new();
+            if runnable {
+                // Prefer the wrapper: it runs the command the worker was going
+                // to run anyway and keeps the run as evidence, which is the
+                // only route to the `verified` this edge needs.
+                actions.push(format!(
+                    "loom observe --for {} -- {}",
+                    q(intent_name),
                     command
-                }
-            ),
-            format!("loom validation run {}", q(intent_name)),
-            verdict_write_back(edge, val_name, intent_name),
-            FINDING_ADD_ACTION.into(),
-        ],
+                ));
+                actions.push(format!("loom validation run {}", q(intent_name)));
+            } else {
+                actions.push("<no command — this is a manual check>".into());
+                actions.push(verdict_write_back(edge, val_name, intent_name));
+            }
+            actions.push(FINDING_ADD_ACTION.into());
+            actions
+        },
         forbidden_actions: vec![
             "edit code to make the proof pass".into(),
             "mark passed without observed proof".into(),
@@ -448,8 +470,12 @@ pub(super) fn validator_contract(
                 level: "verified".into(),
             },
         ],
-        required_evidence:
-            "command output, test count, failure message, or a concrete blocker reason".into(),
+        required_evidence: if runnable {
+            "a run loom performed — its exit code and output. A reported outcome is refused"
+                .into()
+        } else {
+            "what you observed in the manual check, citing file:line or a journal entry".into()
+        },
         evidence_template: None,
         examples: None,
         pre_screened_hits: Vec::new(),

@@ -965,6 +965,7 @@ pub(crate) fn observe_run(
 
     // Bind it, when there is something to bind it to.
     let mut bound: Option<String> = None;
+    let mut bound_id: Option<String> = None;
     if let Some(node) = &intent {
         let validation = existing_or_new_proof(&store, &node.id, &command)?;
         let result = if run.exit_code == 0 {
@@ -982,16 +983,15 @@ pub(crate) fn observe_run(
         )?;
         regrade(&store, &validation.id)?;
         bound = Some(validation.name.clone());
+        bound_id = Some(validation.id.clone());
     }
 
-    let grade = match &bound {
-        Some(_) => {
-            let v = store.resolve_node(&command_proof_name(&command), Some(NodeType::Validation));
-            match v {
-                Ok(node) => crate::proofstrength::of(&store, &node.id)?.as_str(),
-                Err(_) => "S0",
-            }
-        }
+    // Read the grade off the proof this run actually bound to. Looking it up by
+    // the name loom WOULD have minted reports S0 for every run that reused an
+    // existing proof — which is most of them, since the proof is keyed on the
+    // command precisely so repeat runs land on one node.
+    let grade = match &bound_id {
+        Some(id) => crate::proofstrength::of(&store, id)?.as_str(),
         None => "-",
     };
 
