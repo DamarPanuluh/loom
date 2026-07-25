@@ -1245,7 +1245,17 @@ pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEn
             }
         }
         Lane::Validate => {
-            let validates = store.edges_with(Some(EdgeKind::Validates), None, None)?;
+            let validates: Vec<Edge> = store
+                .live_edges_by_status(
+                    TruthClass::Asserted,
+                    &[
+                        InspectionStatus::Uninspected,
+                        InspectionStatus::NeedsReverification,
+                    ],
+                )?
+                .into_iter()
+                .filter(|e| e.kind == EdgeKind::Validates)
+                .collect();
             for e in validates
                 .iter()
                 .filter(|e| e.status == InspectionStatus::Uninspected)
@@ -1263,9 +1273,42 @@ pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEn
                     "proof went stale — a dependency changed; re-run it",
                 )?);
             }
+            // The other two things the `proven` rung counts. Omitting them made
+            // the roster shorter than the depth it is supposed to enumerate —
+            // the same quantity derived a third time and drifting again.
+            for intent in unproven_implemented_intents(store)? {
+                out.push(node_entry(
+                    "validate",
+                    "mid",
+                    &intent,
+                    "implemented, with no proof that establishes the behavior".into(),
+                ));
+            }
+            for (intent, shallow) in journey_gaps(store)? {
+                let why = if shallow {
+                    "user-visible; its proof does not reach the code it proves"
+                } else {
+                    "user-visible with no journey proof"
+                };
+                out.push(node_entry("validate", "high", &intent, why.into()));
+            }
         }
         Lane::Quality => {
-            let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
+            // `live_edges_by_status` is what the DEPTH counts: it drops
+            // superseded groundings and claims about retired behaviors. Reading
+            // raw edges here re-admitted exactly what the rung had excluded, so
+            // the roster ran longer than the number beside it.
+            let governs: Vec<Edge> = store
+                .live_edges_by_status(
+                    TruthClass::Asserted,
+                    &[
+                        InspectionStatus::Uninspected,
+                        InspectionStatus::NeedsReverification,
+                    ],
+                )?
+                .into_iter()
+                .filter(|e| e.kind == EdgeKind::Governs)
+                .collect();
             for e in governs
                 .iter()
                 .filter(|e| e.status == InspectionStatus::Uninspected)
@@ -1419,9 +1462,32 @@ pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEn
                 ));
             }
         }
+        Lane::Audit => {
+            for f in audit_subjects(store)? {
+                match store.get_node(&f.subject)? {
+                    Some(n) => out.push(node_entry("audit", "mid", &n, f.detail.clone())),
+                    // Nothing to point at — the subject is the graph itself.
+                    None => out.push(QueueEntry {
+                        mode: "audit".into(),
+                        effort: "mid".into(),
+                        routing_hint: Some("judgment".into()),
+                        cause_class: None,
+                        owner_role: Some("analyzer".into()),
+                        reason: f.detail.clone(),
+                        target: Target {
+                            kind: "graph".into(),
+                            id: String::new(),
+                            name: f.kind.to_string(),
+                            from: None,
+                            to: None,
+                        },
+                    }),
+                }
+            }
+        }
         // Lanes that route to a whole-graph command instead of a per-item
-        // roster (`loom door`, `loom doctor`, `loom export`).
-        Lane::Seed | Lane::Audit | Lane::Export | Lane::Deepen => {}
+        // roster (`loom door`, `loom export`).
+        Lane::Seed | Lane::Export | Lane::Deepen => {}
     }
     Ok(out)
 }
@@ -1537,6 +1603,15 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
 /// Reads the same smells the `proven` rung counts, so the queue and the rung
 /// cannot disagree about how much work there is.
 fn journey_gap(store: &Store) -> Result<Option<(Node, bool)>> {
+    Ok(journey_gaps(store)?.into_iter().next())
+}
+
+/// Every user-visible behavior whose journey proof is missing or too shallow.
+///
+/// One list, so the rung's count, the served packet and the roster are the same
+/// three views of it rather than three derivations.
+fn journey_gaps(store: &Store) -> Result<Vec<(Node, bool)>> {
+    let mut out = Vec::new();
     for s in crate::signal::smells(store)? {
         let shallow = s.kind == "proof_too_shallow_for_intent";
         if !shallow && s.kind != "missing_journey_proof" {
@@ -1553,10 +1628,10 @@ fn journey_gap(store: &Store) -> Result<Option<(Node, bool)>> {
             continue;
         }
         if let Some(node) = store.get_node(intent_id)? {
-            return Ok(Some((node, shallow)));
+            out.push((node, shallow));
         }
     }
-    Ok(None)
+    Ok(out)
 }
 
 /// The first thing the `sound` rung is counting, whatever kind it is.
@@ -1566,43 +1641,50 @@ fn journey_gap(store: &Store) -> Result<Option<(Node, bool)>> {
 /// servable. Each is rendered as an [`crate::audit::AuditFinding`] so the lane
 /// has one packet shape rather than three.
 fn first_audit_subject(store: &Store) -> Result<Option<crate::audit::AuditFinding>> {
-    // Fabrication signatures first: a record that was never earned outranks a
-    // structural complaint about code that is at least honestly described.
-    if let Some(f) = crate::audit::run(store)?
+    Ok(audit_subjects(store)?.into_iter().next())
+}
+
+/// Everything the `sound` rung counts, as servable findings.
+///
+/// Fabrication signatures first — a record that was never earned outranks a
+/// structural complaint about code that is at least honestly described.
+fn audit_subjects(store: &Store) -> Result<Vec<crate::audit::AuditFinding>> {
+    let mut out: Vec<crate::audit::AuditFinding> = crate::audit::run(store)?
         .into_iter()
-        .find(|f| store.get_node(&f.subject).ok().flatten().is_some())
-    {
-        return Ok(Some(f));
-    }
+        .filter(|f| store.get_node(&f.subject).ok().flatten().is_some())
+        .collect();
     for issue in crate::signal::doctor(store)? {
         // `doctor` reports ids inside its message; serve only those we can
         // point a packet at.
-        if let Some(id) = issue
+        // A doctor issue names a node when it can. When it cannot, the subject
+        // is the GRAPH — and it is still counted by `sound`, so it must still be
+        // servable, or the rung advertises work the queue cannot hand back.
+        let id = issue
             .message
             .split_whitespace()
             .find(|t| t.len() == 32 && t.chars().all(|c| c.is_ascii_hexdigit()))
-        {
-            if store.get_node(id)?.is_some() {
-                return Ok(Some(crate::audit::AuditFinding {
-                    kind: "doctor_issue",
-                    subject: id.to_string(),
-                    detail: issue.message.clone(),
-                    remedy: format!("`loom doctor` reports: {}", issue.kind),
-                }));
-            }
-        }
+            .filter(|t| store.get_node(t).ok().flatten().is_some())
+            .unwrap_or("");
+        out.push(crate::audit::AuditFinding {
+            kind: "doctor_issue",
+            subject: id.to_string(),
+            detail: issue.message.clone(),
+            remedy: format!("`loom doctor` reports: {}", issue.kind),
+        });
     }
     for smell in crate::signal::smells(store)? {
-        if let Some((_, id)) = smell.identity.rsplit_once(':') {
-            if store.get_node(id)?.is_some() {
-                return Ok(Some(crate::audit::AuditFinding {
-                    kind: "smell",
-                    subject: id.to_string(),
-                    detail: smell.message.clone(),
-                    remedy: smell.remedy.clone(),
-                }));
-            }
-        }
+        let id = smell
+            .identity
+            .rsplit_once(':')
+            .map(|(_, id)| id)
+            .filter(|id| store.get_node(id).ok().flatten().is_some())
+            .unwrap_or("");
+        out.push(crate::audit::AuditFinding {
+            kind: "smell",
+            subject: id.to_string(),
+            detail: smell.message.clone(),
+            remedy: smell.remedy.clone(),
+        });
     }
-    Ok(None)
+    Ok(out)
 }
