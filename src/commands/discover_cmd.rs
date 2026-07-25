@@ -56,6 +56,14 @@ pub(crate) fn find_cmd(
     let kinds = [NodeType::Intent, NodeType::CodeFile, NodeType::QualityRule];
     let filter_ids = resolve_find_filters(&store, tag, where_facets)?;
     let has_filters = tag.is_some() || !where_facets.is_empty();
+    let filter_desc = {
+        let mut parts: Vec<String> = Vec::new();
+        if let Some(t) = tag {
+            parts.push(format!("tag '{t}'"));
+        }
+        parts.extend(where_facets.iter().cloned());
+        parts.join(" and ")
+    };
     let q = query.trim();
 
     if exact {
@@ -92,7 +100,7 @@ pub(crate) fn find_cmd(
         hits
     };
 
-    print_find_hits(&store, q, &limited, false, json)
+    print_find_hits(&store, q, &limited, false, &filter_desc, json)
 }
 
 fn resolve_find_filters(
@@ -181,7 +189,7 @@ fn find_exact(
             }
         }
     }
-    print_find_hits(store, query, &limited, true, json)
+    print_find_hits(store, query, &limited, true, "", json)
 }
 
 fn print_find_hits(
@@ -189,6 +197,8 @@ fn print_find_hits(
     query: &str,
     limited: &[(usize, String, String, String)],
     exact_only: bool,
+    // What narrowed this search, when the query itself was empty.
+    filter_desc: &str,
     json: bool,
 ) -> Result<()> {
     let rows = project_find_hits(store, limited)?;
@@ -211,6 +221,13 @@ fn print_find_hits(
                 println!(
                     "no exact match for '{query}' — nothing named exactly this exists \
                      (drop --exact for fuzzy matches)"
+                );
+            } else if query.trim().is_empty() && !filter_desc.is_empty() {
+                // Filter-only search. Reporting "no match for ''" reads as a
+                // failed text search and sends the reader hunting for a typo in
+                // a query they never typed; the filter is what came up empty.
+                println!(
+                    "nothing matches {filter_desc} — the filter is valid, nothing satisfies it"
                 );
             } else {
                 println!(
