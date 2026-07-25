@@ -623,7 +623,23 @@ pub(crate) fn unproven_implemented_intents(store: &Store) -> Result<Vec<Node>> {
             continue;
         }
         let proofs = store.edges_with(Some(EdgeKind::Validates), None, Some(&n.id))?;
-        if !proofs.iter().any(|e| e.status == InspectionStatus::Passing) {
+        // A PASSING proof is not enough — it must establish something. An S1
+        // proof means loom ran a command and it exited zero, which is liveness,
+        // not behavior. Accepting it here is how a queue gets drained by
+        // binding `cargo test --test ringN` to whatever intent the packet
+        // named: every run honest, every claim unestablished, the rung green.
+        //
+        // That is the original sin one level up. The old graph had 54 of 59
+        // proofs whose outcome nobody observed; a graph of suite-level S1
+        // bindings has proofs loom DID observe that still do not say the
+        // behavior works.
+        let proven = proofs.iter().any(|e| {
+            e.status == InspectionStatus::Passing
+                && crate::proofstrength::of(store, &e.from_id).unwrap_or(
+                    crate::proofstrength::Strength::S0,
+                ) >= crate::proofstrength::Strength::MEANINGFUL
+        });
+        if !proven {
             out.push(n);
         }
     }

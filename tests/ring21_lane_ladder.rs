@@ -72,17 +72,20 @@ proptest! {
     fn compass_is_the_lowest_unmet_rungs_lane(c in any_inputs()) {
         let rungs = build_rungs(&c);
         let (phase, rung, _cmd, axis) = compass(&rungs);
-        match rungs.iter().find(|r| r.state == RungState::Unmet) {
+        // The gate is the lowest rung that is Unmet OR Open — `deepen` is
+        // permanently Open, so it is the fallthrough for a graph with code in
+        // it. "complete" survives only for a graph with nothing to deepen at
+        // all, where every rung is NotApplicable.
+        match rungs
+            .iter()
+            .find(|r| matches!(r.state, RungState::Unmet | RungState::Open))
+        {
             Some(gate) => {
                 prop_assert_eq!(&phase, gate.lane.as_str());
                 prop_assert_eq!(&rung, &gate.name);
                 prop_assert_eq!(axis, Some(gate.lane.axis()));
             }
-            // No Unmet rung: the compass falls through to `deepen`, which is
-            // permanently Open. There is no "complete" — a codebase is never
-            // finished being understood, so the ladder ends in a standing
-            // invitation rather than a terminal state.
-            None => prop_assert_eq!(&phase, "deepen"),
+            None => prop_assert_eq!(&phase, "complete"),
         }
     }
 

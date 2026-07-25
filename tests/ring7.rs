@@ -103,11 +103,38 @@ fn build_clean_graph(tmp: &Tmp) -> Store {
             )
             .unwrap();
     }
-    // Each implemented LEAF needs a passing proof, or the validate lane has
-    // real work and the graph is not clean. (`sys` is a hierarchy parent —
-    // proven through its children.)
-    for (intent, name) in [(&auth, "login proof"), (&cart, "cart proof")] {
-        loom::commands::prove_intent(&store, &intent.id, name, "true").unwrap();
+    // Each implemented LEAF needs a proof that reaches S2 — `proven` does not
+    // accept liveness. A bare `prove_intent` with `true` lands at S1: loom ran
+    // a command and it exited zero, which says nothing about the behavior. So
+    // this fixture, which asserts the graph is CLEAN, has to hold proofs that
+    // actually assert something. (`sys` is a hierarchy parent — proven through
+    // its children.)
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    for (intent, slug) in [(&auth, "login"), (&cart, "cart")] {
+        let spec = format!(
+            "journey: {slug}\nsteps:\n  - name: exercise it\n    intent: {}\n    run: echo {slug}-ok\n    expect:\n      stdout_contains: [\"{slug}-ok\"]\n",
+            intent.name
+        );
+        std::fs::write(tmp.path().join(format!("journeys/{slug}.yaml")), spec).unwrap();
+        let val = store
+            .add_node(
+                NodeType::Validation,
+                &format!("{slug} proof"),
+                "",
+                "not_run",
+                serde_json::json!({
+                    "type": "test",
+                    "command": format!("echo {slug}-ok"),
+                    "proof_kind": "journey",
+                    "artifact": format!("journeys/{slug}.yaml"),
+                }),
+            )
+            .unwrap();
+        store
+            .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
+            .unwrap();
+        let fresh = store.get_node(&val.id).unwrap().unwrap();
+        loom::commands::observe_validation(&store, &fresh).unwrap();
     }
     // arm duplicate detection with distinct vocab tags (no collisions)
     for (id, term) in [(&sys.id, "system"), (&auth.id, "auth"), (&cart.id, "cart")] {

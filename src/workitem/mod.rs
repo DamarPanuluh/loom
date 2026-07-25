@@ -15,6 +15,7 @@ use crate::store::Store;
 use crate::Result;
 pub(crate) use queues::ungrounded_implemented_intents;
 pub(crate) use queues::unmeasured_quality_pairs;
+pub(crate) use queues::unproven_implemented_intents;
 pub use queues::unratified_intents;
 use queues::{
     analyze_item, audit_item, build_item, coverage_item, deepen_item, elaborate_item, fix_item,

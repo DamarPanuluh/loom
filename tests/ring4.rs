@@ -451,7 +451,7 @@ fn fully_grounded_no_residue_routes_complete() {
     // A real proof: loom runs it and records what it observed. A
     // hand-written passing verdict is refused now — it is the same
     // shortcut that made this graph report proofs nobody ran.
-    loom::commands::prove_intent(&store, &a.id, "proof", "true").unwrap();
+    prove_s2(&store, tmp.path(), &a.id, "proof-a");
     ratify_all(&store);
     let before_export = ladder(&store).unwrap();
     assert_eq!(before_export.phase, "export");
@@ -752,7 +752,7 @@ fn proven_rung_requires_each_implemented_leaf_to_have_passing_validation() {
     // A real proof: loom runs it and records what it observed. A
     // hand-written passing verdict is refused now — it is the same
     // shortcut that made this graph report proofs nobody ran.
-    loom::commands::prove_intent(&store, &a.id, "proof a", "true").unwrap();
+    prove_s2(&store, tmp.path(), &a.id, "proof-a-leaf");
     ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "validate");
@@ -963,6 +963,9 @@ fn proven_rung_honors_journey_axis_waiver() {
             TruthClass::Asserted,
         )
         .unwrap();
+    // The waiver excuses the JOURNEY axis, not proof depth — `proven` still
+    // requires S2, which is a separate question and deliberately not waivable.
+    prove_s2(&store, tmp.path(), &intent.id, "waiver-subject");
 
     let after = ladder(&store).unwrap();
     let proven = after.rungs.iter().find(|r| r.name == "proven").unwrap();
@@ -1007,7 +1010,7 @@ fn findings_route_to_triage_until_judged() {
     // A real proof: loom runs it and records what it observed. A
     // hand-written passing verdict is refused now — it is the same
     // shortcut that made this graph report proofs nobody ran.
-    loom::commands::prove_intent(&store, &i.id, "proof", "true").unwrap();
+    prove_s2(&store, tmp.path(), &i.id, "proof-i");
     // baseline: graph is clean but not complete until the travel export is fresh.
     ratify_all(&store);
     assert_eq!(ladder(&store).unwrap().phase, "export");
@@ -1109,7 +1112,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
             "llm",
         )
         .unwrap();
-    loom::commands::prove_intent(&store, &intent.id, "pay test", "true").unwrap();
+    prove_s2(&store, tmp.path(), &intent.id, "pay-test");
 
     // Before seeding: hardened should be Met (no stale, no uninspected, no doctor, no pairs).
     ratify_all(&store);

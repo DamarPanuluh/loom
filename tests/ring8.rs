@@ -35,7 +35,7 @@ fn derived_finding(store: &Store) -> loom::model::Node {
         .unwrap()
 }
 
-fn mature_graph_with_codefile(store: &Store) -> loom::model::Node {
+fn mature_graph_with_codefile(store: &Store, root: &std::path::Path) -> loom::model::Node {
     let intent = store
         .add_node(
             NodeType::Intent,
@@ -64,7 +64,7 @@ fn mature_graph_with_codefile(store: &Store) -> loom::model::Node {
             "llm",
         )
         .unwrap();
-    loom::commands::prove_intent(store, &intent.id, "proof", "true").unwrap();
+    prove_s2(store, root, &intent.id, "ring8-proof");
     codefile
 }
 
@@ -94,7 +94,7 @@ fn finding_adjudication_survives_derived_graph_wipe() {
 fn finding_adjudication_stays_settled_on_hash_churn_within_metric_band() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let codefile = mature_graph_with_codefile(&store);
+    let codefile = mature_graph_with_codefile(&store, tmp.path());
     store
         .set_facet(
             &codefile.id,
@@ -138,7 +138,7 @@ fn finding_adjudication_stays_settled_on_hash_churn_within_metric_band() {
 fn finding_adjudication_goes_stale_when_metric_worsens_past_band() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let codefile = mature_graph_with_codefile(&store);
+    let codefile = mature_graph_with_codefile(&store, tmp.path());
     store
         .set_facet(
             &codefile.id,
@@ -186,7 +186,7 @@ fn finding_adjudication_goes_stale_when_metric_worsens_past_band() {
 fn needed_finding_still_stales_on_hash_change() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let codefile = mature_graph_with_codefile(&store);
+    let codefile = mature_graph_with_codefile(&store, tmp.path());
     store
         .set_facet(
             &codefile.id,
@@ -222,7 +222,7 @@ fn needed_finding_still_stales_on_hash_change() {
 fn triage_mode_serves_findings_until_verdict_is_recorded() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    mature_graph_with_codefile(&store);
+    mature_graph_with_codefile(&store, tmp.path());
     let finding = derived_finding(&store);
 
     let item = workitem::next(&store, Some(Lane::Triage))
@@ -257,7 +257,7 @@ fn triage_mode_serves_findings_until_verdict_is_recorded() {
 fn triage_item_surfaces_owning_intents_as_cohesion_evidence() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let codefile = mature_graph_with_codefile(&store);
+    let codefile = mature_graph_with_codefile(&store, tmp.path());
     let finding = derived_finding(&store);
     store
         .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
@@ -318,7 +318,7 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
     let tmp = Tmp::new();
     tmp.write("src/x.rs", "pub fn x() {}\n");
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let codefile = mature_graph_with_codefile(&store);
+    let codefile = mature_graph_with_codefile(&store, tmp.path());
 
     let existing_owner = store
         .realizing_implementers(&codefile.id)
@@ -517,7 +517,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
     // resolved, preserving open + resolved == total.
     let tmp2 = Tmp::new();
     let store = Store::init(tmp2.path(), Some("t"), false).unwrap();
-    let codefile = mature_graph_with_codefile(&store);
+    let codefile = mature_graph_with_codefile(&store, tmp.path());
     store
         .set_facet(
             &codefile.id,

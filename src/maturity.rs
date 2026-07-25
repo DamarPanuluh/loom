@@ -130,14 +130,6 @@ impl LadderInputs {
             .filter(|n| n.status == "implemented")
             .collect();
 
-        // Grounding: only LEAF intents need code. A hierarchy parent is realized
-        // through its children, so it is exempt from the grounding requirement.
-        let parents: std::collections::HashSet<String> = store
-            .list_edges(Some(EdgeKind::Hierarchy), usize::MAX)?
-            .into_iter()
-            .map(|e| e.from_id)
-            .collect();
-
         // Edge residue, split exactly the way the lanes serve it.
         let failing = store
             .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
@@ -162,16 +154,12 @@ impl LadderInputs {
 
         // Proofs: registered validations are not proof until they pass.
         let validations = validation_summary(store)?;
-        let mut unproven_implemented = 0usize;
-        for n in &implemented {
-            if parents.contains(&n.id) {
-                continue; // roll-up parent — proven through child leaves
-            }
-            let proofs = store.edges_with(Some(EdgeKind::Validates), None, Some(&n.id))?;
-            if !proofs.iter().any(|e| e.status == InspectionStatus::Passing) {
-                unproven_implemented += 1;
-            }
-        }
+        // Counted by the SAME function the queue serves from. This was an
+        // inline second copy of the predicate, so when the queue learned that a
+        // passing proof must also reach S2, the rung went on counting bare
+        // passes — the rung reading 15 while the queue held 59. Two definitions
+        // of one quantity, agreeing only until one of them changed.
+        let unproven_implemented = crate::workitem::unproven_implemented_intents(store)?.len();
 
         let smells = crate::signal::smells(store)?;
         // A resolving adjudication is an accepted exception and no longer counts

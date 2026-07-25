@@ -905,21 +905,53 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
         .unwrap();
     }
 
-    // Both intents are user-visible, so their journey axis is real validate
-    // work — a unit proof does not establish a behavior a user can see. Waive
-    // it explicitly: this test is about ORDERING, and the honest way to reach
-    // elaborate is to drain validate, not to pretend it was empty.
-    for intent in [&a, &b] {
+    // `proven` requires S2: a proof that asserts something about its OUTPUT,
+    // not merely that a command exited zero. Proof depth is deliberately not
+    // waivable, so this ordering fixture has to earn it — each intent gets a
+    // spec with a real assertion, which is what draining validate honestly
+    // looks like.
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    for (intent, slug) in [(&a, "flow-a"), (&b, "flow-b")] {
+        let spec = format!(
+            "journey: {slug}\nsteps:\n  - name: run it\n    intent: {}\n    run: echo ordering-ok\n    expect:\n      stdout_contains: [\"ordering-ok\"]\n",
+            intent.name
+        );
+        std::fs::write(tmp.path().join(format!("journeys/{slug}.yaml")), spec).unwrap();
+        let val = store
+            .add_node(
+                NodeType::Validation,
+                &format!("{slug} proof"),
+                "",
+                "not_run",
+                serde_json::json!({
+                    "type": "test",
+                    "command": "echo ordering-ok",
+                    "proof_kind": "journey",
+                    "artifact": format!("journeys/{slug}.yaml"),
+                }),
+            )
+            .unwrap();
+        store
+            .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
+            .unwrap();
+        let fresh = store.get_node(&val.id).unwrap().unwrap();
+        loom::commands::observe_validation(&store, &fresh).unwrap();
+        // The journey axis is a separate question from proof depth; this test
+        // is about ordering, so waive that one explicitly.
         store
             .set_facet(
                 &intent.id,
                 TargetKind::Node,
                 "waiver:journey",
-                "ordering fixture: this test exercises queue precedence, not proof depth",
+                "ordering fixture: exercises queue precedence, not end-to-end depth",
                 TruthClass::Asserted,
             )
             .unwrap();
     }
+    // No sync here on purpose: `observe_validation` grades the proof in place,
+    // and a sync would materialize structural smells this ordering fixture
+    // never intended to create — putting triage in front of elaborate and
+    // testing something other than the precedence this test is about.
 
     // Now elaborate should surface (both intents still have open scenarios
     // axes, and no other queue has work).

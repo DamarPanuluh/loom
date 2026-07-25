@@ -348,3 +348,42 @@ pub fn earn_call_witness(store: &loom::store::Store, root: &std::path::Path, int
         .unwrap();
     loom::sync::run(store, root).unwrap();
 }
+
+/// Register a proof that reaches S2 — loom ran it AND it asserts something
+/// about the output.
+///
+/// `prove_intent` with `true` lands at S1: a command exited zero, which says
+/// nothing about the behavior. `proven` does not accept that, so any fixture
+/// asserting a CLEAN graph needs a proof that actually establishes something.
+/// The alternative is fixtures that are green for the reason this project
+/// exists to reject.
+#[allow(dead_code)]
+pub fn prove_s2(store: &loom::store::Store, root: &std::path::Path, intent_id: &str, slug: &str) {
+    use loom::model::{EdgeKind, NodeType};
+    let intent = store.get_node(intent_id).unwrap().expect("intent exists");
+    std::fs::create_dir_all(root.join("journeys")).unwrap();
+    let spec = format!(
+        "journey: {slug}\nsteps:\n  - name: exercise it\n    intent: {}\n    run: echo {slug}-ok\n    expect:\n      stdout_contains: [\"{slug}-ok\"]\n",
+        intent.name
+    );
+    std::fs::write(root.join(format!("journeys/{slug}.yaml")), spec).unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            &format!("{slug} proof"),
+            "",
+            "not_run",
+            serde_json::json!({
+                "type": "test",
+                "command": format!("echo {slug}-ok"),
+                "proof_kind": "journey",
+                "artifact": format!("journeys/{slug}.yaml"),
+            }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &val.id, intent_id)
+        .unwrap();
+    let fresh = store.get_node(&val.id).unwrap().unwrap();
+    loom::commands::observe_validation(store, &fresh).unwrap();
+}
