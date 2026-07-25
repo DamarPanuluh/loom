@@ -94,6 +94,22 @@ pub fn observe_command(
             })
         }
     };
+    // A command that failed because loom's OWN infrastructure got in the way is
+    // not a failing behavior. The child blocking on a lock its parent holds
+    // exits non-zero exactly like a failing test — that ambiguity is what let
+    // `observe` record a false failing verdict against a passing journey. Refuse
+    // to attribute it to the code.
+    let stderr_text = String::from_utf8_lossy(&output.stderr);
+    if output.status.code().unwrap_or(-1) != 0
+        && stderr_text.contains(crate::store::LOCK_CONTENTION_MARKER)
+    {
+        return Ok(Observation::Blocked {
+            reason: format!(
+                "`{command}` could not be observed: it needed the graph while loom held it. \
+                 This is loom's own infrastructure failing, not the behavior."
+            ),
+        });
+    }
     Ok(Observation::Ran(Box::new(record(
         root,
         producer,

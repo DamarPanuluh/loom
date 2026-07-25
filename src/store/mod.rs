@@ -520,6 +520,13 @@ UPDATE node
    AND json_extract(body, '$.proof_level') IS NOT NULL;
 "#;
 
+/// Stamped into the lock-contention error so a RUNNER can recognise its own
+/// infrastructure failing, rather than attributing it to the code under test.
+/// A child blocked on a lock its parent holds exits non-zero exactly like a
+/// failing test, and that ambiguity once made loom record a false failing
+/// verdict against a behavior that passes.
+pub const LOCK_CONTENTION_MARKER: &str = "loom-lock-contention";
+
 fn schema_migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(SCHEMA),
@@ -662,7 +669,7 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
         }
     }
     bail!(
-        "graph is locked by another loom process (waiting for {} access)",
+        "{LOCK_CONTENTION_MARKER}: graph is locked by another loom process (waiting for {} access)",
         if exclusive { "write" } else { "read" }
     )
 }
