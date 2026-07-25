@@ -1,2 +1,6 @@
 /target
 .loom/
+
+# insta writes pending snapshots next to the source under test; they are
+# review scratch, never source.
+*.pending-snap
