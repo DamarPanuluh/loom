@@ -170,27 +170,35 @@ fn used(
     for hop in 1..=2 {
         let mut next = Vec::new();
         for id in &frontier {
-            for kind in [EdgeKind::Sequence, EdgeKind::Triggers, EdgeKind::Hierarchy] {
-                let Ok(edges) = store.edges_with(Some(kind), None, Some(id)) else {
+            for from in callers_of(store, id) {
+                if !seen.insert(from.clone()) {
                     continue;
-                };
-                for e in edges {
-                    if !seen.insert(e.from_id.clone()) {
-                        continue;
-                    }
-                    if named.contains(&e.from_id) {
-                        return (
-                            Some(format!("reached from recorded usage, {hop} hop(s)")),
-                            hop,
-                        );
-                    }
-                    next.push(e.from_id);
                 }
+                if named.contains(&from) {
+                    return (
+                        Some(format!("reached from recorded usage, {hop} hop(s)")),
+                        hop,
+                    );
+                }
+                next.push(from);
             }
         }
         frontier = next;
     }
     (None, 0)
+}
+
+/// Everything one hop upstream of an intent over the flow relationships.
+///
+/// Split out of `used` so the walk reads as a breadth-first search rather than
+/// four nested loops — the shape loom flagged.
+fn callers_of(store: &Store, intent_id: &str) -> Vec<String> {
+    [EdgeKind::Sequence, EdgeKind::Triggers, EdgeKind::Hierarchy]
+        .into_iter()
+        .filter_map(|kind| store.edges_with(Some(kind), None, Some(intent_id)).ok())
+        .flatten()
+        .map(|e| e.from_id)
+        .collect()
 }
 
 /// Intent ids named by journal entries that record real work.

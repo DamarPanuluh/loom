@@ -1196,295 +1196,24 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
 /// `next` and `queue_counts`.
 pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEntry>> {
     use crate::lane::Lane;
-    use crate::model::TruthClass;
+
     if lane.observed_disabled() && store.identity()?.observed {
         return Ok(Vec::new());
     }
-    let not_measured_lane = |e: &Edge| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates);
     let mut out = Vec::new();
     match lane {
-        Lane::Fix => {
-            for e in
-                store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
-            {
-                out.push(edge_entry(
-                    store,
-                    &e,
-                    "fix",
-                    "failing verdict — repair at root cause",
-                )?);
-            }
-        }
-        Lane::Analyze => {
-            for e in store
-                .live_edges_by_status(
-                    TruthClass::Asserted,
-                    &[InspectionStatus::NeedsReverification],
-                )?
-                .iter()
-                .filter(|e| not_measured_lane(e))
-            {
-                out.push(edge_entry(
-                    store,
-                    e,
-                    "analyze",
-                    "dependency changed — re-verify this claim",
-                )?);
-            }
-            for e in store
-                .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
-                .iter()
-                .filter(|e| not_measured_lane(e))
-            {
-                out.push(edge_entry(
-                    store,
-                    e,
-                    "analyze",
-                    "uninspected claim — inspect the code and record a verdict",
-                )?);
-            }
-        }
-        Lane::Validate => {
-            let validates: Vec<Edge> = store
-                .live_edges_by_status(
-                    TruthClass::Asserted,
-                    &[
-                        InspectionStatus::Uninspected,
-                        InspectionStatus::NeedsReverification,
-                    ],
-                )?
-                .into_iter()
-                .filter(|e| e.kind == EdgeKind::Validates)
-                .collect();
-            for e in validates
-                .iter()
-                .filter(|e| e.status == InspectionStatus::Uninspected)
-            {
-                out.push(edge_entry(store, e, "validate", "unrun proof")?);
-            }
-            for e in validates
-                .iter()
-                .filter(|e| e.status == InspectionStatus::NeedsReverification)
-            {
-                out.push(edge_entry(
-                    store,
-                    e,
-                    "validate",
-                    "proof went stale — a dependency changed; re-run it",
-                )?);
-            }
-            // The other two things the `proven` rung counts. Omitting them made
-            // the roster shorter than the depth it is supposed to enumerate —
-            // the same quantity derived a third time and drifting again.
-            for intent in unproven_implemented_intents(store)? {
-                out.push(node_entry(
-                    "validate",
-                    "mid",
-                    &intent,
-                    "implemented, with no proof that establishes the behavior".into(),
-                ));
-            }
-            for (intent, shallow) in journey_gaps(store)? {
-                let why = if shallow {
-                    "user-visible; its proof does not reach the code it proves"
-                } else {
-                    "user-visible with no journey proof"
-                };
-                out.push(node_entry("validate", "high", &intent, why.into()));
-            }
-        }
-        Lane::Quality => {
-            // `live_edges_by_status` is what the DEPTH counts: it drops
-            // superseded groundings and claims about retired behaviors. Reading
-            // raw edges here re-admitted exactly what the rung had excluded, so
-            // the roster ran longer than the number beside it.
-            let governs: Vec<Edge> = store
-                .live_edges_by_status(
-                    TruthClass::Asserted,
-                    &[
-                        InspectionStatus::Uninspected,
-                        InspectionStatus::NeedsReverification,
-                    ],
-                )?
-                .into_iter()
-                .filter(|e| e.kind == EdgeKind::Governs)
-                .collect();
-            for e in governs
-                .iter()
-                .filter(|e| e.status == InspectionStatus::Uninspected)
-            {
-                out.push(edge_entry(store, e, "quality", "unmeasured quality rule")?);
-            }
-            for e in governs
-                .iter()
-                .filter(|e| e.status == InspectionStatus::NeedsReverification)
-            {
-                out.push(edge_entry(
-                    store,
-                    e,
-                    "quality",
-                    "quality verdict went stale — a dependency changed; re-measure",
-                )?);
-            }
-            out.extend(unmeasured_pair_entries(store)?);
-        }
-        Lane::Build => {
-            let mut intents =
-                store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
-            intents.extend(ungrounded_implemented_intents(store)?);
-            intents.sort_by(|a, b| {
-                rank_lifecycle(&a.status)
-                    .cmp(&rank_lifecycle(&b.status))
-                    .then(a.name.cmp(&b.name))
-            });
-            // Prerequisite-ready candidates first (entry 0 is what the lane
-            // serves), then blocked ones carrying their blocked reason.
-            let mut blocked = Vec::new();
-            for intent in &intents {
-                let unmet = unmet_prerequisites(store, &intent.id)?;
-                if unmet.is_empty() {
-                    out.push(node_entry("build", "mid", intent, build_reason(intent)));
-                } else {
-                    blocked.push(node_entry(
-                        "build",
-                        "mid",
-                        intent,
-                        format!(
-                            "blocked: requires {} — build the prerequisite(s) first, or break the requires cycle",
-                            unmet.join(", ")
-                        ),
-                    ));
-                }
-            }
-            out.extend(blocked);
-        }
-        Lane::Coverage => {
-            for cf in crate::commands::unowned_codefiles(store)? {
-                let missing = !store.root().join(&cf.name).exists();
-                let reason = if missing {
-                    "no longer exists on disk — unregister it (or re-register its successor)"
-                } else {
-                    "no owning intent — ground it, or unregister the file"
-                };
-                out.push(node_entry("coverage", "low", &cf, reason.into()));
-            }
-        }
-        Lane::Prove => {
-            for h in store.nodes_by_status(NodeType::Hypothesis, &["proposed"])? {
-                out.push(node_entry(
-                    "prove",
-                    "high",
-                    &h,
-                    "unproven hypothesis — prove or refute the claim against the code".into(),
-                ));
-            }
-        }
-        Lane::Triage => {
-            for fv in crate::signal::triage_findings(store)? {
-                let structural = is_structural_size_finding(&fv.node);
-                let reason = if fv.stale {
-                    "stale evidence-backed finding — re-adjudicate it"
-                } else if structural {
-                    "adjudicate structural finding — judge cohesion, not length"
-                } else {
-                    "adjudicate evidence-backed finding"
-                };
-                let effort = if structural { "mid" } else { "low" };
-                out.push(node_entry("triage", effort, &fv.node, reason.into()));
-            }
-            for item in store
-                .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
-                .into_iter()
-                .filter(|n| n.status == "new")
-            {
-                out.push(node_entry(
-                    "triage",
-                    "low",
-                    &item,
-                    "route raw human/external input".into(),
-                ));
-            }
-        }
-        Lane::Review => {
-            let floor = crate::policy::load(store)?.review_confidence_floor;
-            let mut candidates: Vec<Edge> = store
-                .live_edges_by_status(
-                    TruthClass::Asserted,
-                    &[InspectionStatus::Passing, InspectionStatus::Independent],
-                )?
-                .into_iter()
-                .filter(|e| e.confidence > 0.0 && e.confidence < floor)
-                .collect();
-            candidates.sort_by(|a, b| {
-                a.confidence
-                    .partial_cmp(&b.confidence)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-                    .then_with(|| a.id.cmp(&b.id))
-            });
-            for e in &candidates {
-                let reason = format!(
-                    "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
-                    e.confidence, floor
-                );
-                out.push(edge_entry(store, e, "review", &reason)?);
-            }
-        }
-        Lane::Elaborate => {
-            for card in crate::completeness::all_scorecards(store)?
-                .into_iter()
-                .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
-            {
-                let Some(intent) = store.get_node(&card.intent_id)? else {
-                    continue;
-                };
-                let open_names: Vec<&str> = card.open_axes().map(|a| a.axis.as_str()).collect();
-                let reason = format!(
-                    "user-visible idea with {} open completeness axis(es): {}",
-                    card.open,
-                    open_names.join(", ")
-                );
-                out.push(node_entry("elaborate", "high", &intent, reason));
-            }
-        }
-        Lane::Divergence => {
-            for d in crate::divergence::all(store)? {
-                if !d.blocking {
-                    continue;
-                }
-                let Some(n) = store.get_node(&d.intent_id)? else {
-                    continue;
-                };
-                out.push(node_entry(
-                    "ratify",
-                    "low",
-                    &n,
-                    format!("{}: {}", d.kind.as_str().replace('_', " "), d.evidence),
-                ));
-            }
-        }
-        Lane::Audit => {
-            for f in audit_subjects(store)? {
-                match store.get_node(&f.subject)? {
-                    Some(n) => out.push(node_entry("audit", "mid", &n, f.detail.clone())),
-                    // Nothing to point at — the subject is the graph itself.
-                    None => out.push(QueueEntry {
-                        mode: "audit".into(),
-                        effort: "mid".into(),
-                        routing_hint: Some("judgment".into()),
-                        cause_class: None,
-                        owner_role: Some("analyzer".into()),
-                        reason: f.detail.clone(),
-                        target: Target {
-                            kind: "graph".into(),
-                            id: String::new(),
-                            name: f.kind.to_string(),
-                            from: None,
-                            to: None,
-                        },
-                    }),
-                }
-            }
-        }
+        Lane::Fix => roster_fix(store, &mut out)?,
+        Lane::Analyze => roster_analyze(store, &mut out)?,
+        Lane::Validate => roster_validate(store, &mut out)?,
+        Lane::Quality => roster_quality(store, &mut out)?,
+        Lane::Build => roster_build(store, &mut out)?,
+        Lane::Coverage => roster_coverage(store, &mut out)?,
+        Lane::Prove => roster_prove(store, &mut out)?,
+        Lane::Triage => roster_triage(store, &mut out)?,
+        Lane::Review => roster_review(store, &mut out)?,
+        Lane::Elaborate => roster_elaborate(store, &mut out)?,
+        Lane::Divergence => roster_divergence(store, &mut out)?,
+        Lane::Audit => roster_audit(store, &mut out)?,
         // Lanes that route to a whole-graph command instead of a per-item
         // roster (`loom door`, `loom export`).
         Lane::Seed | Lane::Export | Lane::Deepen => {}
@@ -1687,4 +1416,354 @@ fn audit_subjects(store: &Store) -> Result<Vec<crate::audit::AuditFinding>> {
         });
     }
     Ok(out)
+}
+
+/// Edges the ANALYZE lane owns: everything except the two that have their own
+/// measuring lanes (`governs` → quality, `validates` → validate).
+fn not_measured_lane(e: &Edge) -> bool {
+    !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates)
+}
+
+/// The `fix` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_fix(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    use crate::model::TruthClass;
+    for e in store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])? {
+        out.push(edge_entry(
+            store,
+            &e,
+            "fix",
+            "failing verdict — repair at root cause",
+        )?);
+    }
+    Ok(())
+}
+
+/// The `analyze` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_analyze(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    use crate::model::TruthClass;
+    for e in store
+        .live_edges_by_status(
+            TruthClass::Asserted,
+            &[InspectionStatus::NeedsReverification],
+        )?
+        .iter()
+        .filter(|e| not_measured_lane(e))
+    {
+        out.push(edge_entry(
+            store,
+            e,
+            "analyze",
+            "dependency changed — re-verify this claim",
+        )?);
+    }
+    for e in store
+        .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
+        .iter()
+        .filter(|e| not_measured_lane(e))
+    {
+        out.push(edge_entry(
+            store,
+            e,
+            "analyze",
+            "uninspected claim — inspect the code and record a verdict",
+        )?);
+    }
+    Ok(())
+}
+
+/// The `validate` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_validate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    use crate::model::TruthClass;
+    let validates: Vec<Edge> = store
+        .live_edges_by_status(
+            TruthClass::Asserted,
+            &[
+                InspectionStatus::Uninspected,
+                InspectionStatus::NeedsReverification,
+            ],
+        )?
+        .into_iter()
+        .filter(|e| e.kind == EdgeKind::Validates)
+        .collect();
+    for e in validates
+        .iter()
+        .filter(|e| e.status == InspectionStatus::Uninspected)
+    {
+        out.push(edge_entry(store, e, "validate", "unrun proof")?);
+    }
+    for e in validates
+        .iter()
+        .filter(|e| e.status == InspectionStatus::NeedsReverification)
+    {
+        out.push(edge_entry(
+            store,
+            e,
+            "validate",
+            "proof went stale — a dependency changed; re-run it",
+        )?);
+    }
+    // The other two things the `proven` rung counts. Omitting them made
+    // the roster shorter than the depth it is supposed to enumerate —
+    // the same quantity derived a third time and drifting again.
+    for intent in unproven_implemented_intents(store)? {
+        out.push(node_entry(
+            "validate",
+            "mid",
+            &intent,
+            "implemented, with no proof that establishes the behavior".into(),
+        ));
+    }
+    for (intent, shallow) in journey_gaps(store)? {
+        let why = if shallow {
+            "user-visible; its proof does not reach the code it proves"
+        } else {
+            "user-visible with no journey proof"
+        };
+        out.push(node_entry("validate", "high", &intent, why.into()));
+    }
+    Ok(())
+}
+
+/// The `quality` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_quality(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    use crate::model::TruthClass;
+    // `live_edges_by_status` is what the DEPTH counts: it drops
+    // superseded groundings and claims about retired behaviors. Reading
+    // raw edges here re-admitted exactly what the rung had excluded, so
+    // the roster ran longer than the number beside it.
+    let governs: Vec<Edge> = store
+        .live_edges_by_status(
+            TruthClass::Asserted,
+            &[
+                InspectionStatus::Uninspected,
+                InspectionStatus::NeedsReverification,
+            ],
+        )?
+        .into_iter()
+        .filter(|e| e.kind == EdgeKind::Governs)
+        .collect();
+    for e in governs
+        .iter()
+        .filter(|e| e.status == InspectionStatus::Uninspected)
+    {
+        out.push(edge_entry(store, e, "quality", "unmeasured quality rule")?);
+    }
+    for e in governs
+        .iter()
+        .filter(|e| e.status == InspectionStatus::NeedsReverification)
+    {
+        out.push(edge_entry(
+            store,
+            e,
+            "quality",
+            "quality verdict went stale — a dependency changed; re-measure",
+        )?);
+    }
+    out.extend(unmeasured_pair_entries(store)?);
+    Ok(())
+}
+
+/// The `build` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_build(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    let mut intents = store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
+    intents.extend(ungrounded_implemented_intents(store)?);
+    intents.sort_by(|a, b| {
+        rank_lifecycle(&a.status)
+            .cmp(&rank_lifecycle(&b.status))
+            .then(a.name.cmp(&b.name))
+    });
+    // Prerequisite-ready candidates first (entry 0 is what the lane
+    // serves), then blocked ones carrying their blocked reason.
+    let mut blocked = Vec::new();
+    for intent in &intents {
+        let unmet = unmet_prerequisites(store, &intent.id)?;
+        if unmet.is_empty() {
+            out.push(node_entry("build", "mid", intent, build_reason(intent)));
+        } else {
+            blocked.push(node_entry(
+                    "build",
+                    "mid",
+                    intent,
+                    format!(
+                        "blocked: requires {} — build the prerequisite(s) first, or break the requires cycle",
+                        unmet.join(", ")
+                    ),
+                ));
+        }
+    }
+    out.extend(blocked);
+    Ok(())
+}
+
+/// The `coverage` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_coverage(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for cf in crate::commands::unowned_codefiles(store)? {
+        let missing = !store.root().join(&cf.name).exists();
+        let reason = if missing {
+            "no longer exists on disk — unregister it (or re-register its successor)"
+        } else {
+            "no owning intent — ground it, or unregister the file"
+        };
+        out.push(node_entry("coverage", "low", &cf, reason.into()));
+    }
+    Ok(())
+}
+
+/// The `prove` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_prove(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for h in store.nodes_by_status(NodeType::Hypothesis, &["proposed"])? {
+        out.push(node_entry(
+            "prove",
+            "high",
+            &h,
+            "unproven hypothesis — prove or refute the claim against the code".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// The `triage` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_triage(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for fv in crate::signal::triage_findings(store)? {
+        let structural = is_structural_size_finding(&fv.node);
+        let reason = if fv.stale {
+            "stale evidence-backed finding — re-adjudicate it"
+        } else if structural {
+            "adjudicate structural finding — judge cohesion, not length"
+        } else {
+            "adjudicate evidence-backed finding"
+        };
+        let effort = if structural { "mid" } else { "low" };
+        out.push(node_entry("triage", effort, &fv.node, reason.into()));
+    }
+    for item in store
+        .list_nodes(Some(NodeType::InboxItem), usize::MAX)?
+        .into_iter()
+        .filter(|n| n.status == "new")
+    {
+        out.push(node_entry(
+            "triage",
+            "low",
+            &item,
+            "route raw human/external input".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// The `review` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_review(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    use crate::model::TruthClass;
+    let floor = crate::policy::load(store)?.review_confidence_floor;
+    let mut candidates: Vec<Edge> = store
+        .live_edges_by_status(
+            TruthClass::Asserted,
+            &[InspectionStatus::Passing, InspectionStatus::Independent],
+        )?
+        .into_iter()
+        .filter(|e| e.confidence > 0.0 && e.confidence < floor)
+        .collect();
+    candidates.sort_by(|a, b| {
+        a.confidence
+            .partial_cmp(&b.confidence)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.id.cmp(&b.id))
+    });
+    for e in &candidates {
+        let reason = format!(
+            "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
+            e.confidence, floor
+        );
+        out.push(edge_entry(store, e, "review", &reason)?);
+    }
+    Ok(())
+}
+
+/// The `elaborate` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_elaborate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for card in crate::completeness::all_scorecards(store)?
+        .into_iter()
+        .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
+    {
+        let Some(intent) = store.get_node(&card.intent_id)? else {
+            continue;
+        };
+        let open_names: Vec<&str> = card.open_axes().map(|a| a.axis.as_str()).collect();
+        let reason = format!(
+            "user-visible idea with {} open completeness axis(es): {}",
+            card.open,
+            open_names.join(", ")
+        );
+        out.push(node_entry("elaborate", "high", &intent, reason));
+    }
+    Ok(())
+}
+
+/// The `divergence` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_divergence(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for d in crate::divergence::all(store)? {
+        if !d.blocking {
+            continue;
+        }
+        let Some(n) = store.get_node(&d.intent_id)? else {
+            continue;
+        };
+        out.push(node_entry(
+            "ratify",
+            "low",
+            &n,
+            format!("{}: {}", d.kind.as_str().replace('_', " "), d.evidence),
+        ));
+    }
+    Ok(())
+}
+
+/// The `audit` lane's roster. One arm per lane, each its own function:
+/// `queue_items` was a 297-line match that only dispatched, so every lane's
+/// enumeration lived inside one symbol loom scored at complexity 32.
+fn roster_audit(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for f in audit_subjects(store)? {
+        match store.get_node(&f.subject)? {
+            Some(n) => out.push(node_entry("audit", "mid", &n, f.detail.clone())),
+            // Nothing to point at — the subject is the graph itself.
+            None => out.push(QueueEntry {
+                mode: "audit".into(),
+                effort: "mid".into(),
+                routing_hint: Some("judgment".into()),
+                cause_class: None,
+                owner_role: Some("analyzer".into()),
+                reason: f.detail.clone(),
+                target: Target {
+                    kind: "graph".into(),
+                    id: String::new(),
+                    name: f.kind.to_string(),
+                    from: None,
+                    to: None,
+                },
+            }),
+        }
+    }
+    Ok(())
 }

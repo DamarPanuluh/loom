@@ -56,29 +56,15 @@ pub fn build(store: &Store) -> Result<CallGraph> {
     let mut raw: Vec<(String, String, String)> = Vec::new();
 
     for cf in store.list_nodes(Some(NodeType::CodeFile), usize::MAX)? {
-        if let Some(json) = store.get_facet(
-            &cf.id,
-            TargetKind::Node,
-            crate::seed::SYMBOL_FINGERPRINTS_KEY,
-        )? {
-            if let Ok(map) = serde_json::from_str::<BTreeMap<String, String>>(&json) {
-                for sym in map.keys() {
-                    defines
-                        .entry(cf.name.clone())
-                        .or_default()
-                        .insert(sym.clone());
-                    owner.entry(sym.clone()).or_default().push(cf.name.clone());
-                }
-            }
+        for sym in symbols_of(store, &cf)? {
+            defines
+                .entry(cf.name.clone())
+                .or_default()
+                .insert(sym.clone());
+            owner.entry(sym).or_default().push(cf.name.clone());
         }
-        if let Some(json) = store.get_facet(&cf.id, TargetKind::Node, crate::seed::CALLS_KEY)? {
-            if let Ok(list) = serde_json::from_str::<Vec<String>>(&json) {
-                for entry in list {
-                    if let Some((from, callee)) = entry.split_once('>') {
-                        raw.push((cf.name.clone(), from.to_string(), callee.to_string()));
-                    }
-                }
-            }
+        for (from, callee) in calls_of(store, &cf)? {
+            raw.push((cf.name.clone(), from, callee));
         }
     }
 
@@ -138,6 +124,37 @@ pub fn build(store: &Store) -> Result<CallGraph> {
             && a.to_symbol == b.to_symbol
     });
     Ok(graph)
+}
+
+/// The symbols a file defines, from the derived fingerprint map.
+fn symbols_of(store: &Store, cf: &crate::model::Node) -> Result<Vec<String>> {
+    let Some(json) = store.get_facet(
+        &cf.id,
+        TargetKind::Node,
+        crate::seed::SYMBOL_FINGERPRINTS_KEY,
+    )?
+    else {
+        return Ok(Vec::new());
+    };
+    Ok(serde_json::from_str::<BTreeMap<String, String>>(&json)
+        .map(|map| map.into_keys().collect())
+        .unwrap_or_default())
+}
+
+/// The `caller > callee` pairs a file records, already split.
+fn calls_of(store: &Store, cf: &crate::model::Node) -> Result<Vec<(String, String)>> {
+    let Some(json) = store.get_facet(&cf.id, TargetKind::Node, crate::seed::CALLS_KEY)? else {
+        return Ok(Vec::new());
+    };
+    Ok(serde_json::from_str::<Vec<String>>(&json)
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|entry| {
+            entry
+                .split_once('>')
+                .map(|(from, callee)| (from.to_string(), callee.to_string()))
+        })
+        .collect())
 }
 
 /// How many leading path segments two files share.
