@@ -220,3 +220,55 @@ fn context_calls_out_stale_edges() {
         "stale edge must be stated plainly: {packet}"
     );
 }
+
+/// `--where ratification=<state>` must read the fact table.
+///
+/// v3 moved ratification out of `facet` and `set_facet` refuses the key, so the
+/// old facet lookup could only ever match nothing. Every state except the
+/// `unratified` special case returned an empty list — silently, on a graph full
+/// of ratified intents, which is the worst way for a query to be wrong.
+#[test]
+fn ratification_filter_reads_the_fact_not_a_facet() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let wanted = store
+        .add_node(
+            NodeType::Intent,
+            "a behavior somebody asked for",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let silent = store
+        .add_node(
+            NodeType::Intent,
+            "a behavior nobody has spoken to",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .ratify_intent(&wanted.id, "the owner asked for it in review", "tty")
+        .unwrap();
+    assert_eq!(store.ratification(&wanted.id).unwrap(), "ratified");
+    drop(store);
+
+    let ratified = loom_json(tmp.path(), &["find", "--where", "ratification=ratified"]);
+    let names: Vec<&str> = ratified
+        .as_array()
+        .expect("find returns an array")
+        .iter()
+        .filter_map(|n| n["name"].as_str())
+        .collect();
+    assert!(
+        names.contains(&"a behavior somebody asked for"),
+        "the ratified intent must be findable: {names:?}"
+    );
+    assert!(
+        !names.contains(&"a behavior nobody has spoken to"),
+        "and the unratified one must not be: {names:?}"
+    );
+    let _ = &silent;
+}

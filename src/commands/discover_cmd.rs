@@ -115,14 +115,29 @@ fn resolve_find_filters(
                 FIND_WHERE_KEYS.join(", ")
             );
         }
-        let ids = if key == "ratification" && value == "unratified" {
-            // Absence is meaningful for ratification (INV-8): an intent that
-            // has never been ratified has no facet in legacy/imported graphs,
-            // and must still be found rather than silently treated as wanted.
-            crate::workitem::unratified_intents(store)?
-                .into_iter()
-                .map(|intent| intent.id)
-                .collect()
+        let ids = if key == "ratification" {
+            // Ratification is a FACT, not a facet — v3 moved it, and `set_facet`
+            // refuses the key outright. Reading the facet table here meant every
+            // state except the `unratified` special case matched nothing, and
+            // silently: `--where ratification=ratified` returned an empty list
+            // on a graph full of ratified intents.
+            //
+            // Absence still reads as unratified (INV-8), which is why that state
+            // is answered from the shared predicate rather than the fact table.
+            if value == "unratified" {
+                crate::workitem::unratified_intents(store)?
+                    .into_iter()
+                    .map(|intent| intent.id)
+                    .collect()
+            } else {
+                let mut ids = std::collections::BTreeSet::new();
+                for intent in store.list_nodes(Some(crate::model::NodeType::Intent), usize::MAX)? {
+                    if store.ratification(&intent.id)? == value {
+                        ids.insert(intent.id);
+                    }
+                }
+                ids
+            }
         } else {
             store.nodes_where_facet(&key, &value)?.into_iter().collect()
         };
