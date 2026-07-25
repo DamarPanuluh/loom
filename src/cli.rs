@@ -288,6 +288,24 @@ pub enum Command {
         #[arg(long, default_value_t = 3)]
         depth: usize,
     },
+    /// Run a command loom watches, and keep what it saw.
+    ///
+    /// This is the cheap way in: prefix the test command you were going to run
+    /// anyway and the run becomes evidence — a RunRecord over the files it
+    /// covered, plus a journal entry. With `--for` it binds to that behavior's
+    /// proof directly; without one it is recorded and offered.
+    Observe {
+        /// The behavior (or validation) this run is evidence about.
+        #[arg(long = "for")]
+        target: Option<String>,
+        /// Seconds to wait before giving up. A timeout is recorded as blocked,
+        /// never as a failure — loom refuses to guess which it was.
+        #[arg(long, default_value_t = 900)]
+        timeout: u64,
+        /// The command, after `--`.
+        #[arg(last = true, required = true, num_args = 1..)]
+        command: Vec<String>,
+    },
     /// Read the working tree and propose the graph mutations it implies:
     /// new symbols in owned files, symbols whose callers all belong to one
     /// behavior, locators pointing at code that moved, files nothing owns.

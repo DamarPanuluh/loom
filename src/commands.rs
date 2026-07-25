@@ -167,6 +167,17 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Impact { target, depth } => {
             diagnostics_cmd::impact_cmd(cli.graph.as_deref(), &target, depth, cli.json)
         }
+        Command::Observe {
+            target,
+            timeout,
+            command,
+        } => proof_cmd::observe_cmd(
+            cli.graph.as_deref(),
+            target.as_deref(),
+            timeout,
+            &command,
+            cli.json,
+        ),
         Command::Absorb { confirm } => {
             diagnostics_cmd::absorb_cmd(cli.graph.as_deref(), confirm, cli.json)
         }

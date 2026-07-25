@@ -847,3 +847,195 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
         },
     )
 }
+
+/// Run a command loom watches, and keep what it saw.
+///
+/// The friction collapse. Every other route into the graph asks the agent to
+/// describe work it has already done, in loom's vocabulary, after the fact —
+/// which is the tax that gets loom skipped. This one asks for a prefix.
+///
+/// With `--for`, the run binds to that behavior's proof immediately: loom
+/// registers a validation if none exists, records the verdict from what it
+/// observed, and grades it. Without one, the run is journaled and offered, so a
+/// stray `loom observe -- cargo test` still leaves something re-checkable
+/// behind rather than nothing.
+///
+/// The outcome is never taken from the caller. loom ran it; loom says what
+/// happened.
+pub(crate) fn observe_cmd(
+    graph: Option<&Path>,
+    target: Option<&str>,
+    timeout: u64,
+    command: &[String],
+    json: bool,
+) -> Result<()> {
+    let store = open(graph)?;
+    let root = store.root().to_path_buf();
+    // Re-quote every argument. Joining on spaces looks right and is wrong: it
+    // hands `python3 -c "import sys; ..."` to the shell as several statements,
+    // so the command loom "observed" is not the command the caller asked for.
+    let command = command
+        .iter()
+        .map(|a| shell_quote(a))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    // What this run covers: the files the target behavior is grounded in, so an
+    // edit to any of them expires it. With no target, the run covers nothing
+    // and stands only as a journal record — honest about being unattached.
+    let (intent, covered) = match target {
+        Some(key) => {
+            let node = store.resolve_node(key, Some(NodeType::Intent))?;
+            let files = crate::runner::files_grounding(&store, &node.id)?;
+            (Some(node), files)
+        }
+        None => (None, Vec::new()),
+    };
+
+    let observation =
+        crate::runner::observe_command(&root, crate::model::RunProducer::Command, &command, &covered, 0, timeout)?;
+    let run = match &observation {
+        crate::runner::Observation::Ran(run) => (**run).clone(),
+        crate::runner::Observation::Blocked { reason } => {
+            // A command loom could not run is not a failing proof. Recorded as
+            // blocked, visible, never green.
+            crate::journal::append(
+                &root,
+                "observe",
+                intent.as_ref().map(|n| n.id.as_str()).unwrap_or(""),
+                serde_json::json!({ "command": command, "blocked": reason }),
+            )?;
+            if json {
+                println!(
+                    "{}",
+                    serde_json::json!({ "observed": false, "blocked": reason })
+                );
+            } else {
+                println!("blocked: {reason}");
+            }
+            return Ok(());
+        }
+    };
+
+    let entry = crate::journal::append(
+        &root,
+        "observe",
+        intent.as_ref().map(|n| n.id.as_str()).unwrap_or(""),
+        serde_json::json!({
+            "command": command,
+            "exit_code": run.exit_code,
+            "covered": run.covered.len(),
+        }),
+    )?;
+
+    // Bind it, when there is something to bind it to.
+    let mut bound: Option<String> = None;
+    if let Some(node) = &intent {
+        let validation = existing_or_new_proof(&store, &node.id, &command)?;
+        let result = if run.exit_code == 0 { "passed" } else { "failed" };
+        mark_validation(
+            &store,
+            &validation.id,
+            result,
+            &format!("observed by loom: `{command}` exited {}", run.exit_code),
+            "",
+            Some(run.clone()),
+        )?;
+        regrade(&store, &validation.id)?;
+        bound = Some(validation.name.clone());
+    }
+
+    let grade = match &bound {
+        Some(_) => {
+            let v = store.resolve_node(&command_proof_name(&command), Some(NodeType::Validation));
+            match v {
+                Ok(node) => crate::proofstrength::of(&store, &node.id)?.as_str(),
+                Err(_) => "S0",
+            }
+        }
+        None => "-",
+    };
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "observed": true,
+                "command": command,
+                "exit_code": run.exit_code,
+                "covered": run.covered.keys().collect::<Vec<_>>(),
+                "journal": entry.id,
+                "bound_to": bound,
+                "strength": grade,
+            }))?
+        );
+        return Ok(());
+    }
+    println!(
+        "observed `{command}` → exit {} ({} file(s) covered)",
+        run.exit_code,
+        run.covered.len()
+    );
+    match &bound {
+        Some(name) => println!("  bound to proof '{name}' [{grade}]"),
+        None => println!(
+            "  recorded as journal:{} — bind it with `loom observe --for <behavior> -- {command}`",
+            entry.id
+        ),
+    }
+    Ok(())
+}
+
+/// Quote one argument for `sh -c`, so what runs is what was typed.
+fn shell_quote(arg: &str) -> String {
+    if !arg.is_empty()
+        && arg
+            .chars()
+            .all(|c| c.is_alphanumeric() || "._-/=:@+,".contains(c))
+    {
+        return arg.to_string();
+    }
+    // Single quotes protect everything except a single quote, which has to be
+    // closed, escaped, and reopened.
+    format!("'{}'", arg.replace('\'', r"'\''"))
+}
+
+/// The stable name loom gives a proof it minted from an observed command.
+///
+/// Short and stable: the full command lives in `body.command`, and a node name
+/// that is 200 characters of shell is unreadable everywhere it appears.
+fn command_proof_name(command: &str) -> String {
+    let head: String = command.split_whitespace().take(3).collect::<Vec<_>>().join(" ");
+    let head: String = head.chars().take(48).collect();
+    format!(
+        "observed: {head} [{}]",
+        &crate::artifact::fingerprint(command)[..8]
+    )
+}
+
+/// The validation this command already proves, or a new one for it.
+///
+/// Keyed on the COMMAND, so running the same command twice updates one proof
+/// instead of littering the graph with near-duplicates.
+fn existing_or_new_proof(
+    store: &Store,
+    intent_id: &str,
+    command: &str,
+) -> Result<crate::model::Node> {
+    for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent_id))? {
+        if let Some(v) = store.get_node(&e.from_id)? {
+            if v.body.get("command").and_then(|c| c.as_str()) == Some(command) {
+                return Ok(v);
+            }
+        }
+    }
+    let val = store.add_node(
+        NodeType::Validation,
+        &command_proof_name(command),
+        "registered by `loom observe`",
+        "not_run",
+        serde_json::json!({ "type": "test", "command": command }),
+    )?;
+    store.ensure_edge(EdgeKind::Validates, &val.id, intent_id)?;
+    Ok(val)
+}
