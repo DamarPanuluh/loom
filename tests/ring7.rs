@@ -367,3 +367,67 @@ fn a_retired_behaviors_proof_leaves_the_tally_too() {
     assert_eq!(after.failed, 0, "a retired behavior owes no proof");
     assert_eq!(after.registered, 0, "and is not registered debt either");
 }
+
+/// A packet must never hand out a command the shell will split.
+///
+/// Stored proof commands can contain `&&`. Pasted after `--`, the calling
+/// shell splits them: the wrapper sees only the first clause, records a proof
+/// for THAT, and leaves the edge unrun. The queue then serves the same item
+/// forever while every run reports success — fourteen iterations moved nothing
+/// and every one of them printed PASSED.
+#[test]
+fn a_shell_shaped_command_is_not_offered_bare_after_a_double_dash() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "a behavior with a compound proof",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = codefile(&store, "src/thing.rs");
+    store
+        .add_edge(
+            loom::model::EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            loom::model::TruthClass::Asserted,
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            loom::model::NodeType::Validation,
+            "compound proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "true && true" }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(loom::model::EdgeKind::Validates, &val.id, &intent.id)
+        .unwrap();
+
+    let item = loom::workitem::next(&store, Some(loom::lane::Lane::Validate))
+        .unwrap()
+        .expect("an unrun proof routes to validate");
+    for action in &item.prompt_contract.allowed_actions {
+        if let Some(tail) = action.split_once(" -- ").map(|(_, t)| t) {
+            assert!(
+                !tail.contains("&&") || tail.starts_with("sh -c "),
+                "a compound command after `--` is split by the shell: {action}"
+            );
+        }
+    }
+    // And the offer that runs the stored command exactly must be present.
+    assert!(
+        item.prompt_contract
+            .allowed_actions
+            .iter()
+            .any(|a| a.starts_with("loom validation run ")),
+        "offer the form that executes the stored command verbatim: {:?}",
+        item.prompt_contract.allowed_actions
+    );
+}

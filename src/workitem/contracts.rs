@@ -467,15 +467,36 @@ pub(super) fn validator_contract(
         allowed_actions: {
             let mut actions = Vec::new();
             if runnable {
-                // Prefer the wrapper: it runs the command the worker was going
-                // to run anyway and keeps the run as evidence, which is the
-                // only route to the `verified` this edge needs.
-                actions.push(format!(
-                    "loom observe --for {} -- {}",
-                    q(intent_name),
-                    command
-                ));
-                actions.push(format!("loom validation run {}", q(intent_name)));
+                // A stored command containing shell operators cannot be pasted
+                // after `--`: the calling shell splits it, so the wrapper sees
+                // only the first clause, mints a proof for THAT, and leaves
+                // this edge unrun. The queue then serves the same item forever
+                // while every run appears to succeed.
+                //
+                // `loom validation run` executes the stored command exactly, so
+                // it is the correct offer for those — and the wrapper leads for
+                // the simple case, where pasting is safe and the worker gets to
+                // keep a command they were going to type anyway.
+                let shell_shaped = command.contains("&&")
+                    || command.contains("||")
+                    || command.contains(';')
+                    || command.contains('|')
+                    || command.contains('>');
+                if shell_shaped {
+                    actions.push(format!("loom validation run {}", q(intent_name)));
+                    actions.push(format!(
+                        "loom observe --for {} -- sh -c {}",
+                        q(intent_name),
+                        q(&command)
+                    ));
+                } else {
+                    actions.push(format!(
+                        "loom observe --for {} -- {}",
+                        q(intent_name),
+                        command
+                    ));
+                    actions.push(format!("loom validation run {}", q(intent_name)));
+                }
             } else {
                 actions.push("<no command — this is a manual check>".into());
                 actions.push(verdict_write_back(edge, val_name, intent_name));
