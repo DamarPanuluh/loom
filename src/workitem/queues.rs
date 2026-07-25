@@ -1380,3 +1380,71 @@ fn unmeasured_pair_entries(store: &Store) -> Result<Vec<QueueEntry>> {
     }
     Ok(out)
 }
+
+/// The deepen queue: what to strengthen next, one move at a time.
+///
+/// Serves the top-ranked candidate only. The ranking re-orders after every
+/// change — including the change this packet asks for, which lowers its own
+/// candidate's score — so handing out a batch would hand out a list that is
+/// stale by the second item.
+pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(c) = crate::risk::rank(store)?.into_iter().next() else {
+        return Ok(None);
+    };
+    let Some(n) = store.get_node(&c.intent_id)? else {
+        return Ok(None);
+    };
+    let short = &n.id[..8.min(n.id.len())];
+    Ok(Some(WorkItem {
+        packet_id: None,
+        mode: "deepen".into(),
+        owner_role: "validator".into(),
+        effort: "mid".into(),
+        routing_hint: super::hint_judgment(),
+        reason: format!("'{}' is at {} — {}", n.name, c.proof_strength, c.why),
+        target: node_target(&n),
+        stale_causes: Vec::new(),
+        prompt_contract: super::contracts::deepen_contract(short, c.next_move.as_str()),
+        context: node_context(
+            store,
+            &n,
+            "This behavior is already green. Find the weakest thing holding it up.",
+        )?,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Risk.gap(),
+        next_step: "make ONE move, then re-run `loom deepen` — the ranking will have changed"
+            .into(),
+    }))
+}
+
+/// The audit queue: this graph's own record, where it does not look earned.
+pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(f) = crate::audit::run(store)?.into_iter().next() else {
+        return Ok(None);
+    };
+    let Some(n) = store.get_node(&f.subject)? else {
+        // A burst finding's subject is an actor+minute, not a node. Nothing to
+        // target, so the lane reports it through `loom audit` rather than
+        // serving a packet pointed at nothing.
+        return Ok(None);
+    };
+    Ok(Some(WorkItem {
+        packet_id: None,
+        mode: "audit".into(),
+        owner_role: "analyzer".into(),
+        effort: "mid".into(),
+        routing_hint: super::hint_judgment(),
+        reason: format!("{}: {}", f.kind, f.detail),
+        target: node_target(&n),
+        stale_causes: Vec::new(),
+        prompt_contract: super::contracts::audit_contract(&f.remedy),
+        context: node_context(
+            store,
+            &n,
+            "Establish what actually happened before changing anything.",
+        )?,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Signal.gap(),
+        next_step: f.remedy.clone(),
+    }))
+}

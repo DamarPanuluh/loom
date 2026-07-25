@@ -1174,3 +1174,55 @@ pub(crate) fn impact_cmd(
     );
     Ok(())
 }
+
+/// Run the self-fabrication detector over this graph's own record.
+///
+/// Exits non-zero when anything is found, like `doctor` — an audit whose
+/// findings are advisory is a scoreboard, and the whole point is that loom is
+/// willing to fail its own check.
+pub(crate) fn audit_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
+    let store = open_read(graph)?;
+    let findings = crate::audit::run(&store)?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&findings)?);
+    } else if findings.is_empty() {
+        println!("audit clean — every settled claim is anchored and every judgment is journaled");
+    } else {
+        for f in &findings {
+            println!("[{}] {}", f.kind, f.detail);
+            println!("  → {}", f.remedy);
+        }
+        println!("\n{} audit finding(s)", findings.len());
+    }
+    if findings.is_empty() {
+        Ok(())
+    } else {
+        std::process::exit(1);
+    }
+}
+
+/// Rank what is worth strengthening next.
+pub(crate) fn deepen_cmd(graph: Option<&Path>, limit: usize, json: bool) -> Result<()> {
+    let store = open_read(graph)?;
+    let ranked = crate::risk::rank(&store)?;
+    let shown: Vec<_> = ranked.iter().take(limit).collect();
+    if json {
+        println!("{}", serde_json::to_string_pretty(&shown)?);
+        return Ok(());
+    }
+    if shown.is_empty() {
+        println!("nothing to deepen yet — ground and prove some behavior first");
+        return Ok(());
+    }
+    println!("what to strengthen next ({} candidate(s)):\n", ranked.len());
+    for (i, c) in shown.iter().enumerate() {
+        println!("{}. {} [{}]", i + 1, c.intent_name, c.proof_strength);
+        println!("   {}", c.why);
+        println!(
+            "   score {:.3} = blast {:.2} x proof gap x age {}d",
+            c.score, c.blast_radius, c.evidence_age_days
+        );
+        println!("   next: {}", c.next_move.as_str());
+    }
+    Ok(())
+}

@@ -682,3 +682,74 @@ pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
         human_gate: None,
     }
 }
+
+/// The deepen contract. Unlike every other lane, this one does not close a gap
+/// — it raises a floor that is already met, so the stop condition is a single
+/// move rather than an empty queue.
+pub(super) fn deepen_contract(id: &str, next_move: &str) -> PromptContract {
+    PromptContract {
+        role: "validator".into(),
+        mindset: "This behavior is already green. You are not fixing it — you are making \
+                  the graph harder to be wrong about, starting with the thing that would \
+                  hurt most if it were."
+            .into(),
+        why_now: "every floor is met, so the question is no longer 'what is missing' but \
+                  'what is weakest'"
+            .into(),
+        allowed_actions: vec![
+            format!("loom intent show {id}"),
+            format!("loom impact {id}"),
+            "loom journey add <spec>".into(),
+            "loom journey freeze <journey>".into(),
+            "loom validation run <name>".into(),
+        ],
+        forbidden_actions: vec![
+            "weakening an existing assertion to make a proof pass".into(),
+            "recording a stronger grade — strength is derived from the proof's shape, \
+             never asserted"
+                .into(),
+        ],
+        required_evidence: "a proof loom ran, whose new grade is higher than the old one".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: format!("the move for this behavior is: {next_move}"),
+        stop_condition: "stop after ONE move — this queue re-ranks after every change, \
+                         and the next-most-important thing is probably no longer this one"
+            .into(),
+        human_gate: None,
+    }
+}
+
+/// The audit contract: loom found something in its own record that does not
+/// look earned.
+pub(super) fn audit_contract(remedy: &str) -> PromptContract {
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "Something in this graph's record does not look like it was earned. \
+                  Establish what actually happened before changing anything — a record \
+                  that was wrong once can be wrong again in the fix."
+            .into(),
+        why_now: "a graph whose claim is falsifiability has to be able to fail its own check"
+            .into(),
+        allowed_actions: vec![
+            "loom audit --json".into(),
+            "loom journal tail".into(),
+            "loom intent show <id>".into(),
+        ],
+        forbidden_actions: vec![
+            "re-asserting the flagged claim to clear the finding".into(),
+            "deleting the record instead of correcting it".into(),
+        ],
+        required_evidence: "either the anchor that was missing, or a withdrawal of the claim"
+            .into(),
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        write_back: remedy.to_string(),
+        stop_condition: "stop when the claim is either anchored or withdrawn — never when \
+                         it merely stops being reported"
+            .into(),
+        human_gate: None,
+    }
+}

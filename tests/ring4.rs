@@ -456,7 +456,11 @@ fn fully_grounded_no_residue_routes_complete() {
     assert_eq!(exported.state, RungState::Unmet);
     travel::export_to_file(&store).unwrap();
     let after_export = ladder(&store).unwrap();
-    assert_eq!(after_export.phase, "complete");
+    // Every floor met points at `deepen`, not at "complete". A codebase is
+    // never finished being understood, and a tool whose thesis is that every
+    // command's output is the next prompt should not end by telling you to
+    // re-read itself.
+    assert_eq!(after_export.phase, "deepen");
     assert_eq!(
         after_export
             .rungs
@@ -686,7 +690,7 @@ fn doctor_issue_routes_to_audit_after_earlier_gates_pass() {
     ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "audit");
-    assert_eq!(l.next_command, "loom doctor");
+    assert_eq!(l.next_command, "loom audit");
     let hardened = l.rungs.iter().find(|r| r.name == "sound").unwrap();
     assert_eq!(hardened.state, RungState::Unmet);
     assert!(hardened.detail.contains("1 doctor issue(s)"));
@@ -996,7 +1000,7 @@ fn findings_route_to_triage_until_judged() {
     ratify_all(&store);
     assert_eq!(ladder(&store).unwrap().phase, "export");
     travel::export_to_file(&store).unwrap();
-    assert_eq!(ladder(&store).unwrap().phase, "complete");
+    assert_eq!(ladder(&store).unwrap().phase, "deepen");
 
     // a single unadjudicated derived finding: graph maturity is affected until
     // the finding is judged, then the durable verdict removes it from triage.

@@ -288,6 +288,18 @@ pub enum Command {
         #[arg(long, default_value_t = 3)]
         depth: usize,
     },
+    /// Turn the falsifiability claim on loom's own record: fabricated
+    /// ratifications, judgment bursts too fast to have been made one at a
+    /// time, and settled claims standing on nothing re-checkable.
+    Audit,
+    /// What to strengthen next, once every floor is met. Ranks behaviors by
+    /// blast radius x (1 - proof strength) x evidence age, and names the one
+    /// move that would raise each. This queue re-orders; it never empties.
+    Deepen {
+        /// How many candidates to show (default 5).
+        #[arg(long, default_value_t = 5)]
+        limit: usize,
+    },
     /// Serve loom in-band over MCP (stdio JSON-RPC), so an agent pulls context
     /// as a tool call instead of shelling out. Speaks on stdin/stdout: run it
     /// from an MCP client, not interactively.

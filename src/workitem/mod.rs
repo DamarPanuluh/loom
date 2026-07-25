@@ -17,8 +17,8 @@ pub(crate) use queues::ungrounded_implemented_intents;
 pub(crate) use queues::unmeasured_quality_pairs;
 pub use queues::unratified_intents;
 use queues::{
-    analyze_item, build_item, coverage_item, elaborate_item, fix_item, prove_item, quality_item,
-    ratify_item, review_item, triage_item, validate_item,
+    analyze_item, audit_item, build_item, coverage_item, deepen_item, elaborate_item, fix_item,
+    prove_item, quality_item, ratify_item, review_item, triage_item, validate_item,
 };
 pub use queues::{queue_items, QueueEntry};
 use serde::Serialize;
@@ -193,7 +193,9 @@ pub(crate) fn lane_item(store: &Store, lane: Lane) -> Result<Option<WorkItem>> {
         Lane::Elaborate => elaborate_item(store),
         // Lanes that route to a whole-graph command rather than a per-item
         // packet (`loom door`, `loom doctor`, `loom export`).
-        Lane::Seed | Lane::Audit | Lane::Export | Lane::Deepen => Ok(None),
+        Lane::Audit => audit_item(store),
+        Lane::Deepen => deepen_item(store),
+        Lane::Seed | Lane::Export => Ok(None),
     }
 }
 

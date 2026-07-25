@@ -14,6 +14,7 @@
 
 pub mod anchor;
 pub mod artifact;
+pub mod audit;
 pub mod callgraph;
 pub mod cli;
 pub mod commands;
@@ -39,6 +40,7 @@ pub mod proof;
 pub mod proofstrength;
 pub mod ratification;
 pub mod registry;
+pub mod risk;
 pub mod runner;
 pub mod scan;
 pub mod seed;

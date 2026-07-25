@@ -38,8 +38,8 @@ pub enum Lane {
     Divergence,
     Audit,
     Export,
-    /// Post-floor risk work: never completes by design. Not yet in [`Lane::LADDER`]
-    /// — the risk ranking it serves lands with `risk.rs`.
+    /// Post-floor risk work: never completes by design. Last in
+    /// [`Lane::LADDER`], and permanently [`crate::maturity::RungState::Open`].
     Deepen,
 }
 
@@ -60,6 +60,10 @@ impl Lane {
         Lane::Divergence,
         Lane::Audit,
         Lane::Export,
+        // Always last, and never met: a codebase is never finished being
+        // understood, so the top of the ladder is a standing invitation rather
+        // than a finish line.
+        Lane::Deepen,
     ];
 
     /// The maturity rung this lane closes.
@@ -131,7 +135,7 @@ impl Lane {
         match self {
             Lane::Seed => "loom door \"<what should this codebase do>\" or loom intent add".into(),
             Lane::Coverage => "loom coverage".into(),
-            Lane::Audit => "loom doctor".into(),
+            Lane::Audit => "loom audit".into(),
             Lane::Export => "loom export && loom export --check".into(),
             other => format!("loom next --mode {}", other.as_str()),
         }
@@ -171,7 +175,7 @@ impl Lane {
     /// Lanes that route to a whole-graph command instead (`loom door`,
     /// `loom doctor`, `loom export`) serve no per-item packet.
     pub fn serves_items(self) -> bool {
-        !matches!(self, Lane::Seed | Lane::Audit | Lane::Export | Lane::Deepen)
+        !matches!(self, Lane::Seed | Lane::Export)
     }
 
     /// This lane's queue depth. `Unmet ⟺ depth > 0`, so this is also the rung
@@ -202,7 +206,7 @@ impl Lane {
             Lane::Prove => c.proposed_hypotheses,
             Lane::Elaborate => c.open_elaborations,
             Lane::Divergence => c.divergences,
-            Lane::Audit => c.doctor_issues + c.open_smells,
+            Lane::Audit => c.doctor_issues + c.open_smells + c.audit_findings,
             Lane::Export => usize::from(!c.export_fresh),
             Lane::Deepen => 0,
         }
@@ -258,8 +262,8 @@ impl Lane {
                 c.divergences
             ),
             Lane::Audit => format!(
-                "{} doctor issue(s), {} open smell(s)",
-                c.doctor_issues, c.open_smells
+                "{} doctor issue(s), {} open smell(s), {} self-audit finding(s)",
+                c.doctor_issues, c.open_smells, c.audit_findings
             ),
             Lane::Export => if c.export_fresh {
                 "loom.graph.json fresh"
@@ -267,7 +271,9 @@ impl Lane {
                 "loom.graph.json missing or stale"
             }
             .into(),
-            Lane::Deepen => "risk ranking not yet armed".into(),
+            // Never "0 left": this lane re-ranks rather than drains, so the
+            // detail says what is at the top, not how much is outstanding.
+            Lane::Deepen => format!("{} behavior(s) worth strengthening", c.risk_candidates),
         }
     }
 
@@ -321,6 +327,11 @@ pub struct LadderInputs {
     pub divergences: usize,
     pub doctor_issues: usize,
     pub open_smells: usize,
+    /// Self-fabrication signatures found in this graph's own record.
+    pub audit_findings: usize,
+    /// Behaviors the risk ranking has something to say about. Never gates —
+    /// `deepen` is `Open`, not unmet.
+    pub risk_candidates: usize,
     pub export_fresh: bool,
 }
 

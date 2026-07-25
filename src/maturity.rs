@@ -243,6 +243,8 @@ impl LadderInputs {
                 .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
                 .count(),
             divergences: crate::divergence::blocking_count(store)?,
+            audit_findings: crate::audit::run(store)?.len(),
+            risk_candidates: crate::risk::rank(store)?.len(),
             doctor_issues: crate::signal::doctor(store)?.len(),
             open_smells,
             export_fresh: crate::travel::export_is_fresh(store)?,
@@ -292,6 +294,12 @@ pub fn build_rungs(c: &LadderInputs) -> Vec<Rung> {
             let depth = lane.depth(c);
             let state = if lane.not_applicable(c) {
                 RungState::NotApplicable
+            } else if lane == Lane::Deepen {
+                // Never met, never unmet. Risk work re-ranks as the graph
+                // changes rather than draining, so "done" is not one of its
+                // states — and because `Open` never blocks, it cannot hold
+                // anything up either.
+                RungState::Open
             } else if depth == 0 {
                 RungState::Met
             } else {
@@ -326,10 +334,10 @@ pub fn build_rungs(c: &LadderInputs) -> Vec<Rung> {
 /// The compass is not a decision — it is a projection of the ladder. Returns
 /// `(phase, rung, next_command, truth_axis)`.
 ///
-/// TODO(deepen): when the `deepen` lane joins `Lane::LADDER` it becomes the
-/// permanent fallthrough and this terminal `complete` arm goes away — a tool
-/// whose thesis is "every command's output is the prompt for the next decision"
-/// should not end by telling you to re-read itself.
+/// `deepen` is the permanent fallthrough: it is `Open` whenever a codefile
+/// exists, so a graph that has met every floor is pointed at the weakest thing
+/// it still stands on rather than told to re-read itself. There is no
+/// `complete`.
 pub fn compass(rungs: &[Rung]) -> (String, String, String, Option<crate::truth::TruthAxis>) {
     match rungs
         .iter()

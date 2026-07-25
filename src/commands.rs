@@ -167,6 +167,10 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Impact { target, depth } => {
             diagnostics_cmd::impact_cmd(cli.graph.as_deref(), &target, depth, cli.json)
         }
+        Command::Audit => diagnostics_cmd::audit_cmd(cli.graph.as_deref(), cli.json),
+        Command::Deepen { limit } => {
+            diagnostics_cmd::deepen_cmd(cli.graph.as_deref(), limit, cli.json)
+        }
         Command::Mcp { cmd } => match cmd {
             crate::cli::McpCmd::Serve => crate::mcp::serve(cli.graph.as_deref()),
         },
