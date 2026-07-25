@@ -90,9 +90,9 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
         IntentCmd::Ratify {
             key,
             all,
-            by_policy,
             evidence,
-        } => intent_ratify(graph, key, all, by_policy, evidence, json),
+        } => intent_ratify(graph, key, all, evidence, json),
+        IntentCmd::Reject { key, reason } => intent_reject(graph, &key, &reason, json),
         IntentCmd::Tag { cmd } => intent_tag(graph, cmd, json),
     }
 }
@@ -111,6 +111,74 @@ fn loom_assertion<'a>(id: &'a str, state: &'a str) -> crate::store::Assertion<'a
 
 /// Is this intent ratified? Absence = unratified (fail closed: wantedness
 /// is never presumed).
+/// Say a behavior is not wanted.
+///
+/// Deliberately cheaper than ratifying: presence is required, but no typed
+/// challenge. Writing a substantive reason IS the deliberate act, and making
+/// refusal expensive is how you get a graph nobody ever refuses anything in.
+///
+/// A rejection is not a delete. Every place the code still performs the
+/// behavior becomes a finding, so removing it enters triage as ordinary work
+/// with the evidence already attached — and until it is gone, the intent is a
+/// `ZombieBehavior` the ladder blocks on.
+fn intent_reject(graph: Option<&Path>, key: &str, reason: &str, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    if crate::model::is_placeholder(reason) {
+        bail!("--reason must say why this is not wanted, substantively");
+    }
+    if !super::human_present() {
+        bail!(
+            "INV-8: only a human may judge whether a behavior is wanted — \
+             rejecting requires a person at a terminal"
+        );
+    }
+    let intent = store.resolve_node(key, Some(NodeType::Intent))?;
+    store.reject_intent(&intent.id, reason, "tty")?;
+
+    // Every realizing grounding becomes removal work, with the reason attached.
+    let mut minted = Vec::new();
+    for e in store.edges_with(Some(EdgeKind::Implements), Some(&intent.id), None)? {
+        if store.edge_superseded(&e.id)?
+            || store.grounding_role(&e.id)? != crate::model::GroundingRole::Realizes
+        {
+            continue;
+        }
+        let Some(cf) = store.get_node(&e.to_id)? else {
+            continue;
+        };
+        let finding = store.add_node(
+            NodeType::Finding,
+            &format!("unwanted behavior in {}", cf.name),
+            &format!("'{}' was rejected: {reason}", intent.name),
+            "unwanted_behavior",
+            serde_json::json!({
+                "kind": "unwanted_behavior",
+                "intent": intent.id,
+                "codefile": cf.name,
+            }),
+        )?;
+        store.ensure_edge(EdgeKind::Flags, &finding.id, &cf.id)?;
+        minted.push(serde_json::json!({ "id": finding.id, "file": cf.name }));
+    }
+    store.set_node_status(&intent.id, "deprecated")?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "rejected": { "id": intent.id, "name": intent.name },
+            "reason": reason,
+            "removal_work": minted,
+        }),
+        "loom next --mode triage",
+        format!(
+            "rejected '{}' — {} place(s) still perform it",
+            intent.name,
+            minted.len()
+        ),
+    )?;
+    Ok(())
+}
+
 pub(crate) fn is_ratified(store: &Store, intent_id: &str) -> Result<bool> {
     Ok(store.ratification(intent_id)? == "ratified")
 }
@@ -256,7 +324,11 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
     // ratify. A solo (human-at-the-keyboard) mint is itself a ratification act —
     // the minting utterance is the evidence. A declared `llm:*` lane mints an
     // unratified intent that stays honestly failing until a human ratifies it.
-    let solo = matches!(store.agent(), crate::store::Agent::Solo);
+    // A PERSON at a terminal, not merely an unset agent. `Agent::Solo` is the
+    // default whenever `LOOM_AGENT` is absent, so treating it as human meant
+    // `loom intent add` in CI minted ratified intents — wantedness asserted by
+    // a script.
+    let solo = super::human_present();
     let origin = if solo { "human" } else { "llm" };
     store.set_facet(
         &node.id,
@@ -290,22 +362,12 @@ fn intent_ratify(
     graph: Option<&Path>,
     key: Option<String>,
     all: bool,
-    by_policy: Option<String>,
     evidence: Option<String>,
     json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
-    if let Some(policy_name) = by_policy {
-        if key.is_some() || all || evidence.is_some() {
-            bail!("--by-policy cannot be combined with an intent key, --all, or --evidence");
-        }
-        return intent_ratify_by_policy(&store, &policy_name, json);
-    }
-    let evidence = evidence.ok_or_else(|| {
-        anyhow::anyhow!(
-            "--evidence is required unless --by-policy supplies policy-attributed evidence"
-        )
-    })?;
+    let evidence = evidence
+        .ok_or_else(|| anyhow::anyhow!("--evidence is required: say why this behavior is wanted"))?;
     let targets: Vec<Node> = match (&key, all) {
         (Some(_), true) => bail!("pass a key or --all, not both"),
         (None, false) => bail!("pass an intent key, or --all to ratify every unratified intent"),
@@ -333,11 +395,17 @@ fn intent_ratify(
         )?;
         return Ok(());
     }
+    // ONE challenge authorizes this invocation, not one per intent. Asking 51
+    // times is not 51 times the assurance — it is how a worker facing 51
+    // prompts ends up forging the records instead, which is exactly what
+    // happened to 39 of this graph's own ratifications.
+    let subject = match targets.as_slice() {
+        [one] => one.name.clone(),
+        many => format!("ratify {}", many.len()),
+    };
+    let presence = super::require_challenge(&subject)?;
     let mut ratified = Vec::new();
     for n in &targets {
-        // INV-8's demonstrated-presence gate is deliberately CLI-only so
-        // store-level fixtures can exercise the durable ratification facts.
-        let presence = super::require_human_presence(&n.name)?;
         store.ratify_intent(&n.id, &evidence, presence)?;
         ratified.push(serde_json::json!({ "id": n.id, "name": n.name }));
     }
@@ -355,72 +423,6 @@ fn intent_ratify(
     Ok(())
 }
 
-/// Apply one previously human-authored policy. The policy delegates scope, not
-/// authority: the batch itself still needs a present human at a terminal, and
-/// the store still rejects every `llm:*` lane under INV-8.
-fn intent_ratify_by_policy(store: &Store, policy_name: &str, json: bool) -> Result<()> {
-    let policies = crate::policy::load_ratification_policies(store)?;
-    let policy = policies
-        .named(policy_name)
-        .ok_or_else(|| anyhow::anyhow!("no ratification policy named '{policy_name}'"))?;
-    if !policy.enabled {
-        bail!("ratification policy '{policy_name}' is disabled");
-    }
-
-    let mut matches = 0;
-    for n in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
-        if n.status == "deprecated" || is_ratified(store, &n.id)? {
-            continue;
-        }
-        let origin = store.get_facet(&n.id, TargetKind::Node, "origin")?;
-        let level = store.get_facet(&n.id, TargetKind::Node, "level")?;
-        if policy.matches(origin.as_deref(), level.as_deref(), &n.status) {
-            matches += 1;
-        }
-    }
-    if matches == 0 {
-        pulse::emit_line(
-            store,
-            json,
-            serde_json::json!({ "ratified": [], "policy": policy_name }),
-            "loom status",
-            format!("policy '{policy_name}' matched no unratified active intents"),
-        )?;
-        return Ok(());
-    }
-
-    // Unlike --all, this is one human-approved policy application, so one
-    // policy-name challenge authorizes its complete matching batch.
-    let presence = super::require_human_presence(policy_name)?;
-    let applied = crate::policy::apply_ratification_policy(store, policy, presence)?;
-    let evidence = format!(
-        "by policy '{policy_name}' (human-authored {})",
-        policy
-            .human_authored_at
-            .split('T')
-            .next()
-            .unwrap_or(&policy.human_authored_at)
-    );
-    let ratified: Vec<_> = applied
-        .iter()
-        .map(|n| serde_json::json!({ "id": n.id, "name": n.name }))
-        .collect();
-    pulse::emit_line(
-        store,
-        json,
-        serde_json::json!({
-            "ratified": ratified,
-            "policy": policy_name,
-            "evidence": evidence,
-        }),
-        "loom status",
-        format!(
-            "policy '{policy_name}' ratified {} intent(s)",
-            ratified.len()
-        ),
-    )?;
-    Ok(())
-}
 
 fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
     let store = open(graph)?;

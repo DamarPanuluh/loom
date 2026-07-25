@@ -1034,7 +1034,6 @@ pub(crate) fn policy_cmd(
                 format!("human-gated lanes: {gated}"),
             )
         }
-        PolicyCmd::Ratification { cmd } => ratification_policy_cmd(graph, cmd, json),
         PolicyCmd::Reset => {
             let store = open(graph)?;
             policy::clear(&store)?;
@@ -1049,112 +1048,6 @@ pub(crate) fn policy_cmd(
     }
 }
 
-/// Human-author the portable scope configuration used by `intent ratify
-/// --by-policy`. A policy is delegation of matching scope, not a substitute for
-/// the terminal-presence proof required at each application.
-fn ratification_policy_cmd(
-    graph: Option<&Path>,
-    cmd: crate::cli::RatificationPolicyCmd,
-    json: bool,
-) -> Result<()> {
-    use crate::cli::RatificationPolicyCmd;
-    use crate::policy::{self, RatificationPolicies, RatificationPolicy};
-
-    match cmd {
-        RatificationPolicyCmd::List => {
-            let store = open_read(graph)?;
-            let policies = policy::load_ratification_policies(&store)?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&policies)?);
-            } else if policies.policies.is_empty() {
-                println!("(no ratification policies configured)");
-            } else {
-                for policy in policies.policies {
-                    println!(
-                        "{}  enabled={}  origin={}  level={}  lifecycle={}  human-authored={}",
-                        policy.name,
-                        policy.enabled,
-                        display_scope(&policy.origins),
-                        display_scope(&policy.levels),
-                        display_scope(&policy.lifecycles),
-                        policy.human_authored_at,
-                    );
-                }
-            }
-            Ok(())
-        }
-        RatificationPolicyCmd::Set {
-            name,
-            origins,
-            levels,
-            lifecycles,
-            disabled,
-        } => {
-            let store = open(graph)?;
-            store.require_human_authority()?;
-            let mut policies = policy::load_ratification_policies(&store)?;
-            let policy = RatificationPolicy {
-                name: name.clone(),
-                enabled: !disabled,
-                origins,
-                levels,
-                lifecycles,
-                human_authored_at: store.current_timestamp()?,
-            };
-            if let Some(existing) = policies
-                .policies
-                .iter_mut()
-                .find(|existing| existing.name == name)
-            {
-                *existing = policy;
-            } else {
-                policies.policies.push(policy);
-                policies.policies.sort_by(|a, b| a.name.cmp(&b.name));
-            }
-            policies.validate()?;
-            super::require_human_presence(&name)?;
-            policy::save_ratification_policies(&store, &policies)?;
-            pulse::emit_line(
-                &store,
-                json,
-                serde_json::json!({ "ratification_policy": name }),
-                "loom status",
-                format!("saved human-authored ratification policy '{name}'"),
-            )
-        }
-        RatificationPolicyCmd::Remove { name } => {
-            let store = open(graph)?;
-            store.require_human_authority()?;
-            let mut policies = policy::load_ratification_policies(&store)?;
-            let before = policies.policies.len();
-            policies.policies.retain(|policy| policy.name != name);
-            if before == policies.policies.len() {
-                bail!("no ratification policy named '{name}'");
-            }
-            super::require_human_presence(&name)?;
-            if policies == RatificationPolicies::default() {
-                store.remove_meta(policy::RATIFICATION_POLICIES_META_KEY)?;
-            } else {
-                policy::save_ratification_policies(&store, &policies)?;
-            }
-            pulse::emit_line(
-                &store,
-                json,
-                serde_json::json!({ "removed_ratification_policy": name }),
-                "loom status",
-                format!("removed ratification policy '{name}'"),
-            )
-        }
-    }
-}
-
-fn display_scope(values: &[String]) -> String {
-    if values.is_empty() {
-        "*".into()
-    } else {
-        values.join(",")
-    }
-}
 
 /// `loom impact <symbol|file>` — what a change here could reach.
 ///

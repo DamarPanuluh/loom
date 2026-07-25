@@ -57,6 +57,19 @@ impl Store {
                  loom can re-check"
             );
         }
+        // Derived-only keys: loom computes these from the graph, so an asserted
+        // write is a caller claiming an answer loom is supposed to work out.
+        // `de_facto` especially — the whole point is that wantedness is EARNED
+        // from evidence, and a writable `de_facto` would be a second, unchecked
+        // way to declare a behavior wanted.
+        if matches!(key, "de_facto" | "proof_strength" | "call_targets")
+            && truth_class != TruthClass::Derived
+        {
+            bail!(
+                "'{key}' is derived — loom computes it from the graph on sync; \
+                 it cannot be asserted"
+            );
+        }
         self.require_annotation_target(target_id, target_kind)?;
         self.conn.execute(
             "INSERT INTO facet(target_id,target_kind,key,value,truth_class)

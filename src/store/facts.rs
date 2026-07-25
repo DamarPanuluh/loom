@@ -243,12 +243,18 @@ impl Store {
 
         // ---- 3. authority ----------------------------------------------------
         match a.claim {
-            // INV-8: ratification authority is human-only — but only GRANTING
-            // it is an act of authority. Demoting to `needs_reconfirmation` or
-            // `unratified` is a loss of standing, which sync performs whenever
+            // INV-8: ratification authority is human-only, and it is SYMMETRIC.
+            // Saying a behavior is not wanted is the same kind of act as saying
+            // it is — an agent that could reject could delete the product by
+            // rejecting everything, and the rejection is absolute afterwards.
+            //
+            // Demoting to `needs_reconfirmation` or `unratified` is not an act
+            // of authority but a loss of standing, which sync performs whenever
             // meaning drifts; requiring a human there would mean stale
             // wantedness could only be noticed by the person it was hidden from.
-            Claim::Ratification if a.state == "ratified" => self.require_human_authority()?,
+            Claim::Ratification if matches!(a.state, "ratified" | "rejected") => {
+                self.require_human_authority()?
+            }
             Claim::Ratification => {}
             // INV-7: the lane that owns this edge kind owns its verdict.
             Claim::Verdict => {

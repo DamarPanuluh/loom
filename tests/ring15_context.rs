@@ -72,7 +72,11 @@ fn entities(packet: &serde_json::Value) -> &[serde_json::Value] {
 fn ratification_find_filter_includes_facetless_intents_only() {
     let tmp = Tmp::new();
     init(tmp.path());
+    // Minted with a person present, so it is born ratified and the filter has
+    // exactly one unratified intent to find.
+    std::env::set_var("LOOM_PRESENCE_PROBE", "human");
     add_intent(tmp.path(), "solo mint is ratified");
+    std::env::remove_var("LOOM_PRESENCE_PROBE");
     let store = Store::open(tmp.path()).unwrap();
     let facetless = store
         .add_node(

@@ -20,7 +20,10 @@ pub const ACTIVE_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change
 pub const ALL_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change", "deprecated"];
 
 /// Ratification states. A missing facet reads as `unratified` (INV-8).
-pub const RATIFICATION_STATES: &[&str] = &["unratified", "ratified", "needs_reconfirmation"];
+/// The states a HUMAN may assert. `de_facto` is absent on purpose: it is
+/// derived from evidence, so there is no path from caller input to it.
+pub const RATIFICATION_STATES: &[&str] =
+    &["unratified", "ratified", "rejected", "needs_reconfirmation"];
 
 /// Whole-field filler tokens that cannot stand in for evidence or a reason.
 pub const PLACEHOLDER_TOKENS: &[&str] = &[

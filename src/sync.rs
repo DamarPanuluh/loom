@@ -79,6 +79,9 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     // this replaced was supplied by the caller, and `loom journey add`
     // hardcoded the top of the scale.
     crate::proofstrength::recompute(store, root)?;
+    // Wantedness earned from evidence. Recomputed AFTER proof strength, which
+    // one of its three conjuncts reads.
+    crate::ratification::recompute(store)?;
     rebuild_smell_findings(store, &mut report)?;
     // The re-verification pass. One question — "does the thing this fact points
     // at still say what it said?" — asked of every anchor in the graph.

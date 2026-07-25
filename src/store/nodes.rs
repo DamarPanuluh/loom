@@ -502,6 +502,12 @@ impl Store {
     /// lane is rejected — not just wrong lanes. The LLM may author everything
     /// and ratify nothing; only the solo (human) agent may write this fact.
     /// Fail closed, no override.
+    /// Record that a behavior is NOT wanted. Same boundary, same authority
+    /// check, same journal — refusal is an act of the same kind as approval.
+    pub fn reject_intent(&self, id: &str, reason: &str, presence: &str) -> Result<()> {
+        self.ratify_intent_as_state(id, "rejected", reason, presence, "human")
+    }
+
     pub fn ratify_intent(&self, id: &str, evidence: &str, presence: &str) -> Result<()> {
         self.ratify_intent_as(id, evidence, presence, "human")
     }
@@ -526,6 +532,18 @@ impl Store {
         presence: &str,
         ratified_by: &str,
     ) -> Result<()> {
+        self.ratify_intent_as_state(id, "ratified", evidence, presence, ratified_by)
+    }
+
+    /// Both halves of the authority — approval and refusal — through one gate.
+    fn ratify_intent_as_state(
+        &self,
+        id: &str,
+        state: &str,
+        evidence: &str,
+        presence: &str,
+        ratified_by: &str,
+    ) -> Result<()> {
         if presence.trim().is_empty() {
             bail!("ratification requires a human-presence descriptor")
         }
@@ -539,6 +557,11 @@ impl Store {
                  (an utterance, a source doc, a decision)"
             );
         }
+        let event = if state == "rejected" {
+            "rejection"
+        } else {
+            "ratification"
+        };
         // The journal entry is written FIRST, so the ref the fact cites is real
         // by construction rather than by convention. This is also what makes
         // "every ratified intent has a journal entry behind it" a checkable
@@ -546,7 +569,7 @@ impl Store {
         // ratifications this graph carried from before the spine.
         let entry = crate::journal::append(
             self.root(),
-            "ratification",
+            event,
             id,
             serde_json::json!({
                 "evidence": evidence,
@@ -562,7 +585,7 @@ impl Store {
             crate::store::Assertion::new(
                 crate::store::Subject::Node(id.to_string()),
                 crate::model::Claim::Ratification,
-                "ratified",
+                state,
                 ratified_by,
             )
             .criterion(presence)
@@ -573,7 +596,7 @@ impl Store {
         // entry already record that the minting act WAS the ratification, and a
         // note on every solo mint is pure audit-trail bloat.
         if presence != "mint" {
-            self.add_note(id, "ratify", &format!("ratified: {evidence}"))?;
+            self.add_note(id, "ratify", &format!("{state}: {evidence}"))?;
         }
         Ok(())
     }

@@ -308,7 +308,6 @@ fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
             cmd: IntentCmd::Ratify {
                 key: Some(intent.name),
                 all: false,
-                by_policy: None,
                 evidence: Some("an interactive human requested this".into()),
             },
         }),
@@ -463,6 +462,11 @@ fn ratification_provenance_survives_redefinition_staleness() {
 #[test]
 fn solo_mint_is_born_ratified_with_human_origin() {
     let _guard = CLI_LOCK.lock().unwrap();
+    // A PERSON at a terminal, not merely an unset agent. `Agent::Solo` is the
+    // default whenever LOOM_AGENT is absent, so a test process — like CI —
+    // reads as an agent unless it says otherwise. That is the point of the
+    // tightening: `loom intent add` in automation no longer mints wantedness.
+    std::env::set_var("LOOM_PRESENCE_PROBE", "human");
     let tmp = Tmp::new();
     Store::init(tmp.path(), Some("t"), false).unwrap();
     cli_add_intent(tmp.path(), "topics can be captured through door");
@@ -479,6 +483,7 @@ fn solo_mint_is_born_ratified_with_human_origin() {
         Some("human")
     );
     assert_eq!(ratification(&store, &n.id).as_deref(), Some("ratified"));
+    std::env::remove_var("LOOM_PRESENCE_PROBE");
     assert_eq!(
         loom::maturity::depths(&store)
             .unwrap()

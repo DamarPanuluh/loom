@@ -1,6 +1,6 @@
 //! Interactive, human-present drive sessions recorded as append-only exchanges.
 
-use super::{open, pulse, require_human_presence};
+use super::{open, pulse, require_challenge};
 use crate::cli::DriveCmd;
 use crate::model::NodeType;
 use crate::Result;
@@ -20,7 +20,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: Option<DriveCmd>, json: bool) 
 /// the replayable evidence chain consumed by `drive freeze`.
 fn drive(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
-    require_human_presence("drive")?;
+    require_challenge("drive")?;
     let mut exchanges = Vec::new();
     loop {
         let Some(utterance) = prompt("utterance (blank to end): ")? else {

@@ -207,10 +207,35 @@ pub(crate) fn open(graph: Option<&Path>) -> Result<Store> {
     Store::open(&root)
 }
 
-/// Prove a human is presently operating this CLI before a ratifying write.
-/// A lane check alone cannot distinguish an unset `LOOM_AGENT` in automation
-/// from a person at a terminal, which is the failure documented in 62b197cc.
-pub(crate) fn require_human_presence(subject: &str) -> Result<&'static str> {
+/// Is a person operating this CLI right now? Silent — no prompt, no failure.
+///
+/// Three conditions, and all three are needed. A tty alone is not enough (an
+/// agent can be given one); a `Solo` agent alone is not enough (an unset
+/// `LOOM_AGENT` in automation reads as Solo, which is the failure documented in
+/// finding 62b197cc); and `LOOM_NON_INTERACTIVE` lets a wrapper say plainly
+/// that nobody is watching.
+///
+/// This is what makes `loom intent add` at a terminal an utterance rather than
+/// a form to fill in: a person typing the behavior IS the ratification, so
+/// there is nothing more to ask them. An agent gets no such path.
+pub(crate) fn human_present() -> bool {
+    // A test seam, and only in a debug build. Integration tests spawn the CLI
+    // as a separate process, so a thread-local cannot reach it and an
+    // environment variable is the only mechanism that crosses the boundary.
+    // Compiled out of release entirely: there is no shipped path by which an
+    // agent can declare itself a person.
+    #[cfg(debug_assertions)]
+    if let Some(v) = std::env::var_os("LOOM_PRESENCE_PROBE") {
+        return v == "human";
+    }
+    io::stdin().is_terminal()
+        && matches!(crate::store::Agent::from_env(), Ok(crate::store::Agent::Solo))
+        && std::env::var_os("LOOM_NON_INTERACTIVE").is_none()
+}
+
+/// Demand a typed confirmation before a ratifying write. Retained for the
+/// explicit `loom intent ratify`, where the human is deliberately being asked.
+pub(crate) fn require_challenge(subject: &str) -> Result<&'static str> {
     if !io::stdin().is_terminal() {
         bail!(
             "INV-8 / finding 62b197cc: non-interactive ratification is indistinguishable from an LLM"

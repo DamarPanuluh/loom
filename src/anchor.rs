@@ -88,10 +88,19 @@ pub fn required_for(
     state: &str,
     shape: Shape,
 ) -> Floor {
-    // An open problem needs no proof; a blocked one needs a reason, not an anchor.
+    // An open problem needs no proof; a blocked one needs a reason, not an
+    // anchor. `needs_reconfirmation` and `unratified` belong here too: both are
+    // a LOSS of standing, which sync performs whenever meaning drifts. Demanding
+    // evidence to withdraw a claim would mean stale claims could never be
+    // withdrawn — the opposite of what the floor is for.
     if matches!(
         state,
-        "blocked" | "needed" | "uninspected" | "needs_reverification"
+        "blocked"
+            | "needed"
+            | "uninspected"
+            | "needs_reverification"
+            | "needs_reconfirmation"
+            | "unratified"
     ) {
         return Floor::new(Verification::Claimed, "record the concrete blocker");
     }
@@ -249,7 +258,17 @@ const CURRENT_RELATIONSHIP: Verification = Verification::Cited;
 /// where it was decided. Either is re-checkable; a bare opinion is not.
 const CURRENT_FINDING: Verification = Verification::Cited;
 const CURRENT_RESOLVED_FINDING: Verification = Verification::Claimed;
-const CURRENT_RATIFICATION: Verification = Verification::Claimed;
+/// A ratification points at the moment it happened. Two anchors, and the
+/// distinction between them is the whole design: the PROSE anchors the want
+/// (why this behavior is wanted), and the JOURNAL entry anchors the act (a
+/// person, present, saying so). loom writes the journal entry itself before
+/// stamping the fact, so the ref is real by construction — which is exactly why
+/// prose is checked separately for substance, or every ratification would
+/// self-anchor on the entry loom just wrote.
+///
+/// This is the floor that identifies the 39 fabricated records: a `ratified`
+/// state with nothing but a caller's sentence behind it.
+const CURRENT_RATIFICATION: Verification = Verification::Cited;
 
 #[cfg(test)]
 mod tests {
