@@ -3458,3 +3458,54 @@ fn threshold_cli_persists_lists_resets_and_rejects_bad_input() {
         "the unknown-gate error names the offending gate: {stderr}"
     );
 }
+
+/// A retired behavior owns nothing, so it generates no structural smells.
+///
+/// The third place retirement was not respected. `active_intents` correctly
+/// skipped deprecated intents, but the ownership index the co-ownership smells
+/// read was built from every `implements` edge — so a behavior deleted on
+/// purpose kept co-owning its files and kept producing findings about them.
+/// Triage served me one naming the very intent I had just retired.
+#[test]
+fn a_retired_intent_stops_co_owning_its_files() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let shared = codefile(&store, "src/shared.rs");
+    let mut ids = Vec::new();
+    for name in ["a behavior that stays", "a behavior to be removed"] {
+        let i = store
+            .add_node(
+                NodeType::Intent,
+                name,
+                "d",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        store
+            .add_edge(EdgeKind::Implements, &i.id, &shared, TruthClass::Asserted)
+            .unwrap();
+        ids.push(i.id);
+    }
+
+    let coupled = |s: &Store| {
+        loom::signal::smells(s)
+            .unwrap()
+            .into_iter()
+            .filter(|x| x.message.contains("src/shared.rs"))
+            .count()
+    };
+    assert!(
+        coupled(&store) > 0,
+        "two live owners with no relationship is a real smell"
+    );
+
+    store
+        .retire_intent(&ids[1], "deleted on purpose", None)
+        .unwrap();
+    assert_eq!(
+        coupled(&store),
+        0,
+        "one live owner remains — a retired behavior is not a co-owner"
+    );
+}

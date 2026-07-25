@@ -172,8 +172,18 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
     let intents = active_intents(&snap);
 
     // shared indices (all borrow `snap`)
+    // Only ACTIVE intents own anything. `active_intents` above already excludes
+    // deprecated behaviors, but the ownership index did not — so a retired
+    // intent kept co-owning its files and kept generating structural smells
+    // about them. Retiring a behavior is loom's own sanctioned move when code
+    // is deliberately removed; it has to actually remove the behavior from
+    // every derived view, not just the one that lists intents.
+    let active_ids: BTreeSet<&str> = intents.iter().map(|n| n.id.as_str()).collect();
     let mut owners: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     for e in implements_edges(&snap) {
+        if !active_ids.contains(e.from_id.as_str()) {
+            continue;
+        }
         // Only `realizes` groundings confer ownership; a `consumes`/`configures`/
         // `verifies` edge (or a superseded one) does not put the file in an
         // intent's cluster. Feeding non-realizing edges here would leak consumer
