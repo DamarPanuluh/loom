@@ -1023,13 +1023,27 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
 /// intent's grounded files. Computed on read at packet-build time, never
 /// stored — hits are candidates for the LLM to confirm or refute, mirroring
 /// how debt clusters are computed rather than persisted.
+/// What a pattern pre-screen actually did.
+///
+/// An empty hit list is ambiguous — it means both "no patterns, nothing ran"
+/// and "loom scanned and found nothing". Only the second is evidence, and it is
+/// the evidence that answers an ABSENCE rule ("no hardcoded secrets here"), so
+/// it has to be distinguishable.
+#[derive(Debug, Default, Clone, serde::Serialize)]
+pub struct PreScreen {
+    pub ran: bool,
+    pub patterns: usize,
+    pub files: usize,
+    pub hits: Vec<crate::prescan::PreScreenHit>,
+}
+
 pub(super) fn prescreen_for(
     store: &Store,
     rule: Option<&Node>,
     intent_id: &str,
-) -> Result<Vec<crate::prescan::PreScreenHit>> {
+) -> Result<PreScreen> {
     let Some(rule) = rule else {
-        return Ok(Vec::new());
+        return Ok(PreScreen::default());
     };
     let patterns: Vec<String> = rule
         .body
@@ -1042,7 +1056,7 @@ pub(super) fn prescreen_for(
         })
         .unwrap_or_default();
     if patterns.is_empty() {
-        return Ok(Vec::new());
+        return Ok(PreScreen::default());
     }
     let mut files = Vec::new();
     // Pre-screen every realizing file. A cap here would let the quality packet
@@ -1053,9 +1067,15 @@ pub(super) fn prescreen_for(
         }
     }
     if files.is_empty() {
-        return Ok(Vec::new());
+        return Ok(PreScreen::default());
     }
-    crate::prescan::prescreen(store.root(), &files, &patterns, 20)
+    let hits = crate::prescan::prescreen(store.root(), &files, &patterns, 20)?;
+    Ok(PreScreen {
+        ran: true,
+        patterns: patterns.len(),
+        files: files.len(),
+        hits,
+    })
 }
 
 // NOTE: `QueueCounts` + `queue_counts` lived here and recomputed, with a second

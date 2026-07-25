@@ -742,11 +742,11 @@ fn print_work_item(item: &workitem::WorkItem) {
             }
         }
     }
+    if let Some(note) = &c.pre_screen {
+        println!("  {note}");
+    }
     if !c.pre_screened_hits.is_empty() {
-        println!(
-            "  loom already scanned for this and found {} hit(s):",
-            c.pre_screened_hits.len()
-        );
+        println!("  candidates:");
         for hit in &c.pre_screened_hits {
             println!(
                 "    - {}:{} [{}] {}",

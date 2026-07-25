@@ -52,6 +52,12 @@ pub struct PromptContract {
     /// candidates for the LLM to CONFIRM or REFUTE, never verdicts.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pre_screened_hits: Vec<crate::prescan::PreScreenHit>,
+    /// What loom's own pattern scan did, when it ran. A CLEAN scan is the
+    /// evidence an absence rule needs — "loom ran these patterns over these
+    /// files and found nothing" — and reporting only hits made that result
+    /// indistinguishable from never having looked.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pre_screen: Option<String>,
     pub write_back: String,
     pub stop_condition: String,
     pub human_gate: Option<String>,

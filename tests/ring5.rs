@@ -4436,3 +4436,64 @@ fn build_packet_purpose_names_notes_as_prior_record() {
         wi.context.purpose
     );
 }
+
+/// A pattern scan that found nothing must SAY so.
+///
+/// An empty hit list is ambiguous: it means both "this rule has no patterns, so
+/// nothing ran" and "loom scanned and found nothing". Only the second is
+/// evidence — and for an ABSENCE rule ("no hardcoded secrets here") it is the
+/// whole answer. Reporting only hits made loom's own scan invisible, so the
+/// packet told the worker to grep for patterns loom had already grepped and
+/// never told them the result.
+#[test]
+fn a_clean_pattern_scan_is_reported_as_evidence() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(tmp.path().join("src/clean.rs"), "pub fn behavior() {}\n").unwrap();
+
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "a behavior with no secrets in it",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = store
+        .add_node(NodeType::CodeFile, "src/clean.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Implements, &intent.id, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    let rule = store
+        .add_node(
+            NodeType::QualityRule,
+            "no-secrets",
+            "no literal credentials",
+            "",
+            serde_json::json!({ "patterns": ["api_key", "BEGIN PRIVATE KEY"] }),
+        )
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Governs, &rule.id, &intent.id, TruthClass::Asserted)
+        .unwrap();
+
+    let item = loom::workitem::next(&store, Some(loom::lane::Lane::Quality))
+        .unwrap()
+        .expect("an unmeasured rule routes to quality");
+    let note = item
+        .prompt_contract
+        .pre_screen
+        .expect("a scan that ran reports what it did");
+    assert!(
+        note.contains("NOTHING"),
+        "a clean scan must say it found nothing: {note}"
+    );
+    assert!(
+        note.contains('2') && note.contains('1'),
+        "and what it covered — 2 patterns over 1 file: {note}"
+    );
+    assert!(item.prompt_contract.pre_screened_hits.is_empty());
+}

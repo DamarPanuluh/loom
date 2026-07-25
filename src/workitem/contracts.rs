@@ -58,6 +58,7 @@ pub(super) fn elaborator_contract(
         required_evidence: "every open axis closed by an artifact, a waiver, or a question — never by silence".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: "one command per open axis (see allowed actions), then loom status".into(),
         stop_condition: "after addressing every open axis, return to loom status".into(),
@@ -130,6 +131,7 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
         required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
             "loom edge implement {name} <codefile> --locator <symbol>; loom intent update {name} --lifecycle implemented --reason '<what was built>'"
@@ -167,6 +169,7 @@ pub(super) fn missing_codefile_contract(codefile: &Node) -> PromptContract {
         required_evidence: "the successor registration + re-grounding, or the removal of the dead registration".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
             "loom codefile remove {file}  (after re-grounding any intents it carried)"
@@ -220,6 +223,7 @@ pub(super) fn coverage_contract(codefile: &Node) -> PromptContract {
                 "do": "create the owning intent for this surface (level feature; visibility user_visible if a person touches it), ground it --role realizes, then add --role consumes edges to the intents it exercises, naming the seam (route/topic/key) in the locator"
             }
         ])),
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
             "loom edge implement <intent> {file} --role realizes --locator <symbol>   (or, if it only calls behavior elsewhere)   loom intent add --name '<surface behavior>' --visibility user_visible … ; loom edge implement '<surface behavior>' {file} --role realizes --locator <symbol> ; loom edge implement '<consumed intent>' {file} --role consumes --locator <seam>   (or)   loom codefile remove {file}"
@@ -251,6 +255,7 @@ pub(super) fn analyzer_contract(edge: &Edge, from_name: &str, to_name: &str) -> 
         required_evidence: "file/line locators, validation output, or runtime evidence".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back,
         stop_condition: "after recording the verdict, return to loom status".into(),
@@ -309,6 +314,7 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
         required_evidence: "Loom context checked, relevant code inspected, code change, sync clean, the failing criterion now addressed at its cause".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: "fix the source at root cause, then loom sync — sync re-opens this claim as \
                      needs_reverification and its owning lane re-measures it. If the behavior was \
@@ -346,7 +352,7 @@ pub(super) fn quality_contract_body(
     why_now: &str,
     rule_name: &str,
     intent_name: &str,
-    pre_screened_hits: Vec<crate::prescan::PreScreenHit>,
+    screen: super::queues::PreScreen,
 ) -> PromptContract {
     let body = rule.map(|n| n.body.clone()).unwrap_or_default();
     let guide = body
@@ -400,11 +406,32 @@ pub(super) fn quality_contract_body(
     } else {
         ""
     };
-    let hits_note = if pre_screened_hits.is_empty() {
+    let hits_note = if screen.hits.is_empty() {
         ""
     } else {
         " Machine pre-screened hits are attached: confirm or refute EVERY hit before your verdict — they are candidates, not conclusions."
     };
+    // A scan that ran and found nothing is the evidence an ABSENCE rule needs.
+    // Reporting only hits made "loom looked and found none" indistinguishable
+    // from "loom never looked", so the worker re-grepped what loom had already
+    // grepped and could not cite the scan even when it was the whole answer.
+    let pre_screen = screen.ran.then(|| {
+        if screen.hits.is_empty() {
+            format!(
+                "loom scanned {} pattern(s) over {} grounded file(s) and found NOTHING. \
+                 That absence IS the evidence for this rule — cite it rather than re-grepping.",
+                screen.patterns, screen.files
+            )
+        } else {
+            format!(
+                "loom scanned {} pattern(s) over {} grounded file(s) and found {} candidate(s), \
+                 listed below. Confirm or refute each.",
+                screen.patterns,
+                screen.files,
+                screen.hits.len()
+            )
+        }
+    });
     PromptContract {
         role: "quality".into(),
         mindset: format!(
@@ -425,7 +452,8 @@ pub(super) fn quality_contract_body(
             .into(),
         evidence_template,
         examples,
-        pre_screened_hits,
+        pre_screen,
+        pre_screened_hits: screen.hits,
         write_back,
         stop_condition: "after recording the verdict, return to loom status".into(),
         human_gate: None,
@@ -535,6 +563,7 @@ pub(super) fn validator_contract(
         },
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back,
         stop_condition: "after recording the result, return to loom status".into(),
@@ -586,6 +615,7 @@ pub(super) fn unproven_contract(intent: &Node, has_registered_proof: bool) -> Pr
                 .into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
             "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent {name}  then  loom validation run {name}"
@@ -633,6 +663,7 @@ pub(super) fn reviewer_contract(
         required_evidence: "fresh file/line or runtime evidence; state explicitly whether the prior verdict was confirmed or overturned".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back,
         stop_condition: "after recording the verdict, return to loom status".into(),
@@ -664,6 +695,7 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
         required_evidence: "code evidence that the claim holds or fails".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!("loom hypothesis prove {name} <supported|refuted> --evidence '…'"),
         stop_condition: "a SUPPORTED verdict is not work until adopted (loom hypothesis adopt) — adopt it to spawn build work; a REFUTED verdict stands as an honest record. Then return to loom status.".into(),
@@ -695,6 +727,7 @@ pub(super) fn triage_contract(id: &str) -> PromptContract {
             .into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'"),
         stop_condition: "after recording the verdict, return to loom status".into(),
@@ -730,6 +763,7 @@ pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
             .into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'"),
         stop_condition: "after recording the verdict, return to loom status".into(),
@@ -766,6 +800,7 @@ pub(super) fn ratify_contract(id: &str) -> PromptContract {
             .into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!("loom intent ratify {id} --evidence '…'"),
         stop_condition: "if no human is present, stop — batch ratify packets for the next human session instead of draining them".into(),
@@ -794,6 +829,7 @@ pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
         required_evidence: "the durable destination or concrete rejection reason".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!("loom inbox mark {id} <routed|rejected|duplicate|deferred> --reason '…'"),
         stop_condition: "after disposition, return to loom status".into(),
@@ -836,6 +872,7 @@ pub(super) fn deepen_contract(id: &str, next_move: &str) -> PromptContract {
         required_evidence: "a proof loom ran, whose new grade is higher than the old one".into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!("the move for this behavior is: {next_move}"),
         stop_condition: "stop after ONE move — this queue re-ranks after every change, \
@@ -872,6 +909,7 @@ pub(super) fn audit_contract(remedy: &str) -> PromptContract {
             .into(),
         evidence_template: None,
         examples: None,
+        pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: remedy.to_string(),
         stop_condition: "stop when the claim is either anchored or withdrawn — never when \
