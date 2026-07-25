@@ -245,3 +245,37 @@ fn an_untargeted_run_is_still_journaled() {
         "an unattached run must not invent a behavior to attach itself to"
     );
 }
+
+/// `loom observe` must be able to wrap loom itself.
+///
+/// The worst defect this command has had. `observe` held the graph's write
+/// lock across the child, so any child that also opens the graph — and loom's
+/// own journey proofs are all `loom journey run …` — blocked on its parent and
+/// exited non-zero. That did not merely fail: it recorded a FALSE FAILING
+/// verdict against a behavior that passes, and the validate packet recommended
+/// exactly that form. A tool whose thesis is that nothing counts unless loom
+/// observed it cannot afford to observe wrong.
+#[test]
+fn observing_a_command_that_uses_loom_does_not_deadlock_on_its_own_lock() {
+    let tmp = Tmp::new();
+    let _intent = graph(tmp.path());
+
+    // The child opens the SAME graph for writing, exactly as `loom journey run`
+    // and `loom sync` do.
+    let child = format!(
+        "{} --graph {} sync",
+        loom_bin().display(),
+        tmp.path().display()
+    );
+    let v = observe(
+        tmp.path(),
+        Some("an order can be placed"),
+        &["sh", "-c", &child],
+    );
+    assert_eq!(v["observed"], true, "{v}");
+    assert_eq!(
+        v["exit_code"], 0,
+        "a child that opens the graph must not be blocked by its observer: {v}"
+    );
+    assert_eq!(v["strength"], "S1", "{v}");
+}

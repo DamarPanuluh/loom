@@ -915,8 +915,6 @@ pub(crate) fn observe_run(
     timeout: u64,
     command: &[String],
 ) -> Result<serde_json::Value> {
-    let store = open(graph)?;
-    let root = store.root().to_path_buf();
     // Re-quote every argument. Joining on spaces looks right and is wrong: it
     // hands `python3 -c "import sys; ..."` to the shell as several statements,
     // so the command loom "observed" is not the command the caller asked for.
@@ -926,16 +924,28 @@ pub(crate) fn observe_run(
         .collect::<Vec<_>>()
         .join(" ");
 
-    // What this run covers: the files the target behavior is grounded in, so an
-    // edit to any of them expires it. With no target, the run covers nothing
-    // and stands only as a journal record — honest about being unattached.
-    let (intent, covered) = match target {
-        Some(key) => {
-            let node = store.resolve_node(key, Some(NodeType::Intent))?;
-            let files = crate::runner::files_grounding(&store, &node.id)?;
-            (Some(node), files)
+    // Resolve what we need, then CLOSE the graph before running anything.
+    //
+    // Holding the write lock across the child is fatal for the commands most
+    // worth observing: loom's own journeys are `loom journey run …`, and a
+    // child blocked on the lock its parent holds exits non-zero. That does not
+    // merely fail — it records a FALSE FAILING verdict against a behavior that
+    // passes, which is the one outcome this whole spine exists to prevent.
+    let (intent, covered, root) = {
+        let store = open(graph)?;
+        let root = store.root().to_path_buf();
+        // What this run covers: the files the target behavior is grounded in,
+        // so an edit to any of them expires it. With no target, the run covers
+        // nothing and stands only as a journal record — honest about being
+        // unattached.
+        match target {
+            Some(key) => {
+                let node = store.resolve_node(key, Some(NodeType::Intent))?;
+                let files = crate::runner::files_grounding(&store, &node.id)?;
+                (Some(node), files, root)
+            }
+            None => (None, Vec::new(), root),
         }
-        None => (None, Vec::new()),
     };
 
     let observation = crate::runner::observe_command(
@@ -949,6 +959,8 @@ pub(crate) fn observe_run(
     let run = match &observation {
         crate::runner::Observation::Ran(run) => (**run).clone(),
         crate::runner::Observation::Blocked { reason } => {
+            let store = open(graph)?;
+            let _ = &store;
             // A command loom could not run is not a failing proof. Recorded as
             // blocked, visible, never green.
             crate::journal::append(
@@ -961,6 +973,8 @@ pub(crate) fn observe_run(
         }
     };
 
+    // The child is done; take the lock back to record what happened.
+    let store = open(graph)?;
     let entry = crate::journal::append(
         &root,
         "observe",
