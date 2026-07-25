@@ -71,7 +71,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring18_journey_baseline",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-18T19:58:44.033Z",
@@ -259,15 +258,15 @@
     {
       "id": "10b39e737268e23369169078438e0ff2",
       "type": "intent",
-      "name": "compass points at ratify when unratified intents exist and nothing outranks them",
-      "description": "with at least one unratified intent and no higher-priority failing work, maturity phase is ratify and next_command contains --mode ratify",
+      "name": "the compass points at divergence only when judgment and evidence disagree",
+      "description": "with at least one BLOCKING divergence and no higher-priority work, maturity phase is ratify and next_command contains --mode ratify. A merely unratified intent does not qualify — that was the completeness wall the divergence queue replaced.",
       "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature"
       },
       "created_at": "2026-07-19T18:18:13.672Z",
-      "updated_at": "2026-07-19T18:18:29.080Z"
+      "updated_at": "2026-07-25T18:46:11.947Z"
     },
     {
       "id": "11dcc7c1219770fcd321b419909dc092",
@@ -447,7 +446,6 @@
         "command": "loom journey run journeys/next-router.yaml",
         "journey_id": "next router serves residue",
         "proof_kind": "journey",
-        "proof_level": "L5",
         "repo_native_kind": "journey_json",
         "spec_hash": "948f666abf038815",
         "type": "journey"
@@ -684,7 +682,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring14_ratify",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-18T19:43:15.197Z",
@@ -742,6 +739,20 @@
       },
       "created_at": "2026-07-09T20:30:58.877Z",
       "updated_at": "2026-07-09T20:30:58.877Z"
+    },
+    {
+      "id": "29c87fca1a8881d40e1d21d7953e2c40",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined: v0.26.0: the compass no longer routes on unratified count",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "10b39e737268e23369169078438e0ff2"
+      },
+      "created_at": "2026-07-25T18:46:11.951Z",
+      "updated_at": "2026-07-25T18:46:11.951Z"
     },
     {
       "id": "2b1aef5ba997b90e0341b8932d2a0434",
@@ -1010,7 +1021,6 @@
         "command": "loom journey run journeys/system-purpose.yaml",
         "journey_id": "loom system purpose",
         "proof_kind": "journey",
-        "proof_level": "L5",
         "repo_native_kind": "journey_json",
         "spec_hash": "17433eecea9d17fe",
         "type": "journey"
@@ -1315,6 +1325,20 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.628Z",
       "updated_at": "2026-07-09T04:59:38.628Z"
+    },
+    {
+      "id": "44ba6b0c0a98e83f7acf42cbd9f6993c",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined; previous description: with no ratification facet, unratified_intents includes the intent, the ratify queue is non-zero, and the wanted rung is unmet — wantedness is never presumed",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "74402508c633e720d4ecdd95c1a27dd5"
+      },
+      "created_at": "2026-07-25T18:45:59.602Z",
+      "updated_at": "2026-07-25T18:45:59.602Z"
     },
     {
       "id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
@@ -1673,6 +1697,20 @@
       "updated_at": "2026-07-18T19:43:30.410Z"
     },
     {
+      "id": "579acf7894ed44179e154362e16f729f",
+      "type": "note",
+      "name": "note:decision",
+      "description": "renamed from 'unratified intents route to a human-only ratify queue': v0.26.0: the wanted rung became the divergence queue",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "e56229425a63eeb67ae20ca43cf10c1b"
+      },
+      "created_at": "2026-07-25T18:46:11.962Z",
+      "updated_at": "2026-07-25T18:46:11.962Z"
+    },
+    {
       "id": "59f3d2be0ec4c6138631c3fc2f034376",
       "type": "intent",
       "name": "the CLI dispatches every operation through typed handlers",
@@ -1860,7 +1898,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --lib store::tests -q && cargo test --test ring8 -q",
-        "proof_level": "L3",
         "type": "test"
       },
       "created_at": "2026-07-09T20:06:19.461Z",
@@ -1973,7 +2010,6 @@
         "command": "loom journey run journeys/find-grounding.yaml",
         "journey_id": "find surfaces grounding",
         "proof_kind": "journey",
-        "proof_level": "L5",
         "repo_native_kind": "journey_json",
         "spec_hash": "f5b87270a5b2fcc0",
         "type": "journey"
@@ -2240,6 +2276,20 @@
       "updated_at": ""
     },
     {
+      "id": "6eaec63473f692704fb359272f8b4295",
+      "type": "note",
+      "name": "note:decision",
+      "description": "1 completeness waiver(s) re-opened by redefinition",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "e56229425a63eeb67ae20ca43cf10c1b"
+      },
+      "created_at": "2026-07-25T18:46:11.964Z",
+      "updated_at": "2026-07-25T18:46:11.964Z"
+    },
+    {
       "id": "6ed438ec96b4a9c5282ac95159765b32",
       "type": "codefile",
       "name": "src/signal/debt/cochange.rs",
@@ -2350,6 +2400,20 @@
       "updated_at": "2026-07-18T20:03:18.049Z"
     },
     {
+      "id": "71d7aaced4e166de9d1eb1b80ba6d4cb",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined; previous description: with at least one unratified intent and no higher-priority failing work, maturity phase is ratify and next_command contains --mode ratify",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "10b39e737268e23369169078438e0ff2"
+      },
+      "created_at": "2026-07-25T18:46:11.947Z",
+      "updated_at": "2026-07-25T18:46:11.947Z"
+    },
+    {
       "id": "72384918a564c4f97f758f885469ece0",
       "type": "codefile",
       "name": "src/runner.rs",
@@ -2388,15 +2452,15 @@
     {
       "id": "74402508c633e720d4ecdd95c1a27dd5",
       "type": "intent",
-      "name": "absent ratification reads as unratified and gates the wanted rung",
-      "description": "with no ratification facet, unratified_intents includes the intent, the ratify queue is non-zero, and the wanted rung is unmet — wantedness is never presumed",
+      "name": "absent ratification reads as unratified without gating the ladder",
+      "description": "with no ratification fact, the shared predicate still reports the intent as unratified — wantedness is never presumed. It does NOT gate: an unbuilt intent nobody has spoken to is ordinary work-in-progress, not a divergence.",
       "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature"
       },
       "created_at": "2026-07-19T18:13:12.087Z",
-      "updated_at": "2026-07-19T18:16:04.092Z"
+      "updated_at": "2026-07-25T18:46:11.927Z"
     },
     {
       "id": "75c5c4a1e26db9b1fc38db64b05479e3",
@@ -2526,7 +2590,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring20_hooks",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-18T20:01:52.823Z",
@@ -2737,6 +2800,20 @@
       },
       "created_at": "2026-07-09T05:17:29.856Z",
       "updated_at": "2026-07-09T05:17:29.856Z"
+    },
+    {
+      "id": "8a2af711d08c6d34143b73f787da0e35",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined: v0.26.0 replaced the wanted rung with the divergence queue; the gating half of this description became false",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "74402508c633e720d4ecdd95c1a27dd5"
+      },
+      "created_at": "2026-07-25T18:45:59.605Z",
+      "updated_at": "2026-07-25T18:45:59.605Z"
     },
     {
       "id": "8a5218e43f067ad76e209aa67b91918a",
@@ -3519,7 +3596,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring13_precision evidence_refines_cause -q",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-09T21:09:14.660Z",
@@ -3548,7 +3624,6 @@
         "command": "loom journey run journeys/sync-ripple.yaml",
         "journey_id": "sync reopens grounded edges",
         "proof_kind": "journey",
-        "proof_level": "L5",
         "repo_native_kind": "journey_json",
         "spec_hash": "7c3bfb5af3e98a6a",
         "type": "journey"
@@ -3738,7 +3813,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring13_precision -q",
-        "proof_level": "L3",
         "type": "test"
       },
       "created_at": "2026-07-09T19:48:57.997Z",
@@ -3767,7 +3841,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring19_drive",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-18T20:01:34.470Z",
@@ -3797,6 +3870,20 @@
       },
       "created_at": "2026-07-09T19:17:33.518Z",
       "updated_at": "2026-07-09T19:17:33.518Z"
+    },
+    {
+      "id": "b1901f829c9fa047fba4f5234071d719",
+      "type": "note",
+      "name": "note:decision",
+      "description": "renamed from 'compass points at ratify when unratified intents exist and nothing outranks them': v0.26.0: the compass no longer routes on unratified count",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "10b39e737268e23369169078438e0ff2"
+      },
+      "created_at": "2026-07-25T18:46:11.947Z",
+      "updated_at": "2026-07-25T18:46:11.947Z"
     },
     {
       "id": "b1f09c988862879067cf7f7ad3acdc1a",
@@ -3836,6 +3923,20 @@
       },
       "created_at": "2026-07-09T05:20:44.091Z",
       "updated_at": "2026-07-09T05:20:49.921Z"
+    },
+    {
+      "id": "b37485d38a8ea7a966d00e31a5ce1ac4",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined; previous description: the wanted maturity rung gates on ratification; the compass points at loom next --mode ratify when unratified intents exist; plain loom next never serves ratify packets (human-presence work is batched, not drained autonomously)",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "e56229425a63eeb67ae20ca43cf10c1b"
+      },
+      "created_at": "2026-07-25T18:46:11.963Z",
+      "updated_at": "2026-07-25T18:46:11.963Z"
     },
     {
       "id": "b392065225fc91bd7c012f740af62be8",
@@ -4139,7 +4240,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring16_policy_ratify",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-18T19:43:43.822Z",
@@ -4291,6 +4391,20 @@
       "updated_at": "2026-07-18T14:36:51.382Z"
     },
     {
+      "id": "cb372c97c7cc07f6170937a6f2cd4228",
+      "type": "note",
+      "name": "note:decision",
+      "description": "renamed from 'absent ratification reads as unratified and gates the wanted rung': the gating half was removed in v0.26.0",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "74402508c633e720d4ecdd95c1a27dd5"
+      },
+      "created_at": "2026-07-25T18:46:11.928Z",
+      "updated_at": "2026-07-25T18:46:11.928Z"
+    },
+    {
       "id": "cbbcd820728f3e6e4600d460bd748980",
       "type": "validation",
       "name": "fix queue partition",
@@ -4402,7 +4516,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring13_precision localized_edit_produces_at_most_three_full_judgment_packets -- --exact",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-10T05:05:42.582Z",
@@ -5511,7 +5624,7 @@
     {
       "id": "d6012016d50d667b3",
       "type": "finding",
-      "name": "user-visible intent 'unratified intents route to a human-only ratify queue' has validations but no passing L5/L6 journey proof",
+      "name": "user-visible intent 'divergences route to a human-only queue' has validations but no passing L5/L6 journey proof",
       "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
       "status": "proof_too_shallow_for_intent",
       "truth_class": "derived",
@@ -6161,6 +6274,20 @@
       },
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d9d3cab56300ca61cd4f748b6f58ac60",
+      "type": "note",
+      "name": "note:decision",
+      "description": "redefined: v0.26.0: the wanted rung became the divergence queue",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "e56229425a63eeb67ae20ca43cf10c1b"
+      },
+      "created_at": "2026-07-25T18:46:11.968Z",
+      "updated_at": "2026-07-25T18:46:11.968Z"
     },
     {
       "id": "d9d5099584960cf5a",
@@ -7262,15 +7389,15 @@
     {
       "id": "e56229425a63eeb67ae20ca43cf10c1b",
       "type": "intent",
-      "name": "unratified intents route to a human-only ratify queue",
-      "description": "the wanted maturity rung gates on ratification; the compass points at loom next --mode ratify when unratified intents exist; plain loom next never serves ratify packets (human-presence work is batched, not drained autonomously)",
+      "name": "divergences route to a human-only queue",
+      "description": "the converged rung gates on blocking divergences, not on unratified count; the compass points at loom next --mode ratify when one exists; plain loom next never serves those packets (human-presence work is batched, not drained autonomously)",
       "status": "implemented",
       "truth_class": "asserted",
       "body": {
         "level": "feature"
       },
       "created_at": "2026-07-18T14:18:56.216Z",
-      "updated_at": "2026-07-18T14:18:56.216Z"
+      "updated_at": "2026-07-25T18:46:11.963Z"
     },
     {
       "id": "e569e539479e92c4bb230c3678dff6a1",
@@ -7603,7 +7730,6 @@
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring17_journal",
-        "proof_level": "L2",
         "type": "test"
       },
       "created_at": "2026-07-18T19:56:20.192Z",
@@ -7755,7 +7881,6 @@
         "command": "loom journey run journeys/door-capture.yaml",
         "journey_id": "door capture happy path",
         "proof_kind": "journey",
-        "proof_level": "L5",
         "repo_native_kind": "journey_json",
         "spec_hash": "165e41a1f6090b2d",
         "type": "journey"
@@ -21400,7 +21525,7 @@
       "target_id": "1a762d6a9153f77fcaa4c122d5fbf7b1",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "815eb4d8dd80bd72",
+      "value": "9d44402ae8537a0d",
       "truth_class": "derived"
     },
     {
@@ -28610,7 +28735,7 @@
       "target_id": "ceecf7f5604e1cd4934245e61efe399d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e8dcc516e86ebd9e",
+      "value": "66b54238a6174c2e",
       "truth_class": "derived"
     },
     {
@@ -28631,7 +28756,7 @@
       "target_id": "ceecf7f5604e1cd4934245e61efe399d",
       "target_kind": "node",
       "key": "loc",
-      "value": "1059",
+      "value": "1074",
       "truth_class": "derived"
     },
     {
@@ -28652,7 +28777,7 @@
       "target_id": "ceecf7f5604e1cd4934245e61efe399d",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Agent\":\"dd509ca5159c1f48\",\"Identity\":\"887a6258277f40e6\",\"RestoreReport\":\"7f21840cb6f748c3\",\"Snapshot\":\"a41d1018ee1ec5a5\",\"Store\":\"21e461ef69c40b07\",\"acquire_lock\":\"e6cc83ef7bd8b7a5\",\"adopt_legacy_schema_version\":\"440689d1143e5dff\",\"agent\":\"cfea727201b13656\",\"apply_schema_migrations\":\"e2b28cf553e4c25a\",\"begin\":\"187351503bef04cb\",\"check_lane\":\"ea76e811430273d8\",\"configure\":\"16b35302cbcdeb07\",\"configure_read\":\"1e6a6ea964e05b61\",\"derived_id\":\"94391f60391fd465\",\"find_root\":\"9b0f6586ec703cd9\",\"fnv_hex_digest\":\"6ed1a3197709b96a\",\"from_env\":\"1ddc40f01ad8b1ba\",\"id_and_now\":\"7e0c842011dcfb57\",\"identity\":\"c913edfaad734820\",\"init\":\"875fc34aeceaec9d\",\"now\":\"eee868f05fae4e8f\",\"open\":\"ab80d9d2b347c078\",\"open_read\":\"acd7ab2dd2787ccd\",\"parse\":\"092c51ac11a95914\",\"parse_col\":\"ed07ce54ed11ea1c\",\"parse_named\":\"74f06a6f3737f31d\",\"root\":\"d54a6afdf2221887\",\"row_to_edge\":\"e12ffcfd51bf2828\",\"row_to_node\":\"2516b5504252b96a\",\"schema_migrations\":\"92d2b357f8d6c638\",\"set_agent\":\"bed3953b96797fb5\",\"set_observed\":\"0d9d08bc7307baf4\"}",
+      "value": "{\"Agent\":\"dd509ca5159c1f48\",\"Identity\":\"887a6258277f40e6\",\"RestoreReport\":\"7f21840cb6f748c3\",\"Snapshot\":\"a41d1018ee1ec5a5\",\"Store\":\"21e461ef69c40b07\",\"acquire_lock\":\"e6cc83ef7bd8b7a5\",\"adopt_legacy_schema_version\":\"440689d1143e5dff\",\"agent\":\"cfea727201b13656\",\"apply_schema_migrations\":\"e2b28cf553e4c25a\",\"begin\":\"187351503bef04cb\",\"check_lane\":\"ea76e811430273d8\",\"configure\":\"16b35302cbcdeb07\",\"configure_read\":\"1e6a6ea964e05b61\",\"derived_id\":\"94391f60391fd465\",\"find_root\":\"9b0f6586ec703cd9\",\"fnv_hex_digest\":\"6ed1a3197709b96a\",\"from_env\":\"1ddc40f01ad8b1ba\",\"id_and_now\":\"7e0c842011dcfb57\",\"identity\":\"c913edfaad734820\",\"init\":\"875fc34aeceaec9d\",\"now\":\"eee868f05fae4e8f\",\"open\":\"ab80d9d2b347c078\",\"open_read\":\"acd7ab2dd2787ccd\",\"parse\":\"092c51ac11a95914\",\"parse_col\":\"ed07ce54ed11ea1c\",\"parse_named\":\"74f06a6f3737f31d\",\"root\":\"d54a6afdf2221887\",\"row_to_edge\":\"e12ffcfd51bf2828\",\"row_to_node\":\"2516b5504252b96a\",\"schema_migrations\":\"3a0514eb0863c294\",\"set_agent\":\"bed3953b96797fb5\",\"set_observed\":\"0d9d08bc7307baf4\"}",
       "truth_class": "derived"
     },
     {
@@ -29286,13 +29411,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "e56229425a63eeb67ae20ca43cf10c1b",
-      "target_kind": "node",
-      "key": "waiver:journey",
-      "value": "The ratify queue is intentionally human-presence work: a non-TTY journey must be rejected and a TTY challenge cannot be automated by an LLM without violating INV-8. tests/ring14_ratify.rs:127-171 proves fail-closed wanted-rung and human-only queue routing.",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "e58c32101863c954e716ff9f64d3ac96",
       "target_kind": "node",
       "key": "calls",
@@ -29779,14 +29897,14 @@
       "target_id": "f38f26335f02a23e2691c6b0025609e3",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"busy_graph>Some\",\"busy_graph>Store::init\",\"busy_graph>fs::create_dir_all\",\"busy_graph>fs::write\",\"busy_graph>prove_s2\",\"busy_graph>root::join\",\"busy_graph>serde_json::json\",\"busy_graph>store::add_edge\",\"busy_graph>store::add_node\",\"busy_graph>store::record_verdict\",\"busy_graph>store::set_facet\",\"busy_graph>sync::run\",\"every_lane_reports_the_depth_it_can_serve>Tmp::new\",\"every_lane_reports_the_depth_it_can_serve>Vec::new\",\"every_lane_reports_the_depth_it_can_serve>assert\",\"every_lane_reports_the_depth_it_can_serve>busy_graph\",\"every_lane_reports_the_depth_it_can_serve>depths::get\",\"every_lane_reports_the_depth_it_can_serve>disagreements::push\",\"every_lane_reports_the_depth_it_can_serve>format\",\"every_lane_reports_the_depth_it_can_serve>lane::serves_items\",\"every_lane_reports_the_depth_it_can_serve>maturity::depths\",\"every_lane_reports_the_depth_it_can_serve>maturity::ladder\",\"every_lane_reports_the_depth_it_can_serve>name::as_str\",\"every_lane_reports_the_depth_it_can_serve>rungs::iter\",\"every_lane_reports_the_depth_it_can_serve>tmp::path\",\"every_lane_reports_the_depth_it_can_serve>workitem::queue_items\",\"ownership_has_one_definition>Tmp::new\",\"ownership_has_one_definition>assert_eq\",\"ownership_has_one_definition>busy_graph\",\"ownership_has_one_definition>commands::code_ownership_summary\",\"ownership_has_one_definition>commands::unowned_names\",\"ownership_has_one_definition>tmp::path\"]",
+      "value": "[\"busy_graph>Some\",\"busy_graph>Store::init\",\"busy_graph>fs::create_dir_all\",\"busy_graph>fs::write\",\"busy_graph>prove_s2\",\"busy_graph>root::join\",\"busy_graph>serde_json::json\",\"busy_graph>store::add_edge\",\"busy_graph>store::add_node\",\"busy_graph>store::ensure_edge\",\"busy_graph>store::record_verdict\",\"busy_graph>store::retire_intent\",\"busy_graph>store::set_facet\",\"busy_graph>sync::run\",\"every_lane_reports_the_depth_it_can_serve>Tmp::new\",\"every_lane_reports_the_depth_it_can_serve>Vec::new\",\"every_lane_reports_the_depth_it_can_serve>assert\",\"every_lane_reports_the_depth_it_can_serve>busy_graph\",\"every_lane_reports_the_depth_it_can_serve>depths::get\",\"every_lane_reports_the_depth_it_can_serve>disagreements::push\",\"every_lane_reports_the_depth_it_can_serve>format\",\"every_lane_reports_the_depth_it_can_serve>lane::serves_items\",\"every_lane_reports_the_depth_it_can_serve>maturity::depths\",\"every_lane_reports_the_depth_it_can_serve>maturity::ladder\",\"every_lane_reports_the_depth_it_can_serve>name::as_str\",\"every_lane_reports_the_depth_it_can_serve>rungs::iter\",\"every_lane_reports_the_depth_it_can_serve>tmp::path\",\"every_lane_reports_the_depth_it_can_serve>workitem::queue_items\",\"ownership_has_one_definition>Tmp::new\",\"ownership_has_one_definition>assert_eq\",\"ownership_has_one_definition>busy_graph\",\"ownership_has_one_definition>commands::code_ownership_summary\",\"ownership_has_one_definition>commands::unowned_names\",\"ownership_has_one_definition>tmp::path\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "f38f26335f02a23e2691c6b0025609e3",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "28c27c1c3b54c0d4",
+      "value": "dc5b83be098aaafa",
       "truth_class": "derived"
     },
     {
@@ -29807,7 +29925,7 @@
       "target_id": "f38f26335f02a23e2691c6b0025609e3",
       "target_kind": "node",
       "key": "loc",
-      "value": "182",
+      "value": "229",
       "truth_class": "derived"
     },
     {
@@ -29828,7 +29946,7 @@
       "target_id": "f38f26335f02a23e2691c6b0025609e3",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"busy_graph\":\"b448314afb7fbd99\",\"every_lane_reports_the_depth_it_can_serve\":\"bbc29aba2e74e6c8\",\"ownership_has_one_definition\":\"dde0152de59a0bdb\"}",
+      "value": "{\"busy_graph\":\"9bb0f226ae6976eb\",\"every_lane_reports_the_depth_it_can_serve\":\"bbc29aba2e74e6c8\",\"ownership_has_one_definition\":\"dde0152de59a0bdb\"}",
       "truth_class": "derived"
     },
     {

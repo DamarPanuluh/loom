@@ -506,6 +506,20 @@ DELETE FROM facet WHERE key IN (
 );
 "#;
 
+/// Strip `proof_level` from validation bodies.
+///
+/// v3 made proof strength DERIVED — computed from what a proof actually does —
+/// and deleted the flag that let a caller claim it. The stored values stayed
+/// behind, so `loom validation show` printed `"proof_level":"L5"` in the body
+/// directly above a derived `strength: S1`. Nothing reads it; it is inert data
+/// that contradicts the number beside it, and it travels in every export.
+const MIGRATION_4_DROP_CLAIMED_PROOF_LEVEL: &str = r#"
+UPDATE node
+   SET body = json_remove(body, '$.proof_level')
+ WHERE node_type = 'validation'
+   AND json_extract(body, '$.proof_level') IS NOT NULL;
+"#;
+
 fn schema_migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(SCHEMA),
@@ -514,6 +528,7 @@ fn schema_migrations() -> Migrations<'static> {
              CREATE INDEX IF NOT EXISTS idx_facet_key_value ON facet(key, value);",
         ),
         M::up(MIGRATION_3_EVIDENCE_SPINE),
+        M::up(MIGRATION_4_DROP_CLAIMED_PROOF_LEVEL),
     ])
 }
 

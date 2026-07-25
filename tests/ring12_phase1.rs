@@ -1470,3 +1470,49 @@ fn import_restore_validates_truth_class_and_questions_edge() {
         );
     }
 }
+
+/// Migration 4 strips the claimed proof level from validation bodies.
+///
+/// v3 made proof strength DERIVED and deleted the flag that let a caller claim
+/// it, but the stored values stayed. `loom validation show` printed
+/// `"proof_level":"L5"` in the body directly above a derived `strength: S1` —
+/// inert data contradicting the number beside it, travelling in every export.
+#[test]
+fn migration_drops_the_claimed_proof_level() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "a proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "true" }),
+        )
+        .unwrap();
+    // Simulate a body carried forward from v2, where the level was asserted.
+    drop(store);
+    let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
+    conn.execute(
+        "UPDATE node SET body = json_set(body, '$.proof_level', 'L5') WHERE id = ?1",
+        [&val.id],
+    )
+    .unwrap();
+    // Re-run migrations from a version before this one.
+    conn.pragma_update(None, "user_version", 3u32).unwrap();
+    drop(conn);
+
+    let store = Store::open(tmp.path()).unwrap();
+    let fresh = store.get_node(&val.id).unwrap().unwrap();
+    assert!(
+        fresh.body.get("proof_level").is_none(),
+        "a claimed level must not survive: {}",
+        fresh.body
+    );
+    assert_eq!(
+        fresh.body.get("command").and_then(|c| c.as_str()),
+        Some("true"),
+        "and the rest of the body is untouched: {}",
+        fresh.body
+    );
+}
