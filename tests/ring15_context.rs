@@ -272,3 +272,40 @@ fn ratification_filter_reads_the_fact_not_a_facet() {
     );
     let _ = &silent;
 }
+
+/// A filter that matches nothing says so as a FILTER, not as a failed search.
+///
+/// `loom find --where ratification=ratified` with no query printed
+/// "no match for ''" — as though an empty string had been searched for. It
+/// sends the reader hunting for a typo in a query they never typed.
+#[test]
+fn an_empty_filter_result_names_the_filter() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .add_node(
+            NodeType::Intent,
+            "a behavior nobody has ratified",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    drop(store);
+
+    let out = std::process::Command::new(loom_bin())
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["find", "--where", "ratification=ratified"])
+        .output()
+        .expect("spawn loom find");
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("ratification=ratified"),
+        "the message names the filter that came up empty: {text}"
+    );
+    assert!(
+        !text.contains("no match for ''"),
+        "and does not report it as a failed text search: {text}"
+    );
+}

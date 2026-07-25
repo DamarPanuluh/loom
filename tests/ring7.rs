@@ -431,3 +431,64 @@ fn a_shell_shaped_command_is_not_offered_bare_after_a_double_dash() {
         item.prompt_contract.allowed_actions
     );
 }
+
+/// A packet never offers an action the write boundary will refuse.
+///
+/// The validate packet listed `loom validation verdict … passed --evidence`
+/// for a RUNNABLE proof, where the floor demands a Run. A worker following the
+/// packet literally is refused — the tool contradicting itself, and costing a
+/// round trip to find out.
+#[test]
+fn a_runnable_proof_is_never_offered_a_hand_written_verdict() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "a behavior with a runnable proof",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = codefile(&store, "src/thing.rs");
+    store
+        .add_edge(
+            loom::model::EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            loom::model::TruthClass::Asserted,
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            loom::model::NodeType::Validation,
+            "runnable",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "true" }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(loom::model::EdgeKind::Validates, &val.id, &intent.id)
+        .unwrap();
+
+    let item = loom::workitem::next(&store, Some(loom::lane::Lane::Validate))
+        .unwrap()
+        .expect("an unrun proof routes to validate");
+    for action in &item.prompt_contract.allowed_actions {
+        assert!(
+            !action.contains("validation verdict"),
+            "a runnable proof must be RUN, not verdicted by hand: {action}"
+        );
+    }
+    // And the offer that reaches `verified` is present.
+    assert!(
+        item.prompt_contract
+            .allowed_actions
+            .iter()
+            .any(|a| a.contains("loom observe") || a.contains("loom validation run")),
+        "offer the route that actually reaches the floor: {:?}",
+        item.prompt_contract.allowed_actions
+    );
+}

@@ -4497,3 +4497,81 @@ fn a_clean_pattern_scan_is_reported_as_evidence() {
     );
     assert!(item.prompt_contract.pre_screened_hits.is_empty());
 }
+
+/// A journey's spec is found by its recorded PATH, not by guessing a filename
+/// from its name.
+///
+/// `loom journey add` records `artifact: journeys/mcp-in-band.yaml` while the
+/// journey is NAMED "loom serves its capabilities in band". Resolving by name
+/// looked for `journeys/loom serves its capabilities in band.yaml`, found
+/// nothing, and counted zero content assertions — so every journey whose file
+/// is named sensibly graded S1 forever no matter how much it asserted. Silent,
+/// and it capped the whole strength scale.
+#[test]
+fn a_journey_grades_from_the_spec_its_artifact_points_at() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    // The FILE name and the JOURNEY name deliberately differ, as they do in
+    // every real repo.
+    std::fs::write(
+        tmp.path().join("journeys/short-name.yaml"),
+        concat!(
+            "journey: a behavior stated at length in prose\n",
+            "steps:\n",
+            "  - name: run it\n",
+            "    intent: a behavior stated at length in prose\n",
+            "    run: echo ok\n",
+            "    expect:\n",
+            "      stdout_contains: [\"ok\"]\n",
+        ),
+    )
+    .unwrap();
+
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "a behavior stated at length in prose",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "its journey",
+            "",
+            "not_run",
+            serde_json::json!({
+                "type": "test",
+                "command": "echo ok",
+                "proof_kind": "journey",
+                "journey": "a behavior stated at length in prose",
+                "artifact": "journeys/short-name.yaml",
+            }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
+        .unwrap();
+    let fresh = store.get_node(&val.id).unwrap().unwrap();
+    loom::commands::observe_validation(&store, &fresh).unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    let witness: serde_json::Value = serde_json::from_str(
+        &store
+            .get_facet(&val.id, TargetKind::Node, "proof_strength")
+            .unwrap()
+            .expect("graded"),
+    )
+    .unwrap();
+    assert_eq!(
+        witness["content_assertions"], 1,
+        "the spec was found and its assertions counted: {witness}"
+    );
+    assert_ne!(
+        witness["grade"], "S1",
+        "a journey that asserts on output is not liveness-only: {witness}"
+    );
+}

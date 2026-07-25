@@ -761,3 +761,34 @@ fn print_work_item(item: &workitem::WorkItem) {
     }
     println!("  next_step: {}", item.next_step);
 }
+
+#[cfg(test)]
+mod render_tests {
+    use super::render_examples;
+    use serde_json::json;
+
+    /// Examples render whatever shape a lane provides.
+    ///
+    /// The quality contract stores `passing`/`failing`; the coverage contract
+    /// stores a list of situations. Looking for fixed "good"/"bad" keys printed
+    /// a section header with nothing under it — worse than hiding the examples,
+    /// because it looked like the rule had none to give.
+    #[test]
+    fn every_example_shape_a_lane_uses_renders() {
+        let quality = json!({
+            "passing": "src/a.rs:1 — secrets read from env",
+            "failing": "src/a.rs:9 — literal key",
+        });
+        let lines = render_examples(&quality);
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        assert!(lines.iter().any(|l| l.starts_with("passing: ")), "{lines:?}");
+
+        let coverage = json!([{ "situation": "it lives here", "do": "ground it" }]);
+        let lines = render_examples(&coverage);
+        assert_eq!(lines, vec!["it lives here → ground it"]);
+
+        // Nothing to say produces no section at all.
+        assert!(render_examples(&json!(null)).is_empty());
+        assert!(render_examples(&json!({ "passing": null })).is_empty());
+    }
+}
