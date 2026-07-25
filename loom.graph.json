@@ -326,6 +326,20 @@
       "updated_at": "2026-07-18T19:43:30.422Z"
     },
     {
+      "id": "14e2239133ed0022aec668dbae3a843b",
+      "type": "note",
+      "name": "note:decision",
+      "description": "retired: the ratification-policy engine was deleted in v0.26.0: approval by attribute is strictly worse than approval by evidence, and it weakened the one boundary loom has. Superseded by de_facto wantedness, which earns approval from three falsifiable conjuncts.",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "9d1bb7be7546ccaa9532c7db8711c2b6"
+      },
+      "created_at": "2026-07-25T09:50:37.766Z",
+      "updated_at": "2026-07-25T09:50:37.766Z"
+    },
+    {
       "id": "16ec03569d07e56b5d6266a7730e0913",
       "type": "codefile",
       "name": "src/lane.rs",
@@ -1500,14 +1514,14 @@
       "type": "validation",
       "name": "policy ratification attributes evidence to the policy",
       "description": "",
-      "status": "passed",
+      "status": "failed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring16_policy_ratify",
         "type": "test"
       },
       "created_at": "2026-07-18T19:47:33.933Z",
-      "updated_at": "2026-07-18T19:48:15.988Z"
+      "updated_at": "2026-07-25T09:41:53.109Z"
     },
     {
       "id": "53ef171396e4ac084332085abb04633d",
@@ -3090,13 +3104,13 @@
       "type": "intent",
       "name": "a human-authored policy can ratify matching intents mechanically",
       "description": "the human ratifies a policy once (scope: origin, level, lifecycle, change-class such as refactor or hardening); loom auto-ratifies intents matching the policy and records evidence 'by policy <id>' attributed to the policy, never to direct human review; policy authorship and changes are themselves human-only writes; delegation becomes honest because the record names the mechanism",
-      "status": "implemented",
+      "status": "deprecated",
       "truth_class": "asserted",
       "body": {
         "level": "cross_cutting"
       },
       "created_at": "2026-07-18T19:28:06.849Z",
-      "updated_at": "2026-07-18T19:43:30.421Z"
+      "updated_at": "2026-07-25T09:50:37.768Z"
     },
     {
       "id": "9d8618c4a7a0ddb0227c59563a91173f",
@@ -7780,13 +7794,13 @@
       "to_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "proof",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "loom",
       "created_at": "2026-07-09T05:20:44.194Z",
-      "updated_at": "2026-07-09T21:06:21.522Z"
+      "updated_at": "2026-07-25T09:41:17.606Z"
     },
     {
       "id": "093c31645af01903f0e41d62a4e7f3e8",
@@ -7836,13 +7850,13 @@
       "to_id": "4c48d826cb3f799e0e88c06796c4f704",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "proof",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "loom",
       "created_at": "2026-07-09T05:20:44.075Z",
-      "updated_at": "2026-07-09T20:37:11.012Z"
+      "updated_at": "2026-07-25T09:41:31.544Z"
     },
     {
       "id": "0b8d005832ae68f46d76c6d3a10d37e4",
@@ -7878,13 +7892,13 @@
       "to_id": "9d1bb7be7546ccaa9532c7db8711c2b6",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "failing",
+      "criterion": "proof",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "loom",
       "created_at": "2026-07-18T19:47:33.933Z",
-      "updated_at": "2026-07-18T19:48:15.988Z"
+      "updated_at": "2026-07-25T09:41:53.109Z"
     },
     {
       "id": "0cf4f3aac2554110074ca2fa8d5adaac",
@@ -16351,6 +16365,142 @@
       "updated_at": "2026-07-18T20:03:32.693Z"
     }
   ],
+  "facts": [
+    {
+      "id": "f1552d80dd6996407",
+      "subject_kind": "edge",
+      "subject_id": "0cb089a9263318d26495bb57a95ad148",
+      "claim": "verdict",
+      "state": "failing",
+      "criterion": "proof",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-07-25T09:41:53.108Z"
+    },
+    {
+      "id": "f2c3f74e8f4a8b71d",
+      "subject_kind": "edge",
+      "subject_id": "088211034cf652638f87088c7b9ebef4",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "proof",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-07-25T09:41:17.604Z"
+    },
+    {
+      "id": "fce33b04d82daede8",
+      "subject_kind": "edge",
+      "subject_id": "0accb450e72362a3b04db7e8d1417968",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "proof",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-07-25T09:41:31.543Z"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e534582568a08aeca",
+      "fact_id": "f1552d80dd6996407",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test ring16_policy_ratify` exited 101"
+      },
+      "recorded_at": "2026-07-25T09:41:53.108Z"
+    },
+    {
+      "id": "ee9d06401563fb147",
+      "fact_id": "f1552d80dd6996407",
+      "payload": {
+        "kind": "run",
+        "producer": "command",
+        "command": "cargo test --test ring16_policy_ratify",
+        "cwd": "",
+        "exit_code": 101,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "b5f178f449f97bd4",
+        "stderr_excerpt": "error: no test target named `ring16_policy_ratify` in default-run packages\nhelp: available test targets:\n    bootstrap\n    debt_promotion\n    find_explain\n    intake_fidelity\n    ring1\n    ring10\n    ring11_roles\n    ring12_federation\n    ring12_phase1\n    ring13_precision\n    ring14_ratify\n    ring15_context\n    ring17_journal\n    ring18_journey_baseline\n    ring19_drive\n    ring2\n    ring20_hooks\n    ring21_lane_ladder\n    ring22_mcp_packets\n    ring23_chokepoint\n    ring24_ratification\n    ring25_audit_deepen\n    ring26_absorb\n    ring27_observe\n    ring3\n    ring4\n    ring5\n    ring6\n    ring7\n    ring8\n    ring9\n",
+        "covered": {
+          "src/cli/subcommands.rs": "d44a4da7e8fa40c8",
+          "src/commands/diagnostics_cmd.rs": "679e70018848864c",
+          "src/commands/intent.rs": "ce332a466eb1b260",
+          "src/policy.rs": "af4c1b6d207ddda3"
+        },
+        "assertions": 0,
+        "duration_ms": 229,
+        "ran_at": "1784972513097",
+        "loom_version": "0.26.0"
+      },
+      "recorded_at": "2026-07-25T09:41:53.108Z"
+    },
+    {
+      "id": "e4bf5a5441155c0ec",
+      "fact_id": "f2c3f74e8f4a8b71d",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test find_explain -q` exited 0"
+      },
+      "recorded_at": "2026-07-25T09:41:17.604Z"
+    },
+    {
+      "id": "ef71bd2935d838cad",
+      "fact_id": "f2c3f74e8f4a8b71d",
+      "payload": {
+        "kind": "run",
+        "producer": "command",
+        "command": "cargo test --test find_explain -q",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "29c39e9a483813b4",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s\n\n",
+        "covered": {
+          "src/commands/discover_cmd.rs": "053891409a222edb"
+        },
+        "assertions": 0,
+        "duration_ms": 1388,
+        "ran_at": "1784972477589",
+        "loom_version": "0.26.0"
+      },
+      "recorded_at": "2026-07-25T09:41:17.604Z"
+    },
+    {
+      "id": "e1393a727e2353e37",
+      "fact_id": "fce33b04d82daede8",
+      "payload": {
+        "kind": "run",
+        "producer": "command",
+        "command": "cargo test --test ring5 -q",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "eb6a5a8370342c92",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "\nrunning 66 tests\n..................................................................\ntest result: ok. 66 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.81s\n\n",
+        "covered": {
+          "src/store/facets.rs": "56f0d9a2f8a5aa91"
+        },
+        "assertions": 0,
+        "duration_ms": 2983,
+        "ran_at": "1784972491537",
+        "loom_version": "0.26.0"
+      },
+      "recorded_at": "2026-07-25T09:41:31.543Z"
+    },
+    {
+      "id": "ef8025387eeb0eafa",
+      "fact_id": "fce33b04d82daede8",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test ring5 -q` exited 0"
+      },
+      "recorded_at": "2026-07-25T09:41:31.543Z"
+    }
+  ],
   "facets": [
     {
       "target_id": "0105af8e455d578fa3d9a6e1e51d3d7b",
@@ -17819,7 +17969,7 @@
       "target_id": "2b7475303e69cf6d01c844b404ce3517",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "7f248575802d6a9d",
+      "value": "a62d555a125c6e8f",
       "truth_class": "derived"
     },
     {
@@ -17840,7 +17990,7 @@
       "target_id": "2b7475303e69cf6d01c844b404ce3517",
       "target_kind": "node",
       "key": "loc",
-      "value": "236",
+      "value": "247",
       "truth_class": "derived"
     },
     {
@@ -17861,7 +18011,7 @@
       "target_id": "2b7475303e69cf6d01c844b404ce3517",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"an_observed_run_binds_and_grades_as_liveness\":\"2ac371b911d477aa\",\"an_unrunnable_command_is_blocked_not_failed\":\"f0284ed8fb6fd2e2\",\"an_untargeted_run_is_still_journaled\":\"6e8e691e0ef43d03\",\"arguments_survive_the_shell\":\"a142152c51bd0f5a\",\"editing_a_covered_file_reopens_the_proof\":\"006fe794dbf6c717\",\"graph\":\"19598f99284b4b9c\",\"loom_bin\":\"e70cb27d63628f85\",\"observe\":\"d926b2df81bbdeaa\",\"the_same_command_twice_is_one_proof\":\"c20bca450360c846\"}",
+      "value": "{\"an_observed_run_binds_and_grades_as_liveness\":\"2ac371b911d477aa\",\"an_unrunnable_command_is_blocked_not_failed\":\"f0284ed8fb6fd2e2\",\"an_untargeted_run_is_still_journaled\":\"6e8e691e0ef43d03\",\"arguments_survive_the_shell\":\"a142152c51bd0f5a\",\"editing_a_covered_file_reopens_the_proof\":\"006fe794dbf6c717\",\"graph\":\"19598f99284b4b9c\",\"loom_bin\":\"e70cb27d63628f85\",\"observe\":\"d926b2df81bbdeaa\",\"the_same_command_twice_is_one_proof\":\"16898876819d2dab\"}",
       "truth_class": "derived"
     },
     {
@@ -22614,14 +22764,14 @@
       "target_id": "a4f33445f41fe63afb99940ec509ac4a",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"command_proof_name>command::split_whitespace\",\"command_proof_name>format\",\"command_proof_name>head::chars\",\"covered_hashes>Ok\",\"covered_hashes>artifact::fingerprint\",\"covered_hashes>files::into_iter\",\"covered_hashes>fs::read_to_string\",\"covered_hashes>runner::files_grounding\",\"covered_hashes>store::root\",\"existing_or_new_proof>Ok\",\"existing_or_new_proof>Some\",\"existing_or_new_proof>body::get\",\"existing_or_new_proof>c::as_str\",\"existing_or_new_proof>command_proof_name\",\"existing_or_new_proof>serde_json::json\",\"existing_or_new_proof>store::add_node\",\"existing_or_new_proof>store::edges_with\",\"existing_or_new_proof>store::ensure_edge\",\"existing_or_new_proof>store::get_node\",\"mark_validation>Assertion::new\",\"mark_validation>Ok\",\"mark_validation>Some\",\"mark_validation>Subject::Edge\",\"mark_validation>assertion::observed\",\"mark_validation>bail\",\"mark_validation>covered_hashes\",\"mark_validation>edge_status::as_str\",\"mark_validation>evidence::cite\",\"mark_validation>id::clone\",\"mark_validation>journal::append\",\"mark_validation>reason::trim\",\"mark_validation>run::clone\",\"mark_validation>serde_json::json\",\"mark_validation>store::assert_fact\",\"mark_validation>store::edges_with\",\"mark_validation>store::root\",\"mark_validation>store::set_node_status\",\"observe_cmd>Ok\",\"observe_cmd>observe_run\",\"observe_cmd>println\",\"observe_cmd>serde_json::json\",\"observe_cmd>value[\\\"bound_to\\\"]::as_str\",\"observe_run>Ok\",\"observe_run>Some\",\"observe_run>Vec::new\",\"observe_run>command::iter\",\"observe_run>command_proof_name\",\"observe_run>existing_or_new_proof\",\"observe_run>format\",\"observe_run>id::as_str\",\"observe_run>intent::as_ref\",\"observe_run>journal::append\",\"observe_run>mark_validation\",\"observe_run>name::clone\",\"observe_run>open\",\"observe_run>proofstrength::of\",\"observe_run>regrade\",\"observe_run>run::clone\",\"observe_run>runner::files_grounding\",\"observe_run>runner::observe_command\",\"observe_run>serde_json::json\",\"observe_run>shell_quote\",\"observe_run>store::resolve_node\",\"observe_run>store::root\",\"observe_validation>Ok\",\"observe_validation>Some\",\"observe_validation>body::get\",\"observe_validation>mark_validation\",\"observe_validation>proof::runner_for\",\"observe_validation>regrade\",\"observe_validation>s::parse\",\"observe_validation>store::root\",\"observe_validation>v::as_str\",\"prove_intent>Ok\",\"prove_intent>observe_validation\",\"prove_intent>serde_json::json\",\"prove_intent>store::add_node\",\"prove_intent>store::ensure_edge\",\"regrade>Ok\",\"regrade>Some\",\"regrade>Strength::parse\",\"regrade>best::as_ref\",\"regrade>callgraph::build\",\"regrade>proofstrength::grade\",\"regrade>serde_json::to_string\",\"regrade>store::edges_with\",\"regrade>store::get_node\",\"regrade>store::root\",\"regrade>store::set_facet\",\"rule>Ok\",\"rule>Some\",\"rule>bail\",\"rule>body::clone\",\"rule>body::get\",\"rule>c::as_str\",\"rule>category::is_none\",\"rule>description::is_none\",\"rule>effort::is_none\",\"rule>format\",\"rule>guide::is_none\",\"rule>hint::is_empty\",\"rule>open\",\"rule>packs::seed\",\"rule>pattern::is_empty\",\"rule>println\",\"rule>pulse::emit_line\",\"rule>r::clone\",\"rule>reason::trim\",\"rule>rules::iter\",\"rule>rules::len\",\"rule>serde_json::json\",\"rule>severity::is_none\",\"rule>store::add_node\",\"rule>store::add_note\",\"rule>store::count_nodes\",\"rule>store::delete_edge\",\"rule>store::delete_node\",\"rule>store::edges_with\",\"rule>store::ensure_edge\",\"rule>store::list_nodes_page\",\"rule>store::record_verdict\",\"rule>store::resolve_node\",\"rule>store::set_node_body\",\"rule>store::update_node\",\"rule>super::page_footer\",\"rule>v::as_str\",\"rule>verdict_status_quality\",\"shell_quote>_-/=:@+,\\\"::contains\",\"shell_quote>arg::chars\",\"shell_quote>arg::is_empty\",\"shell_quote>arg::to_string\",\"shell_quote>c::is_alphanumeric\",\"shell_quote>format\",\"validate_cmd>Err\",\"validate_cmd>Ok\",\"validate_cmd>Some\",\"validate_cmd>Vec::new\",\"validate_cmd>body::get\",\"validate_cmd>c::as_str\",\"validate_cmd>drop\",\"validate_cmd>format\",\"validate_cmd>human_lines::push\",\"validate_cmd>mark_validation\",\"validate_cmd>open\",\"validate_cmd>out::push\",\"validate_cmd>println\",\"validate_cmd>proof::runner_for\",\"validate_cmd>pulse::emit\",\"validate_cmd>pulse::emit_line\",\"validate_cmd>r::get\",\"validate_cmd>results::iter\",\"validate_cmd>results::push\",\"validate_cmd>s::parse\",\"validate_cmd>serde_json::json\",\"validate_cmd>store::edges_with\",\"validate_cmd>store::get_node\",\"validate_cmd>store::list_nodes\",\"validate_cmd>store::resolve_node\",\"validate_cmd>store::root\",\"validate_cmd>t::as_str\",\"validate_cmd>v::as_str\",\"validate_cmd>vals::is_empty\",\"validate_cmd>vec\",\"validation>Ok\",\"validation>Some\",\"validation>artifact::is_some\",\"validation>bail\",\"validation>body::as_object_mut\",\"validation>body::clone\",\"validation>format\",\"validation>journey_id::is_some\",\"validation>mark_validation\",\"validation>next::is_empty\",\"validation>object::remove\",\"validation>open\",\"validation>println\",\"validation>proof_kind::as_deref\",\"validation>pulse::emit_line\",\"validation>r#type::parse\",\"validation>repo_native_kind::is_some\",\"validation>serde_json::from_str\",\"validation>serde_json::json\",\"validation>store::add_node\",\"validation>store::count_nodes\",\"validation>store::delete_edge\",\"validation>store::delete_node\",\"validation>store::edges_with\",\"validation>store::ensure_edge\",\"validation>store::get_facet\",\"validation>store::list_nodes_page\",\"validation>store::resolve_node\",\"validation>store::set_node_body\",\"validation>super::page_footer\",\"validation>unreachable\",\"validation>validate_cmd\",\"validation>validation_targets\",\"validation>vals::iter\",\"validation>vals::len\",\"validation_targets>Ok\",\"validation_targets>Some\",\"validation_targets>Vec::new\",\"validation_targets>out::push\",\"validation_targets>serde_json::json\",\"validation_targets>store::edges_with\",\"validation_targets>store::get_node\",\"verdict_status_quality>Ok\",\"verdict_status_quality>bail\"]",
+      "value": "[\"command_proof_name>command::split_whitespace\",\"command_proof_name>format\",\"command_proof_name>head::chars\",\"covered_hashes>Ok\",\"covered_hashes>artifact::fingerprint\",\"covered_hashes>files::into_iter\",\"covered_hashes>fs::read_to_string\",\"covered_hashes>runner::files_grounding\",\"covered_hashes>store::root\",\"existing_or_new_proof>Ok\",\"existing_or_new_proof>Some\",\"existing_or_new_proof>body::get\",\"existing_or_new_proof>c::as_str\",\"existing_or_new_proof>command_proof_name\",\"existing_or_new_proof>serde_json::json\",\"existing_or_new_proof>store::add_node\",\"existing_or_new_proof>store::edges_with\",\"existing_or_new_proof>store::ensure_edge\",\"existing_or_new_proof>store::get_node\",\"mark_validation>Assertion::new\",\"mark_validation>Ok\",\"mark_validation>Some\",\"mark_validation>Subject::Edge\",\"mark_validation>assertion::observed\",\"mark_validation>bail\",\"mark_validation>covered_hashes\",\"mark_validation>edge_status::as_str\",\"mark_validation>evidence::cite\",\"mark_validation>id::clone\",\"mark_validation>journal::append\",\"mark_validation>reason::trim\",\"mark_validation>run::clone\",\"mark_validation>serde_json::json\",\"mark_validation>store::assert_fact\",\"mark_validation>store::edges_with\",\"mark_validation>store::root\",\"mark_validation>store::set_node_status\",\"observe_cmd>Ok\",\"observe_cmd>observe_run\",\"observe_cmd>println\",\"observe_cmd>serde_json::json\",\"observe_cmd>value[\\\"bound_to\\\"]::as_str\",\"observe_cmd>value[\\\"exit_code\\\"]::as_i64\",\"observe_run>Ok\",\"observe_run>Some\",\"observe_run>Vec::new\",\"observe_run>command::iter\",\"observe_run>existing_or_new_proof\",\"observe_run>format\",\"observe_run>id::as_str\",\"observe_run>id::clone\",\"observe_run>intent::as_ref\",\"observe_run>journal::append\",\"observe_run>mark_validation\",\"observe_run>name::clone\",\"observe_run>open\",\"observe_run>proofstrength::of\",\"observe_run>regrade\",\"observe_run>run::clone\",\"observe_run>runner::files_grounding\",\"observe_run>runner::observe_command\",\"observe_run>serde_json::json\",\"observe_run>shell_quote\",\"observe_run>store::resolve_node\",\"observe_run>store::root\",\"observe_validation>Ok\",\"observe_validation>Some\",\"observe_validation>body::get\",\"observe_validation>mark_validation\",\"observe_validation>proof::runner_for\",\"observe_validation>regrade\",\"observe_validation>s::parse\",\"observe_validation>store::root\",\"observe_validation>v::as_str\",\"prove_intent>Ok\",\"prove_intent>observe_validation\",\"prove_intent>serde_json::json\",\"prove_intent>store::add_node\",\"prove_intent>store::ensure_edge\",\"regrade>Ok\",\"regrade>Some\",\"regrade>Strength::parse\",\"regrade>best::as_ref\",\"regrade>callgraph::build\",\"regrade>proofstrength::grade\",\"regrade>serde_json::to_string\",\"regrade>store::edges_with\",\"regrade>store::get_node\",\"regrade>store::root\",\"regrade>store::set_facet\",\"rule>Ok\",\"rule>Some\",\"rule>bail\",\"rule>body::clone\",\"rule>body::get\",\"rule>c::as_str\",\"rule>category::is_none\",\"rule>description::is_none\",\"rule>effort::is_none\",\"rule>format\",\"rule>guide::is_none\",\"rule>hint::is_empty\",\"rule>open\",\"rule>packs::seed\",\"rule>pattern::is_empty\",\"rule>println\",\"rule>pulse::emit_line\",\"rule>r::clone\",\"rule>reason::trim\",\"rule>rules::iter\",\"rule>rules::len\",\"rule>serde_json::json\",\"rule>severity::is_none\",\"rule>store::add_node\",\"rule>store::add_note\",\"rule>store::count_nodes\",\"rule>store::delete_edge\",\"rule>store::delete_node\",\"rule>store::edges_with\",\"rule>store::ensure_edge\",\"rule>store::list_nodes_page\",\"rule>store::record_verdict\",\"rule>store::resolve_node\",\"rule>store::set_node_body\",\"rule>store::update_node\",\"rule>super::page_footer\",\"rule>v::as_str\",\"rule>verdict_status_quality\",\"shell_quote>_-/=:@+,\\\"::contains\",\"shell_quote>arg::chars\",\"shell_quote>arg::is_empty\",\"shell_quote>arg::to_string\",\"shell_quote>c::is_alphanumeric\",\"shell_quote>format\",\"validate_cmd>Err\",\"validate_cmd>Ok\",\"validate_cmd>Some\",\"validate_cmd>Vec::new\",\"validate_cmd>body::get\",\"validate_cmd>c::as_str\",\"validate_cmd>drop\",\"validate_cmd>format\",\"validate_cmd>human_lines::push\",\"validate_cmd>mark_validation\",\"validate_cmd>open\",\"validate_cmd>out::push\",\"validate_cmd>println\",\"validate_cmd>proof::runner_for\",\"validate_cmd>pulse::emit\",\"validate_cmd>pulse::emit_line\",\"validate_cmd>r::get\",\"validate_cmd>results::iter\",\"validate_cmd>results::push\",\"validate_cmd>s::parse\",\"validate_cmd>serde_json::json\",\"validate_cmd>store::edges_with\",\"validate_cmd>store::get_node\",\"validate_cmd>store::list_nodes\",\"validate_cmd>store::resolve_node\",\"validate_cmd>store::root\",\"validate_cmd>t::as_str\",\"validate_cmd>v::as_str\",\"validate_cmd>vals::is_empty\",\"validate_cmd>vec\",\"validation>Ok\",\"validation>Some\",\"validation>artifact::is_some\",\"validation>bail\",\"validation>body::as_object_mut\",\"validation>body::clone\",\"validation>format\",\"validation>journey_id::is_some\",\"validation>mark_validation\",\"validation>next::is_empty\",\"validation>object::remove\",\"validation>open\",\"validation>println\",\"validation>proof_kind::as_deref\",\"validation>pulse::emit_line\",\"validation>r#type::parse\",\"validation>repo_native_kind::is_some\",\"validation>serde_json::from_str\",\"validation>serde_json::json\",\"validation>store::add_node\",\"validation>store::count_nodes\",\"validation>store::delete_edge\",\"validation>store::delete_node\",\"validation>store::edges_with\",\"validation>store::ensure_edge\",\"validation>store::get_facet\",\"validation>store::list_nodes_page\",\"validation>store::resolve_node\",\"validation>store::set_node_body\",\"validation>super::page_footer\",\"validation>unreachable\",\"validation>validate_cmd\",\"validation>validation_targets\",\"validation>vals::iter\",\"validation>vals::len\",\"validation_targets>Ok\",\"validation_targets>Some\",\"validation_targets>Vec::new\",\"validation_targets>out::push\",\"validation_targets>serde_json::json\",\"validation_targets>store::edges_with\",\"validation_targets>store::get_node\",\"verdict_status_quality>Ok\",\"verdict_status_quality>bail\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "a4f33445f41fe63afb99940ec509ac4a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "e92b2f585d3c4ffd",
+      "value": "d534b338fe333aa5",
       "truth_class": "derived"
     },
     {
@@ -22642,7 +22792,7 @@
       "target_id": "a4f33445f41fe63afb99940ec509ac4a",
       "target_kind": "node",
       "key": "loc",
-      "value": "1065",
+      "value": "1074",
       "truth_class": "derived"
     },
     {
@@ -22663,7 +22813,7 @@
       "target_id": "a4f33445f41fe63afb99940ec509ac4a",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"command_proof_name\":\"6cf53854db483acf\",\"covered_hashes\":\"562e4f2a11338ba8\",\"existing_or_new_proof\":\"ed336a0051d5f719\",\"mark_validation\":\"45cf21fa70273bc1\",\"observe_cmd\":\"4f4ec3f9f4a00609\",\"observe_run\":\"e995b4c6deba4a0c\",\"observe_validation\":\"388b6b12478a2cdb\",\"prove_intent\":\"171e0b3b44a219ef\",\"regrade\":\"981e5cc020c2b366\",\"rule\":\"05253843b7cc309b\",\"shell_quote\":\"1dea3ae081722669\",\"validate_cmd\":\"1ac90e43f7030217\",\"validation\":\"36c7534c65945d66\",\"validation_targets\":\"f2385f08d97be082\",\"verdict_status_quality\":\"c06ecb72032c456a\"}",
+      "value": "{\"command_proof_name\":\"6cf53854db483acf\",\"covered_hashes\":\"562e4f2a11338ba8\",\"existing_or_new_proof\":\"ed336a0051d5f719\",\"mark_validation\":\"45cf21fa70273bc1\",\"observe_cmd\":\"634ebf20d5613b8f\",\"observe_run\":\"e10ad62c0dfe6424\",\"observe_validation\":\"388b6b12478a2cdb\",\"prove_intent\":\"171e0b3b44a219ef\",\"regrade\":\"981e5cc020c2b366\",\"rule\":\"05253843b7cc309b\",\"shell_quote\":\"1dea3ae081722669\",\"validate_cmd\":\"1ac90e43f7030217\",\"validation\":\"36c7534c65945d66\",\"validation_targets\":\"f2385f08d97be082\",\"verdict_status_quality\":\"c06ecb72032c456a\"}",
       "truth_class": "derived"
     },
     {
@@ -22684,14 +22834,14 @@
       "target_id": "a5b7442fdb5abf089d8e5fc2f9020288",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"build_clean_graph>Some\",\"build_clean_graph>Store::init\",\"build_clean_graph>codefile\",\"build_clean_graph>commands::prove_intent\",\"build_clean_graph>fs::create_dir_all\",\"build_clean_graph>fs::write\",\"build_clean_graph>serde_json::json\",\"build_clean_graph>store::add_edge\",\"build_clean_graph>store::add_node\",\"build_clean_graph>store::add_vocab_term\",\"build_clean_graph>store::edges_with\",\"build_clean_graph>store::record_verdict\",\"build_clean_graph>store::set_tag\",\"build_clean_graph>sync::run\",\"build_clean_graph>tmp::path\",\"dogfood_export_check_detects_drift>Tmp::new\",\"dogfood_export_check_detects_drift>assert\",\"dogfood_export_check_detects_drift>build_clean_graph\",\"dogfood_export_check_detects_drift>serde_json::json\",\"dogfood_export_check_detects_drift>store::add_node\",\"dogfood_export_check_detects_drift>travel::export_to_file\",\"dogfood_graph_is_clean_and_exportable>Tmp::new\",\"dogfood_graph_is_clean_and_exportable>assert\",\"dogfood_graph_is_clean_and_exportable>build_clean_graph\",\"dogfood_graph_is_clean_and_exportable>signal::smells\",\"dogfood_graph_is_clean_and_exportable>travel::export_to_file\",\"dogfood_maturity_is_meaningful_not_seed>Tmp::new\",\"dogfood_maturity_is_meaningful_not_seed>assert\",\"dogfood_maturity_is_meaningful_not_seed>assert_ne\",\"dogfood_maturity_is_meaningful_not_seed>build_clean_graph\",\"dogfood_maturity_is_meaningful_not_seed>maturity::ladder\",\"dogfood_maturity_is_meaningful_not_seed>rungs::iter\",\"dogfood_next_serves_work_until_clean>Tmp::new\",\"dogfood_next_serves_work_until_clean>assert\",\"dogfood_next_serves_work_until_clean>assert_eq\",\"dogfood_next_serves_work_until_clean>build_clean_graph\",\"dogfood_next_serves_work_until_clean>serde_json::json\",\"dogfood_next_serves_work_until_clean>store::add_node\",\"dogfood_next_serves_work_until_clean>workitem::next\"]",
+      "value": "[\"build_clean_graph>Some\",\"build_clean_graph>Store::init\",\"build_clean_graph>codefile\",\"build_clean_graph>commands::prove_intent\",\"build_clean_graph>fs::create_dir_all\",\"build_clean_graph>fs::write\",\"build_clean_graph>serde_json::json\",\"build_clean_graph>store::add_edge\",\"build_clean_graph>store::add_node\",\"build_clean_graph>store::add_vocab_term\",\"build_clean_graph>store::edges_with\",\"build_clean_graph>store::record_verdict\",\"build_clean_graph>store::set_tag\",\"build_clean_graph>sync::run\",\"build_clean_graph>tmp::path\",\"dogfood_export_check_detects_drift>Tmp::new\",\"dogfood_export_check_detects_drift>assert\",\"dogfood_export_check_detects_drift>build_clean_graph\",\"dogfood_export_check_detects_drift>serde_json::json\",\"dogfood_export_check_detects_drift>store::add_node\",\"dogfood_export_check_detects_drift>travel::export_to_file\",\"dogfood_graph_is_clean_and_exportable>Tmp::new\",\"dogfood_graph_is_clean_and_exportable>assert\",\"dogfood_graph_is_clean_and_exportable>build_clean_graph\",\"dogfood_graph_is_clean_and_exportable>signal::smells\",\"dogfood_graph_is_clean_and_exportable>travel::export_to_file\",\"dogfood_maturity_is_meaningful_not_seed>Tmp::new\",\"dogfood_maturity_is_meaningful_not_seed>assert\",\"dogfood_maturity_is_meaningful_not_seed>assert_ne\",\"dogfood_maturity_is_meaningful_not_seed>build_clean_graph\",\"dogfood_maturity_is_meaningful_not_seed>maturity::ladder\",\"dogfood_maturity_is_meaningful_not_seed>rungs::iter\",\"dogfood_next_serves_work_until_clean>Tmp::new\",\"dogfood_next_serves_work_until_clean>assert\",\"dogfood_next_serves_work_until_clean>assert_eq\",\"dogfood_next_serves_work_until_clean>build_clean_graph\",\"dogfood_next_serves_work_until_clean>serde_json::json\",\"dogfood_next_serves_work_until_clean>store::add_node\",\"dogfood_next_serves_work_until_clean>workitem::next\",\"fix_packet_names_the_intent_not_the_other_endpoint>Some\",\"fix_packet_names_the_intent_not_the_other_endpoint>Store::init\",\"fix_packet_names_the_intent_not_the_other_endpoint>Tmp::new\",\"fix_packet_names_the_intent_not_the_other_endpoint>a::starts_with\",\"fix_packet_names_the_intent_not_the_other_endpoint>action::split\",\"fix_packet_names_the_intent_not_the_other_endpoint>allowed_actions::iter\",\"fix_packet_names_the_intent_not_the_other_endpoint>assert\",\"fix_packet_names_the_intent_not_the_other_endpoint>assert_eq\",\"fix_packet_names_the_intent_not_the_other_endpoint>codefile\",\"fix_packet_names_the_intent_not_the_other_endpoint>commands::prove_intent\",\"fix_packet_names_the_intent_not_the_other_endpoint>panic\",\"fix_packet_names_the_intent_not_the_other_endpoint>serde_json::json\",\"fix_packet_names_the_intent_not_the_other_endpoint>store::add_edge\",\"fix_packet_names_the_intent_not_the_other_endpoint>store::add_node\",\"fix_packet_names_the_intent_not_the_other_endpoint>tmp::path\",\"fix_packet_names_the_intent_not_the_other_endpoint>workitem::next\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "a5b7442fdb5abf089d8e5fc2f9020288",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "77be7a6b8394cd54",
+      "value": "8ca1ee1a85d72415",
       "truth_class": "derived"
     },
     {
@@ -22712,7 +22862,7 @@
       "target_id": "a5b7442fdb5abf089d8e5fc2f9020288",
       "target_kind": "node",
       "key": "loc",
-      "value": "220",
+      "value": "276",
       "truth_class": "derived"
     },
     {
@@ -22726,14 +22876,14 @@
       "target_id": "a5b7442fdb5abf089d8e5fc2f9020288",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "5",
+      "value": "6",
       "truth_class": "derived"
     },
     {
       "target_id": "a5b7442fdb5abf089d8e5fc2f9020288",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"build_clean_graph\":\"668963db25728363\",\"dogfood_export_check_detects_drift\":\"e91d34bd7ef47607\",\"dogfood_graph_is_clean_and_exportable\":\"deeddd3e23f1be16\",\"dogfood_maturity_is_meaningful_not_seed\":\"93aaf766256942d1\",\"dogfood_next_serves_work_until_clean\":\"710e3ef8fea56494\"}",
+      "value": "{\"build_clean_graph\":\"668963db25728363\",\"dogfood_export_check_detects_drift\":\"e91d34bd7ef47607\",\"dogfood_graph_is_clean_and_exportable\":\"deeddd3e23f1be16\",\"dogfood_maturity_is_meaningful_not_seed\":\"93aaf766256942d1\",\"dogfood_next_serves_work_until_clean\":\"710e3ef8fea56494\",\"fix_packet_names_the_intent_not_the_other_endpoint\":\"a15f7da34256823b\"}",
       "truth_class": "derived"
     },
     {
@@ -24196,14 +24346,14 @@
       "target_id": "cdcc7e478981666b061c880c75b6e7f9",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"analyzer_contract>\\\"::into\",\"analyzer_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"analyzer_contract>\\\"analyzer\\\"::into\",\"analyzer_contract>\\\"file/linelocators,validationoutput,orruntimeevidence\\\"::into\",\"analyzer_contract>Vec::new\",\"analyzer_contract>format\",\"analyzer_contract>vec\",\"analyzer_contract>verdict_write_back\",\"audit_contract>\\\"agraphwhoseclaimisfalsifiabilityhastobeabletofailitsowncheck\\\"::into\",\"audit_contract>\\\"analyzer\\\"::into\",\"audit_contract>\\\"eithertheanchorthatwasmissing,orawithdrawaloftheclaim\\\"::into\",\"audit_contract>\\\"stopwhentheclaimiseitheranchoredorwithdrawn—neverwhen\\\\itmerelystopsbeingreported\\\"::into\",\"audit_contract>Vec::new\",\"audit_contract>remedy::to_string\",\"audit_contract>vec\",\"builder_contract>\\\"Loomcontextchecked,relevantcodeinspected,codewritten,locatorconfirmed,syncclean\\\"::into\",\"builder_contract>\\\"aftergrounding+sync,returntoloomstatus\\\"::into\",\"builder_contract>\\\"builder\\\"::into\",\"builder_contract>Vec::new\",\"builder_contract>format\",\"builder_contract>q\",\"builder_contract>vec\",\"coverage_contract>\\\"aftergrounding\",\"coverage_contract>\\\"builder\\\"::into\",\"coverage_contract>\\\"fileread;arealizingownerchosenwithalocator,ORanewrealizingintentforthissurfaceplusconsumesedgestowhatitcalls,ORareasontounregister\\\"::into\",\"coverage_contract>Some\",\"coverage_contract>Vec::new\",\"coverage_contract>format\",\"coverage_contract>q\",\"coverage_contract>serde_json::json\",\"coverage_contract>vec\",\"deepen_contract>\\\"aproofloomran,whosenewgradeishigherthantheoldone\\\"::into\",\"deepen_contract>\\\"everyfloorismet,sothequestionisnolonger'whatismissing'but\\\\'whatisweakest'\\\"::into\",\"deepen_contract>\\\"stopafterONEmove—thisqueuere-ranksaftereverychange,\\\\andthenext-most-importantthingisprobablynolongerthisone\\\"::into\",\"deepen_contract>\\\"validator\\\"::into\",\"deepen_contract>Vec::new\",\"deepen_contract>format\",\"deepen_contract>vec\",\"elaborator_contract>\\\"afteraddressingeveryopenaxis,returntoloomstatus\\\"::into\",\"elaborator_contract>\\\"builder\\\"::into\",\"elaborator_contract>\\\"everyopenaxisclosedbyanartifact,awaiver,oraquestion—neverbysilence\\\"::into\",\"elaborator_contract>\\\"onecommandperopenaxis\",\"elaborator_contract>Vec::new\",\"elaborator_contract>format\",\"elaborator_contract>q\",\"elaborator_contract>vec\",\"fixer_contract>\\\"Loomcontextchecked,relevantcodeinspected,codechange,syncclean,thefailingcriterionnowaddressedatitscause\\\"::into\",\"fixer_contract>\\\"afterthefix+sync,returntoloomstatus\\\"::into\",\"fixer_contract>\\\"fixer\\\"::into\",\"fixer_contract>\\\"fixthesourceatrootcause,thenloomsync—syncre-opensthisclaimasneeds_reverificationanditsowninglanere-measuresit\\\"::into\",\"fixer_contract>Vec::new\",\"fixer_contract>format\",\"fixer_contract>vec\",\"inbox_triage_contract>\\\"::into\",\"inbox_triage_contract>\\\"afterdisposition,returntoloomstatus\\\"::into\",\"inbox_triage_contract>\\\"analyzer\\\"::into\",\"inbox_triage_contract>\\\"arawinboxitemisstillnew\\\"::into\",\"inbox_triage_contract>\\\"thedurabledestinationorconcreterejectionreason\\\"::into\",\"inbox_triage_contract>Vec::new\",\"inbox_triage_contract>format\",\"inbox_triage_contract>vec\",\"missing_codefile_contract>\\\"afterunregistering\",\"missing_codefile_contract>\\\"builder\\\"::into\",\"missing_codefile_contract>\\\"thesuccessorregistration+re-grounding,ortheremovalofthedeadregistration\\\"::into\",\"missing_codefile_contract>Vec::new\",\"missing_codefile_contract>format\",\"missing_codefile_contract>q\",\"missing_codefile_contract>vec\",\"prove_contract>\\\"aSUPPORTEDverdictisnotworkuntiladopted\",\"prove_contract>\\\"analyzer\\\"::into\",\"prove_contract>\\\"codeevidencethattheclaimholdsorfails\\\"::into\",\"prove_contract>Vec::new\",\"prove_contract>format\",\"prove_contract>q\",\"prove_contract>vec\",\"quality_contract>Ok\",\"quality_contract>format\",\"quality_contract>prescreen_for\",\"quality_contract>quality_contract_body\",\"quality_contract>rule::as_ref\",\"quality_contract>store::get_node\",\"quality_contract_body>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"quality_contract_body>\\\"file/linelocatorsshowingcompliance,violation,ornon-applicability\\\"::into\",\"quality_contract_body>\\\"quality\\\"::into\",\"quality_contract_body>Some\",\"quality_contract_body>Vec::new\",\"quality_contract_body>a::iter\",\"quality_contract_body>allowed::extend\",\"quality_contract_body>body::clone\",\"quality_contract_body>body::get\",\"quality_contract_body>evidence_template::is_some\",\"quality_contract_body>format\",\"quality_contract_body>hints::into_iter\",\"quality_contract_body>pre_screened_hits::is_empty\",\"quality_contract_body>rule::map\",\"quality_contract_body>serde_json::json\",\"quality_contract_body>v::as_array\",\"quality_contract_body>v::as_str\",\"quality_contract_body>v::is_null\",\"quality_contract_body>vec\",\"quality_contract_body>why_now::into\",\"quality_contract_body>x::as_str\",\"ratify_contract>\\\"human\\\"::into\",\"ratify_contract>\\\"ifnohumanispresent,stop—batchratifypacketsforthenexthumansessioninsteadofdrainingthem\\\"::into\",\"ratify_contract>\\\"ratificationishuman-only:presentthepacket,thenwaitforthehuman'sdecision\\\"::into\",\"ratify_contract>\\\"thehuman'sreasonthisbehavioriswanted:anutterance,asourcedoc,adecision\\\"::into\",\"ratify_contract>\\\"theintent'swantednessisunestablished:mintedwithoutratification,orredefinedafterit\\\"::into\",\"ratify_contract>Some\",\"ratify_contract>Vec::new\",\"ratify_contract>format\",\"ratify_contract>vec\",\"reviewer_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"reviewer_contract>\\\"freshfile/lineorruntimeevidence;stateexplicitlywhetherthepriorverdictwasconfirmedoroverturned\\\"::into\",\"reviewer_contract>Vec::new\",\"reviewer_contract>format\",\"reviewer_contract>owner_role::into\",\"reviewer_contract>vec\",\"reviewer_contract>verdict_write_back\",\"structural_finding_triage_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"structural_finding_triage_contract>\\\"analyzer\\\"::into\",\"structural_finding_triage_contract>\\\"astructuraldetectorflaggedsizeorcomplexity;calibratealreadysetthegate—thispacketisaboutwhetherthefileisoneconcern\\\"::into\",\"structural_finding_triage_contract>\\\"nametheconcern\",\"structural_finding_triage_contract>Vec::new\",\"structural_finding_triage_contract>format\",\"structural_finding_triage_contract>vec\",\"triage_contract>\\\"aconcretereason:whattodo,whyitisfine/false/deferred,whatblocksit,whatitduplicates,ortheobservedrepair\\\"::into\",\"triage_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"triage_contract>\\\"analyzer\\\"::into\",\"triage_contract>\\\"anevidence-backedfindingisunjudged\",\"triage_contract>Vec::new\",\"triage_contract>format\",\"triage_contract>vec\",\"unproven_contract>\\\"implemented,proofregistered,nonepassing\\\"::into\",\"unproven_contract>\\\"implementedwithnoregisteredproofatall\\\"::into\",\"unproven_contract>\\\"stoponceoneproofforthisintenthasactuallyrun\\\"::into\",\"unproven_contract>\\\"thecommandloomran,itsexitstatus,andtheassertionthatwouldhavecaughta\\\\regression\\\"::into\",\"unproven_contract>\\\"validator\\\"::into\",\"unproven_contract>Vec::new\",\"unproven_contract>format\",\"unproven_contract>q\",\"unproven_contract>vec\",\"validator_contract>\\\"afterrecordingtheresult,returntoloomstatus\\\"::into\",\"validator_contract>\\\"commandoutput,testcount,failuremessage,oraconcreteblockerreason\\\"::into\",\"validator_contract>\\\"validator\\\"::into\",\"validator_contract>Ok\",\"validator_contract>Vec::new\",\"validator_contract>body::get\",\"validator_contract>c::as_str\",\"validator_contract>format\",\"validator_contract>store::get_node\",\"validator_contract>val::as_ref\",\"validator_contract>vec\",\"verdict_write_back>format\"]",
+      "value": "[\"analyzer_contract>\\\"::into\",\"analyzer_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"analyzer_contract>\\\"analyzer\\\"::into\",\"analyzer_contract>\\\"file/linelocators,validationoutput,orruntimeevidence\\\"::into\",\"analyzer_contract>Vec::new\",\"analyzer_contract>format\",\"analyzer_contract>vec\",\"analyzer_contract>verdict_write_back\",\"audit_contract>\\\"agraphwhoseclaimisfalsifiabilityhastobeabletofailitsowncheck\\\"::into\",\"audit_contract>\\\"analyzer\\\"::into\",\"audit_contract>\\\"eithertheanchorthatwasmissing,orawithdrawaloftheclaim\\\"::into\",\"audit_contract>\\\"stopwhentheclaimiseitheranchoredorwithdrawn—neverwhen\\\\itmerelystopsbeingreported\\\"::into\",\"audit_contract>Vec::new\",\"audit_contract>remedy::to_string\",\"audit_contract>vec\",\"builder_contract>\\\"Loomcontextchecked,relevantcodeinspected,codewritten,locatorconfirmed,syncclean\\\"::into\",\"builder_contract>\\\"aftergrounding+sync,returntoloomstatus\\\"::into\",\"builder_contract>\\\"builder\\\"::into\",\"builder_contract>Vec::new\",\"builder_contract>format\",\"builder_contract>q\",\"builder_contract>vec\",\"coverage_contract>\\\"aftergrounding\",\"coverage_contract>\\\"builder\\\"::into\",\"coverage_contract>\\\"fileread;arealizingownerchosenwithalocator,ORanewrealizingintentforthissurfaceplusconsumesedgestowhatitcalls,ORareasontounregister\\\"::into\",\"coverage_contract>Some\",\"coverage_contract>Vec::new\",\"coverage_contract>format\",\"coverage_contract>q\",\"coverage_contract>serde_json::json\",\"coverage_contract>vec\",\"deepen_contract>\\\"aproofloomran,whosenewgradeishigherthantheoldone\\\"::into\",\"deepen_contract>\\\"everyfloorismet,sothequestionisnolonger'whatismissing'but\\\\'whatisweakest'\\\"::into\",\"deepen_contract>\\\"stopafterONEmove—thisqueuere-ranksaftereverychange,\\\\andthenext-most-importantthingisprobablynolongerthisone\\\"::into\",\"deepen_contract>\\\"validator\\\"::into\",\"deepen_contract>Vec::new\",\"deepen_contract>format\",\"deepen_contract>vec\",\"elaborator_contract>\\\"afteraddressingeveryopenaxis,returntoloomstatus\\\"::into\",\"elaborator_contract>\\\"builder\\\"::into\",\"elaborator_contract>\\\"everyopenaxisclosedbyanartifact,awaiver,oraquestion—neverbysilence\\\"::into\",\"elaborator_contract>\\\"onecommandperopenaxis\",\"elaborator_contract>Vec::new\",\"elaborator_contract>format\",\"elaborator_contract>q\",\"elaborator_contract>vec\",\"fixer_contract>\\\"Loomcontextchecked,relevantcodeinspected,codechange,syncclean,thefailingcriterionnowaddressedatitscause\\\"::into\",\"fixer_contract>\\\"afterthefix+sync,returntoloomstatus\\\"::into\",\"fixer_contract>\\\"fixer\\\"::into\",\"fixer_contract>Vec::new\",\"fixer_contract>format\",\"fixer_contract>vec\",\"inbox_triage_contract>\\\"::into\",\"inbox_triage_contract>\\\"afterdisposition,returntoloomstatus\\\"::into\",\"inbox_triage_contract>\\\"analyzer\\\"::into\",\"inbox_triage_contract>\\\"arawinboxitemisstillnew\\\"::into\",\"inbox_triage_contract>\\\"thedurabledestinationorconcreterejectionreason\\\"::into\",\"inbox_triage_contract>Vec::new\",\"inbox_triage_contract>format\",\"inbox_triage_contract>vec\",\"missing_codefile_contract>\\\"afterunregistering\",\"missing_codefile_contract>\\\"builder\\\"::into\",\"missing_codefile_contract>\\\"thesuccessorregistration+re-grounding,ortheremovalofthedeadregistration\\\"::into\",\"missing_codefile_contract>Vec::new\",\"missing_codefile_contract>format\",\"missing_codefile_contract>q\",\"missing_codefile_contract>vec\",\"prove_contract>\\\"aSUPPORTEDverdictisnotworkuntiladopted\",\"prove_contract>\\\"analyzer\\\"::into\",\"prove_contract>\\\"codeevidencethattheclaimholdsorfails\\\"::into\",\"prove_contract>Vec::new\",\"prove_contract>format\",\"prove_contract>q\",\"prove_contract>vec\",\"quality_contract>Ok\",\"quality_contract>format\",\"quality_contract>prescreen_for\",\"quality_contract>quality_contract_body\",\"quality_contract>rule::as_ref\",\"quality_contract>store::get_node\",\"quality_contract_body>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"quality_contract_body>\\\"file/linelocatorsshowingcompliance,violation,ornon-applicability\\\"::into\",\"quality_contract_body>\\\"quality\\\"::into\",\"quality_contract_body>Some\",\"quality_contract_body>Vec::new\",\"quality_contract_body>a::iter\",\"quality_contract_body>allowed::extend\",\"quality_contract_body>body::clone\",\"quality_contract_body>body::get\",\"quality_contract_body>evidence_template::is_some\",\"quality_contract_body>format\",\"quality_contract_body>hints::into_iter\",\"quality_contract_body>pre_screened_hits::is_empty\",\"quality_contract_body>rule::map\",\"quality_contract_body>serde_json::json\",\"quality_contract_body>v::as_array\",\"quality_contract_body>v::as_str\",\"quality_contract_body>v::is_null\",\"quality_contract_body>vec\",\"quality_contract_body>why_now::into\",\"quality_contract_body>x::as_str\",\"ratify_contract>\\\"human\\\"::into\",\"ratify_contract>\\\"ifnohumanispresent,stop—batchratifypacketsforthenexthumansessioninsteadofdrainingthem\\\"::into\",\"ratify_contract>\\\"ratificationishuman-only:presentthepacket,thenwaitforthehuman'sdecision\\\"::into\",\"ratify_contract>\\\"thehuman'sreasonthisbehavioriswanted:anutterance,asourcedoc,adecision\\\"::into\",\"ratify_contract>\\\"theintent'swantednessisunestablished:mintedwithoutratification,orredefinedafterit\\\"::into\",\"ratify_contract>Some\",\"ratify_contract>Vec::new\",\"ratify_contract>format\",\"ratify_contract>vec\",\"reviewer_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"reviewer_contract>\\\"freshfile/lineorruntimeevidence;stateexplicitlywhetherthepriorverdictwasconfirmedoroverturned\\\"::into\",\"reviewer_contract>Vec::new\",\"reviewer_contract>format\",\"reviewer_contract>owner_role::into\",\"reviewer_contract>vec\",\"reviewer_contract>verdict_write_back\",\"structural_finding_triage_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"structural_finding_triage_contract>\\\"analyzer\\\"::into\",\"structural_finding_triage_contract>\\\"astructuraldetectorflaggedsizeorcomplexity;calibratealreadysetthegate—thispacketisaboutwhetherthefileisoneconcern\\\"::into\",\"structural_finding_triage_contract>\\\"nametheconcern\",\"structural_finding_triage_contract>Vec::new\",\"structural_finding_triage_contract>format\",\"structural_finding_triage_contract>vec\",\"triage_contract>\\\"aconcretereason:whattodo,whyitisfine/false/deferred,whatblocksit,whatitduplicates,ortheobservedrepair\\\"::into\",\"triage_contract>\\\"afterrecordingtheverdict,returntoloomstatus\\\"::into\",\"triage_contract>\\\"analyzer\\\"::into\",\"triage_contract>\\\"anevidence-backedfindingisunjudged\",\"triage_contract>Vec::new\",\"triage_contract>format\",\"triage_contract>vec\",\"unproven_contract>\\\"implemented,proofregistered,nonepassing\\\"::into\",\"unproven_contract>\\\"implementedwithnoregisteredproofatall\\\"::into\",\"unproven_contract>\\\"stoponceoneproofforthisintenthasactuallyrun\\\"::into\",\"unproven_contract>\\\"thecommandloomran,itsexitstatus,andtheassertionthatwouldhavecaughta\\\\regression\\\"::into\",\"unproven_contract>\\\"validator\\\"::into\",\"unproven_contract>Vec::new\",\"unproven_contract>format\",\"unproven_contract>q\",\"unproven_contract>vec\",\"validator_contract>\\\"\",\"validator_contract>\\\"afterrecordingtheresult,returntoloomstatus\\\"::into\",\"validator_contract>\\\"validator\\\"::into\",\"validator_contract>\\\"whatyouobservedinthemanualcheck,citingfile:lineorajournalentry\\\"::into\",\"validator_contract>Areportedoutcomeisrefused\\\"::into\",\"validator_contract>FINDING_ADD_ACTION::into\",\"validator_contract>Ok\",\"validator_contract>Vec::new\",\"validator_contract>actions::push\",\"validator_contract>body::get\",\"validator_contract>c::as_str\",\"validator_contract>command::trim\",\"validator_contract>format\",\"validator_contract>matches\",\"validator_contract>store::get_node\",\"validator_contract>val::as_ref\",\"validator_contract>vec\",\"validator_contract>verdict_write_back\",\"verdict_write_back>format\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "cdcc7e478981666b061c880c75b6e7f9",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "d2524a624317e4a9",
+      "value": "8b964bca25812ed7",
       "truth_class": "derived"
     },
     {
@@ -24224,7 +24374,7 @@
       "target_id": "cdcc7e478981666b061c880c75b6e7f9",
       "target_kind": "node",
       "key": "loc",
-      "value": "799",
+      "value": "849",
       "truth_class": "derived"
     },
     {
@@ -24245,7 +24395,7 @@
       "target_id": "cdcc7e478981666b061c880c75b6e7f9",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"analyzer_contract\":\"263a87843df66fde\",\"audit_contract\":\"95d6c6eefb1baa53\",\"builder_contract\":\"f8bc05022fcffb65\",\"coverage_contract\":\"7e9d99c8588012ad\",\"deepen_contract\":\"6b2a2c67a5b7a1ce\",\"elaborator_contract\":\"72cefbdb444e6dae\",\"fixer_contract\":\"a3c6f1e2832d868b\",\"inbox_triage_contract\":\"bc9725e465c45d61\",\"missing_codefile_contract\":\"fea714b2f9e155a9\",\"prove_contract\":\"7b9d760f3f62a980\",\"quality_contract\":\"00ed386ff9263deb\",\"quality_contract_body\":\"cb3609001306f731\",\"ratify_contract\":\"0a46b0fde9094f74\",\"reviewer_contract\":\"43a32418fbebc0b0\",\"structural_finding_triage_contract\":\"b18eff95d91c5616\",\"triage_contract\":\"9a6a559dd452e017\",\"unproven_contract\":\"bf0c6adfc4073ea5\",\"validator_contract\":\"9c42601fea1f3035\",\"verdict_write_back\":\"89adbc85e9113d57\"}",
+      "value": "{\"analyzer_contract\":\"263a87843df66fde\",\"audit_contract\":\"95d6c6eefb1baa53\",\"builder_contract\":\"f8bc05022fcffb65\",\"coverage_contract\":\"7e9d99c8588012ad\",\"deepen_contract\":\"6b2a2c67a5b7a1ce\",\"elaborator_contract\":\"72cefbdb444e6dae\",\"fixer_contract\":\"d88d1ff4a3fb36eb\",\"inbox_triage_contract\":\"bc9725e465c45d61\",\"missing_codefile_contract\":\"fea714b2f9e155a9\",\"prove_contract\":\"7b9d760f3f62a980\",\"quality_contract\":\"00ed386ff9263deb\",\"quality_contract_body\":\"cb3609001306f731\",\"ratify_contract\":\"0a46b0fde9094f74\",\"reviewer_contract\":\"43a32418fbebc0b0\",\"structural_finding_triage_contract\":\"b18eff95d91c5616\",\"triage_contract\":\"9a6a559dd452e017\",\"unproven_contract\":\"bf0c6adfc4073ea5\",\"validator_contract\":\"c4cb567d8fb14acd\",\"verdict_write_back\":\"89adbc85e9113d57\"}",
       "truth_class": "derived"
     },
     {
@@ -25449,7 +25599,7 @@
       "target_id": "f5bbcf954ed4ace68c02143b3c085029",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
+      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
       "truth_class": "derived"
     },
     {
@@ -25792,7 +25942,7 @@
       "target_id": "ff11f5b41fb73fcbda03b7f07fef3bc3",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
+      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
       "truth_class": "derived"
     },
     {

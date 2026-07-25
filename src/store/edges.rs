@@ -426,11 +426,35 @@ impl Store {
     ) -> Result<Vec<Edge>> {
         let mut out = Vec::new();
         for e in self.edges_by_status(truth, statuses)? {
-            if !self.edge_superseded(&e.id)? {
+            if !self.edge_superseded(&e.id)? && !self.edge_retired(&e.id)? {
                 out.push(e);
             }
         }
         Ok(out)
+    }
+
+    /// Does this edge make a claim about a RETIRED behavior?
+    ///
+    /// A deprecated intent's claims are history, exactly as a superseded
+    /// grounding's are. Counting them as residue means retiring a behavior —
+    /// loom's own sanctioned move when code is deliberately removed — leaves
+    /// its failing proof gating the whole ladder, so following the packet's
+    /// advice appears to do nothing.
+    ///
+    /// Either endpoint: `implements` and `relates` run intent→target, while
+    /// `governs` and `validates` run rule/validation→intent.
+    pub fn edge_retired(&self, edge_id: &str) -> Result<bool> {
+        let Some(edge) = self.get_edge(edge_id)? else {
+            return Ok(false);
+        };
+        for endpoint in [&edge.from_id, &edge.to_id] {
+            if let Some(node) = self.get_node(endpoint)? {
+                if node.node_type == crate::model::NodeType::Intent && node.status == "deprecated" {
+                    return Ok(true);
+                }
+            }
+        }
+        Ok(false)
     }
 
     pub fn list_edges(&self, kind: Option<EdgeKind>, limit: usize) -> Result<Vec<Edge>> {

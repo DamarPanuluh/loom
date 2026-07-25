@@ -274,3 +274,63 @@ fn fix_packet_names_the_intent_not_the_other_endpoint() {
         );
     }
 }
+
+/// Retiring a behavior clears the claims about it.
+///
+/// The fix packet sanctions `loom intent retire` when code was deliberately
+/// removed — so following that advice must actually move the ladder. It did
+/// not: `live_edges_by_status` treated "live" as "not superseded", so a
+/// retired intent's failing proof kept gating every rung above `repaired`, and
+/// the operator who did exactly what the tool asked saw nothing happen.
+#[test]
+fn retiring_a_behavior_stops_its_claims_counting_as_debt() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "a behavior that will be removed",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = codefile(&store, "src/gone.rs");
+    store
+        .add_edge(
+            loom::model::EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            loom::model::TruthClass::Asserted,
+        )
+        .unwrap();
+    loom::commands::prove_intent(&store, &intent.id, "its proof", "false").unwrap();
+
+    let before = loom::maturity::ladder(&store).unwrap();
+    let repaired = |l: &loom::maturity::Ladder| {
+        l.rungs
+            .iter()
+            .find(|r| r.name == "repaired")
+            .unwrap()
+            .state
+            .clone()
+    };
+    assert_eq!(
+        repaired(&before),
+        loom::maturity::RungState::Unmet,
+        "a failing proof gates fix"
+    );
+
+    store
+        .retire_intent(&intent.id, "the capability was deleted on purpose", None)
+        .unwrap();
+
+    let after = loom::maturity::ladder(&store).unwrap();
+    // Met or NotApplicable — either says "this no longer blocks". What must not
+    // survive the retirement is Unmet.
+    assert_ne!(
+        repaired(&after),
+        loom::maturity::RungState::Unmet,
+        "a claim about a retired behavior is history, not debt"
+    );
+}
