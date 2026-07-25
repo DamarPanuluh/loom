@@ -225,3 +225,54 @@ fn ratification_claims_are_what_the_audit_reads() {
         )
         .is_err());
 }
+
+/// A test file is owned when something VERIFIES through it, not when something
+/// realizes it. Behaviour is not implemented in `tests/`, so demanding a
+/// realizing owner would mean the evidence backbone could only be registered by
+/// permanently reddening coverage — which is exactly why 22.8k lines of it
+/// stayed outside this graph while coverage reported 67 of 67 owned.
+#[test]
+fn a_test_file_is_owned_by_what_it_verifies() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let i = intent(&store, "a behavior");
+
+    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
+    std::fs::write(
+        tmp.path().join("tests/behavior_test.rs"),
+        "pub fn exercises() {}\n",
+    )
+    .unwrap();
+    let cf = store
+        .add_node(
+            NodeType::CodeFile,
+            "tests/behavior_test.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    // Registered and unattached: honestly unowned, and the coverage queue says so.
+    assert!(
+        loom::commands::unowned_names(&store)
+            .unwrap()
+            .contains(&"tests/behavior_test.rs".to_string()),
+        "a test file protecting nothing is real debt"
+    );
+
+    // Attached with the VERIFIES role: owned, without pretending the behavior
+    // lives there.
+    let e = store
+        .add_edge(EdgeKind::Implements, &i, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(&e.id, TargetKind::Edge, "role", "verifies", TruthClass::Asserted)
+        .unwrap();
+    assert!(
+        !loom::commands::unowned_names(&store)
+            .unwrap()
+            .contains(&"tests/behavior_test.rs".to_string()),
+        "what a test verifies IS its ownership"
+    );
+}

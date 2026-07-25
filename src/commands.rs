@@ -322,6 +322,13 @@ pub(crate) fn codefile_observed(n: &Node) -> bool {
 /// This is the single definition of the coverage gap: the diagnostic, the
 /// `realized` maturity gate, and the `coverage` work queue all read it, so they
 /// can never disagree. Sorted by name for a stable next-item.
+pub fn unowned_names(store: &Store) -> Result<Vec<String>> {
+    Ok(unowned_codefiles(store)?
+        .into_iter()
+        .map(|n| n.name)
+        .collect())
+}
+
 pub(crate) fn unowned_codefiles(store: &Store) -> Result<Vec<Node>> {
     let ignore = crate::fsglob::matcher(store.ignore_globs()?)?;
     let mut unowned = Vec::new();
@@ -331,6 +338,27 @@ pub(crate) fn unowned_codefiles(store: &Store) -> Result<Vec<Node>> {
         }
         if codefile_observed(&cf) {
             continue; // monitored upstream — no ownership obligation
+        }
+        // A TEST file is never realized by a behavior — it verifies one, and
+        // demanding a realizing owner for it would mean `tests/` could only be
+        // registered by permanently reddening coverage. That is exactly why
+        // 22.8k lines of this repo's evidence backbone stayed outside the graph
+        // while coverage reported 67/67 owned.
+        if crate::extract::Role::detect(&cf.name) == crate::extract::Role::Test {
+            let mut verified = false;
+            for e in store.edges_with(Some(crate::model::EdgeKind::Implements), None, Some(&cf.id))?
+            {
+                if !store.edge_superseded(&e.id)?
+                    && store.grounding_role(&e.id)? == crate::model::GroundingRole::Verifies
+                {
+                    verified = true;
+                    break;
+                }
+            }
+            if !verified {
+                unowned.push(cf);
+            }
+            continue;
         }
         if store.realizing_implementers(&cf.id)?.is_empty() {
             unowned.push(cf);
