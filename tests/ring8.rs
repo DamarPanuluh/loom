@@ -45,15 +45,7 @@ fn mature_graph_with_codefile(store: &Store) -> loom::model::Node {
             serde_json::json!({}),
         )
         .unwrap();
-    let codefile = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/x.rs",
-            "",
-            "active",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let codefile = codefile(store, "src/x.rs");
     let edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -67,7 +59,7 @@ fn mature_graph_with_codefile(store: &Store) -> loom::model::Node {
             &edge.id,
             InspectionStatus::Passing,
             "grounded",
-            "src/x.rs",
+            "src/x.rs:1",
             0.9,
             "llm",
         )

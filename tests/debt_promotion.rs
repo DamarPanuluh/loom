@@ -114,9 +114,7 @@ fn fixture_size_outlier() -> (Tmp, String) {
         let store = Store::init(tmp.path(), Some("debt-promo"), false).unwrap();
         let mut big = String::new();
         for (path, loc) in [("a.rs", 40), ("b.rs", 50), ("c.rs", 45), ("big.rs", 5000)] {
-            let n = store
-                .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-                .unwrap();
+            let n = codefile(&store, path);
             store
                 .set_facet(
                     &n.id,
@@ -756,9 +754,7 @@ fn promote_rejects_unknown_ambiguous_and_stale_cluster_ids() {
             ("g.rs", 48),
             ("huge.rs", 8000),
         ] {
-            let n = store
-                .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-                .unwrap();
+            let n = codefile(&store, path);
             store
                 .set_facet(
                     &n.id,

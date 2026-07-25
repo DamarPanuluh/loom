@@ -16,11 +16,10 @@ fn intent(store: &Store, name: &str, lifecycle: &str) -> String {
         .unwrap()
         .id
 }
+/// This suite's helper returns the id; `common::codefile` backs the path with a
+/// real file so a citation into it can anchor.
 fn codefile(store: &Store, path: &str) -> String {
-    store
-        .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-        .unwrap()
-        .id
+    common::codefile(store, path).id
 }
 
 // ---- smells ----------------------------------------------------------------
@@ -3059,9 +3058,7 @@ fn intent_layer(store: &Store, name: &str, layer: &str) -> String {
 }
 
 fn cf_imports(store: &Store, path: &str, imports: &[&str]) -> String {
-    let n = store
-        .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-        .unwrap();
+    let n = common::codefile(store, path);
     store
         .set_facet(
             &n.id,

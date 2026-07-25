@@ -133,15 +133,7 @@ fn a_verdict_and_its_edge_can_never_disagree() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/o.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/o.rs");
     let e = store
         .add_edge(
             EdgeKind::Implements,
@@ -198,15 +190,7 @@ fn an_import_cannot_smuggle_in_a_verified_fact() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/o.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/o.rs");
     let e = store
         .add_edge(
             EdgeKind::Implements,

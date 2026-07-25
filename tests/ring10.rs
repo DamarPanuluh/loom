@@ -864,15 +864,7 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
     // compass never routes `build` at an empty queue). Ground each and inspect
     // the grounding so the build AND analyze queues drain; only then is
     // elaborate genuinely the last remaining queue.
-    let codefile = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/auth.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let codefile = codefile(&store, "src/auth.rs");
     for intent in [&a, &b] {
         let impl_edge = store
             .add_edge(
@@ -1026,15 +1018,7 @@ fn quality_work_item_carries_pre_screened_hits_for_grounded_intent() {
         Some("user_visible"),
     );
     // Register the CodeFile and ground the intent in it.
-    let codefile = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/auth.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let codefile = codefile(&store, "src/auth.rs");
     store
         .add_edge(
             EdgeKind::Implements,
@@ -1200,15 +1184,7 @@ fn scan_run_with_fake_adapter_creates_visible_finding_and_resolves_on_empty_reru
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/lib.rs"), "pub fn demo() {}\n").unwrap();
     let store = Store::init(root, Some("t"), false).unwrap();
-    store
-        .add_node(
-            NodeType::CodeFile,
-            "src/lib.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    codefile(&store, "src/lib.rs");
     scan::add_adapter(
         &store,
         "fake",

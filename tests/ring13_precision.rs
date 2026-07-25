@@ -29,7 +29,19 @@ fn add_intent(store: &Store, name: &str, desc: &str) -> String {
         .id
 }
 
+/// Register a CodeFile, backing it with a real file when the fixture has not
+/// written one. A citation into a path with nothing behind it is skipped
+/// silently, so a verdict "citing" it anchors nothing — which the grounding
+/// floor now refuses.
 fn add_codefile(store: &Store, path: &str) -> String {
+    let full = store.root().join(path);
+    std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+    if !full.exists() {
+        let body: String = std::iter::once("pub fn behavior() {}\n".to_string())
+            .chain((2..=60).map(|n| format!("// line {n}\n")))
+            .collect();
+        std::fs::write(&full, body).unwrap();
+    }
     store
         .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
         .unwrap()
@@ -193,7 +205,7 @@ fn no_locator_stays_file_scoped() {
     let e = ground(&store, &i, &cf, None); // no locator
 
     sync::run(&store, tmp.path()).unwrap();
-    pass(&store, &e, "works fine");
+    pass(&store, &e, "works fine — src/lib.rs:1");
 
     tmp.write("src/lib.rs", "pub fn alpha() { 1 }\npub fn beta() { 99 }\n");
 
@@ -232,7 +244,7 @@ fn removed_symbol_stales() {
     let e = ground(&store, &i, &cf, Some("fn alpha"));
 
     sync::run(&store, tmp.path()).unwrap();
-    pass(&store, &e, "alpha works");
+    pass(&store, &e, "alpha works — src/lib.rs:1");
 
     // Remove fn alpha entirely — only beta remains.
     tmp.write("src/lib.rs", "pub fn beta() { 2 }\n");
@@ -273,7 +285,7 @@ fn duplicate_names_fold() {
     let e = ground(&store, &i, &cf, Some("new"));
 
     sync::run(&store, tmp.path()).unwrap();
-    pass(&store, &e, "new works");
+    pass(&store, &e, "new works — src/lib.rs:1");
 
     // Edit only B::new; A::new is untouched.
     tmp.write(
@@ -359,14 +371,35 @@ fn evidence_stamped_and_integrity() {
         "a failed verdict must not advance the edge status"
     );
 
-    // C: nonexistent path → Ok; no evidence_spans facet written (silently ignored).
-    pass(&store, &e3, "see nonexistent.rs:1 for details");
+    // C: a citation into a path that does not exist is not evidence. It used to
+    // be silently ignored, leaving the verdict standing on prose that merely
+    // LOOKED anchored — which is the whole failure the floor exists to catch.
+    // Now the grounding floor refuses it, and says what would fix it.
+    let err = store
+        .record_verdict(
+            &e3,
+            InspectionStatus::Passing,
+            "criterion",
+            "see nonexistent.rs:1 for details",
+            0.9,
+            "test",
+        )
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("locator"),
+        "the refusal must name what would anchor it: {err}"
+    );
     assert!(
         store
             .get_facet(&e3, TargetKind::Edge, EVIDENCE_SPANS_KEY)
             .unwrap()
             .is_none(),
         "a nonexistent-path citation must not produce an evidence_spans facet"
+    );
+    assert_eq!(
+        edge_status(&store, &e3),
+        InspectionStatus::Uninspected,
+        "a refused verdict must not advance the edge status"
     );
 
     // D: more citations than Loom can retain must fail before the verdict is

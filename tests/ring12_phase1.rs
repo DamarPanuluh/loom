@@ -39,9 +39,7 @@ fn seed_codefile(store: &Store, path: &str) -> String {
             .collect();
         std::fs::write(&full, body).unwrap();
     }
-    store
-        .add_node(NodeType::CodeFile, path, "", "", json!({}))
-        .unwrap()
+    codefile(store, path)
         .id
 }
 
@@ -407,7 +405,7 @@ fn record_verdict_identical_rerecord_is_a_noop_preserving_updated_at() {
             &edge.id,
             InspectionStatus::Passing,
             "epsilon criterion",
-            "epsilon evidence",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -429,7 +427,7 @@ fn record_verdict_identical_rerecord_is_a_noop_preserving_updated_at() {
             &edge.id,
             InspectionStatus::Passing,
             "epsilon criterion",
-            "epsilon evidence",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -450,7 +448,7 @@ fn record_verdict_identical_rerecord_is_a_noop_preserving_updated_at() {
     );
     assert_eq!(
         store.verdict_prose(&after_second.id).unwrap(),
-        "epsilon evidence",
+        anchored(&store),
         "contract 5: evidence unchanged after identical re-record"
     );
 }
@@ -476,9 +474,7 @@ fn record_verdict_still_rejects_placeholder_evidence_after_a_settled_verdict() {
             json!({}),
         )
         .unwrap();
-    let codefile = store
-        .add_node(NodeType::CodeFile, "src/z.rs", "", "", json!({}))
-        .unwrap();
+    let codefile = codefile(&store, "src/z.rs");
     let edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -494,7 +490,7 @@ fn record_verdict_still_rejects_placeholder_evidence_after_a_settled_verdict() {
             &edge.id,
             InspectionStatus::Passing,
             "zeta criterion",
-            "zeta evidence",
+            &anchored(&store),
             0.9,
             "llm",
         )
@@ -528,7 +524,7 @@ fn record_verdict_still_rejects_placeholder_evidence_after_a_settled_verdict() {
     );
     assert_eq!(
         store.verdict_prose(&after.id).unwrap(),
-        "zeta evidence",
+        anchored(&store),
         "contract 6: settled edge evidence survived the rejected re-record"
     );
 }
@@ -852,8 +848,8 @@ fn calibrate_proposes_above_floors_and_errors_without_codefiles() {
     // store.)
     let empty = Tmp::new();
     let empty_store = Store::init(empty.path(), Some("t"), false).unwrap();
-    // Registered WITHOUT writing the file — `seed_codefile` now creates one, and
-    // the whole point here is a path with nothing behind it.
+    // Registered WITHOUT writing the file — the helpers back a path with real
+    // content, and the whole point here is a path with nothing behind it.
     empty_store
         .add_node(NodeType::CodeFile, "src/missing.rs", "", "", json!({}))
         .unwrap();

@@ -48,9 +48,7 @@ fn seed_codefile(store: &Store, path: &str) -> String {
             .collect();
         std::fs::write(&full, body).unwrap();
     }
-    store
-        .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-        .unwrap()
+    codefile(store, path)
         .id
 }
 

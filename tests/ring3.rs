@@ -241,15 +241,7 @@ fn next_edge_context_points_to_endpoints_edge_and_grounded_codefile() {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let a = intent(&store, "intent a");
     let b = intent(&store, "intent b");
-    let file = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/a.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let file = codefile(&store, "src/a.rs");
     let grounding = store
         .add_edge(EdgeKind::Implements, &a, &file.id, TruthClass::Asserted)
         .unwrap();
@@ -258,7 +250,7 @@ fn next_edge_context_points_to_endpoints_edge_and_grounded_codefile() {
             &grounding.id,
             InspectionStatus::Passing,
             "grounded",
-            "src/a.rs",
+            "src/a.rs:1",
             0.95,
             "llm",
         )
@@ -569,9 +561,7 @@ fn list_nodes_page_windows_and_counts() {
 // ---- edge pagination: windows, counts, list_edges == list_edges_page(0) ----
 
 fn codefile_node(store: &Store, path: &str) -> String {
-    store
-        .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-        .unwrap()
+    codefile(store, path)
         .id
 }
 

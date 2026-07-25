@@ -57,24 +57,8 @@ fn build_clean_graph(tmp: &Tmp) -> Store {
         .add_edge(EdgeKind::Hierarchy, &sys.id, &cart.id, TruthClass::Asserted)
         .unwrap();
 
-    let fa = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/auth.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let fc = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/cart.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let fa = codefile(&store, "src/auth.rs");
+    let fc = codefile(&store, "src/cart.rs");
     // ground each file to exactly one intent (no overlap, no tangle)
     let ea = store
         .add_edge(EdgeKind::Implements, &auth.id, &fa.id, TruthClass::Asserted)

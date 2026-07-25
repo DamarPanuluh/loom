@@ -24,15 +24,7 @@ fn inv2_derived_plane_rebuildable() {
         "pub fn f(x: Option<i32>) -> i32 { x.unwrap() }\n",
     );
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    store
-        .add_node(
-            NodeType::CodeFile,
-            "src/demo.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    codefile(&store, "src/demo.rs");
 
     loom::sync::run(&store, tmp.path()).unwrap();
     let before = export_json(&store);
@@ -71,15 +63,7 @@ fn sync_ripples_only_on_real_change() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/payment.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/payment.rs");
     let edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -154,15 +138,7 @@ fn sync_ripples_governs_through_intent() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/auth.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/auth.rs");
     let rule = store
         .add_node(
             NodeType::QualityRule,
@@ -219,15 +195,7 @@ fn derived_findings_are_not_asserted_work() {
         "pub fn g(o: Option<i32>) -> i32 { o.unwrap() }\n",
     );
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    store
-        .add_node(
-            NodeType::CodeFile,
-            "src/x.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    codefile(&store, "src/x.rs");
     loom::sync::run(&store, tmp.path()).unwrap();
 
     let all_edges = store.list_edges(None, usize::MAX).unwrap();
@@ -282,15 +250,7 @@ fn sync_ripples_upstream_change_to_integration_contract() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "vendor/up/lib.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "vendor/up/lib.rs");
     let surface = store
         .add_node(
             NodeType::InterfaceSurface,
@@ -596,15 +556,7 @@ fn sync_does_not_count_never_verified_contracts() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "vendor/up/lib.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "vendor/up/lib.rs");
     let surface = store
         .add_node(
             NodeType::InterfaceSurface,
@@ -711,15 +663,7 @@ fn integration_ripple_is_deterministic_on_rebuild() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "vendor/up/lib.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "vendor/up/lib.rs");
     let surface = store
         .add_node(
             NodeType::InterfaceSurface,
@@ -798,15 +742,7 @@ fn sync_ripples_upstream_file_deletion_once() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "vendor/up/lib.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "vendor/up/lib.rs");
     let surface = store
         .add_node(
             NodeType::InterfaceSurface,

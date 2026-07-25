@@ -189,11 +189,11 @@ fn adjudication_floor(state: &str) -> Floor {
 /// those citations were never evidence. Two test helpers are repaired (they now
 /// write the files they register), and the remainder is the same exercise.
 /// Flipped together with them rather than left half-done.
-const CURRENT_GROUNDING: Verification = Verification::Claimed;
+const CURRENT_GROUNDING: Verification = Verification::Cited;
 /// A consumer/config/verify seam is a weaker claim by nature — it says the file
 /// USES the behavior, not that it performs it — but it still has to point
 /// somewhere. Staged with the grounding floor above.
-const CURRENT_SEAM_GROUNDING: Verification = Verification::Claimed;
+const CURRENT_SEAM_GROUNDING: Verification = Verification::Cited;
 /// A proof is `verified` or it is not a proof. There is exactly one way to
 /// reach this floor: let loom run the command and observe the result. Reporting
 /// an outcome is refused — that move is what made 54 of 59 proofs in loom's own

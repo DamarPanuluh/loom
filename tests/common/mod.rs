@@ -125,3 +125,33 @@ pub fn observe_passing(store: &loom::store::Store, val_name: &str) {
         store.set_node_status(&val.id, "passed").unwrap();
     }
 }
+
+/// Register a CodeFile AND put a real file behind it.
+///
+/// A registered path with nothing on disk is a fiction: `evidence::stamp`
+/// silently skips a `file:line` citation into it, so a verdict "citing" that
+/// path anchors nothing. Fixtures did this for years and looked green. With the
+/// grounding floor demanding `cited`, they correctly stop.
+///
+/// Only creates what is missing — a fixture that deliberately wrote content is
+/// testing that content, and a helper must never clobber it.
+#[allow(dead_code)]
+pub fn codefile(store: &loom::store::Store, path: &str) -> loom::model::Node {
+    let full = store.root().join(path);
+    std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+    if !full.exists() {
+        let body: String = std::iter::once("pub fn behavior() {}\n".to_string())
+            .chain((2..=60).map(|n| format!("// line {n}\n")))
+            .collect();
+        std::fs::write(&full, body).unwrap();
+    }
+    store
+        .add_node(
+            loom::model::NodeType::CodeFile,
+            path,
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap()
+}

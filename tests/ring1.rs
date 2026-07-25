@@ -24,9 +24,7 @@ fn seed_intent(store: &Store, name: &str) -> String {
 }
 
 fn seed_codefile(store: &Store, path: &str) -> String {
-    store
-        .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-        .unwrap()
+    codefile(store, path)
         .id
 }
 

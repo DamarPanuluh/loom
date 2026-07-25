@@ -164,6 +164,8 @@ fn every_gate_lane_serves_the_work_it_points_at() {
         // The regression this test exists for: an implemented intent with no
         // proof counts toward `proven`, so the validate lane must serve it.
         ("validate", |store: &Store| {
+            std::fs::create_dir_all(store.root().join("src")).unwrap();
+            std::fs::write(store.root().join("src/o.rs"), "pub fn place() {}\n").unwrap();
             let intent = store
                 .add_node(
                     NodeType::Intent,
@@ -173,15 +175,7 @@ fn every_gate_lane_serves_the_work_it_points_at() {
                     serde_json::json!({}),
                 )
                 .unwrap();
-            let cf = store
-                .add_node(
-                    NodeType::CodeFile,
-                    "src/o.rs",
-                    "",
-                    "",
-                    serde_json::json!({}),
-                )
-                .unwrap();
+            let cf = codefile(store, "src/o.rs");
             let e = store
                 .add_edge(
                     EdgeKind::Implements,
@@ -270,9 +264,7 @@ fn a_fresh_intent_packet_proposes_candidate_files() {
     std::fs::write(tmp.path().join("src/telemetry.rs"), "pub fn flush() {}\n").unwrap();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     for path in ["src/ruang.rs", "src/telemetry.rs"] {
-        store
-            .add_node(NodeType::CodeFile, path, "", "", serde_json::json!({}))
-            .unwrap();
+        codefile(&store, path);
     }
     loom::sync::run(&store, tmp.path()).unwrap();
     let intent = store

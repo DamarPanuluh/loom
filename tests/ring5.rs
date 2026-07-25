@@ -1517,24 +1517,8 @@ fn json_read_commands_emit_json_and_full_fields() {
                 TruthClass::Asserted,
             )
             .unwrap();
-        let cf = store
-            .add_node(
-                NodeType::CodeFile,
-                "src/a.rs",
-                "",
-                "",
-                serde_json::json!({}),
-            )
-            .unwrap();
-        store
-            .add_node(
-                NodeType::CodeFile,
-                "src/orphan.rs",
-                "",
-                "",
-                serde_json::json!({}),
-            )
-            .unwrap();
+        let cf = codefile(&store, "src/a.rs");
+        codefile(&store, "src/orphan.rs");
         store
             .add_edge(EdgeKind::Implements, &a.id, &cf.id, TruthClass::Asserted)
             .unwrap();
@@ -1666,15 +1650,7 @@ fn advertised_global_json_read_commands_parse_as_json() {
                 serde_json::json!({}),
             )
             .unwrap();
-        let codefile = store
-            .add_node(
-                NodeType::CodeFile,
-                "src/matrix.rs",
-                "",
-                "",
-                serde_json::json!({}),
-            )
-            .unwrap();
+        let codefile = codefile(&store, "src/matrix.rs");
         let edge = store
             .add_edge(
                 EdgeKind::Implements,
@@ -3616,15 +3592,7 @@ fn wiki_plan_record_loop_and_stale_on_documented_change() {
                 serde_json::json!({}),
             )
             .unwrap();
-        let cf = store
-            .add_node(
-                NodeType::CodeFile,
-                "src/w.rs",
-                "",
-                "",
-                serde_json::json!({}),
-            )
-            .unwrap();
+        let cf = codefile(&store, "src/w.rs");
         loom::sync::run(&store, tmp.path()).unwrap(); // extract → content_hash facet
         store
             .add_edge(

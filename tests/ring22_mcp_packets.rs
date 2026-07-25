@@ -29,9 +29,7 @@ fn seeded(tmp: &Tmp) -> Store {
             json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(NodeType::CodeFile, "src/cart.rs", "", "", json!({}))
-        .unwrap();
+    let cf = codefile(&store, "src/cart.rs");
     let e = store
         .add_edge(
             EdgeKind::Implements,

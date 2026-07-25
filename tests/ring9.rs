@@ -793,15 +793,7 @@ fn edge_packet_read_set_carries_codefile_path_and_locator() {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
 
     let intent = implemented_intent(&store, "grounded intent");
-    let codefile = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/x.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let codefile = codefile(&store, "src/x.rs");
     // Ground the intent with a locator facet on the implements edge.
     let imp = store
         .add_edge(

@@ -226,15 +226,7 @@ fn analyze_packet_carries_the_lane_that_owns_the_write() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/widget.rs",
-            "",
-            "active",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/widget.rs");
     let edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -263,7 +255,7 @@ fn analyze_packet_carries_the_lane_that_owns_the_write() {
             &edge.id,
             InspectionStatus::Passing,
             "grounded",
-            "src/widget.rs",
+            "src/widget.rs:1",
             0.9,
             "llm",
         )
@@ -400,15 +392,7 @@ fn stale_edge_routes_to_fix() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/a.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/a.rs");
     // ground both so realized is satisfiable, then create a failing edge
     store
         .add_edge(EdgeKind::Implements, &a.id, &cf.id, TruthClass::Asserted)
@@ -442,15 +426,7 @@ fn fully_grounded_no_residue_routes_complete() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/a.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/a.rs");
     let e = store
         .add_edge(EdgeKind::Implements, &a.id, &cf.id, TruthClass::Asserted)
         .unwrap();
@@ -505,24 +481,8 @@ fn registered_unowned_codefile_routes_to_coverage() {
             serde_json::json!({}),
         )
         .unwrap();
-    let owned = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/owned.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    store
-        .add_node(
-            NodeType::CodeFile,
-            "src/unowned.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let owned = codefile(&store, "src/owned.rs");
+    codefile(&store, "src/unowned.rs");
     let impl_edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -568,24 +528,8 @@ fn ignored_unowned_codefile_excluded_from_coverage_gate_and_queue() {
             serde_json::json!({}),
         )
         .unwrap();
-    let owned = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/owned.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    store
-        .add_node(
-            NodeType::CodeFile,
-            "src/vendored.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let owned = codefile(&store, "src/owned.rs");
+    codefile(&store, "src/vendored.rs");
     let impl_edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -682,24 +626,8 @@ fn doctor_issue_routes_to_audit_after_earlier_gates_pass() {
             serde_json::json!({}),
         )
         .unwrap();
-    let parent_file = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/parent.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let child_file = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/child.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let parent_file = codefile(&store, "src/parent.rs");
+    let child_file = codefile(&store, "src/child.rs");
     for (intent, file, locator) in [
         (&parent, &parent_file, "src/parent.rs:1"),
         (&child, &child_file, "src/child.rs:1"),
@@ -788,24 +716,8 @@ fn proven_rung_requires_each_implemented_leaf_to_have_passing_validation() {
             serde_json::json!({}),
         )
         .unwrap();
-    let file_a = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/a.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let file_b = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/b.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let file_a = codefile(&store, "src/a.rs");
+    let file_b = codefile(&store, "src/b.rs");
     for (intent, file, locator) in [(&a, &file_a, "src/a.rs:1"), (&b, &file_b, "src/b.rs:1")] {
         let edge = store
             .add_edge(
@@ -861,15 +773,7 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
             TruthClass::Asserted,
         )
         .unwrap();
-    let file = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/checkout.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let file = codefile(&store, "src/checkout.rs");
     let impl_edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -883,7 +787,7 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
             &impl_edge.id,
             InspectionStatus::Passing,
             "checkout is grounded",
-            "src/checkout.rs",
+            "src/checkout.rs:1",
             0.9,
             "test",
         )
@@ -979,15 +883,7 @@ fn proven_rung_honors_journey_axis_waiver() {
             TruthClass::Asserted,
         )
         .unwrap();
-    let file = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/cli.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let file = codefile(&store, "src/cli.rs");
     let impl_edge = store
         .add_edge(
             EdgeKind::Implements,
@@ -1001,7 +897,7 @@ fn proven_rung_honors_journey_axis_waiver() {
             &impl_edge.id,
             InspectionStatus::Passing,
             "grounded",
-            "src/cli.rs",
+            "src/cli.rs:1",
             0.9,
             "test",
         )
@@ -1077,15 +973,7 @@ fn findings_route_to_triage_until_judged() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/x.rs",
-            "",
-            "active",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/x.rs");
     let e = store
         .add_edge(EdgeKind::Implements, &i.id, &cf.id, TruthClass::Asserted)
         .unwrap();
@@ -1094,7 +982,7 @@ fn findings_route_to_triage_until_judged() {
             &e.id,
             InspectionStatus::Passing,
             "grounded",
-            "x",
+            "src/x.rs:1",
             0.9,
             "llm",
         )
@@ -1185,15 +1073,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
             serde_json::json!({}),
         )
         .unwrap();
-    let cf = store
-        .add_node(
-            NodeType::CodeFile,
-            "src/pay.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let cf = codefile(&store, "src/pay.rs");
     let imp = store
         .add_edge(
             EdgeKind::Implements,
@@ -1203,7 +1083,7 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
         )
         .unwrap();
     store
-        .record_verdict(&imp.id, InspectionStatus::Passing, "c", "e", 0.9, "llm")
+        .record_verdict(&imp.id, InspectionStatus::Passing, "c", "src/pay.rs:1", 0.9, "llm")
         .unwrap();
     loom::commands::prove_intent(&store, &intent.id, "pay test", "true").unwrap();
 
