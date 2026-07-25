@@ -61,7 +61,6 @@ pub fn prove(root: &Path, intent_name: &str, proof_name: &str) {
             r#type: "test".into(),
             command: "true".into(),
             intent: intent_name.into(),
-            proof_level: None,
             proof_kind: None,
             journey_id: None,
             repo_native_kind: None,
@@ -90,40 +89,38 @@ pub fn observe_passing(store: &loom::store::Store, val_name: &str) {
         .resolve_node(val_name, Some(NodeType::Validation))
         .unwrap_or_else(|e| panic!("resolve validation {val_name}: {e}"));
     let mut body = val.body.clone();
-    body["command"] = serde_json::json!("true");
+    body["command"] = serde_json::json!("echo proof-ok");
+    // A journey proof's GRADE is derived from its spec, so a fixture claiming a
+    // real journey proof has to have one. Written here rather than in every
+    // caller: the alternative is fixtures that pass loom's runner and then
+    // report S1, which is not what any of them mean.
+    let is_journey = body.get("proof_kind").and_then(|k| k.as_str()) == Some("journey")
+        || body.get("type").and_then(|k| k.as_str()) == Some("journey");
+    if is_journey && body.get("journey").is_none() && body.get("journey_id").is_none() {
+        let slug = val_name.replace(' ', "-");
+        std::fs::create_dir_all(store.root().join("journeys")).unwrap();
+        std::fs::write(
+            store.root().join(format!("journeys/{slug}.yaml")),
+            format!(
+                concat!(
+                    "journey: {}\n",
+                    "steps:\n",
+                    "  - name: run it\n",
+                    "    intent: {}\n",
+                    "    run: echo proof-ok\n",
+                    "    expect:\n",
+                    "      stdout_contains: [\"proof-ok\"]\n",
+                ),
+                slug, val_name
+            ),
+        )
+        .unwrap();
+        body["journey"] = serde_json::json!(slug);
+    }
     store.set_node_body(&val.id, &body).unwrap();
     let val = store.get_node(&val.id).unwrap().unwrap();
-    let outcome = loom::commands::observe_validation(store, &val)
+    loom::commands::observe_validation(store, &val)
         .unwrap_or_else(|e| panic!("observe {val_name}: {e}"));
-    // A JOURNEY proof is not runnable by the validation runner — it is proven by
-    // `loom journey run`. loom says so by returning `Manual` rather than
-    // pretending, so the fixture attests it instead, citing the artifact the
-    // proof is about. Attested is visibly weaker than observed, which is the
-    // honest reading of a proof loom did not watch.
-    if let loom::proof::ProofOutcome::Manual { .. } = outcome {
-        let artifact = val
-            .body
-            .get("artifact")
-            .and_then(|a| a.as_str())
-            .unwrap_or_default()
-            .to_string();
-        for e in store
-            .edges_with(Some(loom::model::EdgeKind::Validates), Some(&val.id), None)
-            .unwrap()
-        {
-            store
-                .record_verdict(
-                    &e.id,
-                    loom::model::InspectionStatus::Passing,
-                    "attested proof",
-                    &format!("attested against {artifact}:1"),
-                    0.9,
-                    "test",
-                )
-                .unwrap_or_else(|err| panic!("attest {val_name}: {err}"));
-        }
-        store.set_node_status(&val.id, "passed").unwrap();
-    }
 }
 
 /// Register a CodeFile AND put a real file behind it.
@@ -154,4 +151,173 @@ pub fn codefile(store: &loom::store::Store, path: &str) -> loom::model::Node {
             serde_json::json!({}),
         )
         .unwrap()
+}
+
+/// Build a journey proof that genuinely EARNS S3, rather than declaring it.
+///
+/// Every conjunct is real, because the grade is derived from them: a spec on
+/// disk asserting something about the output (S2), the intent grounded in a
+/// symbol, and a proof file whose own symbol calls it, so the call closure
+/// reaches the behavior (S3). Fixtures used to reach the top of the old scale
+/// by passing `--proof-level L5`, which is exactly the move this replaces.
+#[allow(dead_code)]
+pub fn s3_journey_proof(
+    store: &loom::store::Store,
+    root: &std::path::Path,
+    intent_id: &str,
+    name: &str,
+) -> loom::model::Node {
+    use loom::model::{EdgeKind, TargetKind, TruthClass};
+
+    // The behavior lives in a symbol...
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("src/checkout.rs"),
+        "pub fn perform_checkout() -> &'static str {\n    \"ok\"\n}\n",
+    )
+    .unwrap();
+    let cf = store
+        .add_node(
+            loom::model::NodeType::CodeFile,
+            "src/checkout.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let g = store
+        .add_edge(EdgeKind::Implements, intent_id, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(
+            &g.id,
+            TargetKind::Edge,
+            "locator",
+            "fn perform_checkout",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    // ...and the proof's own file calls it.
+    std::fs::create_dir_all(root.join("tests")).unwrap();
+    std::fs::write(
+        root.join("tests/checkout_test.rs"),
+        "pub fn exercises_checkout() {\n    let _ = perform_checkout();\n}\n",
+    )
+    .unwrap();
+    let test_cf = store
+        .add_node(
+            loom::model::NodeType::CodeFile,
+            "tests/checkout_test.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    // The spec asserts something about the OUTPUT, not just the exit code.
+    std::fs::create_dir_all(root.join("journeys")).unwrap();
+    std::fs::write(
+        root.join(format!("journeys/{name}.yaml")),
+        format!(
+            "journey: {name}\nsteps:\n  - name: run it\n    intent: checkout\n    \
+             run: echo checkout-ok\n    expect:\n      stdout_contains: [\"checkout-ok\"]\n"
+        ),
+    )
+    .unwrap();
+
+    // The test file attaches to the BEHAVIOR with the `verifies` role — that is
+    // the proof's reach, and what the call witness reads.
+    let v_edge = store
+        .add_edge(
+            EdgeKind::Implements,
+            intent_id,
+            &test_cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &v_edge.id,
+            TargetKind::Edge,
+            "role",
+            "verifies",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let validation = store
+        .add_node(
+            loom::model::NodeType::Validation,
+            name,
+            "",
+            "not_run",
+            serde_json::json!({
+                "proof_kind": "journey",
+                "type": "test",
+                "command": "echo checkout-ok",
+                "journey": name,
+            }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &validation.id, intent_id)
+        .unwrap();
+    let fresh = store.get_node(&validation.id).unwrap().unwrap();
+    loom::commands::observe_validation(store, &fresh).unwrap();
+    loom::sync::run(store, root).unwrap();
+    store.get_node(&validation.id).unwrap().unwrap()
+}
+
+/// Make an intent's proof reach S3: ground the behavior in a symbol, and give
+/// it a verifying file whose own symbol calls that symbol.
+///
+/// Split out from `s3_journey_proof` because CLI-driven fixtures build the
+/// validation through `loom validation add` and only need the call witness.
+#[allow(dead_code)]
+pub fn earn_call_witness(store: &loom::store::Store, root: &std::path::Path, intent_id: &str) {
+    use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("src/behavior.rs"),
+        "pub fn perform_behavior() -> &'static str {\n    \"ok\"\n}\n",
+    )
+    .unwrap();
+    std::fs::create_dir_all(root.join("tests")).unwrap();
+    std::fs::write(
+        root.join("tests/behavior_test.rs"),
+        "pub fn exercises_behavior() {\n    let _ = perform_behavior();\n}\n",
+    )
+    .unwrap();
+    let cf = store
+        .add_node(NodeType::CodeFile, "src/behavior.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    let g = store
+        .add_edge(EdgeKind::Implements, intent_id, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(
+            &g.id,
+            TargetKind::Edge,
+            "locator",
+            "fn perform_behavior",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let test_cf = store
+        .add_node(
+            NodeType::CodeFile,
+            "tests/behavior_test.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let v = store
+        .add_edge(EdgeKind::Implements, intent_id, &test_cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(&v.id, TargetKind::Edge, "role", "verifies", TruthClass::Asserted)
+        .unwrap();
+    loom::sync::run(store, root).unwrap();
 }

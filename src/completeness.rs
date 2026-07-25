@@ -352,10 +352,7 @@ fn journey_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<Axis
             continue;
         };
         let is_journey = v.body.get("proof_kind").and_then(|x| x.as_str()) == Some("journey");
-        let is_l5 = matches!(
-            v.body.get("proof_level").and_then(|x| x.as_str()),
-            Some("L5") | Some("L6")
-        );
+        let is_l5 = crate::proofstrength::of(store, &v.id)? >= crate::proofstrength::Strength::END_TO_END;
         if is_journey && is_l5 && e.status.as_str() == "passing" {
             return Ok(axis("journey", "met", "passing journey proof".into()));
         }

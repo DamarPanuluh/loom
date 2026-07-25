@@ -149,10 +149,16 @@ impl ProofRunner for ManualProofRunner {
 pub struct JourneyProofRunner;
 
 impl ProofRunner for JourneyProofRunner {
-    fn run(&self, _root: &Path, _v: &Node) -> ProofOutcome {
-        ProofOutcome::Manual {
-            reason: "journey — run via `loom journey run <spec>`".into(),
-        }
+    /// A journey proof IS runnable — it names a command, and refusing to run it
+    /// meant every journey proof in the graph got its status from somewhere
+    /// other than loom watching it. That is the gap this whole spine exists to
+    /// close, so the stub is gone: the command runs, and what loom observes is
+    /// what gets recorded.
+    ///
+    /// A journey with no command still falls through to `Manual` — the honest
+    /// answer when there is nothing to execute.
+    fn run(&self, root: &Path, v: &Node) -> ProofOutcome {
+        CommandProofRunner.run(root, v)
     }
 }
 
@@ -255,9 +261,13 @@ mod tests {
             ProofOutcome::Manual { reason } => assert_eq!(reason, "manual_check"),
             o => panic!("manual_check should be Manual, got {o:?}"),
         }
+        // A journey proof with NO command has nothing to execute, so it is
+        // honestly Manual. One WITH a command is run like any other — the stub
+        // that refused to run journeys is why every journey proof in loom's own
+        // graph got its status from somewhere other than loom watching it.
         match runner_for(ValidationType::Journey).run(&root, &val("journey", "")) {
-            ProofOutcome::Manual { reason } => assert!(reason.contains("loom journey run")),
-            o => panic!("journey should route to its runner, got {o:?}"),
+            ProofOutcome::Manual { reason } => assert_eq!(reason, "manual_check"),
+            o => panic!("a commandless journey should be Manual, got {o:?}"),
         }
     }
 

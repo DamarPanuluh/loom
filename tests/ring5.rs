@@ -167,7 +167,6 @@ fn validate_runs_command_and_records_result() {
                 r#type: "test".into(),
                 command: "true".into(),
                 intent: "always passes".into(),
-                proof_level: None,
                 proof_kind: None,
                 journey_id: None,
                 repo_native_kind: None,
@@ -246,7 +245,6 @@ fn validate_failing_command_records_failure() {
                 r#type: "test".into(),
                 command,
                 intent: "always fails".into(),
-                proof_level: None,
                 proof_kind: None,
                 journey_id: None,
                 repo_native_kind: None,
@@ -358,7 +356,6 @@ fn validate_timed_out_command_records_blocked() {
                 r#type: "test".into(),
                 command: "sleep 2".into(),
                 intent: "can hang".into(),
-                proof_level: None,
                 proof_kind: None,
                 journey_id: None,
                 repo_native_kind: None,
@@ -2136,7 +2133,7 @@ fn proposal_item_reject_marks_item_and_defer_records_reason() {
 // ---- JourneyProof metadata: validation add round-trips through show --json ----
 //
 // `loom validation add` accepts optional JourneyProof metadata flags
-// (--proof-level, --proof-kind, --journey-id, --repo-native-kind, --artifact)
+// (--proof-kind, --journey-id, --repo-native-kind, --artifact)
 // and stores them in the Validation body JSON. `loom validation show --json`
 // must echo them back — a regression that drops a flag or misnames a key
 // reddens this. Drives the compiled binary end-to-end.
@@ -2173,8 +2170,6 @@ fn validation_add_journey_metadata_round_trips_in_show_json() {
             "loom journey run sample-service-http.contract.json",
             "--intent",
             "register a person",
-            "--proof-level",
-            "L5",
             "--proof-kind",
             "journey",
             "--journey-id",
@@ -2193,7 +2188,9 @@ fn validation_add_journey_metadata_round_trips_in_show_json() {
     assert_eq!(v["name"], "journey-proof-http");
     let body = &v["body"];
     // Every metadata flag lands in the stored body with the exact value passed.
-    assert_eq!(body["proof_level"], "L5", "proof_level stored: {body}");
+    // `proof_level` is absent by construction now: strength is DERIVED from the
+    // proof's shape, so there is no flag with which to claim it.
+    assert!(body.get("proof_level").is_none(), "no claimed level: {body}");
     assert_eq!(body["proof_kind"], "journey", "proof_kind stored: {body}");
     assert_eq!(
         body["journey_id"], "sample-service-http",
@@ -2216,8 +2213,7 @@ fn validation_add_journey_metadata_round_trips_in_show_json() {
 }
 
 /// Contract: a validation added WITHOUT journey metadata must not synthesize
-/// JourneyProof keys — the metadata is opt-in, not defaulted. A regression that
-/// always stamps `proof_level` would redden this.
+/// JourneyProof keys — the metadata is opt-in, not defaulted.
 #[test]
 fn validation_add_without_metadata_has_no_journey_keys() {
     let tmp = Tmp::new();
@@ -2271,8 +2267,8 @@ fn validation_add_without_metadata_has_no_journey_keys() {
 // ---- journey add on an HTTP contract writes JourneyProof metadata ----------
 //
 // `loom journey add <contract.json>` must create a journey Validation whose body
-// carries repo-agnostic JourneyProof metadata (proof_level L5, proof_kind
-// journey, a journey_id, repo_native_kind, artifact) — and must link the
+// carries repo-agnostic JourneyProof metadata (proof_kind journey, a
+// journey_id, repo_native_kind, artifact) — and must link the
 // route intents it can resolve. No grid-specific names appear anywhere.
 // Drives the compiled binary end-to-end and reads the stored node back.
 
@@ -2361,10 +2357,13 @@ fn journey_add_http_contract_creates_validation_with_journey_metadata() {
         "journey node body type is `journey`: {}",
         journey.body
     );
-    assert_eq!(
-        journey.body.get("proof_level").and_then(|v| v.as_str()),
-        Some("L5"),
-        "proof_level L5 stamped: {}",
+    // `loom journey add` used to stamp "L5" here — the top of the old scale,
+    // hardcoded, for any spec at all. That single line is how a one-step
+    // journey asserting `exit_code: 0` became the strongest evidence class in
+    // loom's own graph. Nothing claims a grade now.
+    assert!(
+        journey.body.get("proof_level").is_none(),
+        "no hardcoded grade: {}",
         journey.body
     );
     assert_eq!(
@@ -2486,6 +2485,23 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
         r#"{"routes":[]}"#,
     )
     .unwrap();
+    // The spec has to exist and assert something about the output: coverage
+    // asks whether the flow is PROVEN, and the grade that answers that is
+    // derived from the spec, not from a flag.
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    std::fs::write(
+        tmp.path().join("journeys/checkout.yaml"),
+        concat!(
+            "journey: checkout\n",
+            "steps:\n",
+            "  - name: run it\n",
+            "    intent: checkout completes\n",
+            "    run: echo checkout-ok\n",
+            "    expect:\n",
+            "      stdout_contains: [\"checkout-ok\"]\n",
+        ),
+    )
+    .unwrap();
     loom_ok(
         tmp.path(),
         &[
@@ -2499,10 +2515,10 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
             "loom journey run checkout",
             "--intent",
             "checkout completes",
-            "--proof-level",
-            "L5",
             "--proof-kind",
             "journey",
+            "--journey-id",
+            "checkout",
             "--artifact",
             "contracts/checkout.v1.json",
         ],
@@ -2551,11 +2567,18 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        // Earned, not asserted: loom runs it and records what it saw.
-        let _ = &intent;
+        // Earned, not asserted: loom runs it, and the proof reaches the code
+        // the behavior is grounded in.
+        earn_call_witness(&store, tmp.path(), &intent.id);
         observe_passing(&store, &val.name);
     }
 
+    // The proof reaches S3 — loom ran it, it asserts something about the
+    // output, and what it runs reaches the code the behavior is grounded in.
+    // That is the bar journey coverage asks for, and every conjunct is real.
+    let shown = loom_json_out(tmp.path(), &["validation", "show", "checkout journey", "--json"]);
+    assert_eq!(shown["strength"]["grade"], "S3", "derived grade: {shown}");
+    assert_eq!(shown["strength"]["call_witness"], "perform_behavior");
     let covered = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
     let row = covered.as_array().unwrap().first().unwrap();
     assert_eq!(
@@ -2608,8 +2631,6 @@ fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
             "cargo test checkout",
             "--intent",
             "checkout completes",
-            "--proof-level",
-            "L1",
             "--proof-kind",
             "unit",
         ],
@@ -2644,8 +2665,9 @@ fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        // Earned, not asserted: loom runs it and records what it saw.
-        let _ = &intent;
+        // Earned, not asserted: loom runs it, and the proof reaches the code
+        // the behavior is grounded in.
+        earn_call_witness(&store, tmp.path(), &intent.id);
         observe_passing(&store, &val.name);
     }
     let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
@@ -2933,8 +2955,6 @@ fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
             "cargo test checkout_runner_test",
             "--intent",
             "checkout completes",
-            "--proof-level",
-            "L5",
             "--proof-kind",
             "journey",
             "--artifact",
@@ -2970,8 +2990,9 @@ fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        // Earned, not asserted: loom runs it and records what it saw.
-        let _ = &intent;
+        // Earned, not asserted: loom runs it, and the proof reaches the code
+        // the behavior is grounded in.
+        earn_call_witness(&store, tmp.path(), &intent.id);
         observe_passing(&store, &val.name);
     }
     let findings = loom_json_out(tmp.path(), &["journey", "coverage", "drift", "--json"]);
@@ -3068,8 +3089,6 @@ fn journey_coverage_drift_reports_contract_artifact_mismatch() {
             "loom journey run proof",
             "--intent",
             "checkout completes",
-            "--proof-level",
-            "L5",
             "--proof-kind",
             "journey",
             "--artifact",
@@ -3101,8 +3120,9 @@ fn journey_coverage_drift_reports_contract_artifact_mismatch() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        // Earned, not asserted: loom runs it and records what it saw.
-        let _ = &intent;
+        // Earned, not asserted: loom runs it, and the proof reaches the code
+        // the behavior is grounded in.
+        earn_call_witness(&store, tmp.path(), &intent.id);
         observe_passing(&store, &val.name);
     }
     let findings = loom_json_err(tmp.path(), &["journey", "coverage", "drift", "--json"]);
@@ -3149,8 +3169,6 @@ fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
                 "loom journey run",
                 "--intent",
                 "checkout completes",
-                "--proof-level",
-                "L5",
                 "--proof-kind",
                 "journey",
                 "--artifact",
@@ -3248,8 +3266,6 @@ fn sync_stales_journey_proof_when_runner_ref_source_changes() {
             "cargo test checkout_runner_test",
             "--intent",
             "checkout completes",
-            "--proof-level",
-            "L5",
             "--proof-kind",
             "journey",
             "--artifact",
@@ -3282,8 +3298,9 @@ fn sync_stales_journey_proof_when_runner_ref_source_changes() {
         let intent = store
             .resolve_node("checkout completes", Some(NodeType::Intent))
             .unwrap();
-        // Earned, not asserted: loom runs it and records what it saw.
-        let _ = &intent;
+        // Earned, not asserted: loom runs it, and the proof reaches the code
+        // the behavior is grounded in.
+        earn_call_witness(&store, tmp.path(), &intent.id);
         observe_passing(&store, &val.name);
     }
     // First sync SEEDS the runner_ref hash — it must NOT stale the fresh proof.
@@ -3483,8 +3500,6 @@ fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
                 "loom journey run",
                 "--intent",
                 "checkout completes",
-                "--proof-level",
-                "L5",
                 "--proof-kind",
                 "journey",
                 "--artifact",

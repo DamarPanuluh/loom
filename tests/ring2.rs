@@ -364,7 +364,6 @@ fn sync_stales_journey_proof_when_artifact_drifts() {
             serde_json::json!({
                 "type": "journey",
                 "proof_kind": "journey",
-                "proof_level": "L5",
                 "artifact": "contracts/checkout.v1.json",
             }),
         )
@@ -450,7 +449,6 @@ fn sync_stales_journey_proof_when_artifact_disappears() {
             serde_json::json!({
                 "type": "journey",
                 "proof_kind": "journey",
-                "proof_level": "L5",
                 "artifact": "contracts/checkout.v1.json",
             }),
         )
@@ -511,7 +509,6 @@ fn sync_artifact_drift_is_deterministic_on_rebuild() {
             serde_json::json!({
                 "type": "journey",
                 "proof_kind": "journey",
-                "proof_level": "L5",
                 "artifact": "contracts/c.json",
             }),
         )

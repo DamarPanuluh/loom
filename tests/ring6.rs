@@ -271,27 +271,9 @@ fn journey_proof_smell_silent_when_passing_l5_journey_proof_exists() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent_id = visible_intent(&store, "checkout completes");
-    let validation = store
-        .add_node(
-            NodeType::Validation,
-            "checkout journey",
-            "",
-            "passed",
-            serde_json::json!({"proof_kind":"journey","proof_level":"L5"}),
-        )
-        .unwrap();
-    // Earned, not asserted: loom runs the proof and records what it saw.
-    store
-        .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
-        .unwrap();
-    {
-        let mut body = validation.body.clone();
-        body["command"] = serde_json::json!("true");
-        body["type"] = serde_json::json!("test");
-        store.set_node_body(&validation.id, &body).unwrap();
-        let fresh = store.get_node(&validation.id).unwrap().unwrap();
-        loom::commands::observe_validation(&store, &fresh).unwrap();
-    }
+    // Earned, not asserted: the grade is derived from the proof's shape, so the
+    // fixture has to build a proof that actually has that shape.
+    s3_journey_proof(&store, tmp.path(), &intent_id, "checkout journey");
     let smells = loom::signal::smells(&store).unwrap();
     assert!(
         !smells
@@ -310,36 +292,15 @@ fn journey_proof_smell_re_fires_after_artifact_drift_resets_proof() {
     tmp.write("contracts/checkout.v1.json", r#"{"routes":[]}"#);
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent_id = visible_intent(&store, "checkout completes");
-    let validation = store
-        .add_node(
-            NodeType::Validation,
-            "checkout journey",
-            "",
-            "not_run",
-            serde_json::json!({
-                "type": "journey",
-                "proof_kind": "journey",
-                "proof_level": "L5",
-                "artifact": "contracts/checkout.v1.json",
-            }),
-        )
-        .unwrap();
-    let edge = store
-        .ensure_edge(EdgeKind::Validates, &validation.id, &intent_id)
-        .unwrap();
-    // Baseline sync + pass → no smell.
+    // A proof that EARNS its grade — every conjunct real — so what the drift
+    // below takes away is a genuinely strong proof, not a declared one.
+    let validation = s3_journey_proof(&store, tmp.path(), &intent_id, "checkout journey");
+    {
+        let mut body = validation.body.clone();
+        body["artifact"] = serde_json::json!("contracts/checkout.v1.json");
+        store.set_node_body(&validation.id, &body).unwrap();
+    }
     loom::sync::run(&store, tmp.path()).unwrap();
-    store.set_node_status(&validation.id, "passed").unwrap();
-    store
-        .record_verdict(
-            &edge.id,
-            InspectionStatus::Passing,
-            "journey passes end-to-end",
-            "journey run passed — see contracts/checkout.v1.json:1",
-            0.9,
-            "test",
-        )
-        .unwrap();
     let silent = loom::signal::smells(&store).unwrap();
     assert!(
         !silent
@@ -1706,9 +1667,11 @@ fn journey_map_classifies_proof_kind_journey_regardless_of_type() {
         body["command"] = serde_json::json!("true");
         body["type"] = serde_json::json!("test");
         store.set_node_body(&validation.id, &body).unwrap();
-        let fresh = store.get_node(&validation.id).unwrap().unwrap();
-        loom::commands::observe_validation(&store, &fresh).unwrap();
     }
+    // The grade is derived, so the fixture supplies what it is derived from —
+    // a spec that asserts something, and a proof that reaches the code.
+    earn_call_witness(&store, tmp.path(), &intent_id);
+    observe_passing(&store, &validation.name);
 
     drop(store);
 

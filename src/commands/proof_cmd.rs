@@ -258,7 +258,6 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             r#type,
             command,
             intent,
-            proof_level,
             proof_kind,
             journey_id,
             repo_native_kind,
@@ -274,14 +273,6 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 ),
             };
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
-            if let Some(level) = &proof_level {
-                if !matches!(
-                    level.as_str(),
-                    "L0" | "L1" | "L2" | "L3" | "L4" | "L5" | "L6"
-                ) {
-                    bail!("unknown proof level '{level}' (use L0..L6)");
-                }
-            }
             let has_journey_metadata =
                 journey_id.is_some() || repo_native_kind.is_some() || artifact.is_some();
             if has_journey_metadata && proof_kind.as_deref() != Some("journey") {
@@ -290,9 +281,6 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 );
             }
             let mut body = serde_json::json!({ "type": vtype.as_str(), "command": command });
-            if let Some(v) = proof_level {
-                body["proof_level"] = serde_json::json!(v);
-            }
             if let Some(v) = proof_kind {
                 body["proof_kind"] = serde_json::json!(v);
             }
@@ -348,6 +336,11 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         ValidationCmd::Show { key } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
             let validates = validation_targets(&store, &val.id)?;
+            // The grade, with every conjunct that produced it. A number nobody
+            // can argue with is a number nobody can act on.
+            let witness: Option<crate::proofstrength::StrengthWitness> = store
+                .get_facet(&val.id, crate::model::TargetKind::Node, "proof_strength")?
+                .and_then(|j| serde_json::from_str(&j).ok());
             if json {
                 println!(
                     "{}",
@@ -357,12 +350,28 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                         "status": val.status,
                         "body": val.body,
                         "validates": validates,
+                        "strength": witness,
                     }))?
                 );
             } else {
                 println!("{} [{}]", val.name, val.id);
                 println!("  status: {}", val.status);
                 println!("  {}", val.body);
+                if let Some(w) = &witness {
+                    println!("  strength: {}", w.grade);
+                    println!(
+                        "    ran and passed: {} | content assertions: {} | call witness: {} | \
+                         baseline clean: {} | boundary: {}",
+                        w.ran_and_passed,
+                        w.content_assertions,
+                        w.call_witness.as_deref().unwrap_or("none"),
+                        w.baseline_clean,
+                        w.boundary.as_deref().unwrap_or("none"),
+                    );
+                    if !w.next.is_empty() {
+                        println!("    next: {}", w.next);
+                    }
+                }
                 for i in validates {
                     println!("  validates: {}", i["name"].as_str().unwrap_or(""));
                 }
@@ -627,7 +636,45 @@ pub fn observe_validation(
         // manual check is attested by a human, never inferred.
         ProofOutcome::Manual { .. } => {}
     }
+    // Running a proof changes the inputs to its own grade, so re-grade it here
+    // rather than leaving a stale figure until the next sync. Without this,
+    // `loom validation run` followed by any command that reads strength would
+    // report the grade from BEFORE the run.
+    regrade(store, &val.id)?;
     Ok(outcome)
+}
+
+/// Recompute one validation's derived grade in place.
+fn regrade(store: &Store, validation_id: &str) -> Result<()> {
+    let Some(val) = store.get_node(validation_id)? else {
+        return Ok(());
+    };
+    let graph = crate::callgraph::build(store)?;
+    let root = store.root().to_path_buf();
+    let mut best: Option<crate::proofstrength::StrengthWitness> = None;
+    for e in store.edges_with(Some(EdgeKind::Validates), Some(validation_id), None)? {
+        let w = crate::proofstrength::grade(store, &root, &val, &e.to_id, &graph)?;
+        let better = best
+            .as_ref()
+            .map(|b| {
+                crate::proofstrength::Strength::parse(&w.grade)
+                    > crate::proofstrength::Strength::parse(&b.grade)
+            })
+            .unwrap_or(true);
+        if better {
+            best = Some(w);
+        }
+    }
+    if let Some(witness) = best {
+        store.set_facet(
+            validation_id,
+            crate::model::TargetKind::Node,
+            "proof_strength",
+            &serde_json::to_string(&witness)?,
+            crate::model::TruthClass::Derived,
+        )?;
+    }
+    Ok(())
 }
 
 /// Register a command-shaped proof for an intent and run it. One call for the

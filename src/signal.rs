@@ -546,6 +546,22 @@ fn disclosure_smells(
     out
 }
 
+/// The derived grade, read out of the snapshot's facets. Smells run over a
+/// snapshot rather than the store, and the grade is a derived facet, so it
+/// travels with everything else the detector reads.
+fn strength_from(snap: &Snapshot, validation_id: &str) -> crate::proofstrength::Strength {
+    snap.facets
+        .iter()
+        .find(|f| {
+            f.target_id == validation_id
+                && f.target_kind == crate::model::TargetKind::Node
+                && f.key == "proof_strength"
+        })
+        .and_then(|f| serde_json::from_str::<crate::proofstrength::StrengthWitness>(&f.value).ok())
+        .and_then(|w| crate::proofstrength::Strength::parse(&w.grade))
+        .unwrap_or(crate::proofstrength::Strength::S0)
+}
+
 fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
     let visibility = facet_map(snap, "visibility");
     let nodes_by_id: BTreeMap<&str, &Node> =
@@ -579,10 +595,7 @@ fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
             edge.status == InspectionStatus::Passing
                 && validation.status == "passed"
                 && validation.body.get("proof_kind").and_then(|v| v.as_str()) == Some("journey")
-                && matches!(
-                    validation.body.get("proof_level").and_then(|v| v.as_str()),
-                    Some("L5" | "L6")
-                )
+                && strength_from(snap, &validation.id) >= crate::proofstrength::Strength::END_TO_END
         });
         if has_journey {
             continue;
@@ -607,7 +620,9 @@ fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
             kind: kind.into(),
             message,
             remedy:
-                "add or update a repo-native JourneyProof validation (proof_kind=journey, proof_level=L5+) that exercises the real boundary and asserts outcome"
+                "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — \
+                 loom runs it, it asserts something about the output, and its call closure \
+                 reaches the symbol this behavior is grounded in"
                     .into(),
             identity: format!("{kind}:{}", intent.id),
         });

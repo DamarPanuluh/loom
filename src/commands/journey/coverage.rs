@@ -302,10 +302,7 @@ fn coverage_discover(
             continue;
         }
         let is_journey = is_journey_validation(v);
-        let is_l5 = matches!(
-            v.body.get("proof_level").and_then(|x| x.as_str()),
-            Some("L5") | Some("L6")
-        );
+        let is_l5 = crate::proofstrength::of(&store, &v.id)? >= crate::proofstrength::Strength::END_TO_END;
         if is_journey && is_l5 {
             has_l5_journey.insert(e.to_id.as_str());
         }
@@ -513,10 +510,8 @@ pub(super) fn current_l5_journey_validations(store: &Store, intent_id: &str) -> 
             continue;
         }
         let is_journey = is_journey_validation(&v);
-        let is_l5_plus = matches!(
-            v.body.get("proof_level").and_then(|x| x.as_str()),
-            Some("L5") | Some("L6")
-        );
+        let is_l5_plus =
+            crate::proofstrength::of(store, &v.id)? >= crate::proofstrength::Strength::END_TO_END;
         if is_journey && is_l5_plus {
             out.push(v);
         }

@@ -525,10 +525,6 @@ pub enum ValidationCmd {
         command: String,
         #[arg(long)]
         intent: String,
-        /// Proof-strength label, e.g. L0..L6. For journey proofs prefer
-        /// `loom journey add <spec>`, which compiles the spec and sets this.
-        #[arg(long)]
-        proof_level: Option<String>,
         /// Normalized proof kind (e.g. journey). Prefer `loom journey add <spec>`;
         /// set by hand only to register a repo-native journey runner.
         #[arg(long)]

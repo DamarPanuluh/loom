@@ -35,6 +35,7 @@ pub mod packs;
 pub mod policy;
 pub mod prescan;
 pub mod proof;
+pub mod proofstrength;
 pub mod registry;
 pub mod runner;
 pub mod scan;

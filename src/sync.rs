@@ -74,6 +74,11 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     ripple_artifact_drift(store, root, &mut report)?;
     ripple_runner_drift(store, root, &mut report)?;
     ripple_wiki_drift(store, &mut report)?;
+    // Grade every proof from its own shape. Derived, so it is recomputed here
+    // rather than trusted from whoever registered the validation — the string
+    // this replaced was supplied by the caller, and `loom journey add`
+    // hardcoded the top of the scale.
+    crate::proofstrength::recompute(store, root)?;
     rebuild_smell_findings(store, &mut report)?;
     // The re-verification pass. One question — "does the thing this fact points
     // at still say what it said?" — asked of every anchor in the graph.
@@ -310,11 +315,7 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
                 continue;
             };
             let is_journey = val.body.get("proof_kind").and_then(|v| v.as_str()) == Some("journey");
-            let is_l5_plus = matches!(
-                val.body.get("proof_level").and_then(|v| v.as_str()),
-                Some("L5") | Some("L6")
-            );
-            if !is_journey || !is_l5_plus {
+            if !is_journey {
                 continue;
             }
             // Only a currently-proven proof is worth re-opening.

@@ -806,7 +806,6 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
                 "type": "test",
                 "command": "true",
                 "proof_kind": "unit",
-                "proof_level": "L2",
             }),
         )
         .unwrap();
@@ -841,7 +840,6 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
                 "type": "test",
                 "command": "true",
                 "proof_kind": "journey",
-                "proof_level": "L5",
             }),
         )
         .unwrap();
@@ -853,12 +851,16 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
             TruthClass::Asserted,
         )
         .unwrap();
-    loom::commands::observe_validation(&store, &journey).unwrap();
+    // A user-visible behavior needs an END-TO-END proof: one whose call closure
+    // reaches the code the behavior is grounded in. The fixture builds that
+    // reach instead of labelling the proof with it.
+    earn_call_witness(&store, tmp.path(), &intent.id);
+    observe_passing(&store, &journey.name);
 
     ratify_all(&store);
     let after = ladder(&store).unwrap();
     let proven_after = after.rungs.iter().find(|r| r.name == "proven").unwrap();
-    assert_eq!(proven_after.state, RungState::Met);
+    assert_eq!(proven_after.state, RungState::Met, "detail: {}", proven_after.detail);
 }
 
 #[test]
@@ -912,7 +914,6 @@ fn proven_rung_honors_journey_axis_waiver() {
                 "type": "test",
                 "command": "true",
                 "proof_kind": "unit",
-                "proof_level": "L2",
             }),
         )
         .unwrap();

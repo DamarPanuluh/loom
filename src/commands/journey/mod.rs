@@ -74,7 +74,6 @@ fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
     let body = json!({
         "type": "journey",
         "command": format!("loom journey run {artifact}"),
-        "proof_level": "L5",
         "proof_kind": "journey",
         "journey_id": parsed.journey,
         "repo_native_kind": kind.as_str(),
