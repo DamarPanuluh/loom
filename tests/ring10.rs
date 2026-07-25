@@ -905,8 +905,24 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
         .unwrap();
     }
 
-    // Now elaborate should surface (both intents still have open scenarios/
-    // proof/journey axes, and no other queue has work).
+    // Both intents are user-visible, so their journey axis is real validate
+    // work — a unit proof does not establish a behavior a user can see. Waive
+    // it explicitly: this test is about ORDERING, and the honest way to reach
+    // elaborate is to drain validate, not to pretend it was empty.
+    for intent in [&a, &b] {
+        store
+            .set_facet(
+                &intent.id,
+                TargetKind::Node,
+                "waiver:journey",
+                "ordering fixture: this test exercises queue precedence, not proof depth",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+
+    // Now elaborate should surface (both intents still have open scenarios
+    // axes, and no other queue has work).
     let item = workitem::next(&store, None)
         .unwrap()
         .expect("contract 4: default next reaches elaborate once other queues are empty");

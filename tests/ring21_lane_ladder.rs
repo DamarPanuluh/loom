@@ -78,7 +78,11 @@ proptest! {
                 prop_assert_eq!(&rung, &gate.name);
                 prop_assert_eq!(axis, Some(gate.lane.axis()));
             }
-            None => prop_assert_eq!(&phase, "complete"),
+            // No Unmet rung: the compass falls through to `deepen`, which is
+            // permanently Open. There is no "complete" — a codebase is never
+            // finished being understood, so the ladder ends in a standing
+            // invitation rather than a terminal state.
+            None => prop_assert_eq!(&phase, "deepen"),
         }
     }
 
@@ -311,4 +315,71 @@ fn a_fresh_intent_packet_proposes_candidate_files() {
         why.contains("confirm"),
         "a candidate is a hint, not a verdict: {why}"
     );
+}
+
+/// The invariant, checked against a graph rather than generated inputs.
+///
+/// The proptest covers `depth > 0 ⟺ Unmet`, but depth is computed from the same
+/// counters the rung reads — so it cannot catch a lane whose QUEUE has no
+/// branch for one of the things its depth counts. That is what happened: the
+/// `proven` rung read 14 while `loom next --mode validate` answered "no work",
+/// because nothing served a journey-proof gap. The ladder was advertising work
+/// that could not be collected.
+#[test]
+fn every_unmet_rung_actually_serves_something() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    // A user-visible behavior, grounded and unit-proven — which leaves exactly
+    // one thing outstanding: it has no journey proof.
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "users can see this happen",
+            "a behavior a user can see",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &intent.id,
+            loom::model::TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let cf = common::codefile(&store, "src/seen.rs");
+    let g = store
+        .add_edge(EdgeKind::Implements, &intent.id, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &g.id,
+            loom::model::InspectionStatus::Passing,
+            "lives here",
+            "src/seen.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    loom::commands::prove_intent(&store, &intent.id, "unit proof", "true").unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    let ladder = loom::maturity::ladder(&store).unwrap();
+    for rung in &ladder.rungs {
+        if rung.state != loom::maturity::RungState::Unmet || !rung.lane.serves_items() {
+            continue;
+        }
+        assert!(
+            loom::workitem::next(&store, Some(rung.lane))
+                .unwrap()
+                .is_some(),
+            "rung '{}' is unmet at depth {} but its lane serves nothing — \
+             the ladder is advertising work nobody can collect",
+            rung.name,
+            rung.depth
+        );
+    }
 }

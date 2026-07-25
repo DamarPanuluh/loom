@@ -523,6 +523,49 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             "proof went stale — a dependency changed; re-run it",
         )?));
     }
+    // A user-visible behavior whose proof does not reach end-to-end counts
+    // toward `proven` too, and this branch is why the rung could read "14" while
+    // the queue answered "no work" — the exact disagreement the comment below
+    // says the lane table exists to make impossible, left uncovered for the one
+    // input that produces it.
+    if let Some((intent, shallow)) = journey_gap(store)? {
+        let reason = if shallow {
+            format!(
+                "'{}' is user-visible and its proof does not reach the code it proves — \
+                 exercise the real path end to end",
+                intent.name
+            )
+        } else {
+            format!(
+                "'{}' is user-visible with no journey proof — a unit proof does not \
+                 establish a behavior a user can see",
+                intent.name
+            )
+        };
+        return Ok(Some(WorkItem {
+            packet_id: None,
+            mode: "validate".into(),
+            owner_role: "validator".into(),
+            effort: "high".into(),
+            routing_hint: super::hint_judgment(),
+            reason,
+            target: node_target(&intent),
+            stale_causes: Vec::new(),
+            prompt_contract: unproven_contract(&intent, shallow),
+            context: node_context(
+                store,
+                &intent,
+                "Read the behavior and its grounded code, then add a journey whose steps \
+                 assert on the OUTPUT and whose call closure reaches that code.",
+            )?,
+            scorecard: None,
+            truth_gap: crate::truth::TruthAxis::Proof.gap(),
+            next_step: "after `loom journey add <spec>` and `loom journey run <spec>`, run \
+                        `loom status`"
+                .into(),
+        }));
+    }
+
     // An implemented leaf intent with NO passing proof at all counts toward the
     // `proven` rung, so the lane must serve it — otherwise the compass points
     // here and the queue answers "no work", which is the disagreement the lane
@@ -1418,14 +1461,17 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
 }
 
 /// The audit queue: this graph's own record, where it does not look earned.
+/// The audit queue.
+///
+/// `Lane::Audit`'s depth counts doctor issues, open smells AND self-audit
+/// findings, so this must be able to serve all three — a lane that counts three
+/// things and serves one advertises work nobody can collect, which is the
+/// disagreement the lane table exists to prevent.
 pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
-    let Some(f) = crate::audit::run(store)?.into_iter().next() else {
+    let Some(f) = first_audit_subject(store)? else {
         return Ok(None);
     };
     let Some(n) = store.get_node(&f.subject)? else {
-        // A burst finding's subject is an actor+minute, not a node. Nothing to
-        // target, so the lane reports it through `loom audit` rather than
-        // serving a packet pointed at nothing.
         return Ok(None);
     };
     Ok(Some(WorkItem {
@@ -1447,4 +1493,80 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
         truth_gap: crate::truth::TruthAxis::Signal.gap(),
         next_step: f.remedy.clone(),
     }))
+}
+
+/// The first user-visible behavior whose journey proof is missing or too
+/// shallow, and which of the two it is.
+///
+/// Reads the same smells the `proven` rung counts, so the queue and the rung
+/// cannot disagree about how much work there is.
+fn journey_gap(store: &Store) -> Result<Option<(Node, bool)>> {
+    for s in crate::signal::smells(store)? {
+        let shallow = s.kind == "proof_too_shallow_for_intent";
+        if !shallow && s.kind != "missing_journey_proof" {
+            continue;
+        }
+        let Some((_, intent_id)) = s.identity.rsplit_once(':') else {
+            continue;
+        };
+        // A deliberately waived journey axis is not work.
+        if store
+            .get_facet(intent_id, crate::model::TargetKind::Node, "waiver:journey")?
+            .is_some()
+        {
+            continue;
+        }
+        if let Some(node) = store.get_node(intent_id)? {
+            return Ok(Some((node, shallow)));
+        }
+    }
+    Ok(None)
+}
+
+/// The first thing the `sound` rung is counting, whatever kind it is.
+///
+/// Doctor issues and smells are graph-shaped problems with no self-audit
+/// finding behind them; they still gate the rung, so they still have to be
+/// servable. Each is rendered as an [`crate::audit::AuditFinding`] so the lane
+/// has one packet shape rather than three.
+fn first_audit_subject(store: &Store) -> Result<Option<crate::audit::AuditFinding>> {
+    // Fabrication signatures first: a record that was never earned outranks a
+    // structural complaint about code that is at least honestly described.
+    if let Some(f) = crate::audit::run(store)?
+        .into_iter()
+        .find(|f| store.get_node(&f.subject).ok().flatten().is_some())
+    {
+        return Ok(Some(f));
+    }
+    for issue in crate::signal::doctor(store)? {
+        // `doctor` reports ids inside its message; serve only those we can
+        // point a packet at.
+        if let Some(id) = issue
+            .message
+            .split_whitespace()
+            .find(|t| t.len() == 32 && t.chars().all(|c| c.is_ascii_hexdigit()))
+        {
+            if store.get_node(id)?.is_some() {
+                return Ok(Some(crate::audit::AuditFinding {
+                    kind: "doctor_issue",
+                    subject: id.to_string(),
+                    detail: issue.message.clone(),
+                    remedy: format!("`loom doctor` reports: {}", issue.kind),
+                }));
+            }
+        }
+    }
+    for smell in crate::signal::smells(store)? {
+        if let Some((_, id)) = smell.identity.rsplit_once(':') {
+            if store.get_node(id)?.is_some() {
+                return Ok(Some(crate::audit::AuditFinding {
+                    kind: "smell",
+                    subject: id.to_string(),
+                    detail: smell.message.clone(),
+                    remedy: smell.remedy.clone(),
+                }));
+            }
+        }
+    }
+    Ok(None)
 }
