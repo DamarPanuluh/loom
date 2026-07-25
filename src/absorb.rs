@@ -79,16 +79,25 @@ pub struct Item {
 /// Pure read. Notably it does NOT call the deriver: sync's derivation writes
 /// while it observes, so calling it here would destroy the very change set
 /// absorb needs to see.
-pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
-    let mut items = Vec::new();
-    let graph = crate::callgraph::build(store)?;
+/// What the graph already claims: which file each behavior owns, and which
+/// symbol each locator names.
+///
+/// Split out of `observe` because it answers a different question from the rest
+/// of it — "what does loom already know" versus "what is true on disk now" —
+/// and reading the two in one function made both harder to check.
+struct Claimed {
+    /// file name → owning intent id.
+    owned: BTreeMap<String, String>,
+    /// symbol → (intent id, file name) for every live locator.
+    located: BTreeMap<String, (String, String)>,
+}
 
-    // Which files each intent owns, and what its locators name.
-    let mut owned: BTreeMap<String, String> = BTreeMap::new(); // file name -> intent id
-    let mut located: BTreeMap<String, (String, String)> = BTreeMap::new(); // symbol -> (intent, file)
+fn claimed(store: &Store) -> Result<Claimed> {
+    let mut owned: BTreeMap<String, String> = BTreeMap::new();
+    let mut located: BTreeMap<String, (String, String)> = BTreeMap::new();
     for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
         if intent.status == "deprecated" {
-            continue;
+            continue; // a retired behavior claims nothing
         }
         for e in store.edges_with(
             Some(crate::model::EdgeKind::Implements),
@@ -109,6 +118,13 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
             }
         }
     }
+    Ok(Claimed { owned, located })
+}
+
+pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
+    let mut items = Vec::new();
+    let graph = crate::callgraph::build(store)?;
+    let Claimed { owned, located } = claimed(store)?;
 
     for cf in store.list_nodes(Some(NodeType::CodeFile), usize::MAX)? {
         let Ok(content) = std::fs::read_to_string(root.join(&cf.name)) else {
@@ -151,82 +167,16 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
                 symbol: sym.name.clone(),
                 fingerprint: crate::artifact::fingerprint(&content),
             };
-
-            // Do this symbol's callers land in exactly one intent's files?
-            let reached = graph.impact(&sym.name, 2);
-            let owners: BTreeSet<&String> = reached
-                .callers
-                .iter()
-                .filter_map(|c| owned.get(&c.file))
-                .collect();
-
-            // A new symbol in a TEST file whose call closure reaches a
-            // behavior's code is a proof waiting to be registered. This is the
-            // rule that needed `tests/` in the graph to be able to fire at all
-            // — before that, no test file was a call-graph entry point.
-            if crate::extract::Role::detect(&cf.name) == crate::extract::Role::Test {
-                // From the LIVE extraction, not the stored call graph. The
-                // graph is a derived projection refreshed by sync, so a test
-                // written since the last sync — which is every test absorb
-                // exists to notice — has no edges in it yet.
-                let verified: BTreeSet<&String> = extraction
-                    .calls
-                    .iter()
-                    .filter(|c| c.from == sym.name)
-                    .filter_map(|c| {
-                        let bare = c.callee.rsplit("::").next().unwrap_or(&c.callee);
-                        located.get(bare).map(|(intent, _)| intent)
-                    })
-                    .collect();
-                if verified.len() == 1 {
-                    let intent = verified.into_iter().next().cloned();
-                    items.push(Item {
-                        kind: Kind::RegisterProof,
-                        text: format!(
-                            "'{}' in {} exercises one behavior's code — it can prove it",
-                            sym.name, cf.name
-                        ),
-                        intent_id: intent,
-                        evidence,
-                        // loom can see WHAT it exercises; only a person can say
-                        // the test actually checks the behavior rather than
-                        // merely touching it.
-                        needs: vec![
-                            "confirm this test checks the behavior, not just that it runs".into(),
-                        ],
-                    });
-                }
-                continue;
-            }
-
-            match (owned.get(&cf.name), owners.len()) {
-                // In a file an intent already owns: extend that locator.
-                (Some(intent), _) => items.push(Item {
-                    kind: Kind::ExtendLocator,
-                    text: format!(
-                        "'{}' is new in {}, which already realizes a behavior",
-                        sym.name, cf.name
-                    ),
-                    intent_id: Some((*intent).clone()),
-                    evidence,
-                    needs: Vec::new(),
-                }),
-                // Not owned, but everything calling it belongs to one behavior.
-                (None, 1) => {
-                    let intent = owners.into_iter().next().cloned();
-                    items.push(Item {
-                        kind: Kind::GroundToIntent,
-                        text: format!(
-                            "'{}' in {} is called only from one behavior's code",
-                            sym.name, cf.name
-                        ),
-                        intent_id: intent,
-                        evidence,
-                        needs: Vec::new(),
-                    });
-                }
-                // Nothing to attach it to yet.
-                (None, _) => {}
+            if let Some(item) = classify_new_symbol(
+                &cf.name,
+                &sym.name,
+                evidence,
+                &extraction,
+                &graph,
+                &owned,
+                &located,
+            ) {
+                items.push(item);
             }
         }
 
@@ -322,6 +272,79 @@ pub fn record(store: &Store, items: &[Item]) -> Result<crate::model::Node> {
     )
 }
 
+/// What a symbol loom has not seen before implies, if anything.
+///
+/// One symbol, one decision — pulled out of `observe`'s per-file loop, which
+/// was carrying three nested concerns at once (read the file, diff the symbols,
+/// decide each). loom flagged it as both long and complex, and it was right.
+#[allow(clippy::too_many_arguments)]
+fn classify_new_symbol(
+    file: &str,
+    symbol: &str,
+    evidence: AbsorbEvidence,
+    extraction: &crate::extract::Extraction,
+    graph: &crate::callgraph::CallGraph,
+    owned: &BTreeMap<String, String>,
+    located: &BTreeMap<String, (String, String)>,
+) -> Option<Item> {
+    // A new symbol in a TEST file whose call closure reaches a behavior's code
+    // is a proof waiting to be registered. Read from the LIVE extraction, not
+    // the stored call graph: a test written since the last sync has no edges in
+    // it yet, and that is every test absorb exists to notice.
+    if crate::extract::Role::detect(file) == crate::extract::Role::Test {
+        let verified: BTreeSet<&String> = extraction
+            .calls
+            .iter()
+            .filter(|c| c.from == symbol)
+            .filter_map(|c| {
+                let bare = c.callee.rsplit("::").next().unwrap_or(&c.callee);
+                located.get(bare).map(|(intent, _)| intent)
+            })
+            .collect();
+        if verified.len() != 1 {
+            return None;
+        }
+        return Some(Item {
+            kind: Kind::RegisterProof,
+            text: format!("'{symbol}' in {file} exercises one behavior's code — it can prove it"),
+            intent_id: verified.into_iter().next().cloned(),
+            evidence,
+            // loom can see WHAT it exercises; only a person can say the test
+            // checks the behavior rather than merely touching it.
+            needs: vec!["confirm this test checks the behavior, not just that it runs".into()],
+        });
+    }
+
+    // Which behaviors call it, if the file itself is unowned.
+    let owners: BTreeSet<&String> = graph
+        .impact(symbol, 2)
+        .callers
+        .iter()
+        .filter_map(|c| owned.get(&c.file))
+        .collect();
+
+    match (owned.get(file), owners.len()) {
+        // In a file an intent already owns: extend that locator.
+        (Some(intent), _) => Some(Item {
+            kind: Kind::ExtendLocator,
+            text: format!("'{symbol}' is new in {file}, which already realizes a behavior"),
+            intent_id: Some((*intent).clone()),
+            evidence,
+            needs: Vec::new(),
+        }),
+        // Not owned, but everything calling it belongs to one behavior.
+        (None, 1) => Some(Item {
+            kind: Kind::GroundToIntent,
+            text: format!("'{symbol}' in {file} is called only from one behavior's code"),
+            intent_id: owners.into_iter().next().cloned(),
+            evidence,
+            needs: Vec::new(),
+        }),
+        // Nothing to attach it to yet.
+        (None, _) => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -349,3 +372,4 @@ mod tests {
         assert_ne!(a, b, "a rewritten stamp must not compare equal");
     }
 }
+
