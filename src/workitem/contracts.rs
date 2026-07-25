@@ -381,7 +381,7 @@ pub(super) fn quality_contract_body(
                 pairs.insert(key.to_string(), v.clone());
             }
         }
-        (!pairs.is_empty()).then(|| serde_json::Value::Object(pairs))
+        (!pairs.is_empty()).then_some(serde_json::Value::Object(pairs))
     };
     let write_back = format!(
         "loom rule verdict {} {} <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
