@@ -272,7 +272,9 @@ impl StaleReason {
             StaleCause::RunCommandChanged => "the command that produced the run changed",
             StaleCause::SpanRewritten => "the cited evidence was rewritten",
             StaleCause::SeamGone => "the seam this file used is no longer in it",
-            StaleCause::ScopeFileChanged => "the file this claim scopes changed around intact evidence",
+            StaleCause::ScopeFileChanged => {
+                "the file this claim scopes changed around intact evidence"
+            }
             StaleCause::SpanFileDeleted => "the cited file is gone",
             StaleCause::JournalMissing => "the cited journal entry is unreachable",
             StaleCause::SubjectRedefined => "the claim's subject was redefined",

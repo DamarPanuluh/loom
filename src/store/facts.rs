@@ -195,8 +195,9 @@ impl Store {
                         | crate::model::EdgeKind::Governs
                         | crate::model::EdgeKind::Hierarchy
                 ) {
-                    shape.endpoints_realized = !self.realizing_groundings(&edge.from_id)?.is_empty()
-                        && !self.realizing_groundings(&edge.to_id)?.is_empty();
+                    shape.endpoints_realized =
+                        !self.realizing_groundings(&edge.from_id)?.is_empty()
+                            && !self.realizing_groundings(&edge.to_id)?.is_empty();
                 }
                 (Some(edge.kind), Some(self.grounding_role(id)?))
             }
@@ -346,12 +347,8 @@ impl Store {
                             // locator leaves the claim file-wide, and the anchor
                             // says so rather than quietly borrowing the narrower
                             // scope from a span that happens to sit in the file.
-                            crate::runner::locator_probe(
-                                &self.root,
-                                &file.name,
-                                locator.as_deref(),
-                            )
-                            .filter(|r| r.exit_code == 0)
+                            crate::runner::locator_probe(&self.root, &file.name, locator.as_deref())
+                                .filter(|r| r.exit_code == 0)
                         } else {
                             // "This file USES the behavior." Only the seam
                             // leaving falsifies it.
@@ -788,7 +785,6 @@ impl Store {
         }
         Ok(out)
     }
-
 }
 
 /// One broken anchor, in a sentence a worker can act on.

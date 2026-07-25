@@ -491,7 +491,11 @@ impl Store {
         // has still not said where they looked, and only the second one is
         // re-checkable. An empty `evidence` falls back to the reason so a
         // citation written into the sentence still counts.
-        let anchor = if evidence.is_empty() { reason } else { evidence };
+        let anchor = if evidence.is_empty() {
+            reason
+        } else {
+            evidence
+        };
         let cited = crate::evidence::cite(self.root(), anchor)?;
         self.assert_fact(
             crate::store::Assertion::new(

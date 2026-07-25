@@ -11,9 +11,7 @@
 //! byte-identical derived plane (deterministic ids + sentinel timestamps + a
 //! pure extraction), and ripples nothing because no prior hashes remain.
 
-use crate::model::{
-    EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass,
-};
+use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
 use std::collections::BTreeSet;
@@ -42,11 +40,6 @@ pub struct SyncReport {
     pub wiki_staled: usize,
     pub missing: Vec<String>,
 }
-
-
-
-
-
 
 /// Run a full sync against the graph rooted at `root`. Orchestrates the
 /// registered code-seed derivers to recompute the derived plane, then ripples
@@ -155,26 +148,6 @@ fn ripple_surface_contracts(
     }
     Ok(())
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /// Pass 2b: ripple drift of a JourneyProof validation's `body.artifact` file.
 ///

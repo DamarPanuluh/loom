@@ -119,7 +119,11 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
 
         // What loom knew about this file last time it looked.
         let known: BTreeMap<String, String> = store
-            .get_facet(&cf.id, TargetKind::Node, crate::seed::SYMBOL_FINGERPRINTS_KEY)?
+            .get_facet(
+                &cf.id,
+                TargetKind::Node,
+                crate::seed::SYMBOL_FINGERPRINTS_KEY,
+            )?
             .and_then(|j| serde_json::from_str(&j).ok())
             .unwrap_or_default();
 
@@ -271,7 +275,9 @@ pub fn restamp(root: &Path, item: &Item) -> Option<AbsorbEvidence> {
 /// after the file moved on. Both are the same mistake — acting on an
 /// observation that is no longer true.
 pub fn still_holds(root: &Path, item: &Item) -> bool {
-    restamp(root, item).map(|f| f == item.evidence).unwrap_or(false)
+    restamp(root, item)
+        .map(|f| f == item.evidence)
+        .unwrap_or(false)
 }
 
 /// The symbol a locator names, if it names one.
@@ -322,7 +328,10 @@ mod tests {
 
     #[test]
     fn a_locator_yields_its_symbol() {
-        assert_eq!(locator_symbol("fn capture_payment").as_deref(), Some("capture_payment"));
+        assert_eq!(
+            locator_symbol("fn capture_payment").as_deref(),
+            Some("capture_payment")
+        );
         assert_eq!(locator_symbol("Store::open").as_deref(), Some("open"));
         assert_eq!(locator_symbol("capture:88").as_deref(), Some("capture"));
     }

@@ -110,7 +110,9 @@ pub struct StrengthWitness {
 /// counting it would grade every proof that runs at all as though it checked
 /// something.
 pub fn content_assertions(expect: &Expect) -> usize {
-    expect.body.len() + expect.exists.len() + expect.stdout_contains.len()
+    expect.body.len()
+        + expect.exists.len()
+        + expect.stdout_contains.len()
         + expect.stderr_contains.len()
 }
 
@@ -236,7 +238,11 @@ pub fn grade(
     // becomes a journey.
     let spec = journey_spec(root, validation);
     if let Some(spec) = &spec {
-        w.content_assertions = spec.steps.iter().map(|s| content_assertions(&s.expect)).sum();
+        w.content_assertions = spec
+            .steps
+            .iter()
+            .map(|s| content_assertions(&s.expect))
+            .sum();
         w.boundary = boundary(spec);
     }
     if w.content_assertions == 0 {

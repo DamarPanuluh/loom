@@ -204,7 +204,10 @@ struct ApplyReport {
 /// The shared core: the CLI reads a file, the MCP tool receives a JSON object,
 /// and both land here — so a batch delivered in-band goes through exactly the
 /// same gates, in exactly the same transaction, as one from disk.
-pub(crate) fn apply_value(graph: Option<&Path>, fragment: &serde_json::Value) -> Result<serde_json::Value> {
+pub(crate) fn apply_value(
+    graph: Option<&Path>,
+    fragment: &serde_json::Value,
+) -> Result<serde_json::Value> {
     let spec: ApplyTx = serde_json::from_value(fragment.clone())
         .context("parsing apply batch (keys: intents/groundings/relationships/verdicts/adjudications/vocab/tags)")?;
     let store = open(graph)?;
@@ -392,7 +395,7 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
             &a.reason,
             &a.evidence,
         )
-            .with_context(|| format!("adjudication for finding '{}'", a.finding))?;
+        .with_context(|| format!("adjudication for finding '{}'", a.finding))?;
         report.adjudications += 1;
     }
     for t in &spec.tags {

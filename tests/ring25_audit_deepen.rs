@@ -79,7 +79,12 @@ fn a_judgment_burst_is_caught() {
         let cf = codefile(&store, &format!("src/f{n}.rs"));
         store.add_derived_edge(EdgeKind::Flags, &f.id, &cf.id).ok();
         store
-            .record_finding_verdict(&f.id, "justified", "looked at it", &format!("src/f{n}.rs:1"))
+            .record_finding_verdict(
+                &f.id,
+                "justified",
+                "looked at it",
+                &format!("src/f{n}.rs:1"),
+            )
             .unwrap();
     }
 
@@ -120,8 +125,7 @@ fn a_settled_claim_with_no_surviving_anchor_is_caught() {
     let found = loom::audit::run(&store).unwrap();
     assert!(
         found.iter().any(|f| f.kind == "unanchored_claim")
-            || store.edge_verification(&e.id).unwrap()
-                != loom::model::Verification::Expired,
+            || store.edge_verification(&e.id).unwrap() != loom::model::Verification::Expired,
         "either the claim re-opened or the audit names it: {found:#?}"
     );
 }
@@ -208,7 +212,9 @@ fn ratification_claims_are_what_the_audit_reads() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let i = intent(&store, "a behavior");
-    store.ratify_intent(&i, "asked for in review", "tty").unwrap();
+    store
+        .ratify_intent(&i, "asked for in review", "tty")
+        .unwrap();
     let fact = store
         .fact(&loom::store::Subject::Node(i.clone()), Claim::Ratification)
         .unwrap()
@@ -267,7 +273,13 @@ fn a_test_file_is_owned_by_what_it_verifies() {
         .add_edge(EdgeKind::Implements, &i, &cf.id, TruthClass::Asserted)
         .unwrap();
     store
-        .set_facet(&e.id, TargetKind::Edge, "role", "verifies", TruthClass::Asserted)
+        .set_facet(
+            &e.id,
+            TargetKind::Edge,
+            "role",
+            "verifies",
+            TruthClass::Asserted,
+        )
         .unwrap();
     assert!(
         !loom::commands::unowned_names(&store)
@@ -402,7 +414,13 @@ fn coverage_and_the_rung_count_the_same_files() {
         .add_edge(EdgeKind::Implements, &i, &tf.id, TruthClass::Asserted)
         .unwrap();
     store
-        .set_facet(&e.id, TargetKind::Edge, "role", "verifies", TruthClass::Asserted)
+        .set_facet(
+            &e.id,
+            TargetKind::Edge,
+            "role",
+            "verifies",
+            TruthClass::Asserted,
+        )
         .unwrap();
 
     let queue = loom::commands::unowned_names(&store).unwrap();

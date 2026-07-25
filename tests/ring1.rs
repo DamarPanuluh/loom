@@ -24,8 +24,7 @@ fn seed_intent(store: &Store, name: &str) -> String {
 }
 
 fn seed_codefile(store: &Store, path: &str) -> String {
-    codefile(store, path)
-        .id
+    codefile(store, path).id
 }
 
 // ---- INV-6 : evidence gate -------------------------------------------------

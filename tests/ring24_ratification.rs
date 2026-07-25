@@ -117,7 +117,11 @@ fn a_ratification_needs_more_than_a_sentence() {
     // anchors on that entry — and the prose is still checked for substance, or
     // every ratification would self-anchor on the entry loom just wrote.
     store
-        .ratify_intent(&i, "the product owner asked for this in the Q3 review", "tty")
+        .ratify_intent(
+            &i,
+            "the product owner asked for this in the Q3 review",
+            "tty",
+        )
         .expect("a substantive utterance ratifies");
     assert_eq!(store.ratification(&i).unwrap(), "ratified");
 

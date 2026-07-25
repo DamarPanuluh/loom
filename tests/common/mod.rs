@@ -186,7 +186,12 @@ pub fn s3_journey_proof(
         )
         .unwrap();
     let g = store
-        .add_edge(EdgeKind::Implements, intent_id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            intent_id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
         .set_facet(
@@ -290,10 +295,21 @@ pub fn earn_call_witness(store: &loom::store::Store, root: &std::path::Path, int
     )
     .unwrap();
     let cf = store
-        .add_node(NodeType::CodeFile, "src/behavior.rs", "", "", serde_json::json!({}))
+        .add_node(
+            NodeType::CodeFile,
+            "src/behavior.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
         .unwrap();
     let g = store
-        .add_edge(EdgeKind::Implements, intent_id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            intent_id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
         .set_facet(
@@ -314,10 +330,21 @@ pub fn earn_call_witness(store: &loom::store::Store, root: &std::path::Path, int
         )
         .unwrap();
     let v = store
-        .add_edge(EdgeKind::Implements, intent_id, &test_cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            intent_id,
+            &test_cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
-        .set_facet(&v.id, TargetKind::Edge, "role", "verifies", TruthClass::Asserted)
+        .set_facet(
+            &v.id,
+            TargetKind::Edge,
+            "role",
+            "verifies",
+            TruthClass::Asserted,
+        )
         .unwrap();
     loom::sync::run(store, root).unwrap();
 }

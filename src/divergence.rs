@@ -363,7 +363,10 @@ mod tests {
 
     #[test]
     fn the_grace_window_is_days_not_edits() {
-        assert_eq!(days_between("2026-07-01T00:00:00Z", "2026-07-09T00:00:00Z"), 8);
+        assert_eq!(
+            days_between("2026-07-01T00:00:00Z", "2026-07-09T00:00:00Z"),
+            8
+        );
         assert!(days_between("2026-07-01T00:00:00Z", "2026-07-05T00:00:00Z") <= PROMISE_GRACE_DAYS);
     }
 

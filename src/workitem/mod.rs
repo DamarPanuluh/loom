@@ -88,7 +88,9 @@ impl EvidenceClause {
             EvidenceClause::CitesFiles { files } => {
                 format!("cite a location in each of: {}", files.join(", "))
             }
-            EvidenceClause::CitesRun => "let loom run it — a reported outcome does not count".into(),
+            EvidenceClause::CitesRun => {
+                "let loom run it — a reported outcome does not count".into()
+            }
             EvidenceClause::ProofStrengthAtLeast { grade } => {
                 format!("the proof must grade {grade} or better once loom has run it")
             }

@@ -2190,7 +2190,10 @@ fn validation_add_journey_metadata_round_trips_in_show_json() {
     // Every metadata flag lands in the stored body with the exact value passed.
     // `proof_level` is absent by construction now: strength is DERIVED from the
     // proof's shape, so there is no flag with which to claim it.
-    assert!(body.get("proof_level").is_none(), "no claimed level: {body}");
+    assert!(
+        body.get("proof_level").is_none(),
+        "no claimed level: {body}"
+    );
     assert_eq!(body["proof_kind"], "journey", "proof_kind stored: {body}");
     assert_eq!(
         body["journey_id"], "sample-service-http",
@@ -2576,7 +2579,10 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
     // The proof reaches S3 — loom ran it, it asserts something about the
     // output, and what it runs reaches the code the behavior is grounded in.
     // That is the bar journey coverage asks for, and every conjunct is real.
-    let shown = loom_json_out(tmp.path(), &["validation", "show", "checkout journey", "--json"]);
+    let shown = loom_json_out(
+        tmp.path(),
+        &["validation", "show", "checkout journey", "--json"],
+    );
     assert_eq!(shown["strength"]["grade"], "S3", "derived grade: {shown}");
     assert_eq!(shown["strength"]["call_witness"], "perform_behavior");
     let covered = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);

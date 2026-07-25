@@ -40,7 +40,12 @@ fn graph(root: &std::path::Path) -> String {
         )
         .unwrap();
     let e = store
-        .add_edge(EdgeKind::Implements, &intent.id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
         .set_facet(
@@ -61,7 +66,11 @@ fn observe(root: &std::path::Path, target: Option<&str>, argv: &[&str]) -> serde
         .arg(root)
         .arg("--json")
         .arg("observe")
-        .args(target.map(|t| vec!["--for".to_string(), t.to_string()]).unwrap_or_default())
+        .args(
+            target
+                .map(|t| vec!["--for".to_string(), t.to_string()])
+                .unwrap_or_default(),
+        )
         .arg("--")
         .args(argv)
         .output()
@@ -96,11 +105,7 @@ fn arguments_survive_the_shell() {
     let _intent = graph(tmp.path());
 
     // A single argument containing spaces, semicolons and quotes.
-    let v = observe(
-        tmp.path(),
-        None,
-        &["printf", "%s", "one; two 'three'"],
-    );
+    let v = observe(tmp.path(), None, &["printf", "%s", "one; two 'three'"]);
     assert_eq!(v["observed"], true, "{v}");
     assert_eq!(v["exit_code"], 0, "the command ran as ONE argument: {v}");
 }
@@ -130,7 +135,9 @@ fn an_observed_run_binds_and_grades_as_liveness() {
     );
 
     let store = Store::open(tmp.path()).unwrap();
-    let vals = store.list_nodes(Some(NodeType::Validation), usize::MAX).unwrap();
+    let vals = store
+        .list_nodes(Some(NodeType::Validation), usize::MAX)
+        .unwrap();
     assert_eq!(vals.len(), 1, "one proof, minted by the observation");
 }
 
@@ -145,7 +152,9 @@ fn the_same_command_twice_is_one_proof() {
     observe(tmp.path(), Some("an order can be placed"), &["true"]);
 
     let store = Store::open(tmp.path()).unwrap();
-    let vals = store.list_nodes(Some(NodeType::Validation), usize::MAX).unwrap();
+    let vals = store
+        .list_nodes(Some(NodeType::Validation), usize::MAX)
+        .unwrap();
     assert_eq!(vals.len(), 1, "one command, one proof: {vals:#?}");
 }
 
@@ -196,7 +205,9 @@ fn an_unrunnable_command_is_blocked_not_failed() {
         assert_ne!(v["exit_code"], 0, "a missing binary is not a pass: {v}");
     }
     let store = Store::open(tmp.path()).unwrap();
-    let vals = store.list_nodes(Some(NodeType::Validation), usize::MAX).unwrap();
+    let vals = store
+        .list_nodes(Some(NodeType::Validation), usize::MAX)
+        .unwrap();
     assert!(
         vals.iter().all(|x| x.status != "passed"),
         "nothing passes on a command that could not do its job: {vals:#?}"

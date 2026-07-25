@@ -404,7 +404,14 @@ fn stale_edge_routes_to_fix() {
         .add_edge(EdgeKind::Relates, &a.id, &b.id, TruthClass::Asserted)
         .unwrap();
     store
-        .record_verdict(&e.id, InspectionStatus::Failing, "c", "src/a.rs:1", 0.9, "llm")
+        .record_verdict(
+            &e.id,
+            InspectionStatus::Failing,
+            "c",
+            "src/a.rs:1",
+            0.9,
+            "llm",
+        )
         .unwrap();
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "fix");
@@ -864,7 +871,12 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
     ratify_all(&store);
     let after = ladder(&store).unwrap();
     let proven_after = after.rungs.iter().find(|r| r.name == "proven").unwrap();
-    assert_eq!(proven_after.state, RungState::Met, "detail: {}", proven_after.detail);
+    assert_eq!(
+        proven_after.state,
+        RungState::Met,
+        "detail: {}",
+        proven_after.detail
+    );
 }
 
 #[test]
@@ -1088,7 +1100,14 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
         )
         .unwrap();
     store
-        .record_verdict(&imp.id, InspectionStatus::Passing, "c", "src/pay.rs:1", 0.9, "llm")
+        .record_verdict(
+            &imp.id,
+            InspectionStatus::Passing,
+            "c",
+            "src/pay.rs:1",
+            0.9,
+            "llm",
+        )
         .unwrap();
     loom::commands::prove_intent(&store, &intent.id, "pay test", "true").unwrap();
 

@@ -192,7 +192,10 @@ fn nothing_ships_cli_only() {
         "loom_journal",
         "loom_apply",
     ] {
-        assert!(names.contains(&expected), "{expected} is not served: {names:?}");
+        assert!(
+            names.contains(&expected),
+            "{expected} is not served: {names:?}"
+        );
     }
     // And every tool declares a schema an agent can call without guessing.
     for tool in response["result"]["tools"].as_array().unwrap() {

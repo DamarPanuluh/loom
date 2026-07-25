@@ -1048,7 +1048,6 @@ pub(crate) fn policy_cmd(
     }
 }
 
-
 /// `loom impact <symbol|file>` — what a change here could reach.
 ///
 /// The one question an agent cannot cheaply reconstruct per session, and the
@@ -1301,8 +1300,10 @@ pub(crate) fn absorb_cmd(graph: Option<&Path>, confirm: bool, json: bool) -> Res
         }
     }
     if confirm {
-        println!("\nadopt with: loom proposal item adopt {} <n>", 
-            &proposal.id[..8.min(proposal.id.len())]);
+        println!(
+            "\nadopt with: loom proposal item adopt {} <n>",
+            &proposal.id[..8.min(proposal.id.len())]
+        );
     }
     Ok(())
 }

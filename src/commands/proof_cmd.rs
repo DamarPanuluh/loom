@@ -929,8 +929,14 @@ pub(crate) fn observe_run(
         None => (None, Vec::new()),
     };
 
-    let observation =
-        crate::runner::observe_command(&root, crate::model::RunProducer::Command, &command, &covered, 0, timeout)?;
+    let observation = crate::runner::observe_command(
+        &root,
+        crate::model::RunProducer::Command,
+        &command,
+        &covered,
+        0,
+        timeout,
+    )?;
     let run = match &observation {
         crate::runner::Observation::Ran(run) => (**run).clone(),
         crate::runner::Observation::Blocked { reason } => {
@@ -961,7 +967,11 @@ pub(crate) fn observe_run(
     let mut bound: Option<String> = None;
     if let Some(node) = &intent {
         let validation = existing_or_new_proof(&store, &node.id, &command)?;
-        let result = if run.exit_code == 0 { "passed" } else { "failed" };
+        let result = if run.exit_code == 0 {
+            "passed"
+        } else {
+            "failed"
+        };
         mark_validation(
             &store,
             &validation.id,
@@ -1015,7 +1025,11 @@ fn shell_quote(arg: &str) -> String {
 /// Short and stable: the full command lives in `body.command`, and a node name
 /// that is 200 characters of shell is unreadable everywhere it appears.
 fn command_proof_name(command: &str) -> String {
-    let head: String = command.split_whitespace().take(3).collect::<Vec<_>>().join(" ");
+    let head: String = command
+        .split_whitespace()
+        .take(3)
+        .collect::<Vec<_>>()
+        .join(" ");
     let head: String = head.chars().take(48).collect();
     format!(
         "observed: {head} [{}]",

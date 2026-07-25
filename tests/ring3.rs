@@ -561,8 +561,7 @@ fn list_nodes_page_windows_and_counts() {
 // ---- edge pagination: windows, counts, list_edges == list_edges_page(0) ----
 
 fn codefile_node(store: &Store, path: &str) -> String {
-    codefile(store, path)
-        .id
+    codefile(store, path).id
 }
 
 #[test]

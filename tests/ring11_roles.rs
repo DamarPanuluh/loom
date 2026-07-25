@@ -48,8 +48,7 @@ fn seed_codefile(store: &Store, path: &str) -> String {
             .collect();
         std::fs::write(&full, body).unwrap();
     }
-    codefile(store, path)
-        .id
+    codefile(store, path).id
 }
 
 /// The evidence a grounding fixture cites: a real span in the file it grounds.

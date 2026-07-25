@@ -25,12 +25,8 @@ use serde::{Deserialize, Serialize};
 
 /// The states a human may assert. `de_facto` is deliberately absent — it is
 /// derived, and there is no path from caller input to it.
-pub const ASSERTED_STATES: &[&str] = &[
-    "unratified",
-    "ratified",
-    "rejected",
-    "needs_reconfirmation",
-];
+pub const ASSERTED_STATES: &[&str] =
+    &["unratified", "ratified", "rejected", "needs_reconfirmation"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -144,8 +140,7 @@ fn proven(store: &Store, intent_id: &str) -> Result<Option<String>> {
         if store.edge_verification(&e.id)? != Verification::Verified {
             continue;
         }
-        if crate::proofstrength::of(store, &e.from_id)?
-            < crate::proofstrength::Strength::MEANINGFUL
+        if crate::proofstrength::of(store, &e.from_id)? < crate::proofstrength::Strength::MEANINGFUL
         {
             continue;
         }
@@ -162,7 +157,11 @@ fn proven(store: &Store, intent_id: &str) -> Result<Option<String>> {
 /// Historical rather than freshness-bearing (the journal is append-only,
 /// INV-9). D1 or D2 falling after D3 held is not silent expiry — it is the
 /// `PromiseBroken` divergence.
-fn used(store: &Store, intent_id: &str, named: &std::collections::BTreeSet<String>) -> (Option<String>, usize) {
+fn used(
+    store: &Store,
+    intent_id: &str,
+    named: &std::collections::BTreeSet<String>,
+) -> (Option<String>, usize) {
     if named.contains(intent_id) {
         return (Some("exercised directly".into()), 0);
     }
@@ -180,7 +179,10 @@ fn used(store: &Store, intent_id: &str, named: &std::collections::BTreeSet<Strin
                         continue;
                     }
                     if named.contains(&e.from_id) {
-                        return (Some(format!("reached from recorded usage, {hop} hop(s)")), hop);
+                        return (
+                            Some(format!("reached from recorded usage, {hop} hop(s)")),
+                            hop,
+                        );
                     }
                     next.push(e.from_id);
                 }

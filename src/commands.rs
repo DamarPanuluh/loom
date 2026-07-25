@@ -44,9 +44,9 @@ pub(crate) use status_cmd::require_lane;
 pub(crate) use context_cmd::served_context;
 // The honest way to make a proof true: let loom run it. Public so callers other
 // than the CLI — absorb, fixtures — take the same path rather than a seam.
-pub use proof_cmd::{observe_validation, prove_intent};
 pub(crate) use apply_cmd::apply_value;
 pub(crate) use proof_cmd::observe_run;
+pub use proof_cmd::{observe_validation, prove_intent};
 pub(crate) use status_cmd::{next_output, status_value};
 
 /// Dispatch a parsed CLI invocation.
@@ -266,7 +266,10 @@ pub(crate) fn human_present() -> bool {
         return v == "human";
     }
     io::stdin().is_terminal()
-        && matches!(crate::store::Agent::from_env(), Ok(crate::store::Agent::Solo))
+        && matches!(
+            crate::store::Agent::from_env(),
+            Ok(crate::store::Agent::Solo)
+        )
         && std::env::var_os("LOOM_NON_INTERACTIVE").is_none()
 }
 
@@ -363,7 +366,8 @@ pub(crate) fn unowned_codefiles(store: &Store) -> Result<Vec<Node>> {
         // while coverage reported 67/67 owned.
         if crate::extract::Role::detect(&cf.name) == crate::extract::Role::Test {
             let mut verified = false;
-            for e in store.edges_with(Some(crate::model::EdgeKind::Implements), None, Some(&cf.id))?
+            for e in
+                store.edges_with(Some(crate::model::EdgeKind::Implements), None, Some(&cf.id))?
             {
                 if !store.edge_superseded(&e.id)?
                     && store.grounding_role(&e.id)? == crate::model::GroundingRole::Verifies

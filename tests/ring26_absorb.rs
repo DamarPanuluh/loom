@@ -38,7 +38,12 @@ fn seed(store: &Store, root: &std::path::Path) -> String {
         )
         .unwrap();
     let e = store
-        .add_edge(EdgeKind::Implements, &intent.id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
         .set_facet(

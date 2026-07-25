@@ -394,7 +394,12 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
 
     // `rejected` is a resolving adjudication — excellent rung becomes Met.
     store
-        .record_finding_verdict(&finding_id, "rejected", "false positive after inspection", "")
+        .record_finding_verdict(
+            &finding_id,
+            "rejected",
+            "false positive after inspection",
+            "",
+        )
         .unwrap();
     assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Met);

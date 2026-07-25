@@ -39,8 +39,7 @@ fn seed_codefile(store: &Store, path: &str) -> String {
             .collect();
         std::fs::write(&full, body).unwrap();
     }
-    codefile(store, path)
-        .id
+    codefile(store, path).id
 }
 
 /// A citation that resolves, for fixtures whose subject is not the evidence.

@@ -87,11 +87,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             classification,
             evidence,
         } => intent_impact(graph, key, classification, evidence, json),
-        IntentCmd::Ratify {
-            key,
-            all,
-            evidence,
-        } => intent_ratify(graph, key, all, evidence, json),
+        IntentCmd::Ratify { key, all, evidence } => intent_ratify(graph, key, all, evidence, json),
         IntentCmd::Reject { key, reason } => intent_reject(graph, &key, &reason, json),
         IntentCmd::Tag { cmd } => intent_tag(graph, cmd, json),
     }
@@ -366,8 +362,9 @@ fn intent_ratify(
     json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
-    let evidence = evidence
-        .ok_or_else(|| anyhow::anyhow!("--evidence is required: say why this behavior is wanted"))?;
+    let evidence = evidence.ok_or_else(|| {
+        anyhow::anyhow!("--evidence is required: say why this behavior is wanted")
+    })?;
     let targets: Vec<Node> = match (&key, all) {
         (Some(_), true) => bail!("pass a key or --all, not both"),
         (None, false) => bail!("pass an intent key, or --all to ratify every unratified intent"),
@@ -422,7 +419,6 @@ fn intent_ratify(
     )?;
     Ok(())
 }
-
 
 fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<()> {
     let store = open(graph)?;

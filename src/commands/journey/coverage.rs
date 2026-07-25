@@ -302,7 +302,8 @@ fn coverage_discover(
             continue;
         }
         let is_journey = is_journey_validation(v);
-        let is_l5 = crate::proofstrength::of(&store, &v.id)? >= crate::proofstrength::Strength::END_TO_END;
+        let is_l5 =
+            crate::proofstrength::of(&store, &v.id)? >= crate::proofstrength::Strength::END_TO_END;
         if is_journey && is_l5 {
             has_l5_journey.insert(e.to_id.as_str());
         }
