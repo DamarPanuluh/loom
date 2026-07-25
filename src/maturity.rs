@@ -87,6 +87,18 @@ pub struct ValidationSummary {
 pub fn validation_summary(store: &Store) -> Result<ValidationSummary> {
     let mut summary = ValidationSummary::default();
     for v in store.list_nodes(Some(NodeType::Validation), usize::MAX)? {
+        // A proof of a RETIRED behavior is not a proof this graph owes. The
+        // edge counts already exclude it; counting the node keeps reporting
+        // "1 failed" after the behavior was deliberately removed, which sends
+        // an operator looking for a repair that does not exist.
+        let retired = store
+            .edges_with(Some(EdgeKind::Validates), Some(&v.id), None)?
+            .into_iter()
+            .filter_map(|e| store.get_node(&e.to_id).ok().flatten())
+            .any(|n| n.status == "deprecated");
+        if retired {
+            continue;
+        }
         summary.registered += 1;
         match v.status.as_str() {
             "passed" => summary.passed += 1,

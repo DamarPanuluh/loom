@@ -333,3 +333,37 @@ fn retiring_a_behavior_stops_its_claims_counting_as_debt() {
         "a claim about a retired behavior is history, not debt"
     );
 }
+
+/// The proof TALLY and the proof GATE must agree about retired behavior.
+///
+/// After the edge counts learned to skip retired claims, the validation node
+/// summary still counted them — so `loom status` reported "1 failed" for a
+/// capability that had been deliberately deleted, sending the reader after a
+/// repair that does not exist. Two counters describing the same thing is how a
+/// display starts contradicting its own gate.
+#[test]
+fn a_retired_behaviors_proof_leaves_the_tally_too() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "a behavior to remove",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    loom::commands::prove_intent(&store, &intent.id, "its proof", "false").unwrap();
+    assert_eq!(
+        loom::maturity::validation_summary(&store).unwrap().failed,
+        1
+    );
+
+    store
+        .retire_intent(&intent.id, "deleted on purpose", None)
+        .unwrap();
+    let after = loom::maturity::validation_summary(&store).unwrap();
+    assert_eq!(after.failed, 0, "a retired behavior owes no proof");
+    assert_eq!(after.registered, 0, "and is not registered debt either");
+}
