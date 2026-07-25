@@ -169,6 +169,21 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Impact { target, depth } => {
             diagnostics_cmd::impact_cmd(cli.graph.as_deref(), &target, depth, cli.json)
         }
+        Command::Decide {
+            chose,
+            instead_of,
+            because,
+            evidence,
+            about,
+        } => capture_cmd::decide_cmd(
+            cli.graph.as_deref(),
+            &chose,
+            &instead_of,
+            &because,
+            &evidence,
+            about.as_deref(),
+            cli.json,
+        ),
         Command::Observe {
             target,
             timeout,
@@ -183,7 +198,9 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Absorb { confirm } => {
             diagnostics_cmd::absorb_cmd(cli.graph.as_deref(), confirm, cli.json)
         }
-        Command::Audit => diagnostics_cmd::audit_cmd(cli.graph.as_deref(), cli.json),
+        Command::Audit { efficacy } => {
+            diagnostics_cmd::audit_cmd(cli.graph.as_deref(), efficacy, cli.json)
+        }
         Command::Deepen { limit } => {
             diagnostics_cmd::deepen_cmd(cli.graph.as_deref(), limit, cli.json)
         }

@@ -676,3 +676,93 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
         }
     }
 }
+
+/// Record a decision as a reversal.
+///
+/// What makes this worth storing is the REJECTED alternative. "We use SQLite"
+/// is a description anyone can read off the Cargo.toml; "we use SQLite instead
+/// of a file-per-node store, because the ripple queries need joins" is the
+/// thing that stops the next agent re-litigating it — and the thing that tells
+/// them when it stops being true.
+///
+/// Costs the writing agent nothing: it is a byproduct of work already done, and
+/// it points at a real diff rather than at an intention.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn decide_cmd(
+    graph: Option<&Path>,
+    chose: &str,
+    instead_of: &str,
+    because: &str,
+    evidence: &str,
+    about: Option<&str>,
+    json: bool,
+) -> Result<()> {
+    let store = open(graph)?;
+    for (field, value) in [
+        ("<chose>", chose),
+        ("--instead-of", instead_of),
+        ("--because", because),
+    ] {
+        if crate::model::is_placeholder(value) {
+            anyhow::bail!("{field} must be substantive — a decision nobody can weigh is a label");
+        }
+    }
+    // The target: an intent or a registered file, so the decision surfaces to
+    // whoever next touches that ground. Unattached decisions are allowed but
+    // reach nobody, so loom says so rather than pretending otherwise.
+    let target = match about {
+        // An intent first, then a registered file — the two grounds an agent
+        // actually stands on when it opens something.
+        Some(key) => Some(
+            store
+                .resolve_node(key, Some(crate::model::NodeType::Intent))
+                .or_else(|_| store.resolve_node(key, Some(crate::model::NodeType::CodeFile)))?,
+        ),
+        None => None,
+    };
+    let note = store.add_node(
+        crate::model::NodeType::Note,
+        "note:decision",
+        &format!("{chose} — instead of {instead_of} — because {because}"),
+        "decision",
+        serde_json::json!({
+            "target_id": target.as_ref().map(|n| n.id.clone()).unwrap_or_default(),
+            "kind": "decision",
+            "chose": chose,
+            "instead_of": instead_of,
+            "because": because,
+            "evidence": evidence,
+        }),
+    )?;
+    crate::journal::append(
+        store.root(),
+        "decision",
+        target.as_ref().map(|n| n.id.as_str()).unwrap_or(""),
+        serde_json::json!({
+            "chose": chose,
+            "instead_of": instead_of,
+            "because": because,
+            "evidence": evidence,
+        }),
+    )?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "decision": note.id,
+            "chose": chose,
+            "instead_of": instead_of,
+            "because": because,
+            "about": target.as_ref().map(|n| n.name.clone()),
+        }),
+        "loom status",
+        match &target {
+            Some(t) => format!("recorded: chose {chose} instead of {instead_of} (on '{}')", t.name),
+            None => format!(
+                "recorded: chose {chose} instead of {instead_of} —                  unattached, so nobody will be shown it; re-run with --about <behavior|file>"
+            ),
+        },
+    )?;
+    Ok(())
+}
+

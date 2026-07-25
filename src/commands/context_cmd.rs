@@ -309,7 +309,17 @@ fn append_notes(store: &Store, target_id: &str, context: &mut TraversalContext) 
             "decision" => "decision",
             _ => "note",
         };
-        push_entity(context, node_entity(role, &note));
+        let mut entity = node_entity(role, &note);
+        // A decision's NAME is `note:decision`, which told a reader nothing —
+        // the packet rendered a column of identical blank labels where the
+        // reasoning was supposed to be. Show the reversal instead.
+        if let (Some(chose), Some(instead)) = (
+            note.body.get("chose").and_then(|v| v.as_str()),
+            note.body.get("instead_of").and_then(|v| v.as_str()),
+        ) {
+            entity.name = format!("{chose} — instead of {instead}");
+        }
+        push_entity(context, entity);
     }
     Ok(())
 }

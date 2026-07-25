@@ -26,6 +26,11 @@ use crate::Result;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
+/// Below this many served packets, the efficacy ratio is a coincidence with a
+/// percent sign. Reported anyway — with the caveat attached, because a hidden
+/// number gets estimated and an estimated one gets quoted.
+pub const EFFICACY_MIN_SAMPLE: usize = 20;
+
 /// Writes by one actor inside one minute that stop looking like judgment.
 pub const BURST_THRESHOLD: usize = 10;
 
@@ -155,6 +160,17 @@ fn unanchored_settled_facts(store: &Store) -> Result<Vec<AuditFinding>> {
 mod tests {
     use super::*;
 
+    /// The two planes stamp time differently, so the comparison has to
+    /// normalize. Getting this wrong reported 100% efficacy for every graph.
+    #[test]
+    fn both_timestamp_formats_land_on_one_clock() {
+        let iso = epoch_millis("2026-07-25T07:10:25.553Z").expect("ISO parses");
+        let millis = epoch_millis("1784963425553").expect("epoch parses");
+        assert_eq!(iso, millis, "the same instant in both formats");
+        // And ordering survives the conversion.
+        assert!(epoch_millis("2026-07-25T07:10:26.000Z") > epoch_millis("1784963425553"));
+    }
+
     #[test]
     fn the_burst_threshold_is_about_reading_speed() {
         // Ten judgments in sixty seconds is six seconds each, including
@@ -162,4 +178,153 @@ mod tests {
         // humans, not about the database.
         assert_eq!(BURST_THRESHOLD, 10);
     }
+}
+
+/// Did loom's context actually help?
+///
+/// The ratio of served packets whose target subsequently acquired a fact loom
+/// could re-check. Derived from the append-only record on both sides: the
+/// `packet_served` entries say what was handed out and when, and the fact table
+/// says what was established afterwards.
+///
+/// Deliberately NOT self-reported. The obvious design asks the writer to cite
+/// the packet it used, which is a claim about its own usefulness made by the
+/// party with an interest in it — the same shape as an agent reporting that its
+/// proof passed. Correlating timestamps is weaker evidence and honest evidence.
+///
+/// STATISTICAL: reported, never gated (INV-3). A low ratio can mean the packets
+/// were unhelpful, or that the work they enabled has not landed yet.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Efficacy {
+    pub served: usize,
+    /// Packets whose target later gained a fact at `cited` or better.
+    pub converted: usize,
+    pub ratio: f64,
+    /// The same split by packet kind, so `next` and `context` can be told apart.
+    pub by_kind: BTreeMap<String, (usize, usize)>,
+}
+
+/// Milliseconds since the epoch, from either stamp format loom writes.
+///
+/// A shared clock is the precondition for comparing two planes at all, and
+/// loom has two formats because the journal predates a time dependency it
+/// still does not want.
+fn epoch_millis(stamp: &str) -> Option<i64> {
+    if let Ok(millis) = stamp.parse::<i64>() {
+        return Some(millis);
+    }
+    // `YYYY-MM-DDTHH:MM:SS.sssZ` — parsed by hand for the same reason.
+    let (date, rest) = stamp.split_once('T')?;
+    let mut d = date.split('-');
+    let (y, mo, da): (i64, i64, i64) = (
+        d.next()?.parse().ok()?,
+        d.next()?.parse().ok()?,
+        d.next()?.parse().ok()?,
+    );
+    let time = rest.trim_end_matches('Z');
+    let (hms, frac) = time.split_once('.').unwrap_or((time, "0"));
+    let mut t = hms.split(':');
+    let (h, mi, sec): (i64, i64, i64) = (
+        t.next()?.parse().ok()?,
+        t.next()?.parse().ok()?,
+        t.next()?.parse().ok()?,
+    );
+    // Days since the epoch via a civil-date conversion (Howard Hinnant's), so
+    // month lengths and leap years are handled rather than approximated.
+    let y_adj = if mo <= 2 { y - 1 } else { y };
+    let era = if y_adj >= 0 { y_adj } else { y_adj - 399 } / 400;
+    let yoe = y_adj - era * 400;
+    let mp = (mo + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + da - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    let millis: i64 = frac
+        .chars()
+        .chain(std::iter::repeat('0'))
+        .take(3)
+        .collect::<String>()
+        .parse()
+        .unwrap_or(0);
+    Some(((days * 86_400 + h * 3600 + mi * 60 + sec) * 1000) + millis)
+}
+
+pub fn efficacy(store: &Store) -> Result<Efficacy> {
+    // When each subject first reached a re-checkable state.
+    let mut settled_at: BTreeMap<String, String> = BTreeMap::new();
+    for fact in store.all_facts()? {
+        if !fact.verification.counts() {
+            continue;
+        }
+        let at = fact.asserted_at.clone();
+        settled_at
+            .entry(fact.subject_id.clone())
+            .and_modify(|e| {
+                if at < *e {
+                    *e = at.clone();
+                }
+            })
+            .or_insert(at);
+    }
+    // An edge's fact is about the edge; a packet is usually about a node. Map
+    // each edge's endpoints to the edge's settle time so a packet about an
+    // intent counts when that intent's grounding was established.
+    let mut node_settled: BTreeMap<String, String> = settled_at.clone();
+    for (subject, at) in &settled_at {
+        if let Ok(Some(edge)) = store.get_edge(subject) {
+            for endpoint in [edge.from_id, edge.to_id] {
+                node_settled
+                    .entry(endpoint)
+                    .and_modify(|e| {
+                        if at < e {
+                            *e = at.clone();
+                        }
+                    })
+                    .or_insert(at.clone());
+            }
+        }
+    }
+
+    let mut out = Efficacy::default();
+    for entry in crate::journal::read(store.root())? {
+        if entry.event != "packet_served" {
+            continue;
+        }
+        let Some(packets) = entry.payload.get("packets").and_then(|v| v.as_array()) else {
+            continue;
+        };
+        for p in packets {
+            let kind = p
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let target = p.get("target").and_then(|v| v.as_str()).unwrap_or("");
+            out.served += 1;
+            let slot = out.by_kind.entry(kind).or_insert((0, 0));
+            slot.0 += 1;
+            // Settled AFTER this packet was served. Work that was already done
+            // is not work the packet enabled.
+            // Normalize both sides before comparing. The journal stamps UTC
+            // epoch milliseconds; the fact table stamps ISO-8601 from SQLite.
+            // Comparing them as strings is nonsense that happens to look like
+            // an answer — "2026-…" sorts above "1784…" for every fact, which
+            // would have reported 100% efficacy forever.
+            if node_settled
+                .get(target)
+                .and_then(|at| epoch_millis(at))
+                .zip(epoch_millis(&entry.ts))
+                .map(|(settled, served)| settled > served)
+                .unwrap_or(false)
+            {
+                out.converted += 1;
+                slot.1 += 1;
+            }
+        }
+    }
+    out.ratio = if out.served == 0 {
+        0.0
+    } else {
+        out.converted as f64 / out.served as f64
+    };
+    Ok(out)
 }

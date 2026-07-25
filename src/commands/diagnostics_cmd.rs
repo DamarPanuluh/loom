@@ -1180,8 +1180,37 @@ pub(crate) fn impact_cmd(
 /// Exits non-zero when anything is found, like `doctor` — an audit whose
 /// findings are advisory is a scoreboard, and the whole point is that loom is
 /// willing to fail its own check.
-pub(crate) fn audit_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
+pub(crate) fn audit_cmd(graph: Option<&Path>, efficacy: bool, json: bool) -> Result<()> {
     let store = open_read(graph)?;
+    if efficacy {
+        let e = crate::audit::efficacy(&store)?;
+        if json {
+            println!("{}", serde_json::to_string_pretty(&e)?);
+        } else if e.served == 0 {
+            println!("no packets served yet — efficacy is unmeasured, not zero");
+        } else {
+            println!(
+                "{} of {} served packets were followed by re-checkable work ({:.0}%)",
+                e.converted,
+                e.served,
+                e.ratio * 100.0
+            );
+            for (kind, (served, converted)) in &e.by_kind {
+                println!("  {kind}: {converted}/{served}");
+            }
+            // A ratio off a handful of packets is a coincidence with a
+            // percent sign. Say so rather than letting it be quoted.
+            if e.served < crate::audit::EFFICACY_MIN_SAMPLE {
+                println!(
+                    "  too few packets to mean anything yet ({} of {} needed)",
+                    e.served,
+                    crate::audit::EFFICACY_MIN_SAMPLE
+                );
+            }
+            println!("  statistical — reported, never gating (INV-3)");
+        }
+        return Ok(());
+    }
     let findings = crate::audit::run(&store)?;
     if json {
         println!("{}", serde_json::to_string_pretty(&findings)?);

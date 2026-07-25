@@ -288,6 +288,25 @@ pub enum Command {
         #[arg(long, default_value_t = 3)]
         depth: usize,
     },
+    /// Record a decision as a REVERSAL: what was chosen, what was rejected,
+    /// and why. Surfaced to whoever next touches the code it concerns, so the
+    /// reasoning arrives before the rediscovery instead of after it.
+    Decide {
+        /// What was chosen.
+        chose: String,
+        /// What was rejected. A decision with no alternative is a description.
+        #[arg(long = "instead-of")]
+        instead_of: String,
+        /// Why — the reason that would change if the tradeoff changed.
+        #[arg(long)]
+        because: String,
+        /// Where this shows: a `file:line`, an intent, or a journal ref.
+        #[arg(long, default_value = "")]
+        evidence: String,
+        /// The behavior or file this decision concerns.
+        #[arg(long)]
+        about: Option<String>,
+    },
     /// Run a command loom watches, and keep what it saw.
     ///
     /// This is the cheap way in: prefix the test command you were going to run
@@ -318,7 +337,13 @@ pub enum Command {
     /// Turn the falsifiability claim on loom's own record: fabricated
     /// ratifications, judgment bursts too fast to have been made one at a
     /// time, and settled claims standing on nothing re-checkable.
-    Audit,
+    Audit {
+        /// Instead of the fabrication checks, report how often a served packet
+        /// was followed by work that established something re-checkable about
+        /// its target. Statistical — reported, never gating.
+        #[arg(long)]
+        efficacy: bool,
+    },
     /// What to strengthen next, once every floor is met. Ranks behaviors by
     /// blast radius x (1 - proof strength) x evidence age, and names the one
     /// move that would raise each. This queue re-orders; it never empties.

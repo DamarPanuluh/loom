@@ -276,3 +276,99 @@ fn a_test_file_is_owned_by_what_it_verifies() {
         "what a test verifies IS its ownership"
     );
 }
+
+/// Efficacy is derived from the record on both sides, never self-reported.
+///
+/// The obvious design asks the writer to cite the packet it used — a claim
+/// about its own usefulness, made by the party with an interest in it, which is
+/// the same shape as an agent reporting that its proof passed.
+#[test]
+fn efficacy_counts_only_work_that_came_after_the_packet() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    // Nothing served: unmeasured, and explicitly not zero.
+    let e = loom::audit::efficacy(&store).unwrap();
+    assert_eq!(e.served, 0);
+    assert_eq!(e.ratio, 0.0);
+
+    // Work established BEFORE any packet was served cannot be credited to one.
+    let i = intent(&store, "a behavior");
+    let cf = codefile(&store, "src/thing.rs");
+    let edge = store
+        .add_edge(EdgeKind::Implements, &i, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            loom::model::InspectionStatus::Passing,
+            "lives here",
+            "src/thing.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    loom::packet::serve(
+        tmp.path(),
+        &[loom::packet::Served {
+            id: "pkt-test-1".into(),
+            kind: "context".into(),
+            target: i.clone(),
+        }],
+    )
+    .unwrap();
+
+    let e = loom::audit::efficacy(&store).unwrap();
+    assert_eq!(e.served, 1);
+    assert_eq!(
+        e.converted, 0,
+        "work that already existed is not work the packet enabled"
+    );
+}
+
+/// The ratio discriminates. A measure that reports the same number whatever
+/// happened is not a measure — and this one did exactly that until the two
+/// planes were put on one clock.
+#[test]
+fn the_efficacy_ratio_distinguishes_helped_from_ignored() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let helped = intent(&store, "a behavior work followed");
+    let ignored = intent(&store, "a behavior nobody acted on");
+
+    for target in [&helped, &ignored] {
+        loom::packet::serve(
+            tmp.path(),
+            &[loom::packet::Served {
+                id: format!("pkt-{target}"),
+                kind: "context".into(),
+                target: target.clone(),
+            }],
+        )
+        .unwrap();
+    }
+
+    // Work lands on ONE of them, after the packets were served.
+    let cf = codefile(&store, "src/acted.rs");
+    let edge = store
+        .add_edge(EdgeKind::Implements, &helped, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            loom::model::InspectionStatus::Passing,
+            "lives here",
+            "src/acted.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    let e = loom::audit::efficacy(&store).unwrap();
+    assert_eq!(e.served, 2);
+    assert_eq!(
+        e.converted, 1,
+        "one packet was followed by work and one was not: {e:?}"
+    );
+    assert!((e.ratio - 0.5).abs() < f64::EPSILON, "{e:?}");
+}
