@@ -43,6 +43,37 @@ pub struct Reverified {
     pub validations_reset: usize,
 }
 
+/// Widen a grounding's citations to the whole file.
+///
+/// A realizing grounding that names no symbol claims the FILE, so its spans
+/// carry the file's hash: a citation surviving verbatim inside a rewritten file
+/// must stop holding the claim up. Ids are content-addressed, so widening the
+/// scope changes identity — they are recomputed here.
+fn widen_to_file_scope(
+    root: &std::path::Path,
+    file: &str,
+    fact_id: &str,
+    rows: &mut [EvidenceRow],
+) {
+    let Ok(content) = std::fs::read_to_string(root.join(file)) else {
+        return;
+    };
+    // Hashed over the joined LINES, exactly as `span_intact` recomputes it —
+    // hashing the raw bytes would differ by the trailing newline and expire
+    // every file-scoped grounding on the very next sync.
+    let whole = crate::artifact::fingerprint(&content.lines().collect::<Vec<_>>().join("\n"));
+    for row in rows.iter_mut() {
+        if let Evidence::Span(span) = &mut row.payload {
+            if span.file == file {
+                span.file_hash = whole.clone();
+            }
+        }
+    }
+    for row in rows.iter_mut() {
+        row.id = EvidenceRow::id_for(fact_id, &row.payload);
+    }
+}
+
 /// Does this anchor point into any of `changed`?
 fn touches(payload: &Evidence, changed: &BTreeSet<String>) -> bool {
     match payload {
@@ -415,6 +446,84 @@ impl Store {
         Ok((edge_kind, role, shape))
     }
 
+    /// The grounding this assertion is about: its edge and the file it names.
+    ///
+    /// `Some` only for a SETTLING verdict on an `implements` edge whose target
+    /// file is still in the graph — the one case that mints a grounding probe.
+    /// Flattens four levels of `if let` that together asked one question.
+    fn grounding_subject(
+        &self,
+        a: &Assertion<'_>,
+        edge_kind: Option<crate::model::EdgeKind>,
+    ) -> Result<Option<(crate::model::Edge, crate::model::Node)>> {
+        if a.run.is_some()
+            || edge_kind != Some(crate::model::EdgeKind::Implements)
+            || !anchor::is_settling(a.state)
+        {
+            return Ok(None);
+        }
+        let Subject::Edge(edge_id) = &a.subject else {
+            return Ok(None);
+        };
+        let Some(edge) = self.get_edge(edge_id)? else {
+            return Ok(None);
+        };
+        let Some(file) = self.get_node(&edge.to_id)? else {
+            return Ok(None);
+        };
+        Ok(Some((edge, file)))
+    }
+
+    /// The quality rule this assertion measures, and the files it governs.
+    ///
+    /// `Some` only for a settling verdict on a `governs` edge — the one case
+    /// that mints a pattern scan. Same flattening as `grounding_subject`.
+    fn scannable_rule_subject(
+        &self,
+        a: &Assertion<'_>,
+        edge_kind: Option<crate::model::EdgeKind>,
+    ) -> Result<Option<(crate::model::Node, Vec<String>)>> {
+        if a.run.is_some()
+            || edge_kind != Some(crate::model::EdgeKind::Governs)
+            || !anchor::is_settling(a.state)
+        {
+            return Ok(None);
+        }
+        let Subject::Edge(edge_id) = &a.subject else {
+            return Ok(None);
+        };
+        let Some(edge) = self.get_edge(edge_id)? else {
+            return Ok(None);
+        };
+        let Some(rule) = self.get_node(&edge.from_id)? else {
+            return Ok(None);
+        };
+        let files = crate::runner::files_grounding(self, &edge.to_id)?;
+        Ok(Some((rule, files)))
+    }
+
+    /// Pattern hits contradict a `passing` verdict outright: loom found the very
+    /// shape the rule forbids. Refuse it and print what it found, rather than
+    /// storing a green verdict beside the evidence against it.
+    fn refuse_passing_over_hits(
+        &self,
+        a: &Assertion<'_>,
+        rule_name: &str,
+        probe: Option<&RunRecord>,
+    ) -> Result<()> {
+        let Some(run) = probe else { return Ok(()) };
+        if run.exit_code == 0 || a.state != "passing" {
+            return Ok(());
+        }
+        bail!(
+            "'{}' scanned these patterns and found hits — a passing verdict \
+             contradicts them:\n{}\n\nRecord `failing`, or cite a span per hit \
+             explaining why each is not what the rule means.",
+            rule_name,
+            run.stdout_excerpt.trim()
+        )
+    }
+
     /// Turn what the caller cited into evidence rows, and mint loom's own
     /// probes for the claims loom can check itself.
     ///
@@ -450,113 +559,59 @@ impl Store {
         // live symbol in that file? A worker asserting "the behavior lives here"
         // no longer has to be believed — and no longer has to be doubted either.
         let mut probe: Option<RunRecord> = None;
-        if a.run.is_none()
-            && edge_kind == Some(crate::model::EdgeKind::Implements)
-            && anchor::is_settling(a.state)
-        {
-            if let Subject::Edge(edge_id) = &a.subject {
-                if let Some(edge) = self.get_edge(edge_id)? {
-                    if let Some(file) = self.get_node(&edge.to_id)? {
-                        let locator = self.get_facet(edge_id, TargetKind::Edge, "locator")?;
-                        // A realizing grounding that names NO symbol claims the
-                        // whole file. Widen its citations to say so, so a span
-                        // surviving verbatim inside a rewritten file stops
-                        // holding the claim up.
-                        if role == Some(crate::model::GroundingRole::Realizes)
-                            && locator.as_deref().map(str::trim).unwrap_or("").is_empty()
-                        {
-                            if let Ok(content) = std::fs::read_to_string(self.root.join(&file.name))
-                            {
-                                // Hashed over the joined LINES, exactly as
-                                // `span_intact` recomputes it — hashing the raw
-                                // bytes instead would differ by the trailing
-                                // newline and expire every file-scoped
-                                // grounding on the very next sync.
-                                let whole = crate::artifact::fingerprint(
-                                    &content.lines().collect::<Vec<_>>().join("\n"),
-                                );
-                                for row in &mut rows {
-                                    if let Evidence::Span(span) = &mut row.payload {
-                                        if span.file == file.name {
-                                            span.file_hash = whole.clone();
-                                        }
-                                    }
-                                }
-                                // Ids are content-addressed over the payload, so
-                                // widening the scope changes identity.
-                                for row in &mut rows {
-                                    row.id = EvidenceRow::id_for(&fact_id, &row.payload);
-                                }
-                            }
-                        }
-                        probe = if role == Some(crate::model::GroundingRole::Realizes) {
-                            // "The behavior lives here." A locator narrows that
-                            // to one symbol and earns symbol-scoped sparing; no
-                            // locator leaves the claim file-wide, and the anchor
-                            // says so rather than quietly borrowing the narrower
-                            // scope from a span that happens to sit in the file.
-                            crate::runner::locator_probe(&self.root, &file.name, locator.as_deref())
-                                .filter(|r| r.exit_code == 0)
-                        } else {
-                            // "This file USES the behavior." Only the seam
-                            // leaving falsifies it.
-                            crate::runner::seam_probe(&self.root, &file.name, locator.as_deref())
-                                .filter(|r| r.exit_code == 0)
-                        };
-                    }
-                }
+        if let Some((edge, file)) = self.grounding_subject(a, edge_kind)? {
+            let locator = self.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+            let realizes = role == Some(crate::model::GroundingRole::Realizes);
+            // A realizing grounding that names NO symbol claims the whole file.
+            // Widen its citations to say so, so a span surviving verbatim inside
+            // a rewritten file stops holding the claim up.
+            if realizes && locator.as_deref().map(str::trim).unwrap_or("").is_empty() {
+                widen_to_file_scope(&self.root, &file.name, &fact_id, &mut rows);
             }
+            probe = if realizes {
+                // A locator narrows the claim to one symbol and earns
+                // symbol-scoped sparing; no locator leaves it file-wide, and the
+                // anchor says so rather than quietly borrowing the narrower
+                // scope from a span that happens to sit in the file.
+                crate::runner::locator_probe(&self.root, &file.name, locator.as_deref())
+                    .filter(|r| r.exit_code == 0)
+            } else {
+                // "This file USES the behavior." Only the seam leaving
+                // falsifies it.
+                crate::runner::seam_probe(&self.root, &file.name, locator.as_deref())
+                    .filter(|r| r.exit_code == 0)
+            };
         }
+
         // A quality verdict on a rule that carries patterns is checkable the
         // same way: loom runs the scan itself. This is what lets an ABSENCE
         // count as evidence — nothing to cite, but something to re-run.
-        if probe.is_none()
-            && a.run.is_none()
-            && edge_kind == Some(crate::model::EdgeKind::Governs)
-            && anchor::is_settling(a.state)
-        {
-            if let Subject::Edge(edge_id) = &a.subject {
-                if let Some(edge) = self.get_edge(edge_id)? {
-                    if let Some(rule) = self.get_node(&edge.from_id)? {
-                        let patterns: Vec<String> = rule
-                            .body
-                            .get("patterns")
-                            .and_then(|v| v.as_array())
-                            .map(|a| {
-                                a.iter()
-                                    .filter_map(|x| x.as_str().map(String::from))
-                                    .collect()
-                            })
-                            .unwrap_or_default();
-                        let files = crate::runner::files_grounding(self, &edge.to_id)?;
-                        probe = crate::runner::prescreen_probe(
-                            &self.root, &rule.name, &patterns, &files,
-                        );
-                        // The floor follows what loom actually DID, not what it
-                        // could have tried. The scan fails closed on a file it
-                        // cannot read, and demanding `verified` from a scan that
-                        // never happened would refuse an honest verdict for
-                        // loom's own inability to look.
-                        shape.scannable_rule = probe.is_some();
-                        // Pattern hits contradict a `passing` verdict outright:
-                        // loom found the very shape the rule forbids. Refuse it
-                        // and print what it found, rather than storing a green
-                        // verdict beside the evidence against it.
-                        if let Some(run) = probe.as_ref() {
-                            if run.exit_code != 0 && a.state == "passing" {
-                                bail!(
-                                    "'{}' scanned these patterns and found hits — a passing \
-                                 verdict contradicts them:\n{}\n\nRecord `failing`, or cite \
-                                 a span per hit explaining why each is not what the rule means.",
-                                    rule.name,
-                                    run.stdout_excerpt.trim()
-                                );
-                            }
-                        }
-                    }
-                }
+        if probe.is_none() {
+            if let Some((rule, files)) = self.scannable_rule_subject(a, edge_kind)? {
+                let patterns: Vec<String> = rule
+                    .body
+                    .get("patterns")
+                    .and_then(|v| v.as_array())
+                    .map(|list| {
+                        list.iter()
+                            .filter_map(|x| x.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                probe = crate::runner::prescreen_probe(&self.root, &rule.name, &patterns, &files);
+                // The floor follows what loom actually DID, not what it could
+                // have tried. The scan fails closed on a file it cannot read,
+                // and demanding `verified` from a scan that never happened
+                // would refuse an honest verdict for loom's own inability to
+                // look.
+                shape.scannable_rule = probe.is_some();
+                self.refuse_passing_over_hits(a, &rule.name, probe.as_ref())?;
             }
         }
+
+        // The run — whether the caller's or loom's own probe — becomes the row
+        // that makes this fact `verified`. Only `crate::runner` mints one, so
+        // there is no path from caller input to this branch.
         if let Some(run) = a.run.clone().map(|b| *b).or(probe) {
             let payload = Evidence::Run(run);
             rows.push(EvidenceRow {
@@ -568,6 +623,7 @@ impl Store {
                 expiry_reason: None,
             });
         }
+
         Ok((fact_id, rows, recorded_at))
     }
 
@@ -792,26 +848,9 @@ impl Store {
                     &why,
                     crate::model::TruthClass::Derived,
                 )?;
-                // A proof whose anchor broke is not merely a stale edge — the
-                // Validation node itself has to read `not_run`, or `loom status`
-                // reports a passing proof behind a re-opened claim.
-                if let Some(edge) = self.get_edge(&fact.subject_id)? {
-                    if edge.kind == crate::model::EdgeKind::Validates {
-                        // Only count a proof that was actually standing. One
-                        // already at `not_run` is unchanged, and counting it
-                        // would overstate how much re-verification a sync
-                        // actually created.
-                        let was_proven = self
-                            .get_node(&edge.from_id)?
-                            .map(|n| n.status != "not_run")
-                            .unwrap_or(false);
-                        self.reset_validation_status_for_sync(&edge.from_id)?;
-                        if was_proven {
-                            out.validations_reset += 1;
-                        }
-                    }
-                }
+                out.validations_reset += self.reset_proof_if_any(&fact.subject_id)?;
             }
+
             if strength != fact.verification {
                 let cause = checked
                     .iter()
@@ -856,6 +895,28 @@ fn describe(row: &EvidenceRow) -> String {
 }
 
 impl Store {
+    /// Reset the Validation behind a re-opened proof edge, if there is one.
+    ///
+    /// A proof whose anchor broke is not merely a stale edge — the Validation
+    /// node itself has to read `not_run`, or `loom status` reports a passing
+    /// proof behind a re-opened claim. Returns 1 when a proof that was actually
+    /// standing came down; one already at `not_run` is unchanged, and counting
+    /// it would overstate how much re-verification a sync created.
+    fn reset_proof_if_any(&self, edge_id: &str) -> Result<usize> {
+        let Some(edge) = self.get_edge(edge_id)? else {
+            return Ok(0);
+        };
+        if edge.kind != crate::model::EdgeKind::Validates {
+            return Ok(0);
+        }
+        let was_proven = self
+            .get_node(&edge.from_id)?
+            .map(|n| n.status != "not_run")
+            .unwrap_or(false);
+        self.reset_validation_status_for_sync(&edge.from_id)?;
+        Ok(usize::from(was_proven))
+    }
+
     /// Does this anchor still hold? `Some(cause)` when it broke.
     fn recheck(&self, payload: &Evidence) -> Option<StaleCause> {
         match payload {
