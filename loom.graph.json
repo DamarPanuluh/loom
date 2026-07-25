@@ -2894,14 +2894,14 @@
       "type": "validation",
       "name": "proof strength unit",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --lib proofstrength -q",
         "type": "test"
       },
       "created_at": "2026-07-25T10:09:43.281Z",
-      "updated_at": "2026-07-25T12:02:08.326Z"
+      "updated_at": ""
     },
     {
       "id": "8cc767ce1505a4893f30989664a81450",
@@ -7754,14 +7754,14 @@
       "type": "validation",
       "name": "chokepoint ring",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring23_chokepoint -q",
         "type": "test"
       },
       "created_at": "2026-07-25T10:09:43.248Z",
-      "updated_at": ""
+      "updated_at": "2026-07-25T20:04:55.240Z"
     },
     {
       "id": "fd559d929afe4b02f0ed05054af4573a",
@@ -8324,13 +8324,13 @@
       "to_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-07-25T10:09:43.249Z",
-      "updated_at": "2026-07-25T19:08:48.572Z"
+      "updated_at": "2026-07-25T20:04:55.240Z"
     },
     {
       "id": "15dc2a9da33e5f7b73fd05e07f0bd493",
@@ -10275,13 +10275,13 @@
       "to_id": "82b78e81c798713d558ca1ca67faee3f",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-07-25T10:09:43.281Z",
-      "updated_at": "2026-07-25T12:02:08.326Z"
+      "updated_at": "2026-07-25T20:05:11.804Z"
     },
     {
       "id": "5e7d9741cfa112c5ecca8a6055fefcc9",
@@ -16953,10 +16953,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-07-25T10:09:49.940Z"
+      "asserted_at": "2026-07-25T20:04:55.238Z"
     },
     {
       "id": "f6213a6cb91e3460d",
@@ -17529,7 +17529,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-07-25T12:02:08.325Z"
@@ -18335,16 +18335,16 @@
       "recorded_at": "2026-07-25T09:55:25.807Z"
     },
     {
-      "id": "ec1071ecd5a13621d",
+      "id": "ec9ad323d10e94f48",
       "fact_id": "f5b185f6bcef4dd73",
       "payload": {
         "kind": "claim",
-        "text": "observed by loom: `cargo test --test ring23_chokepoint -q` exited 0"
+        "text": "`cargo test --test ring23_chokepoint -q` exit 0"
       },
-      "recorded_at": "2026-07-25T10:09:49.940Z"
+      "recorded_at": "2026-07-25T20:04:55.238Z"
     },
     {
-      "id": "ecbbac3a874b5845b",
+      "id": "eeb9448a951587d10",
       "fact_id": "f5b185f6bcef4dd73",
       "payload": {
         "kind": "run",
@@ -18352,19 +18352,19 @@
         "command": "cargo test --test ring23_chokepoint -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "6dd79de2d0e9f07a",
+        "stdout_hash": "114777dce4e38547",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 4 tests\n....\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s\n\n",
+        "stdout_excerpt": "\nrunning 4 tests\n....\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s\n\n",
         "covered": {
-          "src/store/facts.rs": "08b0543b700848a0",
+          "src/store/facts.rs": "4eb770c65b3d66b7",
           "tests/ring23_chokepoint.rs": "7c2a9367912407c5"
         },
         "assertions": 0,
-        "duration_ms": 594,
-        "ran_at": "1784974189928",
+        "duration_ms": 7660,
+        "ran_at": "1785009895233",
         "loom_version": "0.26.0"
       },
-      "recorded_at": "2026-07-25T10:09:49.940Z"
+      "recorded_at": "2026-07-25T20:04:55.238Z"
     },
     {
       "id": "eeeaf9914d7799411",
@@ -20348,7 +20348,7 @@
       "target_id": "06ba0a13ca897d48d6434c00e1dba450",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"3 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -20425,7 +20425,7 @@
       "target_id": "0950a847d7afcc73ed56c8e21a6607af",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring14 ratify suite proves INV-8 and the wanted gate\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -20460,7 +20460,7 @@
       "target_id": "09b409f223d650e75355a0f403df38ee",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -20663,7 +20663,7 @@
       "target_id": "0f4d7574144892f3fc485dbac33d0900",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring14 proves redefinition stales ratification\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -21048,7 +21048,7 @@
       "target_id": "183a111cc33b61650b56d42a02c9755f",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring18 journey baseline\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -21160,7 +21160,7 @@
       "target_id": "1a62751d47b2c3f27c5caad31343edf4",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"8 test(s) reported passing by the runner\",\"call_witness\":\"serve\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
@@ -21461,7 +21461,7 @@
       "target_id": "225041d7f794fda26514239a1cc1d1b4",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"loom serves its capabilities in band\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"mcp ring\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -21650,7 +21650,7 @@
       "target_id": "26d91b0f65d552864a80d490139d78b0",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -21748,7 +21748,7 @@
       "target_id": "2b97cdb0e31d415ce94a304a29ef3f15",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"find ratification filter contract\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -21888,7 +21888,7 @@
       "target_id": "2d80bfcecf56406519d64617d0d7236d",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"federation ripple contracts\",\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
       "truth_class": "derived"
     },
     {
@@ -21923,7 +21923,7 @@
       "target_id": "3089b7b6974c6b799dbe9aa9c1bbdaaa",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -22287,7 +22287,7 @@
       "target_id": "35f63b7a142651e688287da746b61665",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"9 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -22567,7 +22567,7 @@
       "target_id": "3d4a5253cf790a31d5e232539640f39e",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"symbol-pattern intent guard\",\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
       "truth_class": "derived"
     },
     {
@@ -22595,7 +22595,7 @@
       "target_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"chokepoint ring\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -22952,7 +22952,7 @@
       "target_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"find exact\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -22987,7 +22987,7 @@
       "target_id": "46d16fdebd7194e74c9ea3094439ac57",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -23099,7 +23099,7 @@
       "target_id": "4c48d826cb3f799e0e88c06796c4f704",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"import order\",\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
       "truth_class": "derived"
     },
     {
@@ -23204,7 +23204,7 @@
       "target_id": "4eefda1c44aaba4f1cb78be93db5712a",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"door capture happy path\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"door capture surface\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -23505,7 +23505,7 @@
       "target_id": "550ba7c1e4bbbdcc236cc99aea145ed6",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"12 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -23526,7 +23526,7 @@
       "target_id": "55580f2ab8684de31275a61432ac7bea",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"sync unknown scope fallback\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -23547,7 +23547,7 @@
       "target_id": "5642addfb850287a078449f05abd81b6",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"structural reproduction contracts\",\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
       "truth_class": "derived"
     },
     {
@@ -23568,7 +23568,7 @@
       "target_id": "566eaa1107c3f716562ad9be766e7015",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"12 test(s) reported passing by the runner\",\"call_witness\":\"derivers\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
@@ -23687,7 +23687,7 @@
       "target_id": "5e7c17282673008b6b70f3b2066aff2f",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"relationship churn precision\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -23834,7 +23834,7 @@
       "target_id": "5f6c9a00b199447b9b2d5caedf67f247",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"door weak match\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -23855,7 +23855,7 @@
       "target_id": "5fc787584b1f442edc3c64e7bdd89041",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -23981,7 +23981,7 @@
       "target_id": "60cba87536facf7d78552f2ed29da0d2",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"grammar schema table contract\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -24044,7 +24044,7 @@
       "target_id": "64843b54ee6a091c3c23ff2d4d628d2a",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring19 drive\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -24184,7 +24184,7 @@
       "target_id": "6682d0d52433d84d02bef5dcf706781a",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"3 test(s) reported passing by the runner\",\"call_witness\":\"all\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
@@ -24226,7 +24226,7 @@
       "target_id": "67c2e0ce05bde2e1708a009c19f66483",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"journey never-reached reopen\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -24303,7 +24303,7 @@
       "target_id": "68a6f630ce2e5c2e39b7ed15e38ce1b8",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"12 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -24366,21 +24366,21 @@
       "target_id": "69250f35515395983f78b1894ca9e5c0",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "6a1573fee9b32e928fd53e554e843f2b",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"10 test(s) reported passing by the runner\",\"call_witness\":\"run\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "6a627820f833da0f92c41338f01c9e4f",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"9 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -24408,7 +24408,7 @@
       "target_id": "6c5b91198cc500e98093d86598056d10",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"12 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -24569,7 +24569,7 @@
       "target_id": "70df5bd35ff5b1f0262cdc788ae18c0c",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -25073,14 +25073,14 @@
       "target_id": "80fc1ef7ed7a6f421d3206368b552378",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"54 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "82b78e81c798713d558ca1ca67faee3f",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"proof strength unit\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -25311,7 +25311,7 @@
       "target_id": "87f645ae8047677f86ddd1a51ddee725",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"door hypothesis landing\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -25507,7 +25507,7 @@
       "target_id": "8c5c3a200b513bc6e833d6be80f25712",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"3 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -25521,7 +25521,7 @@
       "target_id": "8de0686b8a40a014cb5f82b0d7854c52",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"presence gate rejects non-interactive ratification\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -25598,7 +25598,7 @@
       "target_id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"divergence unit\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -25745,7 +25745,7 @@
       "target_id": "91d813a8317e60152cfd9826a3de03a9",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -25927,7 +25927,7 @@
       "target_id": "951dbe2556ac29565719436e4308f65c",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"sync scoped ripple\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -26144,21 +26144,21 @@
       "target_id": "99b383aac24cb9c469cd096b08f872b3",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "99ce5df7d918b3d494f11964aa045d6d",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\">\\\"files_scanned\\\"::into\",\">Default::default\",\">Some\",\">assert\",\">assert_eq\",\">stdout_contains::push\",\"boundary>Some\",\"boundary>crossed_binary\",\"boundary>format\",\"boundary>step::is_cli\",\"boundary>url::trim\",\"call_witness>Ok\",\"call_witness>Some\",\"call_witness>callers::iter\",\"call_witness>graph::impact\",\"call_witness>grounded_symbols\",\"call_witness>proof_files::contains\",\"call_witness>proof_files::is_empty\",\"content_assertions>body::len\",\"content_assertions>exists::len\",\"content_assertions>stderr_contains::len\",\"content_assertions>stdout_contains::len\",\"crossed_binary>PLUMBING::contains\",\"crossed_binary>bin::contains\",\"crossed_binary>bin::is_empty\",\"crossed_binary>bin::to_string\",\"crossed_binary>bin::trim\",\"crossed_binary>first::rsplit\",\"crossed_binary>run::split\",\"crossed_binary>segment::split_whitespace\",\"grade>\\\"assertsomethingabouttheOUTPUT,notjusttheexitcode—\\\\`stdout_contains`,`body`,or`exists`\\\"::into\",\"grade>\\\"everythingthisprooftouchesisloomcallingloom—cross\\\\arealboundary\",\"grade>\\\"freezeabaseline\",\"grade>\\\"letloomrunthisproof\",\"grade>\\\"nothingthisproofrunsreachesthesymbolthebehavioris\\\\groundedin—exercisetherealcodepath\\\"::into\",\"grade>Ok\",\"grade>S0::as_str\",\"grade>S1::as_str\",\"grade>S2::as_str\",\"grade>S3::as_str\",\"grade>S4::as_str\",\"grade>S5::as_str\",\"grade>Some\",\"grade>StrengthWitness::default\",\"grade>body::get\",\"grade>boundary\",\"grade>call_witness\",\"grade>call_witness::is_none\",\"grade>content_assertions\",\"grade>journey::is_empty\",\"grade>journey::read_baseline\",\"grade>journey_spec\",\"grade>proof_files\",\"grade>steps::iter\",\"grade>store::edge_verification\",\"grade>store::edges_with\",\"grade>v::as_str\",\"grade>v::as_u64\",\"grounded_symbols>Ok\",\"grounded_symbols>Some\",\"grounded_symbols>Vec::new\",\"grounded_symbols>loc::split_whitespace\",\"grounded_symbols>out::dedup\",\"grounded_symbols>out::push\",\"grounded_symbols>out::sort\",\"grounded_symbols>store::edge_superseded\",\"grounded_symbols>store::edges_with\",\"grounded_symbols>store::get_facet\",\"grounded_symbols>tok::is_empty\",\"grounded_symbols>tok::rsplit\",\"grounded_symbols>tok::split\",\"grounded_symbols>tok::to_string\",\"journey_spec>Some\",\"journey_spec>body::get\",\"journey_spec>format\",\"journey_spec>journey::parse\",\"journey_spec>root::join\",\"journey_spec>v::as_str\",\"of>Ok\",\"of>Strength::parse\",\"of>raw::and_then\",\"of>serde_json::from_str\",\"of>store::get_facet\",\"parse>Some\",\"proof_files>Ok\",\"proof_files>Some\",\"proof_files>Vec::new\",\"proof_files>out::dedup\",\"proof_files>out::push\",\"proof_files>out::sort\",\"proof_files>store::edge_superseded\",\"proof_files>store::edges_with\",\"proof_files>store::get_node\",\"proof_files>store::grounding_role\",\"recompute>\\\"thisproofisnotattachedtoanybehavior\\\"::into\",\"recompute>Default::default\",\"recompute>Ok\",\"recompute>S0::as_str\",\"recompute>Some\",\"recompute>Strength::parse\",\"recompute>best::as_ref\",\"recompute>best::unwrap_or_else\",\"recompute>callgraph::build\",\"recompute>grade\",\"recompute>serde_json::to_string\",\"recompute>store::edges_with\",\"recompute>store::list_nodes\",\"recompute>store::set_facet\"]",
+      "value": "[\">\\\"files_scanned\\\"::into\",\">Default::default\",\">Some\",\">assert\",\">assert_eq\",\">stdout_contains::push\",\"boundary>Some\",\"boundary>crossed_binary\",\"boundary>format\",\"boundary>step::is_cli\",\"boundary>url::trim\",\"call_witness>Ok\",\"call_witness>Some\",\"call_witness>callers::iter\",\"call_witness>graph::impact\",\"call_witness>grounded_symbols\",\"call_witness>proof_files::contains\",\"call_witness>proof_files::is_empty\",\"content_assertions>body::len\",\"content_assertions>exists::len\",\"content_assertions>stderr_contains::len\",\"content_assertions>stdout_contains::len\",\"crossed_binary>PLUMBING::contains\",\"crossed_binary>bin::contains\",\"crossed_binary>bin::is_empty\",\"crossed_binary>bin::to_string\",\"crossed_binary>bin::trim\",\"crossed_binary>first::rsplit\",\"crossed_binary>run::split\",\"crossed_binary>segment::split_whitespace\",\"grade>\\\"everythingthisprooftouchesisloomcallingloom—cross\\\\arealboundary\",\"grade>\\\"freezeabaseline\",\"grade>\\\"letloomrunthisproof\",\"grade>\\\"nothingthisproofrunsreachesthesymbolthebehavioris\\\\groundedin—exercisetherealcodepath\\\"::into\",\"grade>Ok\",\"grade>S0::as_str\",\"grade>S1::as_str\",\"grade>S2::as_str\",\"grade>S3::as_str\",\"grade>S4::as_str\",\"grade>S5::as_str\",\"grade>Some\",\"grade>StrengthWitness::default\",\"grade>body::get\",\"grade>boundary\",\"grade>call_witness\",\"grade>call_witness::is_none\",\"grade>content_assertions\",\"grade>journey::is_empty\",\"grade>journey::read_baseline\",\"grade>journey_spec\",\"grade>observed_assertions::is_none\",\"grade>proof_files\",\"grade>reported_assertions\",\"grade>steps::iter\",\"grade>store::edge_verification\",\"grade>store::edges_with\",\"grade>v::as_str\",\"grade>v::as_u64\",\"grounded_symbols>Ok\",\"grounded_symbols>Some\",\"grounded_symbols>Vec::new\",\"grounded_symbols>loc::split_whitespace\",\"grounded_symbols>out::dedup\",\"grounded_symbols>out::push\",\"grounded_symbols>out::sort\",\"grounded_symbols>store::edge_superseded\",\"grounded_symbols>store::edges_with\",\"grounded_symbols>store::get_facet\",\"grounded_symbols>tok::is_empty\",\"grounded_symbols>tok::rsplit\",\"grounded_symbols>tok::split\",\"grounded_symbols>tok::to_string\",\"journey_spec>Some\",\"journey_spec>body::get\",\"journey_spec>format\",\"journey_spec>journey::parse\",\"journey_spec>root::join\",\"journey_spec>v::as_str\",\"number_before>c::is_ascii_alphabetic\",\"number_before>c::is_ascii_digit\",\"number_before>line::split_whitespace\",\"number_before>pair[0]::trim_matches\",\"number_before>pair[1]::trim_matches\",\"number_before>tokens::windows\",\"of>Ok\",\"of>Strength::parse\",\"of>raw::and_then\",\"of>serde_json::from_str\",\"of>store::get_facet\",\"parse>Some\",\"parse_runner_summary>Some\",\"parse_runner_summary>format\",\"parse_runner_summary>line::to_ascii_lowercase\",\"parse_runner_summary>lower::contains\",\"parse_runner_summary>number_before\",\"parse_runner_summary>output::lines\",\"proof_files>Ok\",\"proof_files>Some\",\"proof_files>Vec::new\",\"proof_files>out::dedup\",\"proof_files>out::push\",\"proof_files>out::sort\",\"proof_files>store::edge_superseded\",\"proof_files>store::edges_with\",\"proof_files>store::get_node\",\"proof_files>store::grounding_role\",\"recompute>\\\"thisproofisnotattachedtoanybehavior\\\"::into\",\"recompute>Default::default\",\"recompute>Ok\",\"recompute>S0::as_str\",\"recompute>Some\",\"recompute>Strength::parse\",\"recompute>best::as_ref\",\"recompute>best::unwrap_or_else\",\"recompute>callgraph::build\",\"recompute>grade\",\"recompute>serde_json::to_string\",\"recompute>store::edges_with\",\"recompute>store::list_nodes\",\"recompute>store::set_facet\",\"reported_assertions>Ok\",\"reported_assertions>Some\",\"reported_assertions>Subject::Edge\",\"reported_assertions>id::clone\",\"reported_assertions>parse_runner_summary\",\"reported_assertions>store::fact\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "99ce5df7d918b3d494f11964aa045d6d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "db007e47250045ad",
+      "value": "c6205d96862be84a",
       "truth_class": "derived"
     },
     {
@@ -26179,7 +26179,7 @@
       "target_id": "99ce5df7d918b3d494f11964aa045d6d",
       "target_kind": "node",
       "key": "loc",
-      "value": "441",
+      "value": "577",
       "truth_class": "derived"
     },
     {
@@ -26193,14 +26193,14 @@
       "target_id": "99ce5df7d918b3d494f11964aa045d6d",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "14",
+      "value": "17",
       "truth_class": "derived"
     },
     {
       "target_id": "99ce5df7d918b3d494f11964aa045d6d",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Strength\":\"25815d8cde90a451\",\"StrengthWitness\":\"4c5f9b7e3bcbba26\",\"as_str\":\"253a70014a6cada9\",\"boundary\":\"68eaea107c0a5cf8\",\"call_witness\":\"9a7cb567fa098fe3\",\"content_assertions\":\"40ddd2d00a7f3b3f\",\"crossed_binary\":\"e8f559db37b45835\",\"grade\":\"9963fd67ea02dc3f\",\"grounded_symbols\":\"a240808a3410630c\",\"journey_spec\":\"d7cec43f939fa64e\",\"of\":\"f0213e1def47a914\",\"parse\":\"286fcbc151b0b864\",\"proof_files\":\"2a8c834f012a622e\",\"recompute\":\"f803873724bae37e\"}",
+      "value": "{\"Strength\":\"25815d8cde90a451\",\"StrengthWitness\":\"adee46a6f6a11e5f\",\"as_str\":\"253a70014a6cada9\",\"boundary\":\"68eaea107c0a5cf8\",\"call_witness\":\"9a7cb567fa098fe3\",\"content_assertions\":\"40ddd2d00a7f3b3f\",\"crossed_binary\":\"e8f559db37b45835\",\"grade\":\"dec6a8eee039ec4c\",\"grounded_symbols\":\"a240808a3410630c\",\"journey_spec\":\"d7cec43f939fa64e\",\"number_before\":\"b0cb426d7995b91d\",\"of\":\"f0213e1def47a914\",\"parse\":\"286fcbc151b0b864\",\"parse_runner_summary\":\"605e2bf9102aa6c9\",\"proof_files\":\"2a8c834f012a622e\",\"recompute\":\"f803873724bae37e\",\"reported_assertions\":\"256c23af994693b0\"}",
       "truth_class": "derived"
     },
     {
@@ -26557,7 +26557,7 @@
       "target_id": "a2fd4889adcbef6ceba52d1229a317ff",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"audit ring\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -26585,7 +26585,7 @@
       "target_id": "a370e4e51b3ec919c0022ccb90420dd7",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"9 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -26599,7 +26599,7 @@
       "target_id": "a475a68b479c85f7db0bf23736413839",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"context packet contract\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -26795,7 +26795,7 @@
       "target_id": "a5b3fd87638cf80eb584d666b3c92d56",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -26907,7 +26907,7 @@
       "target_id": "a693d8474b5647b05bb91f1012fd5bed",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"proof runner contracts\",\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
       "truth_class": "derived"
     },
     {
@@ -26942,7 +26942,7 @@
       "target_id": "a738afa26005fd57b7d9ff8990f1333e",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"door dismiss landing\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -27138,7 +27138,7 @@
       "target_id": "ad873b67899063922d98d0923cef9d7b",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"find tag\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -27229,7 +27229,7 @@
       "target_id": "b01260c0ea8d0687499380df0960a671",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"11 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -27243,7 +27243,7 @@
       "target_id": "b04cb3ac0fca07aaeb08cab7c52be03b",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":\"dispatch\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
@@ -27362,7 +27362,7 @@
       "target_id": "b23f2fe93d6020b7f576e2a7fc159207",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"5 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -27376,7 +27376,7 @@
       "target_id": "b2b3ae7f05978a751b4bc9fa6cf8bfcb",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"12 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -27453,7 +27453,7 @@
       "target_id": "b57f79151062b9109d79e7a552ee37f0",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring14 proves llm-lane ratification is denied (INV-8)\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -27593,7 +27593,7 @@
       "target_id": "b94f4bf70dff258e9139a8b07fd6300d",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -27663,7 +27663,7 @@
       "target_id": "bb3737b706f96354edac292ffb232e03",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"sync symbol scope\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -28020,7 +28020,7 @@
       "target_id": "c24c2964b5b7da2c39b27532236b7952",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"precision ring\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -28048,7 +28048,7 @@
       "target_id": "c376864697a2d5c05a6477aee89ec5ef",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"derived plane INV-2\",\"used_by\":\"reached from recorded usage, 1 hop(s)\",\"usage_hops\":1}",
       "truth_class": "derived"
     },
     {
@@ -28083,14 +28083,14 @@
       "target_id": "c4ae46671fbfda6da41d3d5a3bbdacb6",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"54 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "c53fa1aa18f8adc90b70eabcd8f59bbe",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"11 test(s) reported passing by the runner\",\"call_witness\":\"run\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
@@ -28111,7 +28111,7 @@
       "target_id": "c612bfc13dff17ba087f658325e15509",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"find empty\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -28216,7 +28216,7 @@
       "target_id": "c9ed49297310b82aec31e1c1c3de15e2",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring17 journal\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -28419,7 +28419,7 @@
       "target_id": "cde02370d4a4922184b5c0e523d12367",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ratification provenance contract\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -28468,14 +28468,14 @@
       "target_id": "ce3eef8bca489bea3f6d96b661a8ea90",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"22 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "ce766bf67aec8e9934902eca0fef9708",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -28748,7 +28748,7 @@
       "target_id": "da66f552d235cdfe360210d1317d68bf",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -28965,7 +28965,7 @@
       "target_id": "e02751e51bee3799d18e67184766a8fd",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"9 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -29084,7 +29084,7 @@
       "target_id": "e4974ddbe36741587f236fd36277150b",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -29623,7 +29623,7 @@
       "target_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"sync reopens grounded edges\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"sync dependent evidence grading\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -29721,7 +29721,7 @@
       "target_id": "f417e7dcd27f079d9f4954e0f0a0e033",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":\"append\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
@@ -29756,7 +29756,7 @@
       "target_id": "f5bbcf954ed4ace68c02143b3c085029",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"66 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -29819,7 +29819,7 @@
       "target_id": "f82fe91c4c1fb98fbf97bfb4f5ab68de",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"semantic impact preserves or routes reconfirmation\",\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -29987,7 +29987,7 @@
       "target_id": "fcb27a29ea1d1198d0cc0478497daf9a",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"4 test(s) reported passing by the runner\",\"call_witness\":\"assert_fact\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
@@ -30050,7 +30050,7 @@
       "target_id": "fe0d171a2e0db395c10543a1b259e27b",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -30113,14 +30113,14 @@
       "target_id": "ff11f5b41fb73fcbda03b7f07fef3bc3",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S1\",\"ran_and_passed\":true,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"assert something about the OUTPUT, not just the exit code — `stdout_contains`, `body`, or `exists`\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"2 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "ff5d38e1d8e842cecd760ea1e4d3f9d7",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"risk unit\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {

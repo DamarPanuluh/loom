@@ -92,8 +92,15 @@ pub struct StrengthWitness {
     pub grade: String,
     /// loom ran it and it exited as expected.
     pub ran_and_passed: bool,
-    /// How many non-exit-code assertions the proof makes.
+    /// How many non-exit-code assertions the proof makes, DECLARED in a spec
+    /// loom checks itself.
     pub content_assertions: usize,
+    /// Assertions the test runner reported having checked, parsed from the
+    /// output loom observed. Weaker than a declared expectation — the tool is
+    /// reporting on itself — so the witness keeps the two apart rather than
+    /// summing them into one number that hides which kind you have.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_assertions: Option<String>,
     /// The grounded symbol the proof's call closure reaches, if any.
     pub call_witness: Option<String>,
     pub baseline_clean: bool,
@@ -114,6 +121,84 @@ pub fn content_assertions(expect: &Expect) -> usize {
         + expect.exists.len()
         + expect.stdout_contains.len()
         + expect.stderr_contains.len()
+}
+
+/// What the runner said it checked, read out of the output loom observed.
+///
+/// Only a summary that names a POSITIVE number of passing checks AND an
+/// explicit zero failures counts. "ok" alone does not: a command can exit zero
+/// having run nothing, which is exactly the S1 case this is distinguishing
+/// itself from.
+///
+/// Deliberately conservative and deliberately separate from declared
+/// assertions. The tool is reporting on itself, so this is weaker evidence than
+/// an expectation loom checked — the witness records which kind you have.
+fn reported_assertions(edge: &Option<crate::model::Edge>, store: &Store) -> Result<Option<String>> {
+    let Some(edge) = edge else { return Ok(None) };
+    let Some(view) = store.fact(
+        &crate::store::Subject::Edge(edge.id.clone()),
+        crate::model::Claim::Verdict,
+    )?
+    else {
+        return Ok(None);
+    };
+    for row in &view.evidence {
+        let crate::evidence::Evidence::Run(run) = &row.payload else {
+            continue;
+        };
+        if let Some(summary) = parse_runner_summary(&run.stdout_excerpt) {
+            return Ok(Some(summary));
+        }
+    }
+    Ok(None)
+}
+
+/// Recognise the common runners' summary lines. Returns a human-readable
+/// description of what was checked, or `None` when the output does not state it.
+pub fn parse_runner_summary(output: &str) -> Option<String> {
+    for line in output.lines() {
+        let lower = line.to_ascii_lowercase();
+        // Rust: "test result: ok. 4 passed; 0 failed; ..."
+        if lower.contains("test result:") && lower.contains("passed") {
+            let passed = number_before(&lower, "passed")?;
+            let failed = number_before(&lower, "failed").unwrap_or(0);
+            if passed > 0 && failed == 0 {
+                return Some(format!("{passed} test(s) reported passing by the runner"));
+            }
+        }
+        // pytest: "==== 12 passed in 0.4s ====", jest: "Tests: 12 passed, 12 total"
+        if (lower.contains("passed") || lower.contains("passing"))
+            && !lower.contains("failed")
+            && !lower.contains("failing")
+        {
+            let passed = number_before(&lower, "passed")
+                .or_else(|| number_before(&lower, "passing"))
+                .unwrap_or(0);
+            if passed > 0 {
+                return Some(format!("{passed} test(s) reported passing by the runner"));
+            }
+        }
+    }
+    None
+}
+
+/// The integer in a `<number> <word>` pair on this line, if there is one.
+///
+/// Scans TOKEN PAIRS rather than searching for the word: `find("failed")`
+/// matches the FAILED in "test result: FAILED. 3 passed; 2 failed", takes the
+/// token before it, fails to parse it, and defaults the failure count to zero —
+/// which graded a failing run as evidence. My own test caught it.
+fn number_before(line: &str, word: &str) -> Option<usize> {
+    let tokens: Vec<&str> = line.split_whitespace().collect();
+    tokens.windows(2).find_map(|pair| {
+        let tail = pair[1].trim_matches(|c: char| !c.is_ascii_alphabetic());
+        (tail == word).then(|| {
+            pair[0]
+                .trim_matches(|c: char| !c.is_ascii_digit())
+                .parse()
+                .ok()
+        })?
+    })
 }
 
 /// Does this spec cross a boundary loom does not itself control?
@@ -274,10 +359,20 @@ pub fn grade(
             .sum();
         w.boundary = boundary(spec);
     }
+    // A test runner's own summary — "4 passed; 0 failed" — states WHAT was
+    // checked, not merely that the process exited zero. That is strictly more
+    // than S1 asks for, and refusing to count it told every repo with a real
+    // test suite that its suite was liveness-only and it should write a thin
+    // journey instead. Backwards: it pushed people away from the proofs they
+    // already had.
     if w.content_assertions == 0 {
+        w.observed_assertions = reported_assertions(&edge, store)?;
+    }
+    if w.content_assertions == 0 && w.observed_assertions.is_none() {
         w.grade = Strength::S1.as_str().into();
         w.next = "assert something about the OUTPUT, not just the exit code — \
-                  `stdout_contains`, `body`, or `exists`"
+                  a spec with `stdout_contains`/`body`/`exists`, or a command \
+                  whose runner reports what it checked"
             .into();
         return Ok(w);
     }
@@ -437,5 +532,46 @@ mod tests {
         assert!(Strength::S5 > Strength::MEANINGFUL);
         assert_eq!(Strength::parse("S3"), Some(Strength::S3));
         assert_eq!(Strength::parse("L5"), None);
+    }
+}
+
+#[cfg(test)]
+mod runner_summary_tests {
+    use super::parse_runner_summary;
+
+    /// A runner's own summary states WHAT it checked. Refusing to read it told
+    /// every repo with a real test suite that its suite was liveness-only.
+    #[test]
+    fn common_runners_are_understood() {
+        assert!(
+            parse_runner_summary("test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured")
+                .unwrap()
+                .contains('4')
+        );
+        assert!(parse_runner_summary("==== 12 passed in 0.42s ====")
+            .unwrap()
+            .contains("12"));
+        assert!(parse_runner_summary("Tests:       7 passed, 7 total")
+            .unwrap()
+            .contains('7'));
+    }
+
+    /// Exiting zero having checked nothing is exactly the S1 case this
+    /// distinguishes itself from, so it must not be mistaken for evidence.
+    #[test]
+    fn a_bare_success_is_not_an_assertion() {
+        assert_eq!(parse_runner_summary(""), None);
+        assert_eq!(parse_runner_summary("ok"), None);
+        assert_eq!(parse_runner_summary("Done in 0.2s"), None);
+        // Zero tests ran: nothing was checked.
+        assert_eq!(
+            parse_runner_summary("test result: ok. 0 passed; 0 failed"),
+            None
+        );
+        // Something failed: the run is not evidence the behavior holds.
+        assert_eq!(
+            parse_runner_summary("test result: FAILED. 3 passed; 2 failed"),
+            None
+        );
     }
 }
