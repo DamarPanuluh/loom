@@ -602,6 +602,30 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
     }
     Ok(())
 }
+/// Flatten a contract's `examples` into readable lines, whatever its shape.
+fn render_examples(value: &serde_json::Value) -> Vec<String> {
+    match value {
+        serde_json::Value::Object(map) => map
+            .iter()
+            .filter(|(_, v)| !v.is_null())
+            .map(|(k, v)| match v.as_str() {
+                Some(text) => format!("{k}: {text}"),
+                None => format!("{k}: {v}"),
+            })
+            .collect(),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .filter_map(|item| {
+                let situation = item.get("situation")?.as_str()?;
+                let action = item.get("do")?.as_str()?;
+                Some(format!("{situation} → {action}"))
+            })
+            .collect(),
+        serde_json::Value::Null => Vec::new(),
+        other => vec![other.to_string()],
+    }
+}
+
 fn print_work_item(item: &workitem::WorkItem) {
     let c = &item.prompt_contract;
     let short = &item.target.id[..8.min(item.target.id.len())];
@@ -705,13 +729,17 @@ fn print_work_item(item: &workitem::WorkItem) {
     // These three were JSON-only, which meant a policy-configured human gate
     // was invisible to every text-mode worker — the packet said "go ahead" to
     // exactly the readers who most needed to be told to stop.
+    // Render whatever shape the lane put here: quality rules carry
+    // passing/failing, the coverage contract carries a list of situations.
+    // Looking for fixed "good"/"bad" keys meant quality examples never printed
+    // at all — the header appeared and the content did not.
     if let Some(examples) = &c.examples {
-        println!("  examples:");
-        for (label, value) in ["good", "bad"]
-            .iter()
-            .filter_map(|k| examples.get(*k).and_then(|v| v.as_str()).map(|v| (*k, v)))
-        {
-            println!("    {label}: {value}");
+        let lines = render_examples(examples);
+        if !lines.is_empty() {
+            println!("  examples:");
+            for line in lines {
+                println!("    {line}");
+            }
         }
     }
     if !c.pre_screened_hits.is_empty() {

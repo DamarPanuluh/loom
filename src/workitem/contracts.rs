@@ -367,9 +367,21 @@ pub(super) fn quality_contract_body(
         .get("evidence_template")
         .cloned()
         .filter(|v| !v.is_null());
-    let examples = match (body.get("passing_example"), body.get("failing_example")) {
-        (None, None) => None,
-        (p, f) => Some(serde_json::json!({ "passing": p, "failing": f })),
+    // Only the sides that actually exist. A rule carrying the keys with null
+    // values used to produce `{"passing":null,"failing":null}`, which renders
+    // as a section header with nothing under it — noise in a packet whose whole
+    // value is being readable.
+    let examples = {
+        let mut pairs = serde_json::Map::new();
+        for (key, value) in [
+            ("passing", body.get("passing_example")),
+            ("failing", body.get("failing_example")),
+        ] {
+            if let Some(v) = value.filter(|v| !v.is_null()) {
+                pairs.insert(key.to_string(), v.clone());
+            }
+        }
+        (!pairs.is_empty()).then(|| serde_json::Value::Object(pairs))
     };
     let write_back = format!(
         "loom rule verdict {} {} <passing|failing|independent> --criterion '…' --evidence '…' --confidence <0.0-1.0>",
