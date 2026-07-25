@@ -388,11 +388,21 @@ pub(crate) fn unowned_codefiles(store: &Store) -> Result<Vec<Node>> {
 /// `(registered, owned, unowned_names, observed)` after coverage exclusions.
 /// Ignored files are dropped from every bucket and observed files count only in
 /// the `observed` bucket, so `registered == owned + unowned`.
-pub(crate) fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec<String>, usize)> {
+/// `(registered, owned, unowned_names, observed)`.
+///
+/// Counts from [`unowned_codefiles`] rather than re-deriving the rule. It used
+/// to carry its own copy, which meant the "single definition of the coverage
+/// gap" was two definitions that agreed only by coincidence — and when the test
+/// -file rule landed in one of them, `loom coverage` and the `covered` rung
+/// disagreed about the same files.
+pub fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec<String>, usize)> {
     let ignore = crate::fsglob::matcher(store.ignore_globs()?)?;
+    let unowned: Vec<String> = unowned_codefiles(store)?
+        .into_iter()
+        .map(|n| n.name)
+        .collect();
     let mut owned = 0usize;
     let mut observed = 0usize;
-    let mut unowned = Vec::new();
     for cf in store.codefiles()? {
         if ignore.is_match(&cf.name) {
             continue;
@@ -401,13 +411,10 @@ pub(crate) fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec
             observed += 1;
             continue;
         }
-        if store.realizing_implementers(&cf.id)?.is_empty() {
-            unowned.push(cf.name);
-        } else {
+        if !unowned.contains(&cf.name) {
             owned += 1;
         }
     }
-    unowned.sort();
     Ok((owned + unowned.len(), owned, unowned, observed))
 }
 

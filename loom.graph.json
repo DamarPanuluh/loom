@@ -572,6 +572,19 @@
       "updated_at": "2026-07-19T02:46:56.704Z"
     },
     {
+      "id": "225041d7f794fda26514239a1cc1d1b4",
+      "type": "intent",
+      "name": "loom is reachable in-band as tools, not only as a subprocess",
+      "description": "Every capability is served over MCP through the same functions the CLI calls, so an agent pulls context and applies batches without shelling out.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.922Z",
+      "updated_at": "2026-07-25T07:31:29.922Z"
+    },
+    {
       "id": "225fd6bdb5a7752039f659d85d7b677b",
       "type": "note",
       "name": "note:decision",
@@ -598,6 +611,19 @@
       },
       "created_at": "2026-07-18T19:28:07.028Z",
       "updated_at": "2026-07-18T19:28:07.028Z"
+    },
+    {
+      "id": "2382f2515eb6dc5e223aaea4cbd3f0e4",
+      "type": "intent",
+      "name": "each kind of claim states how strongly it must be anchored",
+      "description": "Every (claim, edge kind, state) has a required verification level and a remedy naming the command that would reach it. Where no anchor could exist — an absence, an ungrounded relationship, a finding flagging no file — the floor says so instead of demanding an invented one.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.919Z",
+      "updated_at": "2026-07-25T07:31:29.919Z"
     },
     {
       "id": "23b97fb2ed54ce4e3746af4807e3591c",
@@ -1066,6 +1092,19 @@
       "updated_at": "2026-07-18T19:20:32.627Z"
     },
     {
+      "id": "3dd6e24534829b20e9d4ab1d568894cd",
+      "type": "intent",
+      "name": "every asserted fact is anchored to something loom can re-check",
+      "description": "A settled claim carries evidence loom can independently re-evaluate — a run it performed, a span it fingerprinted, a journal entry it wrote. Prose is recorded and never counts. A fact below its floor does not settle, so its lane keeps serving it.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.916Z",
+      "updated_at": "2026-07-25T07:31:29.916Z"
+    },
+    {
       "id": "3e717b1314125146031edeb4666887c2",
       "type": "note",
       "name": "note:decision",
@@ -1250,6 +1289,19 @@
       },
       "created_at": "2026-07-09T05:00:49.620Z",
       "updated_at": "2026-07-09T19:22:35.329Z"
+    },
+    {
+      "id": "483fd508eaa6a27648a6ce86b54fe6f2",
+      "type": "intent",
+      "name": "wantedness is earned from evidence, not demanded up front",
+      "description": "A behavior the code performs, that a proof loom ran covers, and that appears in recorded usage is de-facto wanted without anyone being asked. Asserted human judgment always wins, and a rejection is absolute.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.920Z",
+      "updated_at": "2026-07-25T07:31:29.920Z"
     },
     {
       "id": "48e8229f88ad7a1b9058425b4e85b79f",
@@ -2391,6 +2443,19 @@
       "updated_at": "2026-07-09T05:21:05.726Z"
     },
     {
+      "id": "82b78e81c798713d558ca1ca67faee3f",
+      "type": "intent",
+      "name": "proof strength is derived from the proof's shape",
+      "description": "S0-S5 is computed from what a proof actually does — did loom run it, does it assert about output rather than exit code, does its call closure reach the behavior's code, is there a clean baseline, does it cross a real boundary. No caller can claim a grade.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.920Z",
+      "updated_at": "2026-07-25T07:31:29.920Z"
+    },
+    {
       "id": "8328da60f296ac520e1ca86487d97b52",
       "type": "note",
       "name": "note:decision",
@@ -2650,6 +2715,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.628Z",
       "updated_at": "2026-07-09T04:59:38.628Z"
+    },
+    {
+      "id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
+      "type": "intent",
+      "name": "the human is asked only where judgment and evidence disagree",
+      "description": "Five concrete divergences — known-unwanted code still live, a promise nothing backs, meaning drifted under a yes, duplicate behaviors, and behavior nobody has spoken to. The last blocks only when users can see it.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.920Z",
+      "updated_at": "2026-07-25T07:31:29.920Z"
     },
     {
       "id": "8fd07ad596e5e6379a3c3d6cfbf004e0",
@@ -3177,6 +3255,19 @@
       "updated_at": "2026-07-18T19:20:32.829Z"
     },
     {
+      "id": "a2fd4889adcbef6ceba52d1229a317ff",
+      "type": "intent",
+      "name": "loom can fail its own falsifiability check",
+      "description": "The self-audit looks for the signatures this graph itself carried: judgments with no act recorded behind them, bursts too fast to have been made one at a time, and settled claims standing on nothing.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.921Z",
+      "updated_at": "2026-07-25T07:31:29.921Z"
+    },
+    {
       "id": "a30dff03b26ea7476b7e3fe4b66453bd",
       "type": "note",
       "name": "note:decision",
@@ -3701,6 +3792,19 @@
       "updated_at": "2026-07-18T19:56:12.975Z"
     },
     {
+      "id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
+      "type": "intent",
+      "name": "loom writes the graph from the work rather than asking for it twice",
+      "description": "Observing the difference between the tree and the graph yields proposed mutations with what loom saw stamped on them, re-checked at adoption. Where loom cannot derive the answer it asks instead of guessing.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.921Z",
+      "updated_at": "2026-07-25T07:31:29.921Z"
+    },
+    {
       "id": "b94f4bf70dff258e9139a8b07fd6300d",
       "type": "validation",
       "name": "find empty",
@@ -3764,6 +3868,19 @@
       "updated_at": "2026-07-09T05:40:57.084Z"
     },
     {
+      "id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "type": "intent",
+      "name": "loom runs proofs and reports what it observed",
+      "description": "A command's outcome comes from loom executing it, never from a caller describing it. The record carries the exit code, output hashes, and the file hashes in force at run time, so a later edit expires it.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.919Z",
+      "updated_at": "2026-07-25T07:31:29.919Z"
+    },
+    {
       "id": "bf8d4a243cd6d0a5d716bb5687b14b59",
       "type": "codefile",
       "name": "src/commands/drive_cmd.rs",
@@ -3773,6 +3890,19 @@
       "body": {},
       "created_at": "2026-07-18T20:01:29.176Z",
       "updated_at": "2026-07-18T20:01:29.176Z"
+    },
+    {
+      "id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "type": "intent",
+      "name": "every rung has a lane and a rung is unmet exactly when its queue is non-empty",
+      "description": "One routing table orders the ladder, names each rung's queue, and projects the compass. The compass is not a second decision that can disagree with the ladder.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.922Z",
+      "updated_at": "2026-07-25T07:31:29.922Z"
     },
     {
       "id": "c08992ddfdfd86e86fe8d1cddde4885d",
@@ -3808,6 +3938,19 @@
       "body": {},
       "created_at": "2026-07-09T04:59:38.628Z",
       "updated_at": "2026-07-09T04:59:38.628Z"
+    },
+    {
+      "id": "c24c2964b5b7da2c39b27532236b7952",
+      "type": "intent",
+      "name": "a change re-opens exactly the claims that pointed at what changed",
+      "description": "One re-verification pass asks every anchor whether it still holds, rather than a per-edge-kind table guessing what a change could invalidate. A symbol-scoped locator survives an unrelated edit in its file; a file-scoped citation does not.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.920Z",
+      "updated_at": "2026-07-25T07:31:29.920Z"
     },
     {
       "id": "c376864697a2d5c05a6477aee89ec5ef",
@@ -4040,6 +4183,19 @@
       "updated_at": "2026-07-18T14:50:59.406Z"
     },
     {
+      "id": "cde73673e54340c65e7e91db1c0cc44b",
+      "type": "intent",
+      "name": "loom answers what a change here could reach",
+      "description": "A call graph resolved from extraction across languages, reporting exact and heuristic resolutions separately rather than blending them into a number nobody can act on.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.921Z",
+      "updated_at": "2026-07-25T07:31:29.921Z"
+    },
+    {
       "id": "ce3eef8bca489bea3f6d96b661a8ea90",
       "type": "validation",
       "name": "symbol-pattern intent guard",
@@ -4095,6 +4251,21 @@
       "updated_at": ""
     },
     {
+      "id": "d01ff514f4675d737",
+      "type": "finding",
+      "name": "src/risk.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:5ea86472a4217e3473f3c7e4ec76a22f:73bd3c64daca91797965b663f5a950cc",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d02b10b15dc655c27a6b9b21b0649ece",
       "type": "validation",
       "name": "ring14 proves needs_reconfirmation re-enters ratify queue",
@@ -4109,6 +4280,21 @@
       "updated_at": "2026-07-19T18:18:41.504Z"
     },
     {
+      "id": "d03da87d4ad421162",
+      "type": "finding",
+      "name": "src/ratification.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:8b8635a5fdc0023f30de1399e61d0233:73bd3c64daca91797965b663f5a950cc",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d03e6ab228ff10a8a",
       "type": "finding",
       "name": "src/commands/proposal_cmd.rs::item_adopt takes many arguments",
@@ -4119,6 +4305,21 @@
         "kind": "excess_args",
         "metric": 7,
         "symbol": "item_adopt"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d0536f8f90c7a0fe1",
+      "type": "finding",
+      "name": "user-visible intent 'proof strength is derived from the proof's shape' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:82b78e81c798713d558ca1ca67faee3f",
+        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -4206,6 +4407,21 @@
         "kind": "large_symbol",
         "metric": 131,
         "symbol": "print_work_item"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d120b0aaf56257123",
+      "type": "finding",
+      "name": "src/lane.rs imports src/truth.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:16ec03569d07e56b5d6266a7730e0913:8fd07ad596e5e6379a3c3d6cfbf004e0",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -4431,12 +4647,12 @@
       "id": "d280d1b1e2f75c548",
       "type": "finding",
       "name": "src/absorb.rs::observe is long",
-      "description": "136 lines (> 120)",
+      "description": "175 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "large_symbol",
-        "metric": 136,
+        "metric": 175,
         "symbol": "observe"
       },
       "created_at": "",
@@ -4683,6 +4899,21 @@
       "updated_at": ""
     },
     {
+      "id": "d39a514d9c7d968d0",
+      "type": "finding",
+      "name": "src/audit.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:26867e32a47b467222ab2b7c3ba3239d:73bd3c64daca91797965b663f5a950cc",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d3ca936265c9eb560693c7f3909db617",
       "type": "codefile",
       "name": "src/commands/journey/invariants.rs",
@@ -4739,6 +4970,21 @@
       "updated_at": ""
     },
     {
+      "id": "d400d906df24cc854",
+      "type": "finding",
+      "name": "user-visible intent 'a green graph is pointed at its weakest standing claim' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:ff5d38e1d8e842cecd760ea1e4d3f9d7",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d41a94553a22fd93e",
       "type": "finding",
       "name": "src/commands/apply_cmd.rs::record_parts takes many arguments",
@@ -4764,6 +5010,21 @@
         "kind": "large_symbol",
         "metric": 157,
         "symbol": "codefile_show"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d4251912b438382f8",
+      "type": "finding",
+      "name": "user-visible intent 'loom answers what a change here could reach' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:cde73673e54340c65e7e91db1c0cc44b",
+        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -4892,12 +5153,12 @@
       "id": "d4e9c3e5d50988885",
       "type": "finding",
       "name": "src/absorb.rs::observe is complex",
-      "description": "complexity ~15 (> 14)",
+      "description": "complexity ~17 (> 14)",
       "status": "complex_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "complex_symbol",
-        "metric": 15,
+        "metric": 17,
         "symbol": "observe"
       },
       "created_at": "",
@@ -4929,6 +5190,21 @@
         "kind": "oversized_file",
         "metric": 1450,
         "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d52a57ed0d5d592b3",
+      "type": "finding",
+      "name": "src/callgraph.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:e8144eba31454517f0347a52ee443987:73bd3c64daca91797965b663f5a950cc",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -5034,6 +5310,36 @@
       "updated_at": "2026-07-09T04:59:38.632Z"
     },
     {
+      "id": "d580fb2ddb9c55d81",
+      "type": "finding",
+      "name": "src/runner.rs imports src/evidence.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:72384918a564c4f97f758f885469ece0:e5171cb5808f1854fae98b7296069e42",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d593400a499dde5d0",
+      "type": "finding",
+      "name": "user-visible intent 'loom is reachable in-band as tools, not only as a subprocess' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:225041d7f794fda26514239a1cc1d1b4",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d59ea450b0ce7b5a8",
       "type": "finding",
       "name": "src/commands/domain_cmd.rs::surface is long",
@@ -5074,6 +5380,36 @@
         "kind": "complex_symbol",
         "metric": 24,
         "symbol": "rule"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d63822d5a229ad92a",
+      "type": "finding",
+      "name": "src/divergence.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:0d62edb3986189fa1b78c068aa91a509:73bd3c64daca91797965b663f5a950cc",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d63fc5b67911e29a7",
+      "type": "finding",
+      "name": "src/commands/capture_cmd.rs::decide_cmd takes many arguments",
+      "description": "7 args (> 5)",
+      "status": "excess_args",
+      "truth_class": "derived",
+      "body": {
+        "kind": "excess_args",
+        "metric": 7,
+        "symbol": "decide_cmd"
       },
       "created_at": "",
       "updated_at": ""
@@ -5288,6 +5624,36 @@
       "updated_at": ""
     },
     {
+      "id": "d76a44556bf526251",
+      "type": "finding",
+      "name": "src/workitem/queues.rs imports src/lane.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:8c09800873ec56699ca584e7da49a20e:16ec03569d07e56b5d6266a7730e0913",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d78fcbbc864e6e2cc",
+      "type": "finding",
+      "name": "user-visible intent 'loom writes the graph from the work rather than asking for it twice' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:b90a37b6b4afa1035a2ef2ef8630f2a6",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d7908ed89e5ae5cb4",
       "type": "finding",
       "name": "src/store/facts.rs::reverify_all is long",
@@ -5366,12 +5732,12 @@
       "id": "d824dc670b049b437",
       "type": "finding",
       "name": "src/commands/diagnostics_cmd.rs is oversized",
-      "description": "1279 lines (> 1110)",
+      "description": "1308 lines (> 1110)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
-        "metric": 1279,
+        "metric": 1308,
         "symbol": ""
       },
       "created_at": "",
@@ -5586,6 +5952,21 @@
       "updated_at": ""
     },
     {
+      "id": "d9a65af27fcb058d6",
+      "type": "finding",
+      "name": "src/anchor.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:de7da6624c019d0a3c10f52af73ce5da:73bd3c64daca91797965b663f5a950cc",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d9b35a203478bd583",
       "type": "code_rule",
       "name": "complex-symbol",
@@ -5727,6 +6108,21 @@
       "updated_at": "2026-07-18T14:52:22.754Z"
     },
     {
+      "id": "da880a78962766e9f",
+      "type": "finding",
+      "name": "src/absorb.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:b62f57b48f0a4955a65a35a04ff501fa:73bd3c64daca91797965b663f5a950cc",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "da92f2f788cec0a1b",
       "type": "finding",
       "name": "src/commands/domain_cmd.rs::surface is complex",
@@ -5752,6 +6148,21 @@
         "category": "smell",
         "identity": "tangled_file:7ea392c6f00c1e88b731ab0331e898f2",
         "kind": "tangled_file"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dad6b74f1b81509f8",
+      "type": "finding",
+      "name": "user-visible intent 'a change re-opens exactly the claims that pointed at what changed' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:c24c2964b5b7da2c39b27532236b7952",
+        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -5889,6 +6300,21 @@
       "updated_at": ""
     },
     {
+      "id": "dbb5b0936b6d54b1c",
+      "type": "finding",
+      "name": "src/proofstrength.rs imports src/journey.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:99ce5df7d918b3d494f11964aa045d6d:94f6d6de1c7938f2b1e96bb8545ce2ed",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dbe304887a876b334",
       "type": "finding",
       "name": "src/commands/context_cmd.rs::append_file takes many arguments",
@@ -5963,6 +6389,21 @@
       "updated_at": ""
     },
     {
+      "id": "dc56a5f4afdc87430",
+      "type": "finding",
+      "name": "src/store/facts.rs imports src/anchor.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:a488260fd9f5a56552d87596b448571b:de7da6624c019d0a3c10f52af73ce5da",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dcb6e809fb272e968",
       "type": "finding",
       "name": "src/model.rs imports src/grammar.rs but their intents have no recorded relationship",
@@ -5973,6 +6414,21 @@
         "category": "smell",
         "identity": "undeclared_coupling:73bd3c64daca91797965b663f5a950cc:23b97fb2ed54ce4e3746af4807e3591c",
         "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dcc561d5cae23f93f",
+      "type": "finding",
+      "name": "user-visible intent 'loom runs proofs and reports what it observed' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:be6570d7348fa6fe2f64b70f8b6d3d60",
+        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -6005,6 +6461,21 @@
       },
       "created_at": "2026-07-19T04:10:51.771Z",
       "updated_at": "2026-07-19T04:10:51.771Z"
+    },
+    {
+      "id": "dd0fe6327644a6b30",
+      "type": "finding",
+      "name": "user-visible intent 'the human is asked only where judgment and evidence disagree' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:8e6ace5eeb00d56ac7f81f83b9aa54ed",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
     },
     {
       "id": "dd208d5000682385e",
@@ -6064,15 +6535,30 @@
       "updated_at": "2026-07-18T19:02:29.074Z"
     },
     {
+      "id": "dd4bbb327bcacf523",
+      "type": "finding",
+      "name": "src/workitem/mod.rs imports src/lane.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:1e0dbf429488355d9494ea5ec55932e4:16ec03569d07e56b5d6266a7730e0913",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dd571048cb58d0258",
       "type": "finding",
       "name": "src/commands.rs::run is long",
-      "description": "156 lines (> 120)",
+      "description": "173 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "large_symbol",
-        "metric": 156,
+        "metric": 173,
         "symbol": "run"
       },
       "created_at": "",
@@ -6089,6 +6575,21 @@
         "kind": "complex_symbol",
         "metric": 57,
         "symbol": "assert_fact"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dd6a75681685c123c",
+      "type": "finding",
+      "name": "user-visible intent 'wantedness is earned from evidence, not demanded up front' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:483fd508eaa6a27648a6ce86b54fe6f2",
+        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -6130,6 +6631,36 @@
         "kind": "large_symbol",
         "metric": 341,
         "symbol": "assert_fact"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de100d5afb2bdf9b8",
+      "type": "finding",
+      "name": "src/sync.rs is realized by 6 intents with no recorded relationship connecting them",
+      "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
+      "status": "tangled_file",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "tangled_file:9d8618c4a7a0ddb0227c59563a91173f",
+        "kind": "tangled_file"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de272e19f0c8ff513",
+      "type": "finding",
+      "name": "src/maturity.rs imports src/lane.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:7ea392c6f00c1e88b731ab0331e898f2:16ec03569d07e56b5d6266a7730e0913",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -6398,6 +6929,21 @@
       "updated_at": "2026-07-09T21:16:55.230Z"
     },
     {
+      "id": "df53069f575a94df3",
+      "type": "finding",
+      "name": "user-visible intent 'loom can fail its own falsifiability check' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "missing_journey_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "missing_journey_proof:a2fd4889adcbef6ceba52d1229a317ff",
+        "kind": "missing_journey_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "df62baf80dfd3d414",
       "type": "finding",
       "name": "src/runner.rs::observe_command takes many arguments",
@@ -6654,6 +7200,19 @@
       },
       "created_at": "2026-07-09T19:17:33.867Z",
       "updated_at": "2026-07-09T19:17:33.867Z"
+    },
+    {
+      "id": "eca3516b29a7d661a98e2db4008b33a8",
+      "type": "intent",
+      "name": "served context is tracked so its usefulness is measurable",
+      "description": "Every packet handed out is journaled, and the efficacy ratio correlates servings against work that later established something re-checkable. Statistical: reported, never gating.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.922Z",
+      "updated_at": "2026-07-25T07:31:29.922Z"
     },
     {
       "id": "ece70af58d6c3c17b1689fbf9921a393",
@@ -7045,6 +7604,19 @@
       },
       "created_at": "2026-07-09T05:20:44.193Z",
       "updated_at": "2026-07-09T21:11:50.598Z"
+    },
+    {
+      "id": "ff5d38e1d8e842cecd760ea1e4d3f9d7",
+      "type": "intent",
+      "name": "a green graph is pointed at its weakest standing claim",
+      "description": "Once every floor is met the ranking says what to strengthen — blast radius against proof strength against evidence age — and names one move. The queue re-orders rather than draining, so there is no terminal state.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-07-25T07:31:29.921Z",
+      "updated_at": "2026-07-25T07:31:29.921Z"
     }
   ],
   "edges": [
@@ -7455,6 +8027,20 @@
       "updated_at": "2026-07-09T21:08:00.750Z"
     },
     {
+      "id": "137557be4aa3755af2d91565ef77832b",
+      "from_id": "a2fd4889adcbef6ceba52d1229a317ff",
+      "to_id": "26867e32a47b467222ab2b7c3ba3239d",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.542Z",
+      "updated_at": "2026-07-25T07:31:50.542Z"
+    },
+    {
       "id": "13ad7c37388424a0c96cfce14ed616d9",
       "from_id": "d23f5c463fb1e4861",
       "to_id": "60cba87536facf7d78552f2ed29da0d2",
@@ -7581,6 +8167,20 @@
       "updated_at": "2026-07-18T19:12:09.297Z"
     },
     {
+      "id": "19f0bb4f083c57e918d61c1d4a47ea06",
+      "from_id": "225041d7f794fda26514239a1cc1d1b4",
+      "to_id": "9926afe98b7796517e008df1f27e097a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.543Z",
+      "updated_at": "2026-07-25T07:31:50.543Z"
+    },
+    {
       "id": "19fb59487bc05ce0f8cef770f559a9a0",
       "from_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "to_id": "44622b82dffeccf4fc474d85d24bdeda",
@@ -7681,6 +8281,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:09:26.472Z",
       "updated_at": "2026-07-19T02:39:41.595Z"
+    },
+    {
+      "id": "1d13ec8e5e213c0016b4baec8670e5c5",
+      "from_id": "cde73673e54340c65e7e91db1c0cc44b",
+      "to_id": "e8144eba31454517f0347a52ee443987",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.541Z",
+      "updated_at": "2026-07-25T07:31:50.541Z"
     },
     {
       "id": "1d2bf8847e49d15a8c396db411fd9575",
@@ -8066,6 +8680,20 @@
       "updated_at": "2026-07-19T06:15:56.621Z"
     },
     {
+      "id": "3140ee868f2136db2db0bc8baa9aceaa",
+      "from_id": "c24c2964b5b7da2c39b27532236b7952",
+      "to_id": "9d8618c4a7a0ddb0227c59563a91173f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.541Z",
+      "updated_at": "2026-07-25T07:31:50.541Z"
+    },
+    {
       "id": "3379ea17ab429e6d4398715f3804f4c0",
       "from_id": "5e7c17282673008b6b70f3b2066aff2f",
       "to_id": "f2d36098dd6d84a9b2d81b316e3ded3d",
@@ -8120,6 +8748,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T05:22:17.566Z",
       "updated_at": "2026-07-18T19:14:47.858Z"
+    },
+    {
+      "id": "363bc9f6e127ec05a87cd3a88da86c7b",
+      "from_id": "2382f2515eb6dc5e223aaea4cbd3f0e4",
+      "to_id": "de7da6624c019d0a3c10f52af73ce5da",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.540Z",
+      "updated_at": "2026-07-25T07:31:50.540Z"
     },
     {
       "id": "36df81ace25202be06746fa379f77681",
@@ -8204,6 +8846,20 @@
       "inspected_by": "",
       "created_at": "2026-07-19T05:20:06.035Z",
       "updated_at": "2026-07-19T05:20:06.039Z"
+    },
+    {
+      "id": "3b7fc0fdfc3297dfc95386b0e2ed6bde",
+      "from_id": "ff5d38e1d8e842cecd760ea1e4d3f9d7",
+      "to_id": "5ea86472a4217e3473f3c7e4ec76a22f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.542Z",
+      "updated_at": "2026-07-25T07:31:50.542Z"
     },
     {
       "id": "3df75ffba351bbdafba2c4bbe66b7225",
@@ -8699,6 +9355,20 @@
       "updated_at": "2026-07-19T03:44:22.905Z"
     },
     {
+      "id": "4da5bf51f46c5b39096cb5cf08cebb93",
+      "from_id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
+      "to_id": "0d62edb3986189fa1b78c068aa91a509",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.541Z",
+      "updated_at": "2026-07-25T07:31:50.541Z"
+    },
+    {
       "id": "4daa8b6e100785135762560e0cb24e95",
       "from_id": "5a237b75cf389bb19bff406a2f296eed",
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
@@ -8714,6 +9384,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:13:44.530Z",
       "updated_at": "2026-07-18T19:13:40.283Z"
+    },
+    {
+      "id": "4db83d10f68587913b3885537f5c5cb3",
+      "from_id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
+      "to_id": "f5c009c49fc0b03917b3d28e40dc1677",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.805Z",
+      "updated_at": "2026-07-25T07:32:10.805Z"
     },
     {
       "id": "4df6934bd236cd66cc96c334984ae733",
@@ -8732,6 +9416,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:14:25.481Z",
       "updated_at": "2026-07-19T02:39:23.632Z"
+    },
+    {
+      "id": "4dfeea8fc286713febef32c9332430c7",
+      "from_id": "82b78e81c798713d558ca1ca67faee3f",
+      "to_id": "99ce5df7d918b3d494f11964aa045d6d",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.540Z",
+      "updated_at": "2026-07-25T07:31:50.540Z"
     },
     {
       "id": "4e21d620ad3187cab3809fc31bb7adbc",
@@ -8886,6 +9584,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:09:26.483Z",
       "updated_at": "2026-07-19T03:44:58.834Z"
+    },
+    {
+      "id": "53e367413be7d8f40ef8be9815663eac",
+      "from_id": "483fd508eaa6a27648a6ce86b54fe6f2",
+      "to_id": "8b8635a5fdc0023f30de1399e61d0233",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.541Z",
+      "updated_at": "2026-07-25T07:31:50.541Z"
     },
     {
       "id": "541e79666b069b950f5b3c317e436180",
@@ -9322,6 +10034,20 @@
       "updated_at": "2026-07-19T02:39:41.606Z"
     },
     {
+      "id": "676ee19d6d5451a558219e93e385c029",
+      "from_id": "cde73673e54340c65e7e91db1c0cc44b",
+      "to_id": "fbff97dbe5292fc4602c6058c57d38f9",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.803Z",
+      "updated_at": "2026-07-25T07:32:10.803Z"
+    },
+    {
       "id": "680a91824247d74ad7ea66b383dfae21",
       "from_id": "d23f5c463fb1e4861",
       "to_id": "532576fe14cb8bc3d398797ca58f08c0",
@@ -9520,6 +10246,20 @@
       "updated_at": "2026-07-18T19:48:15.954Z"
     },
     {
+      "id": "6ffd6edcee6638988829efb60addbc27",
+      "from_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "to_id": "2b7475303e69cf6d01c844b404ce3517",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.805Z",
+      "updated_at": "2026-07-25T07:32:10.805Z"
+    },
+    {
       "id": "709b22e6c58b4369df3ceccbe7dee175",
       "from_id": "d9697ad2cc3ba5d0c",
       "to_id": "a665d1c5fda0a34600d81165c1ceedc6",
@@ -9574,6 +10314,20 @@
       "inspected_by": "",
       "created_at": "2026-07-19T18:13:12.069Z",
       "updated_at": "2026-07-19T18:17:05.324Z"
+    },
+    {
+      "id": "73139422d39ac312dce19a2100b7959c",
+      "from_id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "to_id": "16ec03569d07e56b5d6266a7730e0913",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.542Z",
+      "updated_at": "2026-07-25T07:31:50.542Z"
     },
     {
       "id": "74402186b0957bd4a42b881593934c30",
@@ -9999,6 +10753,20 @@
       "updated_at": "2026-07-18T19:15:09.939Z"
     },
     {
+      "id": "87fd012abf47ca845023f8fd8ed77efc",
+      "from_id": "483fd508eaa6a27648a6ce86b54fe6f2",
+      "to_id": "2c084da115079fe9527e01b64003305a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.804Z",
+      "updated_at": "2026-07-25T07:32:10.804Z"
+    },
+    {
       "id": "897257fbf600e77308eeb771189d6d6d",
       "from_id": "d2e01de8af8327d1b",
       "to_id": "1d135280c7bb80c6764f635a7d7fbe35",
@@ -10095,6 +10863,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:42:51.676Z",
       "updated_at": "2026-07-18T19:14:48.218Z"
+    },
+    {
+      "id": "8d3c56252318bad799afae13b79e8f0c",
+      "from_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
+      "to_id": "b62f57b48f0a4955a65a35a04ff501fa",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.542Z",
+      "updated_at": "2026-07-25T07:31:50.542Z"
     },
     {
       "id": "8db06e73c0cdb43262b87dc4f7701066",
@@ -10391,6 +11173,20 @@
       "updated_at": "2026-07-09T05:22:16.658Z"
     },
     {
+      "id": "97adddb66412240036b09561bd8e58e5",
+      "from_id": "eca3516b29a7d661a98e2db4008b33a8",
+      "to_id": "e22519add2eb352f91c1c53d908d6e62",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.543Z",
+      "updated_at": "2026-07-25T07:31:50.543Z"
+    },
+    {
       "id": "9851e57f80b041d8a99eca77fb93a46a",
       "from_id": "a665d1c5fda0a34600d81165c1ceedc6",
       "to_id": "532576fe14cb8bc3d398797ca58f08c0",
@@ -10543,6 +11339,20 @@
       "inspected_by": "",
       "created_at": "2026-07-18T19:15:09.921Z",
       "updated_at": "2026-07-19T05:20:05.822Z"
+    },
+    {
+      "id": "a01b2904a3553af4ca197d57de477378",
+      "from_id": "3dd6e24534829b20e9d4ab1d568894cd",
+      "to_id": "a488260fd9f5a56552d87596b448571b",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.539Z",
+      "updated_at": "2026-07-25T07:31:50.539Z"
     },
     {
       "id": "a1454e6ecdc3a5d976d45e60acdd29fe",
@@ -10755,6 +11565,20 @@
       "updated_at": "2026-07-09T19:09:26.475Z"
     },
     {
+      "id": "a8488264fd0d0d589692bb4881e5b0a3",
+      "from_id": "3dd6e24534829b20e9d4ab1d568894cd",
+      "to_id": "ece70af58d6c3c17b1689fbf9921a393",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.804Z",
+      "updated_at": "2026-07-25T07:32:10.804Z"
+    },
+    {
       "id": "a8ed805c2413dfc54a9622cb5dce7fef",
       "from_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "to_id": "d3ca936265c9eb560693c7f3909db617",
@@ -10767,6 +11591,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:09:26.478Z",
       "updated_at": "2026-07-09T19:09:26.478Z"
+    },
+    {
+      "id": "a9f07b6baee318aea964786be9bd2e47",
+      "from_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "to_id": "72384918a564c4f97f758f885469ece0",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:31:50.540Z",
+      "updated_at": "2026-07-25T07:31:50.540Z"
     },
     {
       "id": "aa2baa73d0f723187a6b434e312caebf",
@@ -10979,6 +11817,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T19:09:26.480Z",
       "updated_at": "2026-07-09T19:09:26.480Z"
+    },
+    {
+      "id": "b39f891ff07ed0924eb6d69875227972",
+      "from_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
+      "to_id": "df3055f69b9859ae1152095d30fa5344",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.805Z",
+      "updated_at": "2026-07-25T07:32:10.805Z"
     },
     {
       "id": "b3d0529d9ba9bda33206e7914e258cf0",
@@ -11360,6 +12212,20 @@
       "inspected_by": "",
       "created_at": "2026-07-19T18:13:12.130Z",
       "updated_at": "2026-07-19T18:17:05.355Z"
+    },
+    {
+      "id": "c71fb4f65db803e64dbf072c74385284",
+      "from_id": "a2fd4889adcbef6ceba52d1229a317ff",
+      "to_id": "7cbad12c5145c09da338e74b7ecc8e84",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.805Z",
+      "updated_at": "2026-07-25T07:32:10.805Z"
     },
     {
       "id": "c7ccc1fa39f56b0b3f87731f7daab20d",
@@ -12035,6 +12901,20 @@
       "inspected_by": "",
       "created_at": "2026-07-18T14:50:55.182Z",
       "updated_at": "2026-07-18T14:52:22.752Z"
+    },
+    {
+      "id": "d24bc9b4ff8cc4e0f",
+      "from_id": "d63fc5b67911e29a7",
+      "to_id": "8de84dddb070d7f3adbb02b6223e60af",
+      "kind": "flags",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
     },
     {
       "id": "d26ca164058057144",
@@ -12793,6 +13673,20 @@
       "updated_at": ""
     },
     {
+      "id": "d688f089c20022864c60ee8642883fe8",
+      "from_id": "225041d7f794fda26514239a1cc1d1b4",
+      "to_id": "992defea24a34137722a0ba560937928",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.804Z",
+      "updated_at": "2026-07-25T07:32:10.804Z"
+    },
+    {
       "id": "d694c52852b97fec5",
       "from_id": "dc1871aa6c2a8e7d8",
       "to_id": "a819a5f46c71c1074f2b96a4ad56bcb1",
@@ -13314,6 +14208,20 @@
       "id": "da0893ff689e4b6a9",
       "from_id": "d6b25e205e2b004b8",
       "to_id": "db7de80cbbb28c471",
+      "kind": "assesses",
+      "truth_class": "derived",
+      "status": "current",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "da0b46d753a630edc",
+      "from_id": "d63fc5b67911e29a7",
+      "to_id": "dd371408af4da502b",
       "kind": "assesses",
       "truth_class": "derived",
       "status": "current",
@@ -14799,6 +15707,20 @@
       "updated_at": "2026-07-19T05:18:23.392Z"
     },
     {
+      "id": "eb1db9fab7af92fc9f534a6a22ed89d4",
+      "from_id": "c24c2964b5b7da2c39b27532236b7952",
+      "to_id": "0c2f22b0fd2d32d2f0418126a8a2151b",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.805Z",
+      "updated_at": "2026-07-25T07:32:10.805Z"
+    },
+    {
       "id": "ec92e384792f08cc440a6cb502170945",
       "from_id": "c376864697a2d5c05a6477aee89ec5ef",
       "to_id": "31de84020fb4888a6bea359e9aa60698",
@@ -14811,6 +15733,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T04:59:40.845Z",
       "updated_at": "2026-07-09T04:59:40.864Z"
+    },
+    {
+      "id": "ed5c4f587756ae5f99eacbc5e4a18f96",
+      "from_id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "to_id": "e898816a1835444d67ad471a3b9a3cd1",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.804Z",
+      "updated_at": "2026-07-25T07:32:10.804Z"
     },
     {
       "id": "ee367066162d254c6220429e96c8a915",
@@ -14853,6 +15789,20 @@
       "inspected_by": "",
       "created_at": "2026-07-09T05:40:55.129Z",
       "updated_at": "2026-07-24T17:39:49.453Z"
+    },
+    {
+      "id": "eef047333b793d4f6b1c84392ccfd60a",
+      "from_id": "eca3516b29a7d661a98e2db4008b33a8",
+      "to_id": "37c798cc4cae592d8929dee50f33677c",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.805Z",
+      "updated_at": "2026-07-25T07:32:10.805Z"
     },
     {
       "id": "ef5f30a4cd4a6ae377e181afcbbec065",
@@ -15063,6 +16013,20 @@
       "inspected_by": "",
       "created_at": "2026-07-18T19:56:13.022Z",
       "updated_at": "2026-07-18T20:03:32.621Z"
+    },
+    {
+      "id": "f59c8e50b2a4bd4af183ba328e34ec8a",
+      "from_id": "2382f2515eb6dc5e223aaea4cbd3f0e4",
+      "to_id": "608e7a43b7e4cf0c192d5ca2cd005205",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-07-25T07:32:10.805Z",
+      "updated_at": "2026-07-25T07:32:10.805Z"
     },
     {
       "id": "f61c9e75146772d038fd8167dd0ed947",
@@ -15788,6 +16752,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "137557be4aa3755af2d91565ef77832b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "run",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "16ec03569d07e56b5d6266a7730e0913",
       "target_kind": "node",
       "key": "calls",
@@ -16040,6 +17011,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "19f0bb4f083c57e918d61c1d4a47ea06",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "serve",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "19fb59487bc05ce0f8cef770f559a9a0",
       "target_kind": "edge",
       "key": "locator",
@@ -16131,6 +17109,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "1d13ec8e5e213c0016b4baec8670e5c5",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "build",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "1d9dab3b1be1727ef8feacce0f52a0f3",
       "target_kind": "edge",
       "key": "locator",
@@ -16197,14 +17182,14 @@
       "target_id": "1f6328bf2325924b32100e6d87f00554",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"append_file>append_intent\",\"append_file>append_notes\",\"append_file>format\",\"append_file>node_entity\",\"append_file>push_edge\",\"append_file>push_entity\",\"append_file>push_file_read\",\"append_file>push_suggested_read\",\"append_file>store::get_node\",\"append_file>touching_edges\",\"append_intent>Ok\",\"append_intent>append_notes\",\"append_intent>edge_locator\",\"append_intent>format\",\"append_intent>intent_entity\",\"append_intent>node_entity\",\"append_intent>push_edge\",\"append_intent>push_entity\",\"append_intent>push_file_read\",\"append_intent>push_suggested_read\",\"append_intent>store::get_node\",\"append_intent>touching_edges\",\"append_notes>Ok\",\"append_notes>node_entity\",\"append_notes>push_entity\",\"append_notes>status::as_str\",\"append_notes>store::notes_for\",\"context_cmd>open_read\",\"context_cmd>render\",\"context_cmd>served_context\",\"context_packet>\\\"query\\\"::into\",\"context_packet>BTreeSet::new\",\"context_packet>Ok\",\"context_packet>Some\",\"context_packet>Vec::new\",\"context_packet>append_intent\",\"context_packet>bail\",\"context_packet>discover_cmd::keyword_hits\",\"context_packet>empty_context\",\"context_packet>format\",\"context_packet>hits::is_empty\",\"context_packet>input::into\",\"context_packet>input::is_empty\",\"context_packet>input::trim\",\"context_packet>node_packet\",\"context_packet>store::codefiles\",\"context_packet>store::get_node\",\"context_packet>store::resolve_node\",\"edge_locator>store::get_facet\",\"empty_context>Vec::new\",\"intent_entity>\\\"ratification\\\"::into\",\"intent_entity>\\\"unratified\\\"::into\",\"intent_entity>BTreeMap::new\",\"intent_entity>Ok\",\"intent_entity>Some\",\"intent_entity>facets::insert\",\"intent_entity>key::into\",\"intent_entity>node_entity\",\"intent_entity>store::get_facet\",\"intent_entity>store::ratification\",\"node_entity>Some\",\"node_entity>description::clone\",\"node_entity>description::is_empty\",\"node_entity>id::clone\",\"node_entity>name::clone\",\"node_entity>node_type::as_str\",\"node_entity>role::into\",\"node_entity>status::clone\",\"node_entity>status::is_empty\",\"node_packet>BTreeSet::new\",\"node_packet>Ok\",\"node_packet>Vec::new\",\"node_packet>append_file\",\"node_packet>append_intent\",\"node_packet>completeness::scorecard\",\"node_packet>empty_context\",\"node_packet>format\",\"node_packet>intent_entity\",\"node_packet>node_entity\",\"node_packet>unreachable\",\"push_edge>\\\"edge\\\"::into\",\"push_edge>Ok\",\"push_edge>Some\",\"push_edge>criterion::clone\",\"push_edge>criterion::is_empty\",\"push_edge>edge_locator\",\"push_edge>format\",\"push_edge>id::clone\",\"push_edge>kind::as_str\",\"push_edge>linked_entities::push\",\"push_edge>matches\",\"push_edge>push_suggested_read\",\"push_edge>role::into\",\"push_edge>seen_edges::insert\",\"push_edge>staleness_flags::contains\",\"push_edge>staleness_flags::push\",\"push_edge>status::as_str\",\"push_entity>linked_entities::iter\",\"push_entity>linked_entities::push\",\"push_file_read>name::clone\",\"push_file_read>read_set::iter\",\"push_file_read>read_set::push\",\"push_file_read>store::root\",\"push_file_read>why::into\",\"push_suggested_read>reason::into\",\"push_suggested_read>suggested_reads::iter\",\"push_suggested_read>suggested_reads::push\",\"render>Ok\",\"render>edge_status::as_deref\",\"render>format\",\"render>linked_entities::iter\",\"render>locator::as_deref\",\"render>println\",\"render>role::as_str\",\"render>roles::contains\",\"render>rows::is_empty\",\"render>staleness_flags::is_empty\",\"render>status::as_deref\",\"served_context>Ok\",\"served_context>Some\",\"served_context>context_packet\",\"served_context>packet::serve_one\",\"served_context>packet::target_id\",\"served_context>store::root\",\"touching_edges>Ok\",\"touching_edges>Some\",\"touching_edges>edges::dedup_by\",\"touching_edges>edges::extend\",\"touching_edges>edges::sort_by\",\"touching_edges>id::cmp\",\"touching_edges>store::edges_with\"]",
+      "value": "[\"append_file>append_intent\",\"append_file>append_notes\",\"append_file>format\",\"append_file>node_entity\",\"append_file>push_edge\",\"append_file>push_entity\",\"append_file>push_file_read\",\"append_file>push_suggested_read\",\"append_file>store::get_node\",\"append_file>touching_edges\",\"append_intent>Ok\",\"append_intent>append_notes\",\"append_intent>edge_locator\",\"append_intent>format\",\"append_intent>intent_entity\",\"append_intent>node_entity\",\"append_intent>push_edge\",\"append_intent>push_entity\",\"append_intent>push_file_read\",\"append_intent>push_suggested_read\",\"append_intent>store::get_node\",\"append_intent>touching_edges\",\"append_notes>Ok\",\"append_notes>body::get\",\"append_notes>format\",\"append_notes>node_entity\",\"append_notes>push_entity\",\"append_notes>status::as_str\",\"append_notes>store::notes_for\",\"append_notes>v::as_str\",\"context_cmd>open_read\",\"context_cmd>render\",\"context_cmd>served_context\",\"context_packet>\\\"query\\\"::into\",\"context_packet>BTreeSet::new\",\"context_packet>Ok\",\"context_packet>Some\",\"context_packet>Vec::new\",\"context_packet>append_intent\",\"context_packet>bail\",\"context_packet>discover_cmd::keyword_hits\",\"context_packet>empty_context\",\"context_packet>format\",\"context_packet>hits::is_empty\",\"context_packet>input::into\",\"context_packet>input::is_empty\",\"context_packet>input::trim\",\"context_packet>node_packet\",\"context_packet>store::codefiles\",\"context_packet>store::get_node\",\"context_packet>store::resolve_node\",\"edge_locator>store::get_facet\",\"empty_context>Vec::new\",\"intent_entity>\\\"ratification\\\"::into\",\"intent_entity>\\\"unratified\\\"::into\",\"intent_entity>BTreeMap::new\",\"intent_entity>Ok\",\"intent_entity>Some\",\"intent_entity>facets::insert\",\"intent_entity>key::into\",\"intent_entity>node_entity\",\"intent_entity>store::get_facet\",\"intent_entity>store::ratification\",\"node_entity>Some\",\"node_entity>description::clone\",\"node_entity>description::is_empty\",\"node_entity>id::clone\",\"node_entity>name::clone\",\"node_entity>node_type::as_str\",\"node_entity>role::into\",\"node_entity>status::clone\",\"node_entity>status::is_empty\",\"node_packet>BTreeSet::new\",\"node_packet>Ok\",\"node_packet>Vec::new\",\"node_packet>append_file\",\"node_packet>append_intent\",\"node_packet>completeness::scorecard\",\"node_packet>empty_context\",\"node_packet>format\",\"node_packet>intent_entity\",\"node_packet>node_entity\",\"node_packet>unreachable\",\"push_edge>\\\"edge\\\"::into\",\"push_edge>Ok\",\"push_edge>Some\",\"push_edge>criterion::clone\",\"push_edge>criterion::is_empty\",\"push_edge>edge_locator\",\"push_edge>format\",\"push_edge>id::clone\",\"push_edge>kind::as_str\",\"push_edge>linked_entities::push\",\"push_edge>matches\",\"push_edge>push_suggested_read\",\"push_edge>role::into\",\"push_edge>seen_edges::insert\",\"push_edge>staleness_flags::contains\",\"push_edge>staleness_flags::push\",\"push_edge>status::as_str\",\"push_entity>linked_entities::iter\",\"push_entity>linked_entities::push\",\"push_file_read>name::clone\",\"push_file_read>read_set::iter\",\"push_file_read>read_set::push\",\"push_file_read>store::root\",\"push_file_read>why::into\",\"push_suggested_read>reason::into\",\"push_suggested_read>suggested_reads::iter\",\"push_suggested_read>suggested_reads::push\",\"render>Ok\",\"render>edge_status::as_deref\",\"render>format\",\"render>linked_entities::iter\",\"render>locator::as_deref\",\"render>println\",\"render>role::as_str\",\"render>roles::contains\",\"render>rows::is_empty\",\"render>staleness_flags::is_empty\",\"render>status::as_deref\",\"served_context>Ok\",\"served_context>Some\",\"served_context>context_packet\",\"served_context>packet::serve_one\",\"served_context>packet::target_id\",\"served_context>store::root\",\"touching_edges>Ok\",\"touching_edges>Some\",\"touching_edges>edges::dedup_by\",\"touching_edges>edges::extend\",\"touching_edges>edges::sort_by\",\"touching_edges>id::cmp\",\"touching_edges>store::edges_with\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "1f6328bf2325924b32100e6d87f00554",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "160f5b07bce30c9e",
+      "value": "44504357dee947e5",
       "truth_class": "derived"
     },
     {
@@ -16225,7 +17210,7 @@
       "target_id": "1f6328bf2325924b32100e6d87f00554",
       "target_kind": "node",
       "key": "loc",
-      "value": "533",
+      "value": "543",
       "truth_class": "derived"
     },
     {
@@ -16246,7 +17231,7 @@
       "target_id": "1f6328bf2325924b32100e6d87f00554",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"ContextPacket\":\"0d83271b158624cc\",\"append_file\":\"f3c5846fcb3f38a6\",\"append_intent\":\"fd3fed4a8f2c377b\",\"append_notes\":\"1a918455154b2c77\",\"context_cmd\":\"f371e29320a8edab\",\"context_packet\":\"dc36cb2dd0efc9e0\",\"edge_locator\":\"dfb4712fb5e3abb4\",\"empty_context\":\"5436818aa1f2e9bf\",\"intent_entity\":\"5a63c8992e15c279\",\"node_entity\":\"f0ccb9c5b59fe73a\",\"node_packet\":\"3a2c4dcac3df04f5\",\"push_edge\":\"56f8093ac4bbf10b\",\"push_entity\":\"04c9f3442eed7879\",\"push_file_read\":\"63cf8ace977b5670\",\"push_suggested_read\":\"d7ebfa817452d941\",\"render\":\"2a8c1cda0e6be834\",\"served_context\":\"d8d547e9752b7bfc\",\"target_id\":\"faf30bfcac171cf4\",\"touching_edges\":\"3553f60a9ccf9934\"}",
+      "value": "{\"ContextPacket\":\"0d83271b158624cc\",\"append_file\":\"f3c5846fcb3f38a6\",\"append_intent\":\"fd3fed4a8f2c377b\",\"append_notes\":\"15d7677dbad61e02\",\"context_cmd\":\"f371e29320a8edab\",\"context_packet\":\"dc36cb2dd0efc9e0\",\"edge_locator\":\"dfb4712fb5e3abb4\",\"empty_context\":\"5436818aa1f2e9bf\",\"intent_entity\":\"5a63c8992e15c279\",\"node_entity\":\"f0ccb9c5b59fe73a\",\"node_packet\":\"3a2c4dcac3df04f5\",\"push_edge\":\"56f8093ac4bbf10b\",\"push_entity\":\"04c9f3442eed7879\",\"push_file_read\":\"63cf8ace977b5670\",\"push_suggested_read\":\"d7ebfa817452d941\",\"render\":\"2a8c1cda0e6be834\",\"served_context\":\"d8d547e9752b7bfc\",\"target_id\":\"faf30bfcac171cf4\",\"touching_edges\":\"3553f60a9ccf9934\"}",
       "truth_class": "derived"
     },
     {
@@ -16313,10 +17298,66 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "225041d7f794fda26514239a1cc1d1b4",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "225041d7f794fda26514239a1cc1d1b4",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "225041d7f794fda26514239a1cc1d1b4",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "225041d7f794fda26514239a1cc1d1b4",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "229c345f3abfb7c8ef652fac8334c0c0",
       "target_kind": "edge",
       "key": "locator",
       "value": "module external diagnostic sensors",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2382f2515eb6dc5e223aaea4cbd3f0e4",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "2382f2515eb6dc5e223aaea4cbd3f0e4",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2382f2515eb6dc5e223aaea4cbd3f0e4",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2382f2515eb6dc5e223aaea4cbd3f0e4",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -16386,14 +17427,14 @@
       "target_id": "26867e32a47b467222ab2b7c3ba3239d",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\">assert_eq\",\"bursts>\\\"re-openthemandjudgethemindividually,orrecordthatthiswas\\\\abulkimportandwhatauthorizedit\\\"::into\",\"bursts>BTreeMap::new\",\"bursts>Ok\",\"bursts>Vec::new\",\"bursts>asserted_at::chars\",\"bursts>asserted_by::clone\",\"bursts>buckets::entry\",\"bursts>format\",\"bursts>out::push\",\"bursts>store::all_facts\",\"bursts>subject_id::clone\",\"bursts>subjects::len\",\"run>Ok\",\"run>Vec::new\",\"run>bursts\",\"run>kind::cmp\",\"run>out::extend\",\"run>out::sort_by\",\"run>subject::cmp\",\"run>unanchored_settled_facts\",\"run>unjournaled_ratifications\",\"unanchored_settled_facts>\\\"re-establishitwithevidenceloomcanre-check,orwithdrawit\\\"::into\",\"unanchored_settled_facts>Ok\",\"unanchored_settled_facts>Vec::new\",\"unanchored_settled_facts>anchor::is_settling\",\"unanchored_settled_facts>format\",\"unanchored_settled_facts>out::push\",\"unanchored_settled_facts>store::all_facts\",\"unanchored_settled_facts>subject_id::clone\",\"unjournaled_ratifications>Ok\",\"unjournaled_ratifications>Some\",\"unjournaled_ratifications>Vec::new\",\"unjournaled_ratifications>format\",\"unjournaled_ratifications>id::clone\",\"unjournaled_ratifications>journal::read\",\"unjournaled_ratifications>matches\",\"unjournaled_ratifications>out::push\",\"unjournaled_ratifications>store::list_nodes\",\"unjournaled_ratifications>store::ratification\",\"unjournaled_ratifications>store::root\"]",
+      "value": "[\">assert\",\">assert_eq\",\">epoch_millis\",\"bursts>\\\"re-openthemandjudgethemindividually,orrecordthatthiswas\\\\abulkimportandwhatauthorizedit\\\"::into\",\"bursts>BTreeMap::new\",\"bursts>Ok\",\"bursts>Vec::new\",\"bursts>asserted_at::chars\",\"bursts>asserted_by::clone\",\"bursts>buckets::entry\",\"bursts>format\",\"bursts>out::push\",\"bursts>store::all_facts\",\"bursts>subject_id::clone\",\"bursts>subjects::len\",\"efficacy>BTreeMap::new\",\"efficacy>Efficacy::default\",\"efficacy>Ok\",\"efficacy>asserted_at::clone\",\"efficacy>at::clone\",\"efficacy>by_kind::entry\",\"efficacy>epoch_millis\",\"efficacy>journal::read\",\"efficacy>node_settled::entry\",\"efficacy>node_settled::get\",\"efficacy>p::get\",\"efficacy>payload::get\",\"efficacy>settled_at::clone\",\"efficacy>settled_at::entry\",\"efficacy>store::all_facts\",\"efficacy>store::get_edge\",\"efficacy>store::root\",\"efficacy>subject_id::clone\",\"efficacy>v::as_array\",\"efficacy>v::as_str\",\"efficacy>verification::counts\",\"epoch_millis>Some\",\"epoch_millis>d::next\",\"epoch_millis>date::split\",\"epoch_millis>frac::chars\",\"epoch_millis>hms::split\",\"epoch_millis>iter::repeat\",\"epoch_millis>rest::trim_end_matches\",\"epoch_millis>stamp::parse\",\"epoch_millis>stamp::split_once\",\"epoch_millis>t::next\",\"epoch_millis>time::split_once\",\"run>Ok\",\"run>Vec::new\",\"run>bursts\",\"run>kind::cmp\",\"run>out::extend\",\"run>out::sort_by\",\"run>subject::cmp\",\"run>unanchored_settled_facts\",\"run>unjournaled_ratifications\",\"unanchored_settled_facts>\\\"re-establishitwithevidenceloomcanre-check,orwithdrawit\\\"::into\",\"unanchored_settled_facts>Ok\",\"unanchored_settled_facts>Vec::new\",\"unanchored_settled_facts>anchor::is_settling\",\"unanchored_settled_facts>format\",\"unanchored_settled_facts>out::push\",\"unanchored_settled_facts>store::all_facts\",\"unanchored_settled_facts>subject_id::clone\",\"unjournaled_ratifications>Ok\",\"unjournaled_ratifications>Some\",\"unjournaled_ratifications>Vec::new\",\"unjournaled_ratifications>format\",\"unjournaled_ratifications>id::clone\",\"unjournaled_ratifications>journal::read\",\"unjournaled_ratifications>matches\",\"unjournaled_ratifications>out::push\",\"unjournaled_ratifications>store::list_nodes\",\"unjournaled_ratifications>store::ratification\",\"unjournaled_ratifications>store::root\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "26867e32a47b467222ab2b7c3ba3239d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "fa1990382ec37b12",
+      "value": "8dce14277fb3bd05",
       "truth_class": "derived"
     },
     {
@@ -16414,7 +17455,7 @@
       "target_id": "26867e32a47b467222ab2b7c3ba3239d",
       "target_kind": "node",
       "key": "loc",
-      "value": "165",
+      "value": "330",
       "truth_class": "derived"
     },
     {
@@ -16428,14 +17469,14 @@
       "target_id": "26867e32a47b467222ab2b7c3ba3239d",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "5",
+      "value": "8",
       "truth_class": "derived"
     },
     {
       "target_id": "26867e32a47b467222ab2b7c3ba3239d",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"AuditFinding\":\"0d7c60acb2474fcc\",\"bursts\":\"85da77878bc581be\",\"run\":\"2bd7974450934153\",\"unanchored_settled_facts\":\"d08d0f2e7d1a157b\",\"unjournaled_ratifications\":\"81315c3fd0faa0a4\"}",
+      "value": "{\"AuditFinding\":\"0d7c60acb2474fcc\",\"Efficacy\":\"684a431dc7165960\",\"bursts\":\"85da77878bc581be\",\"efficacy\":\"92487cfde40c17c8\",\"epoch_millis\":\"a16e405c94816dd5\",\"run\":\"2bd7974450934153\",\"unanchored_settled_facts\":\"d08d0f2e7d1a157b\",\"unjournaled_ratifications\":\"81315c3fd0faa0a4\"}",
       "truth_class": "derived"
     },
     {
@@ -16703,6 +17744,13 @@
       "key": "proof_strength",
       "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "3140ee868f2136db2db0bc8baa9aceaa",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "run",
+      "truth_class": "asserted"
     },
     {
       "target_id": "31c4ef682081d7014e1e949c64e1abaf",
@@ -17055,6 +18103,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "363bc9f6e127ec05a87cd3a88da86c7b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "required_for",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "36df81ace25202be06746fa379f77681",
       "target_kind": "edge",
       "key": "locator",
@@ -17237,6 +18292,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "3b7fc0fdfc3297dfc95386b0e2ed6bde",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "rank",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "3c16c60023caa39092442175d086a9a7",
       "target_kind": "node",
       "key": "de_facto",
@@ -17329,6 +18391,34 @@
     },
     {
       "target_id": "3d4a5253cf790a31d5e232539640f39e",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3dd6e24534829b20e9d4ab1d568894cd",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3dd6e24534829b20e9d4ab1d568894cd",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3dd6e24534829b20e9d4ab1d568894cd",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
@@ -17478,7 +18568,7 @@
       "target_id": "42b22cfef645fe1172656f2cf3e21db5",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "218813c2b7456de6",
+      "value": "d1c8a4e7104dad05",
       "truth_class": "derived"
     },
     {
@@ -17499,7 +18589,7 @@
       "target_id": "42b22cfef645fe1172656f2cf3e21db5",
       "target_kind": "node",
       "key": "loc",
-      "value": "432",
+      "value": "457",
       "truth_class": "derived"
     },
     {
@@ -17520,7 +18610,7 @@
       "target_id": "42b22cfef645fe1172656f2cf3e21db5",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Cli\":\"9c476851921a1a2f\",\"Command\":\"e6f479f7bc29cb64\",\"GraphModeArg\":\"6e5be64d068ee04c\",\"ModeArg\":\"84daa6014f0b8923\",\"RoleArg\":\"cd9c823be04dc74f\",\"as_str\":\"a1fc5fc7ecb23ed3\",\"is_observed\":\"f2502f29e76bdf49\"}",
+      "value": "{\"Cli\":\"9c476851921a1a2f\",\"Command\":\"a17cf131c3c778a9\",\"GraphModeArg\":\"6e5be64d068ee04c\",\"ModeArg\":\"84daa6014f0b8923\",\"RoleArg\":\"cd9c823be04dc74f\",\"as_str\":\"a1fc5fc7ecb23ed3\",\"is_observed\":\"f2502f29e76bdf49\"}",
       "truth_class": "derived"
     },
     {
@@ -17583,14 +18673,14 @@
       "target_id": "44622b82dffeccf4fc474d85d24bdeda",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\">assert\",\">assert_eq\",\">query_terms\",\"code_ownership_summary>Ok\",\"code_ownership_summary>Vec::new\",\"code_ownership_summary>codefile_observed\",\"code_ownership_summary>fsglob::matcher\",\"code_ownership_summary>ignore::is_match\",\"code_ownership_summary>store::codefiles\",\"code_ownership_summary>store::ignore_globs\",\"code_ownership_summary>store::realizing_implementers\",\"code_ownership_summary>unowned::len\",\"code_ownership_summary>unowned::push\",\"code_ownership_summary>unowned::sort\",\"codefile_observed>body::get\",\"codefile_observed>v::as_bool\",\"human_present>env::var_os\",\"human_present>io::stdin\",\"human_present>matches\",\"layer>\\\"layerordercleared\\\"::to_string\",\"layer>Ok\",\"layer>bail\",\"layer>domain_cmd::layer_detector_state\",\"layer>format\",\"layer>layers::is_empty\",\"layer>open\",\"layer>order::is_empty\",\"layer>order::iter\",\"layer>println\",\"layer>pulse::emit_line\",\"layer>serde_json::json\",\"layer>serde_json::to_string\",\"layer>state::get\",\"layer>store::set_meta\",\"layer>v::as_array\",\"layer>v::as_str\",\"node_json>serde_json::json\",\"norm>c::is_alphanumeric\",\"norm>s::to_lowercase\",\"open>Store::open\",\"open>resolve_root\",\"open_read>Store::open_read\",\"open_read>resolve_root\",\"page_footer>Some\",\"page_footer>format\",\"query_terms>STOP::contains\",\"query_terms>q::dedup\",\"query_terms>q::is_empty\",\"query_terms>q::sort\",\"query_terms>query::split_whitespace\",\"query_terms>t::as_str\",\"query_terms>t::len\",\"read_json_meta>Ok\",\"read_json_meta>T::default\",\"read_json_meta>format\",\"read_json_meta>serde_json::from_str\",\"read_json_meta>store::get_meta\",\"require_challenge>Ok\",\"require_challenge>String::new\",\"require_challenge>bail\",\"require_challenge>io::stdin\",\"require_challenge>io::stdout\",\"require_challenge>print\",\"require_challenge>typed::trim\",\"resolve_root>Ok\",\"resolve_root>Store::find_root\",\"resolve_root>anyhow\",\"resolve_root>env::current_dir\",\"resolve_root>g::to_path_buf\",\"run>Ok\",\"run>PathBuf::from\",\"run>Store::init\",\"run>apply_cmd::apply\",\"run>bootstrap_cmd::dispatch\",\"run>codefile_cmd::dispatch\",\"run>context_cmd::context_cmd\",\"run>diagnostics_cmd::absorb_cmd\",\"run>diagnostics_cmd::audit_cmd\",\"run>diagnostics_cmd::calibrate_cmd\",\"run>diagnostics_cmd::completeness_cmd\",\"run>diagnostics_cmd::coverage_cmd\",\"run>diagnostics_cmd::debt\",\"run>diagnostics_cmd::deepen_cmd\",\"run>diagnostics_cmd::doctor_cmd\",\"run>diagnostics_cmd::finding\",\"run>diagnostics_cmd::ignore_cmd\",\"run>diagnostics_cmd::impact_cmd\",\"run>diagnostics_cmd::policy_cmd\",\"run>diagnostics_cmd::scan_cmd\",\"run>diagnostics_cmd::smells_cmd\",\"run>diagnostics_cmd::threshold_cmd\",\"run>diagnostics_cmd::whoami_cmd\",\"run>domain_cmd::hypothesis\",\"run>domain_cmd::surface\",\"run>domain_cmd::vocab\",\"run>drive_cmd::dispatch\",\"run>edge::dispatch\",\"run>graph::as_deref\",\"run>graph_cmd::dispatch\",\"run>hook_cmd::dispatch\",\"run>intent::dispatch\",\"run>journey::dispatch\",\"run>key::as_deref\",\"run>layer\",\"run>m::as_str\",\"run>m::map\",\"run>mcp::serve\",\"run>misc_cmd::detect_cmd\",\"run>misc_cmd::door\",\"run>misc_cmd::explain_cmd\",\"run>misc_cmd::find_cmd\",\"run>misc_cmd::guide\",\"run>misc_cmd::inbox\",\"run>misc_cmd::note\",\"run>misc_cmd::question\",\"run>misc_cmd::schema_cmd\",\"run>misc_cmd::session\",\"run>misc_cmd::task\",\"run>misc_cmd::welcome\",\"run>mode::map\",\"run>name::as_deref\",\"run>path::unwrap_or_else\",\"run>println\",\"run>proof_cmd::observe_cmd\",\"run>proof_cmd::rule\",\"run>proof_cmd::validation\",\"run>proposal_cmd::dispatch\",\"run>role::map\",\"run>status_cmd::export\",\"run>status_cmd::import\",\"run>status_cmd::mode_cmd\",\"run>status_cmd::next_all\",\"run>status_cmd::next_cmd\",\"run>status_cmd::queue_list\",\"run>status_cmd::status\",\"run>status_cmd::sync_cmd\",\"run>store::identity\",\"run>tag::as_deref\",\"run>target::as_deref\",\"run>wiki::dispatch\",\"truncate>format\",\"truncate>s::chars\",\"truncate>s::to_string\",\"truncate>s::trim\",\"unowned_codefiles>Ok\",\"unowned_codefiles>Role::detect\",\"unowned_codefiles>Some\",\"unowned_codefiles>Vec::new\",\"unowned_codefiles>codefile_observed\",\"unowned_codefiles>fsglob::matcher\",\"unowned_codefiles>ignore::is_match\",\"unowned_codefiles>name::cmp\",\"unowned_codefiles>store::codefiles\",\"unowned_codefiles>store::edge_superseded\",\"unowned_codefiles>store::edges_with\",\"unowned_codefiles>store::grounding_role\",\"unowned_codefiles>store::ignore_globs\",\"unowned_codefiles>store::realizing_implementers\",\"unowned_codefiles>unowned::push\",\"unowned_codefiles>unowned::sort_by\",\"verdict_status>Ok\",\"verdict_status>bail\"]",
+      "value": "[\">assert\",\">assert_eq\",\">query_terms\",\"code_ownership_summary>Ok\",\"code_ownership_summary>Vec::new\",\"code_ownership_summary>codefile_observed\",\"code_ownership_summary>fsglob::matcher\",\"code_ownership_summary>ignore::is_match\",\"code_ownership_summary>store::codefiles\",\"code_ownership_summary>store::ignore_globs\",\"code_ownership_summary>store::realizing_implementers\",\"code_ownership_summary>unowned::len\",\"code_ownership_summary>unowned::push\",\"code_ownership_summary>unowned::sort\",\"codefile_observed>body::get\",\"codefile_observed>v::as_bool\",\"human_present>env::var_os\",\"human_present>io::stdin\",\"human_present>matches\",\"layer>\\\"layerordercleared\\\"::to_string\",\"layer>Ok\",\"layer>bail\",\"layer>domain_cmd::layer_detector_state\",\"layer>format\",\"layer>layers::is_empty\",\"layer>open\",\"layer>order::is_empty\",\"layer>order::iter\",\"layer>println\",\"layer>pulse::emit_line\",\"layer>serde_json::json\",\"layer>serde_json::to_string\",\"layer>state::get\",\"layer>store::set_meta\",\"layer>v::as_array\",\"layer>v::as_str\",\"node_json>serde_json::json\",\"norm>c::is_alphanumeric\",\"norm>s::to_lowercase\",\"open>Store::open\",\"open>resolve_root\",\"open_read>Store::open_read\",\"open_read>resolve_root\",\"page_footer>Some\",\"page_footer>format\",\"query_terms>STOP::contains\",\"query_terms>q::dedup\",\"query_terms>q::is_empty\",\"query_terms>q::sort\",\"query_terms>query::split_whitespace\",\"query_terms>t::as_str\",\"query_terms>t::len\",\"read_json_meta>Ok\",\"read_json_meta>T::default\",\"read_json_meta>format\",\"read_json_meta>serde_json::from_str\",\"read_json_meta>store::get_meta\",\"require_challenge>Ok\",\"require_challenge>String::new\",\"require_challenge>bail\",\"require_challenge>io::stdin\",\"require_challenge>io::stdout\",\"require_challenge>print\",\"require_challenge>typed::trim\",\"resolve_root>Ok\",\"resolve_root>Store::find_root\",\"resolve_root>anyhow\",\"resolve_root>env::current_dir\",\"resolve_root>g::to_path_buf\",\"run>Ok\",\"run>PathBuf::from\",\"run>Store::init\",\"run>about::as_deref\",\"run>apply_cmd::apply\",\"run>bootstrap_cmd::dispatch\",\"run>capture_cmd::decide_cmd\",\"run>codefile_cmd::dispatch\",\"run>context_cmd::context_cmd\",\"run>diagnostics_cmd::absorb_cmd\",\"run>diagnostics_cmd::audit_cmd\",\"run>diagnostics_cmd::calibrate_cmd\",\"run>diagnostics_cmd::completeness_cmd\",\"run>diagnostics_cmd::coverage_cmd\",\"run>diagnostics_cmd::debt\",\"run>diagnostics_cmd::deepen_cmd\",\"run>diagnostics_cmd::doctor_cmd\",\"run>diagnostics_cmd::finding\",\"run>diagnostics_cmd::ignore_cmd\",\"run>diagnostics_cmd::impact_cmd\",\"run>diagnostics_cmd::policy_cmd\",\"run>diagnostics_cmd::scan_cmd\",\"run>diagnostics_cmd::smells_cmd\",\"run>diagnostics_cmd::threshold_cmd\",\"run>diagnostics_cmd::whoami_cmd\",\"run>domain_cmd::hypothesis\",\"run>domain_cmd::surface\",\"run>domain_cmd::vocab\",\"run>drive_cmd::dispatch\",\"run>edge::dispatch\",\"run>graph::as_deref\",\"run>graph_cmd::dispatch\",\"run>hook_cmd::dispatch\",\"run>intent::dispatch\",\"run>journey::dispatch\",\"run>key::as_deref\",\"run>layer\",\"run>m::as_str\",\"run>m::map\",\"run>mcp::serve\",\"run>misc_cmd::detect_cmd\",\"run>misc_cmd::door\",\"run>misc_cmd::explain_cmd\",\"run>misc_cmd::find_cmd\",\"run>misc_cmd::guide\",\"run>misc_cmd::inbox\",\"run>misc_cmd::note\",\"run>misc_cmd::question\",\"run>misc_cmd::schema_cmd\",\"run>misc_cmd::session\",\"run>misc_cmd::task\",\"run>misc_cmd::welcome\",\"run>mode::map\",\"run>name::as_deref\",\"run>path::unwrap_or_else\",\"run>println\",\"run>proof_cmd::observe_cmd\",\"run>proof_cmd::rule\",\"run>proof_cmd::validation\",\"run>proposal_cmd::dispatch\",\"run>role::map\",\"run>status_cmd::export\",\"run>status_cmd::import\",\"run>status_cmd::mode_cmd\",\"run>status_cmd::next_all\",\"run>status_cmd::next_cmd\",\"run>status_cmd::queue_list\",\"run>status_cmd::status\",\"run>status_cmd::sync_cmd\",\"run>store::identity\",\"run>tag::as_deref\",\"run>target::as_deref\",\"run>wiki::dispatch\",\"truncate>format\",\"truncate>s::chars\",\"truncate>s::to_string\",\"truncate>s::trim\",\"unowned_codefiles>Ok\",\"unowned_codefiles>Role::detect\",\"unowned_codefiles>Some\",\"unowned_codefiles>Vec::new\",\"unowned_codefiles>codefile_observed\",\"unowned_codefiles>fsglob::matcher\",\"unowned_codefiles>ignore::is_match\",\"unowned_codefiles>name::cmp\",\"unowned_codefiles>store::codefiles\",\"unowned_codefiles>store::edge_superseded\",\"unowned_codefiles>store::edges_with\",\"unowned_codefiles>store::grounding_role\",\"unowned_codefiles>store::ignore_globs\",\"unowned_codefiles>store::realizing_implementers\",\"unowned_codefiles>unowned::push\",\"unowned_codefiles>unowned::sort_by\",\"unowned_names>Ok\",\"unowned_names>unowned_codefiles\",\"verdict_status>Ok\",\"verdict_status>bail\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "44622b82dffeccf4fc474d85d24bdeda",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "090464fc5205609e",
+      "value": "9a9bef80af4385b9",
       "truth_class": "derived"
     },
     {
@@ -17611,7 +18701,7 @@
       "target_id": "44622b82dffeccf4fc474d85d24bdeda",
       "target_kind": "node",
       "key": "loc",
-      "value": "528",
+      "value": "552",
       "truth_class": "derived"
     },
     {
@@ -17625,14 +18715,14 @@
       "target_id": "44622b82dffeccf4fc474d85d24bdeda",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "17",
+      "value": "18",
       "truth_class": "derived"
     },
     {
       "target_id": "44622b82dffeccf4fc474d85d24bdeda",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"code_ownership_summary\":\"59f23a949921d232\",\"codefile_observed\":\"7dc024e9c264667e\",\"human_present\":\"3767773253be1e1a\",\"layer\":\"a0e8242a1f517dd5\",\"node_json\":\"ad7bf234fd67f095\",\"norm\":\"88b25c6dc96574c0\",\"open\":\"82ca9c1000cac04a\",\"open_read\":\"6655f55b41faff9c\",\"page_footer\":\"61b7adf5730ce26c\",\"query_terms\":\"c983f3950a1fc4ff\",\"read_json_meta\":\"c890b0353d65deff\",\"require_challenge\":\"b076426834bcd9be\",\"resolve_root\":\"f81a036ca82c9a5a\",\"run\":\"88ba378d77d651eb\",\"truncate\":\"d6fb077a5af9ea3b\",\"unowned_codefiles\":\"3febd8a73c123533\",\"verdict_status\":\"168e3030db8acdba\"}",
+      "value": "{\"code_ownership_summary\":\"59f23a949921d232\",\"codefile_observed\":\"7dc024e9c264667e\",\"human_present\":\"3767773253be1e1a\",\"layer\":\"a0e8242a1f517dd5\",\"node_json\":\"ad7bf234fd67f095\",\"norm\":\"88b25c6dc96574c0\",\"open\":\"82ca9c1000cac04a\",\"open_read\":\"6655f55b41faff9c\",\"page_footer\":\"61b7adf5730ce26c\",\"query_terms\":\"c983f3950a1fc4ff\",\"read_json_meta\":\"c890b0353d65deff\",\"require_challenge\":\"b076426834bcd9be\",\"resolve_root\":\"f81a036ca82c9a5a\",\"run\":\"52d78c4f5126cdf2\",\"truncate\":\"d6fb077a5af9ea3b\",\"unowned_codefiles\":\"3febd8a73c123533\",\"unowned_names\":\"abebe61a09ab648f\",\"verdict_status\":\"168e3030db8acdba\"}",
       "truth_class": "derived"
     },
     {
@@ -17669,6 +18759,34 @@
       "key": "proof_strength",
       "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "483fd508eaa6a27648a6ce86b54fe6f2",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "483fd508eaa6a27648a6ce86b54fe6f2",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "483fd508eaa6a27648a6ce86b54fe6f2",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "483fd508eaa6a27648a6ce86b54fe6f2",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
     },
     {
       "target_id": "48c202a4d0dcdb7edf7b6d502c61f151",
@@ -17759,6 +18877,27 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "4da5bf51f46c5b39096cb5cf08cebb93",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "all",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "4db83d10f68587913b3885537f5c5cb3",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "4dfeea8fc286713febef32c9332430c7",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "grade",
       "truth_class": "asserted"
     },
     {
@@ -18040,6 +19179,13 @@
       "key": "proof_strength",
       "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "53e367413be7d8f40ef8be9815663eac",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "effective",
+      "truth_class": "asserted"
     },
     {
       "target_id": "543b86259db397df7daf4378054a73d2",
@@ -18693,6 +19839,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "676ee19d6d5451a558219e93e385c029",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "extract_calls",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "67c2e0ce05bde2e1708a009c19f66483",
       "target_kind": "node",
       "key": "aspect",
@@ -18959,6 +20112,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "6ffd6edcee6638988829efb60addbc27",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "708d7affac22b9cb483bf17598422e9c",
       "target_kind": "node",
       "key": "calls",
@@ -19083,6 +20243,13 @@
       "key": "symbol_fingerprints",
       "value": "{\"Observation\":\"f1e399adb2d6072e\",\"covered_hashes\":\"e7ab7e4d6b551544\",\"covered_intact\":\"69f07b47191a6d89\",\"excerpt\":\"f37334f968a89321\",\"files_grounding\":\"6e5bf41fb115d9df\",\"locator_probe\":\"32b267664faf8769\",\"observe_command\":\"9b509e7a58fab0ab\",\"prescreen_probe\":\"6e260a7fcbf341eb\",\"record\":\"1cd72a168221007c\",\"seam_present\":\"a75913cb80e50cbb\",\"seam_probe\":\"028adbd64367274f\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "73139422d39ac312dce19a2100b7959c",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "depth",
+      "truth_class": "asserted"
     },
     {
       "target_id": "73bd3c64daca91797965b663f5a950cc",
@@ -19242,14 +20409,14 @@
       "target_id": "7cbad12c5145c09da338e74b7ecc8e84",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"a_judgment_burst_is_caught>Some\",\"a_judgment_burst_is_caught>Store::init\",\"a_judgment_burst_is_caught>Tmp::new\",\"a_judgment_burst_is_caught>assert\",\"a_judgment_burst_is_caught>audit::run\",\"a_judgment_burst_is_caught>codefile\",\"a_judgment_burst_is_caught>format\",\"a_judgment_burst_is_caught>serde_json::json\",\"a_judgment_burst_is_caught>store::add_derived_edge\",\"a_judgment_burst_is_caught>store::add_node\",\"a_judgment_burst_is_caught>store::record_finding_verdict\",\"a_judgment_burst_is_caught>tmp::path\",\"a_settled_claim_with_no_surviving_anchor_is_caught>Some\",\"a_settled_claim_with_no_surviving_anchor_is_caught>Store::init\",\"a_settled_claim_with_no_surviving_anchor_is_caught>Tmp::new\",\"a_settled_claim_with_no_surviving_anchor_is_caught>assert\",\"a_settled_claim_with_no_surviving_anchor_is_caught>audit::run\",\"a_settled_claim_with_no_surviving_anchor_is_caught>codefile\",\"a_settled_claim_with_no_surviving_anchor_is_caught>fs::remove_file\",\"a_settled_claim_with_no_surviving_anchor_is_caught>intent\",\"a_settled_claim_with_no_surviving_anchor_is_caught>store::add_edge\",\"a_settled_claim_with_no_surviving_anchor_is_caught>store::record_verdict\",\"a_settled_claim_with_no_surviving_anchor_is_caught>sync::run\",\"a_settled_claim_with_no_surviving_anchor_is_caught>tmp::path\",\"an_unjournaled_ratification_is_caught>Some\",\"an_unjournaled_ratification_is_caught>Store::init\",\"an_unjournaled_ratification_is_caught>Tmp::new\",\"an_unjournaled_ratification_is_caught>assert\",\"an_unjournaled_ratification_is_caught>audit::run\",\"an_unjournaled_ratification_is_caught>fs::write\",\"an_unjournaled_ratification_is_caught>intent\",\"an_unjournaled_ratification_is_caught>journal::path\",\"an_unjournaled_ratification_is_caught>store::ratify_intent\",\"an_unjournaled_ratification_is_caught>tmp::path\",\"every_risk_candidate_explains_itself>Some\",\"every_risk_candidate_explains_itself>Store::init\",\"every_risk_candidate_explains_itself>Tmp::new\",\"every_risk_candidate_explains_itself>assert\",\"every_risk_candidate_explains_itself>earn_call_witness\",\"every_risk_candidate_explains_itself>intent\",\"every_risk_candidate_explains_itself>risk::rank\",\"every_risk_candidate_explains_itself>store::edges_with\",\"every_risk_candidate_explains_itself>store::grounding_role\",\"every_risk_candidate_explains_itself>store::record_verdict\",\"every_risk_candidate_explains_itself>sync::run\",\"every_risk_candidate_explains_itself>tmp::path\",\"intent>serde_json::json\",\"intent>store::add_node\",\"ratification_claims_are_what_the_audit_reads>Some\",\"ratification_claims_are_what_the_audit_reads>Store::init\",\"ratification_claims_are_what_the_audit_reads>Subject::Node\",\"ratification_claims_are_what_the_audit_reads>Tmp::new\",\"ratification_claims_are_what_the_audit_reads>assert\",\"ratification_claims_are_what_the_audit_reads>assert_eq\",\"ratification_claims_are_what_the_audit_reads>i::clone\",\"ratification_claims_are_what_the_audit_reads>intent\",\"ratification_claims_are_what_the_audit_reads>store::fact\",\"ratification_claims_are_what_the_audit_reads>store::ratify_intent\",\"ratification_claims_are_what_the_audit_reads>tmp::path\",\"the_top_rung_never_completes_and_never_blocks>Some\",\"the_top_rung_never_completes_and_never_blocks>Store::init\",\"the_top_rung_never_completes_and_never_blocks>Tmp::new\",\"the_top_rung_never_completes_and_never_blocks>assert\",\"the_top_rung_never_completes_and_never_blocks>assert_eq\",\"the_top_rung_never_completes_and_never_blocks>codefile\",\"the_top_rung_never_completes_and_never_blocks>intent\",\"the_top_rung_never_completes_and_never_blocks>maturity::ladder\",\"the_top_rung_never_completes_and_never_blocks>rungs::iter\",\"the_top_rung_never_completes_and_never_blocks>store::add_edge\",\"the_top_rung_never_completes_and_never_blocks>sync::run\",\"the_top_rung_never_completes_and_never_blocks>tmp::path\"]",
+      "value": "[\"a_judgment_burst_is_caught>Some\",\"a_judgment_burst_is_caught>Store::init\",\"a_judgment_burst_is_caught>Tmp::new\",\"a_judgment_burst_is_caught>assert\",\"a_judgment_burst_is_caught>audit::run\",\"a_judgment_burst_is_caught>codefile\",\"a_judgment_burst_is_caught>format\",\"a_judgment_burst_is_caught>serde_json::json\",\"a_judgment_burst_is_caught>store::add_derived_edge\",\"a_judgment_burst_is_caught>store::add_node\",\"a_judgment_burst_is_caught>store::record_finding_verdict\",\"a_judgment_burst_is_caught>tmp::path\",\"a_settled_claim_with_no_surviving_anchor_is_caught>Some\",\"a_settled_claim_with_no_surviving_anchor_is_caught>Store::init\",\"a_settled_claim_with_no_surviving_anchor_is_caught>Tmp::new\",\"a_settled_claim_with_no_surviving_anchor_is_caught>assert\",\"a_settled_claim_with_no_surviving_anchor_is_caught>audit::run\",\"a_settled_claim_with_no_surviving_anchor_is_caught>codefile\",\"a_settled_claim_with_no_surviving_anchor_is_caught>fs::remove_file\",\"a_settled_claim_with_no_surviving_anchor_is_caught>intent\",\"a_settled_claim_with_no_surviving_anchor_is_caught>store::add_edge\",\"a_settled_claim_with_no_surviving_anchor_is_caught>store::record_verdict\",\"a_settled_claim_with_no_surviving_anchor_is_caught>sync::run\",\"a_settled_claim_with_no_surviving_anchor_is_caught>tmp::path\",\"a_test_file_is_owned_by_what_it_verifies>Some\",\"a_test_file_is_owned_by_what_it_verifies>Store::init\",\"a_test_file_is_owned_by_what_it_verifies>Tmp::new\",\"a_test_file_is_owned_by_what_it_verifies>assert\",\"a_test_file_is_owned_by_what_it_verifies>fs::create_dir_all\",\"a_test_file_is_owned_by_what_it_verifies>fs::write\",\"a_test_file_is_owned_by_what_it_verifies>intent\",\"a_test_file_is_owned_by_what_it_verifies>serde_json::json\",\"a_test_file_is_owned_by_what_it_verifies>store::add_edge\",\"a_test_file_is_owned_by_what_it_verifies>store::add_node\",\"a_test_file_is_owned_by_what_it_verifies>store::set_facet\",\"a_test_file_is_owned_by_what_it_verifies>tmp::path\",\"an_unjournaled_ratification_is_caught>Some\",\"an_unjournaled_ratification_is_caught>Store::init\",\"an_unjournaled_ratification_is_caught>Tmp::new\",\"an_unjournaled_ratification_is_caught>assert\",\"an_unjournaled_ratification_is_caught>audit::run\",\"an_unjournaled_ratification_is_caught>fs::write\",\"an_unjournaled_ratification_is_caught>intent\",\"an_unjournaled_ratification_is_caught>journal::path\",\"an_unjournaled_ratification_is_caught>store::ratify_intent\",\"an_unjournaled_ratification_is_caught>tmp::path\",\"efficacy_counts_only_work_that_came_after_the_packet>\\\"context\\\"::into\",\"efficacy_counts_only_work_that_came_after_the_packet>\\\"pkt-test-1\\\"::into\",\"efficacy_counts_only_work_that_came_after_the_packet>Some\",\"efficacy_counts_only_work_that_came_after_the_packet>Store::init\",\"efficacy_counts_only_work_that_came_after_the_packet>Tmp::new\",\"efficacy_counts_only_work_that_came_after_the_packet>assert_eq\",\"efficacy_counts_only_work_that_came_after_the_packet>audit::efficacy\",\"efficacy_counts_only_work_that_came_after_the_packet>codefile\",\"efficacy_counts_only_work_that_came_after_the_packet>i::clone\",\"efficacy_counts_only_work_that_came_after_the_packet>intent\",\"efficacy_counts_only_work_that_came_after_the_packet>packet::serve\",\"efficacy_counts_only_work_that_came_after_the_packet>store::add_edge\",\"efficacy_counts_only_work_that_came_after_the_packet>store::record_verdict\",\"efficacy_counts_only_work_that_came_after_the_packet>tmp::path\",\"every_risk_candidate_explains_itself>Some\",\"every_risk_candidate_explains_itself>Store::init\",\"every_risk_candidate_explains_itself>Tmp::new\",\"every_risk_candidate_explains_itself>assert\",\"every_risk_candidate_explains_itself>earn_call_witness\",\"every_risk_candidate_explains_itself>intent\",\"every_risk_candidate_explains_itself>risk::rank\",\"every_risk_candidate_explains_itself>store::edges_with\",\"every_risk_candidate_explains_itself>store::grounding_role\",\"every_risk_candidate_explains_itself>store::record_verdict\",\"every_risk_candidate_explains_itself>sync::run\",\"every_risk_candidate_explains_itself>tmp::path\",\"intent>serde_json::json\",\"intent>store::add_node\",\"ratification_claims_are_what_the_audit_reads>Some\",\"ratification_claims_are_what_the_audit_reads>Store::init\",\"ratification_claims_are_what_the_audit_reads>Subject::Node\",\"ratification_claims_are_what_the_audit_reads>Tmp::new\",\"ratification_claims_are_what_the_audit_reads>assert\",\"ratification_claims_are_what_the_audit_reads>assert_eq\",\"ratification_claims_are_what_the_audit_reads>i::clone\",\"ratification_claims_are_what_the_audit_reads>intent\",\"ratification_claims_are_what_the_audit_reads>store::fact\",\"ratification_claims_are_what_the_audit_reads>store::ratify_intent\",\"ratification_claims_are_what_the_audit_reads>tmp::path\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>\\\"context\\\"::into\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>Some\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>Store::init\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>Tmp::new\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>assert\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>assert_eq\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>audit::efficacy\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>codefile\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>format\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>intent\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>packet::serve\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>store::add_edge\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>store::record_verdict\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>target::clone\",\"the_efficacy_ratio_distinguishes_helped_from_ignored>tmp::path\",\"the_top_rung_never_completes_and_never_blocks>Some\",\"the_top_rung_never_completes_and_never_blocks>Store::init\",\"the_top_rung_never_completes_and_never_blocks>Tmp::new\",\"the_top_rung_never_completes_and_never_blocks>assert\",\"the_top_rung_never_completes_and_never_blocks>assert_eq\",\"the_top_rung_never_completes_and_never_blocks>codefile\",\"the_top_rung_never_completes_and_never_blocks>intent\",\"the_top_rung_never_completes_and_never_blocks>maturity::ladder\",\"the_top_rung_never_completes_and_never_blocks>rungs::iter\",\"the_top_rung_never_completes_and_never_blocks>store::add_edge\",\"the_top_rung_never_completes_and_never_blocks>sync::run\",\"the_top_rung_never_completes_and_never_blocks>tmp::path\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "7cbad12c5145c09da338e74b7ecc8e84",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "a4d157210b33b5c4",
+      "value": "fb772944b212dc24",
       "truth_class": "derived"
     },
     {
@@ -19270,7 +20437,7 @@
       "target_id": "7cbad12c5145c09da338e74b7ecc8e84",
       "target_kind": "node",
       "key": "loc",
-      "value": "227",
+      "value": "374",
       "truth_class": "derived"
     },
     {
@@ -19284,14 +20451,14 @@
       "target_id": "7cbad12c5145c09da338e74b7ecc8e84",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "7",
+      "value": "10",
       "truth_class": "derived"
     },
     {
       "target_id": "7cbad12c5145c09da338e74b7ecc8e84",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"a_judgment_burst_is_caught\":\"54f5e2d1d4af6a81\",\"a_settled_claim_with_no_surviving_anchor_is_caught\":\"898a4039c0f80df9\",\"an_unjournaled_ratification_is_caught\":\"9934c00e6f331c31\",\"every_risk_candidate_explains_itself\":\"f96ddcf8b6a5cb51\",\"intent\":\"1115f61a1a7aaf33\",\"ratification_claims_are_what_the_audit_reads\":\"bedc6691c8a6075f\",\"the_top_rung_never_completes_and_never_blocks\":\"8c9029e792a7eb08\"}",
+      "value": "{\"a_judgment_burst_is_caught\":\"54f5e2d1d4af6a81\",\"a_settled_claim_with_no_surviving_anchor_is_caught\":\"898a4039c0f80df9\",\"a_test_file_is_owned_by_what_it_verifies\":\"17bba3d2792b4afe\",\"an_unjournaled_ratification_is_caught\":\"9934c00e6f331c31\",\"efficacy_counts_only_work_that_came_after_the_packet\":\"cc6b508a7efdd908\",\"every_risk_candidate_explains_itself\":\"f96ddcf8b6a5cb51\",\"intent\":\"1115f61a1a7aaf33\",\"ratification_claims_are_what_the_audit_reads\":\"bedc6691c8a6075f\",\"the_efficacy_ratio_distinguishes_helped_from_ignored\":\"944bb63894554b9f\",\"the_top_rung_never_completes_and_never_blocks\":\"8c9029e792a7eb08\"}",
       "truth_class": "derived"
     },
     {
@@ -19489,6 +20656,34 @@
       "key": "proof_strength",
       "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "82b78e81c798713d558ca1ca67faee3f",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "82b78e81c798713d558ca1ca67faee3f",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "82b78e81c798713d558ca1ca67faee3f",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "82b78e81c798713d558ca1ca67faee3f",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
     },
     {
       "target_id": "83755ec955186c23b70b1bce27473665",
@@ -19715,6 +20910,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "87fd012abf47ca845023f8fd8ed77efc",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "8888575022b4e86b0862b5d6a8b91f00",
       "target_kind": "node",
       "key": "de_facto",
@@ -19883,6 +21085,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "8d3c56252318bad799afae13b79e8f0c",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "observe",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "8de0686b8a40a014cb5f82b0d7854c52",
       "target_kind": "node",
       "key": "de_facto",
@@ -19906,8 +21115,15 @@
     {
       "target_id": "8de84dddb070d7f3adbb02b6223e60af",
       "target_kind": "node",
+      "key": "calls",
+      "value": "[\"decide_cmd>Ok\",\"decide_cmd>Some\",\"decide_cmd>anyhow::bail\",\"decide_cmd>format\",\"decide_cmd>id::as_str\",\"decide_cmd>journal::append\",\"decide_cmd>model::is_placeholder\",\"decide_cmd>open\",\"decide_cmd>pulse::emit_line\",\"decide_cmd>serde_json::json\",\"decide_cmd>store::add_node\",\"decide_cmd>store::resolve_node\",\"decide_cmd>store::root\",\"decide_cmd>target::as_ref\",\"door>8::min\",\"door>Ok\",\"door>Vec::new\",\"door>discover_cmd::keyword_hits\",\"door>format\",\"door>id::len\",\"door>matches::iter\",\"door>maturity::ladder\",\"door>menu::push\",\"door>open\",\"door>println\",\"door>serde_json::json\",\"door>store::add_node\",\"door>strong_matches::is_empty\",\"door>truncate\",\"door>weak_matches::is_empty\",\"inbox>DISPOSITIONS::contains\",\"inbox>Ok\",\"inbox>Some\",\"inbox>Value::String\",\"inbox>bail\",\"inbox>filtered::into_iter\",\"inbox>filtered::len\",\"inbox>format\",\"inbox>items::is_empty\",\"inbox>items::iter\",\"inbox>items::len\",\"inbox>l::clone\",\"inbox>open\",\"inbox>println\",\"inbox>pulse::emit_line\",\"inbox>serde_json::json\",\"inbox>source::as_str\",\"inbox>status::as_deref\",\"inbox>status::as_str\",\"inbox>store::add_node\",\"inbox>store::add_note\",\"inbox>store::delete_node\",\"inbox>store::list_nodes\",\"inbox>store::resolve_node\",\"inbox>store::update_node\",\"inbox>super::page_footer\",\"inbox>truncate\",\"inbox_json>serde_json::json\",\"note>KINDS::contains\",\"note>Ok\",\"note>Some\",\"note>all::into_iter\",\"note>all::len\",\"note>bail\",\"note>format\",\"note>kind::as_str\",\"note>notes::is_empty\",\"note>notes::iter\",\"note>notes::len\",\"note>open\",\"note>println\",\"note>pulse::emit_line\",\"note>resolve_note_target\",\"note>serde_json::json\",\"note>store::add_note\",\"note>store::delete_node\",\"note>store::list_nodes\",\"note>store::notes_for\",\"note>store::resolve_node\",\"note>super::page_footer\",\"note>text::trim\",\"question>Ok\",\"question>STATUSES::contains\",\"question>Some\",\"question>bail\",\"question>filtered::into_iter\",\"question>filtered::len\",\"question>format\",\"question>items::is_empty\",\"question>items::iter\",\"question>items::len\",\"question>model::is_placeholder\",\"question>open\",\"question>println\",\"question>pulse::emit_line\",\"question>question_json\",\"question>require_lane\",\"question>serde_json::json\",\"question>status::as_deref\",\"question>status::as_str\",\"question>store::add_edge\",\"question>store::add_node\",\"question>store::add_note\",\"question>store::delete_node\",\"question>store::list_nodes\",\"question>store::resolve_node\",\"question>store::set_node_status\",\"question>super::page_footer\",\"question>truncate\",\"question_json>Ok\",\"question_json>Some\",\"question_json>serde_json::json\",\"question_json>store::edges_with\",\"question_json>store::get_node\",\"resolve_note_target>Err\",\"resolve_note_target>Ok\",\"resolve_note_target>bail\",\"resolve_note_target>edge_err::to_string\",\"resolve_note_target>format\",\"resolve_note_target>id::chars\",\"resolve_note_target>node_err::to_string\",\"resolve_note_target>store::get_node\",\"resolve_note_target>store::resolve_edge\",\"resolve_note_target>store::resolve_node\",\"task>Ok\",\"task>Some\",\"task>format\",\"task>open\",\"task>println\",\"task>pulse::emit_line\",\"task>serde_json::json\",\"task>store::add_node\",\"task>store::count_nodes\",\"task>store::delete_node\",\"task>store::list_nodes_page\",\"task>store::resolve_node\",\"task>store::update_node\",\"task>super::page_footer\",\"task>target::map\",\"task>task_outcome_note\",\"task>tasks::is_empty\",\"task>tasks::iter\",\"task>tasks::len\",\"task_outcome_note>Ok\",\"task_outcome_note>body::get\",\"task_outcome_note>format\",\"task_outcome_note>store::add_note\",\"task_outcome_note>store::get_node\",\"task_outcome_note>v::as_str\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8de84dddb070d7f3adbb02b6223e60af",
+      "target_kind": "node",
       "key": "content_hash",
-      "value": "bc8f9ba926ebaae2",
+      "value": "dc41abcee5b991e4",
       "truth_class": "derived"
     },
     {
@@ -19928,7 +21144,7 @@
       "target_id": "8de84dddb070d7f3adbb02b6223e60af",
       "target_kind": "node",
       "key": "loc",
-      "value": "678",
+      "value": "768",
       "truth_class": "derived"
     },
     {
@@ -19942,15 +21158,43 @@
       "target_id": "8de84dddb070d7f3adbb02b6223e60af",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "9",
+      "value": "10",
       "truth_class": "derived"
     },
     {
       "target_id": "8de84dddb070d7f3adbb02b6223e60af",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"door\":\"d8778094cac6637c\",\"inbox\":\"9b58e729cd09c0c1\",\"inbox_json\":\"2590d02b8805d4e3\",\"note\":\"4358575254290127\",\"question\":\"d9f351df17582239\",\"question_json\":\"3d858284960dd8ce\",\"resolve_note_target\":\"1b8fafa274c75f69\",\"task\":\"b8c70c92f11938a1\",\"task_outcome_note\":\"8406b08fc788ad0b\"}",
+      "value": "{\"decide_cmd\":\"422770e8850403df\",\"door\":\"d8778094cac6637c\",\"inbox\":\"9b58e729cd09c0c1\",\"inbox_json\":\"2590d02b8805d4e3\",\"note\":\"4358575254290127\",\"question\":\"d9f351df17582239\",\"question_json\":\"3d858284960dd8ce\",\"resolve_note_target\":\"1b8fafa274c75f69\",\"task\":\"b8c70c92f11938a1\",\"task_outcome_note\":\"8406b08fc788ad0b\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8e6ace5eeb00d56ac7f81f83b9aa54ed",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
     },
     {
       "target_id": "8eb674637342f0f68e80f9dfc9beefc9",
@@ -20279,6 +21523,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "symbol",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "97adddb66412240036b09561bd8e58e5",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "serve",
       "truth_class": "asserted"
     },
     {
@@ -20765,6 +22016,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "a01b2904a3553af4ca197d57de477378",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "assert_fact",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "a1614f02b1128549bb1895a1a5b97d82",
       "target_kind": "node",
       "key": "content_hash",
@@ -20818,6 +22076,34 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "module Rust structural extraction",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a2fd4889adcbef6ceba52d1229a317ff",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a2fd4889adcbef6ceba52d1229a317ff",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a2fd4889adcbef6ceba52d1229a317ff",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a2fd4889adcbef6ceba52d1229a317ff",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
       "truth_class": "asserted"
     },
     {
@@ -20908,14 +22194,14 @@
       "target_id": "a4b6e3747d1eba394b20292f3fcd072d",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"absorb_cmd>Ok\",\"absorb_cmd>absorb::observe\",\"absorb_cmd>absorb::record\",\"absorb_cmd>items::is_empty\",\"absorb_cmd>items::iter\",\"absorb_cmd>needs::is_empty\",\"absorb_cmd>open\",\"absorb_cmd>println\",\"absorb_cmd>store::root\",\"adjudicate_finding>Ok\",\"adjudicate_finding>bail\",\"adjudicate_finding>model::is_placeholder\",\"adjudicate_finding>store::record_finding_verdict\",\"adjudicate_finding>store::resolve_finding\",\"adjudicate_finding>validate_finding_verdict\",\"audit_cmd>Ok\",\"audit_cmd>audit::run\",\"audit_cmd>findings::is_empty\",\"audit_cmd>open_read\",\"audit_cmd>println\",\"audit_cmd>process::exit\",\"calibrate_cmd>Ok\",\"calibrate_cmd>format\",\"calibrate_cmd>open\",\"calibrate_cmd>open_read\",\"calibrate_cmd>println\",\"calibrate_cmd>pulse::emit_line\",\"calibrate_cmd>resolve_root\",\"calibrate_cmd>serde_json::json\",\"calibrate_cmd>thresholds::calibrate\",\"calibrate_cmd>thresholds::save\",\"completeness_cmd>Ok\",\"completeness_cmd>Some\",\"completeness_cmd>cards::is_empty\",\"completeness_cmd>cards::iter\",\"completeness_cmd>completeness::all_scorecards\",\"completeness_cmd>format\",\"completeness_cmd>key::is_none\",\"completeness_cmd>open\",\"completeness_cmd>println\",\"completeness_cmd>state::as_str\",\"completeness_cmd>store::resolve_node\",\"completeness_cmd>vec\",\"completeness_cmd>waived_reason::as_ref\",\"coverage_cmd>Ok\",\"coverage_cmd>Some\",\"coverage_cmd>Vec::new\",\"coverage_cmd>active::iter\",\"coverage_cmd>code_ownership_summary\",\"coverage_cmd>intents::iter\",\"coverage_cmd>name::clone\",\"coverage_cmd>open\",\"coverage_cmd>parents::contains\",\"coverage_cmd>println\",\"coverage_cmd>store::list_edges\",\"coverage_cmd>store::list_nodes\",\"coverage_cmd>store::realizing_groundings\",\"coverage_cmd>ungrounded::iter\",\"coverage_cmd>ungrounded::len\",\"coverage_cmd>ungrounded::push\",\"coverage_cmd>unowned::iter\",\"coverage_cmd>unowned::len\",\"debt>debt_cmd\",\"debt>debt_promote\",\"debt_cmd>Ok\",\"debt_cmd>debt::is_empty\",\"debt_cmd>open_read\",\"debt_cmd>println\",\"debt_cmd>signal::debt\",\"debt_promote>8::min\",\"debt_promote>bail\",\"debt_promote>confidence::is_finite\",\"debt_promote>evidence::is_empty\",\"debt_promote>evidence::trim\",\"debt_promote>format\",\"debt_promote>id::len\",\"debt_promote>model::is_placeholder\",\"debt_promote>open\",\"debt_promote>pulse::emit_line\",\"debt_promote>resolve_debt_cluster\",\"debt_promote>resolve_debt_subjects\",\"debt_promote>serde_json::json\",\"debt_promote>signal::debt\",\"debt_promote>store::add_promoted_debt_finding\",\"deepen_cmd>Ok\",\"deepen_cmd>open_read\",\"deepen_cmd>println\",\"deepen_cmd>ranked::iter\",\"deepen_cmd>risk::rank\",\"deepen_cmd>shown::is_empty\",\"deepen_cmd>shown::iter\",\"doctor_cmd>Ok\",\"doctor_cmd>bail\",\"doctor_cmd>issues::is_empty\",\"doctor_cmd>open\",\"doctor_cmd>println\",\"doctor_cmd>signal::doctor\",\"finding>finding_add\",\"finding>finding_list\",\"finding>finding_verdict\",\"finding_add>Some\",\"finding_add>Value::String\",\"finding_add>bail\",\"finding_add>evidence::as_str\",\"finding_add>file::as_deref\",\"finding_add>file::is_none\",\"finding_add>format\",\"finding_add>impact::as_str\",\"finding_add>link::is_none\",\"finding_add>model::is_placeholder\",\"finding_add>name::clone\",\"finding_add>open\",\"finding_add>pulse::emit_line\",\"finding_add>serde_json::json\",\"finding_add>source::as_str\",\"finding_add>store::add_node\",\"finding_add>store::resolve_node\",\"finding_add>text::as_str\",\"finding_list>8::min\",\"finding_list>Ok\",\"finding_list>description::is_empty\",\"finding_list>findings::is_empty\",\"finding_list>findings::retain\",\"finding_list>id::len\",\"finding_list>open\",\"finding_list>println\",\"finding_list>signal::findings_view\",\"finding_list>signal::stale_findings\",\"finding_list>signal::untriaged_findings\",\"finding_list>validate_finding_filter_state\",\"finding_verdict>Ok\",\"finding_verdict>adjudicate_finding\",\"finding_verdict>format\",\"finding_verdict>open\",\"finding_verdict>pulse::emit_line\",\"finding_verdict>serde_json::json\",\"ignore_cmd>Ok\",\"ignore_cmd>Some\",\"ignore_cmd>bail\",\"ignore_cmd>format\",\"ignore_cmd>g::as_str\",\"ignore_cmd>glob::as_str\",\"ignore_cmd>list::is_empty\",\"ignore_cmd>list::len\",\"ignore_cmd>list::push\",\"ignore_cmd>list::retain\",\"ignore_cmd>open\",\"ignore_cmd>println\",\"ignore_cmd>pulse::emit_line\",\"ignore_cmd>r::get\",\"ignore_cmd>serde_json::json\",\"ignore_cmd>serde_json::to_string\",\"ignore_cmd>store::set_meta\",\"ignore_cmd>super::read_json_meta\",\"impact_cmd>BTreeSet::new\",\"impact_cmd>Ok\",\"impact_cmd>Some\",\"impact_cmd>Vec::new\",\"impact_cmd>at_risk::is_empty\",\"impact_cmd>at_risk::push\",\"impact_cmd>callers::dedup_by\",\"impact_cmd>callers::extend\",\"impact_cmd>callers::is_empty\",\"impact_cmd>callers::iter\",\"impact_cmd>callers::len\",\"impact_cmd>callers::sort_by\",\"impact_cmd>callgraph::build\",\"impact_cmd>cg::impact\",\"impact_cmd>file::cmp\",\"impact_cmd>hops::cmp\",\"impact_cmd>id::clone\",\"impact_cmd>m::keys\",\"impact_cmd>open_read\",\"impact_cmd>println\",\"impact_cmd>proofs::iter\",\"impact_cmd>seen_intents::insert\",\"impact_cmd>serde_json::from_str\",\"impact_cmd>serde_json::json\",\"impact_cmd>store::codefiles\",\"impact_cmd>store::edges_with\",\"impact_cmd>store::get_facet\",\"impact_cmd>store::get_node\",\"impact_cmd>store::realizing_implementers\",\"impact_cmd>symbol::cmp\",\"impact_cmd>vec\",\"policy_cmd>\\\"\",\"policy_cmd>\\\"evidencepolicyresettoshippeddefaults\\\"::to_string\",\"policy_cmd>EvidencePolicy::default\",\"policy_cmd>Ok\",\"policy_cmd>format\",\"policy_cmd>human_gated_roles::is_empty\",\"policy_cmd>human_gated_roles::iter\",\"policy_cmd>human_gated_roles::join\",\"policy_cmd>human_gated_roles::push\",\"policy_cmd>human_gated_roles::retain\",\"policy_cmd>human_gated_roles::sort\",\"policy_cmd>open\",\"policy_cmd>open_read\",\"policy_cmd>policy::clear\",\"policy_cmd>policy::load\",\"policy_cmd>policy::save\",\"policy_cmd>println\",\"policy_cmd>pulse::emit_line\",\"policy_cmd>serde_json::json\",\"resolve_debt_cluster>Ok\",\"resolve_debt_cluster>bail\",\"resolve_debt_cluster>cluster_id::as_str\",\"resolve_debt_cluster>cluster_id::starts_with\",\"resolve_debt_cluster>feed::iter\",\"resolve_debt_cluster>ids::sort_unstable\",\"resolve_debt_cluster>matches::iter\",\"resolve_debt_cluster>matches::len\",\"resolve_debt_cluster>matches::remove\",\"resolve_debt_subjects>Ok\",\"resolve_debt_subjects>Vec::with_capacity\",\"resolve_debt_subjects>anyhow\",\"resolve_debt_subjects>bail\",\"resolve_debt_subjects>kind::as_str\",\"resolve_debt_subjects>names::push\",\"resolve_debt_subjects>names::sort\",\"resolve_debt_subjects>store::get_node\",\"resolve_debt_subjects>subject_ids::len\",\"resolve_debt_subjects>vec\",\"scan_cmd>Ok\",\"scan_cmd>adapters::is_empty\",\"scan_cmd>command::as_deref\",\"scan_cmd>format\",\"scan_cmd>format::into\",\"scan_cmd>format::map\",\"scan_cmd>map::as_deref\",\"scan_cmd>name::as_deref\",\"scan_cmd>open\",\"scan_cmd>open_read\",\"scan_cmd>println\",\"scan_cmd>pulse::emit_line\",\"scan_cmd>resolve_root\",\"scan_cmd>scan::add_adapter\",\"scan_cmd>scan::list_adapters\",\"scan_cmd>scan::remove_adapter\",\"scan_cmd>scan::run_unlocked\",\"scan_cmd>scan::update_adapter\",\"scan_cmd>serde_json::json\",\"scan_cmd>unreachable\",\"smells_cmd>Ok\",\"smells_cmd>Store::derived_node_id\",\"smells_cmd>Vec::new\",\"smells_cmd>adj::is_none\",\"smells_cmd>open\",\"smells_cmd>println\",\"smells_cmd>rows::iter\",\"smells_cmd>rows::push\",\"smells_cmd>serde_json::json\",\"smells_cmd>signal::adjudication_of\",\"smells_cmd>signal::smell_det_key\",\"smells_cmd>signal::smells\",\"smells_cmd>smells::is_empty\",\"smells_cmd>store::get_node\",\"threshold_cmd>\\\"allthresholdsresettoshippeddefaults\\\"::to_string\",\"threshold_cmd>Ok\",\"threshold_cmd>Thresholds::default\",\"threshold_cmd>bail\",\"threshold_cmd>format\",\"threshold_cmd>k::to_string\",\"threshold_cmd>open\",\"threshold_cmd>open_read\",\"threshold_cmd>println\",\"threshold_cmd>pulse::emit_line\",\"threshold_cmd>serde_json::json\",\"threshold_cmd>t::pairs\",\"threshold_cmd>t::reset_gate\",\"threshold_cmd>t::set_gate\",\"threshold_cmd>thresholds::clear\",\"threshold_cmd>thresholds::load\",\"threshold_cmd>thresholds::save\",\"threshold_line>format\",\"validate_finding_filter_state>Ok\",\"validate_finding_filter_state>bail\",\"validate_finding_verdict>Ok\",\"validate_finding_verdict>bail\",\"whoami_cmd>Ok\",\"whoami_cmd>Some\",\"whoami_cmd>open\",\"whoami_cmd>println\",\"whoami_cmd>r::as_str\",\"whoami_cmd>store::agent\",\"whoami_cmd>store::identity\"]",
+      "value": "[\"absorb_cmd>Ok\",\"absorb_cmd>absorb::observe\",\"absorb_cmd>absorb::record\",\"absorb_cmd>items::is_empty\",\"absorb_cmd>items::iter\",\"absorb_cmd>needs::is_empty\",\"absorb_cmd>open\",\"absorb_cmd>println\",\"absorb_cmd>store::root\",\"adjudicate_finding>Ok\",\"adjudicate_finding>bail\",\"adjudicate_finding>model::is_placeholder\",\"adjudicate_finding>store::record_finding_verdict\",\"adjudicate_finding>store::resolve_finding\",\"adjudicate_finding>validate_finding_verdict\",\"audit_cmd>Ok\",\"audit_cmd>audit::efficacy\",\"audit_cmd>audit::run\",\"audit_cmd>findings::is_empty\",\"audit_cmd>open_read\",\"audit_cmd>println\",\"audit_cmd>process::exit\",\"calibrate_cmd>Ok\",\"calibrate_cmd>format\",\"calibrate_cmd>open\",\"calibrate_cmd>open_read\",\"calibrate_cmd>println\",\"calibrate_cmd>pulse::emit_line\",\"calibrate_cmd>resolve_root\",\"calibrate_cmd>serde_json::json\",\"calibrate_cmd>thresholds::calibrate\",\"calibrate_cmd>thresholds::save\",\"completeness_cmd>Ok\",\"completeness_cmd>Some\",\"completeness_cmd>cards::is_empty\",\"completeness_cmd>cards::iter\",\"completeness_cmd>completeness::all_scorecards\",\"completeness_cmd>format\",\"completeness_cmd>key::is_none\",\"completeness_cmd>open\",\"completeness_cmd>println\",\"completeness_cmd>state::as_str\",\"completeness_cmd>store::resolve_node\",\"completeness_cmd>vec\",\"completeness_cmd>waived_reason::as_ref\",\"coverage_cmd>Ok\",\"coverage_cmd>Some\",\"coverage_cmd>Vec::new\",\"coverage_cmd>active::iter\",\"coverage_cmd>code_ownership_summary\",\"coverage_cmd>intents::iter\",\"coverage_cmd>name::clone\",\"coverage_cmd>open\",\"coverage_cmd>parents::contains\",\"coverage_cmd>println\",\"coverage_cmd>store::list_edges\",\"coverage_cmd>store::list_nodes\",\"coverage_cmd>store::realizing_groundings\",\"coverage_cmd>ungrounded::iter\",\"coverage_cmd>ungrounded::len\",\"coverage_cmd>ungrounded::push\",\"coverage_cmd>unowned::iter\",\"coverage_cmd>unowned::len\",\"debt>debt_cmd\",\"debt>debt_promote\",\"debt_cmd>Ok\",\"debt_cmd>debt::is_empty\",\"debt_cmd>open_read\",\"debt_cmd>println\",\"debt_cmd>signal::debt\",\"debt_promote>8::min\",\"debt_promote>bail\",\"debt_promote>confidence::is_finite\",\"debt_promote>evidence::is_empty\",\"debt_promote>evidence::trim\",\"debt_promote>format\",\"debt_promote>id::len\",\"debt_promote>model::is_placeholder\",\"debt_promote>open\",\"debt_promote>pulse::emit_line\",\"debt_promote>resolve_debt_cluster\",\"debt_promote>resolve_debt_subjects\",\"debt_promote>serde_json::json\",\"debt_promote>signal::debt\",\"debt_promote>store::add_promoted_debt_finding\",\"deepen_cmd>Ok\",\"deepen_cmd>open_read\",\"deepen_cmd>println\",\"deepen_cmd>ranked::iter\",\"deepen_cmd>risk::rank\",\"deepen_cmd>shown::is_empty\",\"deepen_cmd>shown::iter\",\"doctor_cmd>Ok\",\"doctor_cmd>bail\",\"doctor_cmd>issues::is_empty\",\"doctor_cmd>open\",\"doctor_cmd>println\",\"doctor_cmd>signal::doctor\",\"finding>finding_add\",\"finding>finding_list\",\"finding>finding_verdict\",\"finding_add>Some\",\"finding_add>Value::String\",\"finding_add>bail\",\"finding_add>evidence::as_str\",\"finding_add>file::as_deref\",\"finding_add>file::is_none\",\"finding_add>format\",\"finding_add>impact::as_str\",\"finding_add>link::is_none\",\"finding_add>model::is_placeholder\",\"finding_add>name::clone\",\"finding_add>open\",\"finding_add>pulse::emit_line\",\"finding_add>serde_json::json\",\"finding_add>source::as_str\",\"finding_add>store::add_node\",\"finding_add>store::resolve_node\",\"finding_add>text::as_str\",\"finding_list>8::min\",\"finding_list>Ok\",\"finding_list>description::is_empty\",\"finding_list>findings::is_empty\",\"finding_list>findings::retain\",\"finding_list>id::len\",\"finding_list>open\",\"finding_list>println\",\"finding_list>signal::findings_view\",\"finding_list>signal::stale_findings\",\"finding_list>signal::untriaged_findings\",\"finding_list>validate_finding_filter_state\",\"finding_verdict>Ok\",\"finding_verdict>adjudicate_finding\",\"finding_verdict>format\",\"finding_verdict>open\",\"finding_verdict>pulse::emit_line\",\"finding_verdict>serde_json::json\",\"ignore_cmd>Ok\",\"ignore_cmd>Some\",\"ignore_cmd>bail\",\"ignore_cmd>format\",\"ignore_cmd>g::as_str\",\"ignore_cmd>glob::as_str\",\"ignore_cmd>list::is_empty\",\"ignore_cmd>list::len\",\"ignore_cmd>list::push\",\"ignore_cmd>list::retain\",\"ignore_cmd>open\",\"ignore_cmd>println\",\"ignore_cmd>pulse::emit_line\",\"ignore_cmd>r::get\",\"ignore_cmd>serde_json::json\",\"ignore_cmd>serde_json::to_string\",\"ignore_cmd>store::set_meta\",\"ignore_cmd>super::read_json_meta\",\"impact_cmd>BTreeSet::new\",\"impact_cmd>Ok\",\"impact_cmd>Some\",\"impact_cmd>Vec::new\",\"impact_cmd>at_risk::is_empty\",\"impact_cmd>at_risk::push\",\"impact_cmd>callers::dedup_by\",\"impact_cmd>callers::extend\",\"impact_cmd>callers::is_empty\",\"impact_cmd>callers::iter\",\"impact_cmd>callers::len\",\"impact_cmd>callers::sort_by\",\"impact_cmd>callgraph::build\",\"impact_cmd>cg::impact\",\"impact_cmd>file::cmp\",\"impact_cmd>hops::cmp\",\"impact_cmd>id::clone\",\"impact_cmd>m::keys\",\"impact_cmd>open_read\",\"impact_cmd>println\",\"impact_cmd>proofs::iter\",\"impact_cmd>seen_intents::insert\",\"impact_cmd>serde_json::from_str\",\"impact_cmd>serde_json::json\",\"impact_cmd>store::codefiles\",\"impact_cmd>store::edges_with\",\"impact_cmd>store::get_facet\",\"impact_cmd>store::get_node\",\"impact_cmd>store::realizing_implementers\",\"impact_cmd>symbol::cmp\",\"impact_cmd>vec\",\"policy_cmd>\\\"\",\"policy_cmd>\\\"evidencepolicyresettoshippeddefaults\\\"::to_string\",\"policy_cmd>EvidencePolicy::default\",\"policy_cmd>Ok\",\"policy_cmd>format\",\"policy_cmd>human_gated_roles::is_empty\",\"policy_cmd>human_gated_roles::iter\",\"policy_cmd>human_gated_roles::join\",\"policy_cmd>human_gated_roles::push\",\"policy_cmd>human_gated_roles::retain\",\"policy_cmd>human_gated_roles::sort\",\"policy_cmd>open\",\"policy_cmd>open_read\",\"policy_cmd>policy::clear\",\"policy_cmd>policy::load\",\"policy_cmd>policy::save\",\"policy_cmd>println\",\"policy_cmd>pulse::emit_line\",\"policy_cmd>serde_json::json\",\"resolve_debt_cluster>Ok\",\"resolve_debt_cluster>bail\",\"resolve_debt_cluster>cluster_id::as_str\",\"resolve_debt_cluster>cluster_id::starts_with\",\"resolve_debt_cluster>feed::iter\",\"resolve_debt_cluster>ids::sort_unstable\",\"resolve_debt_cluster>matches::iter\",\"resolve_debt_cluster>matches::len\",\"resolve_debt_cluster>matches::remove\",\"resolve_debt_subjects>Ok\",\"resolve_debt_subjects>Vec::with_capacity\",\"resolve_debt_subjects>anyhow\",\"resolve_debt_subjects>bail\",\"resolve_debt_subjects>kind::as_str\",\"resolve_debt_subjects>names::push\",\"resolve_debt_subjects>names::sort\",\"resolve_debt_subjects>store::get_node\",\"resolve_debt_subjects>subject_ids::len\",\"resolve_debt_subjects>vec\",\"scan_cmd>Ok\",\"scan_cmd>adapters::is_empty\",\"scan_cmd>command::as_deref\",\"scan_cmd>format\",\"scan_cmd>format::into\",\"scan_cmd>format::map\",\"scan_cmd>map::as_deref\",\"scan_cmd>name::as_deref\",\"scan_cmd>open\",\"scan_cmd>open_read\",\"scan_cmd>println\",\"scan_cmd>pulse::emit_line\",\"scan_cmd>resolve_root\",\"scan_cmd>scan::add_adapter\",\"scan_cmd>scan::list_adapters\",\"scan_cmd>scan::remove_adapter\",\"scan_cmd>scan::run_unlocked\",\"scan_cmd>scan::update_adapter\",\"scan_cmd>serde_json::json\",\"scan_cmd>unreachable\",\"smells_cmd>Ok\",\"smells_cmd>Store::derived_node_id\",\"smells_cmd>Vec::new\",\"smells_cmd>adj::is_none\",\"smells_cmd>open\",\"smells_cmd>println\",\"smells_cmd>rows::iter\",\"smells_cmd>rows::push\",\"smells_cmd>serde_json::json\",\"smells_cmd>signal::adjudication_of\",\"smells_cmd>signal::smell_det_key\",\"smells_cmd>signal::smells\",\"smells_cmd>smells::is_empty\",\"smells_cmd>store::get_node\",\"threshold_cmd>\\\"allthresholdsresettoshippeddefaults\\\"::to_string\",\"threshold_cmd>Ok\",\"threshold_cmd>Thresholds::default\",\"threshold_cmd>bail\",\"threshold_cmd>format\",\"threshold_cmd>k::to_string\",\"threshold_cmd>open\",\"threshold_cmd>open_read\",\"threshold_cmd>println\",\"threshold_cmd>pulse::emit_line\",\"threshold_cmd>serde_json::json\",\"threshold_cmd>t::pairs\",\"threshold_cmd>t::reset_gate\",\"threshold_cmd>t::set_gate\",\"threshold_cmd>thresholds::clear\",\"threshold_cmd>thresholds::load\",\"threshold_cmd>thresholds::save\",\"threshold_line>format\",\"validate_finding_filter_state>Ok\",\"validate_finding_filter_state>bail\",\"validate_finding_verdict>Ok\",\"validate_finding_verdict>bail\",\"whoami_cmd>Ok\",\"whoami_cmd>Some\",\"whoami_cmd>open\",\"whoami_cmd>println\",\"whoami_cmd>r::as_str\",\"whoami_cmd>store::agent\",\"whoami_cmd>store::identity\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "a4b6e3747d1eba394b20292f3fcd072d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "3fa74f83778ee0ef",
+      "value": "2f84b53462bca61c",
       "truth_class": "derived"
     },
     {
@@ -20936,7 +22222,7 @@
       "target_id": "a4b6e3747d1eba394b20292f3fcd072d",
       "target_kind": "node",
       "key": "loc",
-      "value": "1279",
+      "value": "1308",
       "truth_class": "derived"
     },
     {
@@ -20957,7 +22243,7 @@
       "target_id": "a4b6e3747d1eba394b20292f3fcd072d",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"FindingAddInput\":\"cfa0684ae2f08942\",\"absorb_cmd\":\"650c27e87adf1d74\",\"adjudicate_finding\":\"7321d6bb4f783b4d\",\"audit_cmd\":\"415175b2bcee7dd2\",\"calibrate_cmd\":\"7c9ec7bf89f3635b\",\"completeness_cmd\":\"42a60a28a2bb9917\",\"coverage_cmd\":\"2816714465aae66d\",\"debt\":\"0f15d89a78dda52c\",\"debt_cmd\":\"90bf7abe0349b736\",\"debt_promote\":\"ff94f3669a1cb3ba\",\"deepen_cmd\":\"a0fc933f54f3752b\",\"doctor_cmd\":\"96ad3a961bd71c36\",\"finding\":\"55ef16b96735ace8\",\"finding_add\":\"5bb7e94b40a2f1d4\",\"finding_list\":\"d7774df5535de718\",\"finding_verdict\":\"f1681240600f2e53\",\"ignore_cmd\":\"244b8d782f72fd7c\",\"impact_cmd\":\"25dd144ce5dd25e9\",\"policy_cmd\":\"49a5a92b1dcfee31\",\"resolve_debt_cluster\":\"71e98740c7ef9864\",\"resolve_debt_subjects\":\"540fc20e48639d93\",\"scan_cmd\":\"fc976eb83e0e6c6b\",\"smells_cmd\":\"00510f5f170ddc58\",\"threshold_cmd\":\"f77fe6b79ae7a1dc\",\"threshold_line\":\"ce445e9e5f24935c\",\"validate_finding_filter_state\":\"9d5897b317a5f16c\",\"validate_finding_verdict\":\"e687c21fde0b6592\",\"whoami_cmd\":\"2a4d3c4b5c4e44b5\"}",
+      "value": "{\"FindingAddInput\":\"cfa0684ae2f08942\",\"absorb_cmd\":\"650c27e87adf1d74\",\"adjudicate_finding\":\"7321d6bb4f783b4d\",\"audit_cmd\":\"a403f17a637e3713\",\"calibrate_cmd\":\"7c9ec7bf89f3635b\",\"completeness_cmd\":\"42a60a28a2bb9917\",\"coverage_cmd\":\"2816714465aae66d\",\"debt\":\"0f15d89a78dda52c\",\"debt_cmd\":\"90bf7abe0349b736\",\"debt_promote\":\"ff94f3669a1cb3ba\",\"deepen_cmd\":\"a0fc933f54f3752b\",\"doctor_cmd\":\"96ad3a961bd71c36\",\"finding\":\"55ef16b96735ace8\",\"finding_add\":\"5bb7e94b40a2f1d4\",\"finding_list\":\"d7774df5535de718\",\"finding_verdict\":\"f1681240600f2e53\",\"ignore_cmd\":\"244b8d782f72fd7c\",\"impact_cmd\":\"25dd144ce5dd25e9\",\"policy_cmd\":\"49a5a92b1dcfee31\",\"resolve_debt_cluster\":\"71e98740c7ef9864\",\"resolve_debt_subjects\":\"540fc20e48639d93\",\"scan_cmd\":\"fc976eb83e0e6c6b\",\"smells_cmd\":\"00510f5f170ddc58\",\"threshold_cmd\":\"f77fe6b79ae7a1dc\",\"threshold_line\":\"ce445e9e5f24935c\",\"validate_finding_filter_state\":\"9d5897b317a5f16c\",\"validate_finding_verdict\":\"e687c21fde0b6592\",\"whoami_cmd\":\"2a4d3c4b5c4e44b5\"}",
       "truth_class": "derived"
     },
     {
@@ -21255,6 +22541,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "a8488264fd0d0d589692bb4881e5b0a3",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "a89c1dfd353dac420fc9df4d27374e4c",
       "target_kind": "node",
       "key": "content_hash",
@@ -21308,6 +22601,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "fn invariant",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a9f07b6baee318aea964786be9bd2e47",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "observe_command",
       "truth_class": "asserted"
     },
     {
@@ -21577,6 +22877,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "b39f891ff07ed0924eb6d69875227972",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "b56d433c98a18554691b97911c8f898f",
       "target_kind": "node",
       "key": "calls",
@@ -21671,14 +22978,14 @@
       "target_id": "b62f57b48f0a4955a65a35a04ff501fa",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\">\\\"abc\\\"::into\",\">\\\"f\\\"::into\",\">\\\"tampered\\\"::into\",\">a::clone\",\">assert_eq\",\">assert_ne\",\">rs\\\"::into\",\"locator_symbol>locator::split_whitespace\",\"locator_symbol>tok::is_empty\",\"locator_symbol>tok::rsplit\",\"locator_symbol>tok::split\",\"locator_symbol>tok::to_string\",\"observe>BTreeMap::new\",\"observe>Ok\",\"observe>Some\",\"observe>String::new\",\"observe>Vec::new\",\"observe>artifact::fingerprint\",\"observe>callers::iter\",\"observe>callgraph::build\",\"observe>extract::extract\",\"observe>file::cmp\",\"observe>format\",\"observe>fs::read_to_string\",\"observe>graph::impact\",\"observe>id::clone\",\"observe>intent::clone\",\"observe>items::push\",\"observe>items::sort_by\",\"observe>kind::as_str\",\"observe>known::contains_key\",\"observe>live::contains\",\"observe>located::insert\",\"observe>locator_symbol\",\"observe>name::clone\",\"observe>owned::contains_key\",\"observe>owned::get\",\"observe>owned::insert\",\"observe>owners::into_iter\",\"observe>owners::len\",\"observe>root::join\",\"observe>serde_json::from_str\",\"observe>store::edge_superseded\",\"observe>store::edges_with\",\"observe>store::get_facet\",\"observe>store::get_node\",\"observe>store::list_nodes\",\"observe>symbol::clone\",\"observe>symbol::cmp\",\"observe>symbols::iter\",\"observe>vec\",\"record>format\",\"record>items::iter\",\"record>serde_json::json\",\"record>store::add_node\",\"restamp>Some\",\"restamp>artifact::fingerprint\",\"restamp>file::clone\",\"restamp>fs::read_to_string\",\"restamp>root::join\",\"restamp>symbol::clone\",\"still_holds>restamp\"]",
+      "value": "[\">\\\"abc\\\"::into\",\">\\\"f\\\"::into\",\">\\\"tampered\\\"::into\",\">a::clone\",\">assert_eq\",\">assert_ne\",\">rs\\\"::into\",\"locator_symbol>locator::split_whitespace\",\"locator_symbol>tok::is_empty\",\"locator_symbol>tok::rsplit\",\"locator_symbol>tok::split\",\"locator_symbol>tok::to_string\",\"observe>BTreeMap::new\",\"observe>Ok\",\"observe>Role::detect\",\"observe>Some\",\"observe>String::new\",\"observe>Vec::new\",\"observe>artifact::fingerprint\",\"observe>callee::rsplit\",\"observe>callers::iter\",\"observe>callgraph::build\",\"observe>calls::iter\",\"observe>extract::extract\",\"observe>file::cmp\",\"observe>format\",\"observe>fs::read_to_string\",\"observe>graph::impact\",\"observe>id::clone\",\"observe>intent::clone\",\"observe>items::push\",\"observe>items::sort_by\",\"observe>kind::as_str\",\"observe>known::contains_key\",\"observe>live::contains\",\"observe>located::get\",\"observe>located::insert\",\"observe>locator_symbol\",\"observe>name::clone\",\"observe>owned::contains_key\",\"observe>owned::get\",\"observe>owned::insert\",\"observe>owners::into_iter\",\"observe>owners::len\",\"observe>root::join\",\"observe>serde_json::from_str\",\"observe>store::edge_superseded\",\"observe>store::edges_with\",\"observe>store::get_facet\",\"observe>store::get_node\",\"observe>store::list_nodes\",\"observe>symbol::clone\",\"observe>symbol::cmp\",\"observe>symbols::iter\",\"observe>vec\",\"observe>verified::into_iter\",\"observe>verified::len\",\"record>format\",\"record>items::iter\",\"record>serde_json::json\",\"record>store::add_node\",\"restamp>Some\",\"restamp>artifact::fingerprint\",\"restamp>file::clone\",\"restamp>fs::read_to_string\",\"restamp>root::join\",\"restamp>symbol::clone\",\"still_holds>restamp\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "b62f57b48f0a4955a65a35a04ff501fa",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "120218d804e1d4d8",
+      "value": "8c6cceda81751098",
       "truth_class": "derived"
     },
     {
@@ -21699,7 +23006,7 @@
       "target_id": "b62f57b48f0a4955a65a35a04ff501fa",
       "target_kind": "node",
       "key": "loc",
-      "value": "303",
+      "value": "342",
       "truth_class": "derived"
     },
     {
@@ -21720,8 +23027,36 @@
       "target_id": "b62f57b48f0a4955a65a35a04ff501fa",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"AbsorbEvidence\":\"f48e2afb33d70344\",\"Item\":\"2f18ac308c4e24ea\",\"Kind\":\"a1ecf68b75b62c4f\",\"as_str\":\"8b6e5a1044d7a400\",\"locator_symbol\":\"3677f1246d05d673\",\"observe\":\"9d766c5226433d91\",\"record\":\"33f23522ddb66aef\",\"restamp\":\"1949060d07b47544\",\"still_holds\":\"53559586b9f7a07c\"}",
+      "value": "{\"AbsorbEvidence\":\"f48e2afb33d70344\",\"Item\":\"2f18ac308c4e24ea\",\"Kind\":\"a1ecf68b75b62c4f\",\"as_str\":\"8b6e5a1044d7a400\",\"locator_symbol\":\"3677f1246d05d673\",\"observe\":\"959bab8aa23f183b\",\"record\":\"33f23522ddb66aef\",\"restamp\":\"1949060d07b47544\",\"still_holds\":\"53559586b9f7a07c\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
     },
     {
       "target_id": "b94f4bf70dff258e9139a8b07fd6300d",
@@ -21878,6 +23213,34 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "beade5691b7a4e15e6c6e8d5ba23cf3e",
       "target_kind": "edge",
       "key": "locator",
@@ -21939,6 +23302,34 @@
       "key": "symbol_fingerprints",
       "value": "{\"dispatch\":\"6eea6fcd24b43db5\",\"drive\":\"53895675024da3c1\",\"freeze\":\"0c746f82e0991927\",\"prompt\":\"0d7081183cb62345\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "bfaf6a1b2a632083454e08be90a1b95c",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
     },
     {
       "target_id": "c08992ddfdfd86e86fe8d1cddde4885d",
@@ -22095,6 +23486,34 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "c24c2964b5b7da2c39b27532236b7952",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c24c2964b5b7da2c39b27532236b7952",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c24c2964b5b7da2c39b27532236b7952",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c24c2964b5b7da2c39b27532236b7952",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "c376864697a2d5c05a6477aee89ec5ef",
       "target_kind": "node",
       "key": "de_facto",
@@ -22197,6 +23616,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "run:65 (compare 85; ripple only when prior.is_some 90-98)",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c71fb4f65db803e64dbf072c74385284",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
       "truth_class": "asserted"
     },
     {
@@ -22445,6 +23871,34 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "cde73673e54340c65e7e91db1c0cc44b",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "cde73673e54340c65e7e91db1c0cc44b",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cde73673e54340c65e7e91db1c0cc44b",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cde73673e54340c65e7e91db1c0cc44b",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "ce3eef8bca489bea3f6d96b661a8ea90",
       "target_kind": "node",
       "key": "proof_strength",
@@ -22669,6 +24123,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "d688f089c20022864c60ee8642883fe8",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d69d7ea99110ee2e4e092855231044dd",
       "target_kind": "edge",
       "key": "locator",
@@ -22840,14 +24301,14 @@
       "target_id": "df3055f69b9859ae1152095d30fa5344",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"a_new_symbol_in_an_owned_file_is_proposed>Some\",\"a_new_symbol_in_an_owned_file_is_proposed>Store::init\",\"a_new_symbol_in_an_owned_file_is_proposed>Tmp::new\",\"a_new_symbol_in_an_owned_file_is_proposed>absorb::observe\",\"a_new_symbol_in_an_owned_file_is_proposed>assert\",\"a_new_symbol_in_an_owned_file_is_proposed>assert_eq\",\"a_new_symbol_in_an_owned_file_is_proposed>fs::write\",\"a_new_symbol_in_an_owned_file_is_proposed>items::iter\",\"a_new_symbol_in_an_owned_file_is_proposed>seed\",\"a_new_symbol_in_an_owned_file_is_proposed>tmp::path\",\"a_rewritten_stamp_does_not_survive_adoption>\\\"0000000000000000\\\"::into\",\"a_rewritten_stamp_does_not_survive_adoption>Some\",\"a_rewritten_stamp_does_not_survive_adoption>Store::init\",\"a_rewritten_stamp_does_not_survive_adoption>Tmp::new\",\"a_rewritten_stamp_does_not_survive_adoption>absorb::observe\",\"a_rewritten_stamp_does_not_survive_adoption>assert\",\"a_rewritten_stamp_does_not_survive_adoption>fs::write\",\"a_rewritten_stamp_does_not_survive_adoption>items::iter\",\"a_rewritten_stamp_does_not_survive_adoption>real::clone\",\"a_rewritten_stamp_does_not_survive_adoption>seed\",\"a_rewritten_stamp_does_not_survive_adoption>tmp::path\",\"a_vanished_symbol_asks_instead_of_guessing>Some\",\"a_vanished_symbol_asks_instead_of_guessing>Store::init\",\"a_vanished_symbol_asks_instead_of_guessing>Tmp::new\",\"a_vanished_symbol_asks_instead_of_guessing>absorb::observe\",\"a_vanished_symbol_asks_instead_of_guessing>assert\",\"a_vanished_symbol_asks_instead_of_guessing>fs::write\",\"a_vanished_symbol_asks_instead_of_guessing>items::iter\",\"a_vanished_symbol_asks_instead_of_guessing>seed\",\"a_vanished_symbol_asks_instead_of_guessing>tmp::path\",\"absorbing_twice_proposes_the_same_thing>Some\",\"absorbing_twice_proposes_the_same_thing>Store::init\",\"absorbing_twice_proposes_the_same_thing>Tmp::new\",\"absorbing_twice_proposes_the_same_thing>a::iter\",\"absorbing_twice_proposes_the_same_thing>absorb::observe\",\"absorbing_twice_proposes_the_same_thing>assert_eq\",\"absorbing_twice_proposes_the_same_thing>b::iter\",\"absorbing_twice_proposes_the_same_thing>fs::write\",\"absorbing_twice_proposes_the_same_thing>seed\",\"absorbing_twice_proposes_the_same_thing>tmp::path\",\"observing_is_a_pure_read>Some\",\"observing_is_a_pure_read>Store::init\",\"observing_is_a_pure_read>Tmp::new\",\"observing_is_a_pure_read>absorb::observe\",\"observing_is_a_pure_read>assert_eq\",\"observing_is_a_pure_read>fs::read_to_string\",\"observing_is_a_pure_read>render\",\"observing_is_a_pure_read>seed\",\"observing_is_a_pure_read>tmp::path\",\"observing_is_a_pure_read>travel::export_to_file\",\"seed>fs::create_dir_all\",\"seed>fs::write\",\"seed>root::join\",\"seed>serde_json::json\",\"seed>store::add_edge\",\"seed>store::add_node\",\"seed>store::set_facet\",\"seed>sync::run\",\"the_batch_is_an_ordinary_proposal>Some\",\"the_batch_is_an_ordinary_proposal>Store::init\",\"the_batch_is_an_ordinary_proposal>Tmp::new\",\"the_batch_is_an_ordinary_proposal>absorb::observe\",\"the_batch_is_an_ordinary_proposal>absorb::record\",\"the_batch_is_an_ordinary_proposal>assert\",\"the_batch_is_an_ordinary_proposal>assert_eq\",\"the_batch_is_an_ordinary_proposal>body::get\",\"the_batch_is_an_ordinary_proposal>fs::write\",\"the_batch_is_an_ordinary_proposal>seed\",\"the_batch_is_an_ordinary_proposal>tmp::path\",\"the_batch_is_an_ordinary_proposal>v::as_array\"]",
+      "value": "[\"a_new_symbol_in_an_owned_file_is_proposed>Some\",\"a_new_symbol_in_an_owned_file_is_proposed>Store::init\",\"a_new_symbol_in_an_owned_file_is_proposed>Tmp::new\",\"a_new_symbol_in_an_owned_file_is_proposed>absorb::observe\",\"a_new_symbol_in_an_owned_file_is_proposed>assert\",\"a_new_symbol_in_an_owned_file_is_proposed>assert_eq\",\"a_new_symbol_in_an_owned_file_is_proposed>fs::write\",\"a_new_symbol_in_an_owned_file_is_proposed>items::iter\",\"a_new_symbol_in_an_owned_file_is_proposed>seed\",\"a_new_symbol_in_an_owned_file_is_proposed>tmp::path\",\"a_rewritten_stamp_does_not_survive_adoption>\\\"0000000000000000\\\"::into\",\"a_rewritten_stamp_does_not_survive_adoption>Some\",\"a_rewritten_stamp_does_not_survive_adoption>Store::init\",\"a_rewritten_stamp_does_not_survive_adoption>Tmp::new\",\"a_rewritten_stamp_does_not_survive_adoption>absorb::observe\",\"a_rewritten_stamp_does_not_survive_adoption>assert\",\"a_rewritten_stamp_does_not_survive_adoption>fs::write\",\"a_rewritten_stamp_does_not_survive_adoption>items::iter\",\"a_rewritten_stamp_does_not_survive_adoption>real::clone\",\"a_rewritten_stamp_does_not_survive_adoption>seed\",\"a_rewritten_stamp_does_not_survive_adoption>tmp::path\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>Some\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>Store::init\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>Tmp::new\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>absorb::observe\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>assert\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>assert_eq\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>fs::create_dir_all\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>fs::write\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>items::iter\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>seed\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>serde_json::json\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>store::add_node\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>sync::run\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof>tmp::path\",\"a_vanished_symbol_asks_instead_of_guessing>Some\",\"a_vanished_symbol_asks_instead_of_guessing>Store::init\",\"a_vanished_symbol_asks_instead_of_guessing>Tmp::new\",\"a_vanished_symbol_asks_instead_of_guessing>absorb::observe\",\"a_vanished_symbol_asks_instead_of_guessing>assert\",\"a_vanished_symbol_asks_instead_of_guessing>fs::write\",\"a_vanished_symbol_asks_instead_of_guessing>items::iter\",\"a_vanished_symbol_asks_instead_of_guessing>seed\",\"a_vanished_symbol_asks_instead_of_guessing>tmp::path\",\"absorbing_twice_proposes_the_same_thing>Some\",\"absorbing_twice_proposes_the_same_thing>Store::init\",\"absorbing_twice_proposes_the_same_thing>Tmp::new\",\"absorbing_twice_proposes_the_same_thing>a::iter\",\"absorbing_twice_proposes_the_same_thing>absorb::observe\",\"absorbing_twice_proposes_the_same_thing>assert_eq\",\"absorbing_twice_proposes_the_same_thing>b::iter\",\"absorbing_twice_proposes_the_same_thing>fs::write\",\"absorbing_twice_proposes_the_same_thing>seed\",\"absorbing_twice_proposes_the_same_thing>tmp::path\",\"observing_is_a_pure_read>Some\",\"observing_is_a_pure_read>Store::init\",\"observing_is_a_pure_read>Tmp::new\",\"observing_is_a_pure_read>absorb::observe\",\"observing_is_a_pure_read>assert_eq\",\"observing_is_a_pure_read>fs::read_to_string\",\"observing_is_a_pure_read>render\",\"observing_is_a_pure_read>seed\",\"observing_is_a_pure_read>tmp::path\",\"observing_is_a_pure_read>travel::export_to_file\",\"seed>fs::create_dir_all\",\"seed>fs::write\",\"seed>root::join\",\"seed>serde_json::json\",\"seed>store::add_edge\",\"seed>store::add_node\",\"seed>store::set_facet\",\"seed>sync::run\",\"the_batch_is_an_ordinary_proposal>Some\",\"the_batch_is_an_ordinary_proposal>Store::init\",\"the_batch_is_an_ordinary_proposal>Tmp::new\",\"the_batch_is_an_ordinary_proposal>absorb::observe\",\"the_batch_is_an_ordinary_proposal>absorb::record\",\"the_batch_is_an_ordinary_proposal>assert\",\"the_batch_is_an_ordinary_proposal>assert_eq\",\"the_batch_is_an_ordinary_proposal>body::get\",\"the_batch_is_an_ordinary_proposal>fs::write\",\"the_batch_is_an_ordinary_proposal>seed\",\"the_batch_is_an_ordinary_proposal>tmp::path\",\"the_batch_is_an_ordinary_proposal>v::as_array\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "df3055f69b9859ae1152095d30fa5344",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "19974d99564b620c",
+      "value": "9432786628dc43c6",
       "truth_class": "derived"
     },
     {
@@ -22868,7 +24329,7 @@
       "target_id": "df3055f69b9859ae1152095d30fa5344",
       "target_kind": "node",
       "key": "loc",
-      "value": "217",
+      "value": "262",
       "truth_class": "derived"
     },
     {
@@ -22882,14 +24343,14 @@
       "target_id": "df3055f69b9859ae1152095d30fa5344",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "7",
+      "value": "8",
       "truth_class": "derived"
     },
     {
       "target_id": "df3055f69b9859ae1152095d30fa5344",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"a_new_symbol_in_an_owned_file_is_proposed\":\"ce61efc30af3e7e0\",\"a_rewritten_stamp_does_not_survive_adoption\":\"2b41fe11fd1aab5e\",\"a_vanished_symbol_asks_instead_of_guessing\":\"9eff6805880a608c\",\"absorbing_twice_proposes_the_same_thing\":\"f5f26549b6c2349c\",\"observing_is_a_pure_read\":\"e01364688d783f8c\",\"seed\":\"b62697309f8c94bf\",\"the_batch_is_an_ordinary_proposal\":\"78dbd72df6583d43\"}",
+      "value": "{\"a_new_symbol_in_an_owned_file_is_proposed\":\"ce61efc30af3e7e0\",\"a_rewritten_stamp_does_not_survive_adoption\":\"2b41fe11fd1aab5e\",\"a_test_that_exercises_a_behavior_is_proposed_as_its_proof\":\"1ae5127530847609\",\"a_vanished_symbol_asks_instead_of_guessing\":\"9eff6805880a608c\",\"absorbing_twice_proposes_the_same_thing\":\"f5f26549b6c2349c\",\"observing_is_a_pure_read\":\"e01364688d783f8c\",\"seed\":\"b62697309f8c94bf\",\"the_batch_is_an_ordinary_proposal\":\"78dbd72df6583d43\"}",
       "truth_class": "derived"
     },
     {
@@ -23362,10 +24823,45 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "eb1db9fab7af92fc9f534a6a22ed89d4",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "ec92e384792f08cc440a6cb502170945",
       "target_kind": "edge",
       "key": "locator",
       "value": "export_to_file:75 / Export::from_snapshot",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "eca3516b29a7d661a98e2db4008b33a8",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "eca3516b29a7d661a98e2db4008b33a8",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "eca3516b29a7d661a98e2db4008b33a8",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "eca3516b29a7d661a98e2db4008b33a8",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
       "truth_class": "asserted"
     },
     {
@@ -23425,10 +24921,24 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "ed5c4f587756ae5f99eacbc5e4a18f96",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "ee72093852b8e1f2186b4e2f84ff964b",
       "target_kind": "edge",
       "key": "locator",
       "value": "module intent completeness scorecards",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "eef047333b793d4f6b1c84392ccfd60a",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
       "truth_class": "asserted"
     },
     {
@@ -23513,6 +25023,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "stamp",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f59c8e50b2a4bd4af183ba328e34ec8a",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
       "truth_class": "asserted"
     },
     {
@@ -23857,6 +25374,34 @@
       "key": "proof_strength",
       "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "ff5d38e1d8e842cecd760ea1e4d3f9d7",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ff5d38e1d8e842cecd760ea1e4d3f9d7",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ff5d38e1d8e842cecd760ea1e4d3f9d7",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ff5d38e1d8e842cecd760ea1e4d3f9d7",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "user_visible",
+      "truth_class": "asserted"
     }
   ],
   "tags": [

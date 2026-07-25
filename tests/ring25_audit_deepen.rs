@@ -372,3 +372,47 @@ fn the_efficacy_ratio_distinguishes_helped_from_ignored() {
     );
     assert!((e.ratio - 0.5).abs() < f64::EPSILON, "{e:?}");
 }
+
+/// One definition of the coverage gap, not two that agree by coincidence.
+///
+/// `code_ownership_summary` carried its own copy of the ownership rule. When
+/// the test-file rule landed in `unowned_codefiles` only, `loom coverage` and
+/// the `covered` rung disagreed about the same files — the summary said a
+/// verified test file was unowned while the queue had already stopped serving
+/// it.
+#[test]
+fn coverage_and_the_rung_count_the_same_files() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let i = intent(&store, "a behavior");
+
+    codefile(&store, "src/thing.rs");
+    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
+    std::fs::write(tmp.path().join("tests/thing_test.rs"), "pub fn t() {}\n").unwrap();
+    let tf = store
+        .add_node(
+            NodeType::CodeFile,
+            "tests/thing_test.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let e = store
+        .add_edge(EdgeKind::Implements, &i, &tf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(&e.id, TargetKind::Edge, "role", "verifies", TruthClass::Asserted)
+        .unwrap();
+
+    let queue = loom::commands::unowned_names(&store).unwrap();
+    let (_, _, summary, _) = loom::commands::code_ownership_summary(&store).unwrap();
+    assert_eq!(
+        queue, summary,
+        "the summary and the queue must be the same list, not two derivations of it"
+    );
+    assert!(
+        !queue.contains(&"tests/thing_test.rs".to_string()),
+        "a test file with a verifies grounding is owned in BOTH: {queue:?}"
+    );
+}
