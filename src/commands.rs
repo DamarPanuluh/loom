@@ -45,6 +45,8 @@ pub(crate) use context_cmd::served_context;
 // The honest way to make a proof true: let loom run it. Public so callers other
 // than the CLI — absorb, fixtures — take the same path rather than a seam.
 pub use proof_cmd::{observe_validation, prove_intent};
+pub(crate) use apply_cmd::apply_value;
+pub(crate) use proof_cmd::observe_run;
 pub(crate) use status_cmd::{next_output, status_value};
 
 /// Dispatch a parsed CLI invocation.

@@ -199,6 +199,27 @@ struct ApplyReport {
     intent_ids: std::collections::BTreeMap<String, String>,
 }
 
+/// Apply an already-parsed batch and return what it did.
+///
+/// The shared core: the CLI reads a file, the MCP tool receives a JSON object,
+/// and both land here — so a batch delivered in-band goes through exactly the
+/// same gates, in exactly the same transaction, as one from disk.
+pub(crate) fn apply_value(graph: Option<&Path>, fragment: &serde_json::Value) -> Result<serde_json::Value> {
+    let spec: ApplyTx = serde_json::from_value(fragment.clone())
+        .context("parsing apply batch (keys: intents/groundings/relationships/verdicts/adjudications/vocab/tags)")?;
+    let store = open(graph)?;
+    let report = {
+        let tx = store.begin()?;
+        let report = apply_tx(&store, &spec)?;
+        tx.commit()?;
+        report
+    };
+    let reexported = crate::travel::refresh_export_if_tracked(&store)?;
+    let mut payload = serde_json::to_value(&report)?;
+    payload["reexported"] = serde_json::json!(reexported);
+    Ok(payload)
+}
+
 pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()> {
     let spec = read_apply(file)?;
     let store = open(graph)?;

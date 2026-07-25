@@ -165,3 +165,132 @@ fn a_failing_tool_reports_why_instead_of_a_transport_error() {
         "the refusal names what failed: {body}"
     );
 }
+
+/// Every capability is reachable in-band. A partner interrupts; a CLI waits —
+/// and a capability that exists only as a subprocess is one an agent has to
+/// stop and shell out for, which is the thing MCP is here to avoid.
+#[test]
+fn nothing_ships_cli_only() {
+    let response = loom::mcp::handle(
+        None,
+        &json!({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}),
+    )
+    .expect("tools/list is a request");
+    let names: Vec<&str> = response["result"]["tools"]
+        .as_array()
+        .expect("a tools array")
+        .iter()
+        .map(|t| t["name"].as_str().unwrap())
+        .collect();
+    for expected in [
+        "loom_status",
+        "loom_next",
+        "loom_context",
+        "loom_impact",
+        "loom_observe",
+        "loom_absorb",
+        "loom_journal",
+        "loom_apply",
+    ] {
+        assert!(names.contains(&expected), "{expected} is not served: {names:?}");
+    }
+    // And every tool declares a schema an agent can call without guessing.
+    for tool in response["result"]["tools"].as_array().unwrap() {
+        assert_eq!(tool["inputSchema"]["type"], "object", "{tool}");
+        assert!(
+            tool["description"].as_str().map(|d| d.len()).unwrap_or(0) > 40,
+            "a tool nobody understands is a tool nobody calls: {tool}"
+        );
+    }
+}
+
+/// `loom_observe` runs the command and reports what happened. The outcome is
+/// never taken from the caller — there is no argument with which to supply one.
+#[test]
+fn observing_in_band_records_what_loom_saw() {
+    let tmp = Tmp::new();
+    let store = seeded(&tmp);
+    let intent = store
+        .list_nodes(Some(loom::model::NodeType::Intent), usize::MAX)
+        .unwrap()
+        .remove(0);
+    drop(store);
+
+    let v = call(
+        tmp.path(),
+        "loom_observe",
+        json!({ "command": ["true"], "for_behavior": intent.id }),
+    );
+    assert_eq!(v["observed"], true, "{v}");
+    assert_eq!(v["exit_code"], 0, "{v}");
+    assert_eq!(
+        v["strength"], "S1",
+        "loom ran it and it passed — liveness, not behavior: {v}"
+    );
+
+    // The schema has no field for an outcome, which is the structural half of
+    // the same guarantee.
+    let listed = loom::mcp::handle(
+        None,
+        &json!({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}),
+    )
+    .unwrap();
+    let observe_tool = listed["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "loom_observe")
+        .unwrap();
+    let props = &observe_tool["inputSchema"]["properties"];
+    for forbidden in ["outcome", "result", "passed", "exit_code"] {
+        assert!(
+            props.get(forbidden).is_none(),
+            "a caller must not be able to report an outcome: {observe_tool}"
+        );
+    }
+}
+
+/// `loom_absorb` observes and writes nothing.
+#[test]
+fn absorbing_in_band_is_a_pure_read() {
+    let tmp = Tmp::new();
+    let store = seeded(&tmp);
+    let before = loom::travel::export_to_file(&store).unwrap();
+    let before = std::fs::read_to_string(&before).unwrap();
+    drop(store);
+
+    let v = call(tmp.path(), "loom_absorb", json!({}));
+    assert!(v["items"].is_array(), "{v}");
+
+    let store = Store::open(tmp.path()).unwrap();
+    let after = loom::travel::export_to_file(&store).unwrap();
+    assert_eq!(
+        before,
+        std::fs::read_to_string(&after).unwrap(),
+        "absorb must not mutate the graph"
+    );
+}
+
+/// An in-band batch goes through the same gates as one from disk — a batch
+/// cannot accept what a single write would refuse.
+#[test]
+fn an_in_band_batch_is_gated_like_any_other_write() {
+    let tmp = Tmp::new();
+    let store = seeded(&tmp);
+    drop(store);
+
+    // A verdict with placeholder evidence is refused, exactly as `loom apply`
+    // would refuse it from a file.
+    let response = loom::mcp::handle(
+        Some(tmp.path()),
+        &json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
+            "name":"loom_apply",
+            "arguments":{"fragment":{"intents":[{"name":"", "description":"x"}]}}
+        }}),
+    )
+    .expect("a request");
+    assert_eq!(
+        response["result"]["isError"], true,
+        "an invalid batch must fail as a tool result, not silently apply: {response}"
+    );
+}

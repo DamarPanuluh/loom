@@ -869,6 +869,43 @@ pub(crate) fn observe_cmd(
     command: &[String],
     json: bool,
 ) -> Result<()> {
+    let value = observe_run(graph, target, timeout, command)?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&value)?);
+        return Ok(());
+    }
+    if value["observed"] == serde_json::json!(false) {
+        println!("blocked: {}", value["blocked"].as_str().unwrap_or(""));
+        return Ok(());
+    }
+    println!(
+        "observed `{}` → exit {} ({} file(s) covered)",
+        value["command"].as_str().unwrap_or(""),
+        value["exit_code"],
+        value["covered"].as_array().map(|a| a.len()).unwrap_or(0)
+    );
+    match value["bound_to"].as_str() {
+        Some(name) => println!(
+            "  bound to proof '{name}' [{}]",
+            value["strength"].as_str().unwrap_or("-")
+        ),
+        None => println!(
+            "  recorded as journal:{} — bind it with `loom observe --for <behavior> -- …`",
+            value["journal"].as_str().unwrap_or("")
+        ),
+    }
+    Ok(())
+}
+
+/// Observe a command and return what loom saw. The shared core: the CLI prints
+/// it, the MCP tool returns it, and neither can report an outcome loom did not
+/// witness because neither is given the chance to supply one.
+pub(crate) fn observe_run(
+    graph: Option<&Path>,
+    target: Option<&str>,
+    timeout: u64,
+    command: &[String],
+) -> Result<serde_json::Value> {
     let store = open(graph)?;
     let root = store.root().to_path_buf();
     // Re-quote every argument. Joining on spaces looks right and is wrong: it
@@ -905,15 +942,7 @@ pub(crate) fn observe_cmd(
                 intent.as_ref().map(|n| n.id.as_str()).unwrap_or(""),
                 serde_json::json!({ "command": command, "blocked": reason }),
             )?;
-            if json {
-                println!(
-                    "{}",
-                    serde_json::json!({ "observed": false, "blocked": reason })
-                );
-            } else {
-                println!("blocked: {reason}");
-            }
-            return Ok(());
+            return Ok(serde_json::json!({ "observed": false, "blocked": reason }));
         }
     };
 
@@ -956,34 +985,15 @@ pub(crate) fn observe_cmd(
         None => "-",
     };
 
-    if json {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&serde_json::json!({
-                "observed": true,
-                "command": command,
-                "exit_code": run.exit_code,
-                "covered": run.covered.keys().collect::<Vec<_>>(),
-                "journal": entry.id,
-                "bound_to": bound,
-                "strength": grade,
-            }))?
-        );
-        return Ok(());
-    }
-    println!(
-        "observed `{command}` → exit {} ({} file(s) covered)",
-        run.exit_code,
-        run.covered.len()
-    );
-    match &bound {
-        Some(name) => println!("  bound to proof '{name}' [{grade}]"),
-        None => println!(
-            "  recorded as journal:{} — bind it with `loom observe --for <behavior> -- {command}`",
-            entry.id
-        ),
-    }
-    Ok(())
+    Ok(serde_json::json!({
+        "observed": true,
+        "command": command,
+        "exit_code": run.exit_code,
+        "covered": run.covered.keys().collect::<Vec<_>>(),
+        "journal": entry.id,
+        "bound_to": bound,
+        "strength": grade,
+    }))
 }
 
 /// Quote one argument for `sh -c`, so what runs is what was typed.

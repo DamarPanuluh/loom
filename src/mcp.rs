@@ -108,6 +108,156 @@ fn tools() -> Vec<Tool> {
                 )?)?)
             },
         },
+        Tool {
+            name: "loom_impact",
+            description:
+                "What a change here could reach: the symbols that transitively call a target,                  nearest first, from the real call graph. Exact and heuristic resolutions are                  reported separately and never blended. Call this BEFORE editing a symbol you                  did not write.",
+            schema: || {
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "target": { "type": "string", "description": "A symbol name." },
+                        "depth": {
+                            "type": "integer",
+                            "description": "Call hops to walk back (default 3).",
+                            "minimum": 1,
+                            "maximum": 10
+                        }
+                    },
+                    "required": ["target"],
+                    "additionalProperties": false
+                })
+            },
+            call: |graph, args| {
+                let target = args
+                    .get("target")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow::anyhow!("`target` is required"))?;
+                let depth = args.get("depth").and_then(|v| v.as_u64()).unwrap_or(3) as usize;
+                let store = crate::commands::open_read(graph)?;
+                let cg = crate::callgraph::build(&store)?;
+                Ok(serde_json::to_value(cg.impact(target, depth))?)
+            },
+        },
+        Tool {
+            name: "loom_observe",
+            description:
+                "Run a command loom watches and keep what it saw. Prefix the test command you                  were going to run anyway: the run becomes a re-checkable record over the files                  it covered, and with `for_behavior` it binds to that behavior's proof and is                  graded. loom reports the outcome — you cannot supply one.",
+            schema: || {
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "description": "argv, unquoted — loom quotes it for the shell.",
+                            "minItems": 1
+                        },
+                        "for_behavior": {
+                            "type": "string",
+                            "description": "Intent id/name this run is evidence about."
+                        },
+                        "timeout": {
+                            "type": "integer",
+                            "description": "Seconds before giving up (default 900). A timeout records as blocked, never as a failure."
+                        }
+                    },
+                    "required": ["command"],
+                    "additionalProperties": false
+                })
+            },
+            call: |graph, args| {
+                let command: Vec<String> = args
+                    .get("command")
+                    .and_then(|v| v.as_array())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|x| x.as_str().map(str::to_string))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                if command.is_empty() {
+                    anyhow::bail!("`command` must be a non-empty argv array");
+                }
+                let target = args.get("for_behavior").and_then(|v| v.as_str());
+                let timeout = args.get("timeout").and_then(|v| v.as_u64()).unwrap_or(900);
+                crate::commands::observe_run(graph, target, timeout, &command)
+            },
+        },
+        Tool {
+            name: "loom_absorb",
+            description:
+                "Read the working tree and return the graph mutations it implies: new symbols in                  owned files, symbols whose callers all belong to one behavior, locators naming                  code that moved, files nothing owns. Observes only — nothing is written, and                  items loom cannot derive say what they need from you.",
+            schema: no_args,
+            call: |graph, _args| {
+                let store = crate::commands::open_read(graph)?;
+                let root = store.root().to_path_buf();
+                let items = crate::absorb::observe(&store, &root)?;
+                let ready = items.iter().filter(|i| i.needs.is_empty()).count();
+                Ok(json!({
+                    "items": serde_json::to_value(&items)?,
+                    "ready": ready,
+                    "needs_you": items.len() - ready,
+                }))
+            },
+        },
+        Tool {
+            name: "loom_journal",
+            description:
+                "The append-only record of what happened to this graph: ratifications,                  rejections, observed runs, journey runs, drive turns. Read it to establish what                  actually occurred before changing anything — it is the one plane nothing                  rewrites.",
+            schema: || {
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": {
+                            "type": "integer",
+                            "description": "Most recent entries to return (default 20).",
+                            "minimum": 1
+                        },
+                        "event": {
+                            "type": "string",
+                            "description": "Optional event kind to filter by."
+                        }
+                    },
+                    "additionalProperties": false
+                })
+            },
+            call: |graph, args| {
+                let store = crate::commands::open_read(graph)?;
+                let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
+                let event = args.get("event").and_then(|v| v.as_str());
+                let mut entries = crate::journal::read(store.root())?;
+                if let Some(kind) = event {
+                    entries.retain(|e| e.event == kind);
+                }
+                let tail = entries.split_off(entries.len().saturating_sub(limit));
+                Ok(serde_json::to_value(tail)?)
+            },
+        },
+        Tool {
+            name: "loom_apply",
+            description:
+                "Apply a batch of graph writes atomically: intents, groundings, relationships,                  verdicts, adjudications, vocabulary, tags. Every item goes through the same                  gates as its CLI equivalent — a batch cannot accept what a single write would                  refuse — and any failure rolls back the whole batch.",
+            schema: || {
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "fragment": {
+                            "type": "object",
+                            "description": "The apply fragment, same shape as the file `loom apply` reads."
+                        }
+                    },
+                    "required": ["fragment"],
+                    "additionalProperties": false
+                })
+            },
+            call: |graph, args| {
+                let fragment = args
+                    .get("fragment")
+                    .ok_or_else(|| anyhow::anyhow!("`fragment` is required"))?;
+                crate::commands::apply_value(graph, fragment)
+            },
+        },
     ]
 }
 
