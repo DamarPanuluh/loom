@@ -194,15 +194,48 @@ pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<R
             candidates.push(seg.to_string());
         }
     }
-    let hit = extraction
+    // ALL symbols carrying the name, not the first. Two functions called
+    // `helper` in one file are not distinguishable by a locator, so the honest
+    // anchor covers both: either one being rewritten re-opens the claim,
+    // because loom cannot tell which one the grounding meant.
+    let hits: Vec<&crate::extract::Symbol> = extraction
         .symbols
         .iter()
-        .find(|sym| candidates.iter().any(|c| c == &sym.name));
+        .filter(|sym| candidates.iter().any(|c| c == &sym.name))
+        .collect();
+    let hit = hits.first().copied();
     let (exit_code, detail) = match hit {
-        Some(sym) => (
-            0,
-            format!("{} '{}' at {}:{}", sym.kind, sym.name, file, sym.line_start),
-        ),
+        // The fingerprint of the symbol's BODY, not just its position. A
+        // grounding says the behavior lives in this symbol, so the symbol being
+        // rewritten falsifies it exactly as much as the symbol disappearing —
+        // and re-checking presence alone would spare every edit that stayed
+        // inside a function, which is most of them.
+        Some(sym) => {
+            let lines: Vec<&str> = content.lines().collect();
+            let folded: String = hits
+                .iter()
+                .map(|s| {
+                    lines
+                        .get(s.line_start.saturating_sub(1)..s.line_end.min(lines.len()))
+                        .map(|w| w.join("\n"))
+                        .unwrap_or_default()
+                })
+                .collect::<Vec<_>>()
+                .join("\n---\n");
+            (
+                0,
+                format!(
+                    "{} '{}' at {}:{} ({} match{}) [{}]",
+                    sym.kind,
+                    sym.name,
+                    file,
+                    sym.line_start,
+                    hits.len(),
+                    if hits.len() == 1 { "" } else { "es" },
+                    crate::artifact::fingerprint(&folded)
+                ),
+            )
+        }
         None => (1, format!("no live symbol matching '{locator}' in {file}")),
     };
     Some(record(
@@ -266,6 +299,45 @@ pub fn prescreen_probe(
 
 /// The files a run over this intent's code depends on: every file grounded to
 /// it. Used to build the `covered` set for a proof.
+/// Anchor a seam grounding: is the seam this file USES still in it?
+pub fn seam_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<RunRecord> {
+    let content = std::fs::read_to_string(root.join(file)).ok()?;
+    let locator = locator.map(str::trim).filter(|l| !l.is_empty())?;
+    let present = seam_present(&content, locator);
+    Some(record(
+        root,
+        RunProducer::Seam,
+        &format!("seam '{locator}' in {file}"),
+        // Deliberately NOT covered: a seam claim survives content churn. The
+        // probe re-runs instead, which is the whole point of the distinction.
+        &[],
+        1,
+        i64::from(!present),
+        if present {
+            format!("seam '{locator}' present in {file}")
+        } else {
+            format!("seam '{locator}' gone from {file}")
+        }
+        .as_bytes(),
+        &[],
+        0,
+    ))
+}
+
+/// Whether a grounding's seam locator still resolves in the file content. The
+/// locator names the seam (a route, topic, config key, or symbol), so if it —
+/// or its most significant token — is gone, the seam moved.
+pub fn seam_present(src: &str, locator: &str) -> bool {
+    let loc = locator.trim();
+    if loc.is_empty() || src.contains(loc) {
+        return true;
+    }
+    match loc.split_whitespace().next_back() {
+        Some(tok) if !tok.is_empty() => src.contains(tok),
+        _ => false,
+    }
+}
+
 pub fn files_grounding(store: &Store, intent_id: &str) -> Result<Vec<String>> {
     let mut files = Vec::new();
     for e in store.edges_with(

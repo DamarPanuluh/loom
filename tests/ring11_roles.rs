@@ -400,8 +400,8 @@ fn consumes_seam_drift_stales_only_when_seam_gone() {
     );
     let cause = facet_value(&store, &cons_edge.id, "stale_cause").unwrap();
     assert!(
-        cause.starts_with("seam drift"),
-        "consumes stale_cause must lead with seam drift, got {cause:?}"
+        cause.contains("seam_gone"),
+        "consumes stale_cause must name the typed seam cause, got {cause:?}"
     );
 }
 

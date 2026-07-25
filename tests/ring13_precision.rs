@@ -173,17 +173,25 @@ fn symbol_scoped_spare() {
         "stale_cause must name the changed symbol: {cause}"
     );
 
-    // Alpha was spared → NOT in changed_intents → its Requires edge is not rippled.
+    // Neither Requires edge moves, and that is the intended consequence of
+    // deleting the transitive ripple. Both were recorded with prose and no
+    // citation, so neither points at code — there is nothing for a code change
+    // to falsify. Under the old matrix beta's dependent re-opened because beta's
+    // FILE changed, which was a guess about relevance dressed up as staleness:
+    // it re-opened work on a claim nobody had ever tied to the code that moved.
+    //
+    // A relationship that cites a span in a realizing file DOES re-open — see
+    // `localized_edit_produces_at_most_three_full_judgment_packets`, where the
+    // anchored ones spare and the unanchored one does not.
     assert_eq!(
         edge_status(&store, &e_alpha_req),
         InspectionStatus::Passing,
-        "alpha's Requires dependent must not be staled when alpha is spared"
+        "an unanchored relationship has nothing for a file change to falsify"
     );
-    // Beta was staled → IS in changed_intents → its Requires edge is rippled.
     assert_eq!(
         edge_status(&store, &e_beta_req),
-        InspectionStatus::NeedsReverification,
-        "beta's Requires dependent must be staled when beta enters changed_intents"
+        InspectionStatus::Passing,
+        "…and that holds for the changed endpoint too: cite code to be re-opened by it"
     );
 }
 
@@ -221,8 +229,8 @@ fn no_locator_stays_file_scoped() {
     );
     let cause = stale_cause(&store, &e).expect("stale_cause must be set");
     assert!(
-        cause.contains("content hash"),
-        "file-scoped cause must reference the content hash: {cause}"
+        cause.contains("src/lib.rs") && cause.contains("no longer holds"),
+        "file-scoped cause must name the citation that fell: {cause}"
     );
 }
 
@@ -257,8 +265,8 @@ fn removed_symbol_stales() {
     );
     let cause = stale_cause(&store, &e).expect("stale_cause must be set");
     assert!(
-        cause.contains("alpha"),
-        "stale_cause must name the removed symbol: {cause}"
+        cause.contains("alpha") || cause.contains("src/lib.rs"),
+        "stale_cause must name the anchor that fell: {cause}"
     );
 }
 
@@ -482,17 +490,20 @@ fn evidence_refines_cause() {
         InspectionStatus::NeedsReverification,
     );
 
-    // The difference is in the cause refinement only.
+    // The cause names the anchor that fell, in the typed vocabulary — the old
+    // prose grades ("cheap re-confirm" / "full re-inspection") were a routing
+    // class recovered downstream by substring matching. `StaleCause::rework()`
+    // carries that class now, as a type.
     let cause_a = stale_cause(&store, &e_a).expect("e_a must have a stale_cause");
     assert!(
-        cause_a.contains("cited evidence intact"),
-        "intact span must append 'cited evidence intact' to the cause: {cause_a}"
+        cause_a.contains("src/lib.rs"),
+        "cause must name the anchor that fell: {cause_a}"
     );
 
     let cause_b = stale_cause(&store, &e_b).expect("e_b must have a stale_cause");
     assert!(
-        cause_b.contains("cited evidence rewritten"),
-        "rewritten span must append 'cited evidence rewritten' to the cause: {cause_b}"
+        cause_b.contains("span_rewritten"),
+        "a rewritten citation names its typed cause: {cause_b}"
     );
 
     // Cheap vs full grading must reach the work packet / roster so orchestrators
@@ -576,13 +587,16 @@ fn dependent_verdicts_grade_their_own_evidence_not_the_groundings() {
     sync::run(&store, tmp.path()).unwrap();
 
     let grounding_cause = stale_cause(&store, &grounding).unwrap();
-    assert!(grounding_cause.contains("cheap re-confirm"));
+    assert!(grounding_cause.contains("no longer holds"));
+    // Each fact grades its OWN anchors — the governs verdict names the span it
+    // cited, not whatever happened to the grounding it sits above. That was
+    // once arranged by passing the grounding's grade down through two ripple
+    // passes; now it falls out of every fact carrying its own evidence.
     let governs_cause = stale_cause(&store, &governs.id).unwrap();
     assert!(
-        governs_cause.contains("full re-inspection"),
-        "downstream edge must grade its rewritten citation, not inherit grounding grade: {governs_cause}"
+        governs_cause.contains("src/lib.rs:2-4"),
+        "downstream edge must grade its own citation: {governs_cause}"
     );
-    assert!(!governs_cause.contains("cheap re-confirm"));
 }
 
 // ============================================================
@@ -628,12 +642,12 @@ fn unchanged_symbol_rewritten_evidence() {
     );
     let cause = stale_cause(&store, &e).expect("stale_cause must be set");
     assert!(
-        cause.contains("alpha"),
-        "cause must name the unchanged locator symbol: {cause}"
+        cause.contains("src/lib.rs"),
+        "cause must name the rewritten citation: {cause}"
     );
     assert!(
-        cause.contains("unchanged"),
-        "cause must note the locator symbol was unchanged: {cause}"
+        cause.contains("span_rewritten"),
+        "the citation fell even though the locator symbol did not: {cause}"
     );
 }
 
@@ -836,8 +850,8 @@ fn relates_spared_on_one_sided_change_staled_when_both_or_depends_on() {
     );
     let cause = stale_cause(&store, &relates.id).unwrap();
     assert!(
-        cause.contains("both relates endpoints"),
-        "cause should name both-endpoints rule: {cause}"
+        cause.contains("no longer holds"),
+        "cause names the anchor that fell, not a ripple rule: {cause}"
     );
 
     // depends_on hit: re-settle, stamp depends_on to cf_a only, change only a.
@@ -959,13 +973,18 @@ fn localized_edit_produces_at_most_three_full_judgment_packets() {
             "intact relationship evidence must stay settled"
         );
     }
+    // The unanchored one cites nothing, so nothing about it can be falsified by
+    // an edit. It is not "spared" either — it never counted, and its lane keeps
+    // asking for the citation that would let it.
     assert_eq!(
         edge_status(&store, &unanchored),
-        InspectionStatus::NeedsReverification
+        InspectionStatus::Passing,
+        "a claim with no anchor is not re-opened by a change it never pointed at"
     );
     assert_eq!(
         edge_status(&store, &rewritten),
-        InspectionStatus::NeedsReverification
+        InspectionStatus::NeedsReverification,
+        "the one that DID cite the rewritten body re-opens"
     );
 
     use loom::{lane::Lane, workitem};
@@ -986,8 +1005,10 @@ fn localized_edit_produces_at_most_three_full_judgment_packets() {
         .iter()
         .map(|item| item.target.id.as_str())
         .collect::<BTreeSet<_>>();
+    // The unanchored relationship is absent: it was never re-opened, because a
+    // claim that points nowhere cannot be falsified by an edit.
     assert_eq!(
         full_ids,
-        BTreeSet::from([grounding.as_str(), unanchored.as_str(), rewritten.as_str(),])
+        BTreeSet::from([grounding.as_str(), rewritten.as_str()])
     );
 }

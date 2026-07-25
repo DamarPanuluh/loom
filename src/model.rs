@@ -279,12 +279,17 @@ str_enum! {
     ///   files. This is how an ABSENCE ("no hardcoded secrets here") becomes
     ///   re-checkable: loom ran the scan itself and found nothing.
     /// - `Locator` — a grounding locator re-resolved against live symbols.
+    /// - `Seam` — a consumer/config/verify grounding: the seam it names is
+    ///   still present in the file. Content may churn freely underneath it;
+    ///   only the seam leaving re-opens the claim, because the claim was never
+    ///   that the behavior lives here.
     /// - `Detector` — a structural finding's own predicate, re-evaluated.
     RunProducer {
         Command => "command",
         Journey => "journey",
         Prescreen => "prescreen",
         Locator => "locator",
+        Seam => "seam",
         Detector => "detector",
     }
 }
@@ -296,6 +301,8 @@ str_enum! {
         RunCoveredFileChanged => "run_covered_file_changed",
         RunCommandChanged => "run_command_changed",
         SpanRewritten => "span_rewritten",
+        SeamGone => "seam_gone",
+        ScopeFileChanged => "scope_file_changed",
         SpanFileDeleted => "span_file_deleted",
         JournalMissing => "journal_missing",
         SubjectRedefined => "subject_redefined",
@@ -324,11 +331,16 @@ impl StaleCause {
         match self {
             StaleCause::AnchorMissing | StaleCause::JournalMissing => Rework::Reanchor,
             StaleCause::SpanRewritten
+            | StaleCause::SeamGone
             | StaleCause::SpanFileDeleted
             | StaleCause::SubjectRedefined
             | StaleCause::RoleChanged
             | StaleCause::Rehomed => Rework::Reinspect,
-            StaleCause::RunCoveredFileChanged | StaleCause::RunCommandChanged => Rework::Reconfirm,
+            StaleCause::RunCoveredFileChanged
+            | StaleCause::RunCommandChanged
+            // The recorded justification still exists; only the file around it
+            // moved. Re-reading it is cheap.
+            | StaleCause::ScopeFileChanged => Rework::Reconfirm,
         }
     }
 }

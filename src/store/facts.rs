@@ -28,7 +28,29 @@ use crate::model::{Claim, InspectionStatus, NodeType, StaleCause, TargetKind, Ve
 use crate::registry;
 use crate::Result;
 use anyhow::{anyhow, bail};
+use std::collections::BTreeSet;
 use std::str::FromStr;
+
+/// What one full re-verification pass found.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Reverified {
+    /// Facts whose anchors no longer hold at the strength they claimed.
+    pub demoted: usize,
+    /// Facts whose file changed under them and which still stand — the payoff
+    /// of anchoring to a symbol or a span rather than to a whole file.
+    pub spared: usize,
+    /// Validation nodes reset to `not_run` because their proof's anchor broke.
+    pub validations_reset: usize,
+}
+
+/// Does this anchor point into any of `changed`?
+fn touches(payload: &Evidence, changed: &BTreeSet<String>) -> bool {
+    match payload {
+        Evidence::Run(run) => run.covered.keys().any(|f| changed.contains(f)),
+        Evidence::Span(span) => changed.contains(&span.file),
+        Evidence::Journal { .. } | Evidence::Claim { .. } => false,
+    }
+}
 
 /// What a fact is about.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -281,12 +303,55 @@ impl Store {
                 if let Some(edge) = self.get_edge(edge_id)? {
                     if let Some(file) = self.get_node(&edge.to_id)? {
                         let locator = self.get_facet(edge_id, TargetKind::Edge, "locator")?;
-                        probe = crate::runner::locator_probe(
-                            &self.root,
-                            &file.name,
-                            locator.as_deref(),
-                        )
-                        .filter(|r| r.exit_code == 0);
+                        // A realizing grounding that names NO symbol claims the
+                        // whole file. Widen its citations to say so, so a span
+                        // surviving verbatim inside a rewritten file stops
+                        // holding the claim up.
+                        if role == Some(crate::model::GroundingRole::Realizes)
+                            && locator.as_deref().map(str::trim).unwrap_or("").is_empty()
+                        {
+                            if let Ok(content) = std::fs::read_to_string(self.root.join(&file.name))
+                            {
+                                // Hashed over the joined LINES, exactly as
+                                // `span_intact` recomputes it — hashing the raw
+                                // bytes instead would differ by the trailing
+                                // newline and expire every file-scoped
+                                // grounding on the very next sync.
+                                let whole = crate::artifact::fingerprint(
+                                    &content.lines().collect::<Vec<_>>().join("\n"),
+                                );
+                                for row in &mut rows {
+                                    if let Evidence::Span(span) = &mut row.payload {
+                                        if span.file == file.name {
+                                            span.file_hash = whole.clone();
+                                        }
+                                    }
+                                }
+                                // Ids are content-addressed over the payload, so
+                                // widening the scope changes identity.
+                                for row in &mut rows {
+                                    row.id = EvidenceRow::id_for(&fact_id, &row.payload);
+                                }
+                            }
+                        }
+                        probe = if role == Some(crate::model::GroundingRole::Realizes) {
+                            // "The behavior lives here." A locator narrows that
+                            // to one symbol and earns symbol-scoped sparing; no
+                            // locator leaves the claim file-wide, and the anchor
+                            // says so rather than quietly borrowing the narrower
+                            // scope from a span that happens to sit in the file.
+                            crate::runner::locator_probe(
+                                &self.root,
+                                &file.name,
+                                locator.as_deref(),
+                            )
+                            .filter(|r| r.exit_code == 0)
+                        } else {
+                            // "This file USES the behavior." Only the seam
+                            // leaving falsifies it.
+                            crate::runner::seam_probe(&self.root, &file.name, locator.as_deref())
+                                .filter(|r| r.exit_code == 0)
+                        };
                     }
                 }
             }
@@ -589,10 +654,14 @@ impl Store {
     /// also what makes import safe: an export can claim `verified`, but the
     /// claim only survives if the run's covered files still hash the same HERE.
     ///
-    /// Returns the number of facts demoted.
-    pub fn reverify_all(&self) -> Result<usize> {
+    /// `changed` is the set of CodeFile PATHS whose content moved this run. It
+    /// is used only to tell two indistinguishable outcomes apart in the report:
+    /// a fact nothing touched, and a fact whose file DID change while its anchor
+    /// survived — the second is the sparing that makes a large repo workable,
+    /// and it is worth counting.
+    pub fn reverify_all(&self, changed: &BTreeSet<String>) -> Result<Reverified> {
         let facts = self.all_facts()?;
-        let mut demoted = 0usize;
+        let mut out = Reverified::default();
         for fact in facts {
             let rows = self.evidence_for(&fact.id)?;
             let mut checked = Vec::with_capacity(rows.len());
@@ -612,18 +681,79 @@ impl Store {
             }
             let strength = level(&checked);
             if strength.rank() < fact.verification.rank() {
-                demoted += 1;
+                out.demoted += 1;
+            } else if !changed.is_empty()
+                && strength.counts()
+                && checked.iter().any(|r| touches(&r.payload, changed))
+            {
+                // The file moved under it and the claim still stands.
+                out.spared += 1;
             }
             // A fact that has fallen below what counts is no longer settled
             // truth, so the claim RE-OPENS and its lane serves it again.
             // Demoting the fact while leaving the edge green would leave the
             // graph reporting a verdict it no longer stands behind — the exact
             // shape this whole spine exists to make impossible.
-            if fact.claim == Claim::Verdict && !strength.counts() && fact.verification.counts() {
+            // Re-open on EXPIRED, not on "stopped counting". Expired means every
+            // anchor this fact had is gone (or it never had one) — the vacuous
+            // case. Facts whose floor is `claimed` by design (an `independent`
+            // relationship, a finding that flags no file) carry a Claim row that
+            // never breaks, so they settle once and stay settled instead of
+            // being re-opened on every sync.
+            //
+            // Keyed off the CURRENT edge status rather than the fact's previous
+            // verification, because an import can arrive carrying a passing edge
+            // whose fact never counted here — and that edge has to re-open too.
+            let settled = self
+                .get_edge(&fact.subject_id)?
+                .map(|e| {
+                    matches!(
+                        e.status,
+                        InspectionStatus::Passing
+                            | InspectionStatus::Failing
+                            | InspectionStatus::Independent
+                    )
+                })
+                .unwrap_or(false);
+            if fact.claim == Claim::Verdict && strength == Verification::Expired && settled {
                 self.write_edge_status(
                     &fact.subject_id,
                     InspectionStatus::NeedsReverification.as_str(),
                 )?;
+                // The typed reason is the source of truth; this facet is its
+                // rendering, so `loom next` can say WHY in one line without
+                // every reader learning the type.
+                let why = checked
+                    .iter()
+                    .find(|r| !r.holds)
+                    .map(describe)
+                    .unwrap_or_else(|| "anchor missing".to_string());
+                self.set_facet(
+                    &fact.subject_id,
+                    TargetKind::Edge,
+                    "stale_cause",
+                    &why,
+                    crate::model::TruthClass::Derived,
+                )?;
+                // A proof whose anchor broke is not merely a stale edge — the
+                // Validation node itself has to read `not_run`, or `loom status`
+                // reports a passing proof behind a re-opened claim.
+                if let Some(edge) = self.get_edge(&fact.subject_id)? {
+                    if edge.kind == crate::model::EdgeKind::Validates {
+                        // Only count a proof that was actually standing. One
+                        // already at `not_run` is unchanged, and counting it
+                        // would overstate how much re-verification a sync
+                        // actually created.
+                        let was_proven = self
+                            .get_node(&edge.from_id)?
+                            .map(|n| n.status != "not_run")
+                            .unwrap_or(false);
+                        self.reset_validation_status_for_sync(&edge.from_id)?;
+                        if was_proven {
+                            out.validations_reset += 1;
+                        }
+                    }
+                }
             }
             if strength != fact.verification {
                 let cause = checked
@@ -650,9 +780,26 @@ impl Store {
                 )?;
             }
         }
-        Ok(demoted)
+        Ok(out)
     }
 
+}
+
+/// One broken anchor, in a sentence a worker can act on.
+fn describe(row: &EvidenceRow) -> String {
+    let what = match &row.payload {
+        Evidence::Run(run) => run.command.clone(),
+        Evidence::Span(span) => format!("{}:{}-{}", span.file, span.start, span.end),
+        Evidence::Journal { r#ref } => format!("journal:{ref}", ref = r#ref),
+        Evidence::Claim { .. } => "recorded rationale".to_string(),
+    };
+    match row.expiry_reason {
+        Some(cause) => format!("{} no longer holds ({})", what, cause.as_str()),
+        None => format!("{what} no longer holds"),
+    }
+}
+
+impl Store {
     /// Does this anchor still hold? `Some(cause)` when it broke.
     fn recheck(&self, payload: &Evidence) -> Option<StaleCause> {
         match payload {
@@ -665,6 +812,22 @@ impl Store {
             // grounding in a file on any edit, destroying the symbol-scoped
             // sparing that makes a large repo workable. Re-running the probe is
             // both cheaper to reason about and exactly what the claim means.
+            // A seam claim survives content churn by design, so its anchor is
+            // re-run rather than hashed. Comparing file hashes here would
+            // re-open every consumer grounding on any edit to the file, which
+            // is exactly the claim it does NOT make.
+            Evidence::Run(run) if run.producer == crate::model::RunProducer::Seam => {
+                let (locator, file) = run
+                    .command
+                    .strip_prefix("seam '")
+                    .and_then(|r| r.split_once("' in "))?;
+                match std::fs::read_to_string(self.root.join(file)) {
+                    // The consumer surface itself is gone.
+                    Err(_) => Some(StaleCause::SpanFileDeleted),
+                    Ok(content) => (!crate::runner::seam_present(&content, locator))
+                        .then_some(StaleCause::SeamGone),
+                }
+            }
             Evidence::Run(run) if run.producer == crate::model::RunProducer::Locator => {
                 let file = run.covered.keys().next().cloned().unwrap_or_default();
                 let locator = run
@@ -673,7 +836,13 @@ impl Store {
                     .and_then(|r| r.split_once("' in "))
                     .map(|(l, _)| l.to_string());
                 match crate::runner::locator_probe(&self.root, &file, locator.as_deref()) {
-                    Some(fresh) if fresh.exit_code == 0 => None,
+                    // Same symbol, same body: the claim is untouched by whatever
+                    // else moved in the file. This is the symbol-scoped sparing
+                    // that keeps a large repo workable.
+                    Some(fresh) if fresh.exit_code == 0 && fresh.stdout_hash == run.stdout_hash => {
+                        None
+                    }
+                    Some(fresh) if fresh.exit_code == 0 => Some(StaleCause::SubjectRedefined),
                     Some(_) => Some(StaleCause::AnchorMissing),
                     None => Some(StaleCause::SpanFileDeleted),
                 }
@@ -683,13 +852,13 @@ impl Store {
             Evidence::Span(stamp) => match std::fs::read_to_string(self.root.join(&stamp.file)) {
                 Err(_) => Some(StaleCause::SpanFileDeleted),
                 Ok(content) => {
-                    match crate::evidence::spans_status(
-                        std::slice::from_ref(stamp),
-                        &stamp.file,
-                        &content,
-                    ) {
-                        Some(false) => Some(StaleCause::SpanRewritten),
-                        _ => None,
+                    let lines: Vec<&str> = content.lines().collect();
+                    match crate::evidence::span_outcome(stamp, &lines) {
+                        crate::evidence::SpanOutcome::Intact => None,
+                        crate::evidence::SpanOutcome::ScopeChanged => {
+                            Some(StaleCause::ScopeFileChanged)
+                        }
+                        crate::evidence::SpanOutcome::Rewritten => Some(StaleCause::SpanRewritten),
                     }
                 }
             },

@@ -425,7 +425,7 @@ impl Store {
         // working tree. Whatever the export claimed, a fact keeps only the
         // strength its evidence earns here. Without this, `import` is a door
         // straight past the write boundary — which is exactly what it used to be.
-        self.reverify_all()?;
+        self.reverify_all(&std::collections::BTreeSet::new())?;
         Ok(report)
     }
 }

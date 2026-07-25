@@ -247,17 +247,33 @@ pub(crate) fn effort_for(edge: &Edge) -> String {
     }
 }
 
-/// Classify a stale_cause string for roster filtering: `cheap` | `full` | `other`.
+/// Classify a stale cause for roster filtering: `cheap` | `full` | `other`.
+///
+/// Reads the TYPED cause loom recorded — `StaleCause::rework()` is the cost
+/// class, and it is a method on the enum rather than a substring recovered from
+/// a sentence. The prose grades this used to grep for ("cheap re-confirm",
+/// "full re-inspection") were written by one module and parsed back out by
+/// another, which meant rewording a message silently rerouted work.
 pub(crate) fn cause_class(stale_causes: &[String]) -> &'static str {
-    if stale_causes.iter().any(|c| c.contains("cheap re-confirm")) {
-        "cheap"
-    } else if stale_causes
+    let worst = stale_causes
         .iter()
-        .any(|c| c.contains("full re-inspection") || c.contains("cited evidence rewritten"))
-    {
-        "full"
-    } else {
-        "other"
+        .filter_map(|c| {
+            c.rsplit_once('(')
+                .and_then(|(_, tail)| tail.strip_suffix(')'))
+                .and_then(|tok| tok.parse::<crate::model::StaleCause>().ok())
+        })
+        .map(|c| c.rework())
+        .fold(None, |acc: Option<crate::model::Rework>, r| match acc {
+            // Reinspect dominates: a batch is only cheap if all of it is.
+            Some(crate::model::Rework::Reinspect) => acc,
+            _ if r == crate::model::Rework::Reinspect => Some(r),
+            None => Some(r),
+            _ => acc,
+        });
+    match worst {
+        Some(crate::model::Rework::Reconfirm) => "cheap",
+        Some(crate::model::Rework::Reinspect) => "full",
+        _ => "other",
     }
 }
 

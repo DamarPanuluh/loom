@@ -61,6 +61,14 @@ pub struct SpanStamp {
     pub start: usize,
     pub end: usize,
     pub hash: String,
+    /// Hash of the WHOLE file when this span was stamped, set only where the
+    /// claim's scope is the whole file — a realizing grounding that names no
+    /// symbol. Such a claim says "the behavior lives in this file", and a
+    /// citation surviving verbatim while the code around it is rewritten says
+    /// nothing about whether that is still true. Naming a symbol is what buys
+    /// the narrower scope; not naming one is not free.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub file_hash: String,
 }
 
 /// Something loom ran and observed. Minted ONLY by [`crate::runner`]; there is
@@ -263,6 +271,8 @@ impl StaleReason {
             StaleCause::RunCoveredFileChanged => "a file the recorded run covered changed",
             StaleCause::RunCommandChanged => "the command that produced the run changed",
             StaleCause::SpanRewritten => "the cited evidence was rewritten",
+            StaleCause::SeamGone => "the seam this file used is no longer in it",
+            StaleCause::ScopeFileChanged => "the file this claim scopes changed around intact evidence",
             StaleCause::SpanFileDeleted => "the cited file is gone",
             StaleCause::JournalMissing => "the cited journal entry is unreachable",
             StaleCause::SubjectRedefined => "the claim's subject was redefined",
@@ -284,6 +294,16 @@ impl StaleReason {
 /// (prose cannot rot mechanically) and never rises above `Claimed`, so a fact
 /// justified only by a sentence can never satisfy a rung.
 pub fn level(rows: &[EvidenceRow]) -> Verification {
+    // ANY broken anchor is dispositive, not merely the weakest one. A fact
+    // stands on everything it cited: if the locator still resolves but the span
+    // the worker pointed at was rewritten, the recorded justification is gone
+    // and the claim has to be looked at again. Taking the max over surviving
+    // rows instead would let a decorative citation — or, worse, loom's own
+    // probe — hold a claim up after the thing it was ABOUT has gone, which is
+    // the failure mode this spine exists to close.
+    if rows.iter().any(|r| !r.holds) {
+        return Verification::Expired;
+    }
     rows.iter()
         .filter(|r| r.holds)
         .map(|r| r.payload.strength())
@@ -391,6 +411,9 @@ pub fn stamp(root: &Path, evidence: &str) -> Result<Vec<SpanStamp>> {
             start,
             end,
             hash: fingerprint(&lines[start - 1..end].join("\n")),
+            // Set by the caller that knows the claim's scope; a bare citation
+            // carries none, so it is span-scoped by default.
+            file_hash: String::new(),
         });
     }
     Ok(stamps)
@@ -413,6 +436,40 @@ pub fn spans_status(spans: &[SpanStamp], file: &str, content: &str) -> Option<bo
 /// position (the common case — edits elsewhere in the file), then anywhere as
 /// a verbatim window of the same height (the span moved).
 fn span_intact(s: &SpanStamp, lines: &[&str]) -> bool {
+    matches!(span_outcome(s, lines), SpanOutcome::Intact)
+}
+
+/// How a stamped span fared. The distinction that matters downstream is not
+/// merely "does it still hold" but what it would COST to settle again: a
+/// citation that still reads as recorded is a re-confirm, one that is gone is a
+/// re-inspection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpanOutcome {
+    Intact,
+    /// The cited lines survive, but the file this claim scoped changed.
+    ScopeChanged,
+    Rewritten,
+}
+
+pub fn span_outcome(s: &SpanStamp, lines: &[&str]) -> SpanOutcome {
+    let cited_ok = cited_lines_hold(s, lines);
+    // A file-scoped stamp is falsified by any edit to the file, whatever
+    // happened to the cited lines themselves.
+    if !s.file_hash.is_empty() && fingerprint(&lines.join("\n")) != s.file_hash {
+        return if cited_ok {
+            SpanOutcome::ScopeChanged
+        } else {
+            SpanOutcome::Rewritten
+        };
+    }
+    if cited_ok {
+        SpanOutcome::Intact
+    } else {
+        SpanOutcome::Rewritten
+    }
+}
+
+fn cited_lines_hold(s: &SpanStamp, lines: &[&str]) -> bool {
     let height = s.end - s.start + 1;
     if s.end <= lines.len() && fingerprint(&lines[s.start - 1..s.end].join("\n")) == s.hash {
         return true;
@@ -444,6 +501,29 @@ mod tests {
             .is_none());
     }
 
+    /// A file-scoped stamp is falsified by an edit anywhere in the file, even
+    /// one that leaves the cited lines verbatim — the claim was about the file.
+    #[test]
+    fn file_scoped_span_falls_when_the_file_changes_around_it() {
+        let stamp = SpanStamp {
+            file: "f.rs".into(),
+            start: 1,
+            end: 2,
+            hash: fingerprint("a\nb"),
+            file_hash: fingerprint("a\nb\nc"),
+        };
+        assert_eq!(
+            spans_status(std::slice::from_ref(&stamp), "f.rs", "a\nb\nc"),
+            Some(true),
+            "unchanged file: the claim stands"
+        );
+        assert_eq!(
+            spans_status(std::slice::from_ref(&stamp), "f.rs", "a\nb\nDIFFERENT"),
+            Some(false),
+            "the cited lines survive verbatim, but the file they scope did not"
+        );
+    }
+
     #[test]
     fn moved_span_still_intact() {
         let stamp = SpanStamp {
@@ -451,6 +531,7 @@ mod tests {
             start: 1,
             end: 2,
             hash: fingerprint("a\nb"),
+            file_hash: String::new(),
         };
         // Two prepended lines: the cited span moved but is verbatim-intact.
         assert_eq!(
