@@ -8,6 +8,42 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.26.0] - 2026-07-25
+**Breaking**, despite the minor bump: this is 0.x, so a major would mint 1.0.0
+and claim a stability this codebase has not earned. Read the removals before
+upgrading — the schema moves v2 → v3 and old binaries refuse a v3 graph (they
+fail closed, and now say to upgrade rather than to migrate).
+
+- Evidence spine: nothing counts that loom cannot re-check. Every asserted fact
+  carries typed evidence — a run loom performed, a fingerprinted span, a journal
+  entry it wrote — and `assert_fact` is the one door. Prose is recorded and never
+  counts. Migration 3 ERASES every existing asserted verdict, because not one of
+  them was anchored: 39 of 51 ratifications had no journal entry behind them, and
+  54 of 59 proofs were "passing" because an agent said so.
+- Anchoring floors per claim kind, each naming the command that reaches it — and
+  each declining to demand an anchor where none could exist (an absence, an
+  ungrounded relationship, a finding that flags no file).
+- Proof strength S0–S5, derived from the proof's shape rather than claimed by its
+  author. `exit_code` is deliberately not a content assertion; counting it is how
+  a one-step journey became the strongest evidence class in loom's own graph.
+- `sync` re-verifies every anchor in one pass; the ~470-line ripple matrix is
+  gone. Symbol-scoped sparing survives because a locator run re-resolves its
+  symbol and fingerprints its body.
+- Wantedness is earned: `de_facto` from three falsifiable conjuncts, so an agent
+  can work all night and the human is asked only where judgment and evidence
+  diverge. `loom intent reject` is the cheap other half of the authority.
+- New: `loom observe` (wrap a command, keep what loom saw), `loom impact`,
+  `loom absorb`, `loom audit` (including `--efficacy`), `loom deepen`,
+  `loom decide`. MCP serves all of them in-band.
+- The ladder no longer ends. `deepen` is the top rung and is permanently open —
+  there is no `complete`.
+
+**Removed**: `--proof-level` and the L0–L6 vocabulary (strength is derived);
+`intent ratify --by-policy`, `loom policy ratification`, and the whole
+ratification-policy engine (approval by attribute is strictly worse than approval
+by evidence); `waiver:proof` and `waiver:journey` (proof is not waivable);
+`record_verdict`/`record_finding_verdict` as public store writes.
+
 ## [0.25.0] - 2026-07-19
 - ratification + lived graph (rethink rings 1-5)
 
