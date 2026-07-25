@@ -156,6 +156,45 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
                 .filter_map(|c| owned.get(&c.file))
                 .collect();
 
+            // A new symbol in a TEST file whose call closure reaches a
+            // behavior's code is a proof waiting to be registered. This is the
+            // rule that needed `tests/` in the graph to be able to fire at all
+            // — before that, no test file was a call-graph entry point.
+            if crate::extract::Role::detect(&cf.name) == crate::extract::Role::Test {
+                // From the LIVE extraction, not the stored call graph. The
+                // graph is a derived projection refreshed by sync, so a test
+                // written since the last sync — which is every test absorb
+                // exists to notice — has no edges in it yet.
+                let verified: BTreeSet<&String> = extraction
+                    .calls
+                    .iter()
+                    .filter(|c| c.from == sym.name)
+                    .filter_map(|c| {
+                        let bare = c.callee.rsplit("::").next().unwrap_or(&c.callee);
+                        located.get(bare).map(|(intent, _)| intent)
+                    })
+                    .collect();
+                if verified.len() == 1 {
+                    let intent = verified.into_iter().next().cloned();
+                    items.push(Item {
+                        kind: Kind::RegisterProof,
+                        text: format!(
+                            "'{}' in {} exercises one behavior's code — it can prove it",
+                            sym.name, cf.name
+                        ),
+                        intent_id: intent,
+                        evidence,
+                        // loom can see WHAT it exercises; only a person can say
+                        // the test actually checks the behavior rather than
+                        // merely touching it.
+                        needs: vec![
+                            "confirm this test checks the behavior, not just that it runs".into(),
+                        ],
+                    });
+                }
+                continue;
+            }
+
             match (owned.get(&cf.name), owners.len()) {
                 // In a file an intent already owns: extend that locator.
                 (Some(intent), _) => items.push(Item {

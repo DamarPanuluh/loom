@@ -215,3 +215,48 @@ fn the_batch_is_an_ordinary_proposal() {
         "every item carries what loom saw, so adoption can re-check it"
     );
 }
+
+/// A new test symbol whose call closure reaches a behavior's code is a proof
+/// waiting to be registered. This rule needed `tests/` in the graph to fire at
+/// all — before that, no test file was a call-graph entry point, and the
+/// variant sat declared and unreachable.
+#[test]
+fn a_test_that_exercises_a_behavior_is_proposed_as_its_proof() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = seed(&store, tmp.path());
+
+    // Register the test file and let loom see its current contents FIRST —
+    // absorb reports what is NEW since it last looked, which is the same order
+    // the real workflow has: the agent writes code, then absorbs.
+    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
+    std::fs::write(tmp.path().join("tests/checkout_test.rs"), "// empty\n").unwrap();
+    store
+        .add_node(
+            NodeType::CodeFile,
+            "tests/checkout_test.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    // Now the agent writes the test.
+    std::fs::write(
+        tmp.path().join("tests/checkout_test.rs"),
+        "pub fn checks_checkout() {\n    let _ = perform_checkout();\n}\n",
+    )
+    .unwrap();
+
+    let items = absorb::observe(&store, tmp.path()).unwrap();
+    let proof = items
+        .iter()
+        .find(|i| i.kind == absorb::Kind::RegisterProof)
+        .expect("the test's reach into the behavior is observed");
+    assert_eq!(proof.intent_id.as_deref(), Some(intent.as_str()));
+    assert!(
+        !proof.needs.is_empty(),
+        "loom sees WHAT the test touches; only a person can say it CHECKS it"
+    );
+}
