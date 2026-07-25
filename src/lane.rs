@@ -253,7 +253,10 @@ impl Lane {
                 "{} user-visible idea(s) with open completeness axes",
                 c.open_elaborations
             ),
-            Lane::Divergence => format!("{} divergence(s) awaiting the human", c.divergences),
+            Lane::Divergence => format!(
+                "{} divergence(s) where judgment and evidence disagree",
+                c.divergences
+            ),
             Lane::Audit => format!(
                 "{} doctor issue(s), {} open smell(s)",
                 c.doctor_issues, c.open_smells

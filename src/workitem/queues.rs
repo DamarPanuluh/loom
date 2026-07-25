@@ -741,29 +741,29 @@ pub fn unratified_intents(store: &Store) -> Result<Vec<Node>> {
 /// The ratify queue: human-presence work. An LLM lane can PRESENT this packet
 /// (summarize the intent, its grounding, its origin) but the write itself is
 /// denied to every llm:* lane (INV-8) — so the contract carries a human gate.
+/// The divergence queue: the ONE question loom asks a human — *should this
+/// exist?* — and only where evidence and judgment actually disagree.
+///
+/// Served one at a time, ranked kind-first. Plain `loom next` serves this lane
+/// only when a person is present: a non-tty driver would be denied the write
+/// anyway, so handing it the packet would just be a dead end it cannot act on.
 pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
-    let Some(n) = unratified_intents(store)?.into_iter().next() else {
+    let Some(d) = crate::divergence::all(store)?
+        .into_iter()
+        .find(|d| d.blocking)
+    else {
+        return Ok(None);
+    };
+    let Some(n) = store.get_node(&d.intent_id)? else {
         return Ok(None);
     };
     let short = &n.id[..8.min(n.id.len())];
-    let origin = store
-        .get_facet(&n.id, crate::model::TargetKind::Node, "origin")?
-        .unwrap_or_else(|| "unknown".into());
-    let state = store
-        .ratification(&n.id)
-        .map(Some)?
-        .unwrap_or_else(|| "unratified".into());
-    let reason = if state == "needs_reconfirmation" {
-        format!(
-            "'{}' was redefined after ratification — the human must re-confirm it is still wanted",
-            n.name
-        )
-    } else {
-        format!(
-            "'{}' (origin: {origin}) has never been ratified — no evidence the product authority wants it",
-            n.name
-        )
-    };
+    let reason = format!(
+        "{}: '{}' — {}",
+        d.kind.as_str().replace('_', " "),
+        n.name,
+        d.evidence
+    );
     Ok(Some(WorkItem {
         packet_id: None,
         mode: "ratify".into(),
@@ -777,11 +777,12 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
         context: node_context(
             store,
             &n,
-            "Present this intent to the human: its criterion, origin, grounding, and proofs. The ratify/reject decision is theirs.",
+            "Present this divergence to the human with the evidence already gathered, \
+             and both prefilled commands. The ratify/reject decision is theirs.",
         )?,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Intent.gap(),
-        next_step: "after the human ratifies (or retires) the intent, run `loom status`".into(),
+        next_step: format!("{} — or — {}", d.ratify_command, d.reject_command),
     }))
 }
 
@@ -1324,17 +1325,19 @@ pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEn
             }
         }
         Lane::Divergence => {
-            for n in unratified_intents(store)? {
-                let state = store
-                    .ratification(&n.id)
-                    .map(Some)?
-                    .unwrap_or_else(|| "unratified".into());
-                let reason = if state == "needs_reconfirmation" {
-                    "redefined after ratification — human must re-confirm it is wanted"
-                } else {
-                    "never ratified — no evidence the product authority wants it"
+            for d in crate::divergence::all(store)? {
+                if !d.blocking {
+                    continue;
+                }
+                let Some(n) = store.get_node(&d.intent_id)? else {
+                    continue;
                 };
-                out.push(node_entry("ratify", "low", &n, reason.into()));
+                out.push(node_entry(
+                    "ratify",
+                    "low",
+                    &n,
+                    format!("{}: {}", d.kind.as_str().replace('_', " "), d.evidence),
+                ));
             }
         }
         // Lanes that route to a whole-graph command instead of a per-item

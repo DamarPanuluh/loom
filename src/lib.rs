@@ -19,6 +19,7 @@ pub mod cli;
 pub mod commands;
 pub mod completeness;
 pub mod deriver;
+pub mod divergence;
 pub mod evidence;
 pub mod extract;
 pub mod federation;

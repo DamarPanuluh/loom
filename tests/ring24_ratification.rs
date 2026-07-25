@@ -172,3 +172,69 @@ fn an_llm_lane_may_author_everything_and_ratify_nothing() {
         .reject_intent(&i, "the agent decided this was unwanted", "tty")
         .is_err());
 }
+
+/// The regression that defines this whole redesign.
+///
+/// Fifty behaviors nobody has said yes to yet, plus one that is demonstrably
+/// happening and that users can see. The old `wanted` rung counted 51 and
+/// served 51 challenge prompts. The divergence queue counts the one thing that
+/// is actually a question.
+#[test]
+fn fifty_unratified_intents_are_not_fifty_questions() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    for n in 0..50 {
+        store
+            .add_node(
+                NodeType::Intent,
+                &format!("planned behavior {n}"),
+                "not built yet",
+                "planned",
+                serde_json::json!({}),
+            )
+            .unwrap();
+    }
+
+    // One behavior that IS happening, and that users can see.
+    let visible = intent(&store, "users can cancel an order");
+    store
+        .set_facet(
+            &visible,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    earn_call_witness(&store, tmp.path(), &visible);
+    let g = store
+        .edges_with(Some(EdgeKind::Implements), Some(&visible), None)
+        .unwrap()
+        .into_iter()
+        .find(|e| store.grounding_role(&e.id).unwrap() == loom::model::GroundingRole::Realizes)
+        .expect("a realizing grounding");
+    store
+        .record_verdict(
+            &g.id,
+            loom::model::InspectionStatus::Passing,
+            "the behavior lives here",
+            "src/behavior.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    s3_journey_proof(&store, tmp.path(), &visible, "cancel journey");
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    let all = loom::divergence::all(&store).unwrap();
+    let blocking: Vec<_> = all.iter().filter(|d| d.blocking).collect();
+    assert!(
+        blocking.len() <= 2,
+        "the human is asked about what diverges, not about every unbuilt intent: {blocking:#?}"
+    );
+    assert!(
+        loom::workitem::unratified_intents(&store).unwrap().len() >= 50,
+        "the intents are still honestly unratified — they just are not questions"
+    );
+}

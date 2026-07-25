@@ -242,7 +242,7 @@ impl LadderInputs {
                 .iter()
                 .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
                 .count(),
-            divergences: crate::workitem::unratified_intents(store)?.len(),
+            divergences: crate::divergence::blocking_count(store)?,
             doctor_issues: crate::signal::doctor(store)?.len(),
             open_smells,
             export_fresh: crate::travel::export_is_fresh(store)?,

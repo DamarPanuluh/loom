@@ -125,11 +125,17 @@ fn ratify_requires_substantive_evidence() {
 }
 
 // =========================================================================
-// 3. Fail closed: absent ratification facet reads as unratified everywhere
-//    (predicate, queue count, ladder) — wantedness is never presumed.
+// 3. An unratified intent is NOT a divergence.
+//
+//    This test used to assert the opposite, and that assertion was the wall:
+//    every intent nobody had said yes to yet counted against `converged`, so a
+//    graph with 51 of them served 51 challenge prompts and got 39 fabricated
+//    answers. Silence about a behavior nobody has built yet is not a
+//    disagreement between judgment and evidence — it is ordinary work in
+//    progress, and it belongs to build and validate.
 // =========================================================================
 #[test]
-fn absent_ratification_is_unratified_and_gates_the_wanted_rung() {
+fn an_unratified_intent_with_no_evidence_is_not_a_divergence() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -142,54 +148,44 @@ fn absent_ratification_is_unratified_and_gates_the_wanted_rung() {
         )
         .unwrap();
 
-    // Shared predicate sees it; queue count agrees; ladder rung is unmet.
+    // The predicate still sees it as unratified — wantedness is never presumed.
     assert_eq!(loom::workitem::unratified_intents(&store).unwrap().len(), 1);
+    // But it does not gate, and the queue has nothing to serve.
     assert_eq!(
         loom::maturity::depths(&store)
             .unwrap()
             .get(Lane::Divergence),
-        1
+        0,
+        "an unbuilt intent is not a question for the human"
+    );
+    assert!(
+        loom::workitem::next(&store, loom::lane::Lane::parse("ratify"))
+            .unwrap()
+            .is_none(),
+        "nothing to ask about"
     );
     let ladder = loom::maturity::ladder(&store).unwrap();
-    let wanted = ladder.rungs.iter().find(|r| r.name == "converged").unwrap();
-    assert_eq!(wanted.state, loom::maturity::RungState::Unmet);
-    // The inversion: `converged` sits ABOVE the lanes an LLM can drain, so a
-    // planned intent outranks the human question. The human is asked last,
-    // about the fewest items — never as the gate that blocks realization.
+    let converged = ladder.rungs.iter().find(|r| r.name == "converged").unwrap();
+    assert_eq!(converged.state, loom::maturity::RungState::Met);
+    // The gate is where the work actually is.
     assert_eq!(ladder.phase, "build");
+
+    // Ratifying it is still allowed and still records provenance — the human
+    // may speak first, they are simply no longer REQUIRED to before any work.
+    store
+        .ratify_intent(&intent.id, "curated dogfood spine", "test fixture")
+        .unwrap();
+    assert_eq!(loom::workitem::unratified_intents(&store).unwrap().len(), 0);
     assert_eq!(
         loom::lane::Lane::Divergence.rung(),
         "converged",
         "the human-presence rung is the divergence rung"
     );
 
-    // The served work item targets the same intent, human-gated.
-    let item = loom::workitem::next(&store, loom::lane::Lane::parse("ratify"))
-        .unwrap()
-        .expect("ratify queue must serve the unratified intent");
-    assert_eq!(item.target.id, intent.id);
-    assert_eq!(item.owner_role, "human");
-    assert!(item.prompt_contract.human_gate.is_some());
-
     // Plain `loom next` (no mode) must NEVER serve human-only work.
     if let Some(w) = loom::workitem::next(&store, None).unwrap() {
         assert_ne!(w.mode, "ratify", "default next must not serve ratify");
     }
-
-    // Ratify → everything closes in lockstep.
-    store
-        .ratify_intent(&intent.id, "curated dogfood spine", "test fixture")
-        .unwrap();
-    assert_eq!(loom::workitem::unratified_intents(&store).unwrap().len(), 0);
-    assert_eq!(
-        loom::maturity::depths(&store)
-            .unwrap()
-            .get(Lane::Divergence),
-        0
-    );
-    let ladder = loom::maturity::ladder(&store).unwrap();
-    let wanted = ladder.rungs.iter().find(|r| r.name == "converged").unwrap();
-    assert_eq!(wanted.state, loom::maturity::RungState::Met);
 }
 
 // =========================================================================
