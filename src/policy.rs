@@ -22,10 +22,6 @@ use serde::{Deserialize, Serialize};
 /// `store::PORTABLE_META_KEYS`).
 pub const EVIDENCE_POLICY_META_KEY: &str = "evidence_policy";
 
-/// Meta key carrying ratification policies. Policies are portable, scoped
-/// configuration over Intent facets; they are deliberately not graph nodes.
-pub const RATIFICATION_POLICIES_META_KEY: &str = "ratification_policies";
-
 /// Origins that may appear on an Intent's immutable provenance facet.
 pub const INTENT_ORIGINS: &[&str] = &["human", "llm", "drive", "import"];
 

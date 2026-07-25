@@ -275,7 +275,13 @@ impl Store {
     pub fn realizing_implementers(&self, codefile_id: &str) -> Result<Vec<Edge>> {
         let mut out = Vec::new();
         for e in self.edges_with(Some(EdgeKind::Implements), None, Some(codefile_id))? {
-            if self.edge_superseded(&e.id)? {
+            // A retired behavior owns nothing. Retiring the intent does not
+            // delete the file, so the file stays REGISTERED and becomes
+            // UNOWNED — which is the honest state and real coverage work:
+            // "the only thing that claimed this is gone; what owns it now, or
+            // should it go too?". Counting a deprecated owner hid that
+            // question and made deleted capability look covered.
+            if self.edge_superseded(&e.id)? || self.edge_retired(&e.id)? {
                 continue;
             }
             if self.grounding_role(&e.id)? == GroundingRole::Realizes {
