@@ -116,9 +116,17 @@ pub(crate) fn import(
     }
     Ok(())
 }
-pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool) -> Result<()> {
+pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: bool) -> Result<()> {
     let root = resolve_root(graph)?;
     let store = Store::open(&root)?;
+    if rebuild {
+        // The INV-2 operation, which until now had no way to invoke it: sync
+        // re-derives only files whose CONTENT changed, so an upgraded loom
+        // leaves the old binary's derived facts in place. Asserted truth is
+        // untouched — this discards only what loom computes for itself, and
+        // the pass below recomputes it.
+        store.wipe_derived()?;
+    }
     // Discovery pass: expand remembered globs and register new files before
     // the deriver loop runs, so newly-appeared files are included in this sync.
     let rescan = super::codefile_cmd::rescan_globs(&store, &root)?;

@@ -99,7 +99,9 @@ pub fn run(cli: Cli) -> Result<()> {
             repair_orphans,
         } => status_cmd::import(cli.graph.as_deref(), &file, repair_orphans, cli.json),
         Command::Apply { file } => apply_cmd::apply(cli.graph.as_deref(), &file, cli.json),
-        Command::Sync { quiet } => status_cmd::sync_cmd(cli.graph.as_deref(), cli.json, quiet),
+        Command::Sync { quiet, rebuild } => {
+            status_cmd::sync_cmd(cli.graph.as_deref(), cli.json, quiet, rebuild)
+        }
         Command::Status => status_cmd::status(cli.graph.as_deref(), cli.json),
         Command::Mode { mode } => status_cmd::mode_cmd(
             cli.graph.as_deref(),

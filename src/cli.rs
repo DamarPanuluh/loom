@@ -83,6 +83,15 @@ pub enum Command {
         /// Suppress successful sync output (for git hooks).
         #[arg(long)]
         quiet: bool,
+        /// Discard the derived plane and rebuild it from scratch.
+        ///
+        /// Sync only re-derives files whose CONTENT changed, so upgrading loom
+        /// leaves facts computed by the old binary in place — a call graph, a
+        /// symbol map or a finding set that no longer matches what this version
+        /// would produce. Run this after an upgrade. Asserted truth is
+        /// untouched; only what loom computes for itself is rebuilt.
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Print graph identity and counts.
     Status,

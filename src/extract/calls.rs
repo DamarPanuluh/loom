@@ -33,6 +33,52 @@ fn spec(language: Language) -> Option<(tree_sitter::Language, &'static [&'static
     })
 }
 
+/// Calls hiding inside a macro's token tree.
+///
+/// Only `ident (` counts — an identifier whose very next token opens a call.
+/// Deliberately narrow: a token tree has no grammar to lean on, so anything
+/// cleverer would start inventing edges. Paths keep their last two segments the
+/// same way `callee_name` does, so `Store::init` reads alike from both places.
+fn identifiers_called_in(tree: &Node, bytes: &[u8]) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![*tree];
+    while let Some(node) = stack.pop() {
+        for i in 0..node.child_count() as u32 {
+            let Some(child) = node.child(i) else { continue };
+            stack.push(child);
+            if child.kind() != "identifier" && child.kind() != "scoped_identifier" {
+                continue;
+            }
+            // The next sibling must open the argument list, with nothing
+            // between: `foo (` is a call, `foo, (` is two tokens.
+            let Some(next) = child.next_sibling() else {
+                continue;
+            };
+            if next.kind() != "(" && next.kind() != "token_tree" {
+                continue;
+            }
+            if next.start_byte() != child.end_byte() {
+                continue;
+            }
+            let Ok(text) = child.utf8_text(bytes) else {
+                continue;
+            };
+            let cleaned = text.trim();
+            if cleaned.is_empty() || cleaned.len() > 200 {
+                continue;
+            }
+            // Macro-only shapes that are never functions.
+            if matches!(cleaned, "if" | "match" | "while" | "for" | "return") {
+                continue;
+            }
+            out.push(cleaned.to_string());
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
 /// The callee as written. A dotted/scoped path keeps its last two segments
 /// (`Store::open`, `self.flush`) so resolution can try the qualified name first
 /// and the bare one second — `open` alone is far more ambiguous than
@@ -104,6 +150,21 @@ pub(super) fn extract(language: Language, content: &str, symbols: &[Symbol]) -> 
                 });
             }
         }
+        // A macro's arguments are an unstructured `token_tree`, so nothing
+        // inside one is parsed as a call. In Rust that hides almost every call
+        // a test makes — `assert_eq!(effective(...), ...)` — which is exactly
+        // the evidence the S3 call witness needs. Scan the tokens for the one
+        // unambiguous shape: an identifier immediately followed by `(`.
+        if node.kind() == "token_tree" {
+            let line = node.start_position().row + 1;
+            let from = enclosing(symbols, line).to_string();
+            for callee in identifiers_called_in(&node, bytes) {
+                out.push(CallSite {
+                    from: from.clone(),
+                    callee,
+                });
+            }
+        }
         for i in 0..node.child_count() as u32 {
             if let Some(c) = node.child(i) {
                 stack.push(c);
@@ -164,5 +225,42 @@ mod tests {
         let mut sorted = order.clone();
         sorted.sort();
         assert_eq!(order, sorted, "sorted output, not walk order");
+    }
+}
+
+#[cfg(test)]
+mod macro_call_tests {
+    use super::*;
+
+    /// Calls inside a macro are still calls.
+    ///
+    /// A macro's arguments parse as an unstructured `token_tree`, so nothing
+    /// inside one was seen. In Rust that hides almost everything a test does —
+    /// `assert_eq!(effective(..), ..)` — and the S3 call witness reads exactly
+    /// those calls to decide whether a proof reaches the code it proves. Every
+    /// Rust suite in the graph was invisible to it.
+    #[test]
+    fn a_call_inside_a_macro_is_extracted() {
+        let src = "fn t() {\n    assert_eq!(effective(a, b), c);\n}\n";
+        let calls: Vec<String> = extract(Language::Rust, src, &[])
+            .into_iter()
+            .map(|c| c.callee)
+            .collect();
+        assert!(calls.contains(&"effective".to_string()), "{calls:?}");
+        assert!(calls.contains(&"assert_eq".to_string()), "{calls:?}");
+    }
+
+    /// The scan stays narrow: only an identifier whose very next token opens a
+    /// call. A token tree has no grammar to lean on, so anything cleverer would
+    /// start inventing edges that are not there.
+    #[test]
+    fn bare_identifiers_in_a_macro_are_not_calls() {
+        let src = "fn t() {\n    assert!(flag, \"msg\", other);\n}\n";
+        let calls: Vec<String> = extract(Language::Rust, src, &[])
+            .into_iter()
+            .map(|c| c.callee)
+            .collect();
+        assert!(!calls.contains(&"flag".to_string()), "{calls:?}");
+        assert!(!calls.contains(&"other".to_string()), "{calls:?}");
     }
 }
