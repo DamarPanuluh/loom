@@ -491,7 +491,11 @@ pub(super) fn validator_contract(
         format!(
             "loom observe --for {} -- {}   (or)   loom validation run {}",
             q(intent_name),
-            if command.is_empty() { "<cmd>" } else { &command },
+            if command.is_empty() {
+                "<cmd>"
+            } else {
+                &command
+            },
             q(intent_name)
         )
     } else {
@@ -556,8 +560,7 @@ pub(super) fn validator_contract(
             },
         ],
         required_evidence: if runnable {
-            "a run loom performed — its exit code and output. A reported outcome is refused"
-                .into()
+            "a run loom performed — its exit code and output. A reported outcome is refused".into()
         } else {
             "what you observed in the manual check, citing file:line or a journal entry".into()
         },

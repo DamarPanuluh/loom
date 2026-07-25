@@ -46,13 +46,30 @@ fn busy_graph(root: &std::path::Path) -> Store {
         )
         .unwrap();
     let cf = store
-        .add_node(NodeType::CodeFile, "src/kept.rs", "", "", serde_json::json!({}))
+        .add_node(
+            NodeType::CodeFile,
+            "src/kept.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
         .unwrap();
     let g = store
-        .add_edge(EdgeKind::Implements, &proven.id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &proven.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
-        .set_facet(&g.id, TargetKind::Edge, "locator", "fn kept", TruthClass::Asserted)
+        .set_facet(
+            &g.id,
+            TargetKind::Edge,
+            "locator",
+            "fn kept",
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
         .record_verdict(
@@ -78,10 +95,21 @@ fn busy_graph(root: &std::path::Path) -> Store {
         )
         .unwrap();
     let bare_cf = store
-        .add_node(NodeType::CodeFile, "src/bare.rs", "", "", serde_json::json!({}))
+        .add_node(
+            NodeType::CodeFile,
+            "src/bare.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
         .unwrap();
     store
-        .add_edge(EdgeKind::Implements, &bare.id, &bare_cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &bare.id,
+            &bare_cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
 
     // An unowned file — coverage work.
@@ -98,7 +126,12 @@ fn busy_graph(root: &std::path::Path) -> Store {
 
     // An uninspected relationship — analyze work.
     store
-        .add_edge(EdgeKind::Relates, &proven.id, &bare.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Relates,
+            &proven.id,
+            &bare.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
 
     // A RETIRED behavior with its own governs and validates edges. This is the
@@ -159,7 +192,12 @@ fn busy_graph(root: &std::path::Path) -> Store {
         )
         .unwrap();
     store
-        .add_edge(EdgeKind::Governs, &rule.id, &proven.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Governs,
+            &rule.id,
+            &proven.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
 
     loom::sync::run(&store, root).unwrap();

@@ -334,13 +334,8 @@ fn retiring_a_behavior_stops_its_claims_counting_as_debt() {
     loom::commands::prove_intent(&store, &intent.id, "its proof", "false").unwrap();
 
     let before = loom::maturity::ladder(&store).unwrap();
-    let repaired = |l: &loom::maturity::Ladder| {
-        l.rungs
-            .iter()
-            .find(|r| r.name == "repaired")
-            .unwrap()
-            .state
-    };
+    let repaired =
+        |l: &loom::maturity::Ladder| l.rungs.iter().find(|r| r.name == "repaired").unwrap().state;
     assert_eq!(
         repaired(&before),
         loom::maturity::RungState::Unmet,

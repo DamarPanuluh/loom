@@ -46,13 +46,30 @@ fn build(root: &std::path::Path, include_doomed: bool) -> Store {
         )
         .unwrap();
     let kept_cf = store
-        .add_node(NodeType::CodeFile, "src/kept.rs", "", "", serde_json::json!({}))
+        .add_node(
+            NodeType::CodeFile,
+            "src/kept.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
         .unwrap();
     let g = store
-        .add_edge(EdgeKind::Implements, &keeper.id, &kept_cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &keeper.id,
+            &kept_cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
-        .set_facet(&g.id, TargetKind::Edge, "locator", "fn kept", TruthClass::Asserted)
+        .set_facet(
+            &g.id,
+            TargetKind::Edge,
+            "locator",
+            "fn kept",
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
         .record_verdict(
@@ -128,7 +145,12 @@ fn build(root: &std::path::Path, include_doomed: bool) -> Store {
             .unwrap();
         // A relationship into the survivor.
         store
-            .add_edge(EdgeKind::Relates, &doomed.id, &keeper.id, TruthClass::Asserted)
+            .add_edge(
+                EdgeKind::Relates,
+                &doomed.id,
+                &keeper.id,
+                TruthClass::Asserted,
+            )
             .unwrap();
         // A proof that fails — the thing that gated the whole ladder.
         loom::commands::prove_intent(&store, &doomed.id, "doomed proof", "false").unwrap();
@@ -151,7 +173,10 @@ fn derived_view(store: &Store) -> Vec<(String, String)> {
     // other rung must be untouched.
     let ladder = loom::maturity::ladder(store).unwrap();
     for rung in ladder.rungs.iter().filter(|r| r.name != "covered") {
-        view.push((format!("rung.{}.state", rung.name), format!("{:?}", rung.state)));
+        view.push((
+            format!("rung.{}.state", rung.name),
+            format!("{:?}", rung.state),
+        ));
         view.push((format!("rung.{}.depth", rung.name), rung.depth.to_string()));
     }
 

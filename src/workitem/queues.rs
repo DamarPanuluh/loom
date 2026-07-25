@@ -635,9 +635,9 @@ pub(crate) fn unproven_implemented_intents(store: &Store) -> Result<Vec<Node>> {
         // behavior works.
         let proven = proofs.iter().any(|e| {
             e.status == InspectionStatus::Passing
-                && crate::proofstrength::of(store, &e.from_id).unwrap_or(
-                    crate::proofstrength::Strength::S0,
-                ) >= crate::proofstrength::Strength::MEANINGFUL
+                && crate::proofstrength::of(store, &e.from_id)
+                    .unwrap_or(crate::proofstrength::Strength::S0)
+                    >= crate::proofstrength::Strength::MEANINGFUL
         });
         if !proven {
             out.push(n);

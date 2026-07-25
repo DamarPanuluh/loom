@@ -372,4 +372,3 @@ mod tests {
         assert_ne!(a, b, "a rewritten stamp must not compare equal");
     }
 }
-

@@ -48,13 +48,30 @@ fn seeded(root: &std::path::Path) -> String {
         )
         .unwrap();
     let cf = store
-        .add_node(NodeType::CodeFile, "src/thing.rs", "", "", serde_json::json!({}))
+        .add_node(
+            NodeType::CodeFile,
+            "src/thing.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
         .unwrap();
     let g = store
-        .add_edge(EdgeKind::Implements, &intent.id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
-        .set_facet(&g.id, TargetKind::Edge, "locator", "fn thing", TruthClass::Asserted)
+        .set_facet(
+            &g.id,
+            TargetKind::Edge,
+            "locator",
+            "fn thing",
+            TruthClass::Asserted,
+        )
         .unwrap();
     intent.id
 }
@@ -66,7 +83,10 @@ fn seeded(root: &std::path::Path) -> String {
 #[test]
 fn no_runner_holds_the_graph_while_it_observes() {
     for (label, args) in [
-        ("observe", vec!["observe", "--for", "a behavior under proof"]),
+        (
+            "observe",
+            vec!["observe", "--for", "a behavior under proof"],
+        ),
         ("validation run", vec!["validation", "run", "the proof"]),
     ] {
         let tmp = Tmp::new();
@@ -74,7 +94,11 @@ fn no_runner_holds_the_graph_while_it_observes() {
 
         // The proof's command opens the SAME graph for writing, exactly as
         // `loom journey run` and `loom sync` do.
-        let child = format!("{} --graph {} sync", loom_bin().display(), tmp.path().display());
+        let child = format!(
+            "{} --graph {} sync",
+            loom_bin().display(),
+            tmp.path().display()
+        );
         {
             let store = Store::open(tmp.path()).unwrap();
             let val = store
@@ -136,7 +160,11 @@ fn a_failure_loom_caused_is_blocked_not_failed() {
     // Hold the graph, then run a command that needs it — the exact shape of the
     // original bug, forced deliberately.
     let held = Store::open(tmp.path()).unwrap();
-    let child = format!("{} --graph {} sync", loom_bin().display(), tmp.path().display());
+    let child = format!(
+        "{} --graph {} sync",
+        loom_bin().display(),
+        tmp.path().display()
+    );
     let observation = loom::runner::observe_command(
         tmp.path(),
         loom::model::RunProducer::Command,

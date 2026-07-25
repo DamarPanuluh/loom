@@ -355,7 +355,12 @@ fn every_unmet_rung_actually_serves_something() {
         .unwrap();
     let cf = common::codefile(&store, "src/seen.rs");
     let g = store
-        .add_edge(EdgeKind::Implements, &intent.id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     store
         .record_verdict(

@@ -781,7 +781,10 @@ mod render_tests {
         });
         let lines = render_examples(&quality);
         assert_eq!(lines.len(), 2, "{lines:?}");
-        assert!(lines.iter().any(|l| l.starts_with("passing: ")), "{lines:?}");
+        assert!(
+            lines.iter().any(|l| l.starts_with("passing: ")),
+            "{lines:?}"
+        );
 
         let coverage = json!([{ "situation": "it lives here", "do": "ground it" }]);
         let lines = render_examples(&coverage);

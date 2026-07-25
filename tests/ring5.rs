@@ -4462,10 +4462,21 @@ fn a_clean_pattern_scan_is_reported_as_evidence() {
         )
         .unwrap();
     let cf = store
-        .add_node(NodeType::CodeFile, "src/clean.rs", "", "", serde_json::json!({}))
+        .add_node(
+            NodeType::CodeFile,
+            "src/clean.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
         .unwrap();
     store
-        .add_edge(EdgeKind::Implements, &intent.id, &cf.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
     let rule = store
         .add_node(
@@ -4477,7 +4488,12 @@ fn a_clean_pattern_scan_is_reported_as_evidence() {
         )
         .unwrap();
     store
-        .add_edge(EdgeKind::Governs, &rule.id, &intent.id, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Governs,
+            &rule.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
         .unwrap();
 
     let item = loom::workitem::next(&store, Some(loom::lane::Lane::Quality))

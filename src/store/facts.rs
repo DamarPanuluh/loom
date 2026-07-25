@@ -157,6 +157,180 @@ impl Store {
     /// Record an asserted fact. See the module header for the full contract.
     pub fn assert_fact(&self, a: Assertion<'_>) -> Result<FactView> {
         // ---- 1. subject resolves, and the claim fits it ----------------------
+        let (edge_kind, role, mut shape) = self.resolve_subject(&a)?;
+
+        // ---- 2. state vocabulary --------------------------------------------
+        check_state(a.claim, a.state)?;
+
+        // ---- 3. authority ----------------------------------------------------
+        match a.claim {
+            // INV-8: ratification authority is human-only, and it is SYMMETRIC.
+            // Saying a behavior is not wanted is the same kind of act as saying
+            // it is — an agent that could reject could delete the product by
+            // rejecting everything, and the rejection is absolute afterwards.
+            //
+            // Demoting to `needs_reconfirmation` or `unratified` is not an act
+            // of authority but a loss of standing, which sync performs whenever
+            // meaning drifts; requiring a human there would mean stale
+            // wantedness could only be noticed by the person it was hidden from.
+            Claim::Ratification if matches!(a.state, "ratified" | "rejected") => {
+                self.require_human_authority()?
+            }
+            Claim::Ratification => {}
+            // INV-7: the lane that owns this edge kind owns its verdict.
+            Claim::Verdict => {
+                if let Some(kind) = edge_kind {
+                    self.check_lane(registry::spec(kind).owner)?;
+                }
+            }
+            Claim::Adjudication | Claim::Observation => {}
+        }
+
+        // ---- 4. hygiene ------------------------------------------------------
+        // `is_placeholder` is retained as a LINT, not the gate. It rejects "TBD"
+        // and accepts any sentence; the floor below is what actually decides.
+        if anchor::is_settling(a.state)
+            && crate::model::is_placeholder(a.criterion)
+            && matches!(a.claim, Claim::Verdict)
+        {
+            bail!(
+                "a settled verdict needs a criterion stating what would falsify it \
+                 (got {:?})",
+                a.criterion
+            );
+        }
+        if !(0.0..=1.0).contains(&a.confidence) || !a.confidence.is_finite() {
+            bail!("confidence must be within 0.0..=1.0 (got {})", a.confidence);
+        }
+
+        // ---- 5. materialize anchors -----------------------------------------
+        let (fact_id, rows, recorded_at) =
+            self.materialize_anchors(&a, edge_kind, role, &mut shape)?;
+        // ---- 6. the floor ----------------------------------------------------
+        let strength = level(&rows);
+        let floor = anchor::required_for(a.claim, edge_kind, role, a.state, shape);
+        if a.below_floor.is_none() && strength.rank() < floor.required.rank() {
+            bail!(
+                "'{}' needs {} evidence but this is only {} — {}",
+                a.state,
+                floor.required.as_str(),
+                strength.as_str(),
+                floor.remedy
+            );
+        }
+        let stale = a
+            .below_floor
+            .map(|cause| StaleReason::new(cause, Vec::new(), recorded_at.clone()));
+
+        // A ratification DEMOTION changes standing, not authorship: the human
+        // who said yes still said yes, and overwriting them with "sync" would
+        // erase the provenance the demotion exists to protect.
+        let (asserted_by, asserted_at) = if a.claim == Claim::Ratification && a.state != "ratified"
+        {
+            match self.fact_by_id(&fact_id)? {
+                Some(prior) => (prior.fact.asserted_by, prior.fact.asserted_at),
+                None => (a.asserted_by.to_string(), recorded_at.clone()),
+            }
+        } else {
+            (a.asserted_by.to_string(), recorded_at.clone())
+        };
+
+        let fact = Fact {
+            id: fact_id.clone(),
+            subject_kind: a.subject.kind(),
+            subject_id: a.subject.id().to_string(),
+            claim: a.claim,
+            state: a.state.to_string(),
+            criterion: a.criterion.to_string(),
+            verification: strength,
+            confidence: a.confidence,
+            asserted_by,
+            asserted_at,
+            stale,
+        };
+
+        // ---- 7. idempotence --------------------------------------------------
+        if let Some(view) = self.unchanged(&fact, &rows)? {
+            return Ok(view);
+        }
+
+        // ---- 8. write, one transaction --------------------------------------
+        self.write_fact(&fact, &rows)?;
+        Ok(FactView {
+            fact,
+            evidence: rows,
+        })
+    }
+
+    /// Persist a fact, replace its evidence set, and project its state.
+    fn write_fact(&self, fact: &Fact, rows: &[EvidenceRow]) -> Result<()> {
+        let stale = fact
+            .stale
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?
+            .unwrap_or_default();
+        self.conn.execute(
+            "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,verification,\
+                               confidence,asserted_by,asserted_at,stale)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
+             ON CONFLICT(id) DO UPDATE SET
+                state=excluded.state, criterion=excluded.criterion,
+                verification=excluded.verification, confidence=excluded.confidence,
+                asserted_by=excluded.asserted_by, asserted_at=excluded.asserted_at,
+                stale=excluded.stale",
+            rusqlite::params![
+                fact.id,
+                fact.subject_kind.as_str(),
+                fact.subject_id,
+                fact.claim.as_str(),
+                fact.state,
+                fact.criterion,
+                fact.verification.as_str(),
+                fact.confidence,
+                fact.asserted_by,
+                fact.asserted_at,
+                stale,
+            ],
+        )?;
+        // The evidence set is replaced wholesale: an assertion's anchors are
+        // exactly what its author cited this time, never an accumulation that
+        // could keep a fact alive on a citation nobody stands behind.
+        self.conn
+            .execute("DELETE FROM evidence WHERE fact_id = ?1", [&fact.id])?;
+        for row in rows {
+            self.conn.execute(
+                "INSERT INTO evidence (id,fact_id,payload,kind,recorded_at,holds,expiry_reason)
+                 VALUES (?1,?2,?3,?4,?5,1,'')
+                 ON CONFLICT(id) DO NOTHING",
+                rusqlite::params![
+                    row.id,
+                    row.fact_id,
+                    serde_json::to_string(&row.payload)?,
+                    row.payload.kind().as_str(),
+                    row.recorded_at,
+                ],
+            )?;
+        }
+        self.project(fact)
+    }
+
+    /// Resolve the subject, check the claim fits it, and read the SHAPE the
+    /// floor needs — whether a proof is runnable, whether a finding flags a
+    /// file, whether a relationship has code on both ends.
+    ///
+    /// Step 1 of `assert_fact`, extracted. Every one of these is derived HERE,
+    /// at the one place that can see the whole subject, rather than trusted
+    /// from the caller: a caller that could declare its own claim unanchorable
+    /// would have a way around the floor.
+    fn resolve_subject(
+        &self,
+        a: &Assertion<'_>,
+    ) -> Result<(
+        Option<crate::model::EdgeKind>,
+        Option<crate::model::GroundingRole>,
+        anchor::Shape,
+    )> {
         let mut shape = anchor::Shape::default();
         let (edge_kind, role) = match (&a.subject, a.claim) {
             (Subject::Edge(id), Claim::Verdict) => {
@@ -238,56 +412,30 @@ impl Store {
                 (None, None)
             }
         };
+        Ok((edge_kind, role, shape))
+    }
 
-        // ---- 2. state vocabulary --------------------------------------------
-        check_state(a.claim, a.state)?;
-
-        // ---- 3. authority ----------------------------------------------------
-        match a.claim {
-            // INV-8: ratification authority is human-only, and it is SYMMETRIC.
-            // Saying a behavior is not wanted is the same kind of act as saying
-            // it is — an agent that could reject could delete the product by
-            // rejecting everything, and the rejection is absolute afterwards.
-            //
-            // Demoting to `needs_reconfirmation` or `unratified` is not an act
-            // of authority but a loss of standing, which sync performs whenever
-            // meaning drifts; requiring a human there would mean stale
-            // wantedness could only be noticed by the person it was hidden from.
-            Claim::Ratification if matches!(a.state, "ratified" | "rejected") => {
-                self.require_human_authority()?
-            }
-            Claim::Ratification => {}
-            // INV-7: the lane that owns this edge kind owns its verdict.
-            Claim::Verdict => {
-                if let Some(kind) = edge_kind {
-                    self.check_lane(registry::spec(kind).owner)?;
-                }
-            }
-            Claim::Adjudication | Claim::Observation => {}
-        }
-
-        // ---- 4. hygiene ------------------------------------------------------
-        // `is_placeholder` is retained as a LINT, not the gate. It rejects "TBD"
-        // and accepts any sentence; the floor below is what actually decides.
-        if anchor::is_settling(a.state)
-            && crate::model::is_placeholder(a.criterion)
-            && matches!(a.claim, Claim::Verdict)
-        {
-            bail!(
-                "a settled verdict needs a criterion stating what would falsify it \
-                 (got {:?})",
-                a.criterion
-            );
-        }
-        if !(0.0..=1.0).contains(&a.confidence) || !a.confidence.is_finite() {
-            bail!("confidence must be within 0.0..=1.0 (got {})", a.confidence);
-        }
-
-        // ---- 5. materialize anchors -----------------------------------------
+    /// Turn what the caller cited into evidence rows, and mint loom's own
+    /// probes for the claims loom can check itself.
+    ///
+    /// Step 5 of `assert_fact`, extracted: it was 137 of that function's 338
+    /// lines and held all of its deep nesting, which is why loom flagged the
+    /// chokepoint as long, complex AND deeply nested at once. The SQL stays in
+    /// this module, so the one-door invariant is untouched.
+    ///
+    /// Returns the fact id and the rows; `shape` is filled in as the probes run
+    /// (a rule is only `scannable` if its scan actually ran).
+    fn materialize_anchors(
+        &self,
+        a: &Assertion<'_>,
+        edge_kind: Option<crate::model::EdgeKind>,
+        role: Option<crate::model::GroundingRole>,
+        shape: &mut anchor::Shape,
+    ) -> Result<(String, Vec<EvidenceRow>, String)> {
         let fact_id = Fact::id_for(a.subject.kind(), a.subject.id(), a.claim);
         let mut rows: Vec<EvidenceRow> = Vec::new();
         let recorded_at = now(&self.conn)?;
-        for cited in a.cited {
+        for cited in a.cited.clone() {
             let payload = cited.into_evidence();
             rows.push(EvidenceRow {
                 id: EvidenceRow::id_for(&fact_id, &payload),
@@ -398,8 +546,8 @@ impl Store {
                             if run.exit_code != 0 && a.state == "passing" {
                                 bail!(
                                     "'{}' scanned these patterns and found hits — a passing \
-                                     verdict contradicts them:\n{}\n\nRecord `failing`, or cite \
-                                     a span per hit explaining why each is not what the rule means.",
+                                 verdict contradicts them:\n{}\n\nRecord `failing`, or cite \
+                                 a span per hit explaining why each is not what the rule means.",
                                     rule.name,
                                     run.stdout_excerpt.trim()
                                 );
@@ -409,7 +557,7 @@ impl Store {
                 }
             }
         }
-        if let Some(run) = a.run.map(|b| *b).or(probe) {
+        if let Some(run) = a.run.clone().map(|b| *b).or(probe) {
             let payload = Evidence::Run(run);
             rows.push(EvidenceRow {
                 id: EvidenceRow::id_for(&fact_id, &payload),
@@ -420,57 +568,22 @@ impl Store {
                 expiry_reason: None,
             });
         }
+        Ok((fact_id, rows, recorded_at))
+    }
 
-        // ---- 6. the floor ----------------------------------------------------
-        let strength = level(&rows);
-        let floor = anchor::required_for(a.claim, edge_kind, role, a.state, shape);
-        if a.below_floor.is_none() && strength.rank() < floor.required.rank() {
-            bail!(
-                "'{}' needs {} evidence but this is only {} — {}",
-                a.state,
-                floor.required.as_str(),
-                strength.as_str(),
-                floor.remedy
-            );
-        }
-        let stale = a
-            .below_floor
-            .map(|cause| StaleReason::new(cause, Vec::new(), recorded_at.clone()));
-
-        // A ratification DEMOTION changes standing, not authorship: the human
-        // who said yes still said yes, and overwriting them with "sync" would
-        // erase the provenance the demotion exists to protect.
-        let (asserted_by, asserted_at) = if a.claim == Claim::Ratification && a.state != "ratified"
-        {
-            match self.fact_by_id(&fact_id)? {
-                Some(prior) => (prior.fact.asserted_by, prior.fact.asserted_at),
-                None => (a.asserted_by.to_string(), recorded_at.clone()),
-            }
-        } else {
-            (a.asserted_by.to_string(), recorded_at.clone())
-        };
-
-        let fact = Fact {
-            id: fact_id.clone(),
-            subject_kind: a.subject.kind(),
-            subject_id: a.subject.id().to_string(),
-            claim: a.claim,
-            state: a.state.to_string(),
-            criterion: a.criterion.to_string(),
-            verification: strength,
-            confidence: a.confidence,
-            asserted_by,
-            asserted_at,
-            stale,
-        };
-
-        // ---- 7. idempotence --------------------------------------------------
+    /// The already-recorded answer, when this assertion changes nothing.
+    ///
+    /// Step 7 of `assert_fact`, extracted. Re-asserting an identical fact must
+    /// be a byte-identical no-op, or `loom export --check` drifts on every sync
+    /// and the committed graph stops being a stable artifact.
+    fn unchanged(&self, fact: &Fact, rows: &[EvidenceRow]) -> Result<Option<FactView>> {
+        let fact_id = fact.id.as_str();
         // A byte-identical re-assertion is a no-op: it must not bump the edge's
         // `updated_at` (which is exported, so a repeat would dirty
         // `loom.graph.json` and make `export --check` useless in CI). Evidence
         // ids are content-addressed, so "the same anchors" is an id-set
         // comparison rather than a deep one.
-        if let Some(existing) = self.fact_by_id(&fact_id)? {
+        if let Some(existing) = self.fact_by_id(fact_id)? {
             let same_claim = existing.fact.state == fact.state
                 && existing.fact.criterion == fact.criterion
                 && existing.fact.confidence.to_bits() == fact.confidence.to_bits()
@@ -482,69 +595,10 @@ impl Store {
             let after: std::collections::BTreeSet<&str> =
                 rows.iter().map(|r| r.id.as_str()).collect();
             if same_claim && before == after {
-                return Ok(existing);
+                return Ok(Some(existing));
             }
         }
-
-        // ---- 8. write, one transaction --------------------------------------
-        self.write_fact(&fact, &rows)?;
-        Ok(FactView {
-            fact,
-            evidence: rows,
-        })
-    }
-
-    /// Persist a fact, replace its evidence set, and project its state.
-    fn write_fact(&self, fact: &Fact, rows: &[EvidenceRow]) -> Result<()> {
-        let stale = fact
-            .stale
-            .as_ref()
-            .map(serde_json::to_string)
-            .transpose()?
-            .unwrap_or_default();
-        self.conn.execute(
-            "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,verification,\
-                               confidence,asserted_by,asserted_at,stale)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
-             ON CONFLICT(id) DO UPDATE SET
-                state=excluded.state, criterion=excluded.criterion,
-                verification=excluded.verification, confidence=excluded.confidence,
-                asserted_by=excluded.asserted_by, asserted_at=excluded.asserted_at,
-                stale=excluded.stale",
-            rusqlite::params![
-                fact.id,
-                fact.subject_kind.as_str(),
-                fact.subject_id,
-                fact.claim.as_str(),
-                fact.state,
-                fact.criterion,
-                fact.verification.as_str(),
-                fact.confidence,
-                fact.asserted_by,
-                fact.asserted_at,
-                stale,
-            ],
-        )?;
-        // The evidence set is replaced wholesale: an assertion's anchors are
-        // exactly what its author cited this time, never an accumulation that
-        // could keep a fact alive on a citation nobody stands behind.
-        self.conn
-            .execute("DELETE FROM evidence WHERE fact_id = ?1", [&fact.id])?;
-        for row in rows {
-            self.conn.execute(
-                "INSERT INTO evidence (id,fact_id,payload,kind,recorded_at,holds,expiry_reason)
-                 VALUES (?1,?2,?3,?4,?5,1,'')
-                 ON CONFLICT(id) DO NOTHING",
-                rusqlite::params![
-                    row.id,
-                    row.fact_id,
-                    serde_json::to_string(&row.payload)?,
-                    row.payload.kind().as_str(),
-                    row.recorded_at,
-                ],
-            )?;
-        }
-        self.project(fact)
+        Ok(None)
     }
 
     /// Push a fact's state onto the row that indexes it. `edge.status` stays a
