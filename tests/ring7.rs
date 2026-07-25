@@ -218,3 +218,59 @@ fn dogfood_next_serves_work_until_clean() {
     let item = workitem::next(&store, None).unwrap().unwrap();
     assert_eq!(item.mode, "build");
 }
+
+/// Every command a packet offers must resolve.
+///
+/// The fix packet told workers to run `loom intent show <name>` where the name
+/// came from the wrong endpoint: `validates` runs validation→intent, so `from`
+/// is the validation, and the suggested command could never resolve. A packet
+/// that hands out commands which fail is worse than one that hands out none —
+/// it costs the reader a round trip to discover the tool was wrong, not them.
+#[test]
+fn fix_packet_names_the_intent_not_the_other_endpoint() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "a behavior",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = codefile(&store, "src/thing.rs");
+    store
+        .add_edge(
+            loom::model::EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            loom::model::TruthClass::Asserted,
+        )
+        .unwrap();
+    // A failing PROOF: validates runs validation → intent.
+    loom::commands::prove_intent(&store, &intent.id, "the proof", "false").unwrap();
+
+    let item = loom::workitem::next(&store, Some(loom::lane::Lane::Fix))
+        .unwrap()
+        .expect("a failing proof routes to fix");
+    let suggested: Vec<&String> = item
+        .prompt_contract
+        .allowed_actions
+        .iter()
+        .filter(|a| a.starts_with("loom intent "))
+        .collect();
+    assert!(!suggested.is_empty(), "the packet offers intent commands");
+    for action in suggested {
+        // The TARGET is the first quoted argument; prose after it may mention
+        // anything (the retire line warns about inconvenient proofs).
+        let target = action
+            .split('\'')
+            .nth(1)
+            .unwrap_or_else(|| panic!("an intent command quotes its target: {action}"));
+        assert_eq!(
+            target, "a behavior",
+            "an intent command must name the INTENT endpoint, not the validation: {action}"
+        );
+    }
+}

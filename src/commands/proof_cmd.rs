@@ -878,17 +878,26 @@ pub(crate) fn observe_cmd(
         println!("blocked: {}", value["blocked"].as_str().unwrap_or(""));
         return Ok(());
     }
+    // Say what was RECORDED, not only what exited. A reader should not have to
+    // know that 101 means a cargo test failed to learn that loom just wrote a
+    // failing verdict against their behavior.
+    let code = value["exit_code"].as_i64().unwrap_or(-1);
     println!(
-        "observed `{}` → exit {} ({} file(s) covered)",
+        "observed `{}` → {} (exit {code}, {} file(s) covered)",
         value["command"].as_str().unwrap_or(""),
-        value["exit_code"],
+        if code == 0 { "PASSED" } else { "FAILED" },
         value["covered"].as_array().map(|a| a.len()).unwrap_or(0)
     );
     match value["bound_to"].as_str() {
-        Some(name) => println!(
-            "  bound to proof '{name}' [{}]",
-            value["strength"].as_str().unwrap_or("-")
-        ),
+        Some(name) => {
+            println!(
+                "  recorded against proof '{name}' [{}]",
+                value["strength"].as_str().unwrap_or("-")
+            );
+            if code != 0 {
+                println!("  the behavior is now failing — `loom next --mode fix`");
+            }
+        }
         None => println!(
             "  recorded as journal:{} — bind it with `loom observe --for <behavior> -- …`",
             value["journal"].as_str().unwrap_or("")

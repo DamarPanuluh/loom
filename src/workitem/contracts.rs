@@ -259,6 +259,14 @@ pub(super) fn analyzer_contract(edge: &Edge, from_name: &str, to_name: &str) -> 
 }
 
 pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> PromptContract {
+    // Which endpoint is the INTENT depends on the edge kind, and getting it
+    // wrong produces a command that cannot resolve. `implements` and `relates`
+    // run intent→target, so the intent is `from`; `governs` runs rule→intent
+    // and `validates` runs validation→intent, so it is `to`.
+    let intent_name = match edge.kind {
+        EdgeKind::Governs | EdgeKind::Validates => to_name,
+        _ => from_name,
+    };
     PromptContract {
         role: "fixer".into(),
         mindset: "Use Loom first to understand the stale/failing criterion, linked entities, \
@@ -273,16 +281,28 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
             "loom status".into(),
             "loom next --all".into(),
             format!("loom edge show {}", edge.id),
-            format!("loom intent show {}", q(if edge.kind == EdgeKind::Governs { to_name } else { from_name })),
+            format!("loom intent show {}", q(intent_name)),
             "loom codefile show <file>".into(),
             "edit code".into(),
             "loom sync".into(),
             "loom edge implement (re-ground if the fix moved code)".into(),
+            // The case with no source to repair: the behavior was removed on
+            // purpose and the graph still claims it. Without this the packet
+            // says "fix the root cause" at a worker who has correctly
+            // established there is nothing to fix, and offers them no move.
+            format!(
+                "loom intent retire {} --reason '<why this behavior no longer exists>'  \
+                 (ONLY if the behavior was deliberately removed — not because the proof is hard)",
+                q(intent_name)
+            ),
             FINDING_ADD_ACTION.into(),
         ],
         forbidden_actions: vec![
             "recording the passing verdict yourself (the owning lane re-measures after sync)".into(),
             "suppress the symptom without a root-cause fix".into(),
+            "retiring an intent because its proof is inconvenient — retire means the behavior \
+             is gone, not that proving it is hard"
+                .into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
         evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
@@ -290,7 +310,11 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
         evidence_template: None,
         examples: None,
         pre_screened_hits: Vec::new(),
-        write_back: "fix the source at root cause, then loom sync — sync re-opens this claim as needs_reverification and its owning lane re-measures it".into(),
+        write_back: "fix the source at root cause, then loom sync — sync re-opens this claim as \
+                     needs_reverification and its owning lane re-measures it. If the behavior was \
+                     deliberately removed, retire the intent instead: the failure is then the \
+                     graph being out of date, and that IS the root cause"
+            .into(),
         stop_condition: "after the fix + sync, return to loom status".into(),
         human_gate: None,
     }
