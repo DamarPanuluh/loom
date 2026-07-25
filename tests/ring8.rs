@@ -74,7 +74,7 @@ fn finding_adjudication_survives_derived_graph_wipe() {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let finding = derived_finding(&store);
     store
-        .record_finding_verdict(&finding.id, "justified", "cohesive")
+        .record_finding_verdict(&finding.id, "justified", "cohesive", "src/x.rs:1")
         .unwrap();
 
     store.wipe_derived_graph().unwrap();
@@ -109,7 +109,7 @@ fn finding_adjudication_stays_settled_on_hash_churn_within_metric_band() {
         .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
         .unwrap();
     store
-        .record_finding_verdict(&finding.id, "justified", "cohesive")
+        .record_finding_verdict(&finding.id, "justified", "cohesive", "src/x.rs:1")
         .unwrap();
 
     let fresh = loom::signal::findings_view(&store).unwrap();
@@ -153,7 +153,7 @@ fn finding_adjudication_goes_stale_when_metric_worsens_past_band() {
         .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
         .unwrap();
     store
-        .record_finding_verdict(&finding.id, "justified", "cohesive")
+        .record_finding_verdict(&finding.id, "justified", "cohesive", "src/x.rs:1")
         .unwrap();
 
     // Rebuild the finding with a metric past the 10%/50-line band (1200 → 1400).
@@ -201,7 +201,7 @@ fn needed_finding_still_stales_on_hash_change() {
         .add_derived_edge(EdgeKind::Flags, &finding.id, &codefile.id)
         .unwrap();
     store
-        .record_finding_verdict(&finding.id, "needed", "split later")
+        .record_finding_verdict(&finding.id, "needed", "split later", "")
         .unwrap();
 
     store
@@ -244,7 +244,7 @@ fn triage_mode_serves_findings_until_verdict_is_recorded() {
     assert_eq!(ladder(&store).unwrap().phase, "triage");
 
     store
-        .record_finding_verdict(&finding.id, "justified", "cohesive")
+        .record_finding_verdict(&finding.id, "justified", "cohesive", "src/x.rs:1")
         .unwrap();
     assert!(workitem::next(&store, Some(Lane::Triage))
         .unwrap()
@@ -291,7 +291,7 @@ fn graph_state_counts_needed_findings() {
     let finding = derived_finding(&store);
     assert_eq!(workitem::graph_state(&store).unwrap().needed, 0);
     store
-        .record_finding_verdict(&finding.id, "needed", "split it")
+        .record_finding_verdict(&finding.id, "needed", "split it", "")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.needed, 1);
@@ -371,14 +371,14 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
 
     // `justified` is a resolving adjudication — excellent rung becomes Met.
     store
-        .record_finding_verdict(&finding_id, "justified", "accepted cross-cut")
+        .record_finding_verdict(&finding_id, "justified", "accepted cross-cut", "")
         .unwrap();
     assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Met);
 
     // `needed` is NOT resolving — excellent rung stays Unmet.
     store
-        .record_finding_verdict(&finding_id, "needed", "must split")
+        .record_finding_verdict(&finding_id, "needed", "must split", "")
         .unwrap();
     assert!(!loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(workitem::graph_state(&store).unwrap().untriaged, 0);
@@ -386,7 +386,7 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
 
     // `blocked` is NOT resolving — excellent rung stays Unmet.
     store
-        .record_finding_verdict(&finding_id, "blocked", "upstream")
+        .record_finding_verdict(&finding_id, "blocked", "upstream", "")
         .unwrap();
     assert!(!loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(workitem::graph_state(&store).unwrap().untriaged, 0);
@@ -394,21 +394,21 @@ fn excellent_rung_counts_needed_blocked_but_not_justified() {
 
     // `rejected` is a resolving adjudication — excellent rung becomes Met.
     store
-        .record_finding_verdict(&finding_id, "rejected", "false positive after inspection")
+        .record_finding_verdict(&finding_id, "rejected", "false positive after inspection", "")
         .unwrap();
     assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Met);
 
     // `deferred` is a resolving adjudication — excellent rung becomes Met.
     store
-        .record_finding_verdict(&finding_id, "deferred", "revisit after v2 ships")
+        .record_finding_verdict(&finding_id, "deferred", "revisit after v2 ships", "")
         .unwrap();
     assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Met);
 
     // `duplicate` is a resolving adjudication — excellent rung becomes Met.
     store
-        .record_finding_verdict(&finding_id, "duplicate", "same as tangled_file:other")
+        .record_finding_verdict(&finding_id, "duplicate", "same as tangled_file:other", "")
         .unwrap();
     assert!(loom::signal::smell_has_resolving_adjudication(&store, &identity).unwrap());
     assert_eq!(excellent_state(&store), RungState::Met);
@@ -436,7 +436,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
     // (2) Each of the four non-open verdicts resolves the finding.
     // `justified` resolves.
     store
-        .record_finding_verdict(&finding.id, "justified", "cohesive")
+        .record_finding_verdict(&finding.id, "justified", "cohesive", "src/x.rs:1")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.open_findings, 0);
@@ -448,7 +448,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
 
     // `rejected` resolves.
     store
-        .record_finding_verdict(&finding.id, "rejected", "false positive")
+        .record_finding_verdict(&finding.id, "rejected", "false positive", "")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.open_findings, 0, "rejected is resolved");
@@ -460,7 +460,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
 
     // `deferred` resolves.
     store
-        .record_finding_verdict(&finding.id, "deferred", "after v2")
+        .record_finding_verdict(&finding.id, "deferred", "after v2", "")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.open_findings, 0, "deferred is resolved");
@@ -472,7 +472,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
 
     // `duplicate` resolves.
     store
-        .record_finding_verdict(&finding.id, "duplicate", "same as other:finding")
+        .record_finding_verdict(&finding.id, "duplicate", "same as other:finding", "")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.open_findings, 0, "duplicate is resolved");
@@ -484,7 +484,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
 
     // `needed` remains open.
     store
-        .record_finding_verdict(&finding.id, "needed", "schedule it")
+        .record_finding_verdict(&finding.id, "needed", "schedule it", "")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.open_findings, 1, "needed stays open");
@@ -496,7 +496,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
 
     // `blocked` remains open.
     store
-        .record_finding_verdict(&finding.id, "blocked", "upstream dep")
+        .record_finding_verdict(&finding.id, "blocked", "upstream dep", "")
         .unwrap();
     let pulse = workitem::graph_state(&store).unwrap();
     assert_eq!(pulse.open_findings, 1, "blocked stays open");
@@ -528,7 +528,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
         .unwrap();
     // Stamp `needed` while the hash is h1, so the verdict records hash=h1.
     store
-        .record_finding_verdict(&finding.id, "needed", "split it")
+        .record_finding_verdict(&finding.id, "needed", "split it", "")
         .unwrap();
     let current = workitem::graph_state(&store).unwrap();
     assert_eq!(current.findings, 1);

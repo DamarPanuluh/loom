@@ -404,7 +404,7 @@ fn stale_edge_routes_to_fix() {
         .add_edge(EdgeKind::Relates, &a.id, &b.id, TruthClass::Asserted)
         .unwrap();
     store
-        .record_verdict(&e.id, InspectionStatus::Failing, "c", "broken", 0.9, "llm")
+        .record_verdict(&e.id, InspectionStatus::Failing, "c", "src/a.rs:1", 0.9, "llm")
         .unwrap();
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "fix");
@@ -1022,7 +1022,7 @@ fn findings_route_to_triage_until_judged() {
         .next()
         .unwrap();
     store
-        .record_finding_verdict(&f.id, "justified", "cohesive")
+        .record_finding_verdict(&f.id, "justified", "cohesive", "")
         .unwrap();
     let judged = ladder(&store).unwrap();
     let judged_excellent = judged.rungs.iter().find(|r| r.name == "triaged").unwrap();

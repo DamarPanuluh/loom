@@ -483,10 +483,16 @@ impl Store {
         finding_id: &str,
         verdict: &str,
         reason: &str,
+        evidence: &str,
     ) -> Result<()> {
         // The judgment itself is a FACT: it goes through the write boundary,
-        // where it picks up its anchors and its floor.
-        let cited = crate::evidence::cite(self.root(), reason)?;
+        // where it picks up its anchors and its floor. The reason and the
+        // anchor are separate on purpose: a judge who writes a good sentence
+        // has still not said where they looked, and only the second one is
+        // re-checkable. An empty `evidence` falls back to the reason so a
+        // citation written into the sentence still counts.
+        let anchor = if evidence.is_empty() { reason } else { evidence };
+        let cited = crate::evidence::cite(self.root(), anchor)?;
         self.assert_fact(
             crate::store::Assertion::new(
                 crate::store::Subject::Node(finding_id.to_string()),

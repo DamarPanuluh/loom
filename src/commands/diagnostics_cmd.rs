@@ -279,7 +279,8 @@ pub(crate) fn finding(graph: Option<&Path>, cmd: FindingCmd, json: bool) -> Resu
             id,
             verdict,
             reason,
-        } => finding_verdict(graph, &id, &verdict, &reason, json),
+            evidence,
+        } => finding_verdict(graph, &id, &verdict, &reason, &evidence, json),
     }
 }
 
@@ -418,13 +419,14 @@ pub(crate) fn adjudicate_finding(
     id: &str,
     verdict: &str,
     reason: &str,
+    evidence: &str,
 ) -> Result<crate::model::Node> {
     validate_finding_verdict(verdict)?;
     if crate::model::is_placeholder(reason) {
         bail!("finding verdict requires a substantive reason (not a placeholder like '…' or '<reason>')");
     }
     let finding = store.resolve_finding(id)?;
-    store.record_finding_verdict(&finding.id, verdict, reason)?;
+    store.record_finding_verdict(&finding.id, verdict, reason, evidence)?;
     Ok(finding)
 }
 fn finding_verdict(
@@ -432,10 +434,11 @@ fn finding_verdict(
     id: &str,
     verdict: &str,
     reason: &str,
+    evidence: &str,
     json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
-    let finding = adjudicate_finding(&store, id, verdict, reason)?;
+    let finding = adjudicate_finding(&store, id, verdict, reason, evidence)?;
     pulse::emit_line(
         &store,
         json,

@@ -62,6 +62,14 @@ pub struct Shape {
     pub runnable_proof: bool,
     /// This quality rule carries patterns loom can scan for itself.
     pub scannable_rule: bool,
+    /// This finding flags a file that exists, so the judge had somewhere to
+    /// look. A smell about an INTENT (`vague_intent`) flags no code — demanding
+    /// a span for it would only teach the judge to invent one.
+    pub flagged_file: bool,
+    /// Both endpoints of this relationship have a realizing grounding, so there
+    /// is source on both sides where the relationship can be seen. Two intents
+    /// with no code yet are a design claim, not a claim about code.
+    pub endpoints_realized: bool,
 }
 
 pub fn required(
@@ -89,7 +97,7 @@ pub fn required_for(
     }
     match claim {
         Claim::Verdict => verdict_floor(edge_kind, role, state, shape),
-        Claim::Adjudication => adjudication_floor(state),
+        Claim::Adjudication => adjudication_floor(state, shape),
         Claim::Ratification => Floor::new(
             CURRENT_RATIFICATION,
             "ratify from a recorded human utterance (loom drive) or cite the decision \
@@ -102,9 +110,24 @@ pub fn required_for(
 fn verdict_floor(
     edge_kind: Option<EdgeKind>,
     role: Option<GroundingRole>,
-    _state: &str,
+    state: &str,
     shape: Shape,
 ) -> Floor {
+    // `independent` on a relationship says the two behaviors DO NOT interact.
+    // No span witnesses an absence — pointing at code that does not mention the
+    // other endpoint proves nothing, and demanding one would only produce
+    // decorative citations. It stays `claimed`: recorded, visible, never green.
+    //
+    // This is the one absence loom cannot yet check for itself. The prescreen
+    // probe answers the same question for quality rules by scanning; the call
+    // graph is what would answer it here (neither endpoint's realizing files
+    // reach the other's), and raising this floor is what that probe is for.
+    if state == "independent" && !matches!(edge_kind, Some(EdgeKind::Implements)) {
+        return Floor::new(
+            Verification::Claimed,
+            "say what you compared and why they do not interact",
+        );
+    }
     match edge_kind {
         // A realizing grounding is checkable: the locator must resolve to a live
         // symbol. loom re-resolves it itself, so this floor is reachable without
@@ -140,6 +163,13 @@ fn verdict_floor(
         ),
         // Taxonomy, not a claim about code.
         Some(EdgeKind::Hierarchy) => Floor::new(Verification::Claimed, "state the decomposition"),
+        // A relationship is only a claim about code once both ends HAVE code.
+        // Before that it is a design statement — recorded, never green, and it
+        // rises to the floor on its own the moment both endpoints ground.
+        _ if !shape.endpoints_realized => Floor::new(
+            Verification::Claimed,
+            "ground both behaviors in code, then cite where the relationship shows",
+        ),
         _ => Floor::new(
             CURRENT_RELATIONSHIP,
             "cite a span in a file realizing each endpoint",
@@ -147,7 +177,15 @@ fn verdict_floor(
     }
 }
 
-fn adjudication_floor(state: &str) -> Floor {
+fn adjudication_floor(state: &str, shape: Shape) -> Floor {
+    if !shape.flagged_file {
+        // Nothing on disk to point at. Recorded honestly at whatever the
+        // rationale earns; `doctor` names these as unanchorable.
+        return Floor::new(
+            Verification::Claimed,
+            "this finding flags no file — say what you decided and why",
+        );
+    }
     match state {
         // "I fixed it" is re-checkable: loom re-runs the finding's own predicate.
         "resolved" => Floor::new(
@@ -180,19 +218,10 @@ fn adjudication_floor(state: &str) -> Floor {
 /// naming the symbol earns the stronger grade for free, and `deepen` can later
 /// route on the difference.
 ///
-/// STAGED at `claimed`; belongs at `cited`. The probe above is live, so a
-/// grounding whose locator resolves already records `verified` — the floor only
-/// governs the weakest case.
-///
-/// Raising it is mechanical but has a long tail: fixtures across ring11, ring12
-/// and ring6 cite `file:line` for files that were never created, which means
-/// those citations were never evidence. Two test helpers are repaired (they now
-/// write the files they register), and the remainder is the same exercise.
-/// Flipped together with them rather than left half-done.
 const CURRENT_GROUNDING: Verification = Verification::Cited;
 /// A consumer/config/verify seam is a weaker claim by nature — it says the file
 /// USES the behavior, not that it performs it — but it still has to point
-/// somewhere. Staged with the grounding floor above.
+/// somewhere.
 const CURRENT_SEAM_GROUNDING: Verification = Verification::Cited;
 /// A proof is `verified` or it is not a proof. There is exactly one way to
 /// reach this floor: let loom run the command and observe the result. Reporting
@@ -206,8 +235,19 @@ const CURRENT_MANUAL_PROOF: Verification = Verification::Cited;
 /// at what you inspected.
 const CURRENT_QUALITY: Verification = Verification::Verified;
 const CURRENT_UNPATTERNED_QUALITY: Verification = Verification::Claimed;
-const CURRENT_RELATIONSHIP: Verification = Verification::Claimed;
-const CURRENT_FINDING: Verification = Verification::Claimed;
+/// A relationship between two behaviors is a claim about code even though it
+/// names no file: "A requires B" is either visible somewhere in the source or it
+/// is a guess. Cited, not verified — loom cannot re-derive intent from a span,
+/// only re-check that the span still says what it said.
+///
+/// This floor is also what makes the ripple matrix deletable. A `claimed`
+/// relationship is invisible to re-verification, so the only way to notice it
+/// had gone stale was the hand-written dependency walk in `sync.rs`. Anchored,
+/// it expires like everything else.
+const CURRENT_RELATIONSHIP: Verification = Verification::Cited;
+/// A judgment about a finding points at the flagged code or at the conversation
+/// where it was decided. Either is re-checkable; a bare opinion is not.
+const CURRENT_FINDING: Verification = Verification::Cited;
 const CURRENT_RESOLVED_FINDING: Verification = Verification::Claimed;
 const CURRENT_RATIFICATION: Verification = Verification::Claimed;
 
@@ -237,6 +277,79 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// The three carve-outs are not softness — each names a case where the
+    /// anchor loom would demand does not exist, and demanding it would produce
+    /// a decorative citation instead of a real one.
+    #[test]
+    fn a_floor_is_only_demanded_where_the_anchor_could_exist() {
+        let realized = Shape {
+            endpoints_realized: true,
+            ..Default::default()
+        };
+        // An absence has no witness.
+        assert_eq!(
+            required_for(
+                Claim::Verdict,
+                Some(EdgeKind::Relates),
+                None,
+                "independent",
+                realized
+            )
+            .required,
+            Verification::Claimed
+        );
+        // Neither endpoint has code yet — a design claim, not a code claim.
+        assert_eq!(
+            required_for(
+                Claim::Verdict,
+                Some(EdgeKind::Relates),
+                None,
+                "passing",
+                Shape::default()
+            )
+            .required,
+            Verification::Claimed
+        );
+        // Both DO have code: now it must point at it.
+        assert_eq!(
+            required_for(
+                Claim::Verdict,
+                Some(EdgeKind::Relates),
+                None,
+                "passing",
+                realized
+            )
+            .required,
+            Verification::Cited
+        );
+        // A finding about an intent flags nothing on disk.
+        assert_eq!(
+            required_for(
+                Claim::Adjudication,
+                None,
+                None,
+                "justified",
+                Shape::default()
+            )
+            .required,
+            Verification::Claimed
+        );
+        assert_eq!(
+            required_for(
+                Claim::Adjudication,
+                None,
+                None,
+                "justified",
+                Shape {
+                    flagged_file: true,
+                    ..Default::default()
+                }
+            )
+            .required,
+            Verification::Cited
+        );
     }
 
     #[test]

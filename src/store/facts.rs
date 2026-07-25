@@ -163,6 +163,19 @@ impl Store {
                             !command.trim().is_empty() && !matches!(ty, "manual_check" | "journey")
                         })
                         .unwrap_or(false);
+                // A relationship can only be anchored where both ends have
+                // source to point at. Computed here, at the one place that can
+                // see the whole subject, rather than trusted from the caller.
+                if !matches!(
+                    edge.kind,
+                    crate::model::EdgeKind::Implements
+                        | crate::model::EdgeKind::Validates
+                        | crate::model::EdgeKind::Governs
+                        | crate::model::EdgeKind::Hierarchy
+                ) {
+                    shape.endpoints_realized = !self.realizing_groundings(&edge.from_id)?.is_empty()
+                        && !self.realizing_groundings(&edge.to_id)?.is_empty();
+                }
                 (Some(edge.kind), Some(self.grounding_role(id)?))
             }
             (Subject::Edge(_), other) => {
@@ -191,6 +204,11 @@ impl Store {
                                 node.node_type
                             );
                         }
+                        // Whether the judge had anywhere to look. A finding that
+                        // flags a live codefile can be judged from the code; a
+                        // smell about an intent flags nothing on disk, so
+                        // demanding a span would only produce invented ones.
+                        shape.flagged_file = self.finding_codefile_hash(id)?.is_some();
                     }
                     Claim::Verdict => bail!("a verdict is about an edge, not a node"),
                 }

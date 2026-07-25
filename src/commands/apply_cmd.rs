@@ -158,6 +158,10 @@ struct AdjudicationSpec {
     finding: String,
     verdict: String,
     reason: String,
+    /// Where the judgment was made from — same contract as `--evidence` on
+    /// `loom finding verdict`. Defaulted so open verdicts stay a two-field spec.
+    #[serde(default)]
+    evidence: String,
 }
 
 /// A vocabulary term to register (idempotent), mirroring `loom vocab add`.
@@ -360,7 +364,13 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
         report.verdicts += 1;
     }
     for a in &spec.adjudications {
-        super::diagnostics_cmd::adjudicate_finding(store, &a.finding, &a.verdict, &a.reason)
+        super::diagnostics_cmd::adjudicate_finding(
+            store,
+            &a.finding,
+            &a.verdict,
+            &a.reason,
+            &a.evidence,
+        )
             .with_context(|| format!("adjudication for finding '{}'", a.finding))?;
         report.adjudications += 1;
     }

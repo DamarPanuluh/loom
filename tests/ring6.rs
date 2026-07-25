@@ -167,7 +167,7 @@ fn sync_materializes_smell_finding_adjudication_and_convergence() {
     );
 
     store
-        .record_finding_verdict(&expected_id, "justified", "shared transition seam")
+        .record_finding_verdict(&expected_id, "justified", "shared transition seam", "")
         .unwrap();
     loom::sync::run(&store, tmp.path()).unwrap();
     assert!(store.get_node(&expected_id).unwrap().is_some());

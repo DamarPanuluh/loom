@@ -438,6 +438,12 @@ pub enum FindingCmd {
         verdict: String,
         #[arg(long)]
         reason: String,
+        /// Where you looked: `file:line` in the flagged code, or a `journal:`
+        /// ref. A settling verdict needs one — the reason says WHAT you decided,
+        /// this says what you decided it FROM. Open states (`needed`,
+        /// `blocked`) do not.
+        #[arg(long, default_value = "")]
+        evidence: String,
     },
 }
 

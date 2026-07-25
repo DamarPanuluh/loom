@@ -732,6 +732,7 @@ fn vague_intent_smell() {
             &finding_id,
             "justified",
             "accepted as a summary-level intent",
+            "",
         )
         .unwrap();
 
@@ -801,7 +802,7 @@ fn relates_spared_on_one_sided_change_staled_when_both_or_depends_on() {
             &relates.id,
             InspectionStatus::Passing,
             "they share a seam",
-            "conceptual coupling only — no file citation",
+            "see src/b.rs:1 — the coupling is visible on beta's side only",
             0.9,
             "llm",
         )
