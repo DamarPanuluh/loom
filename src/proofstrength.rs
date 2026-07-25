@@ -123,14 +123,43 @@ pub fn boundary(spec: &JourneySpec) -> Option<String> {
             return Some(format!("http {}", step.request.url));
         }
         if step.is_cli() {
-            let first = step.run.split_whitespace().next().unwrap_or("");
-            let bin = first.rsplit('/').next().unwrap_or(first);
-            if !bin.is_empty() && bin != "loom" && bin != "cargo" {
+            if let Some(bin) = crossed_binary(&step.run) {
                 return Some(format!("process {bin}"));
             }
         }
     }
     None
+}
+
+/// Shell plumbing that carries data INTO a command without being a system the
+/// proof crosses into. Piping `printf` at loom's stdin is loom talking to
+/// itself with extra steps.
+const PLUMBING: &[&str] = &[
+    "printf", "echo", "cat", "true", "false", "sh", "bash", "env", "sleep", "yes", "head", "tail",
+    "tee", "sed", "awk", "grep", "sort", "jq", "xargs", "test", "[",
+];
+
+/// A binary in this command that represents a real boundary, if any.
+///
+/// Every segment of the pipeline is considered, not just the first token: the
+/// first token of `printf … | loom mcp serve` is `printf`, which used to credit
+/// an S5 boundary to a step whose only real actor is loom. A grade that counts
+/// shell plumbing as "crossing into a system loom does not control" overstates
+/// exactly the conjunct that is hardest to earn honestly.
+fn crossed_binary(run: &str) -> Option<String> {
+    run.split(['|', ';', '&'])
+        .filter_map(|segment| {
+            let first = segment.split_whitespace().next()?;
+            let bin = first.rsplit('/').next().unwrap_or(first);
+            let bin = bin.trim();
+            (!bin.is_empty()
+                && bin != "loom"
+                && bin != "cargo"
+                && !PLUMBING.contains(&bin)
+                && !bin.contains('='))
+            .then(|| bin.to_string())
+        })
+        .next()
 }
 
 /// The symbols an intent is grounded in, via its realizing locators.
@@ -301,8 +330,19 @@ pub fn grade(
 
 /// The journey spec behind a validation, if it is a journey proof.
 fn journey_spec(root: &Path, validation: &Node) -> Option<JourneySpec> {
-    // `journey` is what `loom journey add` records; `journey_id` is what
-    // `loom validation add --journey-id` records. Both name the same spec.
+    // `artifact` is the path `loom journey add` recorded — the actual file.
+    // Prefer it over guessing a filename from the journey NAME, which is prose
+    // ("loom serves its capabilities in band") and almost never the basename
+    // ("mcp-in-band.yaml"). Guessing meant every well-named journey silently
+    // graded S1 with "content assertions: 0" no matter how much it asserted:
+    // the spec was never found, so its assertions were never counted.
+    if let Some(artifact) = validation.body.get("artifact").and_then(|v| v.as_str()) {
+        if let Ok(spec) = crate::journey::parse(&root.join(artifact)) {
+            return Some(spec);
+        }
+    }
+    // Fall back to the id-as-basename form, which is what a hand-registered
+    // `--journey-id` usually means.
     let journey = validation
         .body
         .get("journey")
@@ -371,6 +411,24 @@ mod tests {
         assert_eq!(content_assertions(&expect), 0);
         expect.stdout_contains.push("files_scanned".into());
         assert_eq!(content_assertions(&expect), 1);
+    }
+
+    /// Shell plumbing is not a boundary. This is the conjunct hardest to earn
+    /// honestly, so it is the one most worth refusing to inflate.
+    #[test]
+    fn piping_into_loom_is_not_crossing_a_boundary() {
+        assert_eq!(crossed_binary("printf '{}' | loom mcp serve"), None);
+        assert_eq!(crossed_binary("loom sync"), None);
+        assert_eq!(crossed_binary("echo hi | sh -c 'loom status'"), None);
+        // A real other system still counts, wherever it sits in the pipeline.
+        assert_eq!(
+            crossed_binary("printf x | psql -c 'select 1'").as_deref(),
+            Some("psql")
+        );
+        assert_eq!(
+            crossed_binary("curl -s http://localhost:8080/health").as_deref(),
+            Some("curl")
+        );
     }
 
     #[test]
