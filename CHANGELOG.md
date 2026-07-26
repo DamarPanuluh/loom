@@ -8,6 +8,48 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.27.0] - 2026-07-26
+**Breaking** (minor bump because 0.x): schema moves v3 → v4. Older binaries
+refuse a v4 graph and say to upgrade. Run `loom sync --rebuild` after upgrading —
+see below for why that is not optional this time.
+
+- **A test runner's own summary is evidence about the output.** `cargo test`
+  reporting "4 passed; 0 failed" states WHAT it checked, which is strictly more
+  than `exit_code: 0`. It previously graded S1 with "content assertions: 0"
+  while a journey asserting one substring graded S2 — loom was telling every
+  repo that its real test suite established only liveness. Counted
+  conservatively now (a positive pass count AND explicit zero failures), and
+  kept separate from assertions declared in a spec, because a spec's
+  expectations are checked BY loom while a summary is the tool reporting on
+  itself.
+- **Calls inside macros are extracted.** A macro's arguments parse as an
+  unstructured token tree, so `assert_eq!(effective(a, b), c)` was invisible.
+  In Rust that hid almost every call a test makes — exactly the calls the S3
+  call witness reads — so every Rust suite was invisible to it.
+- **`loom sync --rebuild`.** Sync only re-derives files whose CONTENT changed,
+  so upgrading loom silently kept the old binary's call graph, symbol map and
+  findings. `wipe_derived + sync` is the INV-2 operation named in three doc
+  headers and there was no way to invoke it. Asserted truth is untouched.
+- The `proven` rung requires every implemented leaf at S2, as designed but
+  never implemented. A passing proof that establishes only liveness no longer
+  satisfies it.
+- The shallow-proof smell gates on proof STRENGTH rather than a `proof_kind`
+  label — S3 states "reaches the code it proves", checked from the call graph,
+  which is what the label stood in for.
+- Retirement is total: a retired behavior contributes no residue, no proof
+  debt, no ownership and no smells. Its code stays registered and becomes
+  visible coverage work rather than quietly counting as covered.
+- `loom observe` releases the graph lock before running its command. Holding it
+  made any child that opened the graph — including every `loom journey run` —
+  block and exit non-zero, which loom recorded as a FAILING verdict against a
+  passing behavior.
+- Migration 4 strips `proof_level` from validation bodies: dead since strength
+  became derived, and printed directly above the derived grade it contradicted.
+
+Together these move this repo from 59 unproven implemented leaves to 5, and 13
+journey gaps to 7 — not by lowering a bar, but by reading evidence that was
+already in the tree.
+
 ## [0.26.0] - 2026-07-25
 **Breaking**, despite the minor bump: this is 0.x, so a major would mint 1.0.0
 and claim a stability this codebase has not earned. Read the removals before
