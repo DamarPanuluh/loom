@@ -364,11 +364,17 @@ impl Store {
     /// exposes). Run every sync before re-deriving findings.
     pub fn wipe_derived_graph(&self) -> Result<()> {
         // Derived edges first (some hang off asserted nodes); derived nodes then
-        // cascade their remaining edges via FK.
+        // cascade their remaining edges via FK. Atomic so a crash between the two
+        // deletes cannot leave derived nodes with their edges already gone.
+        // `maybe_tx` composes with an outer batch instead of nesting a BEGIN.
+        let tx = self.maybe_tx()?;
         self.conn
             .execute("DELETE FROM edge WHERE truth_class='derived'", [])?;
         self.conn
             .execute("DELETE FROM node WHERE truth_class='derived'", [])?;
+        if let Some(tx) = tx {
+            tx.commit()?;
+        }
         Ok(())
     }
 
@@ -379,6 +385,10 @@ impl Store {
     /// routine sync must not destroy them (H-6). Asserted adjudication facets on
     /// deterministic finding ids survive and re-attach on rebuild.
     pub fn wipe_structural_findings(&self) -> Result<()> {
+        // Atomic: the edge purge and the node purge are one unit, so a crash
+        // cannot orphan flag/assesses edges whose finding node is already gone.
+        // `maybe_tx` composes with an outer batch instead of nesting a BEGIN.
+        let tx = self.maybe_tx()?;
         self.conn.execute(
             "DELETE FROM edge WHERE truth_class='derived' AND from_id IN
                 (SELECT id FROM node WHERE truth_class='derived' AND node_type='finding'
@@ -390,6 +400,9 @@ impl Store {
                 AND status != 'external_diagnostic'",
             [],
         )?;
+        if let Some(tx) = tx {
+            tx.commit()?;
+        }
         Ok(())
     }
 
@@ -430,30 +443,34 @@ impl Store {
             }
         }
 
-        let tx = self.conn.unchecked_transaction()?;
+        let tx = self.maybe_tx()?;
         for edge_id in &incident_edges {
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
                 params![edge_id],
             )?;
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM tag WHERE target_id=?1 AND target_kind='edge'",
                 params![edge_id],
             )?;
-            tx.execute("DELETE FROM edge WHERE id=?1", params![edge_id])?;
+            self.conn
+                .execute("DELETE FROM edge WHERE id=?1", params![edge_id])?;
         }
         for node_id in &node_ids {
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
                 params![node_id],
             )?;
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM tag WHERE target_id=?1 AND target_kind='node'",
                 params![node_id],
             )?;
-            tx.execute("DELETE FROM node WHERE id=?1", params![node_id])?;
+            self.conn
+                .execute("DELETE FROM node WHERE id=?1", params![node_id])?;
         }
-        tx.commit()?;
+        if let Some(tx) = tx {
+            tx.commit()?;
+        }
         Ok(())
     }
 

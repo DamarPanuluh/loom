@@ -464,7 +464,7 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
             .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
             .len(),
         stale: store
-            .edges_by_status(
+            .live_edges_by_status(
                 TruthClass::Asserted,
                 &[
                     InspectionStatus::NeedsReverification,
@@ -473,7 +473,7 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
             )?
             .len(),
         uninspected: store
-            .edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
+            .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
             .len(),
         findings: findings.len(),
         untriaged,
@@ -492,7 +492,7 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
             .filter(|n| n.status == "open")
             .count(),
         low_confidence: store
-            .edges_by_status(
+            .live_edges_by_status(
                 TruthClass::Asserted,
                 &[InspectionStatus::Passing, InspectionStatus::Independent],
             )?

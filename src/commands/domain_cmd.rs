@@ -329,19 +329,21 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
         }
         HypothesisCmd::List { limit, offset } => {
             let hypotheses = store.list_nodes_page(Some(NodeType::Hypothesis), limit, offset)?;
+            let total = store.count_nodes(Some(NodeType::Hypothesis))?;
             if json {
                 let rows: Vec<_> = hypotheses.iter().map(node_json).collect();
-                println!("{}", serde_json::to_string_pretty(&rows)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows, offset, limit, total
+                    ))?
+                );
             } else {
                 let shown = hypotheses.len();
                 for n in hypotheses {
                     println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
                 }
-                if let Some(footer) = super::page_footer(
-                    shown,
-                    offset,
-                    store.count_nodes(Some(NodeType::Hypothesis))?,
-                ) {
+                if let Some(footer) = super::page_footer(shown, offset, total) {
                     println!("{footer}");
                 }
             }
@@ -453,19 +455,21 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
         SurfaceCmd::List { limit, offset } => {
             let surfaces =
                 store.list_nodes_page(Some(NodeType::InterfaceSurface), limit, offset)?;
+            let total = store.count_nodes(Some(NodeType::InterfaceSurface))?;
             if json {
                 let rows: Vec<_> = surfaces.iter().map(node_json).collect();
-                println!("{}", serde_json::to_string_pretty(&rows)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows, offset, limit, total
+                    ))?
+                );
             } else {
                 let shown = surfaces.len();
                 for n in surfaces {
                     println!("{} [{}]", n.name, &n.id[..8]);
                 }
-                if let Some(footer) = super::page_footer(
-                    shown,
-                    offset,
-                    store.count_nodes(Some(NodeType::InterfaceSurface))?,
-                ) {
+                if let Some(footer) = super::page_footer(shown, offset, total) {
                     println!("{footer}");
                 }
             }

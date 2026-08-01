@@ -15,6 +15,15 @@ use std::str::FromStr;
 /// Backwards-compatible re-export; statement grammar now owns this predicate.
 pub use crate::grammar::is_placeholder;
 
+/// The short display prefix of an id — the `[abcd1234]` form every command
+/// echoes. Char-boundary safe: raw `&id[..8]` panics on an id shorter than 8
+/// bytes or when byte 8 lands inside a multibyte char; this takes up to the
+/// first 8 characters instead.
+pub fn short(id: &str) -> &str {
+    let end = id.char_indices().nth(8).map(|(i, _)| i).unwrap_or(id.len());
+    &id[..end]
+}
+
 /// Error returned when a string fails to parse into a model enum.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseEnumError {

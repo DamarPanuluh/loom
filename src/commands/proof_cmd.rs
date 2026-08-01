@@ -58,9 +58,15 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
         }
         RuleCmd::List { limit, offset } => {
             let rules = store.list_nodes_page(Some(NodeType::QualityRule), limit, offset)?;
+            let total = store.count_nodes(Some(NodeType::QualityRule))?;
             if json {
                 let rows: Vec<_> = rules.iter().map(node_json).collect();
-                println!("{}", serde_json::to_string_pretty(&rows)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows, offset, limit, total
+                    ))?
+                );
             } else {
                 let shown = rules.len();
                 for n in rules {
@@ -69,13 +75,9 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
                         .get("category")
                         .and_then(|c| c.as_str())
                         .unwrap_or("");
-                    println!("{:<14} {} [{}]", cat, n.name, &n.id[..8]);
+                    println!("{:<14} {} [{}]", cat, n.name, crate::model::short(&n.id));
                 }
-                if let Some(footer) = super::page_footer(
-                    shown,
-                    offset,
-                    store.count_nodes(Some(NodeType::QualityRule))?,
-                ) {
+                if let Some(footer) = super::page_footer(shown, offset, total) {
                     println!("{footer}");
                 }
             }
@@ -116,7 +118,11 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
                     "rule": node_json(&r),
                 }),
                 "loom status",
-                format!("added quality rule '{}' [{}]", r.name, &r.id[..8]),
+                format!(
+                    "added quality rule '{}' [{}]",
+                    r.name,
+                    crate::model::short(&r.id)
+                ),
             )?;
             Ok(())
         }
@@ -457,6 +463,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         }
         ValidationCmd::List { limit, offset } => {
             let vals = store.list_nodes_page(Some(NodeType::Validation), limit, offset)?;
+            let total = store.count_nodes(Some(NodeType::Validation))?;
             if json {
                 let rows: Vec<_> = vals
                     .iter()
@@ -471,17 +478,23 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                         })
                     })
                     .collect();
-                println!("{}", serde_json::to_string_pretty(&rows)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows, offset, limit, total
+                    ))?
+                );
             } else {
                 let shown = vals.len();
                 for n in vals {
-                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                    println!(
+                        "{:<10} {} [{}]",
+                        n.status,
+                        n.name,
+                        crate::model::short(&n.id)
+                    );
                 }
-                if let Some(footer) = super::page_footer(
-                    shown,
-                    offset,
-                    store.count_nodes(Some(NodeType::Validation))?,
-                ) {
+                if let Some(footer) = super::page_footer(shown, offset, total) {
                     println!("{footer}");
                 }
             }

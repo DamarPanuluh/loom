@@ -301,6 +301,12 @@ impl Store {
             .map(serde_json::to_string)
             .transpose()?
             .unwrap_or_default();
+        // One transaction: the fact row, its wholesale-replaced evidence set, and
+        // the projection either all land or none do. A failure between the
+        // evidence DELETE and the re-INSERT would otherwise leave a fact with no
+        // anchors — silently unverified — until the next write. `maybe_tx` yields
+        // `None` under an outer `begin()` batch, which then owns the atomicity.
+        let tx = self.maybe_tx()?;
         self.conn.execute(
             "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,verification,\
                                confidence,asserted_by,asserted_at,stale)
@@ -343,7 +349,14 @@ impl Store {
                 ],
             )?;
         }
-        self.project(fact)
+        // `project` writes through `self.conn`, which is the same connection the
+        // transaction is open on, so its edge-status update participates in this
+        // atomic unit.
+        self.project(fact)?;
+        if let Some(tx) = tx {
+            tx.commit()?;
+        }
+        Ok(())
     }
 
     /// Resolve the subject, check the claim fits it, and read the SHAPE the
@@ -645,7 +658,8 @@ impl Store {
                 && existing.fact.confidence.to_bits() == fact.confidence.to_bits()
                 && existing.fact.asserted_by == fact.asserted_by
                 && existing.fact.verification == fact.verification
-                && existing.fact.stale.is_none() == fact.stale.is_none();
+                && existing.fact.stale.as_ref().map(|s| s.cause)
+                    == fact.stale.as_ref().map(|s| s.cause);
             let before: std::collections::BTreeSet<&str> =
                 existing.evidence.iter().map(|r| r.id.as_str()).collect();
             let after: std::collections::BTreeSet<&str> =
@@ -775,11 +789,19 @@ impl Store {
     pub fn reverify_all(&self, changed: &BTreeSet<String>) -> Result<Reverified> {
         let facts = self.all_facts()?;
         let mut out = Reverified::default();
+        // One transaction for the whole pass: re-verification touches every
+        // fact's evidence rows, verification column, and (on expiry) the edge
+        // status + stale_cause facet + proof reset. A crash mid-pass would
+        // otherwise leave the graph half-re-verified — some edges re-opened,
+        // their sibling facts still claiming stale strength. `maybe_tx` composes
+        // with an outer batch when one is open (`restore` runs it after its own
+        // commit; `sync` outside any tx), so this never nests.
+        let tx = self.maybe_tx()?;
         for fact in facts {
             let rows = self.evidence_for(&fact.id)?;
             let mut checked = Vec::with_capacity(rows.len());
             for mut row in rows {
-                let broke = self.recheck(&row.payload);
+                let broke = self.recheck(&fact.subject_id, &row.payload);
                 row.holds = broke.is_none();
                 row.expiry_reason = broke;
                 self.conn.execute(
@@ -876,6 +898,9 @@ impl Store {
                 )?;
             }
         }
+        if let Some(tx) = tx {
+            tx.commit()?;
+        }
         Ok(out)
     }
 }
@@ -917,8 +942,27 @@ impl Store {
         Ok(usize::from(was_proven))
     }
 
-    /// Does this anchor still hold? `Some(cause)` when it broke.
-    fn recheck(&self, payload: &Evidence) -> Option<StaleCause> {
+    /// The current command of the validation behind a verdict's subject edge, if
+    /// any. A `validates` edge runs from a Validation node to the intent it
+    /// proves; the recorded run's command must still match this or the proof is
+    /// stale. Any miss (edge/node gone, not a Validation, no command) is `None`
+    /// — a lookup must never fail the whole reverify pass.
+    fn validation_command_for(&self, edge_id: &str) -> Option<String> {
+        let edge = self.get_edge(edge_id).ok().flatten()?;
+        let node = self.get_node(&edge.from_id).ok().flatten()?;
+        if node.node_type != NodeType::Validation {
+            return None;
+        }
+        node.body
+            .get("command")
+            .and_then(|c| c.as_str())
+            .map(str::to_string)
+    }
+
+    /// Does this anchor still hold? `Some(cause)` when it broke. `subject_id` is
+    /// the fact's subject, used only to resolve a validation Run's current
+    /// command so a rewritten command re-opens its proof.
+    fn recheck(&self, subject_id: &str, payload: &Evidence) -> Option<StaleCause> {
         match payload {
             // Prose cannot rot mechanically — and never counts, so nothing turns
             // on it either way.
@@ -934,10 +978,17 @@ impl Store {
             // re-open every consumer grounding on any edit to the file, which
             // is exactly the claim it does NOT make.
             Evidence::Run(run) if run.producer == crate::model::RunProducer::Seam => {
-                let (locator, file) = run
+                let Some((locator, file)) = run
                     .command
                     .strip_prefix("seam '")
-                    .and_then(|r| r.split_once("' in "))?;
+                    .and_then(|r| r.split_once("' in "))
+                else {
+                    // The command prose does not match the shape this arm mints.
+                    // recheck's None means "holds", so a `?` here would make an
+                    // unparseable (or crafted/imported) seam run immortal. Fail
+                    // closed: an anchor we cannot re-resolve is a broken anchor.
+                    return Some(StaleCause::AnchorMissing);
+                };
                 match std::fs::read_to_string(self.root.join(file)) {
                     // The consumer surface itself is gone.
                     Err(_) => Some(StaleCause::SpanFileDeleted),
@@ -964,8 +1015,25 @@ impl Store {
                     None => Some(StaleCause::SpanFileDeleted),
                 }
             }
-            Evidence::Run(run) => crate::runner::covered_intact(&self.root, run)
-                .map(|_| StaleCause::RunCoveredFileChanged),
+            Evidence::Run(run) => {
+                // A validation's recorded run also anchors the COMMAND that
+                // produced it: rewriting the command means the old passing run
+                // no longer proves what the validation now asks, so the claim
+                // re-opens. Only a plain Command run is compared — a Journey
+                // composes its command with a base URL/env the recorder cannot
+                // reproduce, so its recorded command legitimately differs from
+                // the node's. Any resolution failure falls through to the
+                // covered-file check rather than inventing staleness.
+                if run.producer == crate::model::RunProducer::Command {
+                    if let Some(cmd) = self.validation_command_for(subject_id) {
+                        if cmd != run.command {
+                            return Some(StaleCause::RunCommandChanged);
+                        }
+                    }
+                }
+                crate::runner::covered_intact(&self.root, run)
+                    .map(|_| StaleCause::RunCoveredFileChanged)
+            }
             Evidence::Span(stamp) => match std::fs::read_to_string(self.root.join(&stamp.file)) {
                 Err(_) => Some(StaleCause::SpanFileDeleted),
                 Ok(content) => {
@@ -1124,6 +1192,18 @@ impl Store {
             .map(|v| v.fact.verification)
             .unwrap_or(Verification::Expired))
     }
+
+    /// Like [`Store::edge_verification`] but keeps the absent case distinct:
+    /// `None` means no verdict fact was ever recorded (a settled status
+    /// standing on nothing), whereas `Some(Expired)` is a recorded verdict
+    /// whose anchors have all since broken. Auditors that must tell "never
+    /// recorded" from "went stale" use this; `edge_verification` collapses both
+    /// to `Expired`.
+    pub fn edge_verdict_verification(&self, edge_id: &str) -> Result<Option<Verification>> {
+        Ok(self
+            .fact(&Subject::Edge(edge_id.to_string()), Claim::Verdict)?
+            .map(|v| v.fact.verification))
+    }
 }
 
 impl Store {
@@ -1170,13 +1250,22 @@ pub(super) fn insert_imported(
     facts: &[Fact],
     evidence: &[EvidenceRow],
 ) -> Result<()> {
+    // Ids are recomputed here, never trusted. An imported id produced by a
+    // different scheme (or hand-edited) would not collide on `id` but WOULD
+    // collide on the fact table's UNIQUE(subject_kind,subject_id,claim), wedging
+    // every future assert_fact for that subject. Recompute canonically and remap
+    // every evidence row's fact_id through the same table.
+    let mut fact_id_remap: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
     for fact in facts {
+        let canonical = Fact::id_for(fact.subject_kind, &fact.subject_id, fact.claim);
+        fact_id_remap.insert(fact.id.clone(), canonical.clone());
         tx.execute(
             "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,\
                                verification,confidence,asserted_by,asserted_at,stale)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
             rusqlite::params![
-                fact.id,
+                canonical,
                 fact.subject_kind.as_str(),
                 fact.subject_id,
                 fact.claim.as_str(),
@@ -1191,14 +1280,32 @@ pub(super) fn insert_imported(
         )?;
     }
     for row in evidence {
+        // A Run is loom's own observation; nothing in a plaintext export the
+        // author fully controls lets us re-check that it really ran (covered
+        // hashes are a FRESHNESS check, not an AUTHENTICITY one, and the author
+        // has every one of those hashes). Importing it verbatim would let an
+        // edited graph.json mint `verified` for a command that never executed.
+        // Downgrade it to the prose it actually is: recorded, but never counting.
+        // Verified is re-earned only by a local run.
+        let payload = match &row.payload {
+            crate::evidence::Evidence::Run(run) => crate::evidence::Evidence::Claim {
+                text: format!("imported run (unverified): {}", run.command),
+            },
+            other => other.clone(),
+        };
+        let fact_id = fact_id_remap
+            .get(&row.fact_id)
+            .cloned()
+            .unwrap_or_else(|| row.fact_id.clone());
+        let id = crate::evidence::EvidenceRow::id_for(&fact_id, &payload);
         tx.execute(
             "INSERT INTO evidence (id,fact_id,payload,kind,recorded_at,holds,expiry_reason)
              VALUES (?1,?2,?3,?4,?5,1,\'\')",
             rusqlite::params![
-                row.id,
-                row.fact_id,
-                serde_json::to_string(&row.payload)?,
-                row.payload.kind().as_str(),
+                id,
+                fact_id,
+                serde_json::to_string(&payload)?,
+                payload.kind().as_str(),
                 row.recorded_at,
             ],
         )?;

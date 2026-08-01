@@ -8,19 +8,18 @@ use crate::model::{EdgeKind, Node, NodeType, TruthClass};
 use crate::store::Store;
 use crate::Result;
 use anyhow::{anyhow, bail, Context};
-use process_control::{ChildExt, Control};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
-use std::process::Stdio;
 use std::time::Duration;
 
 const ADAPTERS_META_KEY: &str = "scan_adapters";
-const DEFAULT_MAP: &str = r"^(?P<file>[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?:\s*(?P<msg>.+)$";
+const DEFAULT_MAP: &str =
+    r"^(?P<file>(?:[A-Za-z]:)?[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?:\s*(?P<msg>.+)$";
 /// A bare `file:line[:col]` location with no trailing message — the first half
 /// of a two-line diagnostic (svelte-check-style human output).
-const LOCATION_ONLY_MAP: &str = r"^(?P<file>[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?\s*$";
+const LOCATION_ONLY_MAP: &str = r"^(?P<file>(?:[A-Za-z]:)?[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?\s*$";
 const SCAN_TIMEOUT_SECS: u64 = 120;
 const TITLE_MSG_LIMIT: usize = 96;
 
@@ -74,6 +73,10 @@ pub struct ScanReport {
     pub new_findings: usize,
     pub resolved_findings: usize,
     pub skipped_lines: usize,
+    /// Diagnostics that parsed but pointed at a path loom does not track as a
+    /// CodeFile (unregistered path, or a normalization mismatch). Counted so an
+    /// all-unattached run is visible instead of silently resolving everything.
+    pub unattached: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -298,17 +301,22 @@ fn write_results(store: &Store, root: &Path, outputs: &[AdapterOutput]) -> Resul
         // pass exits 0. Converging then would wrongly resolve every prior finding
         // (M-8), so leave them untouched and let the next healthy run reconcile.
         let healthy_run = out.exit_code == Some(0) || !parsed.is_empty();
+        let parsed_count = parsed.len();
+        let mut attached = 0usize;
         let mut active = BTreeSet::new();
 
         for mut diagnostic in parsed {
             let Some(normalized) = normalize_path(root, &diagnostic.file) else {
+                report.unattached += 1;
                 continue;
             };
             diagnostic.file = normalized;
             let Some(codefile) = codefiles.get(&diagnostic.file) else {
+                report.unattached += 1;
                 continue;
             };
 
+            attached += 1;
             let node = upsert_diagnostic(store, adapter, &rule, codefile, &diagnostic)?;
             if active.insert(node.id.clone()) && !existing.contains(&node.id) {
                 report.new_findings += 1;
@@ -316,8 +324,14 @@ fn write_results(store: &Store, root: &Path, outputs: &[AdapterOutput]) -> Resul
             report.diagnostics += 1;
         }
 
+        // Diagnostics parsed but NONE attached to a tracked CodeFile — a path
+        // mapping failure (unregistered root, prefix mismatch), not "every issue
+        // resolved". Converging here would wipe every prior finding just because
+        // loom could not line up the paths, so leave them for a healthy run that
+        // actually attaches (mirrors the M-8 exit-code guard).
+        let attachment_failure = parsed_count > 0 && attached == 0;
         let stale: Vec<String> = existing.difference(&active).cloned().collect();
-        if healthy_run && !stale.is_empty() {
+        if healthy_run && !attachment_failure && !stale.is_empty() {
             store.remove_derived_findings(&stale)?;
             report.resolved_findings += stale.len();
         }
@@ -473,17 +487,20 @@ fn json_records(map: &JsonFieldMap, output: &str, skipped: &mut usize) -> Vec<se
 }
 
 /// The one JSON document inside possibly noisy output: a clean whole-string
-/// parse, else the outermost `[…]` or `{…}` span.
+/// parse, else the first `[…]`/`{…}` value recovered by scanning each bracket
+/// start. Splicing first-open to last-close lets a stray `[INFO]` banner poison
+/// the span, so instead a streaming parse from each candidate offset returns the
+/// first value that parses, tolerating trailing noise after it.
 fn json_root(output: &str) -> Option<serde_json::Value> {
     if let Ok(v) = serde_json::from_str(output.trim()) {
         return Some(v);
     }
-    for (open, close) in [('[', ']'), ('{', '}')] {
-        if let (Some(start), Some(end)) = (output.find(open), output.rfind(close)) {
-            if start < end {
-                if let Ok(v) = serde_json::from_str(&output[start..=end]) {
-                    return Some(v);
-                }
+    for (idx, ch) in output.char_indices() {
+        if ch == '[' || ch == '{' {
+            let mut stream =
+                serde_json::Deserializer::from_str(&output[idx..]).into_iter::<serde_json::Value>();
+            if let Some(Ok(v)) = stream.next() {
+                return Some(v);
             }
         }
     }
@@ -505,7 +522,11 @@ fn json_diagnostic(map: &JsonFieldMap, record: &serde_json::Value) -> Option<Par
     // missing/null means a module/whole-file finding.
     let line = json_lookup(record, &map.line)
         .and_then(|v| match v {
-            serde_json::Value::Number(n) => n.as_u64(),
+            serde_json::Value::Number(n) => n.as_u64().or_else(|| {
+                n.as_f64()
+                    .filter(|f| f.is_finite() && *f >= 0.0)
+                    .map(|f| f as u64)
+            }),
             serde_json::Value::String(s) => s.trim().parse().ok(),
             _ => None,
         })
@@ -526,14 +547,19 @@ fn json_diagnostic(map: &JsonFieldMap, record: &serde_json::Value) -> Option<Par
     })
 }
 
-/// Walk a dotted key path through nested JSON objects.
+/// Walk a dotted key path through nested JSON, descending object keys and, when
+/// the current value is an array, a numeric segment indexes into it — so an
+/// array envelope (ESLint's `[{…}]`) is reachable via e.g. `items=0.messages`.
 fn json_lookup<'v>(
     record: &'v serde_json::Value,
     path: &[String],
 ) -> Option<&'v serde_json::Value> {
     let mut current = record;
     for key in path {
-        current = current.get(key)?;
+        current = match current {
+            serde_json::Value::Array(items) => items.get(key.parse::<usize>().ok()?)?,
+            _ => current.get(key)?,
+        };
     }
     if current.is_null() {
         return None;
@@ -562,31 +588,19 @@ fn run_adapter_command(
     command: &str,
     adapter_name: &str,
 ) -> Result<(String, Option<i64>)> {
+    // `exec 2>&1` merges stderr into stdout in emission order, so a diagnostic's
+    // location and message lines stay adjacent for two-line pairing. The shared
+    // runner bounds the capture and reaps the whole process group on timeout.
     let script = format!("exec 2>&1\n{command}");
-    let child = std::process::Command::new("sh")
-        .arg("-c")
-        .arg(script)
-        .current_dir(root)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("spawning scan adapter '{adapter_name}'"))?;
-
-    let Some(output) = child
-        .controlled_with_output()
-        .time_limit(Duration::from_secs(SCAN_TIMEOUT_SECS))
-        .terminate_for_timeout()
-        .wait()
-        .with_context(|| format!("waiting for scan adapter '{adapter_name}'"))?
+    let Some(captured) =
+        crate::subprocess::run(&script, root, Duration::from_secs(SCAN_TIMEOUT_SECS))
+            .with_context(|| format!("running scan adapter '{adapter_name}'"))?
     else {
         bail!("scan adapter '{adapter_name}' timed out after {SCAN_TIMEOUT_SECS}s");
     };
-
-    let mut combined = output.stdout;
-    combined.extend(output.stderr);
     Ok((
-        String::from_utf8_lossy(&combined).into_owned(),
-        output.status.code(),
+        String::from_utf8_lossy(&captured.stdout).into_owned(),
+        captured.status.code(),
     ))
 }
 
@@ -846,6 +860,20 @@ mod tests {
         assert_eq!(diagnostic.line, 12);
         assert_eq!(diagnostic.msg, "warning: unused variable");
         assert_eq!(diagnostic.code, None);
+        Ok(())
+    }
+
+    #[test]
+    fn default_map_parses_windows_drive_letter_path() -> Result<()> {
+        let regex = Regex::new(DEFAULT_MAP)?;
+        let diagnostic = parse_diagnostic(&regex, r"C:\src\a.rs:12: warning: boom")
+            .ok_or_else(|| anyhow!("expected diagnostic"))?;
+        assert_eq!(
+            diagnostic.file, r"C:\src\a.rs",
+            "the drive letter must stay part of the file path"
+        );
+        assert_eq!(diagnostic.line, 12);
+        assert_eq!(diagnostic.msg, "warning: boom");
         Ok(())
     }
 
@@ -1269,6 +1297,65 @@ mod tests {
             skipped, 0,
             "whole-string span recovery does not count lines skipped"
         );
+        Ok(())
+    }
+
+    // JSON preceded by bracketed log-banner lines: a stray `[INFO]` bracket must
+    // not poison the span. The scanning parse skips the banner and recovers the
+    // real payload that follows.
+    #[test]
+    fn parse_json_output_recovers_array_after_bracketed_log_noise() -> Result<()> {
+        let m = json_field_map(None)?;
+        let out = "[INFO] starting linter\n\
+            [WARN] one issue found\n\
+            [{\"file\":\"src/a.rs\",\"line\":9,\"message\":\"boom\"}]\n";
+        let (diags, skipped) = parse_json_output(&m, out);
+        assert_eq!(
+            diags.len(),
+            1,
+            "the payload after bracketed banners must be recovered, got {diags:?}"
+        );
+        assert_eq!(diags[0].file, "src/a.rs");
+        assert_eq!(diags[0].line, 9);
+        assert_eq!(skipped, 0);
+        Ok(())
+    }
+
+    // ESLint's envelope is a top-level ARRAY whose first element carries the
+    // `messages` array. A numeric path segment must index the array so
+    // `items=0.messages` lifts the diagnostics out.
+    #[test]
+    fn parse_json_output_eslint_array_envelope_via_numeric_index() -> Result<()> {
+        let m = json_field_map(Some("items=0.messages,line=line,msg=message"))?;
+        let out = r#"[{"filePath":"src/a.rs","messages":[
+            {"file":"src/a.rs","line":3,"message":"no-unused-vars"},
+            {"file":"src/b.rs","line":7,"message":"eqeqeq"}
+        ]}]"#;
+        let (diags, skipped) = parse_json_output(&m, out);
+        assert_eq!(
+            diags.len(),
+            2,
+            "items=0.messages must index the array envelope, got {diags:?}"
+        );
+        assert_eq!(diags[0].line, 3);
+        assert_eq!(diags[1].line, 7);
+        assert_eq!(skipped, 0);
+        Ok(())
+    }
+
+    // A JSON float line value coerces to a truncated u64 rather than silently
+    // falling to whole-file 0 (which would churn duplicate findings).
+    #[test]
+    fn parse_json_output_float_line_coerces_to_integer() -> Result<()> {
+        let m = json_field_map(None)?;
+        let out = r#"[{"file":"src/a.rs","line":12.0,"message":"boom"}]"#;
+        let (diags, skipped) = parse_json_output(&m, out);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(
+            diags[0].line, 12,
+            "a float line must truncate to its integer, not fall to 0"
+        );
+        assert_eq!(skipped, 0);
         Ok(())
     }
 

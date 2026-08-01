@@ -245,18 +245,20 @@ fn page_rank(status: &str) -> u8 {
 fn wiki_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
     let pages: Vec<_> = store.list_nodes_page(Some(NodeType::WikiPage), limit, offset)?;
+    let total = store.count_nodes(Some(NodeType::WikiPage))?;
     if json {
-        println!("{}", serde_json::to_string_pretty(&pages)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&super::pagination_envelope(
+                &pages, offset, limit, total
+            ))?
+        );
     } else {
         for p in &pages {
             let path = p.body.get("path").and_then(|v| v.as_str()).unwrap_or("");
             println!("{:<8} {} [{}]  {path}", p.status, p.name, &p.id[..8]);
         }
-        if let Some(footer) = super::page_footer(
-            pages.len(),
-            offset,
-            store.count_nodes(Some(NodeType::WikiPage))?,
-        ) {
+        if let Some(footer) = super::page_footer(pages.len(), offset, total) {
             println!("{footer}");
         }
     }

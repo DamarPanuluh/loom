@@ -320,8 +320,6 @@ pub struct LadderInputs {
     pub low_confidence: usize,
     pub triage_findings: usize,
     pub inbox_new: usize,
-    pub untriaged_findings: usize,
-    pub stale_findings: usize,
     pub proposed_hypotheses: usize,
     pub open_elaborations: usize,
     pub divergences: usize,

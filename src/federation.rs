@@ -102,14 +102,22 @@ pub fn run(store: &Store, root: &Path) -> Result<FederationReport> {
     for entry in &entries {
         report.upstreams_checked += 1;
 
-        // Resolve the export path relative to the graph root.
+        // Resolve the export path relative to the graph root. Absolute and
+        // `..`-bearing paths are honored on purpose — linking a sibling repo's
+        // export (`../other/loom.graph.json` or an absolute path) is the common
+        // case. The trust boundary is IMPORT: `quarantine_imported_execution`
+        // drops any `upstream_graphs` registry that arrives through `graph
+        // import`, so the only paths reaching here are ones an operator linked
+        // locally and deliberately.
         let export_path = if Path::new(&entry.path).is_absolute() {
             std::path::PathBuf::from(&entry.path)
         } else {
             root.join(&entry.path)
         };
 
-        // Read the raw file content for hashing; skip if unchanged.
+        // Read the raw file content for hashing; skip if unchanged. A linked
+        // upstream that has vanished is a broken federation input, not "nothing
+        // changed" — fail loudly so the operator fixes or unlinks it.
         let content = std::fs::read_to_string(&export_path)
             .with_context(|| format!("reading upstream export '{}'", export_path.display()))?;
         let hash = content_hash(&content);

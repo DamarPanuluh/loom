@@ -139,7 +139,7 @@ fn edge_implement(
             i.name,
             cf.name,
             role,
-            &e.id[..8]
+            crate::model::short(&e.id)
         ),
     )?;
     Ok(())
@@ -176,7 +176,7 @@ fn edge_set_role(
             "role {} → {} on [{}]{}",
             old,
             role,
-            &edge.id[..8],
+            crate::model::short(&edge.id),
             if reopened {
                 " (claim re-opened: role_changed)"
             } else {
@@ -210,9 +210,9 @@ fn edge_rehome(
         "loom next --mode analyze",
         format!(
             "rehomed grounding [{}] → '{}' [{}] (old superseded, new unverified)",
-            &old.id[..8],
+            crate::model::short(&old.id),
             successor.name,
-            &new.id[..8]
+            crate::model::short(&new.id)
         ),
     )?;
     Ok(())
@@ -243,7 +243,12 @@ fn edge_call(store: &Store, validation: String, surface: String, json: bool) -> 
             },
         }),
         "loom status",
-        format!("'{}' calls surface '{}' [{}]", v.name, s.name, &e.id[..8]),
+        format!(
+            "'{}' calls surface '{}' [{}]",
+            v.name,
+            s.name,
+            crate::model::short(&e.id)
+        ),
     )?;
     Ok(())
 }
@@ -256,7 +261,7 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: boo
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
             "edge [{}] is a derived {} edge — it is rebuilt by `loom sync`; remove its source, not the edge",
-            &e.id[..8],
+            crate::model::short(&e.id),
             e.kind
         );
     }
@@ -304,7 +309,7 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: boo
             println!(
                 "removed {} edge [{}]  ({} → {})",
                 e.kind,
-                &e.id[..8],
+                crate::model::short(&e.id),
                 e.from_id,
                 e.to_id
             );
@@ -324,7 +329,7 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
             "edge [{}] is derived — its facets are sync-owned",
-            &e.id[..8]
+            crate::model::short(&e.id)
         );
     }
     store.set_facet(
@@ -345,7 +350,7 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
         format!(
             "set locator on {} edge [{}] → {locator}",
             e.kind,
-            &e.id[..8]
+            crate::model::short(&e.id)
         ),
     )?;
     Ok(())
@@ -373,7 +378,13 @@ fn edge_relate(store: &Store, kind: String, from: String, to: String, json: bool
             },
         }),
         "loom status",
-        format!("{} '{}' → '{}' [{}]", kind, a.name, b.name, &e.id[..8]),
+        format!(
+            "{} '{}' → '{}' [{}]",
+            kind,
+            a.name,
+            b.name,
+            crate::model::short(&e.id)
+        ),
     )?;
     Ok(())
 }
@@ -401,7 +412,11 @@ fn edge_verdict(
             "confidence": confidence,
         }),
         "loom status",
-        format!("recorded {} on edge [{}]", e.status, &e.id[..8]),
+        format!(
+            "recorded {} on edge [{}]",
+            e.status,
+            crate::model::short(&e.id)
+        ),
     )?;
     Ok(())
 }
@@ -485,8 +500,14 @@ fn edge_show(store: &Store, edge_id: String, json: bool) -> Result<()> {
 
 fn edge_list(store: &Store, limit: usize, offset: usize, json: bool) -> Result<()> {
     let edges = store.list_edges_page(None, limit, offset)?;
+    let total = store.count_edges(None)?;
     if json {
-        println!("{}", serde_json::to_string_pretty(&edges)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&super::pagination_envelope(
+                &edges, offset, limit, total
+            ))?
+        );
     } else {
         if edges.is_empty() && offset == 0 {
             println!("no edges");
@@ -497,10 +518,10 @@ fn edge_list(store: &Store, limit: usize, offset: usize, json: bool) -> Result<(
                 e.truth_class,
                 e.kind,
                 e.status,
-                &e.id[..8]
+                crate::model::short(&e.id)
             );
         }
-        if let Some(footer) = super::page_footer(edges.len(), offset, store.count_edges(None)?) {
+        if let Some(footer) = super::page_footer(edges.len(), offset, total) {
             println!("{footer}");
         }
     }

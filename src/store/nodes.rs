@@ -182,7 +182,7 @@ impl Store {
         let rows = if let Some(t) = node_type {
             stmt = self.conn.prepare(
                 "SELECT id,node_type,name,description,status,truth_class,body,created_at,updated_at
-                 FROM node WHERE node_type=?1 ORDER BY name LIMIT ?2 OFFSET ?3",
+                 FROM node WHERE node_type=?1 ORDER BY name, id LIMIT ?2 OFFSET ?3",
             )?;
             stmt.query_map(
                 params![t.as_str(), limit as i64, offset as i64],
@@ -191,7 +191,7 @@ impl Store {
         } else {
             stmt = self.conn.prepare(
                 "SELECT id,node_type,name,description,status,truth_class,body,created_at,updated_at
-                 FROM node ORDER BY name LIMIT ?1 OFFSET ?2",
+                 FROM node ORDER BY name, id LIMIT ?1 OFFSET ?2",
             )?;
             stmt.query_map(params![limit as i64, offset as i64], row_to_node)?
         };
@@ -277,13 +277,29 @@ impl Store {
         for e in self.edges_with(None, None, Some(id))? {
             incident.insert(e.id);
         }
+        // Notes link to their target through the body, and a note can itself be
+        // the target of another note (a trail on a decision). Load every note
+        // once and index by target so the transitive closure is a walk over an
+        // in-memory map rather than a full Note scan per popped target.
+        let mut notes_by_target: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        for note in self.list_nodes(Some(NodeType::Note), usize::MAX)? {
+            if let Some(t) = note.body.get("target_id").and_then(|v| v.as_str()) {
+                notes_by_target
+                    .entry(t.to_string())
+                    .or_default()
+                    .push(note.id);
+            }
+        }
         let mut note_targets = vec![id.to_string()];
         note_targets.extend(incident.iter().cloned());
         let mut dependent_notes = std::collections::BTreeSet::new();
         while let Some(target) = note_targets.pop() {
-            for note in self.notes_for(&target)? {
-                if dependent_notes.insert(note.id.clone()) {
-                    note_targets.push(note.id);
+            if let Some(ids) = notes_by_target.get(&target) {
+                for note_id in ids {
+                    if dependent_notes.insert(note_id.clone()) {
+                        note_targets.push(note_id.clone());
+                    }
                 }
             }
         }
@@ -340,6 +356,11 @@ impl Store {
     /// locator). Asserted edges only at the command layer; this primitive is
     /// unconditional.
     pub fn delete_edge(&self, id: &str) -> Result<()> {
+        // Facets, tags, then the edge fall together; `maybe_tx` composes with an
+        // outer batch when one is open, so a caller inside `begin()` keeps a
+        // single unit and a lone call still gets its own. A `bail` on a missing
+        // edge drops the tx (or bubbles to the outer batch) and rolls back.
+        let tx = self.maybe_tx()?;
         self.conn.execute(
             "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
             params![id],
@@ -353,6 +374,9 @@ impl Store {
             .execute("DELETE FROM edge WHERE id=?1", params![id])?;
         if n == 0 {
             bail!("no edge '{id}'");
+        }
+        if let Some(tx) = tx {
+            tx.commit()?;
         }
         Ok(())
     }

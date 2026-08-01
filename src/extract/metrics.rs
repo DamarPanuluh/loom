@@ -17,6 +17,14 @@
 pub(super) struct MetricSpec {
     /// Kinds that add one branch point and one nesting level.
     pub branch_kinds: &'static [&'static str],
+    /// Kinds that add one branch point but DO NOT open a nesting level — a
+    /// sibling decision inside an existing construct: Python `elif`/`except`,
+    /// JS/TS `catch`. Each is a distinct path the reader must hold, so it counts
+    /// toward complexity, but its body sits at the SAME depth as the construct it
+    /// belongs to. Listing them under `branch_kinds` instead would push an
+    /// elif/except/catch body one nesting level too deep (and, for a chained
+    /// elif, deeper on every rung).
+    pub flat_branch_kinds: &'static [&'static str],
     /// Kinds whose subtree belongs to a DIFFERENT symbol (nested named
     /// callables/classes). Closures and lambdas are deliberately NOT
     /// boundaries — they carry the enclosing symbol's logic.
@@ -47,6 +55,7 @@ pub(super) const RUST_METRICS: MetricSpec = MetricSpec {
         "loop_expression",
         "match_expression",
     ],
+    flat_branch_kinds: &[],
     boundary_kinds: &["function_item"],
     params_kind: "parameters",
     param_kinds: &["parameter", "variadic_parameter"],
@@ -61,6 +70,12 @@ pub(super) const PYTHON_METRICS: MetricSpec = MetricSpec {
         "match_statement",
         "conditional_expression",
     ],
+    // `elif`/`except` are sibling decisions, not deeper nesting: each is its own
+    // path (complexity +1) but its body sits at the same depth as the if/try it
+    // belongs to. Before this, an `if/elif/elif/else` chain counted as ONE branch
+    // and every `except` handler counted as zero — Python complexity read far
+    // below what the code actually asks a reader to hold.
+    flat_branch_kinds: &["elif_clause", "except_clause"],
     boundary_kinds: &["function_definition", "class_definition"],
     params_kind: "parameters",
     param_kinds: &[
@@ -85,6 +100,7 @@ pub(super) const GO_METRICS: MetricSpec = MetricSpec {
         "type_switch_statement",
         "select_statement",
     ],
+    flat_branch_kinds: &[],
     boundary_kinds: &["function_declaration", "method_declaration"],
     params_kind: "parameter_list",
     param_kinds: &["parameter_declaration", "variadic_parameter_declaration"],
@@ -101,6 +117,9 @@ pub(super) const JS_METRICS: MetricSpec = MetricSpec {
         "switch_statement",
         "ternary_expression",
     ],
+    // A `catch` is a distinct path (complexity +1); its body sits at the try's
+    // depth, so it is flat like Python `except`.
+    flat_branch_kinds: &["catch_clause"],
     boundary_kinds: &[
         "function_declaration",
         "generator_function_declaration",
@@ -128,6 +147,7 @@ pub(super) const TS_METRICS: MetricSpec = MetricSpec {
         "switch_statement",
         "ternary_expression",
     ],
+    flat_branch_kinds: &["catch_clause"],
     boundary_kinds: &[
         "function_declaration",
         "generator_function_declaration",
@@ -162,6 +182,10 @@ pub(super) fn measure(node: &tree_sitter::Node, bytes: &[u8], spec: &MetricSpec)
                 m.complexity += 1;
                 child_depth = depth + 1;
                 m.max_nesting = m.max_nesting.max(child_depth);
+            } else if spec.flat_branch_kinds.contains(&kind) {
+                // A sibling decision (elif/except/catch): its own path counts,
+                // but its body stays at the enclosing construct's depth.
+                m.complexity += 1;
             } else {
                 m.complexity += bool_ops(&n);
             }
@@ -201,7 +225,12 @@ fn arg_count(node: &tree_sitter::Node, bytes: &[u8], spec: &MetricSpec) -> u32 {
     let params = node
         .child_by_field_name("parameters")
         .or_else(|| named_child_of_kind(node, spec.params_kind));
-    let Some(params) = params else { return 0 };
+    let Some(params) = params else {
+        // A bare single-parameter arrow (`id => …`) has no parenthesized
+        // parameter list: the grammar exposes one `parameter` field holding a
+        // lone identifier. Without this it read as zero args.
+        return u32::from(node.child_by_field_name("parameter").is_some());
+    };
     let mut count = 0u32;
     let mut first = true;
     let mut c = params.walk();

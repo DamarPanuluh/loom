@@ -2583,7 +2583,7 @@ fn journey_invariant_update_repoints_asserts_edge_preserving_node_id() {
 
     // Capture the invariant id as it exists right after add.
     let after_add = run_cli_json(tmp.path(), &["journey", "invariant", "list"]);
-    let added = after_add
+    let added = after_add["items"]
         .as_array()
         .expect("invariant list --json emits an array")
         .iter()
@@ -2616,7 +2616,7 @@ fn journey_invariant_update_repoints_asserts_edge_preserving_node_id() {
     );
 
     let after_update = run_cli_json(tmp.path(), &["journey", "invariant", "list"]);
-    let updated = after_update
+    let updated = after_update["items"]
         .as_array()
         .expect("invariant list --json emits an array")
         .iter()
@@ -2654,7 +2654,9 @@ fn journey_invariant_update_repoints_asserts_edge_preserving_node_id() {
 
     // A decision note was added recording the re-point.
     let notes = run_cli_json(tmp.path(), &["note", "list", &inv_id]);
-    let arr = notes.as_array().expect("note list --json emits an array");
+    let arr = notes["items"]
+        .as_array()
+        .expect("note list --json emits items");
     let re_pointed = arr.iter().find(|n| {
         n["text"]
             .as_str()
@@ -2759,7 +2761,7 @@ fn journey_invariant_update_repoint_to_current_intent_is_idempotent() {
     // List still shows B exactly once (list takes the first Asserts edge, so a
     // duplicate would be hidden here — hence the store-level count below).
     let list = run_cli_json(tmp.path(), &["journey", "invariant", "list"]);
-    let row = list
+    let row = list["items"]
         .as_array()
         .unwrap()
         .iter()
@@ -2894,7 +2896,9 @@ fn note_add_attaches_to_edge_and_list_scopes_to_edge() {
     // note list scoped to the edge returns exactly that note, with target_id
     // equal to the FULL edge id (not the prefix we passed).
     let notes = run_cli_json(tmp.path(), &["note", "list", &edge_id]);
-    let arr = notes.as_array().expect("note list --json emits an array");
+    let arr = notes["items"]
+        .as_array()
+        .expect("note list --json emits items");
     assert_eq!(
         arr.len(),
         1,
@@ -2955,7 +2959,7 @@ fn note_add_on_node_name_lands_on_node_not_edge() {
     // Scoped list on the node returns the note; scoped list on the edge must
     // NOT see it — the node note did not leak onto the edge.
     let node_notes = run_cli_json(tmp.path(), &["note", "list", "intent alpha"]);
-    let arr = node_notes
+    let arr = node_notes["items"]
         .as_array()
         .expect("note list --json emits an array");
     assert_eq!(

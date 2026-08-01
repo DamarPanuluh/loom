@@ -17,10 +17,8 @@ use crate::model::{EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 use anyhow::{anyhow, Context};
-use process_control::{ChildExt, Control};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -649,13 +647,18 @@ fn run_cli_step(
     diagnose_style: bool,
 ) -> Result<StepOutcome> {
     let command = interpolate(&step.run, vars);
-    let timeout_secs = 60u64;
+    // The same default the runner uses, so a journey step and a validation obey
+    // one timeout policy rather than contradicting each other.
+    let timeout_secs = crate::runner::DEFAULT_TIMEOUT_SECS;
     let output = execute_cli_command(step, &command, cwd, timeout_secs)?;
+    // A timeout is a failure to OBSERVE, not a failing behavior — recording it
+    // as a failed step would attribute breakage to code loom never got to watch.
+    // Surface it as an error so the journey run stops honestly instead.
     let Some(output) = output else {
-        return Ok(failed_step(
-            step,
-            format!("`{command}` timed out after {timeout_secs}s"),
-        ));
+        anyhow::bail!(
+            "step '{}': `{command}` timed out after {timeout_secs}s — could not observe",
+            step.name
+        );
     };
     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
@@ -703,22 +706,10 @@ fn execute_cli_command(
     command: &str,
     cwd: Option<&Path>,
     timeout_secs: u64,
-) -> Result<Option<process_control::Output>> {
-    let mut builder = std::process::Command::new("sh");
-    builder.arg("-c").arg(command);
-    if let Some(dir) = cwd {
-        builder.current_dir(dir);
-    }
-    builder.stdout(Stdio::piped()).stderr(Stdio::piped());
-    let child = builder
-        .spawn()
-        .with_context(|| format!("step '{}': spawning `{command}`", step.name))?;
-    child
-        .controlled_with_output()
-        .time_limit(Duration::from_secs(timeout_secs))
-        .terminate_for_timeout()
-        .wait()
-        .with_context(|| format!("step '{}': waiting on `{command}`", step.name))
+) -> Result<Option<crate::subprocess::Captured>> {
+    let dir = cwd.unwrap_or_else(|| Path::new("."));
+    crate::subprocess::run(command, dir, Duration::from_secs(timeout_secs))
+        .with_context(|| format!("step '{}': running `{command}`", step.name))
 }
 
 fn cli_text_failure(

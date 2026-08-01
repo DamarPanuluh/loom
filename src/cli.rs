@@ -405,6 +405,10 @@ pub enum ModeArg {
     /// Human-presence queue: intents awaiting the human authority's
     /// ratification (never served by plain `loom next`).
     Ratify,
+    /// Self-fabrication and risk signals worth acting on.
+    Audit,
+    /// Post-floor risk work: strengthening the behaviors most worth deepening.
+    Deepen,
 }
 
 impl ModeArg {
@@ -421,6 +425,8 @@ impl ModeArg {
             ModeArg::Review => "review",
             ModeArg::Elaborate => "elaborate",
             ModeArg::Ratify => "ratify",
+            ModeArg::Audit => "audit",
+            ModeArg::Deepen => "deepen",
         }
     }
 }
@@ -462,5 +468,32 @@ impl RoleArg {
             RoleArg::Quality => "quality",
             RoleArg::Monitor => "monitor",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lane::Lane;
+    use clap::ValueEnum;
+
+    /// `loom next --mode <m>` (this clap enum) and the MCP `loom_next` lane enum
+    /// (built from `Lane::serves_items`) must offer the SAME lanes — a mode the
+    /// partner can request in-band but a human cannot type is a divergence.
+    #[test]
+    fn mode_arg_matches_the_lanes_that_serve_items() {
+        let modes: std::collections::BTreeSet<&str> = ModeArg::value_variants()
+            .iter()
+            .map(|m| m.as_str())
+            .collect();
+        let lanes: std::collections::BTreeSet<&str> = Lane::LADDER
+            .iter()
+            .filter(|l| l.serves_items())
+            .map(|l| l.as_str())
+            .collect();
+        assert_eq!(
+            modes, lanes,
+            "the CLI --mode enum and the MCP lane enum must serve the same lanes"
+        );
     }
 }

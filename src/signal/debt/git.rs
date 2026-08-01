@@ -52,12 +52,9 @@ pub(super) fn read_git_history(root: &Path) -> HistoryAvailability {
     let mut cmd = std::process::Command::new("git");
     cmd.args(["-c", "core.quotepath=false", "-C"])
         .arg(root)
+        .args(["log", "HEAD", "--no-merges", "--topo-order"])
+        .arg(format!("--max-count={CO_CHANGE_MAX_COMMITS}"))
         .args([
-            "log",
-            "HEAD",
-            "--no-merges",
-            "--topo-order",
-            "--max-count=1000",
             "--find-renames=50%",
             "--find-copies=50%",
             "--no-ext-diff",
@@ -140,7 +137,15 @@ pub(super) fn parse_git_name_status_z(bytes: &[u8]) -> Option<Vec<GitCommit>> {
             Some(at_marker) => i = at_marker,
             None => break,
         }
-        let (hash, after_hash) = parse_commit_hash(bytes, i)?;
+        let (hash, after_hash) = match parse_commit_hash(bytes, i) {
+            Some(parsed) => parsed,
+            None => {
+                // One malformed hash record must not discard the whole sample:
+                // step past this marker and resync on the next commit boundary.
+                i += 1;
+                continue;
+            }
+        };
         i = after_hash;
         let (changes, after_changes) = parse_commit_changes(bytes, i);
         i = after_changes;
@@ -384,5 +389,40 @@ y.rs"
         assert_eq!(parsed[2].changes[0].status, GitStatus::Rename);
         assert_eq!(parsed[2].changes[0].path, "new.rs");
         assert_eq!(parsed[2].changes[0].other.as_deref(), Some("old.rs"));
+    }
+
+    #[test]
+    fn a_malformed_commit_record_is_skipped_not_fatal_to_the_sample() {
+        let mut bytes = Vec::new();
+        // commit h1: M a.rs
+        bytes.push(0x1e);
+        bytes.extend(b"h1");
+        bytes.push(0);
+        bytes.extend(b"M");
+        bytes.push(0);
+        bytes.extend(b"a.rs");
+        bytes.push(0);
+        // malformed: a commit marker with an empty hash (0x1e then NUL).
+        bytes.push(0x1e);
+        bytes.push(0);
+        // commit h2: M b.rs
+        bytes.push(0x1e);
+        bytes.extend(b"h2");
+        bytes.push(0);
+        bytes.extend(b"M");
+        bytes.push(0);
+        bytes.extend(b"b.rs");
+        bytes.push(0);
+
+        let parsed = parse_git_name_status_z(&bytes).expect("parse");
+        assert_eq!(
+            parsed.len(),
+            2,
+            "the malformed record must be skipped, keeping both good commits: {parsed:?}"
+        );
+        assert_eq!(parsed[0].hash, "h1");
+        assert_eq!(parsed[0].changes[0].path, "a.rs");
+        assert_eq!(parsed[1].hash, "h2");
+        assert_eq!(parsed[1].changes[0].path, "b.rs");
     }
 }

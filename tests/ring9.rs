@@ -1181,9 +1181,9 @@ fn door_landing_menu_and_inbox_mark_contract() {
 
     // `loom inbox list --status new` filters: the routed item must not appear.
     let new_list = loom_json(tmp.path(), &["inbox", "list", "--status", "new"]);
-    let new_arr = new_list
+    let new_arr = new_list["items"]
         .as_array()
-        .expect("DOOR+INBOX CLI: inbox list --status new --json must emit an array");
+        .expect("DOOR+INBOX CLI: inbox list --status new --json must emit items");
     assert!(
         new_arr
             .iter()
@@ -1345,9 +1345,9 @@ fn note_add_then_list_round_trips() {
 
     // `loom note list <target>` round-trips: the note text appears.
     let list = loom_json(tmp.path(), &["note", "list", "noteable"]);
-    let arr = list
+    let arr = list["items"]
         .as_array()
-        .expect("DOOR+INBOX CLI: note list --json must emit an array");
+        .expect("DOOR+INBOX CLI: note list --json must emit items");
     let found = arr
         .iter()
         .any(|n| n.get("text").and_then(|v| v.as_str()) == Some("a durable decision"));

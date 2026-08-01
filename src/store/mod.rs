@@ -224,8 +224,12 @@ impl Store {
                 })
                 .unwrap_or_else(|| "loom".to_string());
             let (gid, now) = id_and_now(&conn)?;
+            // One atomic seed: either the graph is born with a full identity or
+            // the file stays empty. A half-written meta table (a graph_id with no
+            // schema_version) would leave `open` unable to tell fresh from broken.
+            let tx = conn.transaction()?;
             let set = |k: &str, v: &str| -> Result<()> {
-                conn.execute("INSERT INTO meta(key,value) VALUES (?1,?2)", params![k, v])?;
+                tx.execute("INSERT INTO meta(key,value) VALUES (?1,?2)", params![k, v])?;
                 Ok(())
             };
             set("graph_id", &gid)?;
@@ -233,6 +237,7 @@ impl Store {
             set("schema_version", &SCHEMA_VERSION.to_string())?;
             set("observed", if observed { "1" } else { "0" })?;
             set("created_at", &now)?;
+            tx.commit()?;
         } else if name.is_some() || observed {
             // Backfill identity on an existing graph.
             if let Some(n) = name {
@@ -425,6 +430,22 @@ impl Store {
     pub fn begin(&self) -> Result<rusqlite::Transaction<'_>> {
         Ok(self.conn.unchecked_transaction()?)
     }
+
+    /// Open a transaction ONLY when the connection is not already inside one.
+    ///
+    /// A low-level write that needs its several statements to be atomic still has
+    /// to compose with an outer `begin()` batch (`loom apply`), where a nested
+    /// `BEGIN` is an error. When an ambient transaction is already open this
+    /// returns `None` and the outer batch owns atomicity; otherwise it returns a
+    /// fresh tx the caller must `commit`. Either way the statements run on
+    /// `self.conn`, so they land in whichever transaction is active.
+    pub(crate) fn maybe_tx(&self) -> Result<Option<rusqlite::Transaction<'_>>> {
+        if self.conn.is_autocommit() {
+            Ok(Some(self.conn.unchecked_transaction()?))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 mod derived;
@@ -526,6 +547,14 @@ UPDATE node
 /// failing test, and that ambiguity once made loom record a false failing
 /// verdict against a behavior that passes.
 pub const LOCK_CONTENTION_MARKER: &str = "loom-lock-contention";
+
+/// Process exit code loom uses when it aborts because another loom process holds
+/// the graph. A parent that spawned this loom keys on this code — not on a
+/// stderr substring, which a failing test could print verbatim and be
+/// misclassified — to tell "loom's own lock got in the way" (unobservable, and
+/// never a verdict about the code) from a genuine non-zero failure. 75 is
+/// `EX_TEMPFAIL` from sysexits: a temporary failure, retry invited.
+pub const LOCK_CONTENTION_EXIT_CODE: i32 = 75;
 
 fn schema_migrations() -> Migrations<'static> {
     Migrations::new(vec![

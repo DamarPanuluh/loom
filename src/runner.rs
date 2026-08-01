@@ -18,12 +18,12 @@ use crate::evidence::RunRecord;
 use crate::model::RunProducer;
 use crate::store::Store;
 use crate::Result;
-use process_control::{ChildExt, Control};
 use std::path::Path;
-use std::process::Stdio;
 use std::time::{Duration, Instant};
 
-/// Bytes of each stream kept for humans. The FULL stream is fingerprinted.
+/// Bytes of each stream kept for humans. The captured stream is already bounded
+/// to a head+tail window by `subprocess::run` before it reaches here, and the
+/// fingerprint is taken over that bounded text.
 const EXCERPT_BYTES: usize = 8192;
 
 /// Default wall-clock limit for an observed command.
@@ -59,28 +59,8 @@ pub fn observe_command(
         });
     }
     let started = Instant::now();
-    let child = std::process::Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .current_dir(root)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn();
-    let child = match child {
-        Ok(c) => c,
-        Err(e) => {
-            return Ok(Observation::Blocked {
-                reason: format!("could not start `{command}`: {e}"),
-            })
-        }
-    };
-    let output = child
-        .controlled_with_output()
-        .time_limit(Duration::from_secs(timeout_secs))
-        .terminate_for_timeout()
-        .wait();
-    let output = match output {
-        Ok(Some(o)) => o,
+    let captured = match crate::subprocess::run(command, root, Duration::from_secs(timeout_secs)) {
+        Ok(Some(c)) => c,
         // A timeout is not a failure of the behavior — it is a failure to
         // observe, and loom refuses to guess which.
         Ok(None) => {
@@ -90,19 +70,17 @@ pub fn observe_command(
         }
         Err(e) => {
             return Ok(Observation::Blocked {
-                reason: format!("`{command}` could not be observed: {e}"),
+                reason: format!("could not start `{command}`: {e}"),
             })
         }
     };
     // A command that failed because loom's OWN infrastructure got in the way is
-    // not a failing behavior. The child blocking on a lock its parent holds
-    // exits non-zero exactly like a failing test — that ambiguity is what let
-    // `observe` record a false failing verdict against a passing journey. Refuse
-    // to attribute it to the code.
-    let stderr_text = String::from_utf8_lossy(&output.stderr);
-    if output.status.code().unwrap_or(-1) != 0
-        && stderr_text.contains(crate::store::LOCK_CONTENTION_MARKER)
-    {
+    // not a failing behavior. A child that needed the graph while its parent
+    // held the lock aborts with a reserved exit code (not a scraped stderr
+    // string, which a failing test could print verbatim), so this is exact:
+    // that ambiguity once let `observe` record a false failing verdict against a
+    // passing journey. Refuse to attribute it to the code.
+    if captured.status.code() == Some(i64::from(crate::store::LOCK_CONTENTION_EXIT_CODE)) {
         return Ok(Observation::Blocked {
             reason: format!(
                 "`{command}` could not be observed: it needed the graph while loom held it. \
@@ -116,9 +94,9 @@ pub fn observe_command(
         command,
         covered,
         assertions,
-        output.status.code().unwrap_or(-1) as i64,
-        &output.stdout,
-        &output.stderr,
+        captured.status.code().unwrap_or(-1),
+        &captured.stdout,
+        &captured.stderr,
         started.elapsed().as_millis() as u64,
     ))))
 }
@@ -171,6 +149,12 @@ fn covered_hashes(root: &Path, files: &[String]) -> std::collections::BTreeMap<S
 }
 
 /// Whether every file a run covered still hashes to what it did at run time.
+///
+/// An empty `covered` map is NOT drift: a Command/Journey proof with no file
+/// anchor (no coverage attached) is re-verified by re-running it in its lane,
+/// exactly as Seam/Locator runs are re-resolved by their own recheck arms.
+/// Hashing "no files" is vacuously intact, so this reports `None` (holds) and
+/// leaves the run to be re-earned rather than falsely re-opening it.
 pub fn covered_intact(root: &Path, run: &RunRecord) -> Option<String> {
     for (file, hash) in &run.covered {
         let current = std::fs::read_to_string(root.join(file))
@@ -183,9 +167,24 @@ pub fn covered_intact(root: &Path, run: &RunRecord) -> Option<String> {
     None
 }
 
+/// A bounded excerpt of captured output that keeps BOTH ends.
+///
+/// A test runner prints its verdict LAST — "test result: ok. 12 passed; 0
+/// failed", "==== 12 passed in 0.4s ====". A head-only excerpt dropped exactly
+/// the line proof grading reads to credit a real suite (`reported_assertions`),
+/// so a passing 100-test run over 8 KB of output graded as liveness-only. The
+/// tail is as load-bearing as the head, so when output exceeds the budget keep
+/// the first and last halves with a marker between; the full text is still
+/// hashed, so integrity is unaffected.
 fn excerpt(bytes: &[u8]) -> String {
-    let take = bytes.len().min(EXCERPT_BYTES);
-    String::from_utf8_lossy(&bytes[..take]).to_string()
+    if bytes.len() <= EXCERPT_BYTES {
+        return String::from_utf8_lossy(bytes).to_string();
+    }
+    let half = EXCERPT_BYTES / 2;
+    let head = String::from_utf8_lossy(&bytes[..half]);
+    let tail = String::from_utf8_lossy(&bytes[bytes.len() - half..]);
+    let omitted = bytes.len() - 2 * half;
+    format!("{head}\n…[{omitted} bytes omitted]…\n{tail}")
 }
 
 /// Re-resolve a grounding's locator against the live symbol table.
@@ -404,6 +403,28 @@ mod tests {
         // Edit the covered file: the run no longer describes this codebase.
         std::fs::write(dir.join("a.txt"), "two\n").unwrap();
         assert_eq!(covered_intact(&dir, &run).as_deref(), Some("a.txt"));
+    }
+
+    /// A test runner prints its verdict LAST. When output overruns the excerpt
+    /// budget, a head-only clip drops exactly that line and a passing suite
+    /// grades as liveness-only. The excerpt must keep the tail so proof grading
+    /// (`parse_runner_summary`) can still credit the real run.
+    #[test]
+    fn the_excerpt_keeps_a_trailing_runner_verdict() {
+        let mut out = "x\n".repeat(EXCERPT_BYTES).into_bytes();
+        assert!(out.len() > EXCERPT_BYTES, "output must overrun the budget");
+        let verdict = "test result: ok. 100 passed; 0 failed";
+        out.extend_from_slice(verdict.as_bytes());
+
+        let clipped = excerpt(&out);
+        assert!(
+            clipped.contains(verdict),
+            "the trailing verdict survived: {clipped:?}"
+        );
+        assert!(
+            crate::proofstrength::parse_runner_summary(&clipped).is_some(),
+            "proof grading can still read the summary"
+        );
     }
 
     fn tempdir() -> std::path::PathBuf {

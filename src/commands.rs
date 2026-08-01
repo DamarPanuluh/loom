@@ -13,6 +13,7 @@ use crate::Result;
 use crate::{travel, workitem};
 use anyhow::{anyhow, bail, Context};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
@@ -42,6 +43,7 @@ pub(crate) use status_cmd::require_lane;
 // The in-band surface: `crate::mcp` calls exactly these, so an MCP tool and its
 // CLI twin can never diverge.
 pub(crate) use context_cmd::served_context;
+pub(crate) use diagnostics_cmd::impact_report;
 // The honest way to make a proof true: let loom run it. Public so callers other
 // than the CLI — absorb, fixtures — take the same path rather than a seam.
 pub(crate) use apply_cmd::apply_value;
@@ -443,15 +445,35 @@ pub(crate) fn truncate(s: &str, max: usize) -> String {
     }
 }
 
+/// Uniform JSON envelope for every paginated list command.
+pub(crate) fn pagination_envelope<T: Serialize>(
+    items: &[T],
+    offset: usize,
+    limit: usize,
+    total: usize,
+) -> serde_json::Value {
+    let returned = items.len();
+    let end = offset.saturating_add(returned);
+    let has_more = end < total;
+    serde_json::json!({
+        "items": items,
+        "pagination": {
+            "offset": offset,
+            "limit": limit,
+            "returned": returned,
+            "total": total,
+            "has_more": has_more,
+            "next_offset": has_more.then_some(end),
+        }
+    })
+}
+
 /// Text-mode page footer for a `list` command. Given how many rows were
 /// `shown` starting at `offset` out of `total`, returns the hint to fetch the
 /// next page — or, when `offset` overshoots the end, says so. Returns `None`
-/// when the current page already reaches the end. JSON output stays a bare
-/// array (no footer) so machine parsers are unaffected; the offset alone lets a
-/// caller walk every page. The absent "more exist" signal is what hid rows
-/// past the first page during recovery.
+/// when the current page already reaches the end.
 pub(crate) fn page_footer(shown: usize, offset: usize, total: usize) -> Option<String> {
-    let end = offset + shown;
+    let end = offset.saturating_add(shown);
     if shown == 0 {
         if offset > 0 && total > 0 {
             return Some(format!("(offset {offset} is past the end — {total} total)"));
@@ -460,8 +482,8 @@ pub(crate) fn page_footer(shown: usize, offset: usize, total: usize) -> Option<S
     }
     if end < total {
         return Some(format!(
-            "… showing {}–{end} of {total}; --offset {end} for the next page",
-            offset + 1
+            "… showing {}–{end} of {total}. More items exist; rerun this list command with --offset {end} to see the next page.",
+            offset.saturating_add(1)
         ));
     }
     None
@@ -547,7 +569,34 @@ fn layer(graph: Option<&Path>, cmd: LayerCmd, json: bool) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::query_terms;
+    use super::{page_footer, pagination_envelope, query_terms};
+
+    #[test]
+    fn pagination_envelope_reports_first_and_final_pages() {
+        let first = pagination_envelope(&[0; 50], 0, 50, 117);
+        assert_eq!(first["pagination"]["offset"], 0);
+        assert_eq!(first["pagination"]["limit"], 50);
+        assert_eq!(first["pagination"]["returned"], 50);
+        assert_eq!(first["pagination"]["total"], 117);
+        assert_eq!(first["pagination"]["has_more"], true);
+        assert_eq!(first["pagination"]["next_offset"], 50);
+
+        let final_page = pagination_envelope(&[0; 17], 100, 50, 117);
+        assert_eq!(final_page["pagination"]["returned"], 17);
+        assert_eq!(final_page["pagination"]["has_more"], false);
+        assert!(final_page["pagination"]["next_offset"].is_null());
+    }
+
+    #[test]
+    fn page_footer_explicitly_tells_agents_how_to_continue() {
+        assert_eq!(
+            page_footer(50, 0, 117).as_deref(),
+            Some(
+                "… showing 1–50 of 117. More items exist; rerun this list command with --offset 50 to see the next page."
+            )
+        );
+        assert_eq!(page_footer(17, 100, 117), None);
+    }
 
     #[test]
     fn query_terms_drop_stopwords_and_short_tokens() {

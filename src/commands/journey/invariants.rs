@@ -109,6 +109,7 @@ fn invariant_list(
 ) -> Result<()> {
     let store = open(graph)?;
     let nodes = store.list_nodes_page(Some(NodeType::JourneyInvariantPoint), limit, offset)?;
+    let total = store.count_nodes(Some(NodeType::JourneyInvariantPoint))?;
     let mut rows: Vec<Value> = Vec::new();
     for n in &nodes {
         let asserts = store
@@ -138,12 +139,13 @@ fn invariant_list(
         }
     }
     if json {
-        println!("{}", serde_json::to_string_pretty(&rows)?);
-    } else if let Some(footer) = crate::commands::page_footer(
-        nodes.len(),
-        offset,
-        store.count_nodes(Some(NodeType::JourneyInvariantPoint))?,
-    ) {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&crate::commands::pagination_envelope(
+                &rows, offset, limit, total
+            ))?
+        );
+    } else if let Some(footer) = crate::commands::page_footer(nodes.len(), offset, total) {
         println!("{footer}");
     }
     Ok(())

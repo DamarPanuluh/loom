@@ -6,33 +6,37 @@
 use super::metrics::{measure, RUST_METRICS};
 use super::{child_name, Symbol};
 
-pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
-    let mut parser = tree_sitter::Parser::new();
-    if parser
-        .set_language(&tree_sitter_rust::LANGUAGE.into())
-        .is_err()
-    {
-        return (Vec::new(), Vec::new(), 0);
-    }
-    let tree = match parser.parse(content, None) {
-        Some(t) => t,
-        None => return (Vec::new(), Vec::new(), 0),
-    };
+pub(super) fn rust_extract(
+    root: tree_sitter::Node,
+    content: &str,
+) -> (Vec<Symbol>, Vec<String>, usize) {
     let bytes = content.as_bytes();
-    let root = tree.root_node();
     let mut symbols = Vec::new();
     let mut imports = Vec::new();
     let mut panic_sites = 0usize;
 
-    let mut stack = vec![root];
-    while let Some(node) = stack.pop() {
-        if is_panic_site(&node, bytes) {
+    let mut stack: Vec<(tree_sitter::Node, bool)> = vec![(root, false)];
+    while let Some((node, in_test)) = stack.pop() {
+        // Panic sites in a `#[cfg(test)]` module are test-only signal, never
+        // production; count only outside a test subtree.
+        if !in_test && is_panic_site(&node, bytes) {
             panic_sites += 1;
         }
+        // A test module opens a test subtree for everything beneath it. We no
+        // longer PRUNE that subtree: its function symbols must still be
+        // extracted so call sites inside tests get a real enclosing symbol
+        // (otherwise the call graph loses every test→production edge). Their
+        // complexity/nesting/args stay zero, so test code adds no production
+        // signal — only the call-attribution anchor.
+        let child_in_test = in_test || (node.kind() == "mod_item" && is_cfg_test_mod(&node, bytes));
         match node.kind() {
             "function_item" => {
                 if let Some(name) = child_name(&node, bytes) {
-                    let m = measure(&node, bytes, &RUST_METRICS);
+                    let m = if child_in_test {
+                        super::metrics::SymbolMetrics::default()
+                    } else {
+                        measure(&node, bytes, &RUST_METRICS)
+                    };
                     symbols.push(Symbol {
                         name,
                         kind: "function".into(),
@@ -44,7 +48,25 @@ pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
                     });
                 }
             }
-            "struct_item" | "enum_item" | "trait_item" | "type_item" => {
+            // A trait/extern signature has NO body, so there is nothing to
+            // measure — cyclomatic base 1 would be a phantom branch. Extract it
+            // as a zero-metric declaration (so sync still sees the symbol and
+            // converges) rather than a callable.
+            "function_signature_item" => {
+                if let Some(name) = child_name(&node, bytes) {
+                    symbols.push(Symbol {
+                        name,
+                        kind: "function".into(),
+                        line_start: node.start_position().row + 1,
+                        line_end: node.end_position().row + 1,
+                        complexity: 0,
+                        max_nesting: 0,
+                        arg_count: 0,
+                    });
+                }
+            }
+            "struct_item" | "enum_item" | "trait_item" | "type_item" | "const_item"
+            | "static_item" | "union_item" | "macro_definition" => {
                 if let Some(name) = child_name(&node, bytes) {
                     symbols.push(Symbol {
                         name,
@@ -75,13 +97,11 @@ pub(super) fn rust_extract(content: &str) -> (Vec<Symbol>, Vec<String>, usize) {
                     collect_use_paths(&arg, bytes, "", &mut imports);
                 }
             }
-            // test module: its symbols + panics are test-only — skip the subtree
-            "mod_item" if is_cfg_test_mod(&node, bytes) => continue,
             _ => {}
         }
         for i in 0..node.child_count() as u32 {
             if let Some(c) = node.child(i) {
-                stack.push(c);
+                stack.push((c, child_in_test));
             }
         }
     }

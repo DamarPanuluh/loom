@@ -800,4 +800,22 @@ In text mode the human summary ends with:
 next: <step>
 ```
 
-List commands bound output with `--limit` and page with `--offset` (0-based) where the binary exposes it (`intent`, `codefile`, `edge`, `rule`, `validation`, `hypothesis`, `surface`, `proposal`, `task`, `note`, `inbox`, `question`, `wiki`, `journey`, `journey coverage`, `journey invariant`). Text output prints a footer — `… showing N–M of TOTAL; --offset M for the next page` — so rows past the first page are never silently hidden; JSON output stays a bare array (page it via `--limit`/`--offset`). Resolving a node by an ambiguous name or fragment errors with the full candidate list, each as `[<short-id>] <name>`, so a duplicate is addressable by id (`show`/`remove`) instead of leaving a bare count to guess from.
+List commands bound output with `--limit` and page with `--offset` (0-based) where the binary exposes it (`intent`, `codefile`, `edge`, `rule`, `validation`, `hypothesis`, `surface`, `proposal`, `task`, `note`, `inbox`, `question`, `wiki`, `journey`, `journey coverage`, `journey invariant`). Text output prints an explicit footer — `… showing N–M of TOTAL. More items exist; rerun this list command with --offset M to see the next page.` — so a human or agent immediately knows that rows remain and how to retrieve them.
+
+**Breaking in 0.28.0:** paginated `list --json` output is an object rather than a bare array. Rows are under `items`; `pagination` reports `offset`, `limit`, `returned`, `total`, `has_more`, and `next_offset`. When `has_more` is false, `next_offset` is `null`. Migrate consumers from `response[]` to `response.items[]`:
+
+```json
+{
+  "items": [],
+  "pagination": {
+    "offset": 0,
+    "limit": 50,
+    "returned": 0,
+    "total": 0,
+    "has_more": false,
+    "next_offset": null
+  }
+}
+```
+
+Resolving a node by an ambiguous name or fragment errors with the full candidate list, each as `[<short-id>] <name>`, so a duplicate is addressable by id (`show`/`remove`) instead of leaving a bare count to guess from.

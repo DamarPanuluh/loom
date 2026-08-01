@@ -578,6 +578,7 @@ fn intent_reactivate(graph: Option<&Path>, key: String, reason: String, json: bo
 fn intent_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
     let intents = store.list_nodes_page(Some(NodeType::Intent), limit, offset)?;
+    let total = store.count_nodes(Some(NodeType::Intent))?;
     if json {
         let rows: Vec<_> = intents
             .iter()
@@ -589,7 +590,10 @@ fn intent_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) ->
                 })
             })
             .collect();
-        println!("{}", serde_json::to_string_pretty(&rows)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&super::pagination_envelope(&rows, offset, limit, total))?
+        );
         return Ok(());
     }
     if intents.is_empty() && offset == 0 {
@@ -598,11 +602,7 @@ fn intent_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) ->
     for n in &intents {
         println!("{:<12} {} [{}]", n.status, n.name, &n.id[..8]);
     }
-    if let Some(footer) = super::page_footer(
-        intents.len(),
-        offset,
-        store.count_nodes(Some(NodeType::Intent))?,
-    ) {
+    if let Some(footer) = super::page_footer(intents.len(), offset, total) {
         println!("{footer}");
     }
     Ok(())

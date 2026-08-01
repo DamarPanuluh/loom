@@ -11,7 +11,15 @@ fn main() {
     }
     let cli = Cli::parse();
     if let Err(e) = loom::commands::run(cli) {
-        eprintln!("error: {e:#}");
+        let rendered = format!("{e:#}");
+        eprintln!("error: {rendered}");
+        // A parent loom that spawned this one distinguishes "my own lock got in
+        // the way" from a real failure by this exit code, not by scraping the
+        // message — so a failing test that prints the marker cannot be
+        // misread as an infrastructure block.
+        if rendered.contains(loom::store::LOCK_CONTENTION_MARKER) {
+            std::process::exit(loom::store::LOCK_CONTENTION_EXIT_CODE);
+        }
         std::process::exit(1);
     }
 }

@@ -1,0 +1,14 @@
+journey: paginated list output tells callers how to continue
+steps:
+  - name: first page reports has_more and the next offset
+    intent: paginated list output tells callers how to continue
+    run: "loom codefile list --limit 5 --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["pagination", "has_more", "next_offset"]
+  - name: a page past the end reports has_more false and null next_offset
+    intent: paginated list output tells callers how to continue
+    run: "loom codefile list --limit 5 --offset 1000 --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["has_more", "next_offset"]

@@ -108,11 +108,36 @@ fn link(graph: Option<&Path>, export_path: &Path, alias: Option<&str>, json: boo
 fn unlink(graph: Option<&Path>, key: &str, prune: bool, cascade: bool, json: bool) -> Result<()> {
     let store = open(graph)?;
     let mut entries = read_upstream_entries(&store)?;
-    let removed: Vec<UpstreamEntry> = entries
-        .iter()
-        .filter(|e| e.alias == key || e.graph_id == key || e.graph_id.starts_with(key))
-        .cloned()
-        .collect();
+    let key = key.trim();
+    if key.is_empty() {
+        bail!("unlink needs a non-empty alias or graph-id — see `loom graph list`");
+    }
+    // An exact alias or graph-id hit is unambiguous. Only fall back to a
+    // graph-id prefix, and refuse a prefix that names more than one upstream —
+    // an empty or short key must never sweep several links at once.
+    let removed: Vec<UpstreamEntry> = {
+        let exact: Vec<UpstreamEntry> = entries
+            .iter()
+            .filter(|e| e.alias == key || e.graph_id == key)
+            .cloned()
+            .collect();
+        if !exact.is_empty() {
+            exact
+        } else {
+            let prefix: Vec<UpstreamEntry> = entries
+                .iter()
+                .filter(|e| e.graph_id.starts_with(key))
+                .cloned()
+                .collect();
+            if prefix.len() > 1 {
+                bail!(
+                    "'{key}' matches {} upstreams by graph-id prefix — use the full graph-id or the alias",
+                    prefix.len()
+                );
+            }
+            prefix
+        }
+    };
     if removed.is_empty() {
         bail!("no upstream matching '{key}' — check `loom graph list`");
     }
@@ -178,11 +203,19 @@ fn unlink(graph: Option<&Path>, key: &str, prune: bool, cascade: bool, json: boo
         ),
     };
 
+    let blocked_prune = prune_report
+        .as_ref()
+        .is_some_and(|r| r.pruned.is_empty() && !r.blocked.is_empty());
+
     pulse::emit_line(
         &store,
         json,
         serde_json::json!({
             "unlinked": true,
+            // The unlink succeeded; `ok` reports the command as a whole, which a
+            // fully-blocked prune fails. This keeps the payload honest so a
+            // --json consumer need not scrape stderr to learn the exit code.
+            "ok": !blocked_prune,
             "key": key,
             "remaining": entries.len(),
             "pruned": prune_report.as_ref().map(prune_json),
@@ -194,13 +227,11 @@ fn unlink(graph: Option<&Path>, key: &str, prune: bool, cascade: bool, json: boo
     // Partial/blocked prune after unlink is still success for the unlink itself,
     // but surface non-zero when the operator asked to prune and nothing moved
     // because of DependsOn claims — same contract as standalone prune-orphans.
-    if let Some(report) = &prune_report {
-        if report.pruned.is_empty() && !report.blocked.is_empty() {
-            bail!(
-                "unlinked but could not prune: {} orphan shadow(s) still have DependsOn edges — remove them (`loom edge remove`) or pass --cascade",
-                report.blocked.len()
-            );
-        }
+    if blocked_prune {
+        bail!(
+            "unlinked but could not prune: {} orphan shadow(s) still have DependsOn edges — remove them (`loom edge remove`) or pass --cascade",
+            prune_report.as_ref().map(|r| r.blocked.len()).unwrap_or(0)
+        );
     }
     Ok(())
 }
@@ -229,10 +260,19 @@ fn prune_orphans(
 
     if report.pruned.is_empty() && !report.blocked.is_empty() {
         let detail = blocked_summary(&report);
+        let reason = format!(
+            "could not prune: {} orphan shadow(s) still have DependsOn edges — remove them (`loom edge remove`) or pass --cascade",
+            report.blocked.len()
+        );
+        // Fail closed (non-zero exit), but put the blocked state in the payload
+        // so a `--json` consumer reads the reason from stdout instead of an
+        // unparseable stderr line paired with a success-shaped object.
         pulse::emit_line(
             &store,
             json,
             serde_json::json!({
+                "ok": false,
+                "error": reason,
                 "pruned": prune_json(&report),
             }),
             "loom edge remove <edge-id> --reason '…'",
@@ -241,10 +281,7 @@ fn prune_orphans(
                 report.blocked.len()
             ),
         )?;
-        bail!(
-            "could not prune: {} orphan shadow(s) still have DependsOn edges — remove them (`loom edge remove`) or pass --cascade",
-            report.blocked.len()
-        );
+        bail!("{reason}");
     }
 
     let line = if report.blocked.is_empty() {
@@ -338,7 +375,8 @@ fn list(graph: Option<&Path>, json: bool) -> Result<()> {
             })
             .collect();
         // Additive envelope when orphans exist so agents see the cleanup path
-        // without a separate doctor pass (empty linked list alone hid residue).
+        // without a separate doctor pass; a clean graph stays a bare array so
+        // there is no false orphan envelope (tests pin both shapes).
         if orphans.is_empty() {
             println!("{}", serde_json::to_string_pretty(&rows)?);
         } else {

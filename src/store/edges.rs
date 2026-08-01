@@ -156,15 +156,16 @@ impl Store {
         // reopen the claim when those files change, without one-sided intent
         // fanout. (Superseded by the same pass.)
         if edge.kind == EdgeKind::Relates {
+            let by_name: std::collections::HashMap<String, String> = self
+                .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
+                .into_iter()
+                .map(|n| (n.name, n.id))
+                .collect();
             let mut refs: Vec<String> = Vec::new();
             for stamp in &stamps {
-                if let Some(cf) = self
-                    .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
-                    .into_iter()
-                    .find(|n| n.name == stamp.file)
-                {
-                    if !refs.contains(&cf.id) {
-                        refs.push(cf.id);
+                if let Some(id) = by_name.get(&stamp.file) {
+                    if !refs.contains(id) {
+                        refs.push(id.clone());
                     }
                 }
             }

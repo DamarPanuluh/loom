@@ -1,7 +1,10 @@
 //! Audit — does this graph's own record look like it was earned?
 //!
-//! Plane: statistical detection over asserted facts and the journal. Findings
-//! route through ordinary triage; nothing here gates directly (INV-3).
+//! Plane: statistical detection over asserted facts and the journal. Unlike the
+//! advisory debt feed (INV-3), these findings are not merely reported: the
+//! `sound` rung counts them (via `audit_subjects`), so an open audit finding
+//! gates the rung until it is triaged to a settling verdict. They route through
+//! ordinary triage like any other finding.
 //!
 //! Contract — **built from the incident, then run on ourselves.** Every check
 //! below is a signature loom's own graph carried:
@@ -47,9 +50,26 @@ pub struct AuditFinding {
 /// Every self-fabrication signature in this graph.
 pub fn run(store: &Store) -> Result<Vec<AuditFinding>> {
     let mut out = Vec::new();
-    out.extend(unjournaled_ratifications(store)?);
+    // Read the journal ONCE: unjournaled_ratifications used to re-parse the whole
+    // file per ratified Intent, and audit::run is on the `loom status` path.
+    let (entries, corrupt) = crate::journal::read_counting(store.root())?;
+    out.extend(unjournaled_ratifications(store, &entries)?);
     out.extend(bursts(store)?);
     out.extend(unanchored_settled_facts(store)?);
+    if corrupt > 0 {
+        out.push(AuditFinding {
+            kind: "journal_corruption",
+            subject: crate::journal::path(store.root()).display().to_string(),
+            detail: format!(
+                "{corrupt} journal line(s) failed to parse — most likely a truncated \
+                 final record from an interrupted append. They are skipped, not read \
+                 as evidence, so the intact history above them still counts."
+            ),
+            remedy: "inspect the tail of .loom/journal/events.jsonl; the append-only \
+                     record above the damaged line is unaffected"
+                .into(),
+        });
+    }
     out.sort_by(|a, b| a.kind.cmp(b.kind).then(a.subject.cmp(&b.subject)));
     Ok(out)
 }
@@ -60,16 +80,22 @@ pub fn run(store: &Store) -> Result<Vec<AuditFinding>> {
 /// produced the invariant holds by construction. A violation therefore means
 /// one of two things, and both are worth knowing: the record predates the
 /// spine, or something wrote past the boundary.
-fn unjournaled_ratifications(store: &Store) -> Result<Vec<AuditFinding>> {
+fn unjournaled_ratifications(
+    store: &Store,
+    entries: &[crate::journal::Entry],
+) -> Result<Vec<AuditFinding>> {
+    let ratified_targets: std::collections::BTreeSet<&str> = entries
+        .iter()
+        .filter(|e| matches!(e.event.as_str(), "ratification" | "rejection"))
+        .map(|e| e.target_id.as_str())
+        .collect();
     let mut out = Vec::new();
     for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
         let state = store.ratification(&intent.id)?;
         if state != "ratified" && state != "rejected" {
             continue;
         }
-        let has_entry = crate::journal::read(store.root())?.iter().any(|e| {
-            matches!(e.event.as_str(), "ratification" | "rejection") && e.target_id == intent.id
-        });
+        let has_entry = ratified_targets.contains(intent.id.as_str());
         if !has_entry {
             out.push(AuditFinding {
                 kind: "unjournaled_ratification",

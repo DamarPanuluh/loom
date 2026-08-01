@@ -148,6 +148,12 @@ pub fn read_export(path: &Path) -> Result<Export> {
 /// structure still restores atomically, but imported validation and scan
 /// commands cannot execute until an operator re-enters each exact command via
 /// the corresponding local update command.
+///
+/// The upstream-graph registry is quarantined the same way: its paths point at
+/// the EXPORTER's filesystem, so restoring it would aim the next sync's
+/// federation reader at foreign paths the importer never chose. Dropping it
+/// leaves the shadow nodes as orphans until an operator deliberately
+/// re-`graph link`s each upstream locally.
 pub fn quarantine_imported_execution(snap: &mut Snapshot) -> Result<usize> {
     let mut quarantined = 0;
     for node in &mut snap.nodes {
@@ -181,6 +187,9 @@ pub fn quarantine_imported_execution(snap: &mut Snapshot) -> Result<usize> {
             "scan_adapters".into(),
             serde_json::to_string(&adapters).context("serializing quarantined scan_adapters")?,
         );
+    }
+    if snap.config.remove("upstream_graphs").is_some() {
+        quarantined += 1;
     }
     Ok(quarantined)
 }
@@ -312,6 +321,13 @@ mod tests {
             "scan_adapters".into(),
             r#"[{"name":"lint","command":"cargo lint"}]"#.into(),
         );
+        // An imported upstream registry points at the EXPORTER's filesystem, so
+        // it must be dropped on import — the next sync's federation reader must
+        // only ever see locally-linked paths.
+        config.insert(
+            "upstream_graphs".into(),
+            r#"[{"path":"/exporter/only/loom.graph.json","alias":"x","graph_id":"g2"}]"#.into(),
+        );
         let mut snapshot = Snapshot {
             facts: Vec::new(),
             evidence: Vec::new(),
@@ -338,7 +354,8 @@ mod tests {
             config,
         };
 
-        assert_eq!(quarantine_imported_execution(&mut snapshot).unwrap(), 2);
+        // 1 validation + 1 scan adapter + 1 upstream registry = 3 quarantined.
+        assert_eq!(quarantine_imported_execution(&mut snapshot).unwrap(), 3);
         assert_eq!(
             snapshot.nodes[0].body["command_trusted"],
             serde_json::Value::Bool(false)
@@ -346,6 +363,10 @@ mod tests {
         let adapters: serde_json::Value =
             serde_json::from_str(&snapshot.config["scan_adapters"]).unwrap();
         assert_eq!(adapters[0]["trusted"], serde_json::Value::Bool(false));
+        assert!(
+            !snapshot.config.contains_key("upstream_graphs"),
+            "imported upstream registry must be dropped, not restored"
+        );
     }
 
     #[test]

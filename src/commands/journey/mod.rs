@@ -183,7 +183,12 @@ fn journey_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -
     let total = all.len();
     let journeys: Vec<_> = all.into_iter().skip(offset).take(limit).collect();
     if json {
-        println!("{}", serde_json::to_string_pretty(&journeys)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&crate::commands::pagination_envelope(
+                &journeys, offset, limit, total
+            ))?
+        );
     } else {
         for n in &journeys {
             println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);

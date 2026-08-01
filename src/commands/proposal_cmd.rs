@@ -81,6 +81,7 @@ fn add(
 fn list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
     let store = open(graph)?;
     let proposals = store.list_nodes_page(Some(NodeType::Proposal), limit, offset)?;
+    let total = store.count_nodes(Some(NodeType::Proposal))?;
     if json {
         let rows: Vec<Value> = proposals
             .iter()
@@ -94,7 +95,10 @@ fn list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result
                 })
             })
             .collect();
-        println!("{}", serde_json::to_string_pretty(&rows)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&super::pagination_envelope(&rows, offset, limit, total))?
+        );
     } else {
         if proposals.is_empty() && offset == 0 {
             println!("no proposals");
@@ -114,11 +118,7 @@ fn list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result
                 count
             );
         }
-        if let Some(footer) = super::page_footer(
-            proposals.len(),
-            offset,
-            store.count_nodes(Some(NodeType::Proposal))?,
-        ) {
+        if let Some(footer) = super::page_footer(proposals.len(), offset, total) {
             println!("{footer}");
         }
     }

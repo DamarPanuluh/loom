@@ -52,7 +52,12 @@ pub(crate) fn import(
     let root = if let Some(g) = graph {
         g.to_path_buf()
     } else {
-        std::env::current_dir()?
+        // Resolve to an existing graph root if the CWD is inside one, so
+        // `loom import` from a subdirectory targets that graph instead of
+        // silently initializing a second graph in the CWD. Fall back to the
+        // CWD only when no graph exists (the create-fresh case).
+        let cwd = std::env::current_dir()?;
+        Store::find_root(&cwd).unwrap_or(cwd)
     };
     let export = travel::read_export(file)?;
     let mut snapshot = export.into_snapshot();
@@ -255,7 +260,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: b
 /// same values, so no surface can report a number another surface does not.
 pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
     let id = store.identity()?;
-    let ladder = crate::maturity::ladder(store)?;
+    let (ladder, queues) = crate::maturity::ladder_and_depths(store)?;
     let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
         code_ownership_summary(store)?;
     Ok(serde_json::json!({
@@ -273,7 +278,7 @@ pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
         "compass": { "phase": ladder.phase, "rung": ladder.rung, "next_command": ladder.next_command },
         "maturity": ladder,
         "graph_state": workitem::graph_state(store)?,
-        "queues": crate::maturity::depths(store)?,
+        "queues": queues,
         "validation_summary": crate::maturity::validation_summary(store)?,
         "code_ownership": {
             "registered": registered_codefiles,
@@ -301,9 +306,8 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
         .len();
     let edges = store.list_edges(None, usize::MAX)?.len();
-    let ladder = crate::maturity::ladder(&store)?;
+    let (ladder, queues) = crate::maturity::ladder_and_depths(&store)?;
     let pulse = workitem::graph_state(&store)?;
-    let queues = crate::maturity::depths(&store)?;
     let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
         code_ownership_summary(&store)?;
     let layering = super::domain_cmd::layer_detector_state(&store)?;
@@ -401,21 +405,46 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
 }
 pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open_read(graph)?;
-    let ladder = crate::maturity::ladder(&store)?;
+    let (ladder, counts) = crate::maturity::ladder_and_depths(&store)?;
     let pulse = workitem::graph_state(&store)?;
     // Queue depths: `--all` serves the TOP item of each queue, not every item.
     // Surface the depth alongside so "one line per queue" never reads as "this
     // queue holds one item" (the counts also live in `loom status`).
-    let counts = crate::maturity::depths(&store)?;
+    //
+    // The human-presence lane is excluded from the served set: minting a packet
+    // for it here would route an LLM driver into a write it is denied (INV-8).
+    // This is the same filter the `loom status` queues line uses.
     let modes: Vec<(&'static str, crate::lane::Lane, usize)> = crate::lane::Lane::LADDER
         .iter()
-        .filter(|l| l.serves_items())
+        .filter(|l| l.serves_items() && !l.human_only())
         .map(|&l| (l.as_str(), l, counts.get(l)))
         .collect();
+    // Compute each queue's top item once, then mint one packet per served item
+    // and journal the batch as a single act of serving — a closeout is one act,
+    // not one per lane. The ids are stamped back onto the items so JSON and the
+    // journal agree on what left the process.
+    let mut rows: Vec<(&'static str, usize, Option<workitem::WorkItem>)> = Vec::new();
+    for &(name, m, depth) in &modes {
+        rows.push((name, depth, workitem::next(&store, Some(m))?));
+    }
+    let pairs: Vec<(&str, &str)> = rows
+        .iter()
+        .filter_map(|(_, _, item)| {
+            item.as_ref()
+                .map(|w| (w.mode.as_str(), w.target.id.as_str()))
+        })
+        .collect();
+    let served = crate::packet::mint_batch(&pairs);
+    crate::packet::serve(store.root(), &served)?;
+    let mut ids = served.into_iter().map(|s| s.id);
+    for (_, _, item) in rows.iter_mut() {
+        if let Some(w) = item.as_mut() {
+            w.packet_id = ids.next();
+        }
+    }
     if json {
         let mut queues = serde_json::Map::new();
-        for (name, m, _) in modes {
-            let item = workitem::next(&store, Some(m))?;
+        for (name, _, item) in &rows {
             queues.insert(name.to_string(), serde_json::to_value(item)?);
         }
         let out = serde_json::json!({
@@ -431,8 +460,8 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
             "closeout — compass phase={} → {} (top of each queue; depths in [n])",
             ladder.phase, ladder.next_command
         );
-        for (name, m, depth) in modes {
-            match workitem::next(&store, Some(m))? {
+        for (name, depth, item) in &rows {
+            match item {
                 Some(w) => println!("  {name:<8} [{depth}] → {}", w.target.name),
                 None => println!("  {name:<8} [{depth}] → (empty)"),
             }

@@ -217,9 +217,17 @@ pub(crate) fn apply_value(
         tx.commit()?;
         report
     };
-    let reexported = crate::travel::refresh_export_if_tracked(&store)?;
     let mut payload = serde_json::to_value(&report)?;
-    payload["reexported"] = serde_json::json!(reexported);
+    // The batch is committed and durable. A failure refreshing the tracked
+    // export is a stale artifact (a `loom sync` away), never a reason to report
+    // the durable write as failed — surface it in the payload instead.
+    match crate::travel::refresh_export_if_tracked(&store) {
+        Ok(reexported) => payload["reexported"] = serde_json::json!(reexported),
+        Err(e) => {
+            payload["reexported"] = serde_json::json!(false);
+            payload["export_refresh_error"] = serde_json::json!(e.to_string());
+        }
+    }
     Ok(payload)
 }
 
@@ -237,11 +245,18 @@ pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()>
     };
 
     // Keep the committed portable artifact fresh as a byproduct (same rule as
-    // sync): only an already-tracked, now-drifted export is rewritten.
-    let reexported = crate::travel::refresh_export_if_tracked(&store)?;
+    // sync): only an already-tracked, now-drifted export is rewritten. The
+    // batch is already durable, so a refresh failure is surfaced, not fatal.
+    let (reexported, export_error) = match crate::travel::refresh_export_if_tracked(&store) {
+        Ok(v) => (v, None),
+        Err(e) => (false, Some(e.to_string())),
+    };
 
     let mut payload = serde_json::to_value(&report)?;
     payload["reexported"] = serde_json::json!(reexported);
+    if let Some(err) = &export_error {
+        payload["export_refresh_error"] = serde_json::json!(err);
+    }
     pulse::emit(&store, json, payload, "loom sync", || {
         println!(
             "applied: {} intent(s), {} grounding(s), {} relationship(s), {} verdict(s), {} adjudication(s), {} vocab term(s), {} tag(s)",
@@ -260,6 +275,11 @@ pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()>
             println!(
                 "  refreshed {} (portable export kept fresh)",
                 crate::GRAPH_EXPORT
+            );
+        }
+        if let Some(err) = &export_error {
+            println!(
+                "  warning: batch is durable but the tracked export could not be refreshed ({err}) — run `loom export`"
             );
         }
         Ok(())
@@ -338,6 +358,20 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
         }
         if created && role != GroundingRole::Realizes {
             store.set_grounding_role(&edge.id, role)?;
+        } else if !created {
+            // A pre-existing edge may already carry a role. An explicitly
+            // declared role must not be silently dropped: reclassify when it
+            // differs so the settled claim re-opens under the new role's
+            // criterion, rather than leaving an evidence floor the edge no
+            // longer qualifies for.
+            let current = store.grounding_role(&edge.id)?;
+            if role != current {
+                store.reclassify_grounding(
+                    &edge.id,
+                    role,
+                    "apply batch redeclared grounding role",
+                )?;
+            }
         }
         report.groundings += 1;
         if let Some(v) = &g.verdict {

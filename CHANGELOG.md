@@ -8,6 +8,14 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.28.0] - 2026-08-01
+**Breaking** (minor bump because 0.x): all 16 paginated `list --json` commands now
+return a self-describing `{ "items": [...], "pagination": {...} }` envelope
+instead of a bare array. Pagination metadata includes the requested offset and
+limit, returned and total counts, and an explicit `has_more`/`next_offset` pair;
+the final page sets `next_offset` to `null`. Migrate JSON consumers from
+`response[]` to `response.items[]`.
+
 ## [0.27.0] - 2026-07-26
 **Breaking** (minor bump because 0.x): schema moves v3 → v4. Older binaries
 refuse a v4 graph and say to upgrade. Run `loom sync --rebuild` after upgrading —

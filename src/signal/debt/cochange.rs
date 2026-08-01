@@ -13,6 +13,11 @@ const CO_CHANGE_MIN_ANALYZABLE: usize = 10;
 const CO_CHANGE_MAX_RAW_PATHS: usize = 50;
 const CO_CHANGE_MAX_TRACKED: usize = 20;
 const CO_CHANGE_MIN_JOINT: u32 = 3;
+/// Upper bound on how many members enter the O(n²) qualifying-pair scan. A repo
+/// window can touch thousands of files; without a cap the pair scan is unbounded
+/// quadratic. Members are pre-filtered to those that could pair at all, then the
+/// highest-support survivors are kept up to this cap.
+const CO_CHANGE_MAX_PAIR_MEMBERS: usize = 400;
 const CO_CHANGE_CONFIRM: &str =
     "your call: do these files form one cohesive module that should stay together, or is the coupling accidental and should be cut? judge the architecture, don't defer";
 
@@ -281,9 +286,25 @@ fn qualifying_pairs(
     n_commits: usize,
 ) -> Vec<Pair> {
     let mcount = members.len();
+    // Exact pre-filter: joint(a,b) <= min(support[a], support[b]); a member with
+    // support below MIN_JOINT can never reach the joint gate, so it is dropped
+    // before the quadratic scan without changing any qualifying pair. The
+    // highest-support survivors are then capped so a window touching thousands
+    // of files stays bounded.
+    let mut candidates: Vec<usize> = (0..mcount)
+        .filter(|&i| support[i] >= CO_CHANGE_MIN_JOINT)
+        .collect();
+    candidates.sort_by(|&x, &y| {
+        support[y]
+            .cmp(&support[x])
+            .then_with(|| members[x].cmp(members[y]))
+    });
+    candidates.truncate(CO_CHANGE_MAX_PAIR_MEMBERS);
+    candidates.sort_unstable();
     let mut pairs: Vec<Pair> = Vec::new();
-    for a in 0..mcount {
-        for b in (a + 1)..mcount {
+    for (pi, &a) in candidates.iter().enumerate() {
+        for &b in &candidates[pi + 1..] {
+            // a < b by construction (candidates ascending by index).
             let j = pair_joint(bits, words, a, b);
             if j < CO_CHANGE_MIN_JOINT {
                 continue;

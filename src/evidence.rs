@@ -472,6 +472,13 @@ pub fn span_outcome(s: &SpanStamp, lines: &[&str]) -> SpanOutcome {
 }
 
 fn cited_lines_hold(s: &SpanStamp, lines: &[&str]) -> bool {
+    // Lines are 1-based and a range runs low→high. A zero start or an inverted
+    // range (end < start) names no real span — it is a malformed or imported
+    // stamp, and treating it as holding nothing avoids a usize underflow on
+    // `s.end - s.start + 1` and an out-of-range slice at `s.start - 1`.
+    if s.start == 0 || s.end < s.start {
+        return false;
+    }
     let height = s.end - s.start + 1;
     if s.end <= lines.len() && fingerprint(&lines[s.start - 1..s.end].join("\n")) == s.hash {
         return true;

@@ -66,16 +66,6 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     report.surfaces_affected = seen_surfaces.len();
     ripple_artifact_drift(store, root, &mut report)?;
     ripple_runner_drift(store, root, &mut report)?;
-    ripple_wiki_drift(store, &mut report)?;
-    // Grade every proof from its own shape. Derived, so it is recomputed here
-    // rather than trusted from whoever registered the validation — the string
-    // this replaced was supplied by the caller, and `loom journey add`
-    // hardcoded the top of the scale.
-    crate::proofstrength::recompute(store, root)?;
-    // Wantedness earned from evidence. Recomputed AFTER proof strength, which
-    // one of its three conjuncts reads.
-    crate::ratification::recompute(store)?;
-    rebuild_smell_findings(store, &mut report)?;
     // The re-verification pass. One question — "does the thing this fact points
     // at still say what it said?" — asked of every anchor in the graph.
     //
@@ -90,10 +80,28 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     // Symbol-scoped sparing survives the deletion because it was never really
     // about the ripple: a locator Run re-resolves its symbol, so an unrelated
     // edit in the same file leaves it standing on its own.
+    //
+    // ORDER: this runs BEFORE the derived recomputes below (proof strength,
+    // ratification, wiki freshness, smell findings). Each of those READS edge
+    // and validation status — the very state this pass settles by re-opening a
+    // proof whose anchor broke. Grading first and re-opening after left the
+    // derived plane one sync stale (a proof graded S3 this run, demoted next),
+    // so a second sync produced a different graph — a fixpoint violation of
+    // INV-2. Settling status first makes one sync converge.
     let pass = store.reverify_all(&changed_paths)?;
     report.edges_staled += pass.demoted;
     report.edges_spared += pass.spared;
     report.validations_reset += pass.validations_reset;
+    ripple_wiki_drift(store, &mut report)?;
+    // Grade every proof from its own shape. Derived, so it is recomputed here
+    // rather than trusted from whoever registered the validation — the string
+    // this replaced was supplied by the caller, and `loom journey add`
+    // hardcoded the top of the scale.
+    crate::proofstrength::recompute(store, root)?;
+    // Wantedness earned from evidence. Recomputed AFTER proof strength, which
+    // one of its three conjuncts reads.
+    crate::ratification::recompute(store)?;
+    rebuild_smell_findings(store, &mut report)?;
     Ok(report)
 }
 

@@ -172,11 +172,14 @@ next        Return the next routed work item
 edge        Edge commands
 door        Capture free-form input as an inbox item
 inbox       Inbox commands
+question    Product questions (human-gated decisions linked to intents)
 task        TaskRecord commands
 note        Durable notes on graph nodes
 session     Turn-zero offer menu
 guide       Role/lane guidance
 find        Keyword search over graph facts
+explain     Read-only neighborhood brief for an intent
+context     One read-only context packet for an intent, file, or query
 detect      Repo language detection and quality pack recommendation
 scan        External diagnostic adapters to derived findings
 calibrate   Relax structural thresholds to fit this repo (never tightens)
@@ -199,9 +202,17 @@ ignore      Coverage exclusion commands
 whoami      Acting-agent/lane report
 proposal    Proposal capture and item adoption
 journey     Journey proof, coverage, and invariant commands
+drive       Interactive, journaled human drive session (or freeze one)
+hook        Install/remove local git hooks keeping the structural plane fresh
+decide      Record a decision as a REVERSAL (what was chosen, rejected, why)
+observe     Run a command loom watches, and keep what it saw
+absorb      Read the working tree and propose the graph mutations it implies
+audit       Integrity audit of loom's own record (falsifiability)
+deepen      Rank what to strengthen next, once every floor is met
 wiki        Reader-first wiki pages tracked as a graph projection
 graph       Cross-graph federation (link/unlink/list upstreams)
 impact      What a change here could reach (callers, intents at risk)
+bootstrap   Cold-start assist: draft a Proposal of planned pillar intents
 mcp         Serve loom in-band over MCP (stdio JSON-RPC)
 ```
 
@@ -311,14 +322,17 @@ candidate-file proposal from a single sentence of intent, the call graph and
 `loom impact`, proof runs that loom performs itself, pattern scans that make an
 absence checkable, and evidence expiry that re-opens claims when code moves.
 
-**Not yet done.** Three of six anchor floors are live (proof, quality, and the
-locator probe behind grounding); the grounding, adjudication, relationship and
-ratification floors are staged with their reasoning recorded in `src/anchor.rs`.
-Derived proof strength, the ratification inversion, the `deepen`/`audit` lanes,
-`loom absorb`, and the sync-ripple rewrite are designed but unbuilt — sync still
-runs the old per-edge-kind matrix alongside the uniform `reverify_all` pass.
-Sync ripple under real edits, the quality lane, and journeys have not been
-exercised on foreign code.
+**Not yet done.** The remaining open work is tracked in the graph itself —
+`loom status --json` is the honest map (rungs unmet, queue depths). As of the
+0.28 cut: all six anchor floors are live (proof, quality, the locator probe,
+grounding, adjudication, relationship); derived proof strength, the ratification
+inversion, the `deepen`/`audit` lanes, `loom absorb`/`observe`, and the
+sync-ripple rewrite (`reverify_all`) are shipped and exercised by the ring
+tests. What remains is the ordinary backlog a living graph accumulates: the
+repo's own `triage` and `prove` lanes carry the structural refactors
+(oversized `src/workitem/queues.rs`, `src/scan.rs`, …) and the journey proofs
+not yet at S3. Sync ripple under real edits, the quality lane, and journeys have
+not been exercised on foreign code.
 
 Treat the staged constants and the module headers as the honest map: each says
 what it does today and what it is waiting on.

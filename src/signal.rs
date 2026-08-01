@@ -210,9 +210,10 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         .map(|n| (n.id.as_str(), n.name.as_str()))
         .collect();
     let tags_by_intent = tags_by_node(&snap);
+    let rel_adjacency = relationship_adjacency(&snap);
 
     let mut out = Vec::new();
-    out.extend(ownership_smells(&snap, &owners));
+    out.extend(ownership_smells(&snap, &owners, &rel_adjacency));
     out.extend(consumer_owned_file_smells(&snap, &owners));
     out.extend(undeclared_coupling_smells(
         &snap,
@@ -220,12 +221,14 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         &imports,
         &path_to_id,
         &id_to_path,
+        &rel_adjacency,
     ));
     out.extend(duplicated_responsibility_smells(
         &snap,
         &intents,
         &owners,
         &tags_by_intent,
+        &rel_adjacency,
     ));
     out.extend(layering_smells(
         store,
@@ -295,10 +298,11 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
 fn ownership_smells<'a>(
     snap: &'a Snapshot,
     owners: &BTreeMap<&'a str, Vec<&'a str>>,
+    adj: &RelAdjacency,
 ) -> Vec<Smell> {
     let mut out = Vec::new();
     for (cf, ids) in owners {
-        if ids.len() < 2 || owners_connected(snap, ids) {
+        if ids.len() < 2 || owners_connected(adj, ids) {
             continue;
         }
         let message = if ids.len() == 2 {
@@ -329,7 +333,7 @@ fn ownership_smells<'a>(
 /// True when every co-owner is reachable from every other via relationship
 /// edges (undirected BFS on the owner subgraph). A star (parent ↔ scenarios)
 /// counts; a pairwise clique is not required.
-fn owners_connected(snap: &Snapshot, ids: &[&str]) -> bool {
+fn owners_connected(adj: &RelAdjacency, ids: &[&str]) -> bool {
     if ids.len() < 2 {
         return true;
     }
@@ -342,7 +346,7 @@ fn owners_connected(snap: &Snapshot, ids: &[&str]) -> bool {
             continue;
         }
         for other in &set {
-            if *other != cur && edge_between(snap, cur, other) {
+            if *other != cur && edge_between(adj, cur, other) {
                 stack.push(*other);
             }
         }
@@ -358,6 +362,7 @@ fn undeclared_coupling_smells<'a>(
     imports: &BTreeMap<String, Vec<String>>,
     path_to_id: &BTreeMap<&'a str, &'a str>,
     id_to_path: &BTreeMap<&'a str, &'a str>,
+    adj: &RelAdjacency,
 ) -> Vec<Smell> {
     let mut out = Vec::new();
     for (file_id, imps) in imports {
@@ -380,7 +385,7 @@ fn undeclared_coupling_smells<'a>(
             };
             let connected = a_owners
                 .iter()
-                .any(|a| b_owners.iter().any(|b| a == b || edge_between(snap, a, b)));
+                .any(|a| b_owners.iter().any(|b| a == b || edge_between(adj, a, b)));
             if !connected {
                 out.push(Smell {
                     kind: "undeclared_coupling".into(),
@@ -408,6 +413,7 @@ fn duplicated_responsibility_smells<'a>(
     intents: &[&'a Node],
     owners: &BTreeMap<&'a str, Vec<&'a str>>,
     tags_by_intent: &BTreeMap<&'a str, BTreeSet<String>>,
+    adj: &RelAdjacency,
 ) -> Vec<Smell> {
     let mut out = Vec::new();
     let files_by_intent = files_by_intent(snap, owners);
@@ -424,7 +430,7 @@ fn duplicated_responsibility_smells<'a>(
             }
             let fa = files_by_intent.get(a).cloned().unwrap_or_default();
             let fb = files_by_intent.get(b).cloned().unwrap_or_default();
-            if fa.is_disjoint(&fb) && !edge_between(snap, a, b) {
+            if fa.is_disjoint(&fb) && !edge_between(adj, a, b) {
                 out.push(Smell {
                     kind: "duplicated_responsibility".into(),
                     message: format!(
@@ -897,23 +903,35 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
                 | crate::model::InspectionStatus::Failing
                 | crate::model::InspectionStatus::Independent => {
                     if crate::model::is_placeholder(&e.criterion) {
-                        Some("criterion")
-                    } else if store.edge_verification(&e.id)? == crate::model::Verification::Expired
-                    {
-                        Some("evidence")
+                        Some((
+                            "vacuous_verdict",
+                            "empty or placeholder criterion".to_string(),
+                        ))
                     } else {
-                        None
+                        // Absent-fact and Expired are two different failures. A
+                        // missing verdict fact is a settled status standing on
+                        // nothing ever recorded; an Expired one is a real
+                        // verdict whose anchors have all broken. Reporting both
+                        // as "empty evidence" told the operator to fix a fact
+                        // that isn't there.
+                        match store.edge_verdict_verification(&e.id)? {
+                            None => Some((
+                                "missing_verdict",
+                                "settled but has no recorded verdict fact".to_string(),
+                            )),
+                            Some(crate::model::Verification::Expired) => {
+                                Some(("vacuous_verdict", "expired evidence".to_string()))
+                            }
+                            Some(_) => None,
+                        }
                     }
                 }
                 _ => None,
             };
-            if let Some(field) = vacuous_field {
+            if let Some((kind, what)) = vacuous_field {
                 issues.push(DoctorIssue {
-                    kind: "vacuous_verdict".into(),
-                    message: format!(
-                        "{} edge {} is {} with empty or placeholder {field}",
-                        e.kind, e.id, e.status
-                    ),
+                    kind: kind.into(),
+                    message: format!("{} edge {} is {} with {what}", e.kind, e.id, e.status),
                 });
             }
         }
@@ -990,26 +1008,23 @@ fn criterion_names_seam(snap: &Snapshot, edge: &Edge) -> bool {
 fn hierarchy_cycle_issues(snap: &Snapshot) -> Vec<DoctorIssue> {
     let mut graph = DiGraph::<&str, ()>::new();
     let mut indices: BTreeMap<&str, NodeIndex> = BTreeMap::new();
-    for node in snap
-        .nodes
-        .iter()
-        .filter(|n| n.node_type == NodeType::Intent)
-    {
-        let idx = graph.add_node(node.id.as_str());
-        indices.insert(node.id.as_str(), idx);
-    }
 
+    // Register nodes from the hierarchy edges' OWN endpoints, not from a
+    // pre-filtered Intent set. A hierarchy edge is meant to run Intent→Intent,
+    // but an edge with a non-Intent (or dangling) endpoint is precisely the
+    // violation we must surface — filtering the node set to Intents first made
+    // `indices.get` miss and silently dropped the edge, hiding the cycle.
     let mut self_loops = BTreeSet::new();
     for edge in snap.edges.iter().filter(|e| e.kind == EdgeKind::Hierarchy) {
         if edge.from_id == edge.to_id {
             self_loops.insert(edge.from_id.as_str());
         }
-        let (Some(&from), Some(&to)) = (
-            indices.get(edge.from_id.as_str()),
-            indices.get(edge.to_id.as_str()),
-        ) else {
-            continue;
-        };
+        let from = *indices
+            .entry(edge.from_id.as_str())
+            .or_insert_with(|| graph.add_node(edge.from_id.as_str()));
+        let to = *indices
+            .entry(edge.to_id.as_str())
+            .or_insert_with(|| graph.add_node(edge.to_id.as_str()));
         graph.add_edge(from, to, ());
     }
 
@@ -1282,7 +1297,7 @@ fn consumer_owned_file_smells<'a>(
                     && !edge_is_superseded(snap, &e.id)
                     && edge_role(snap, &e.id) == GroundingRole::Realizes
             });
-            let edge_ref = edge.map(|e| &e.id[..8]).unwrap_or("<edge>");
+            let edge_ref = edge.map(|e| crate::model::short(&e.id)).unwrap_or("<edge>");
             out.push(Smell {
                 kind: "consumer_owned_file".into(),
                 message: format!(
@@ -1308,9 +1323,15 @@ fn node_name(snap: &Snapshot, id: &str) -> String {
         .unwrap_or_else(|| id.to_string())
 }
 
-fn edge_between(snap: &Snapshot, a: &str, b: &str) -> bool {
-    snap.edges.iter().any(|e| {
-        matches!(
+/// Undirected adjacency over the relationship edge kinds, built once so the
+/// smell detectors do not rescan every edge per pair (`owners_connected`'s BFS
+/// alone is otherwise O(cluster² · edges)).
+type RelAdjacency<'a> = BTreeMap<&'a str, BTreeSet<&'a str>>;
+
+fn relationship_adjacency(snap: &Snapshot) -> RelAdjacency<'_> {
+    let mut adj: RelAdjacency = BTreeMap::new();
+    for e in &snap.edges {
+        if matches!(
             e.kind,
             EdgeKind::Relates
                 | EdgeKind::Requires
@@ -1319,8 +1340,20 @@ fn edge_between(snap: &Snapshot, a: &str, b: &str) -> bool {
                 | EdgeKind::VariantOf
                 | EdgeKind::Triggers
                 | EdgeKind::Sequence
-        ) && ((e.from_id == a && e.to_id == b) || (e.from_id == b && e.to_id == a))
-    })
+        ) {
+            adj.entry(e.from_id.as_str())
+                .or_default()
+                .insert(e.to_id.as_str());
+            adj.entry(e.to_id.as_str())
+                .or_default()
+                .insert(e.from_id.as_str());
+        }
+    }
+    adj
+}
+
+fn edge_between(adj: &RelAdjacency, a: &str, b: &str) -> bool {
+    adj.get(a).is_some_and(|s| s.contains(b))
 }
 
 fn imports_by_file(snap: &Snapshot) -> BTreeMap<String, Vec<String>> {

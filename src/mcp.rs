@@ -116,7 +116,7 @@ fn tools() -> Vec<Tool> {
                 json!({
                     "type": "object",
                     "properties": {
-                        "target": { "type": "string", "description": "A symbol name." },
+                        "target": { "type": "string", "description": "A symbol name or a registered codefile path." },
                         "depth": {
                             "type": "integer",
                             "description": "Call hops to walk back (default 3).",
@@ -135,8 +135,7 @@ fn tools() -> Vec<Tool> {
                     .ok_or_else(|| anyhow::anyhow!("`target` is required"))?;
                 let depth = args.get("depth").and_then(|v| v.as_u64()).unwrap_or(3) as usize;
                 let store = crate::commands::open_read(graph)?;
-                let cg = crate::callgraph::build(&store)?;
-                Ok(serde_json::to_value(cg.impact(target, depth))?)
+                crate::commands::impact_report(&store, target, depth)
             },
         },
         Tool {
@@ -265,14 +264,38 @@ fn tools() -> Vec<Tool> {
 pub fn serve(graph: Option<&Path>) -> Result<()> {
     let graph = graph.map(PathBuf::from);
     let stdin = std::io::stdin();
+    let mut reader = stdin.lock();
     let mut stdout = std::io::stdout();
-    for line in stdin.lock().lines() {
-        let line = line?;
-        if line.trim().is_empty() {
+    let mut buf = Vec::new();
+    loop {
+        buf.clear();
+        // Raw bytes, not `lines()`: a non-UTF-8 line must not abort the server.
+        // Decode lossily and let the JSON parser reject it as a parse error.
+        let n = reader.read_until(b'\n', &mut buf)?;
+        if n == 0 {
+            break; // EOF
+        }
+        let line = String::from_utf8_lossy(&buf);
+        let line = line.trim();
+        if line.is_empty() {
             continue;
         }
-        let response = match serde_json::from_str::<Value>(&line) {
-            Ok(request) => handle(graph.as_deref(), &request),
+        let response = match serde_json::from_str::<Value>(line) {
+            Ok(request) => {
+                let id = request.get("id").cloned().unwrap_or(Value::Null);
+                // A panic in one tool must not take down the session. Catch it
+                // and answer with an internal error so the loop survives.
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    handle(graph.as_deref(), &request)
+                })) {
+                    Ok(response) => response,
+                    Err(_) => Some(error_response(
+                        id,
+                        -32603,
+                        "internal error: the request handler panicked",
+                    )),
+                }
+            }
             // -32700 parse error. `id` is unknowable here, so it is null.
             Err(e) => Some(error_response(
                 Value::Null,

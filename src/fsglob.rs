@@ -22,10 +22,17 @@ pub fn expand(root: &Path, pattern: &str) -> Result<Vec<String>> {
     let pat = pattern.replace('\\', "/");
     if !pat.contains('*') && !pat.contains('?') {
         let p = root.join(&pat);
-        if p.is_file() {
+        // A literal path skips the root-anchored walk, so it is the one way a
+        // `../` (or an absolute path) could register a file OUTSIDE the graph
+        // root — loom would then hash and extract from a tree it does not own.
+        // Require the resolved target to stay under the resolved root.
+        if p.is_file() && contains(root, &p) {
             return Ok(vec![pat]);
         }
-        bail!("literal path '{}' does not exist or is not a file", pat);
+        bail!(
+            "literal path '{}' does not exist, is not a file, or escapes the graph root",
+            pat
+        );
     }
 
     let matcher = GlobBuilder::new(&pat)
@@ -55,6 +62,18 @@ pub fn expand(root: &Path, pattern: &str) -> Result<Vec<String>> {
     out.sort();
     out.dedup();
     Ok(out)
+}
+
+/// Does `candidate` resolve to a path inside `root`? Both are canonicalized, so
+/// `..` segments and symlinks are collapsed before the prefix test — a lexical
+/// `starts_with` would be fooled by `root/../root_evil` or a symlink out of the
+/// tree. Requires both paths to exist (the caller checks `is_file` first); a
+/// path that cannot be canonicalized is treated as NOT contained, failing safe.
+pub fn contains(root: &Path, candidate: &Path) -> bool {
+    match (root.canonicalize(), candidate.canonicalize()) {
+        (Ok(r), Ok(c)) => c.starts_with(&r),
+        _ => false,
+    }
 }
 
 /// Compile a set of glob patterns into a matcher tested directly against
@@ -149,6 +168,26 @@ mod tests {
 
         let got = expand(tmp.path(), "*.rs").unwrap();
         assert_eq!(got, vec!["kept.rs"]);
+    }
+
+    /// A literal path that escapes the graph root must be refused, not
+    /// registered. It is the one branch that skips the root-anchored walk, so
+    /// without the containment check `loom codefile add '../secret'` would hash
+    /// and extract from a tree loom does not own.
+    #[test]
+    fn literal_paths_that_escape_the_root_are_rejected() {
+        let parent = TmpRoot::new("loom-fsglob-escape");
+        parent.write("secret.rs", "");
+        parent.write("root/inside.rs", "");
+        let root = parent.path().join("root");
+
+        // A contained literal still resolves.
+        assert_eq!(
+            super::expand(&root, "inside.rs").unwrap(),
+            vec!["inside.rs"]
+        );
+        // A `..` escape out of the root is refused.
+        assert!(super::expand(&root, "../secret.rs").is_err());
     }
 }
 

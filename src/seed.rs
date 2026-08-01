@@ -106,9 +106,15 @@ impl Deriver for StructuralDeriver {
         for cf in &codefiles {
             report.files_scanned += 1;
             let path = root.join(&cf.name);
+            // Defense in depth against a tampered or imported name: a registered
+            // path that resolves OUTSIDE the graph root is never read — sync must
+            // not hash or extract from a tree loom does not own (the import plane
+            // is a trust boundary). Such a file is handled exactly like an absent
+            // one, so it can never carry `verified` state on foreign content.
+            let contained = crate::fsglob::contains(root, &path);
             let content = match std::fs::read_to_string(&path) {
-                Ok(c) => c,
-                Err(_) => {
+                Ok(c) if contained => c,
+                _ => {
                     report.missing.push(cf.name.clone());
                     // A registered file that is now gone is a deletion: ripple its
                     // dependents ONCE (the `missing_rippled` once-guard), then mark

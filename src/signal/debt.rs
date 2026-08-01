@@ -69,10 +69,24 @@ pub fn debt(store: &Store) -> Result<Vec<DebtCluster>> {
 /// (a statistical signal computed on demand — never stored, never required.)
 fn size_outlier_clusters(snap: &Snapshot) -> Vec<DebtCluster> {
     let mut out = Vec::new();
+    // Only CodeFile `loc` counts. Other node kinds (and edges) can carry a
+    // facet named `loc` for unrelated reasons; pooling them skews the Tukey
+    // fence and, worse, emits non-CodeFile debt subjects that promotion cannot
+    // resolve. Restrict the population to CodeFile-node facets.
+    let code_files: std::collections::BTreeSet<&str> = snap
+        .nodes
+        .iter()
+        .filter(|n| n.node_type == crate::model::NodeType::CodeFile)
+        .map(|n| n.id.as_str())
+        .collect();
     let locs: Vec<(String, f64)> = snap
         .facets
         .iter()
-        .filter(|f| f.key == "loc")
+        .filter(|f| {
+            f.key == "loc"
+                && f.target_kind == crate::model::TargetKind::Node
+                && code_files.contains(f.target_id.as_str())
+        })
         .filter_map(|f| {
             f.value
                 .parse::<f64>()

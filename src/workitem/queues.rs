@@ -15,7 +15,7 @@ use super::contracts::{
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
-    SuggestedRead, Target, WorkItem,
+    SuggestedRead, Target, TraversalContext, WorkItem,
 };
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
@@ -305,10 +305,7 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
     // gated by the registry owner, so a packet naming any other role would
     // promise work its lane cannot record — the exact INV-7 rejection a
     // drain worker hit on 2026-07-19. Same rule review_item already applies.
-    if let Some(e) = stale
-        .into_iter()
-        .find(|e| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates))
-    {
+    if let Some(e) = stale.into_iter().find(not_measured_lane) {
         let owner = crate::registry::spec(e.kind).owner.as_str();
         return Ok(Some(edge_work(
             store,
@@ -322,10 +319,7 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Uninspected],
     )?;
-    if let Some(e) = uninspected
-        .into_iter()
-        .find(|e| !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates))
-    {
+    if let Some(e) = uninspected.into_iter().find(not_measured_lane) {
         let owner = crate::registry::spec(e.kind).owner.as_str();
         return Ok(Some(edge_work(
             store,
@@ -342,7 +336,20 @@ pub(super) fn quality_item(store: &Store) -> Result<Option<WorkItem>> {
     // Measurement lane only: uninspected rules are measured, stale verdicts are
     // re-measured. A FAILING quality verdict is repair work and is served by the
     // fix queue — measuring it again would not make the source better.
-    let governs = store.edges_with(Some(EdgeKind::Governs), None, None)?;
+    // `live_edges_by_status` is the SAME set the `hardened` rung counts: it drops
+    // superseded groundings and claims about retired behaviors, so the item the
+    // picker serves is always one the depth admitted.
+    let governs: Vec<Edge> = store
+        .live_edges_by_status(
+            crate::model::TruthClass::Asserted,
+            &[
+                InspectionStatus::Uninspected,
+                InspectionStatus::NeedsReverification,
+            ],
+        )?
+        .into_iter()
+        .filter(|e| e.kind == EdgeKind::Governs)
+        .collect();
     if let Some(e) = governs
         .iter()
         .find(|e| e.status == InspectionStatus::Uninspected)
@@ -498,7 +505,20 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
 pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
     // Proof lane only: unrun and stale proofs are (re-)run here. A FAILING
     // proof means the code is broken — that is fix-queue repair work.
-    let validates = store.edges_with(Some(EdgeKind::Validates), None, None)?;
+    // `live_edges_by_status` is the SAME set the `proven` rung counts: it drops
+    // superseded proofs and claims about retired behaviors, so the item served
+    // is always one the depth admitted.
+    let validates: Vec<Edge> = store
+        .live_edges_by_status(
+            crate::model::TruthClass::Asserted,
+            &[
+                InspectionStatus::Uninspected,
+                InspectionStatus::NeedsReverification,
+            ],
+        )?
+        .into_iter()
+        .filter(|e| e.kind == EdgeKind::Validates)
+        .collect();
     if let Some(e) = validates
         .iter()
         .find(|e| e.status == InspectionStatus::Uninspected)
@@ -776,7 +796,7 @@ fn is_structural_size_finding(node: &crate::model::Node) -> bool {
     )
 }
 
-/// Active intents whose wantedness is unestablished: `ratification` facet
+/// Active intents whose wantedness is unestablished: ratification claim
 /// absent, `unratified`, or staled to `needs_reconfirmation`. Shared predicate —
 /// the ladder's `wanted` rung, the queue count, and the served ratify work all
 /// read this one function so they can never disagree.
@@ -786,10 +806,9 @@ pub fn unratified_intents(store: &Store) -> Result<Vec<Node>> {
         if n.status == "deprecated" {
             continue;
         }
-        let state = store
-            .ratification(&n.id)
-            .map(Some)?
-            .unwrap_or_else(|| "unratified".into());
+        // `ratification` already reports "unratified" when the claim is absent,
+        // so there is no missing case to substitute here.
+        let state = store.ratification(&n.id)?;
         if state != "ratified" {
             out.push(n);
         }
@@ -1302,8 +1321,35 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
     let Some(f) = first_audit_subject(store)? else {
         return Ok(None);
     };
-    let Some(n) = store.get_node(&f.subject)? else {
-        return Ok(None);
+    // A node-subject finding points a packet at that node; a graph-level issue
+    // (a doctor complaint or smell with no single node to blame) is still
+    // counted by `sound`, so it must still be servable — served against the
+    // graph itself rather than dropped, or the rung advertises work the queue
+    // cannot hand back.
+    let (target, context) = match store.get_node(&f.subject)? {
+        Some(n) => (
+            node_target(&n),
+            node_context(
+                store,
+                &n,
+                "Establish what actually happened before changing anything.",
+            )?,
+        ),
+        None => (
+            Target {
+                kind: "graph".into(),
+                id: String::new(),
+                name: f.kind.to_string(),
+                from: None,
+                to: None,
+            },
+            TraversalContext {
+                purpose: "Establish what actually happened before changing anything.".into(),
+                linked_entities: Vec::new(),
+                suggested_reads: Vec::new(),
+                read_set: Vec::new(),
+            },
+        ),
     };
     Ok(Some(WorkItem {
         packet_id: None,
@@ -1312,14 +1358,10 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
         effort: "mid".into(),
         routing_hint: super::hint_judgment(),
         reason: format!("{}: {}", f.kind, f.detail),
-        target: node_target(&n),
+        target,
         stale_causes: Vec::new(),
         prompt_contract: super::contracts::audit_contract(&f.remedy),
-        context: node_context(
-            store,
-            &n,
-            "Establish what actually happened before changing anything.",
-        )?,
+        context,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Signal.gap(),
         next_step: f.remedy.clone(),
@@ -1349,10 +1391,13 @@ fn journey_gaps(store: &Store) -> Result<Vec<(Node, bool)>> {
         let Some((_, intent_id)) = s.identity.rsplit_once(':') else {
             continue;
         };
-        // A deliberately waived journey axis is not work.
+        // A deliberately waived journey axis is not work. A waiver needs a
+        // real reason (empty never counts), matching completeness and maturity
+        // so an intent is never both blocked from `proven` and starved of the
+        // work item that would clear it.
         if store
             .get_facet(intent_id, crate::model::TargetKind::Node, "waiver:journey")?
-            .is_some()
+            .is_some_and(|r| !r.is_empty())
         {
             continue;
         }
@@ -1402,6 +1447,13 @@ fn audit_subjects(store: &Store) -> Result<Vec<crate::audit::AuditFinding>> {
         });
     }
     for smell in crate::signal::smells(store)? {
+        // A resolving adjudication is an accepted exception: the `sound` rung no
+        // longer counts it (maturity::open_smells applies the same filter), so
+        // the queue must not keep serving it or plain `loom next` livelocks on a
+        // smell that has already been justified.
+        if crate::signal::smell_has_resolving_adjudication(store, &smell.identity)? {
+            continue;
+        }
         let id = smell
             .identity
             .rsplit_once(':')
@@ -1421,7 +1473,13 @@ fn audit_subjects(store: &Store) -> Result<Vec<crate::audit::AuditFinding>> {
 /// Edges the ANALYZE lane owns: everything except the two that have their own
 /// measuring lanes (`governs` → quality, `validates` → validate).
 fn not_measured_lane(e: &Edge) -> bool {
-    !matches!(e.kind, EdgeKind::Governs | EdgeKind::Validates)
+    // `governs`/`validates` have their own measuring lanes. `depends_on` is a
+    // federation link — it ripples staleness across packs but is never a claim
+    // an analyst verifies, so it must never surface as analyze work.
+    !matches!(
+        e.kind,
+        EdgeKind::Governs | EdgeKind::Validates | EdgeKind::DependsOn
+    )
 }
 
 /// The `fix` lane's roster. One arm per lane, each its own function:

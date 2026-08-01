@@ -688,7 +688,7 @@ fn finding_add_creates_asserted_finding_without_inbox() {
     // No inbox item must be created by `finding add`.
     let inbox = loom_json(tmp.path(), &["inbox", "list"]);
     assert_eq!(
-        inbox.as_array().map(|a| a.len()),
+        inbox["items"].as_array().map(|a| a.len()),
         Some(0),
         "FINDING ADD: inbox must be empty after finding add, got: {}",
         inbox

@@ -714,25 +714,25 @@ pub(super) fn triage_contract(id: &str) -> PromptContract {
         why_now: "an evidence-backed finding is unjudged (or its prior judgment went stale when the file changed)".into(),
         allowed_actions: vec![
             format!("loom finding verdict {id} needed --reason <what to do>"),
-            format!("loom finding verdict {id} justified --reason <why it is acceptable>"),
-            format!("loom finding verdict {id} rejected --reason <why it is false or below threshold>"),
-            format!("loom finding verdict {id} deferred --reason <why not scheduled now>"),
+            format!("loom finding verdict {id} justified --reason <why it is acceptable> --evidence <file:line in the flagged code, or journal:ref>"),
+            format!("loom finding verdict {id} rejected --reason <why it is false or below threshold> --evidence <file:line, or journal:ref>"),
+            format!("loom finding verdict {id} deferred --reason <why not scheduled now> --evidence <file:line, or journal:ref>"),
             format!("loom finding verdict {id} blocked --reason <what it waits on>"),
-            format!("loom finding verdict {id} duplicate --reason <duplicate finding id or target>"),
-            format!("loom finding verdict {id} resolved --reason <observed repair and proof>"),
+            format!("loom finding verdict {id} duplicate --reason <duplicate finding id or target> --evidence <the duplicate's id, or a file:line>"),
+            format!("loom finding verdict {id} resolved --reason <observed repair and proof> --evidence <file:line of the fix, or journal:ref>"),
         ],
         forbidden_actions: vec![
             "edit code here (mark it needed, then fix in build/fix)".into(),
             "justified without a concrete reason".into(),
         ],
         evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
-        required_evidence: "a concrete reason: what to do, why it is fine/false/deferred, what blocks it, what it duplicates, or the observed repair"
+        required_evidence: "a concrete reason; and for a settling verdict (justified/rejected/deferred/duplicate/resolved) a cited --evidence (file:line in the flagged file, or a journal:ref) — the reason says WHAT you decided, the evidence says what you decided it FROM"
             .into(),
         evidence_template: None,
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'"),
+        write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…' --evidence '<file:line for a settling verdict; omit for needed/blocked>'"),
         stop_condition: "after recording the verdict, return to loom status".into(),
         human_gate: None,
     }
@@ -748,12 +748,12 @@ pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
         why_now: "a structural detector flagged size or complexity; calibrate already set the gate — this packet is about whether the file is one concern".into(),
         allowed_actions: vec![
             format!("loom finding verdict {id} needed --reason <split plan: which concerns to separate>"),
-            format!("loom finding verdict {id} justified --reason <the single cohesive concern>"),
-            format!("loom finding verdict {id} rejected --reason <why the metric is a false positive>"),
-            format!("loom finding verdict {id} deferred --reason <why not scheduled now>"),
+            format!("loom finding verdict {id} justified --reason <the single cohesive concern> --evidence <file:line showing that concern>"),
+            format!("loom finding verdict {id} rejected --reason <why the metric is a false positive> --evidence <file:line, or journal:ref>"),
+            format!("loom finding verdict {id} deferred --reason <why not scheduled now> --evidence <file:line, or journal:ref>"),
             format!("loom finding verdict {id} blocked --reason <what it waits on>"),
-            format!("loom finding verdict {id} duplicate --reason <duplicate finding id or target>"),
-            format!("loom finding verdict {id} resolved --reason <observed repair and proof>"),
+            format!("loom finding verdict {id} duplicate --reason <duplicate finding id or target> --evidence <the duplicate's id, or a file:line>"),
+            format!("loom finding verdict {id} resolved --reason <observed repair and proof> --evidence <file:line of the fix, or journal:ref>"),
         ],
         forbidden_actions: vec![
             "edit code here (mark it needed, then fix in build/fix)".into(),
@@ -762,13 +762,13 @@ pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
             "batch-reaffirm / mechanical closeout of this packet".into(),
         ],
         evidence_clauses: Vec::new(),
-        required_evidence: "name the concern(s) you saw: one → justified with that name; several unrelated → needed with a split plan; false gate → rejected"
+        required_evidence: "name the concern(s) you saw: one → justified with that name; several unrelated → needed with a split plan; false gate → rejected. A settling verdict (justified/rejected/deferred/duplicate/resolved) must also cite --evidence (file:line in the flagged file, or a journal:ref)"
             .into(),
         evidence_template: None,
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'"),
+        write_back: format!("loom finding verdict {id} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…' --evidence '<file:line for a settling verdict; omit for needed/blocked>'"),
         stop_condition: "after recording the verdict, return to loom status".into(),
         human_gate: None,
     }
@@ -898,7 +898,7 @@ pub(super) fn audit_contract(remedy: &str) -> PromptContract {
             .into(),
         allowed_actions: vec![
             "loom audit --json".into(),
-            "loom journal tail".into(),
+            "read the append-only record at .loom/journal/events.jsonl".into(),
             "loom intent show <id>".into(),
         ],
         forbidden_actions: vec![

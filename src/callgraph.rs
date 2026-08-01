@@ -47,6 +47,11 @@ pub struct CallGraph {
     pub unresolved: usize,
     /// file → symbols it defines.
     defines: BTreeMap<String, BTreeSet<String>>,
+    /// `to_symbol` → indices into `edges`. Built once so `impact`'s backward BFS
+    /// looks up incoming edges in O(log n) rather than rescanning the whole edge
+    /// vector per visited node (it is called per grounded symbol per validation
+    /// on the sync hot path).
+    incoming: BTreeMap<String, Vec<usize>>,
 }
 
 /// Build the graph from the derived plane.
@@ -123,6 +128,13 @@ pub fn build(store: &Store) -> Result<CallGraph> {
             && a.to_file == b.to_file
             && a.to_symbol == b.to_symbol
     });
+    for (i, e) in graph.edges.iter().enumerate() {
+        graph
+            .incoming
+            .entry(e.to_symbol.clone())
+            .or_default()
+            .push(i);
+    }
     Ok(graph)
 }
 
@@ -211,7 +223,10 @@ impl CallGraph {
             if hops >= depth {
                 continue;
             }
-            for e in self.edges.iter().filter(|e| e.to_symbol == current) {
+            let Some(indices) = self.incoming.get(&current) else {
+                continue;
+            };
+            for e in indices.iter().map(|&i| &self.edges[i]) {
                 let key = (e.from_file.clone(), e.from_symbol.clone());
                 if e.from_symbol.is_empty() || !seen.insert(key) {
                     continue;

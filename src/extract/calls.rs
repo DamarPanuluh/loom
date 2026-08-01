@@ -12,23 +12,15 @@
 use super::{CallSite, Language, Symbol};
 use tree_sitter::Node;
 
-/// Call-expression node kinds per language, and the field holding the callee.
-fn spec(language: Language) -> Option<(tree_sitter::Language, &'static [&'static str])> {
+/// Call-expression node kinds per language. `None` for languages with no
+/// grammar; the caller parses the tree, so no grammar is returned here.
+fn call_kinds(language: Language) -> Option<&'static [&'static str]> {
     Some(match language {
-        Language::Rust => (
-            tree_sitter_rust::LANGUAGE.into(),
-            &["call_expression", "macro_invocation"] as &[&str],
-        ),
-        Language::Python => (tree_sitter_python::LANGUAGE.into(), &["call"]),
-        Language::Go => (tree_sitter_go::LANGUAGE.into(), &["call_expression"]),
-        Language::JavaScript => (
-            tree_sitter_javascript::LANGUAGE.into(),
-            &["call_expression"],
-        ),
-        Language::TypeScript => (
-            tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
-            &["call_expression"],
-        ),
+        Language::Rust => &["call_expression", "macro_invocation"] as &[&str],
+        Language::Python => &["call"],
+        Language::Go => &["call_expression"],
+        Language::JavaScript => &["call_expression"],
+        Language::TypeScript => &["call_expression"],
         Language::Other => return None,
     })
 }
@@ -83,15 +75,120 @@ fn identifiers_called_in(tree: &Node, bytes: &[u8]) -> Vec<String> {
 /// (`Store::open`, `self.flush`) so resolution can try the qualified name first
 /// and the bare one second — `open` alone is far more ambiguous than
 /// `Store::open`.
+///
+/// Structural, not textual: the callee is read by walking the `function` field's
+/// AST and collecting its trailing name segments. A textual scan that truncated
+/// at the first `(` discarded the OUTER call of a chain (`Store::open(p).flush()`
+/// recorded only `Store::open`) and dropped qualified/parenthesized callees
+/// (`(a.b)()`, `<T as Tr>::m()`) entirely.
 fn callee_name(node: &Node, bytes: &[u8]) -> Option<String> {
     let target = node
         .child_by_field_name("function")
         .or_else(|| node.child_by_field_name("macro"))?;
+    let mut segments: Vec<String> = Vec::new();
+    collect_callee_segments(target, bytes, &mut segments);
+    if segments.is_empty() {
+        // Best-effort fallback for a shape the structural walk did not
+        // recognize: strip generics/args from the raw text and split, as the
+        // old path did. Strictly a superset of the walk, never a regression.
+        return callee_from_text(&target, bytes);
+    }
+    match segments.len() {
+        1 => Some(segments.pop().unwrap()),
+        n => Some(format!("{}::{}", segments[n - 2], segments[n - 1])),
+    }
+}
+
+/// Collect the callee's name segments from the AST, outermost-receiver first,
+/// method/name last. Argument lists and generic arguments are structurally
+/// skipped (they are separate fields), so a chain reduces to its written path.
+fn collect_callee_segments(node: Node, bytes: &[u8], out: &mut Vec<String>) {
+    match node.kind() {
+        "identifier"
+        | "field_identifier"
+        | "property_identifier"
+        | "type_identifier"
+        | "shorthand_property_identifier"
+        | "package_identifier" => {
+            if let Ok(t) = node.utf8_text(bytes) {
+                let t = t.trim();
+                if !t.is_empty() && t.len() <= 200 {
+                    out.push(t.to_string());
+                }
+            }
+        }
+        // Rust `A::B` / `A::B::C`.
+        "scoped_identifier" | "scoped_type_identifier" => {
+            if let Some(p) = node.child_by_field_name("path") {
+                collect_callee_segments(p, bytes, out);
+            }
+            if let Some(n) = node.child_by_field_name("name") {
+                collect_callee_segments(n, bytes, out);
+            }
+        }
+        // Rust `x.y` — receiver then field.
+        "field_expression" => {
+            if let Some(v) = node.child_by_field_name("value") {
+                collect_callee_segments(v, bytes, out);
+            }
+            if let Some(f) = node.child_by_field_name("field") {
+                collect_callee_segments(f, bytes, out);
+            }
+        }
+        // JS/TS `x.y` — object then property.
+        "member_expression" => {
+            if let Some(o) = node.child_by_field_name("object") {
+                collect_callee_segments(o, bytes, out);
+            }
+            if let Some(p) = node.child_by_field_name("property") {
+                collect_callee_segments(p, bytes, out);
+            }
+        }
+        // Go `pkg.Func` — operand then field.
+        "selector_expression" => {
+            if let Some(o) = node.child_by_field_name("operand") {
+                collect_callee_segments(o, bytes, out);
+            }
+            if let Some(f) = node.child_by_field_name("field") {
+                collect_callee_segments(f, bytes, out);
+            }
+        }
+        // A chained call's receiver (`a().b()`): recurse into the inner call's
+        // callee so the OUTER method is not lost and the args are skipped.
+        "call_expression" | "call" => {
+            if let Some(f) = node
+                .child_by_field_name("function")
+                .or_else(|| node.child_by_field_name("macro"))
+            {
+                collect_callee_segments(f, bytes, out);
+            }
+        }
+        // Turbofish / generic application: the callee is the wrapped function.
+        "generic_function" | "generic_type" => {
+            if let Some(f) = node.child_by_field_name("function") {
+                collect_callee_segments(f, bytes, out);
+            } else if let Some(inner) = node.named_child(0) {
+                collect_callee_segments(inner, bytes, out);
+            }
+        }
+        // Grouping parens (`(a.b)()`): descend to the wrapped expression.
+        "parenthesized_expression" => {
+            if let Some(inner) = node.named_child(0) {
+                collect_callee_segments(inner, bytes, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Textual fallback: strip whitespace and everything from the first `<`/`(` on,
+/// then keep the last two `.`/`::` segments. Used only when the structural walk
+/// finds no segments.
+fn callee_from_text(target: &Node, bytes: &[u8]) -> Option<String> {
     let text = target.utf8_text(bytes).ok()?.trim();
     if text.is_empty() || text.len() > 200 {
         return None;
     }
-    // Normalize whitespace and generics: `foo :: < T >` → `foo`.
     let cleaned: String = text
         .chars()
         .take_while(|c| *c != '<' && *c != '(')
@@ -102,8 +199,6 @@ fn callee_name(node: &Node, bytes: &[u8]) -> Option<String> {
         .split('.')
         .filter(|p| !p.is_empty())
         .map(|p| {
-            // SAFETY of the borrow: re-find each part in the original so the
-            // slices outlive the temporary `replace` allocation.
             let start = cleaned.find(p).unwrap_or(0);
             &cleaned[start..start + p.len()]
         })
@@ -126,20 +221,18 @@ fn enclosing(symbols: &[Symbol], line: usize) -> &str {
         .unwrap_or("")
 }
 
-pub(super) fn extract(language: Language, content: &str, symbols: &[Symbol]) -> Vec<CallSite> {
-    let Some((lang, kinds)) = spec(language) else {
-        return Vec::new();
-    };
-    let mut parser = tree_sitter::Parser::new();
-    if parser.set_language(&lang).is_err() {
-        return Vec::new();
-    }
-    let Some(tree) = parser.parse(content, None) else {
+pub(super) fn extract(
+    language: Language,
+    root: tree_sitter::Node,
+    content: &str,
+    symbols: &[Symbol],
+) -> Vec<CallSite> {
+    let Some(kinds) = call_kinds(language) else {
         return Vec::new();
     };
     let bytes = content.as_bytes();
     let mut out: Vec<CallSite> = Vec::new();
-    let mut stack = vec![tree.root_node()];
+    let mut stack = vec![root];
     while let Some(node) = stack.pop() {
         if kinds.contains(&node.kind()) {
             if let Some(callee) = callee_name(&node, bytes) {
@@ -156,13 +249,22 @@ pub(super) fn extract(language: Language, content: &str, symbols: &[Symbol]) -> 
         // the evidence the S3 call witness needs. Scan the tokens for the one
         // unambiguous shape: an identifier immediately followed by `(`.
         if node.kind() == "token_tree" {
-            let line = node.start_position().row + 1;
-            let from = enclosing(symbols, line).to_string();
-            for callee in identifiers_called_in(&node, bytes) {
-                out.push(CallSite {
-                    from: from.clone(),
-                    callee,
-                });
+            // Only the OUTERMOST token tree: `identifiers_called_in` already
+            // recurses into nested token trees, so also scanning a nested one
+            // (now that whole-row dedup is gone) would double-count its calls.
+            let nested = node
+                .parent()
+                .map(|p| p.kind() == "token_tree")
+                .unwrap_or(false);
+            if !nested {
+                let line = node.start_position().row + 1;
+                let from = enclosing(symbols, line).to_string();
+                for callee in identifiers_called_in(&node, bytes) {
+                    out.push(CallSite {
+                        from: from.clone(),
+                        callee,
+                    });
+                }
             }
         }
         for i in 0..node.child_count() as u32 {
@@ -172,8 +274,60 @@ pub(super) fn extract(language: Language, content: &str, symbols: &[Symbol]) -> 
         }
     }
     out.sort_by(|a, b| a.from.cmp(&b.from).then(a.callee.cmp(&b.callee)));
-    out.dedup();
+    // Sorted, but NOT deduped: two calls to the same callee from one function
+    // are two call sites, and collapsing them to one erased call multiplicity
+    // that a weight- or frequency-aware witness would need. Equal rows sit
+    // adjacent, so the output stays deterministic (INV-2).
     out
+}
+
+#[cfg(test)]
+mod chain_tests {
+    use super::*;
+
+    /// Test shim mirroring the old content-parsing signature: parse once here,
+    /// then delegate to the root-taking `super::extract`.
+    fn extract(language: Language, content: &str, symbols: &[Symbol]) -> Vec<CallSite> {
+        let Some(tree) = language
+            .grammar()
+            .and_then(|g| crate::extract::parse(content, &g))
+        else {
+            return Vec::new();
+        };
+        super::extract(language, tree.root_node(), content, symbols)
+    }
+
+    #[test]
+    fn a_chained_call_records_the_outer_method_not_just_the_inner() {
+        // `Store::open(p).flush()` is TWO calls: the inner `Store::open` and the
+        // outer `.flush`. Truncating the callee text at the first `(` dropped the
+        // outer method entirely; the structural walk keeps both.
+        let src = "fn go(p: u64) {\n    Store::open(p).flush();\n}\n";
+        let calls: Vec<String> = extract(Language::Rust, src, &[])
+            .into_iter()
+            .map(|c| c.callee)
+            .collect();
+        assert!(calls.contains(&"Store::open".to_string()), "{calls:?}");
+        // The outer method is reachable now (bare name `flush`), where before it
+        // was silently discarded.
+        assert!(
+            calls.iter().any(|c| c.rsplit("::").next() == Some("flush")),
+            "outer .flush must be recorded: {calls:?}"
+        );
+    }
+
+    #[test]
+    fn repeated_calls_keep_their_multiplicity() {
+        // Two calls to the same callee are two call sites; whole-row dedup used
+        // to collapse them to one, erasing multiplicity.
+        let src = "fn f() {\n    g();\n    g();\n}\n";
+        let calls: Vec<String> = extract(Language::Rust, src, &[])
+            .into_iter()
+            .filter(|c| c.callee == "g")
+            .map(|c| c.callee)
+            .collect();
+        assert_eq!(calls.len(), 2, "both call sites must survive: {calls:?}");
+    }
 }
 
 #[cfg(test)]
@@ -231,6 +385,18 @@ mod tests {
 #[cfg(test)]
 mod macro_call_tests {
     use super::*;
+
+    /// Test shim mirroring the old content-parsing signature: parse once here,
+    /// then delegate to the root-taking `super::extract`.
+    fn extract(language: Language, content: &str, symbols: &[Symbol]) -> Vec<CallSite> {
+        let Some(tree) = language
+            .grammar()
+            .and_then(|g| crate::extract::parse(content, &g))
+        else {
+            return Vec::new();
+        };
+        super::extract(language, tree.root_node(), content, symbols)
+    }
 
     /// Calls inside a macro are still calls.
     ///

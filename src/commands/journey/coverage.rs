@@ -118,7 +118,7 @@ fn coverage_add(
         "added journey coverage '{}' → covers '{}' [{}]",
         node.name,
         intent.name,
-        &node.id[..8]
+        crate::model::short(&node.id)
     );
     pulse::emit_line(
         &store,
@@ -137,6 +137,7 @@ fn coverage_list(
 ) -> Result<()> {
     let store = open(graph)?;
     let nodes = store.list_nodes_page(Some(NodeType::JourneyCoverage), limit, offset)?;
+    let total = store.count_nodes(Some(NodeType::JourneyCoverage))?;
     let mut rows: Vec<Value> = Vec::new();
     for n in &nodes {
         let covers = store
@@ -168,7 +169,7 @@ fn coverage_list(
         } else {
             println!(
                 "{}  {}  flow={}  covers={}  effective={}",
-                &n.id[..8],
+                crate::model::short(&n.id),
                 n.name,
                 flow,
                 covers_name.as_deref().unwrap_or("—"),
@@ -177,12 +178,13 @@ fn coverage_list(
         }
     }
     if json {
-        println!("{}", serde_json::to_string_pretty(&rows)?);
-    } else if let Some(footer) = crate::commands::page_footer(
-        nodes.len(),
-        offset,
-        store.count_nodes(Some(NodeType::JourneyCoverage))?,
-    ) {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&crate::commands::pagination_envelope(
+                &rows, offset, limit, total
+            ))?
+        );
+    } else if let Some(footer) = crate::commands::page_footer(nodes.len(), offset, total) {
         println!("{footer}");
     }
     Ok(())
@@ -372,7 +374,7 @@ fn coverage_discover(
         } else {
             println!("{} coverage gap(s):", gaps.len());
             for n in &gaps {
-                println!("  — {} [{}]", n.name, &n.id[..8]);
+                println!("  — {} [{}]", n.name, crate::model::short(&n.id));
             }
         }
         Ok(())
@@ -383,6 +385,7 @@ fn coverage_drift(graph: Option<&std::path::Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     let coverages = store.list_nodes(Some(NodeType::JourneyCoverage), usize::MAX)?;
     let mut findings: Vec<Value> = Vec::new();
+    let mut refs = RepoRefResolver::new(store.root());
     for cov in &coverages {
         let Some(intent) = coverage_intent(&store, &cov.id)? else {
             findings.push(json!({
@@ -400,7 +403,7 @@ fn coverage_drift(graph: Option<&std::path::Path>, json: bool) -> Result<()> {
             let Some(reference) = cov.body.get(field).and_then(|v| v.as_str()) else {
                 continue;
             };
-            if !repo_ref_exists(store.root(), reference) {
+            if !refs.exists(reference) {
                 findings.push(json!({
                     "kind": kind,
                     "coverage": cov.name,
@@ -520,17 +523,40 @@ pub(super) fn current_l5_journey_validations(store: &Store, intent_id: &str) -> 
     Ok(out)
 }
 
-fn repo_ref_exists(root: &std::path::Path, reference: &str) -> bool {
-    if let Some((path, symbol)) = reference.split_once("::") {
-        let p = root.join(path);
-        return std::fs::read_to_string(p)
-            .map(|content| content.contains(symbol))
-            .unwrap_or(false);
+/// Resolves coverage references against the repo, reading the file corpus at
+/// most once. `coverage_drift` checks several references per coverage node, and
+/// each bare reference used to re-walk the whole tree; the corpus is now read
+/// once and reused across every reference.
+struct RepoRefResolver<'a> {
+    root: &'a std::path::Path,
+    corpus: Option<Vec<String>>,
+}
+
+impl<'a> RepoRefResolver<'a> {
+    fn new(root: &'a std::path::Path) -> Self {
+        Self { root, corpus: None }
     }
-    let p = root.join(reference);
-    if p.exists() {
-        return true;
+
+    fn exists(&mut self, reference: &str) -> bool {
+        if let Some((path, symbol)) = reference.split_once("::") {
+            let p = self.root.join(path);
+            return std::fs::read_to_string(p)
+                .map(|content| content.contains(symbol))
+                .unwrap_or(false);
+        }
+        let p = self.root.join(reference);
+        if p.exists() {
+            return true;
+        }
+        let root = self.root;
+        let corpus = self.corpus.get_or_insert_with(|| read_repo_corpus(root));
+        corpus.iter().any(|content| content.contains(reference))
     }
+}
+
+/// Every readable text file in the repo, skipping the metadata/build dirs.
+fn read_repo_corpus(root: &std::path::Path) -> Vec<String> {
+    let mut corpus = Vec::new();
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
         let Ok(entries) = std::fs::read_dir(&dir) else {
@@ -546,15 +572,12 @@ fn repo_ref_exists(root: &std::path::Path, reference: &str) -> bool {
                 stack.push(path);
                 continue;
             }
-            if std::fs::read_to_string(&path)
-                .map(|content| content.contains(reference))
-                .unwrap_or(false)
-            {
-                return true;
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                corpus.push(content);
             }
         }
     }
-    false
+    corpus
 }
 
 pub(super) fn effective_coverage(store: &Store, intent_id: &str) -> String {

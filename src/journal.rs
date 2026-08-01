@@ -6,7 +6,6 @@
 //! `journal:<id>` evidence citations.
 
 use crate::{Result, LOOM_DIR};
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs::{self, OpenOptions};
@@ -35,9 +34,13 @@ pub fn path(root: &Path) -> PathBuf {
 /// Append exactly one immutable event and return its evidence reference.
 pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Result<Entry> {
     let ts = timestamp();
+    // Process id disambiguates concurrent writers: SEQUENCE is process-local and
+    // starts at 0, so two processes appending in the same millisecond would mint
+    // the same id without it. Sequence still disambiguates within a process.
     let id = format!(
-        "{}-{}",
+        "{}-{}-{}",
         ts.replace([':', '-', 'T', 'Z', '.'], ""),
+        std::process::id(),
         SEQUENCE.fetch_add(1, Ordering::Relaxed)
     );
     let entry = Entry {
@@ -57,26 +60,52 @@ pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Resu
     Ok(entry)
 }
 
-pub fn read(root: &Path) -> Result<Vec<Entry>> {
+/// Well-formed entries plus a count of lines that could not be parsed.
+///
+/// A truncated final record from an interrupted append is corruption, not a
+/// fatal read: it is counted and skipped so `status` and `next` stay live on a
+/// journal whose tail was damaged. Only genuine IO errors propagate.
+pub fn read_counting(root: &Path) -> Result<(Vec<Entry>, usize)> {
     let file = path(root);
     let Ok(file) = OpenOptions::new().read(true).open(&file) else {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), 0));
     };
-    BufReader::new(file)
-        .lines()
-        .filter(|line| match line {
-            Ok(line) => !line.trim().is_empty(),
-            Err(_) => true,
-        })
-        .map(|line| {
-            let line = line?;
-            serde_json::from_str(&line).with_context(|| "parsing append-only journal entry")
-        })
-        .collect()
+    let mut entries = Vec::new();
+    let mut corrupt = 0usize;
+    for line in BufReader::new(file).lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        match serde_json::from_str::<Entry>(&line) {
+            Ok(entry) => entries.push(entry),
+            Err(_) => corrupt += 1,
+        }
+    }
+    Ok((entries, corrupt))
+}
+
+pub fn read(root: &Path) -> Result<Vec<Entry>> {
+    Ok(read_counting(root)?.0)
 }
 
 pub fn exists(root: &Path, id: &str) -> Result<bool> {
-    Ok(read(root)?.iter().any(|entry| entry.id == id))
+    let file = path(root);
+    let Ok(file) = OpenOptions::new().read(true).open(&file) else {
+        return Ok(false);
+    };
+    // Stream and short-circuit: an existence check must not parse and allocate
+    // the whole journal, and a malformed tail line must not fail the lookup.
+    for line in BufReader::new(file).lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        if serde_json::from_str::<Entry>(&line).is_ok_and(|entry| entry.id == id) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub fn reference(entry: &Entry) -> String {
@@ -97,4 +126,40 @@ fn timestamp() -> String {
     // UTC epoch milliseconds are lossless and unambiguous while avoiding a
     // new time-formatting dependency.
     format!("{millis}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A truncated final record from an interrupted append is corruption, not a
+    /// fatal read: the good entries above it still parse, the count is surfaced,
+    /// and existence checks keep working past the damage.
+    #[test]
+    fn a_truncated_tail_line_is_skipped_and_counted_not_fatal() {
+        let dir = std::env::temp_dir().join(format!("loom-journal-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let a = append(&dir, "ratification", "intent-1", serde_json::json!({})).unwrap();
+        let b = append(&dir, "rejection", "intent-2", serde_json::json!({})).unwrap();
+
+        // Simulate a crash mid-append: a partial, unparseable JSON line.
+        let mut f = OpenOptions::new().append(true).open(path(&dir)).unwrap();
+        f.write_all(b"{\"id\":\"trunc\",\"ts\":\"1\"").unwrap();
+        drop(f);
+
+        let entries = read(&dir).unwrap();
+        assert_eq!(entries, vec![a.clone(), b.clone()], "good entries survive");
+
+        let (again, corrupt) = read_counting(&dir).unwrap();
+        assert_eq!(again, vec![a.clone(), b.clone()]);
+        assert_eq!(corrupt, 1, "the truncated tail is counted once");
+
+        assert!(
+            exists(&dir, &a.id).unwrap(),
+            "a real id resolves past the damage"
+        );
+        assert!(!exists(&dir, "not-real").unwrap());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

@@ -8,9 +8,8 @@
 
 use crate::commands::truncate;
 use crate::model::{Node, ValidationType};
-use process_control::{ChildExt, Control};
+use crate::subprocess::Captured;
 use std::path::Path;
-use std::process::Stdio;
 use std::time::Duration;
 
 const DEFAULT_VALIDATION_TIMEOUT_SECS: u64 = 300;
@@ -170,7 +169,7 @@ impl ProofRunner for JourneyProofRunner {
 fn observation(
     root: &Path,
     command: &str,
-    o: &process_control::Output,
+    o: &Captured,
     started: std::time::Instant,
 ) -> crate::evidence::RunRecord {
     crate::runner::record(
@@ -195,16 +194,18 @@ fn validation_timeout_secs(v: &Node) -> u64 {
         .unwrap_or(DEFAULT_VALIDATION_TIMEOUT_SECS)
 }
 
-fn output_excerpt(bytes: &[u8]) -> (String, usize, bool) {
-    let byte_count = bytes.len();
-    let take = byte_count.min(VALIDATION_OUTPUT_EXCERPT_BYTES);
+/// Excerpt bounded output for the JSON record. `total` is the TRUE byte count
+/// the stream emitted (which may exceed the retained buffer), so truncation is
+/// reported honestly even though only a window is kept.
+fn output_excerpt(bytes: &[u8], total: usize) -> (String, usize, bool) {
+    let take = bytes.len().min(VALIDATION_OUTPUT_EXCERPT_BYTES);
     let excerpt = String::from_utf8_lossy(&bytes[..take]).to_string();
-    (excerpt, byte_count, byte_count > take)
+    (excerpt, total, total > take)
 }
 
-fn validation_output_json(o: &process_control::Output) -> serde_json::Value {
-    let (stdout, stdout_bytes, stdout_truncated) = output_excerpt(&o.stdout);
-    let (stderr, stderr_bytes, stderr_truncated) = output_excerpt(&o.stderr);
+fn validation_output_json(o: &Captured) -> serde_json::Value {
+    let (stdout, stdout_bytes, stdout_truncated) = output_excerpt(&o.stdout, o.stdout_total);
+    let (stderr, stderr_bytes, stderr_truncated) = output_excerpt(&o.stderr, o.stderr_total);
     serde_json::json!({
         "stdout": stdout,
         "stdout_bytes": stdout_bytes,
@@ -219,20 +220,8 @@ fn run_validation_command(
     root: &Path,
     command: &str,
     timeout_secs: u64,
-) -> std::io::Result<Option<process_control::Output>> {
-    let child = std::process::Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .current_dir(root)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    child
-        .controlled_with_output()
-        .time_limit(Duration::from_secs(timeout_secs))
-        .terminate_for_timeout()
-        .wait()
+) -> std::io::Result<Option<Captured>> {
+    crate::subprocess::run(command, root, Duration::from_secs(timeout_secs))
 }
 
 #[cfg(test)]

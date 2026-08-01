@@ -48,6 +48,20 @@ impl Language {
             _ => Language::Other,
         }
     }
+
+    /// The tree-sitter grammar for this language, or `None` for [`Language::Other`].
+    /// The single place a grammar is chosen, so a file is parsed exactly once and
+    /// the one tree is shared by symbol and call extraction.
+    fn grammar(&self) -> Option<tree_sitter::Language> {
+        Some(match self {
+            Language::Rust => tree_sitter_rust::LANGUAGE.into(),
+            Language::Python => tree_sitter_python::LANGUAGE.into(),
+            Language::Go => tree_sitter_go::LANGUAGE.into(),
+            Language::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
+            Language::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
+            Language::Other => return None,
+        })
+    }
 }
 
 /// The role a file plays — drives which rules apply (e.g. panic markers are
@@ -180,14 +194,23 @@ pub fn extract(path: &str, content: &str) -> Extraction {
     let role = Role::detect(path);
     let loc = content.lines().count();
     let content_hash = fnv1a(content);
-    let (symbols, imports, panic_sites) = match language {
-        Language::Rust => rust::rust_extract(content),
-        Language::Other => (Vec::new(), Vec::new(), 0),
-        other => langs::extract(other, content),
+    // Parse once and share the tree: symbol/import/panic extraction and call
+    // extraction both walk the same root, instead of each re-parsing the file
+    // (this runs per file on the sync hot path). Still a pure function of
+    // content, so the derived plane stays rebuildable (INV-2).
+    let tree = language.grammar().and_then(|g| parse(content, &g));
+    let root = tree.as_ref().map(|t| t.root_node());
+    let (symbols, imports, panic_sites) = match (language, root) {
+        (Language::Rust, Some(r)) => rust::rust_extract(r, content),
+        (Language::Other, _) | (_, None) => (Vec::new(), Vec::new(), 0),
+        (other, Some(r)) => langs::extract(other, r, content),
     };
     // Calls are attributed to the enclosing symbol by line range, so the walk
     // stays per-node and the attribution stays one sorted pass.
-    let calls = calls::extract(language, content, &symbols);
+    let calls = match root {
+        Some(r) => calls::extract(language, r, content, &symbols),
+        None => Vec::new(),
+    };
     Extraction {
         language,
         role,
@@ -198,6 +221,14 @@ pub fn extract(path: &str, content: &str) -> Extraction {
         panic_sites,
         calls,
     }
+}
+
+/// Parse `content` with `grammar`, or `None` if the grammar cannot be set or the
+/// parse fails.
+fn parse(content: &str, grammar: &tree_sitter::Language) -> Option<tree_sitter::Tree> {
+    let mut parser = tree_sitter::Parser::new();
+    parser.set_language(grammar).ok()?;
+    parser.parse(content, None)
 }
 
 /// FNV-1a 64-bit content hash as hex. The single implementation lives in

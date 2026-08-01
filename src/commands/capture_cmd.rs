@@ -174,7 +174,12 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
             let items: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
             if json {
                 let rows: Vec<_> = items.iter().map(inbox_json).collect();
-                println!("{}", serde_json::to_string_pretty(&rows)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows, offset, limit, total
+                    ))?
+                );
             } else {
                 if items.is_empty() && offset == 0 {
                     println!("inbox empty");
@@ -307,7 +312,12 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
             let items: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
             if json {
                 let rows: Result<Vec<_>> = items.iter().map(|n| question_json(&store, n)).collect();
-                println!("{}", serde_json::to_string_pretty(&rows?)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows?, offset, limit, total
+                    ))?
+                );
             } else {
                 if items.is_empty() && offset == 0 {
                     println!("questions empty");
@@ -515,7 +525,12 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
                         })
                     })
                     .collect();
-                println!("{}", serde_json::to_string_pretty(&rows)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows, offset, limit, total
+                    ))?
+                );
             } else {
                 if notes.is_empty() && offset == 0 {
                     println!("no notes");
@@ -654,9 +669,15 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
         }
         TaskCmd::List { limit, offset } => {
             let tasks = store.list_nodes_page(Some(NodeType::TaskRecord), limit, offset)?;
+            let total = store.count_nodes(Some(NodeType::TaskRecord))?;
             if json {
                 let rows: Vec<_> = tasks.iter().map(node_json).collect();
-                println!("{}", serde_json::to_string_pretty(&rows)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&super::pagination_envelope(
+                        &rows, offset, limit, total
+                    ))?
+                );
             } else {
                 if tasks.is_empty() && offset == 0 {
                     println!("no tasks");
@@ -664,11 +685,7 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
                 for n in &tasks {
                     println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
                 }
-                if let Some(footer) = super::page_footer(
-                    tasks.len(),
-                    offset,
-                    store.count_nodes(Some(NodeType::TaskRecord))?,
-                ) {
+                if let Some(footer) = super::page_footer(tasks.len(), offset, total) {
                     println!("{footer}");
                 }
             }

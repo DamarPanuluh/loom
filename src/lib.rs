@@ -47,6 +47,7 @@ pub mod scan;
 pub mod seed;
 pub mod signal;
 pub mod store;
+pub mod subprocess;
 pub mod sync;
 pub mod thresholds;
 pub mod travel;

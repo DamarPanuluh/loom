@@ -146,7 +146,19 @@ impl LadderInputs {
                 .iter()
                 .filter(|e| e.kind == EdgeKind::Validates)
                 .count();
-            (edges.len() - governs - validates, governs, validates)
+            // `depends_on` is a federation ripple link, not a claim the analyze
+            // lane verifies. Counting it as a relationship inflated the rung
+            // above the queue depth — the exact drift the shared predicate
+            // (`not_measured_lane`) exists to prevent.
+            let depends = edges
+                .iter()
+                .filter(|e| e.kind == EdgeKind::DependsOn)
+                .count();
+            (
+                edges.len() - governs - validates - depends,
+                governs,
+                validates,
+            )
         };
         let (stale_relationships, stale_governs, stale_validates) = split(&stale);
         let (uninspected_relationships, uninspected_governs, uninspected_validates) =
@@ -233,8 +245,6 @@ impl LadderInputs {
                 .into_iter()
                 .filter(|n| n.status == "new")
                 .count(),
-            untriaged_findings: crate::signal::untriaged_findings(store)?.len(),
-            stale_findings: crate::signal::stale_findings(store)?.len(),
             proposed_hypotheses: store
                 .nodes_by_status(NodeType::Hypothesis, &["proposed"])?
                 .len(),
@@ -243,7 +253,10 @@ impl LadderInputs {
                 .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
                 .count(),
             divergences: crate::divergence::blocking_count(store)?,
-            audit_findings: crate::audit::run(store)?.len(),
+            audit_findings: crate::audit::run(store)?
+                .into_iter()
+                .filter(|f| store.get_node(&f.subject).ok().flatten().is_some())
+                .count(),
             risk_candidates: crate::risk::rank(store)?.len(),
             doctor_issues: crate::signal::doctor(store)?.len(),
             open_smells,
@@ -261,7 +274,24 @@ pub fn depths(store: &Store) -> Result<QueueDepths> {
 /// Compute the maturity ladder and compass for the current graph.
 pub fn ladder(store: &Store) -> Result<Ladder> {
     let inputs = LadderInputs::gather(store)?;
-    let rungs = build_rungs(&inputs);
+    ladder_from_inputs(store, &inputs)
+}
+
+/// The ladder AND queue depths from ONE gather. Callers that render both (the
+/// `loom status` and `loom_status` surfaces) use this so the expensive gather —
+/// callgraph build, export render, detector suite, audit pass — runs once, not
+/// twice.
+pub fn ladder_and_depths(store: &Store) -> Result<(Ladder, QueueDepths)> {
+    let inputs = LadderInputs::gather(store)?;
+    let depths = QueueDepths::from_inputs(&inputs);
+    let ladder = ladder_from_inputs(store, &inputs)?;
+    Ok((ladder, depths))
+}
+
+/// Turn one gathered snapshot into a Ladder. Kept separate from the gather so a
+/// caller holding `LadderInputs` need not gather a second time.
+fn ladder_from_inputs(store: &Store, inputs: &LadderInputs) -> Result<Ladder> {
+    let rungs = build_rungs(inputs);
     let (phase, rung, next_command, truth_axis) = compass(&rungs);
 
     let (derived_facts, asserted_facts) = store.truth_class_census()?;

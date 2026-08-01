@@ -125,6 +125,16 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
     let mut items = Vec::new();
     let graph = crate::callgraph::build(store)?;
     let Claimed { owned, located } = claimed(store)?;
+    // Locators grouped by the file they name, so the "symbol is gone" check in
+    // the file loop iterates only this file's locators, not every locator per
+    // file.
+    let mut located_by_file: BTreeMap<&str, Vec<(&str, &str)>> = BTreeMap::new();
+    for (symbol, (intent, file)) in &located {
+        located_by_file
+            .entry(file.as_str())
+            .or_default()
+            .push((symbol.as_str(), intent.as_str()));
+    }
 
     for cf in store.list_nodes(Some(NodeType::CodeFile), usize::MAX)? {
         let Ok(content) = std::fs::read_to_string(root.join(&cf.name)) else {
@@ -181,17 +191,20 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
         }
 
         // A locator naming a symbol that is gone.
-        for (symbol, (intent, file)) in &located {
-            if *file != cf.name || live.contains(symbol) {
+        for (symbol, intent) in located_by_file.get(cf.name.as_str()).into_iter().flatten() {
+            if live.contains(*symbol) {
                 continue;
             }
             items.push(Item {
                 kind: Kind::RepointLocator,
-                text: format!("'{symbol}' is named by a live locator but is no longer in {file}"),
-                intent_id: Some(intent.clone()),
+                text: format!(
+                    "'{symbol}' is named by a live locator but is no longer in {}",
+                    cf.name
+                ),
+                intent_id: Some((*intent).to_string()),
                 evidence: AbsorbEvidence {
                     file: cf.name.clone(),
-                    symbol: symbol.clone(),
+                    symbol: (*symbol).to_string(),
                     fingerprint: crate::artifact::fingerprint(&content),
                 },
                 needs: vec!["where the behavior moved to, or that it was removed".into()],

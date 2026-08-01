@@ -779,7 +779,7 @@ fn journey_list_recognizes_proof_kind_journey() {
     // `type: journey` — a repo-native runner stays visible to the family.
     let journey_rows = loom_json_out(tmp.path(), &["journey", "list", "--json"]);
     assert!(
-        journey_rows
+        journey_rows["items"]
             .as_array()
             .unwrap()
             .iter()
@@ -1099,6 +1099,39 @@ fn intent_list_json_runs_clean() {
         }),
     })
     .unwrap();
+}
+
+#[test]
+fn codefile_list_json_reports_pagination_metadata() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    for i in 0..51 {
+        store
+            .add_node(
+                NodeType::CodeFile,
+                &format!("src/file_{i:02}.rs"),
+                "",
+                "active",
+                serde_json::json!({}),
+            )
+            .unwrap();
+    }
+    drop(store);
+
+    let first = loom_json_out(tmp.path(), &["codefile", "list", "--json"]);
+    assert_eq!(first["items"].as_array().unwrap().len(), 50);
+    assert_eq!(first["pagination"]["total"], 51);
+    assert_eq!(first["pagination"]["has_more"], true);
+    assert_eq!(first["pagination"]["next_offset"], 50);
+
+    let final_page = loom_json_out(
+        tmp.path(),
+        &["codefile", "list", "--offset", "50", "--json"],
+    );
+    assert_eq!(final_page["items"].as_array().unwrap().len(), 1);
+    assert_eq!(final_page["pagination"]["total"], 51);
+    assert_eq!(final_page["pagination"]["has_more"], false);
+    assert!(final_page["pagination"]["next_offset"].is_null());
 }
 
 // ---- observed graphs disable the build/fix lanes (you can't change an upstream you only watch) ----
@@ -1572,9 +1605,9 @@ fn json_read_commands_emit_json_and_full_fields() {
     assert_eq!(coverage["codefiles"]["unowned"], 1);
 
     let inbox = loom_json_out(tmp.path(), &["inbox", "list", "--json"]);
-    assert_eq!(inbox[0]["text"], long);
-    assert_eq!(inbox[0]["source"], "test");
-    assert_eq!(inbox[0]["link"], "file:notes.md");
+    assert_eq!(inbox["items"][0]["text"], long);
+    assert_eq!(inbox["items"][0]["source"], "test");
+    assert_eq!(inbox["items"][0]["link"], "file:notes.md");
 
     let validation = loom_json_out(tmp.path(), &["validation", "show", "proof-a", "--json"]);
     assert_eq!(validation["status"], "not_run");
@@ -2453,7 +2486,7 @@ fn journey_coverage_starts_uncovered_without_journey_proof() {
         ],
     );
     let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = v
+    let row = v["items"]
         .as_array()
         .expect("coverage list is an array")
         .first()
@@ -2586,7 +2619,7 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
     assert_eq!(shown["strength"]["grade"], "S3", "derived grade: {shown}");
     assert_eq!(shown["strength"]["call_witness"], "perform_behavior");
     let covered = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = covered.as_array().unwrap().first().unwrap();
+    let row = covered["items"].as_array().unwrap().first().unwrap();
     assert_eq!(
         row["effective_status"], "covered",
         "a passing L5 journey proof must derive coverage=covered: {row}"
@@ -2600,7 +2633,7 @@ fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
     .unwrap();
     loom_ok(tmp.path(), &["sync"]);
     let drifted = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = drifted.as_array().unwrap().first().unwrap();
+    let row = drifted["items"].as_array().unwrap().first().unwrap();
     assert_eq!(
         row["effective_status"], "uncovered",
         "a staled journey proof must flip coverage back to uncovered (single truth source): {row}"
@@ -2677,7 +2710,7 @@ fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
         observe_passing(&store, &val.name);
     }
     let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = v.as_array().unwrap().first().unwrap();
+    let row = v["items"].as_array().unwrap().first().unwrap();
     assert_eq!(
         row["effective_status"], "uncovered",
         "an L1 unit proof must NOT cover a journey: {row}"
@@ -2718,7 +2751,7 @@ fn journey_invariant_point_links_to_intent_and_lists() {
         ],
     );
     let v = loom_json_out(tmp.path(), &["journey", "invariant", "list", "--json"]);
-    let row = v.as_array().unwrap().first().unwrap();
+    let row = v["items"].as_array().unwrap().first().unwrap();
     assert_eq!(row["name"], "standing threshold");
     assert_eq!(row["field"], "headline");
     assert_eq!(row["assertion"], "headline > 1.0 when voucher_count >= 1");
@@ -3341,7 +3374,7 @@ fn sync_stales_journey_proof_when_runner_ref_source_changes() {
     // Coverage now reads uncovered (derived from the reset proof).
     let rows = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
     assert_eq!(
-        rows[0]["effective_status"], "uncovered",
+        rows["items"][0]["effective_status"], "uncovered",
         "coverage flips to uncovered after runner drift: {rows}"
     );
 }
@@ -3853,7 +3886,7 @@ fn adopt_copies_experiment_record_to_spawned_intent() {
     // The spawned intent (not just the hypothesis) carries proposal +
     // prediction + evidence — none of which lived in the intent description.
     let notes = loom_json_out(tmp.path(), &["note", "list", "batch writes", "--json"]);
-    let joined: String = notes
+    let joined: String = notes["items"]
         .as_array()
         .expect("note list --json is an array")
         .iter()
@@ -4053,14 +4086,16 @@ fn task_target_writes_note_and_targetless_is_diary_only() {
         ],
     );
     let notes = loom_json_out(tmp.path(), &["note", "list", "ranking", "--json"]);
-    let arr = notes.as_array().expect("note list --json is an array");
+    let arr = notes["items"]
+        .as_array()
+        .expect("note list --json has items");
     assert_eq!(arr.len(), 1, "targeted task close writes exactly one note");
     let txt = arr[0]["text"].as_str().unwrap_or("");
     assert!(txt.contains("RESULTTOK"), "result text in note: {txt}");
     assert!(txt.contains("experiment"), "task kind in note: {txt}");
 
     // Targetless task: no note anywhere.
-    let before = loom_json_out(tmp.path(), &["note", "list", "--json"])
+    let before = loom_json_out(tmp.path(), &["note", "list", "--json"])["items"]
         .as_array()
         .unwrap()
         .len();
@@ -4079,7 +4114,7 @@ fn task_target_writes_note_and_targetless_is_diary_only() {
             "--json",
         ],
     );
-    let after = loom_json_out(tmp.path(), &["note", "list", "--json"])
+    let after = loom_json_out(tmp.path(), &["note", "list", "--json"])["items"]
         .as_array()
         .unwrap()
         .len();
@@ -4134,7 +4169,9 @@ fn task_abandon_writes_outcome_note() {
         ],
     );
     let notes = loom_json_out(tmp.path(), &["note", "list", "cache", "--json"]);
-    let arr = notes.as_array().expect("note list --json is an array");
+    let arr = notes["items"]
+        .as_array()
+        .expect("note list --json has items");
     assert_eq!(arr.len(), 1, "abandon writes one note on the target intent");
     let txt = arr[0]["text"].as_str().unwrap_or("");
     assert!(txt.contains("abandoned"), "outcome marked abandoned: {txt}");
