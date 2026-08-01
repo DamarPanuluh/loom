@@ -164,7 +164,7 @@ right = sys.argv[2]
 same = normalize(left) == normalize(right)
 print("dogfood: export substance %s" % ("byte-identical" if same else "DRIFTED"), file=sys.stderr)
 if not same:
-    print("dogfood: loom.graph.json substantively changed during restore/sync/proof; commit the fresh export" >&2)
+    print("dogfood: loom.graph.json substantively changed during restore/sync/proof; commit the fresh export", file=sys.stderr)
     sys.exit(1)
 PY
 fi
