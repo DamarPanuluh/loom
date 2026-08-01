@@ -26308,20 +26308,6 @@
       "updated_at": "2026-07-18T19:20:32.585Z"
     },
     {
-      "id": "c48fe0d17a6881a39d360355eac1bc96",
-      "type": "validation",
-      "name": "ring16 policy ratify",
-      "description": "",
-      "status": "passed",
-      "truth_class": "asserted",
-      "body": {
-        "command": "cargo test --test ring16_policy_ratify",
-        "type": "test"
-      },
-      "created_at": "2026-07-18T19:43:43.822Z",
-      "updated_at": "2026-07-19T05:29:00.088Z"
-    },
-    {
       "id": "c4a2148d92a9395d9e7d43d89fb899e7",
       "type": "validation",
       "name": "an intent with a stale proof outranks a  proof",
@@ -92494,13 +92480,6 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "c48fe0d17a6881a39d360355eac1bc96",
-      "target_kind": "node",
-      "key": "proof_strength",
-      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"this proof is not attached to any behavior\"}",
-      "truth_class": "derived"
     },
     {
       "target_id": "c4a2148d92a9395d9e7d43d89fb899e7",
