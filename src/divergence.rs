@@ -290,8 +290,31 @@ fn duplicates(store: &Store, intents: &[crate::model::Node]) -> Result<Vec<Diver
     }
 
     let mut out = Vec::new();
+    // Scenario siblings (children of one parent, or a parent and its child)
+    // are distinct surroundings of one behavior, not duplicates of each
+    // other — a sad path and its edge case share the parent's file and often
+    // its locator by construction. Exempt the pair before the heuristic
+    // flags it.
+    let scenario_children: BTreeMap<String, Vec<String>> = store
+        .edges_with(Some(EdgeKind::ScenarioOf), None, None)?
+        .into_iter()
+        .fold(BTreeMap::new(), |mut m, e| {
+            m.entry(e.from_id.clone())
+                .or_default()
+                .push(e.to_id.clone());
+            m
+        });
     for (i, a) in intents.iter().enumerate() {
         for b in intents.iter().skip(i + 1) {
+            // Related surroundings are not duplicates: a parent and its
+            // scenario, or two scenarios of one parent.
+            let a_parents = scenario_children.get(&a.id).cloned().unwrap_or_default();
+            let b_parents = scenario_children.get(&b.id).cloned().unwrap_or_default();
+            let parent_child = a_parents.contains(&b.id) || b_parents.contains(&a.id);
+            let siblings = a_parents.iter().any(|p| b_parents.contains(p));
+            if parent_child || siblings {
+                continue;
+            }
             let (Some(fa), Some(fb)) = (files.get(&a.id), files.get(&b.id)) else {
                 continue;
             };

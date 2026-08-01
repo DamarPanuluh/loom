@@ -1,0 +1,8 @@
+journey: divergences reach the human, not the machine
+steps:
+  - name: the ratify lane serves a divergence
+    intent: the human is asked only where judgment and evidence disagree
+    run: "loom next --mode ratify --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["work_item"]

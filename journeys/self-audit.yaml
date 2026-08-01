@@ -1,0 +1,8 @@
+journey: the self-audit reports what it finds
+steps:
+  - name: audit surfaces integrity signals and exits non-zero
+    intent: loom can fail its own falsifiability check
+    run: "loom audit --json"
+    expect:
+      exit_code: 1
+      stdout_contains: ["kind", "detail"]

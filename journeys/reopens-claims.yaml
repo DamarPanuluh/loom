@@ -1,0 +1,19 @@
+journey: a settled claim re-opens when its anchor moves
+steps:
+  - name: editing the grounded symbol stales the verdict
+    intent: a change re-opens exactly the claims that pointed at what changed
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      loom intent add --graph "$tmp" --name 'demo behavior' --description 'does something' --level feature &&
+      printf 'fn demo() {}\n' > "$tmp/src.rs" &&
+      loom codefile add --graph "$tmp" src.rs &&
+      loom edge implement --graph "$tmp" 'demo behavior' src.rs --locator 'fn demo' &&
+      eid=$(loom edge list --graph "$tmp" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['items'][0]['id'])") &&
+      loom edge verdict --graph "$tmp" "$eid" ground --criterion 'demo grounding' --evidence 'src.rs:1 — fn demo realizes the behavior' &&
+      loom sync --graph "$tmp" &&
+      printf 'fn other() {}\n' > "$tmp/src.rs" &&
+      loom sync --graph "$tmp" --json &&
+      rm -rf "$tmp"
+    expect:
+      exit_code: 0
+      stdout_contains: ['"edges_staled": 1', '"files_changed": 1']
