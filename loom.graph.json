@@ -33820,14 +33820,14 @@
       "type": "validation",
       "name": "chokepoint ring",
       "description": "",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring23_chokepoint -q",
         "type": "test"
       },
       "created_at": "2026-07-25T10:09:43.248Z",
-      "updated_at": ""
+      "updated_at": "2026-08-01T21:28:11.548Z"
     },
     {
       "id": "fd451f848cf48e3dd2e8a0a404ca8dd7",
@@ -34950,13 +34950,13 @@
       "to_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-07-25T10:09:43.249Z",
-      "updated_at": "2026-08-01T21:22:21.335Z"
+      "updated_at": "2026-08-01T21:28:11.548Z"
     },
     {
       "id": "15dc2a9da33e5f7b73fd05e07f0bd493",
@@ -42010,13 +42010,13 @@
       "to_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "iso5055-sec-no-hardcoded-secrets",
+      "status": "independent",
+      "criterion": "no untrusted-input surface / no hardcoded secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-08-01T19:00:30.842Z",
-      "updated_at": "2026-08-01T21:22:23.078Z"
+      "updated_at": "2026-08-01T21:28:40.145Z"
     },
     {
       "id": "b937a0251723cab8ab606ea91999365f",
@@ -51379,10 +51379,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-01T18:30:54.718Z"
+      "asserted_at": "2026-08-01T21:28:11.543Z"
     },
     {
       "id": "f5b695881fee4bb9a",
@@ -58097,12 +58097,12 @@
       "subject_kind": "edge",
       "subject_id": "b8e85f87b02dc943413a7db9a6506458",
       "claim": "verdict",
-      "state": "passing",
-      "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "expired",
+      "state": "independent",
+      "criterion": "no untrusted-input surface / no hardcoded secrets",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:00:30.843Z"
+      "asserted_at": "2026-08-01T21:28:40.136Z"
     },
     {
       "id": "ff21904a07b4680ca",
@@ -66293,7 +66293,7 @@
       "recorded_at": "2026-08-01T18:14:06.363Z"
     },
     {
-      "id": "e40d629ee3e9bd694",
+      "id": "e91058682dafe341c",
       "fact_id": "f5b185f6bcef4dd73",
       "payload": {
         "kind": "run",
@@ -66305,15 +66305,15 @@
         "stderr_hash": "cbf29ce484222325",
         "stdout_excerpt": "\nrunning 4 tests\n....\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s\n\n",
         "covered": {
-          "src/store/facts.rs": "dc97d12278d2132d",
+          "src/store/facts.rs": "52d404ba97ab3eac",
           "tests/ring23_chokepoint.rs": "7c2a9367912407c5"
         },
         "assertions": 0,
-        "duration_ms": 450,
-        "ran_at": "1785609054718",
+        "duration_ms": 517,
+        "ran_at": "1785619691530",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T18:30:54.718Z"
+      "recorded_at": "2026-08-01T21:28:11.543Z"
     },
     {
       "id": "ec9ad323d10e94f48",
@@ -66322,7 +66322,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring23_chokepoint -q` exit 0"
       },
-      "recorded_at": "2026-08-01T18:30:54.718Z"
+      "recorded_at": "2026-08-01T21:28:11.543Z"
     },
     {
       "id": "eee4a0306e97e820d",
@@ -79646,7 +79646,19 @@
       "recorded_at": "2026-07-25T20:06:25.724Z"
     },
     {
-      "id": "e4f6be3fde6faa202",
+      "id": "e10529e8b111e6802",
+      "fact_id": "ff1b28be175b77a33",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/facts.rs",
+        "start": 1237,
+        "end": 1237,
+        "hash": "7fc94b497cf85c27"
+      },
+      "recorded_at": "2026-08-01T21:28:40.136Z"
+    },
+    {
+      "id": "e15aa474f5dc40eb2",
       "fact_id": "ff1b28be175b77a33",
       "payload": {
         "kind": "run",
@@ -79657,24 +79669,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/store/facts.rs": "dc97d12278d2132d",
+          "src/store/facts.rs": "52d404ba97ab3eac",
           "tests/ring23_chokepoint.rs": "7c2a9367912407c5"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785610830844",
+        "ran_at": "1785619720144",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:00:30.843Z"
+      "recorded_at": "2026-08-01T21:28:40.136Z"
     },
     {
-      "id": "e6b163ac1aaf90512",
+      "id": "e71ca8989dd5d7b31",
       "fact_id": "ff1b28be175b77a33",
       "payload": {
         "kind": "claim",
-        "text": "no iso5055-sec-no-hardcoded-secrets pattern in 2 grounded file(s)"
+        "text": "src/store/facts.rs:1237 — parameterized query with a constant column list; no secrets in the grounded files"
       },
-      "recorded_at": "2026-08-01T19:00:30.843Z"
+      "recorded_at": "2026-08-01T21:28:40.136Z"
     },
     {
       "id": "e604dda48e792b73a",
@@ -84465,7 +84477,7 @@
       "target_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/store/facts.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/store/facts.rs\",\"proven_by\":\"chokepoint ring\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -91765,9 +91777,9 @@
     {
       "target_id": "b8e85f87b02dc943413a7db9a6506458",
       "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 2 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/store/facts.rs\",\"start\":1237,\"end\":1237,\"hash\":\"7fc94b497cf85c27\"}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
@@ -95357,7 +95369,7 @@
       "target_id": "fcb27a29ea1d1198d0cc0478497daf9a",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
+      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"4 test(s) reported passing by the runner\",\"call_witness\":\"assert_fact\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
       "truth_class": "derived"
     },
     {
