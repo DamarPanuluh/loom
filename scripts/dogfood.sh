@@ -143,12 +143,21 @@ import sys
 
 def normalize(path):
     g = json.load(open(path))
-    # Evidence rows are the observation HISTORY — a fresh checkout re-runs
-    # proofs and mints new run records, so the sets can never be byte-equal.
-    # The graph's TRUTH is the fixpoint: nodes, edges, facets, facts (whose
-    # `verification` field re-earns verified/cited/expired against the local
-    # tree on import+sync), config, journal, baselines. Evidence is support.
+    # Evidence rows and timestamps are the observation HISTORY — a fresh
+    # checkout re-runs proofs and mints new run records, re-asserting facts
+    # and touching nodes/edges with fresh timestamps. The graph's TRUTH is
+    # the fixpoint: nodes, edges, facets, facts (whose `verification`
+    # re-earns verified/cited/expired against the local tree), config,
+    # journal, baselines. Evidence and timestamps are support, not truth.
     g.pop("evidence", None)
+    for n in g.get("nodes", []):
+        n.pop("created_at", None)
+        n.pop("updated_at", None)
+    for e in g.get("edges", []):
+        e.pop("created_at", None)
+        e.pop("updated_at", None)
+    for f in g.get("facts", []):
+        f.pop("asserted_at", None)
     return json.dumps(g, sort_keys=True)
 left = sys.argv[1]
 right = sys.argv[2]

@@ -58,7 +58,21 @@ python3 - "$ROOT/loom.graph.json" "$WORK/loom.graph.json" <<'PY'
 import json, sys
 def norm(path):
     g = json.load(open(path))
+    # Evidence rows and timestamps are the observation HISTORY — a fresh
+    # checkout re-runs proofs and mints new run records, re-asserting facts
+    # and touching nodes/edges with fresh timestamps. The graph's TRUTH is
+    # the fixpoint: nodes, edges, facets, facts (whose `verification`
+    # re-earns verified/cited/expired against the local tree), config,
+    # journal, baselines. Evidence and timestamps are support, not truth.
     g.pop("evidence", None)
+    for n in g.get("nodes", []):
+        n.pop("created_at", None)
+        n.pop("updated_at", None)
+    for e in g.get("edges", []):
+        e.pop("created_at", None)
+        e.pop("updated_at", None)
+    for f in g.get("facts", []):
+        f.pop("asserted_at", None)
     return json.dumps(g, sort_keys=True)
 same = norm(sys.argv[1]) == norm(sys.argv[2])
 print("fixpoint:", "OK — fresh checkout reproduces the committed graph" if same else "BROKEN")
