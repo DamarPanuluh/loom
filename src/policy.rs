@@ -22,6 +22,10 @@ use serde::{Deserialize, Serialize};
 /// `store::PORTABLE_META_KEYS`).
 pub const EVIDENCE_POLICY_META_KEY: &str = "evidence_policy";
 
+/// Meta key carrying the JSON-encoded ratification-delegation registry
+/// (allowlisted in `store::PORTABLE_META_KEYS`).
+pub const RATIFY_POLICIES_META_KEY: &str = "ratify_policies";
+
 /// Origins that may appear on an Intent's immutable provenance facet.
 pub const INTENT_ORIGINS: &[&str] = &["human", "llm", "drive", "import"];
 
@@ -108,6 +112,68 @@ pub fn save(store: &Store, p: &EvidencePolicy) -> Result<()> {
 /// than a pinned snapshot of today's values.
 pub fn clear(store: &Store) -> Result<()> {
     store.remove_meta(EVIDENCE_POLICY_META_KEY)
+}
+
+// ---- ratification-delegation registry --------------------------------------
+//
+// A ratify policy is a named delegation: the human declares a scope once
+// ("refactor/hardening does not need my approval") and `loom intent ratify
+// --by-policy <name>` may ratify under it without a per-intent challenge. The
+// record always attributes to `policy:<name>` — never to a human reviewing
+// per-intent — and the declaration's `source` must cite the recorded human act
+// (a finding id or journal ref) behind the delegation.
+
+/// One named ratification delegation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RatifyPolicy {
+    /// Policy name, used as `loom intent ratify --by-policy <name>`.
+    pub name: String,
+    /// The delegated scope, in the human's words.
+    pub description: String,
+    /// The recorded human act behind the delegation: a finding id or journal ref.
+    pub source: String,
+    /// Who declared it — always `human` (the recorded act, never an agent).
+    pub declared_by: String,
+    /// When the delegation was recorded (the source's date, or declaration time).
+    pub declared_at: String,
+}
+
+/// Read the registry; absent meta means no delegations exist.
+pub fn ratify_policies(store: &Store) -> Result<Vec<RatifyPolicy>> {
+    match store.get_meta(RATIFY_POLICIES_META_KEY)? {
+        Some(json) => Ok(serde_json::from_str(&json)?),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// Resolve one policy by exact name.
+pub fn ratify_policy(store: &Store, name: &str) -> Result<RatifyPolicy> {
+    ratify_policies(store)?
+        .into_iter()
+        .find(|p| p.name == name)
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "no ratify policy named '{name}' — declare it first with `loom policy ratify-add`"
+            )
+        })
+}
+
+/// Declare a delegation. Idempotent by name: a re-declaration with the same
+/// name and source changes nothing.
+pub fn add_ratify_policy(store: &Store, p: &RatifyPolicy) -> Result<()> {
+    let mut all = ratify_policies(store)?;
+    if let Some(existing) = all.iter().find(|x| x.name == p.name) {
+        if existing.source == p.source && existing.description == p.description {
+            return Ok(()); // same delegation, already declared
+        }
+        bail!(
+            "ratify policy '{}' already exists with a different source — retire or rename",
+            p.name
+        );
+    }
+    all.push(p.clone());
+    store.set_meta(RATIFY_POLICIES_META_KEY, &serde_json::to_string(&all)?)
 }
 
 #[cfg(test)]

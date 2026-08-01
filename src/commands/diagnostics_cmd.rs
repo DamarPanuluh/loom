@@ -1053,7 +1053,64 @@ pub(crate) fn policy_cmd(
                 "evidence policy reset to shipped defaults".to_string(),
             )
         }
+        PolicyCmd::RatifyAdd {
+            name,
+            description,
+            source,
+        } => policy_ratify_add(graph, json, name, description, source),
     }
+}
+
+/// Declare a ratification-delegation policy.
+///
+/// The declaration's authority is the RECORDED human act, not this invocation:
+/// `--source` must resolve to a finding or a journal entry that exists in the
+/// graph. The ratification records will attribute to `policy:<name>`, never to
+/// a human per-intent.
+fn policy_ratify_add(
+    graph: Option<&Path>,
+    json: bool,
+    name: String,
+    description: String,
+    source: String,
+) -> Result<()> {
+    let store = open(graph)?;
+    let source = source.trim();
+    if source.is_empty() || crate::model::is_placeholder(source) {
+        bail!(
+            "--source is required: the finding id or journal ref recording the human's delegation"
+        );
+    }
+    let resolved_finding = source
+        .split_whitespace()
+        .find(|tok| tok.len() == 32 && tok.chars().all(|c| c.is_ascii_hexdigit()))
+        .and_then(|tok| store.get_node(tok).ok().flatten());
+    let resolved_journal = source
+        .split_whitespace()
+        .find_map(|tok| tok.strip_prefix("journal:"))
+        .filter(|id| crate::journal::exists(store.root(), id).unwrap_or(false));
+    if resolved_finding.is_none() && resolved_journal.is_none() {
+        bail!("--source must cite an existing finding id or journal: ref, got '{source}'");
+    }
+    let when = resolved_journal
+        .map(|_| "cited journal".to_string())
+        .or_else(|| resolved_finding.as_ref().map(|f| f.updated_at.clone()))
+        .unwrap_or_default();
+    let p = crate::policy::RatifyPolicy {
+        name: name.clone(),
+        description: description.clone(),
+        source: source.to_string(),
+        declared_by: "human".into(),
+        declared_at: when,
+    };
+    crate::policy::add_ratify_policy(&store, &p)?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({ "policy": p }),
+        "loom status",
+        format!("ratify policy '{name}' declared (source: {source})"),
+    )
 }
 
 /// The full impact answer as JSON: callers (deduped, nearest-first), the intents

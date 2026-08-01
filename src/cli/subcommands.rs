@@ -69,6 +69,11 @@ pub enum IntentCmd {
         /// Why this behavior is wanted: an utterance, source doc, or decision.
         #[arg(long)]
         evidence: Option<String>,
+        /// Ratify under a declared delegation policy instead of a per-intent
+        /// human challenge; the record attributes to `policy:<name>`. The
+        /// policy must exist (`loom policy ratify-add`).
+        #[arg(long)]
+        by_policy: Option<String>,
     },
     /// Say a behavior is NOT wanted. The cheap, high-leverage half of the
     /// authority: no typed challenge — the substantive reason IS the act —
@@ -1087,6 +1092,21 @@ pub enum PolicyCmd {
     GateRemove {
         /// The lane to stop gating.
         role: String,
+    },
+    /// Declare a ratification-delegation policy: a named scope under which
+    /// `loom intent ratify --by-policy <name>` may ratify without a per-intent
+    /// challenge. The delegation's human provenance is `--source` — the finding
+    /// id or journal ref recording the human's decision. Ratifications under
+    /// it attribute to `policy:<name>`, never to a human reviewing per-intent.
+    RatifyAdd {
+        /// Policy name (used as `loom intent ratify --by-policy <name>`).
+        name: String,
+        /// The delegated scope, in the human's words.
+        #[arg(long)]
+        description: String,
+        /// The recorded human act behind the delegation: a finding id or journal ref.
+        #[arg(long)]
+        source: String,
     },
     /// Reset the whole policy to the shipped defaults (drops the config).
     Reset,

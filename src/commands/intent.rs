@@ -87,7 +87,21 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             classification,
             evidence,
         } => intent_impact(graph, key, classification, evidence, json),
-        IntentCmd::Ratify { key, all, evidence } => intent_ratify(graph, key, all, evidence, json),
+        IntentCmd::Ratify {
+            key,
+            all,
+            evidence,
+            by_policy,
+        } => intent_ratify(
+            graph,
+            RatifyArgs {
+                key,
+                all,
+                evidence,
+                by_policy,
+            },
+            json,
+        ),
         IntentCmd::Reject { key, reason } => intent_reject(graph, &key, &reason, json),
         IntentCmd::Tag { cmd } => intent_tag(graph, cmd, json),
     }
@@ -354,18 +368,21 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
 /// authority's evidence-bearing "yes, this is wanted". The ONE write in the
 /// system denied to every `llm:*` lane — the LLM may author everything and
 /// ratify nothing (INV-8; fail closed, no override flag).
-fn intent_ratify(
-    graph: Option<&Path>,
+/// One `loom intent ratify` invocation's parameters, bundled so the handler
+/// stays under the excess-args gate as the surface grows.
+struct RatifyArgs {
     key: Option<String>,
     all: bool,
     evidence: Option<String>,
-    json: bool,
-) -> Result<()> {
+    by_policy: Option<String>,
+}
+
+fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let evidence = evidence.ok_or_else(|| {
+    let evidence = args.evidence.ok_or_else(|| {
         anyhow::anyhow!("--evidence is required: say why this behavior is wanted")
     })?;
-    let targets: Vec<Node> = match (&key, all) {
+    let targets: Vec<Node> = match (&args.key, args.all) {
         (Some(_), true) => bail!("pass a key or --all, not both"),
         (None, false) => bail!("pass an intent key, or --all to ratify every unratified intent"),
         (Some(k), false) => vec![store.resolve_node(k, Some(NodeType::Intent))?],
@@ -396,14 +413,32 @@ fn intent_ratify(
     // times is not 51 times the assurance — it is how a worker facing 51
     // prompts ends up forging the records instead, which is exactly what
     // happened to 39 of this graph's own ratifications.
+    //
+    // A declared delegation policy replaces the challenge: the human's authority
+    // was recorded once (`loom policy ratify-add`), and every record under it
+    // attributes to `policy:<name>` — the honest half of delegation.
     let subject = match targets.as_slice() {
         [one] => one.name.clone(),
         many => format!("ratify {}", many.len()),
     };
-    let presence = super::require_challenge(&subject)?;
+    let presence = match &args.by_policy {
+        Some(policy_name) => {
+            let pol = crate::policy::ratify_policy(&store, policy_name)?;
+            if pol.declared_by != "human" {
+                bail!("ratify policy '{policy_name}' was not declared by a human; refusing");
+            }
+            format!("policy:{policy_name}")
+        }
+        None => super::require_challenge(&subject)?.to_string(),
+    };
     let mut ratified = Vec::new();
     for n in &targets {
-        store.ratify_intent(&n.id, &evidence, presence)?;
+        match &args.by_policy {
+            Some(policy_name) => {
+                store.ratify_intent_by_policy(&n.id, &evidence, &presence, policy_name)?
+            }
+            None => store.ratify_intent(&n.id, &evidence, &presence)?,
+        }
         ratified.push(serde_json::json!({ "id": n.id, "name": n.name }));
     }
     pulse::emit_line(
