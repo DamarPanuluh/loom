@@ -34268,13 +34268,13 @@
       "to_id": "c9ed49297310b82aec31e1c1c3de15e2",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.125Z",
-      "updated_at": "2026-08-01T20:26:03.276Z"
+      "updated_at": "2026-08-01T20:41:04.512Z"
     },
     {
       "id": "07b77a71169c6125f2412560e0472c4e",
@@ -34992,13 +34992,13 @@
       "to_id": "c376864697a2d5c05a6477aee89ec5ef",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:16.889Z",
-      "updated_at": "2026-08-01T20:26:03.861Z"
+      "updated_at": "2026-08-01T20:41:04.532Z"
     },
     {
       "id": "1708a8894d7d2a15ca5baf0cb71a55a7",
@@ -35380,13 +35380,13 @@
       "to_id": "c376864697a2d5c05a6477aee89ec5ef",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.368Z",
-      "updated_at": "2026-08-01T20:26:04.092Z"
+      "updated_at": "2026-08-01T20:40:41.827Z"
     },
     {
       "id": "1e70261cd9e6d358415eb1fa0b91d3d7",
@@ -35612,13 +35612,13 @@
       "to_id": "c9ed49297310b82aec31e1c1c3de15e2",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.347Z",
-      "updated_at": "2026-08-01T20:26:02.894Z"
+      "updated_at": "2026-08-01T20:40:41.848Z"
     },
     {
       "id": "2772516be4efa8c5ff679491359ea2ab",
@@ -37018,13 +37018,13 @@
       "to_id": "183a111cc33b61650b56d42a02c9755f",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-injection",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.502Z",
-      "updated_at": "2026-08-01T20:26:02.197Z"
+      "updated_at": "2026-08-01T20:40:41.877Z"
     },
     {
       "id": "4d5099725a307d8b1b5232e865d30e69",
@@ -37500,13 +37500,13 @@
       "to_id": "c9ed49297310b82aec31e1c1c3de15e2",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-injection",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.482Z",
-      "updated_at": "2026-08-01T20:26:03.951Z"
+      "updated_at": "2026-08-01T20:40:41.902Z"
     },
     {
       "id": "543b86259db397df7daf4378054a73d2",
@@ -37570,13 +37570,13 @@
       "to_id": "11dcc7c1219770fcd321b419909dc092",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "grounding resolves",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-18T20:01:40.929Z",
-      "updated_at": "2026-08-01T20:26:03.094Z"
+      "updated_at": "2026-08-01T20:40:31.714Z"
     },
     {
       "id": "55dc49d5268cc8010bbca833c8179ee5",
@@ -38492,13 +38492,13 @@
       "to_id": "a693d8474b5647b05bb91f1012fd5bed",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:12:42.097Z",
-      "updated_at": "2026-08-01T20:26:02.930Z"
+      "updated_at": "2026-08-01T20:40:41.924Z"
     },
     {
       "id": "6978e527ba50e3d3976c8a12b5bc9f8f",
@@ -39954,13 +39954,13 @@
       "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "grounding resolves",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-18T19:58:34.116Z",
-      "updated_at": "2026-08-01T20:26:01.747Z"
+      "updated_at": "2026-08-01T20:40:31.766Z"
     },
     {
       "id": "8bf0ce692f5abd7b92501425851057bc",
@@ -40024,13 +40024,13 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-injection",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:23:48.447Z",
-      "updated_at": "2026-08-01T20:26:04.178Z"
+      "updated_at": "2026-08-01T20:40:41.982Z"
     },
     {
       "id": "8e632c3c7aca8f98015934bc28e2108e",
@@ -40562,13 +40562,13 @@
       "to_id": "a693d8474b5647b05bb91f1012fd5bed",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T19:56:21.006Z",
-      "updated_at": "2026-08-01T20:26:02.320Z"
+      "updated_at": "2026-08-01T20:41:04.552Z"
     },
     {
       "id": "995d2a15e1778c326af5a0f415a07fd8",
@@ -40732,13 +40732,13 @@
       "to_id": "a693d8474b5647b05bb91f1012fd5bed",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-injection",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:16:13.323Z",
-      "updated_at": "2026-08-01T20:26:02.813Z"
+      "updated_at": "2026-08-01T20:40:42.029Z"
     },
     {
       "id": "9c9eea7b1f242221ba91c6d5d2c225b1",
@@ -41144,13 +41144,13 @@
       "to_id": "3c16c60023caa39092442175d086a9a7",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.396Z",
-      "updated_at": "2026-08-01T20:26:03.550Z"
+      "updated_at": "2026-08-01T20:40:42.049Z"
     },
     {
       "id": "a33d28262063690215498f6b94facd51",
@@ -41612,13 +41612,13 @@
       "to_id": "183a111cc33b61650b56d42a02c9755f",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.366Z",
-      "updated_at": "2026-08-01T20:26:01.423Z"
+      "updated_at": "2026-08-01T20:40:42.071Z"
     },
     {
       "id": "ae33a91439eee51ec5714b31387b292e",
@@ -41668,13 +41668,13 @@
       "to_id": "c376864697a2d5c05a6477aee89ec5ef",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-injection",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.589Z",
-      "updated_at": "2026-08-01T20:26:01.658Z"
+      "updated_at": "2026-08-01T20:40:42.094Z"
     },
     {
       "id": "af7beb59c4edf44e0b72eb5f23508757",
@@ -41824,13 +41824,13 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:13:51.604Z",
-      "updated_at": "2026-08-01T20:26:03.253Z"
+      "updated_at": "2026-08-01T20:40:42.131Z"
     },
     {
       "id": "b484685ca66b0d952b7d3c6b36687a32",
@@ -42506,13 +42506,13 @@
       "to_id": "183a111cc33b61650b56d42a02c9755f",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.143Z",
-      "updated_at": "2026-08-01T20:26:01.923Z"
+      "updated_at": "2026-08-01T20:41:04.573Z"
     },
     {
       "id": "c559702dbdf46e42e6cf66557b7c7573",
@@ -44940,13 +44940,13 @@
       "to_id": "3c16c60023caa39092442175d086a9a7",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.161Z",
-      "updated_at": "2026-08-01T20:26:03.335Z"
+      "updated_at": "2026-08-01T20:41:04.592Z"
     },
     {
       "id": "d9945098e13fa2207",
@@ -46376,13 +46376,13 @@
       "to_id": "3c16c60023caa39092442175d086a9a7",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-sec-no-injection",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-19T05:20:06.528Z",
-      "updated_at": "2026-08-01T20:26:02.671Z"
+      "updated_at": "2026-08-01T20:40:42.194Z"
     },
     {
       "id": "e23849a310f10f435289ce9cbc822bed",
@@ -46670,13 +46670,13 @@
       "to_id": "94f6d6de1c7938f2b1e96bb8545ce2ed",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "grounding resolves",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:18:30.254Z",
-      "updated_at": "2026-08-01T20:26:03.184Z"
+      "updated_at": "2026-08-01T20:40:31.814Z"
     },
     {
       "id": "ea4df4cad376bcd434247d4e69295adc",
@@ -46726,13 +46726,13 @@
       "to_id": "31de84020fb4888a6bea359e9aa60698",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "grounding resolves",
       "confidence": 0.95,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:40.845Z",
-      "updated_at": "2026-08-01T20:26:03.438Z"
+      "updated_at": "2026-08-01T20:40:31.843Z"
     },
     {
       "id": "ece5f14c7b8cf1ce43979f3b1255175b",
@@ -47020,13 +47020,13 @@
       "to_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "iso5055-rel-no-unchecked-failure",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:01:11.555Z",
-      "updated_at": "2026-08-01T20:26:04.241Z"
+      "updated_at": "2026-08-01T20:40:42.233Z"
     },
     {
       "id": "f25055a84658b70384104eff15c111cc",
@@ -48787,10 +48787,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:53.437Z"
+      "asserted_at": "2026-08-01T20:40:42.063Z"
     },
     {
       "id": "f1fbb4454eaa0f285",
@@ -49675,10 +49675,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-injection",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:53.448Z"
+      "asserted_at": "2026-08-01T20:40:42.085Z"
     },
     {
       "id": "f3569ad6b424b509b",
@@ -49963,10 +49963,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "grounding resolves",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.95,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:43.900Z"
+      "asserted_at": "2026-08-01T20:40:31.730Z"
     },
     {
       "id": "f3a2ad4f493c1ddc0",
@@ -50455,10 +50455,10 @@
       "claim": "verdict",
       "state": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:11:59.331Z"
+      "asserted_at": "2026-08-01T20:41:04.566Z"
     },
     {
       "id": "f46b0f051109aa7ed",
@@ -51127,10 +51127,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-injection",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:53.299Z"
+      "asserted_at": "2026-08-01T20:40:41.864Z"
     },
     {
       "id": "f554d87f1f3f30dac",
@@ -51511,10 +51511,10 @@
       "claim": "verdict",
       "state": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:11:59.268Z"
+      "asserted_at": "2026-08-01T20:41:04.546Z"
     },
     {
       "id": "f5f4bf2563c88261e",
@@ -52627,10 +52627,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-injection",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T18:59:14.922Z"
+      "asserted_at": "2026-08-01T20:40:42.186Z"
     },
     {
       "id": "f79fe566fc6943413",
@@ -53095,10 +53095,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-injection",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:53.414Z"
+      "asserted_at": "2026-08-01T20:40:42.018Z"
     },
     {
       "id": "f850ac80c74ab8c5f",
@@ -53587,10 +53587,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:09:08.469Z"
+      "asserted_at": "2026-08-01T20:40:41.841Z"
     },
     {
       "id": "f8ecdf68d37146e3e",
@@ -53731,10 +53731,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:53.338Z"
+      "asserted_at": "2026-08-01T20:40:41.918Z"
     },
     {
       "id": "f9157b107d47f9426",
@@ -53935,10 +53935,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "grounding resolves",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.95,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T18:49:53.585Z"
+      "asserted_at": "2026-08-01T20:40:31.672Z"
     },
     {
       "id": "f936c2f7a67a87bb1",
@@ -54331,10 +54331,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "grounding resolves",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.95,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:43.922Z"
+      "asserted_at": "2026-08-01T20:40:31.780Z"
     },
     {
       "id": "f9b8368de5604f8ee",
@@ -54763,10 +54763,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:44:04.917Z"
+      "asserted_at": "2026-08-01T20:40:42.108Z"
     },
     {
       "id": "fa713aa660cd90bca",
@@ -54883,10 +54883,10 @@
       "claim": "verdict",
       "state": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:11:58.990Z"
+      "asserted_at": "2026-08-01T20:41:04.497Z"
     },
     {
       "id": "fa9645e4942916c9f",
@@ -55255,10 +55255,10 @@
       "claim": "verdict",
       "state": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:11:59.341Z"
+      "asserted_at": "2026-08-01T20:41:04.586Z"
     },
     {
       "id": "fb2519574e043ba3c",
@@ -55543,10 +55543,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "grounding resolves",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.95,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T18:49:53.913Z"
+      "asserted_at": "2026-08-01T20:40:31.829Z"
     },
     {
       "id": "fb711c72de5fb35c6",
@@ -55771,10 +55771,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T18:59:14.687Z"
+      "asserted_at": "2026-08-01T20:40:42.043Z"
     },
     {
       "id": "fbd49b19513772834",
@@ -56875,10 +56875,10 @@
       "claim": "verdict",
       "state": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:11:59.028Z"
+      "asserted_at": "2026-08-01T20:41:04.527Z"
     },
     {
       "id": "fd44eca81d15811c9",
@@ -57223,10 +57223,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-injection",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:09:08.490Z"
+      "asserted_at": "2026-08-01T20:40:41.890Z"
     },
     {
       "id": "fde262c2466d32f2a",
@@ -57571,10 +57571,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:07:53.267Z"
+      "asserted_at": "2026-08-01T20:40:41.822Z"
     },
     {
       "id": "fe453eab9bf8f118c",
@@ -57991,10 +57991,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-injection",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:44:04.829Z"
+      "asserted_at": "2026-08-01T20:40:41.939Z"
     },
     {
       "id": "fef5e8a82b6a88528",
@@ -58183,10 +58183,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-rel-no-unchecked-failure",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:44:04.999Z"
+      "asserted_at": "2026-08-01T20:40:42.208Z"
     },
     {
       "id": "ff37a4d43a0c1b0fd",
@@ -61579,7 +61579,7 @@
       "recorded_at": "2026-08-01T18:16:30.511Z"
     },
     {
-      "id": "e385639a75352ff35",
+      "id": "e4ffb2d89867c719a",
       "fact_id": "f1f39bb5e02d12b5a",
       "payload": {
         "kind": "run",
@@ -61591,15 +61591,15 @@
         "stderr_hash": "cbf29ce484222325",
         "covered": {
           "src/commands/journey/mod.rs": "25f8cfb906feaede",
-          "src/journey.rs": "dfba2e000e3bb8a9",
+          "src/journey.rs": "64d9bd67bbba8bc5",
           "tests/ring18_journey_baseline.rs": "dedd3ba593b2199f"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785611273438",
+        "ran_at": "1785616842070",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:53.437Z"
+      "recorded_at": "2026-08-01T20:40:42.063Z"
     },
     {
       "id": "eceee32e8826ac571",
@@ -61608,7 +61608,7 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-hardcoded-secrets pattern in 3 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:07:53.437Z"
+      "recorded_at": "2026-08-01T20:40:42.063Z"
     },
     {
       "id": "ef8c3e62bc04e979d",
@@ -63192,7 +63192,7 @@
       "recorded_at": "2026-08-01T18:34:27.634Z"
     },
     {
-      "id": "e40e30413df928c03",
+      "id": "e322ff2483e0cd6c5",
       "fact_id": "f34eebe180c5e7299",
       "payload": {
         "kind": "run",
@@ -63203,14 +63203,14 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/travel.rs": "0f89aba376142112"
+          "src/travel.rs": "ec998f7ff7d3ac07"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611273450",
+        "ran_at": "1785616842093",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:53.448Z"
+      "recorded_at": "2026-08-01T20:40:42.085Z"
     },
     {
       "id": "ef83c62d68249be2d",
@@ -63219,7 +63219,7 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-injection pattern in 1 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:07:53.448Z"
+      "recorded_at": "2026-08-01T20:40:42.085Z"
     },
     {
       "id": "e5e178c1b7a28d8ef",
@@ -63748,7 +63748,19 @@
       "recorded_at": "2026-08-01T18:49:53.873Z"
     },
     {
-      "id": "e1b79ffac2270645e",
+      "id": "e2b0f996bf9b2bdb4",
+      "fact_id": "f3a260ad9e480c5f2",
+      "payload": {
+        "kind": "span",
+        "file": "src/journey.rs",
+        "start": 261,
+        "end": 261,
+        "hash": "6dbdb01deb886827"
+      },
+      "recorded_at": "2026-08-01T20:40:31.730Z"
+    },
+    {
+      "id": "eab07869a3404cd45",
       "fact_id": "f3a260ad9e480c5f2",
       "payload": {
         "kind": "run",
@@ -63756,39 +63768,27 @@
         "command": "resolve 'deviations' in src/journey.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "7cf57112b5381209",
+        "stdout_hash": "f71c426ab8fb5bc8",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'deviations' at src/journey.rs:224 (1 match) [c6fdebadb4cea103]",
+        "stdout_excerpt": "function 'deviations' at src/journey.rs:261 (1 match) [c6fdebadb4cea103]",
         "covered": {
-          "src/journey.rs": "dfba2e000e3bb8a9"
+          "src/journey.rs": "64d9bd67bbba8bc5"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785611263906",
+        "ran_at": "1785616831764",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:43.900Z"
+      "recorded_at": "2026-08-01T20:40:31.730Z"
     },
     {
-      "id": "e623d7bb3bdf64f28",
-      "fact_id": "f3a260ad9e480c5f2",
-      "payload": {
-        "kind": "span",
-        "file": "src/journey.rs",
-        "start": 224,
-        "end": 224,
-        "hash": "6dbdb01deb886827"
-      },
-      "recorded_at": "2026-08-01T19:07:43.900Z"
-    },
-    {
-      "id": "e925390dc5da90072",
+      "id": "ed33acf6e3e64490e",
       "fact_id": "f3a260ad9e480c5f2",
       "payload": {
         "kind": "claim",
-        "text": "src/journey.rs:224 — locator deviations resolves in the realizing file; grounding holds"
+        "text": "src/journey.rs:261 — locator deviations resolves"
       },
-      "recorded_at": "2026-08-01T19:07:43.900Z"
+      "recorded_at": "2026-08-01T20:40:31.730Z"
     },
     {
       "id": "e498ab96c440842f2",
@@ -64575,16 +64575,7 @@
       "recorded_at": "2026-08-01T18:34:27.638Z"
     },
     {
-      "id": "e0a7911ce6a01d279",
-      "fact_id": "f4689f3452cb94fb8",
-      "payload": {
-        "kind": "claim",
-        "text": "all remaining pattern hits are test fixtures/test modules — idiomatic unwrap in test setup, not unchecked failure in shipped code"
-      },
-      "recorded_at": "2026-08-01T19:11:59.331Z"
-    },
-    {
-      "id": "e3205034290c77c4f",
+      "id": "e78bb9f2305d27c74",
       "fact_id": "f4689f3452cb94fb8",
       "payload": {
         "kind": "run",
@@ -64592,20 +64583,29 @@
         "command": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 3 realizing file(s)",
         "cwd": "",
         "exit_code": 1,
-        "stdout_hash": "cc5d8ac33d541407",
+        "stdout_hash": "960d9e943395fceb",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "src/journey.rs:1194 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:28 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:29 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:30 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:32 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:33 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:40 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:41 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:42 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:45 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:46 \\bunwrap\\(\\)",
+        "stdout_excerpt": "src/journey.rs:1231 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:28 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:29 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:30 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:32 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:33 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:40 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:41 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:42 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:45 \\bunwrap\\(\\)\ntests/ring18_journey_baseline.rs:46 \\bunwrap\\(\\)",
         "covered": {
           "src/commands/journey/mod.rs": "25f8cfb906feaede",
-          "src/journey.rs": "dfba2e000e3bb8a9",
+          "src/journey.rs": "64d9bd67bbba8bc5",
           "tests/ring18_journey_baseline.rs": "dedd3ba593b2199f"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611519332",
+        "ran_at": "1785616864572",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:11:59.331Z"
+      "recorded_at": "2026-08-01T20:41:04.566Z"
+    },
+    {
+      "id": "ec7226de016c95be6",
+      "fact_id": "f4689f3452cb94fb8",
+      "payload": {
+        "kind": "claim",
+        "text": "remaining pattern hits are test fixtures — idiomatic unwrap in test setup, not unchecked failure in shipped code"
+      },
+      "recorded_at": "2026-08-01T20:41:04.566Z"
     },
     {
       "id": "e55bdc52d61cb1b3b",
@@ -65815,7 +65815,16 @@
       "recorded_at": "2026-08-01T19:38:02.289Z"
     },
     {
-      "id": "e5a997a02cf43a1f9",
+      "id": "ec73db3ec9cfde27e",
+      "fact_id": "f554aeb8880841ad4",
+      "payload": {
+        "kind": "claim",
+        "text": "no iso5055-sec-no-injection pattern in 3 grounded file(s)"
+      },
+      "recorded_at": "2026-08-01T20:40:41.864Z"
+    },
+    {
+      "id": "ed40b4dfea4992916",
       "fact_id": "f554aeb8880841ad4",
       "payload": {
         "kind": "run",
@@ -65827,24 +65836,15 @@
         "stderr_hash": "cbf29ce484222325",
         "covered": {
           "src/commands/journey/mod.rs": "25f8cfb906feaede",
-          "src/journey.rs": "dfba2e000e3bb8a9",
+          "src/journey.rs": "64d9bd67bbba8bc5",
           "tests/ring18_journey_baseline.rs": "dedd3ba593b2199f"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611273301",
+        "ran_at": "1785616841876",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:53.299Z"
-    },
-    {
-      "id": "ec73db3ec9cfde27e",
-      "fact_id": "f554aeb8880841ad4",
-      "payload": {
-        "kind": "claim",
-        "text": "no iso5055-sec-no-injection pattern in 3 grounded file(s)"
-      },
-      "recorded_at": "2026-08-01T19:07:53.299Z"
+      "recorded_at": "2026-08-01T20:40:41.864Z"
     },
     {
       "id": "e8a2a098fccb64c0e",
@@ -66648,16 +66648,16 @@
       "recorded_at": "2026-08-01T19:07:43.918Z"
     },
     {
-      "id": "e24529d096e3f3797",
+      "id": "eacf69ea2807cf8a8",
       "fact_id": "f5eeed6c556ca3298",
       "payload": {
         "kind": "claim",
-        "text": "all remaining pattern hits are test fixtures/test modules — idiomatic unwrap in test setup, not unchecked failure in shipped code"
+        "text": "remaining pattern hits are test fixtures — idiomatic unwrap in test setup, not unchecked failure in shipped code"
       },
-      "recorded_at": "2026-08-01T19:11:59.268Z"
+      "recorded_at": "2026-08-01T20:41:04.546Z"
     },
     {
-      "id": "ee71fca99f47bbfcd",
+      "id": "ee32fbd53617dea4c",
       "fact_id": "f5eeed6c556ca3298",
       "payload": {
         "kind": "run",
@@ -66665,19 +66665,19 @@
         "command": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 2 realizing file(s)",
         "cwd": "",
         "exit_code": 1,
-        "stdout_hash": "4d56b530cccbbd46",
+        "stdout_hash": "24149712fe4d2522",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "src/journey.rs:1194 \\bunwrap\\(\\)",
+        "stdout_excerpt": "src/journey.rs:1231 \\bunwrap\\(\\)",
         "covered": {
-          "src/journey.rs": "dfba2e000e3bb8a9",
+          "src/journey.rs": "64d9bd67bbba8bc5",
           "src/proof.rs": "327ee8f06a205a53"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611519269",
+        "ran_at": "1785616864551",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:11:59.268Z"
+      "recorded_at": "2026-08-01T20:41:04.546Z"
     },
     {
       "id": "e56b8f519fbb48f45",
@@ -68859,7 +68859,7 @@
       "recorded_at": "2026-08-01T19:07:43.819Z"
     },
     {
-      "id": "e9f291050efc31b14",
+      "id": "e93e4eee766ad6ba2",
       "fact_id": "f79b3f2bb83afa438",
       "payload": {
         "kind": "run",
@@ -68871,15 +68871,15 @@
         "stderr_hash": "cbf29ce484222325",
         "covered": {
           "src/commands/hook_cmd.rs": "0ca86e0412a699a0",
-          "src/commands/status_cmd.rs": "1ca91e8676b9b3c4",
+          "src/commands/status_cmd.rs": "8f2bbef780f1e413",
           "tests/ring20_hooks.rs": "29be2c88bbf97f87"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785610754924",
+        "ran_at": "1785616842194",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T18:59:14.922Z"
+      "recorded_at": "2026-08-01T20:40:42.186Z"
     },
     {
       "id": "ee544a69a0b41f21d",
@@ -68888,7 +68888,7 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-injection pattern in 3 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T18:59:14.922Z"
+      "recorded_at": "2026-08-01T20:40:42.186Z"
     },
     {
       "id": "e4a7e6eebad500744",
@@ -69855,7 +69855,7 @@
       "recorded_at": "2026-08-01T18:49:53.421Z"
     },
     {
-      "id": "e0b61ca16427e858e",
+      "id": "e327da33ff2178469",
       "fact_id": "f84e61d0f85c89b33",
       "payload": {
         "kind": "run",
@@ -69866,15 +69866,15 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/journey.rs": "dfba2e000e3bb8a9",
+          "src/journey.rs": "64d9bd67bbba8bc5",
           "src/proof.rs": "327ee8f06a205a53"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611273416",
+        "ran_at": "1785616842028",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:53.414Z"
+      "recorded_at": "2026-08-01T20:40:42.018Z"
     },
     {
       "id": "e75cdf08b1f910026",
@@ -69883,7 +69883,7 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-injection pattern in 2 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:07:53.414Z"
+      "recorded_at": "2026-08-01T20:40:42.018Z"
     },
     {
       "id": "e4e75c9de7169d911",
@@ -70901,10 +70901,10 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-hardcoded-secrets pattern in 4 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:09:08.469Z"
+      "recorded_at": "2026-08-01T20:40:41.841Z"
     },
     {
-      "id": "e847404acf717c4b2",
+      "id": "e32371081b784551c",
       "fact_id": "f8eacd11f9d9bc5c1",
       "payload": {
         "kind": "run",
@@ -70917,15 +70917,15 @@
         "covered": {
           "src/commands/proof_cmd.rs": "e13d1411533be2e8",
           "src/evidence.rs": "4fe8ec12bb374b45",
-          "src/journal.rs": "979a850e9b9f45f4",
+          "src/journal.rs": "8da3beaca6743603",
           "tests/ring17_journal.rs": "27b4c51e05b431d5"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785611348470",
+        "ran_at": "1785616841847",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:09:08.469Z"
+      "recorded_at": "2026-08-01T20:40:41.841Z"
     },
     {
       "id": "ece2c0e72b3cefaec",
@@ -71186,7 +71186,16 @@
       "recorded_at": "2026-08-01T19:18:18.165Z"
     },
     {
-      "id": "e4ea15a7da6e37a72",
+      "id": "eb506f754a935edb5",
+      "fact_id": "f91081383ea328eac",
+      "payload": {
+        "kind": "claim",
+        "text": "no iso5055-sec-no-hardcoded-secrets pattern in 2 grounded file(s)"
+      },
+      "recorded_at": "2026-08-01T20:40:41.918Z"
+    },
+    {
+      "id": "ebd34225adc6c92e5",
       "fact_id": "f91081383ea328eac",
       "payload": {
         "kind": "run",
@@ -71197,24 +71206,15 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/journey.rs": "dfba2e000e3bb8a9",
+          "src/journey.rs": "64d9bd67bbba8bc5",
           "src/proof.rs": "327ee8f06a205a53"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785611273338",
+        "ran_at": "1785616841924",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:53.338Z"
-    },
-    {
-      "id": "eb506f754a935edb5",
-      "fact_id": "f91081383ea328eac",
-      "payload": {
-        "kind": "claim",
-        "text": "no iso5055-sec-no-hardcoded-secrets pattern in 2 grounded file(s)"
-      },
-      "recorded_at": "2026-08-01T19:07:53.338Z"
+      "recorded_at": "2026-08-01T20:40:41.918Z"
     },
     {
       "id": "e9b14dfb1d3093561",
@@ -71522,7 +71522,28 @@
       "recorded_at": "2026-08-01T18:49:53.717Z"
     },
     {
-      "id": "e17881ed9e49304aa",
+      "id": "e2aafa0cf353e8dda",
+      "fact_id": "f93283d7a00825a04",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/status_cmd.rs",
+        "start": 128,
+        "end": 128,
+        "hash": "9c80d54838e9f936"
+      },
+      "recorded_at": "2026-08-01T20:40:31.672Z"
+    },
+    {
+      "id": "e685d6cdc3b5eae02",
+      "fact_id": "f93283d7a00825a04",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/status_cmd.rs:128 — locator sync_cmd resolves"
+      },
+      "recorded_at": "2026-08-01T20:40:31.672Z"
+    },
+    {
+      "id": "ed79d6b1401bb0f25",
       "fact_id": "f93283d7a00825a04",
       "payload": {
         "kind": "run",
@@ -71530,39 +71551,18 @@
         "command": "resolve 'sync_cmd' in src/commands/status_cmd.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "c5ea7846c5782745",
+        "stdout_hash": "05519d6ff5e970d9",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'sync_cmd' at src/commands/status_cmd.rs:124 (1 match) [86a516c3f9cbef54]",
+        "stdout_excerpt": "function 'sync_cmd' at src/commands/status_cmd.rs:128 (1 match) [86a516c3f9cbef54]",
         "covered": {
-          "src/commands/status_cmd.rs": "1ca91e8676b9b3c4"
+          "src/commands/status_cmd.rs": "8f2bbef780f1e413"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785610193591",
+        "ran_at": "1785616831710",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T18:49:53.585Z"
-    },
-    {
-      "id": "e3d8135b6381d15f1",
-      "fact_id": "f93283d7a00825a04",
-      "payload": {
-        "kind": "claim",
-        "text": "src/commands/status_cmd.rs:124 — locator 'sync_cmd' resolves in the realizing file; grounding holds"
-      },
-      "recorded_at": "2026-08-01T18:49:53.585Z"
-    },
-    {
-      "id": "e67f37712cd338dd2",
-      "fact_id": "f93283d7a00825a04",
-      "payload": {
-        "kind": "span",
-        "file": "src/commands/status_cmd.rs",
-        "start": 124,
-        "end": 124,
-        "hash": "9c80d54838e9f936"
-      },
-      "recorded_at": "2026-08-01T18:49:53.585Z"
+      "recorded_at": "2026-08-01T20:40:31.672Z"
     },
     {
       "id": "e2f0a89bae9c02665",
@@ -72298,19 +72298,16 @@
       "recorded_at": "2026-08-01T18:49:53.748Z"
     },
     {
-      "id": "e1c4bcb12c8045c85",
+      "id": "e6591253e7d9cde72",
       "fact_id": "f9ac93961d919cf9f",
       "payload": {
-        "kind": "span",
-        "file": "src/journey.rs",
-        "start": 639,
-        "end": 639,
-        "hash": "a143ce7b82edfd87"
+        "kind": "claim",
+        "text": "src/journey.rs:676 — locator stale_unreached_passing_steps resolves"
       },
-      "recorded_at": "2026-08-01T19:07:43.922Z"
+      "recorded_at": "2026-08-01T20:40:31.780Z"
     },
     {
-      "id": "eaa10948670873dad",
+      "id": "ed77cfff77a535bcf",
       "fact_id": "f9ac93961d919cf9f",
       "payload": {
         "kind": "run",
@@ -72318,27 +72315,30 @@
         "command": "resolve 'fn stale_unreached_passing_steps' in src/journey.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "a416e81d5b440002",
+        "stdout_hash": "9b4c5ceba8f7d01f",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'stale_unreached_passing_steps' at src/journey.rs:806 (1 match) [158cbefb6bf94ff5]",
+        "stdout_excerpt": "function 'stale_unreached_passing_steps' at src/journey.rs:843 (1 match) [158cbefb6bf94ff5]",
         "covered": {
-          "src/journey.rs": "dfba2e000e3bb8a9"
+          "src/journey.rs": "64d9bd67bbba8bc5"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785611263929",
+        "ran_at": "1785616831814",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:43.922Z"
+      "recorded_at": "2026-08-01T20:40:31.780Z"
     },
     {
-      "id": "eca577828f28dbbee",
+      "id": "efe6754d4e22f238d",
       "fact_id": "f9ac93961d919cf9f",
       "payload": {
-        "kind": "claim",
-        "text": "src/journey.rs:639 — locator stale_unreached_passing_steps resolves in the realizing file; grounding holds"
+        "kind": "span",
+        "file": "src/journey.rs",
+        "start": 676,
+        "end": 676,
+        "hash": "a143ce7b82edfd87"
       },
-      "recorded_at": "2026-08-01T19:07:43.922Z"
+      "recorded_at": "2026-08-01T20:40:31.780Z"
     },
     {
       "id": "e9eb36c5a6d16fa93",
@@ -73129,7 +73129,7 @@
       "recorded_at": "2026-08-01T18:33:16.626Z"
     },
     {
-      "id": "ec7edff342f986194",
+      "id": "e851f7944549ce4e2",
       "fact_id": "fa6a8948245a29725",
       "payload": {
         "kind": "run",
@@ -73159,16 +73159,16 @@
           "src/commands/proof_cmd.rs": "e13d1411533be2e8",
           "src/commands/proposal_cmd.rs": "ff0df09f322e5726",
           "src/commands/pulse.rs": "83b06566bd95ca43",
-          "src/commands/status_cmd.rs": "1ca91e8676b9b3c4",
+          "src/commands/status_cmd.rs": "8f2bbef780f1e413",
           "src/commands/wiki.rs": "55d3061ad973f4af",
           "src/main.rs": "031ae6f7b3b0c1d7"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785613444939",
+        "ran_at": "1785616842130",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:44:04.917Z"
+      "recorded_at": "2026-08-01T20:40:42.108Z"
     },
     {
       "id": "ef0cc95b3fc2a08e0",
@@ -73177,7 +73177,7 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-hardcoded-secrets pattern in 22 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:44:04.917Z"
+      "recorded_at": "2026-08-01T20:40:42.108Z"
     },
     {
       "id": "e0c001c0cf2e1ea9c",
@@ -73387,16 +73387,16 @@
       "recorded_at": "2026-08-01T18:34:27.638Z"
     },
     {
-      "id": "e460960394a2a9fd9",
+      "id": "e71775494c42ec2c6",
       "fact_id": "fa918fafc4a94da81",
       "payload": {
         "kind": "claim",
-        "text": "all remaining pattern hits are test fixtures/test modules — idiomatic unwrap in test setup, not unchecked failure in shipped code"
+        "text": "remaining pattern hits are test fixtures — idiomatic unwrap in test setup, not unchecked failure in shipped code"
       },
-      "recorded_at": "2026-08-01T19:11:58.990Z"
+      "recorded_at": "2026-08-01T20:41:04.497Z"
     },
     {
-      "id": "e558d0f6f40cb388e",
+      "id": "e7c970a7ea33de737",
       "fact_id": "fa918fafc4a94da81",
       "payload": {
         "kind": "run",
@@ -73404,21 +73404,21 @@
         "command": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 4 realizing file(s)",
         "cwd": "",
         "exit_code": 1,
-        "stdout_hash": "c82b597c480a9176",
+        "stdout_hash": "6a9185261a5fd472",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "src/evidence.rs:323 \\bexpect\\s*\\(\nsrc/evidence.rs:327 \\bexpect\\s*\\(\nsrc/journal.rs:141 \\blet\\s+_\\s*=\nsrc/journal.rs:142 \\bunwrap\\(\\)\nsrc/journal.rs:143 \\bunwrap\\(\\)\nsrc/journal.rs:146 \\bunwrap\\(\\)\nsrc/journal.rs:147 \\bunwrap\\(\\)\nsrc/journal.rs:150 \\bunwrap\\(\\)\nsrc/journal.rs:153 \\bunwrap\\(\\)\nsrc/journal.rs:158 \\bunwrap\\(\\)\nsrc/journal.rs:161 \\bunwrap\\(\\)\nsrc/journal.rs:163 \\blet\\s+_\\s*=\nsrc/journal.rs:55 \\bexpect\\s*\\(\ntests/ring17_journal.rs:16 \\bunwrap\\(\\)\ntests/ring17_journal.rs:23 \\bunwrap\\(\\)\ntests/ring17_journal.rs:24 \\bunwrap\\(\\)\ntests/ring17_journal.rs:29 \\bunwrap\\(\\)\ntests/ring17_journal.rs:41 \\bunwrap\\(\\)",
+        "stdout_excerpt": "src/evidence.rs:323 \\bexpect\\s*\\(\nsrc/evidence.rs:327 \\bexpect\\s*\\(\nsrc/journal.rs:142 \\bexpect\\s*\\(\nsrc/journal.rs:186 \\blet\\s+_\\s*=\nsrc/journal.rs:187 \\bunwrap\\(\\)\nsrc/journal.rs:188 \\bunwrap\\(\\)\nsrc/journal.rs:191 \\bunwrap\\(\\)\nsrc/journal.rs:192 \\bunwrap\\(\\)\nsrc/journal.rs:195 \\bunwrap\\(\\)\nsrc/journal.rs:198 \\bunwrap\\(\\)\nsrc/journal.rs:203 \\bunwrap\\(\\)\nsrc/journal.rs:206 \\bunwrap\\(\\)\nsrc/journal.rs:208 \\blet\\s+_\\s*=\nsrc/journal.rs:55 \\bexpect\\s*\\(\ntests/ring17_journal.rs:16 \\bunwrap\\(\\)\ntests/ring17_journal.rs:23 \\bunwrap\\(\\)\ntests/ring17_journal.rs:24 \\bunwrap\\(\\)\ntests/ring17_journal.rs:29 \\bunwrap\\(\\)\ntests/ring17_journal.rs:41 \\bunwrap\\(\\)",
         "covered": {
           "src/commands/proof_cmd.rs": "e13d1411533be2e8",
           "src/evidence.rs": "4fe8ec12bb374b45",
-          "src/journal.rs": "979a850e9b9f45f4",
+          "src/journal.rs": "8da3beaca6743603",
           "tests/ring17_journal.rs": "27b4c51e05b431d5"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611518993",
+        "ran_at": "1785616864508",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:11:58.990Z"
+      "recorded_at": "2026-08-01T20:41:04.497Z"
     },
     {
       "id": "e16854e893241f125",
@@ -74117,7 +74117,7 @@
       "recorded_at": "2026-08-01T18:59:42.839Z"
     },
     {
-      "id": "e199971071528ddbb",
+      "id": "e2fd14c2ecb8ae9b5",
       "fact_id": "fb2228a6f3b7a2e5b",
       "payload": {
         "kind": "run",
@@ -74130,24 +74130,24 @@
         "stdout_excerpt": "tests/ring20_hooks.rs:19 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:20 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:21 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:25 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:27 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:29 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:30 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:41 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:43 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:48 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:49 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:50 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:56 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:63 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:65 \\bunwrap\\(\\)\ntests/ring20_hooks.rs:66 \\bunwrap\\(\\)",
         "covered": {
           "src/commands/hook_cmd.rs": "0ca86e0412a699a0",
-          "src/commands/status_cmd.rs": "1ca91e8676b9b3c4",
+          "src/commands/status_cmd.rs": "8f2bbef780f1e413",
           "tests/ring20_hooks.rs": "29be2c88bbf97f87"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611519342",
+        "ran_at": "1785616864591",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:11:59.341Z"
+      "recorded_at": "2026-08-01T20:41:04.586Z"
     },
     {
-      "id": "e8fe784388e7c51e6",
+      "id": "eb80c8b1759ff0113",
       "fact_id": "fb2228a6f3b7a2e5b",
       "payload": {
         "kind": "claim",
-        "text": "all remaining pattern hits are test fixtures/test modules — idiomatic unwrap in test setup, not unchecked failure in shipped code"
+        "text": "remaining pattern hits are test fixtures — idiomatic unwrap in test setup, not unchecked failure in shipped code"
       },
-      "recorded_at": "2026-08-01T19:11:59.341Z"
+      "recorded_at": "2026-08-01T20:41:04.586Z"
     },
     {
       "id": "e5c58fde1503b65fc",
@@ -74677,16 +74677,16 @@
       "recorded_at": "2026-08-01T18:49:53.960Z"
     },
     {
-      "id": "e538609a69674d211",
+      "id": "e1946dcb8cd8c5426",
       "fact_id": "fb7041aec2679c19d",
       "payload": {
         "kind": "claim",
-        "text": "src/travel.rs:17 — locator 'Export' resolves in the realizing file; grounding holds"
+        "text": "src/travel.rs:17 — locator Export resolves"
       },
-      "recorded_at": "2026-08-01T18:49:53.913Z"
+      "recorded_at": "2026-08-01T20:40:31.829Z"
     },
     {
-      "id": "ebdb80e5abca408e3",
+      "id": "eeedb6142337405fb",
       "fact_id": "fb7041aec2679c19d",
       "payload": {
         "kind": "run",
@@ -74694,18 +74694,18 @@
         "command": "resolve 'export_to_file:75 / Export::from_snapshot' in src/travel.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "63328d8cd0d6f7d9",
+        "stdout_hash": "d48fc019931fa8df",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "struct 'Export' at src/travel.rs:17 (1 match) [bf664375f891b6ae]",
+        "stdout_excerpt": "struct 'Export' at src/travel.rs:17 (1 match) [b91243b0ff46b354]",
         "covered": {
-          "src/travel.rs": "fa1758bdabf5cc95"
+          "src/travel.rs": "ec998f7ff7d3ac07"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785610193915",
+        "ran_at": "1785616831842",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T18:49:53.913Z"
+      "recorded_at": "2026-08-01T20:40:31.829Z"
     },
     {
       "id": "ef631695d85be436f",
@@ -74717,7 +74717,7 @@
         "end": 17,
         "hash": "81df873320623adc"
       },
-      "recorded_at": "2026-08-01T18:49:53.913Z"
+      "recorded_at": "2026-08-01T20:40:31.829Z"
     },
     {
       "id": "e9685444fb82986ec",
@@ -75170,10 +75170,10 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-hardcoded-secrets pattern in 3 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T18:59:14.687Z"
+      "recorded_at": "2026-08-01T20:40:42.043Z"
     },
     {
-      "id": "e3f2cf5369e73500a",
+      "id": "e325013104d752448",
       "fact_id": "fbd29eaf924a555cb",
       "payload": {
         "kind": "run",
@@ -75185,15 +75185,15 @@
         "stderr_hash": "cbf29ce484222325",
         "covered": {
           "src/commands/hook_cmd.rs": "0ca86e0412a699a0",
-          "src/commands/status_cmd.rs": "1ca91e8676b9b3c4",
+          "src/commands/status_cmd.rs": "8f2bbef780f1e413",
           "tests/ring20_hooks.rs": "29be2c88bbf97f87"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785610754688",
+        "ran_at": "1785616842048",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T18:59:14.687Z"
+      "recorded_at": "2026-08-01T20:40:42.043Z"
     },
     {
       "id": "e1a0ab7cb5e92ec95",
@@ -77304,7 +77304,7 @@
       "recorded_at": "2026-08-01T19:18:18.041Z"
     },
     {
-      "id": "e6e80b2448f45ce1c",
+      "id": "e041e259f6d963495",
       "fact_id": "fd41a485774c05bf5",
       "payload": {
         "kind": "run",
@@ -77312,27 +77312,27 @@
         "command": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 1 realizing file(s)",
         "cwd": "",
         "exit_code": 1,
-        "stdout_hash": "be869c60af0b9752",
+        "stdout_hash": "5e94532b7789a9ca",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "src/travel.rs:270 \\bunwrap\\(\\)\nsrc/travel.rs:283 \\bunwrap\\(\\)\nsrc/travel.rs:305 \\bunwrap\\(\\)\nsrc/travel.rs:307 \\bunwrap\\(\\)\nsrc/travel.rs:313 \\bunwrap\\(\\)\nsrc/travel.rs:359 \\bunwrap\\(\\)\nsrc/travel.rs:365 \\bunwrap\\(\\)\nsrc/travel.rs:376 \\bexpect\\s*\\(\nsrc/travel.rs:401 \\bunwrap\\(\\)\nsrc/travel.rs:402 \\bunwrap\\(\\)\nsrc/travel.rs:427 \\bunwrap\\(\\)\nsrc/travel.rs:428 \\bunwrap\\(\\)\nsrc/travel.rs:430 \\bunwrap\\(\\)",
+        "stdout_excerpt": "src/travel.rs:299 \\bunwrap\\(\\)\nsrc/travel.rs:312 \\bunwrap\\(\\)\nsrc/travel.rs:336 \\bunwrap\\(\\)\nsrc/travel.rs:338 \\bunwrap\\(\\)\nsrc/travel.rs:344 \\bunwrap\\(\\)\nsrc/travel.rs:390 \\bunwrap\\(\\)\nsrc/travel.rs:396 \\bunwrap\\(\\)\nsrc/travel.rs:407 \\bexpect\\s*\\(\nsrc/travel.rs:432 \\bunwrap\\(\\)\nsrc/travel.rs:433 \\bunwrap\\(\\)\nsrc/travel.rs:460 \\bunwrap\\(\\)\nsrc/travel.rs:461 \\bunwrap\\(\\)\nsrc/travel.rs:463 \\bunwrap\\(\\)",
         "covered": {
-          "src/travel.rs": "0f89aba376142112"
+          "src/travel.rs": "ec998f7ff7d3ac07"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611519028",
+        "ran_at": "1785616864531",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:11:59.028Z"
+      "recorded_at": "2026-08-01T20:41:04.527Z"
     },
     {
-      "id": "ecca95cf16378724a",
+      "id": "e861e542fcb2efadf",
       "fact_id": "fd41a485774c05bf5",
       "payload": {
         "kind": "claim",
-        "text": "all remaining pattern hits are test fixtures/test modules — idiomatic unwrap in test setup, not unchecked failure in shipped code"
+        "text": "remaining pattern hits are test fixtures — idiomatic unwrap in test setup, not unchecked failure in shipped code"
       },
-      "recorded_at": "2026-08-01T19:11:59.028Z"
+      "recorded_at": "2026-08-01T20:41:04.527Z"
     },
     {
       "id": "e159c71170e15ed1f",
@@ -78006,10 +78006,10 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-injection pattern in 4 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:09:08.490Z"
+      "recorded_at": "2026-08-01T20:40:41.890Z"
     },
     {
-      "id": "e93e7dc9b1237d0d6",
+      "id": "e5a3fd738413cd950",
       "fact_id": "fddba18eb1ca31e3c",
       "payload": {
         "kind": "run",
@@ -78022,15 +78022,15 @@
         "covered": {
           "src/commands/proof_cmd.rs": "e13d1411533be2e8",
           "src/evidence.rs": "4fe8ec12bb374b45",
-          "src/journal.rs": "979a850e9b9f45f4",
+          "src/journal.rs": "8da3beaca6743603",
           "tests/ring17_journal.rs": "27b4c51e05b431d5"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611348492",
+        "ran_at": "1785616841902",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:09:08.490Z"
+      "recorded_at": "2026-08-01T20:40:41.890Z"
     },
     {
       "id": "e0ca6f77131173b6e",
@@ -78663,10 +78663,10 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-hardcoded-secrets pattern in 1 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:07:53.267Z"
+      "recorded_at": "2026-08-01T20:40:41.822Z"
     },
     {
-      "id": "e341daed2ac16c5de",
+      "id": "eb1fe1dccc116aca4",
       "fact_id": "fe44fa763116810a4",
       "payload": {
         "kind": "run",
@@ -78677,14 +78677,14 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/travel.rs": "0f89aba376142112"
+          "src/travel.rs": "ec998f7ff7d3ac07"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785611273268",
+        "ran_at": "1785616841826",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:07:53.267Z"
+      "recorded_at": "2026-08-01T20:40:41.822Z"
     },
     {
       "id": "e44196f8bdcee887b",
@@ -79501,10 +79501,10 @@
         "kind": "claim",
         "text": "no iso5055-sec-no-injection pattern in 22 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:44:04.829Z"
+      "recorded_at": "2026-08-01T20:40:41.939Z"
     },
     {
-      "id": "e2c46531811f3fe50",
+      "id": "ea4125654ed5e615e",
       "fact_id": "fef473460507457e6",
       "payload": {
         "kind": "run",
@@ -79534,16 +79534,16 @@
           "src/commands/proof_cmd.rs": "e13d1411533be2e8",
           "src/commands/proposal_cmd.rs": "ff0df09f322e5726",
           "src/commands/pulse.rs": "83b06566bd95ca43",
-          "src/commands/status_cmd.rs": "1ca91e8676b9b3c4",
+          "src/commands/status_cmd.rs": "8f2bbef780f1e413",
           "src/commands/wiki.rs": "55d3061ad973f4af",
           "src/main.rs": "031ae6f7b3b0c1d7"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785613444866",
+        "ran_at": "1785616841981",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:44:04.829Z"
+      "recorded_at": "2026-08-01T20:40:41.939Z"
     },
     {
       "id": "e91e6e5aa8b1af418",
@@ -79850,7 +79850,7 @@
       "recorded_at": "2026-08-01T19:00:30.425Z"
     },
     {
-      "id": "e0c6422a35881a23b",
+      "id": "e7e33e5ac5fb4083d",
       "fact_id": "ff36eba6baa8fac66",
       "payload": {
         "kind": "run",
@@ -79880,16 +79880,16 @@
           "src/commands/proof_cmd.rs": "e13d1411533be2e8",
           "src/commands/proposal_cmd.rs": "ff0df09f322e5726",
           "src/commands/pulse.rs": "83b06566bd95ca43",
-          "src/commands/status_cmd.rs": "1ca91e8676b9b3c4",
+          "src/commands/status_cmd.rs": "8f2bbef780f1e413",
           "src/commands/wiki.rs": "55d3061ad973f4af",
           "src/main.rs": "031ae6f7b3b0c1d7"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785613445021",
+        "ran_at": "1785616842232",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:44:04.999Z"
+      "recorded_at": "2026-08-01T20:40:42.208Z"
     },
     {
       "id": "e926184f20354f6e6",
@@ -79898,7 +79898,7 @@
         "kind": "claim",
         "text": "no iso5055-rel-no-unchecked-failure pattern in 22 grounded file(s)"
       },
-      "recorded_at": "2026-08-01T19:44:04.999Z"
+      "recorded_at": "2026-08-01T20:40:42.208Z"
     },
     {
       "id": "e3bd2de089e7b5501",
@@ -81289,13 +81289,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "07437e1b1dc529c3045517ff4e0f05f3",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 4 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "07b9f6fec257ac7bd0e3599ae1282443",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -82066,13 +82059,6 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "168c13768bcb92347299ce8a99dbc083",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 1 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "16ec03569d07e56b5d6266a7730e0913",
       "target_kind": "node",
       "key": "calls",
@@ -82293,7 +82279,7 @@
       "target_id": "183a111cc33b61650b56d42a02c9755f",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/journey/mod.rs\",\"proven_by\":\"ring18 journey baseline\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/journey.rs\",\"proven_by\":\"ring18 journey baseline\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -82673,13 +82659,6 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/nodes.rs\",\"start\":149,\"end\":149,\"hash\":\"7bc73ff3ff1c9d49\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "1e41d2eb2f905d2deeaeaa4d5274efdd",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 1 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
     },
     {
       "target_id": "1e792510b82dc0394cffd97d234c907b",
@@ -83099,13 +83078,6 @@
       "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"3 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "258aba6828c246d7bc82b8076cc6dfc6",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 4 realizing file(s) no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -84428,7 +84400,7 @@
       "target_id": "3c16c60023caa39092442175d086a9a7",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/hook_cmd.rs\",\"proven_by\":\"ring20 hooks\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/status_cmd.rs\",\"proven_by\":\"ring20 hooks\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -85342,13 +85314,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "4cdb3a32c7fd0c7e13c91f5e12db8bc3",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "4d8dce697e5817eebcd8c9700f761563",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -85909,13 +85874,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "541e79666b069b950f5b3c317e436180",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 4 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "543b86259db397df7daf4378054a73d2",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -85947,7 +85905,7 @@
       "target_id": "553dac421a0dbc18da83d09bad58f3db",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/status_cmd.rs\",\"start\":124,\"end\":124,\"hash\":\"9c80d54838e9f936\"}]",
+      "value": "[{\"file\":\"src/commands/status_cmd.rs\",\"start\":128,\"end\":128,\"hash\":\"9c80d54838e9f936\"}]",
       "truth_class": "asserted"
     },
     {
@@ -85956,13 +85914,6 @@
       "key": "locator",
       "value": "sync_cmd",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "553dac421a0dbc18da83d09bad58f3db",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "resolve 'sync_cmd' in src/commands/status_cmd.rs no longer holds (subject_redefined)",
-      "truth_class": "derived"
     },
     {
       "target_id": "55580f2ab8684de31275a61432ac7bea",
@@ -87123,7 +87074,7 @@
       "target_id": "67c2e0ce05bde2e1708a009c19f66483",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"journey never-reached reopen\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/journey.rs\",\"proven_by\":\"journey never-reached reopen\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -87194,13 +87145,6 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"CALIBRATION_QUANTILE\":\"5a266766e6c00a70\",\"COUNTER\":\"478a1614da6cb336\",\"Calibration\":\"4f819594dfb99548\",\"Case\":\"8dbea8f2182f9c31\",\"GATES\":\"7f83c780c02e4b19\",\"MIN_ARGS\":\"7a184fee89315b9d\",\"MIN_FILE_LOC\":\"6a319b43b3847588\",\"MIN_NESTING\":\"b150badfd1910cc1\",\"MIN_SYMBOL_COMPLEXITY\":\"1634eb7a6fd16e1b\",\"MIN_SYMBOL_LOC\":\"cb5c04c4fe3e3798\",\"THRESHOLDS_META_KEY\":\"2e5128841dd0d2f2\",\"Thresholds\":\"e073ed83f27026c9\",\"TmpRoot\":\"dba90d69590b3559\",\"calibrate\":\"2b09d2e514f6bb5d\",\"calibration_never_tightens_below_the_gate_in_force\":\"38c08bdef604e24a\",\"clear\":\"45f848c225e8db13\",\"clear_drops_meta_key_so_load_falls_back_to_default\":\"4eb85574149e661c\",\"default\":\"b0069ae587b2a733\",\"drop\":\"5f4b017f95f6545e\",\"fitted\":\"9781a567c537f61d\",\"fresh_store\":\"dabe7119009ee60e\",\"load\":\"63e02146bd6be2ca\",\"load_accepts_legacy_max_file_owners_and_ignores_it\":\"4625e68edce5be2a\",\"load_with_no_meta_returns_default_thresholds\":\"4820ec71aadfeb69\",\"new\":\"59349a13e59a8e05\",\"pairs\":\"e08b51ff88f70515\",\"pairs_match_gates_order_and_reflect_mutations\":\"9c55e886b7386656\",\"partial_json_fills_missing_fields_from_defaults\":\"a6c38c75aa29a59f\",\"path\":\"c929cca4904a2257\",\"reset_gate\":\"009e3b88b8ac7c16\",\"reset_gate_restores_default_and_errors_on_unknown\":\"c027ebe5afecc0f7\",\"reset_gate_to_default_equals_full_default\":\"58d5a5c72c4020c2\",\"retired_max_file_owners\":\"ab5764030785b633\",\"save\":\"ad5157087d4dd6b6\",\"save_then_load_round_trips\":\"903c549b49099a78\",\"set_gate\":\"e02db5821bc8cc20\",\"set_gate_overflow_is_per_type_not_blanket\":\"1a343391f12f2946\",\"set_gate_sets_one_field_and_leaves_the_rest_at_default\":\"209f125f04c9e832\",\"set_gate_unknown_gate_errors_and_leaves_struct_unchanged\":\"c38c0c844fe31697\",\"unknown_field_errors_loudly\":\"d33fdf70460903a2\"}",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "689a5ef145981d42147bd4f04c9a1182",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 2 realizing file(s) no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -88796,7 +88740,7 @@
       "target_id": "8b2631b18df9b4b354ae29507a7400a1",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/journey.rs\",\"start\":224,\"end\":224,\"hash\":\"6dbdb01deb886827\"}]",
+      "value": "[{\"file\":\"src/journey.rs\",\"start\":261,\"end\":261,\"hash\":\"6dbdb01deb886827\"}]",
       "truth_class": "asserted"
     },
     {
@@ -88805,13 +88749,6 @@
       "key": "locator",
       "value": "deviations",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "8b2631b18df9b4b354ae29507a7400a1",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "resolve 'deviations' in src/journey.rs no longer holds (subject_redefined)",
-      "truth_class": "derived"
     },
     {
       "target_id": "8b48e493d426c401e035b9205b0217f6",
@@ -88987,13 +88924,6 @@
       "key": "locator",
       "value": "observe",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "8db06e73c0cdb43262b87dc4f7701066",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 22 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
     },
     {
       "target_id": "8de0686b8a40a014cb5f82b0d7854c52",
@@ -89731,13 +89661,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "99248f0b1333da6011308ddd74c78255",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 2 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "9926afe98b7796517e008df1f27e097a",
       "target_kind": "node",
       "key": "calls",
@@ -90071,13 +89994,6 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"dispatch\":\"8d45426976715095\",\"edge_call\":\"f418f7b1ebe38c32\",\"edge_depends_on\":\"5d0117820400a432\",\"edge_explore\":\"5443c520882eb36a\",\"edge_implement\":\"c23b5639a0bde59f\",\"edge_list\":\"d98d69dea7e8e0d2\",\"edge_rehome\":\"00076d99e58f3a75\",\"edge_relate\":\"fad142760b0df724\",\"edge_remove\":\"bbfca1fd4e5fddc1\",\"edge_set_locator\":\"b6a74534172bf224\",\"edge_set_role\":\"fe3b2e5fec8f223b\",\"edge_show\":\"2aafe12be0aab143\",\"edge_verdict\":\"312579fdc0fb112a\",\"parse_grounding_role\":\"8cfd1df30fa10462\"}",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "9be12d677c4902096904c576ab08d6fe",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 2 realizing file(s) no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -90464,13 +90380,6 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/mod.rs\",\"start\":1,\"end\":1,\"hash\":\"bf7ea1dd8324acd0\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "a2dfb8cd4c8ede82ba75014a6c2095ad",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
     },
     {
       "target_id": "a2fd4889adcbef6ceba52d1229a317ff",
@@ -91299,13 +91208,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "ae1628d4785e3f17c57b2d76646b7e4f",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "ae740abe8c92f498f37a26a80f98c0c7",
       "target_kind": "node",
       "key": "proof_strength",
@@ -91373,13 +91275,6 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"emit\":\"c7782cfc2ccc948a\",\"emit_line\":\"3ca1e062091ab1be\"}",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "af29744f7b026a8d4093fde2e0ce307a",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 1 realizing file(s) no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -91668,13 +91563,6 @@
       "key": "role",
       "value": "verifies",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "b3d0529d9ba9bda33206e7914e258cf0",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 22 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
     },
     {
       "target_id": "b550f64a0fea50a98d2f83752b3c13f1",
@@ -92618,7 +92506,7 @@
       "target_id": "c376864697a2d5c05a6477aee89ec5ef",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"derived plane INV-2\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/travel.rs\",\"proven_by\":\"derived plane INV-2\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -92654,13 +92542,6 @@
       "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"55 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "c51e2aa9bf13b19ad5aa2b032e3c77c1",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -93623,13 +93504,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "d98ba1afd5401c4d473aa2ec305c46c9",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "da66f552d235cdfe360210d1317d68bf",
       "target_kind": "node",
       "key": "proof_strength",
@@ -94117,13 +93991,6 @@
       "target_kind": "node",
       "key": "symbol_fingerprints",
       "value": "{\"SEQUENCE\":\"3630b8394d10e39d\",\"Served\":\"8c39f1c196153f1e\",\"ids_are_unique_within_a_millisecond\":\"5813ca5e3e696ebb\",\"mint\":\"a5c79a0373d307ad\",\"mint_batch\":\"5a77619178bc20fe\",\"serve\":\"c70e084401fcb7a6\",\"serve_one\":\"7e2fff5cd8cb8161\"}",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "e22bfdd6cc75317d8cae2f581e062e5a",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -94634,7 +94501,7 @@
       "target_id": "ea144a9b49a29023cea79e44e318eafb",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/journey.rs\",\"start\":639,\"end\":639,\"hash\":\"a143ce7b82edfd87\"}]",
+      "value": "[{\"file\":\"src/journey.rs\",\"start\":676,\"end\":676,\"hash\":\"a143ce7b82edfd87\"}]",
       "truth_class": "asserted"
     },
     {
@@ -94643,13 +94510,6 @@
       "key": "locator",
       "value": "fn stale_unreached_passing_steps",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "ea144a9b49a29023cea79e44e318eafb",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "resolve 'fn stale_unreached_passing_steps' in src/journey.rs no longer holds (subject_redefined)",
-      "truth_class": "derived"
     },
     {
       "target_id": "ea4df4cad376bcd434247d4e69295adc",
@@ -94706,13 +94566,6 @@
       "key": "locator",
       "value": "export_to_file:75 / Export::from_snapshot",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "ec92e384792f08cc440a6cb502170945",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "resolve 'export_to_file:75 / Export::from_snapshot' in src/travel.rs no longer holds (subject_redefined)",
-      "truth_class": "derived"
     },
     {
       "target_id": "ec9ca264331e53fcef6a5e6636973fef",
@@ -94985,13 +94838,6 @@
       "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"55 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "f22ee64afc8319d5a3a5a7b60f7995be",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 22 realizing file(s) no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
