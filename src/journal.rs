@@ -108,6 +108,51 @@ pub fn exists(root: &Path, id: &str) -> Result<bool> {
     Ok(false)
 }
 
+/// The journal entries the given evidence cites (`journal:<id>` refs),
+/// deduplicated and sorted by id so they travel deterministically in the
+/// export. Without them, an imported graph's journal-cited facts (e.g. the
+/// ratification acts) have dangling refs and the self-audit flags them as
+/// unanchored — the journal is local runtime state, so it must ride along for
+/// the refs an export carries.
+pub fn cited_entries(root: &Path, evidence: &[crate::evidence::EvidenceRow]) -> Result<Vec<Entry>> {
+    let refs: std::collections::BTreeSet<&str> = evidence
+        .iter()
+        .filter_map(|row| match &row.payload {
+            crate::evidence::Evidence::Journal { r#ref } => Some(r#ref.as_str()),
+            _ => None,
+        })
+        .collect();
+    if refs.is_empty() {
+        return Ok(Vec::new());
+    }
+    let by_id: std::collections::BTreeMap<String, Entry> =
+        read(root)?.into_iter().map(|e| (e.id.clone(), e)).collect();
+    Ok(refs.iter().filter_map(|r| by_id.get(*r).cloned()).collect())
+}
+
+/// Restore exported journal entries into the local journal, appending any not
+/// already present (by id). The original ids are preserved verbatim — the
+/// export's evidence cites them, so minting fresh ids would leave the refs
+/// dangling. Idempotent across repeated imports.
+pub fn restore_entries(root: &Path, entries: &[Entry]) -> Result<usize> {
+    let existing: std::collections::BTreeSet<String> =
+        read(root)?.into_iter().map(|e| e.id).collect();
+    let mut restored = 0;
+    let file = path(root);
+    fs::create_dir_all(file.parent().expect("journal file has a parent"))?;
+    let mut out = OpenOptions::new().create(true).append(true).open(&file)?;
+    for entry in entries {
+        if existing.contains(&entry.id) {
+            continue;
+        }
+        serde_json::to_writer(&mut out, entry)?;
+        out.write_all(b"\n")?;
+        restored += 1;
+    }
+    out.sync_data()?;
+    Ok(restored)
+}
+
 pub fn reference(entry: &Entry) -> String {
     format!("journal:{}", entry.id)
 }

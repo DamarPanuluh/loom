@@ -170,7 +170,7 @@ struct HttpExtract {
 }
 
 /// The outcome of one executed step.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct StepOutcome {
     pub name: String,
     pub intent: String,
@@ -184,7 +184,7 @@ pub struct StepOutcome {
     pub latency_ms: u128,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Baseline {
     pub journey: String,
     pub outcomes: Vec<StepOutcome>,
@@ -194,6 +194,43 @@ pub fn baseline_path(root: &Path, journey: &str) -> PathBuf {
     root.join(crate::LOOM_DIR)
         .join("baselines")
         .join(format!("{journey}.json"))
+}
+
+/// Every frozen baseline, sorted by journey name so they travel
+/// deterministically in the export (baselines are local runtime state —
+/// without them an imported graph's journeys cannot grade S4+).
+pub fn read_baselines(root: &Path) -> Result<Vec<Baseline>> {
+    let dir = root.join(crate::LOOM_DIR).join("baselines");
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Ok(Vec::new());
+    };
+    let mut out = Vec::new();
+    for entry in entries.flatten() {
+        let text = match std::fs::read_to_string(entry.path()) {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        if let Ok(b) = serde_json::from_str::<Baseline>(&text) {
+            out.push(b);
+        }
+    }
+    out.sort_by(|a, b| a.journey.cmp(&b.journey));
+    Ok(out)
+}
+
+/// Restore exported baselines verbatim (the journey names are the keys).
+/// Idempotent: an existing baseline for the same journey is left untouched.
+pub fn restore_baselines(root: &Path, baselines: &[Baseline]) -> Result<usize> {
+    let mut restored = 0;
+    for b in baselines {
+        let path = baseline_path(root, &b.journey);
+        if path.exists() {
+            continue;
+        }
+        write_baseline(root, &b.journey, &b.outcomes)?;
+        restored += 1;
+    }
+    Ok(restored)
 }
 
 pub fn write_baseline(root: &Path, journey: &str, outcomes: &[StepOutcome]) -> Result<PathBuf> {

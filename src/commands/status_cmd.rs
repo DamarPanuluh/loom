@@ -60,6 +60,8 @@ pub(crate) fn import(
         Store::find_root(&cwd).unwrap_or(cwd)
     };
     let export = travel::read_export(file)?;
+    let journal_restored = crate::journal::restore_entries(&root, &export.journal)?;
+    let baselines_restored = crate::journey::restore_baselines(&root, &export.baselines)?;
     let mut snapshot = export.into_snapshot();
     let quarantined_commands = travel::quarantine_imported_execution(&mut snapshot)?;
     let mut store = Store::init(&root, None, false)?;
@@ -79,6 +81,8 @@ pub(crate) fn import(
                 "graph_id": id.graph_id,
                 "file": file,
                 "quarantined_commands": quarantined_commands,
+                "journal_restored": journal_restored,
+                "baselines_restored": baselines_restored,
                 "repaired": repair_orphans,
                 "preserved_soft_refs": report.preserved_soft_refs,
                 "dropped_facets": report.dropped_facets

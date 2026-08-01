@@ -34,6 +34,15 @@ pub struct Export {
     /// without config keep their exact pre-config byte format.
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub config: std::collections::BTreeMap<String, String>,
+    /// The append-only journal entries cited by this export's evidence, so an
+    /// imported graph's journal refs resolve (the journal itself is local
+    /// runtime state). Absent on graphs with no journal-cited evidence.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub journal: Vec<crate::journal::Entry>,
+    /// Frozen journey baselines (local runtime state; without them an imported
+    /// graph's journeys cannot grade S4+).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub baselines: Vec<crate::journey::Baseline>,
 }
 
 /// Current export format version.
@@ -53,6 +62,8 @@ impl Export {
             facets: snap.facets,
             tags: snap.tags,
             config: snap.config,
+            journal: Vec::new(),
+            baselines: Vec::new(),
         }
     }
 
@@ -98,10 +109,21 @@ impl Export {
     }
 }
 
+/// The export bytes, exactly as they are written: snapshot + cited journal
+/// entries + deterministic JSON. The freshness check compares against the
+/// same bytes, so a graph whose evidence cites journal refs does not read as
+/// permanently stale.
+fn render_export(store: &Store) -> Result<String> {
+    let mut export = Export::from_snapshot(store.snapshot()?);
+    export.journal = crate::journal::cited_entries(store.root(), &export.evidence)?;
+    export.baselines = crate::journey::read_baselines(store.root())?;
+    export.to_json()
+}
+
 /// Export a store's graph to the canonical `loom.graph.json` at the project root.
 pub fn export_to_file(store: &Store) -> Result<std::path::PathBuf> {
     let proj = graph_projection()?;
-    let json = proj.render(store.snapshot()?)?;
+    let json = render_export(store)?;
     let path = store.root().join(proj.artifact_path());
     std::fs::write(&path, json).with_context(|| format!("writing {}", path.display()))?;
     Ok(path)
@@ -119,7 +141,7 @@ pub fn export_is_fresh(store: &Store) -> Result<bool> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
         Err(e) => return Err(e).with_context(|| format!("reading {}", path.display())),
     };
-    let live = proj.render(store.snapshot()?)?;
+    let live = render_export(store)?;
     Ok(committed == live)
 }
 
@@ -167,6 +189,11 @@ pub fn quarantine_imported_execution(snap: &mut Snapshot) -> Result<usize> {
             .is_some_and(|command| !command.trim().is_empty());
         if has_command {
             node.body["command_trusted"] = serde_json::Value::Bool(false);
+            // The imported "passed" is untrustworthy — the run behind it was
+            // downgraded to a claim below, so nothing re-checks it. Reset the
+            // proof to not_run: verification is re-earned only by a LOCAL run
+            // after the operator re-approves the exact command.
+            node.status = "not_run".into();
             quarantined += 1;
         }
     }
@@ -266,6 +293,8 @@ mod tests {
             facets: vec![],
             tags: vec![],
             config: Default::default(),
+            journal: Vec::new(),
+            baselines: Vec::new(),
         };
         let json = e.to_json().unwrap();
         insta::assert_snapshot!(json, @r###"
@@ -301,6 +330,8 @@ mod tests {
             facets: vec![],
             tags: vec![],
             config,
+            journal: Vec::new(),
+            baselines: Vec::new(),
         };
         let json = e.to_json().unwrap();
         assert!(json.contains("\"layer_order\""));
@@ -422,6 +453,8 @@ mod tests {
                 facets: vec![],
                 tags: vec![],
                 config: Default::default(),
+            journal: Vec::new(),
+            baselines: Vec::new(),
             };
 
             let first = export.to_json().unwrap();
