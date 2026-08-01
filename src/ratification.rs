@@ -201,32 +201,35 @@ fn callers_of(store: &Store, intent_id: &str) -> Vec<String> {
         .collect()
 }
 
-/// Intent ids named by journal entries that record real work.
+/// Intent ids with RECORDED USAGE: a validation or journey that validates
+/// them has actually run — its validates edge carries run evidence.
 ///
-/// One pass over the journal against one index of the intents, rather than a
-/// scan of every intent per entry — a long-lived graph has both.
-fn intents_in_journal(store: &Store) -> Result<std::collections::BTreeSet<String>> {
-    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
+/// This is a pure function of the graph, which travels in the export. The
+/// previous implementation scanned the LOCAL journal's captured output
+/// excerpts (a journey run embeds the step command's stdout), and captured
+/// output changes as the graph changes — so a fresh import never reproduced
+/// the same `named` set (the `used_by` witness churned on 10 of 763 nodes).
+/// Recorded usage now means "exercised by a proof loom watched run", not
+/// "mentioned in some captured output".
+fn intents_with_recorded_usage(store: &Store) -> Result<std::collections::BTreeSet<String>> {
     let mut out = std::collections::BTreeSet::new();
-    for entry in crate::journal::read(store.root())? {
-        if !matches!(
-            entry.event.as_str(),
-            "drive_exchange" | "journey_run" | "validation_run" | "absorb"
-        ) {
+    for e in store.edges_with(Some(EdgeKind::Validates), None, None)? {
+        if store.edge_superseded(&e.id)? {
             continue;
         }
-        // The target is the direct case; the payload catches an entry that
-        // names the behavior without targeting it (a journey step, a drive
-        // turn). Both are RECORDED usage — neither is inferred.
-        if !entry.target_id.is_empty() {
-            out.insert(entry.target_id.clone());
-        }
-        let text = entry.payload.to_string();
-        for intent in &intents {
-            if text.contains(&intent.id) || (!intent.name.is_empty() && text.contains(&intent.name))
-            {
-                out.insert(intent.id.clone());
-            }
+        let Some(view) = store.fact(
+            &crate::store::Subject::Edge(e.id.clone()),
+            crate::model::Claim::Verdict,
+        )?
+        else {
+            continue;
+        };
+        if view
+            .evidence
+            .iter()
+            .any(|row| matches!(row.payload, crate::evidence::Evidence::Run(_)))
+        {
+            out.insert(e.to_id.clone());
         }
     }
     Ok(out)
@@ -235,7 +238,7 @@ fn intents_in_journal(store: &Store) -> Result<std::collections::BTreeSet<String
 /// Recompute every intent's de-facto witness. Derived, so sync owns it and
 /// `wipe_derived` + `sync` reproduces it byte-identically.
 pub fn recompute(store: &Store) -> Result<usize> {
-    let named = intents_in_journal(store)?;
+    let named = intents_with_recorded_usage(store)?;
     let mut earned = 0usize;
     for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
         if intent.status == "deprecated" {

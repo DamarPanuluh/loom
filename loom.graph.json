@@ -11206,14 +11206,14 @@
       "type": "validation",
       "name": "an intent with code but no proof is demo proof",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring24_ratification -q",
         "type": "test"
       },
       "created_at": "2026-08-01T19:20:49.714Z",
-      "updated_at": "2026-08-01T19:20:50.117Z"
+      "updated_at": ""
     },
     {
       "id": "4eefda1c44aaba4f1cb78be93db5712a",
@@ -11759,14 +11759,14 @@
       "type": "validation",
       "name": "a behavior with code and usage but a failed proof is not wanted proof",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring24_ratification -q",
         "type": "test"
       },
       "created_at": "2026-08-01T19:34:42.950Z",
-      "updated_at": "2026-08-01T19:34:45.627Z"
+      "updated_at": ""
     },
     {
       "id": "62b197cc8c7f72b55a9cf50f27d30409",
@@ -16206,14 +16206,14 @@
       "type": "validation",
       "name": "an intent with code but no proof is demonstrated but unproven, not ratified proof",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring24_ratification -q",
         "type": "test"
       },
       "created_at": "2026-08-01T19:22:08.810Z",
-      "updated_at": "2026-08-01T19:22:09.218Z"
+      "updated_at": ""
     },
     {
       "id": "6a4fb58f51ec6e34aa31cc8d96c75656",
@@ -16332,14 +16332,14 @@
       "type": "validation",
       "name": "a ratified intent whose proof expires loses wantedness and re-enters the ratify queue proof",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring24_ratification -q",
         "type": "test"
       },
       "created_at": "2026-08-01T19:22:50.269Z",
-      "updated_at": "2026-08-01T19:22:50.678Z"
+      "updated_at": ""
     },
     {
       "id": "6e16b96be856fc755d8096d000437cd5",
@@ -26559,7 +26559,7 @@
       "type": "validation",
       "name": "wantedness is not presumed",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "artifact": "journeys/wantedness.yaml",
@@ -26571,7 +26571,7 @@
         "type": "journey"
       },
       "created_at": "2026-08-01T19:12:49.689Z",
-      "updated_at": "2026-08-01T19:12:49.737Z"
+      "updated_at": ""
     },
     {
       "id": "cbbcd820728f3e6e4600d460bd748980",
@@ -26709,14 +26709,14 @@
       "type": "validation",
       "name": "a ratified intent whose proof expires lo proof",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring24_ratification -q",
         "type": "test"
       },
       "created_at": "2026-08-01T19:21:30.934Z",
-      "updated_at": "2026-08-01T19:21:31.341Z"
+      "updated_at": ""
     },
     {
       "id": "ceecf7f5604e1cd4934245e61efe399d",
@@ -30461,6 +30461,21 @@
       "updated_at": ""
     },
     {
+      "id": "dd911932d4572efb3",
+      "type": "finding",
+      "name": "user-visible intent 'wantedness is earned from evidence, not demanded up front' has validations but no passing L5/L6 journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:483fd508eaa6a27648a6ce86b54fe6f2",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "ddba69d1ecf31af5c2a6bef6f8ffd5d1",
       "type": "codefile",
       "name": "src/artifact.rs",
@@ -31545,14 +31560,14 @@
       "type": "validation",
       "name": "ratification ring",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring24_ratification -q",
         "type": "test"
       },
       "created_at": "2026-07-25T10:09:43.300Z",
-      "updated_at": "2026-07-25T20:06:38.760Z"
+      "updated_at": ""
     },
     {
       "id": "f572fbabfd08af1f44d6d0a7cd2d6c6a",
@@ -34838,13 +34853,13 @@
       "to_id": "ec9ca264331e53fcef6a5e6636973fef",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:34:42.951Z",
-      "updated_at": "2026-08-01T19:34:45.626Z"
+      "updated_at": "2026-08-01T20:45:28.796Z"
     },
     {
       "id": "1359f8c67033063fe82d11f3bcbec1da",
@@ -35022,13 +35037,13 @@
       "to_id": "df968bf65aabeda551c6ab2eedf30af8",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:22:50.270Z",
-      "updated_at": "2026-08-01T19:22:50.678Z"
+      "updated_at": "2026-08-01T20:45:29.311Z"
     },
     {
       "id": "173cf34dc91fcbc5e91f7b1797e6a4e3",
@@ -37640,13 +37655,13 @@
       "to_id": "483fd508eaa6a27648a6ce86b54fe6f2",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "journey steps",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T19:12:49.690Z",
-      "updated_at": "2026-08-01T20:33:57.506Z"
+      "updated_at": "2026-08-01T20:45:30.185Z"
     },
     {
       "id": "580a859d2d95fd9d05e22e22f4cfb523",
@@ -37952,13 +37967,13 @@
       "to_id": "385fa3e2febc1ef219463163a8d3b112",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:22:08.811Z",
-      "updated_at": "2026-08-01T19:22:09.218Z"
+      "updated_at": "2026-08-01T20:45:30.821Z"
     },
     {
       "id": "5dd61010e88bb8237cec33d058c23cb8",
@@ -38834,13 +38849,13 @@
       "to_id": "483fd508eaa6a27648a6ce86b54fe6f2",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "iso5055-sec-no-injection",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-08-01T19:00:31.001Z",
-      "updated_at": "2026-08-01T19:00:31.003Z"
+      "updated_at": "2026-08-01T20:45:28.963Z"
     },
     {
       "id": "7032dbfc3581fdce59cd5254d4570ebd",
@@ -39060,13 +39075,13 @@
       "to_id": "385fa3e2febc1ef219463163a8d3b112",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:20:49.715Z",
-      "updated_at": "2026-08-01T19:20:50.116Z"
+      "updated_at": "2026-08-01T20:45:30.623Z"
     },
     {
       "id": "76b498a191b2cf0b5f95b02c432fd28d",
@@ -40844,13 +40859,13 @@
       "to_id": "483fd508eaa6a27648a6ce86b54fe6f2",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-08-01T19:00:30.852Z",
-      "updated_at": "2026-08-01T19:00:30.854Z"
+      "updated_at": "2026-08-01T20:45:31.606Z"
     },
     {
       "id": "9f3cbaa4c428e192b4b1275bcf1475b3",
@@ -41200,13 +41215,13 @@
       "to_id": "483fd508eaa6a27648a6ce86b54fe6f2",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-07-25T10:09:43.300Z",
-      "updated_at": "2026-07-25T20:32:39.051Z"
+      "updated_at": "2026-08-01T20:45:30.277Z"
     },
     {
       "id": "a4cae11a909b3eac87547373ea3ef7c9",
@@ -42520,13 +42535,13 @@
       "to_id": "df968bf65aabeda551c6ab2eedf30af8",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:21:30.935Z",
-      "updated_at": "2026-08-01T19:21:31.341Z"
+      "updated_at": "2026-08-01T20:45:31.163Z"
     },
     {
       "id": "c5658633bf77458f6bcae9969422f457",
@@ -45432,13 +45447,13 @@
       "to_id": "483fd508eaa6a27648a6ce86b54fe6f2",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "rule measures shipped behavior, not test fixtures",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-08-01T19:00:30.699Z",
-      "updated_at": "2026-08-01T19:11:59.354Z"
+      "updated_at": "2026-08-01T20:45:29.240Z"
     },
     {
       "id": "dc7589f42f7cdc85c",
@@ -47611,7 +47626,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-01T19:34:45.626Z"
@@ -48679,7 +48694,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-injection",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 0.9,
       "asserted_by": "llm",
       "asserted_at": "2026-08-01T19:00:31.002Z"
@@ -49891,7 +49906,7 @@
       "claim": "verdict",
       "state": "independent",
       "criterion": "rule measures shipped behavior, not test fixtures",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 0.9,
       "asserted_by": "llm",
       "asserted_at": "2026-08-01T19:11:59.352Z"
@@ -49987,7 +50002,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-01T19:22:50.677Z"
@@ -52411,7 +52426,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "journey steps",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "journey",
       "asserted_at": "2026-08-01T20:33:57.506Z"
@@ -52843,7 +52858,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-07-25T20:32:39.050Z"
@@ -54043,7 +54058,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-01T19:20:50.115Z"
@@ -54991,7 +55006,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-01T19:22:09.217Z"
@@ -56035,7 +56050,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-01T19:21:31.340Z"
@@ -57655,7 +57670,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "iso5055-sec-no-hardcoded-secrets",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 0.9,
       "asserted_by": "llm",
       "asserted_at": "2026-08-01T19:00:30.853Z"
@@ -81250,7 +81265,7 @@
       "target_id": "0694d3fa2eefc4d64a52cb9e613ac13c",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/audit.rs\",\"proven_by\":\"a fabricated ratification is caught by t proof\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/audit.rs\",\"proven_by\":\"a fabricated ratification is caught by t proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -82031,6 +82046,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "13370d25e3fb63e4d369beff9293db36",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring24_ratification -q no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "137557be4aa3755af2d91565ef77832b",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -82120,6 +82142,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/facts.rs\",\"start\":27,\"end\":27,\"hash\":\"611726fe25ede00f\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "172872689edd30713dda79002439c29a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring24_ratification -q no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "17767eb6b1298b024c3531048d8f70f1",
@@ -83294,7 +83323,7 @@
       "target_id": "2b97cdb0e31d415ce94a304a29ef3f15",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/discover_cmd.rs\",\"proven_by\":\"find ratification filter contract\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/discover_cmd.rs\",\"proven_by\":\"find ratification filter contract\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -84246,7 +84275,7 @@
       "target_id": "385fa3e2febc1ef219463163a8d3b112",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":\"an intent with code but no proof is demonstrated but unproven, not ratified proof\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -84547,7 +84576,7 @@
       "target_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/store/facts.rs\",\"proven_by\":\"chokepoint ring\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/store/facts.rs\",\"proven_by\":\"chokepoint ring\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -85044,7 +85073,7 @@
       "target_id": "44d3cf0b9a0a56cb0f8b2b6b11d6f5e3",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/discover_cmd.rs\",\"proven_by\":\"find exact\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/discover_cmd.rs\",\"proven_by\":\"find exact\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -85114,7 +85143,7 @@
       "target_id": "483fd508eaa6a27648a6ce86b54fe6f2",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":\"wantedness is not presumed\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -85485,7 +85514,7 @@
       "target_id": "4ec066f85b66fb5d87d5ae91d391f3b9",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"7 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -85986,6 +86015,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "57a85100e78c953998c26e63852fc6da",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "loom journey run 'wantedness is not presumed' no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "580a859d2d95fd9d05e22e22f4cfb523",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -86252,6 +86288,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "5ceaeffe5582e84065dce84d306100bd",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring24_ratification -q no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "5dd61010e88bb8237cec33d058c23cb8",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -86423,7 +86466,7 @@
       "target_id": "5f6c9a00b199447b9b2d5caedf67f247",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/capture_cmd.rs\",\"proven_by\":\"door weak match\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/capture_cmd.rs\",\"proven_by\":\"door weak match\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -86724,7 +86767,7 @@
       "target_id": "625be263fa05187743cb5ee757a15163",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"7 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -87256,7 +87299,7 @@
       "target_id": "6a307d66fd1fe5777d559d8993aa0bff",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"7 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -87375,7 +87418,7 @@
       "target_id": "6d63c71477e3db4ce8e8b357639771bb",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"7 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -87531,6 +87574,13 @@
       "key": "role",
       "value": "verifies",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "701310f817b7adc2dced5e90bdf2908d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "708d7affac22b9cb483bf17598422e9c",
@@ -87860,6 +87910,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/workitem/queues.rs\",\"start\":294,\"end\":333,\"hash\":\"2b04e8dd181d9361\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "7600b1f94a3fd71d6b5600750d2e4518",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring24_ratification -q no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "781cf1bc474e67f9e0b193ea49a362e4",
@@ -88677,7 +88734,7 @@
       "target_id": "87f645ae8047677f86ddd1a51ddee725",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/capture_cmd.rs\",\"proven_by\":\"door hypothesis landing\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/capture_cmd.rs\",\"proven_by\":\"door hypothesis landing\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -88782,14 +88839,14 @@
       "target_id": "8b8635a5fdc0023f30de1399e61d0233",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"a_rejection_is_absolute>Some\",\"a_rejection_is_absolute>assert_eq\",\"a_rejection_is_absolute>effective\",\"a_rejection_is_absolute>full\",\"callers_of>Some\",\"callers_of>Some\",\"callers_of>edges_with::ok\",\"callers_of>filter_map::flatten\",\"callers_of>flatten::map\",\"callers_of>into_iter\",\"callers_of>into_iter::filter_map\",\"callers_of>map::collect\",\"callers_of>store::edges_with\",\"de_facto_settles_so_the_queue_stops_asking>assert\",\"de_facto_settles_so_the_queue_stops_asking>assert\",\"de_facto_settles_so_the_queue_stops_asking>assert\",\"de_facto_settles_so_the_queue_stops_asking>settled\",\"de_facto_settles_so_the_queue_stops_asking>settled\",\"de_facto_settles_so_the_queue_stops_asking>settled\",\"demonstrated>Ok\",\"demonstrated>Ok\",\"demonstrated>Some\",\"demonstrated>Some\",\"demonstrated>Some\",\"demonstrated>counts\",\"demonstrated>matches\",\"demonstrated>store::edge_superseded\",\"demonstrated>store::edge_verification\",\"demonstrated>store::edges_with\",\"demonstrated>store::get_node\",\"demonstrated>store::grounding_role\",\"effective>w::holds\",\"effective_for>Ok\",\"effective_for>Ratification::parse\",\"effective_for>effective\",\"effective_for>store::ratification\",\"effective_for>w::as_ref\",\"effective_for>witness\",\"evidence_speaks_only_into_silence>Some\",\"evidence_speaks_only_into_silence>Some\",\"evidence_speaks_only_into_silence>assert_eq\",\"evidence_speaks_only_into_silence>assert_eq\",\"evidence_speaks_only_into_silence>assert_eq\",\"evidence_speaks_only_into_silence>effective\",\"evidence_speaks_only_into_silence>effective\",\"evidence_speaks_only_into_silence>effective\",\"evidence_speaks_only_into_silence>full\",\"evidence_speaks_only_into_silence>full\",\"full>Some\",\"full>Some\",\"full>Some\",\"full>into\",\"full>into\",\"full>into\",\"holds>demonstrated_in::is_some\",\"holds>proven_by::is_some\",\"holds>used_by::is_some\",\"intents_in_journal>BTreeSet::new\",\"intents_in_journal>Ok\",\"intents_in_journal>Some\",\"intents_in_journal>as_str\",\"intents_in_journal>id::clone\",\"intents_in_journal>journal::read\",\"intents_in_journal>matches\",\"intents_in_journal>name::is_empty\",\"intents_in_journal>out::insert\",\"intents_in_journal>out::insert\",\"intents_in_journal>payload::to_string\",\"intents_in_journal>store::list_nodes\",\"intents_in_journal>store::root\",\"intents_in_journal>target_id::clone\",\"intents_in_journal>target_id::is_empty\",\"intents_in_journal>text::contains\",\"intents_in_journal>text::contains\",\"proven>Ok\",\"proven>Ok\",\"proven>Some\",\"proven>Some\",\"proven>Some\",\"proven>proofstrength::of\",\"proven>store::edge_verification\",\"proven>store::edges_with\",\"proven>store::get_node\",\"recompute>Ok\",\"recompute>Some\",\"recompute>demonstrated\",\"recompute>intents_in_journal\",\"recompute>proven\",\"recompute>serde_json::to_string\",\"recompute>store::list_nodes\",\"recompute>store::set_facet\",\"recompute>used\",\"recompute>witness::holds\",\"settled>matches\",\"used>Some\",\"used>Some\",\"used>Vec::new\",\"used>callers_of\",\"used>cloned::collect\",\"used>format\",\"used>from::clone\",\"used>frontier::iter\",\"used>into\",\"used>iter::cloned\",\"used>named::contains\",\"used>named::contains\",\"used>next::push\",\"used>seen::insert\",\"used>to_string\",\"used>vec\",\"witness>Ok\",\"witness>and_then\",\"witness>from_str::ok\",\"witness>serde_json::from_str\",\"witness>store::get_facet\"]",
+      "value": "[\"a_rejection_is_absolute>Some\",\"a_rejection_is_absolute>assert_eq\",\"a_rejection_is_absolute>effective\",\"a_rejection_is_absolute>full\",\"callers_of>Some\",\"callers_of>Some\",\"callers_of>edges_with::ok\",\"callers_of>filter_map::flatten\",\"callers_of>flatten::map\",\"callers_of>into_iter\",\"callers_of>into_iter::filter_map\",\"callers_of>map::collect\",\"callers_of>store::edges_with\",\"de_facto_settles_so_the_queue_stops_asking>assert\",\"de_facto_settles_so_the_queue_stops_asking>assert\",\"de_facto_settles_so_the_queue_stops_asking>assert\",\"de_facto_settles_so_the_queue_stops_asking>settled\",\"de_facto_settles_so_the_queue_stops_asking>settled\",\"de_facto_settles_so_the_queue_stops_asking>settled\",\"demonstrated>Ok\",\"demonstrated>Ok\",\"demonstrated>Some\",\"demonstrated>Some\",\"demonstrated>Some\",\"demonstrated>counts\",\"demonstrated>matches\",\"demonstrated>store::edge_superseded\",\"demonstrated>store::edge_verification\",\"demonstrated>store::edges_with\",\"demonstrated>store::get_node\",\"demonstrated>store::grounding_role\",\"effective>w::holds\",\"effective_for>Ok\",\"effective_for>Ratification::parse\",\"effective_for>effective\",\"effective_for>store::ratification\",\"effective_for>w::as_ref\",\"effective_for>witness\",\"evidence_speaks_only_into_silence>Some\",\"evidence_speaks_only_into_silence>Some\",\"evidence_speaks_only_into_silence>assert_eq\",\"evidence_speaks_only_into_silence>assert_eq\",\"evidence_speaks_only_into_silence>assert_eq\",\"evidence_speaks_only_into_silence>effective\",\"evidence_speaks_only_into_silence>effective\",\"evidence_speaks_only_into_silence>effective\",\"evidence_speaks_only_into_silence>full\",\"evidence_speaks_only_into_silence>full\",\"full>Some\",\"full>Some\",\"full>Some\",\"full>into\",\"full>into\",\"full>into\",\"holds>demonstrated_in::is_some\",\"holds>proven_by::is_some\",\"holds>used_by::is_some\",\"intents_with_recorded_usage>BTreeSet::new\",\"intents_with_recorded_usage>Ok\",\"intents_with_recorded_usage>Run\",\"intents_with_recorded_usage>Some\",\"intents_with_recorded_usage>Subject::Edge\",\"intents_with_recorded_usage>evidence::iter\",\"intents_with_recorded_usage>id::clone\",\"intents_with_recorded_usage>iter::any\",\"intents_with_recorded_usage>matches\",\"intents_with_recorded_usage>out::insert\",\"intents_with_recorded_usage>store::edge_superseded\",\"intents_with_recorded_usage>store::edges_with\",\"intents_with_recorded_usage>store::fact\",\"intents_with_recorded_usage>to_id::clone\",\"proven>Ok\",\"proven>Ok\",\"proven>Some\",\"proven>Some\",\"proven>Some\",\"proven>proofstrength::of\",\"proven>store::edge_verification\",\"proven>store::edges_with\",\"proven>store::get_node\",\"recompute>Ok\",\"recompute>Some\",\"recompute>demonstrated\",\"recompute>intents_with_recorded_usage\",\"recompute>proven\",\"recompute>serde_json::to_string\",\"recompute>store::list_nodes\",\"recompute>store::set_facet\",\"recompute>used\",\"recompute>witness::holds\",\"settled>matches\",\"used>Some\",\"used>Some\",\"used>Vec::new\",\"used>callers_of\",\"used>cloned::collect\",\"used>format\",\"used>from::clone\",\"used>frontier::iter\",\"used>into\",\"used>iter::cloned\",\"used>named::contains\",\"used>named::contains\",\"used>next::push\",\"used>seen::insert\",\"used>to_string\",\"used>vec\",\"witness>Ok\",\"witness>and_then\",\"witness>from_str::ok\",\"witness>serde_json::from_str\",\"witness>store::get_facet\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "8b8635a5fdc0023f30de1399e61d0233",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "a204a582dee05ff7",
+      "value": "6ee2ff5b196a218a",
       "truth_class": "derived"
     },
     {
@@ -88810,7 +88867,7 @@
       "target_id": "8b8635a5fdc0023f30de1399e61d0233",
       "target_kind": "node",
       "key": "loc",
-      "value": "327",
+      "value": "330",
       "truth_class": "derived"
     },
     {
@@ -88831,7 +88888,7 @@
       "target_id": "8b8635a5fdc0023f30de1399e61d0233",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"ASSERTED_STATES\":\"910c58b14fb2286d\",\"DeFactoWitness\":\"38ff44223dc26018\",\"Ratification\":\"401032acce092f4c\",\"a_rejection_is_absolute\":\"dce0f5ef7b9554e4\",\"as_str\":\"bb50a5ce41e55a51\",\"callers_of\":\"a7a2f7f5d8093a78\",\"de_facto_settles_so_the_queue_stops_asking\":\"70d82fa71d4aa5fc\",\"demonstrated\":\"0566589a6b6c7f32\",\"effective\":\"af55acbde1137632\",\"effective_for\":\"a2d916278147090d\",\"evidence_speaks_only_into_silence\":\"587db994167f0152\",\"full\":\"987ba20022125c0f\",\"holds\":\"9688cc3019346857\",\"intents_in_journal\":\"a2ef421f1137959b\",\"parse\":\"9d7a01c09b315894\",\"proven\":\"b9b6cff698eb22fa\",\"recompute\":\"570e396fbb1c3280\",\"settled\":\"5ed6c6575c5d5ecc\",\"used\":\"3b64856adc6b3a55\",\"witness\":\"39642f79d5a94e71\"}",
+      "value": "{\"ASSERTED_STATES\":\"910c58b14fb2286d\",\"DeFactoWitness\":\"38ff44223dc26018\",\"Ratification\":\"401032acce092f4c\",\"a_rejection_is_absolute\":\"dce0f5ef7b9554e4\",\"as_str\":\"bb50a5ce41e55a51\",\"callers_of\":\"a7a2f7f5d8093a78\",\"de_facto_settles_so_the_queue_stops_asking\":\"70d82fa71d4aa5fc\",\"demonstrated\":\"0566589a6b6c7f32\",\"effective\":\"af55acbde1137632\",\"effective_for\":\"a2d916278147090d\",\"evidence_speaks_only_into_silence\":\"587db994167f0152\",\"full\":\"987ba20022125c0f\",\"holds\":\"9688cc3019346857\",\"intents_with_recorded_usage\":\"36ef120fc39ddf7a\",\"parse\":\"9d7a01c09b315894\",\"proven\":\"b9b6cff698eb22fa\",\"recompute\":\"70b6a19e6bb9a320\",\"settled\":\"5ed6c6575c5d5ecc\",\"used\":\"3b64856adc6b3a55\",\"witness\":\"39642f79d5a94e71\"}",
       "truth_class": "derived"
     },
     {
@@ -90123,6 +90180,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "9f226df70da5aca091e64611c6d7cc2a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "9f4e3e202b2819129344f8aa4bc2ea1f",
       "target_kind": "node",
       "key": "calls",
@@ -90438,10 +90502,17 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "a452cda72e1d9a8ee877bbdfbedf413f",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring24_ratification -q no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "a475a68b479c85f7db0bf23736413839",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/context_cmd.rs\",\"proven_by\":\"context packet contract\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/context_cmd.rs\",\"proven_by\":\"context packet contract\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -91176,7 +91247,7 @@
       "target_id": "ad873b67899063922d98d0923cef9d7b",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/discover_cmd.rs\",\"proven_by\":\"find tag\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/discover_cmd.rs\",\"proven_by\":\"find tag\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -92254,7 +92325,7 @@
       "target_id": "bfaf6a1b2a632083454e08be90a1b95c",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/lane.rs\",\"proven_by\":\"lane ladder ring\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/lane.rs\",\"proven_by\":\"lane ladder ring\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -92549,6 +92620,13 @@
       "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"11 test(s) reported passing by the runner\",\"call_witness\":\"run\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c559702dbdf46e42e6cf66557b7c7573",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring24_ratification -q no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -92898,7 +92976,7 @@
       "target_id": "cb51defa75c6ac8681462594f13e64d1",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":1,\"call_witness\":\"effective\",\"baseline_clean\":false,\"boundary\":\"process rm\",\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
+      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -93136,7 +93214,7 @@
       "target_id": "ce9a2f383263482a5b1ce4342808717e",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"7 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -93567,6 +93645,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "dc74b93c4131f58f1c2cf70f82b1a00d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "dd95c726dcfad9813f2b77d77d80a106",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -93808,7 +93893,7 @@
       "target_id": "df968bf65aabeda551c6ab2eedf30af8",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":\"a ratified intent whose proof expires loses wantedness and re-enters the ratify queue proof\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -94578,7 +94663,7 @@
       "target_id": "ec9ca264331e53fcef6a5e6636973fef",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":\"a behavior with code and usage but a failed proof is not wanted proof\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -95033,7 +95118,7 @@
       "target_id": "f558feb69d329c03abe1ed918fe8ea82",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"7 test(s) reported passing by the runner\",\"call_witness\":\"effective\",\"baseline_clean\":false,\"boundary\":null,\"next\":\"freeze a baseline (`loom journey freeze`) and replay it — a baseline nobody replays is a fossil\"}",
+      "value": "{\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -95208,7 +95293,7 @@
       "target_id": "fb0104a1679e03e8d8ef51ff6799cb2f",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/audit.rs\",\"proven_by\":\"an audit signal that cannot be confirmed is reported as an open smell, never dropped proof\",\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/audit.rs\",\"proven_by\":\"an audit signal that cannot be confirmed is reported as an open smell, never dropped proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
