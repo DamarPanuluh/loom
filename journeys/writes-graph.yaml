@@ -2,7 +2,12 @@ journey: loom writes the graph from what it observed
 steps:
   - name: absorb proposes mutations from the tree
     intent: loom writes the graph from the work rather than asking for it twice
-    run: "loom absorb --json"
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      printf 'fn demo() {}\n' > "$tmp/src.rs" &&
+      loom codefile add --graph "$tmp" src.rs &&
+      loom absorb --graph "$tmp" --json &&
+      rm -rf "$tmp"
     expect:
       exit_code: 0
       stdout_contains: ["items", "evidence"]
