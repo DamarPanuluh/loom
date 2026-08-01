@@ -34460,7 +34460,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-07-09T05:20:44.075Z",
-      "updated_at": "2026-07-25T09:41:31.544Z"
+      "updated_at": "2026-08-01T20:58:04.115Z"
     },
     {
       "id": "0b8d005832ae68f46d76c6d3a10d37e4",
@@ -56518,7 +56518,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-07-25T09:41:31.543Z"
+      "asserted_at": "2026-08-01T20:58:04.054Z"
     },
     {
       "id": "fce7f519aebf6966d",
@@ -76658,7 +76658,16 @@
       "recorded_at": "2026-08-01T18:49:53.919Z"
     },
     {
-      "id": "e1393a727e2353e37",
+      "id": "e99d62237f725d5cf",
+      "fact_id": "fce33b04d82daede8",
+      "payload": {
+        "kind": "claim",
+        "text": "`cargo test --test ring5 -q` exit 0"
+      },
+      "recorded_at": "2026-08-01T20:58:04.054Z"
+    },
+    {
+      "id": "eb42fa8851edd25cb",
       "fact_id": "fce33b04d82daede8",
       "payload": {
         "kind": "run",
@@ -76666,27 +76675,18 @@
         "command": "cargo test --test ring5 -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "eb6a5a8370342c92",
+        "stdout_hash": "b3ecce8d2cbb172a",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 66 tests\n..................................................................\ntest result: ok. 66 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.81s\n\n",
+        "stdout_excerpt": "\nrunning 74 tests\n..........................................................................\ntest result: ok. 74 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.83s\n\n",
         "covered": {
           "src/store/facets.rs": "56f0d9a2f8a5aa91"
         },
         "assertions": 0,
-        "duration_ms": 2983,
-        "ran_at": "1784972491537",
-        "loom_version": "0.26.0"
+        "duration_ms": 3347,
+        "ran_at": "1785617883985",
+        "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-07-25T09:41:31.543Z"
-    },
-    {
-      "id": "ef8025387eeb0eafa",
-      "fact_id": "fce33b04d82daede8",
-      "payload": {
-        "kind": "claim",
-        "text": "observed by loom: `cargo test --test ring5 -q` exited 0"
-      },
-      "recorded_at": "2026-07-25T09:41:31.543Z"
+      "recorded_at": "2026-08-01T20:58:04.054Z"
     },
     {
       "id": "ef5f6e98b2529e162",
@@ -95138,7 +95138,7 @@
       "target_id": "f5bbcf954ed4ace68c02143b3c085029",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"66 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"74 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
