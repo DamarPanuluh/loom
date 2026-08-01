@@ -34880,13 +34880,13 @@
       "to_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "no untrusted-input surface in the grounded code",
+      "status": "independent",
+      "criterion": "re-measured after facts.rs edit",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-08-01T19:00:30.991Z",
-      "updated_at": "2026-08-01T21:22:22.494Z"
+      "updated_at": "2026-08-01T21:49:50.186Z"
     },
     {
       "id": "14ed30b320a4c60f6018107d420c68f5",
@@ -37882,13 +37882,13 @@
       "to_id": "3dd6e24534829b20e9d4ab1d568894cd",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "rule measures shipped behavior, not test fixtures",
+      "status": "independent",
+      "criterion": "re-measured after facts.rs edit",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm",
       "created_at": "2026-08-01T19:00:30.689Z",
-      "updated_at": "2026-08-01T21:22:23.024Z"
+      "updated_at": "2026-08-01T21:49:50.158Z"
     },
     {
       "id": "5bcd6920679215df49843857d2a578c5",
@@ -55816,11 +55816,11 @@
       "subject_id": "13ae164bb7e733dce28bbca91b25e496",
       "claim": "verdict",
       "state": "independent",
-      "criterion": "no untrusted-input surface in the grounded code",
-      "verification": "expired",
+      "criterion": "re-measured after facts.rs edit",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:00:30.992Z"
+      "asserted_at": "2026-08-01T21:49:50.175Z"
     },
     {
       "id": "fbe6f50a6ea6c2baa",
@@ -57964,11 +57964,11 @@
       "subject_id": "5bb20d9d2b4e76f3b6f8f60e65e03a1b",
       "claim": "verdict",
       "state": "independent",
-      "criterion": "rule measures shipped behavior, not test fixtures",
-      "verification": "expired",
+      "criterion": "re-measured after facts.rs edit",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm",
-      "asserted_at": "2026-08-01T19:11:59.175Z"
+      "asserted_at": "2026-08-01T21:49:50.144Z"
     },
     {
       "id": "fef6b8ae64ca8b1bc",
@@ -75191,13 +75191,13 @@
       "recorded_at": "2026-08-01T18:59:42.823Z"
     },
     {
-      "id": "e3e85bf8485e7c0e7",
+      "id": "e78841089226138b4",
       "fact_id": "fbe44a79db6ca8948",
       "payload": {
         "kind": "claim",
-        "text": "src/store/facts.rs:1237 — parameterized query with a constant column list / ? placeholder — no user input is interpolated; not an injection; no untrusted input reaches any query"
+        "text": "src/store/facts.rs:1237 — parameterized query, no user input interpolated; no injection surface"
       },
-      "recorded_at": "2026-08-01T19:00:30.992Z"
+      "recorded_at": "2026-08-01T21:49:50.175Z"
     },
     {
       "id": "e7bfd6b9a7346d229",
@@ -75209,10 +75209,10 @@
         "end": 1237,
         "hash": "7fc94b497cf85c27"
       },
-      "recorded_at": "2026-08-01T19:00:30.992Z"
+      "recorded_at": "2026-08-01T21:49:50.175Z"
     },
     {
-      "id": "ee7d221ecc338be3e",
+      "id": "eb9c6ed67da47176e",
       "fact_id": "fbe44a79db6ca8948",
       "payload": {
         "kind": "run",
@@ -75224,15 +75224,15 @@
         "stderr_hash": "cbf29ce484222325",
         "stdout_excerpt": "src/store/facts.rs:1237 (?i)\\b(SELECT|INSERT|UPDATE|DELETE)\\b.*(\\+|\\$\\{|\\{[A-Za-z_])",
         "covered": {
-          "src/store/facts.rs": "dc97d12278d2132d",
+          "src/store/facts.rs": "52d404ba97ab3eac",
           "tests/ring23_chokepoint.rs": "7c2a9367912407c5"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785610830993",
+        "ran_at": "1785620990185",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:00:30.992Z"
+      "recorded_at": "2026-08-01T21:49:50.175Z"
     },
     {
       "id": "e42fccc40e9da2287",
@@ -79453,7 +79453,19 @@
       "recorded_at": "2026-08-01T19:21:08.143Z"
     },
     {
-      "id": "e01195f2830679d1c",
+      "id": "e1fdc191c06d1ebc2",
+      "fact_id": "fef6517c6a2b7a85a",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/facts.rs",
+        "start": 1237,
+        "end": 1237,
+        "hash": "7fc94b497cf85c27"
+      },
+      "recorded_at": "2026-08-01T21:49:50.144Z"
+    },
+    {
+      "id": "e5732722a078fe9d4",
       "fact_id": "fef6517c6a2b7a85a",
       "payload": {
         "kind": "run",
@@ -79465,24 +79477,24 @@
         "stderr_hash": "cbf29ce484222325",
         "stdout_excerpt": "tests/ring23_chokepoint.rs:124 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:125 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:126 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:135 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:144 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:154 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:156 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:159 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:160 \\bexpect\\s*\\(\ntests/ring23_chokepoint.rs:181 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:182 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:183 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:192 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:201 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:211 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:212 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:221 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:222 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:226 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:227 \\bexpect\\s*\\(\ntests/ring23_chokepoint.rs:33 \\bexpect\\s*\\(\ntests/ring23_chokepoint.rs:39 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:43 \\bexpect\\s*\\(\ntests/ring23_chokepoint.rs:85 \\bunwrap\\(\\)\ntests/ring23_chokepoint.rs:94 \\bunwrap\\(\\)",
         "covered": {
-          "src/store/facts.rs": "dc97d12278d2132d",
+          "src/store/facts.rs": "52d404ba97ab3eac",
           "tests/ring23_chokepoint.rs": "7c2a9367912407c5"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785611519177",
+        "ran_at": "1785620990153",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-01T19:11:59.175Z"
+      "recorded_at": "2026-08-01T21:49:50.144Z"
     },
     {
-      "id": "e6d123f736770706a",
+      "id": "ef06e1210fe62b8bf",
       "fact_id": "fef6517c6a2b7a85a",
       "payload": {
         "kind": "claim",
-        "text": "all remaining pattern hits are test fixtures/test modules — idiomatic unwrap in test setup, not unchecked failure in shipped code"
+        "text": "src/store/facts.rs:1237 — parameterized query with constant column list; no unchecked failure in shipped code"
       },
-      "recorded_at": "2026-08-01T19:11:59.175Z"
+      "recorded_at": "2026-08-01T21:49:50.144Z"
     },
     {
       "id": "ee0320689b50e7300",
@@ -81945,13 +81957,6 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/facts.rs\",\"start\":1237,\"end\":1237,\"hash\":\"7fc94b497cf85c27\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "13ae164bb7e733dce28bbca91b25e496",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 2 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
     },
     {
       "target_id": "15b8b09d11330fa0b25448b0ef785bd4",
@@ -86072,9 +86077,9 @@
     {
       "target_id": "5bb20d9d2b4e76f3b6f8f60e65e03a1b",
       "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 2 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/store/facts.rs\",\"start\":1237,\"end\":1237,\"hash\":\"7fc94b497cf85c27\"}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "5bcd6920679215df49843857d2a578c5",
