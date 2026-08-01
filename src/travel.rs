@@ -100,7 +100,7 @@ impl Export {
 
 /// Export a store's graph to the canonical `loom.graph.json` at the project root.
 pub fn export_to_file(store: &Store) -> Result<std::path::PathBuf> {
-    let proj = graph_projection();
+    let proj = graph_projection()?;
     let json = proj.render(store.snapshot()?)?;
     let path = store.root().join(proj.artifact_path());
     std::fs::write(&path, json).with_context(|| format!("writing {}", path.display()))?;
@@ -110,7 +110,7 @@ pub fn export_to_file(store: &Store) -> Result<std::path::PathBuf> {
 /// Compute whether the committed export at `root` matches the live graph.
 /// Returns Ok(true) when fresh, Ok(false) when drifted or missing.
 pub fn export_is_fresh(store: &Store) -> Result<bool> {
-    let proj = graph_projection();
+    let proj = graph_projection()?;
     let path = store.root().join(proj.artifact_path());
     let committed = match std::fs::read_to_string(&path) {
         Ok(c) => c,
@@ -129,7 +129,7 @@ pub fn export_is_fresh(store: &Store) -> Result<bool> {
 /// without ever creating an artifact a repo chose not to track, and without
 /// rewriting a fresh one (so determinism and clean diffs hold).
 pub fn refresh_export_if_tracked(store: &Store) -> Result<bool> {
-    let path = store.root().join(graph_projection().artifact_path());
+    let path = store.root().join(graph_projection()?.artifact_path());
     if !path.exists() || export_is_fresh(store)? {
         return Ok(false);
     }
@@ -242,8 +242,9 @@ pub fn projection(name: &str) -> Option<Box<dyn Projection>> {
 
 /// The canonical graph projection, resolved through the registry — so the
 /// engine's export path dispatches by key rather than hardcoding the format.
-fn graph_projection() -> Box<dyn Projection> {
-    projection(GRAPH_JSON_PROJECTION).expect("graph_json projection is registered")
+fn graph_projection() -> Result<Box<dyn Projection>> {
+    projection(GRAPH_JSON_PROJECTION)
+        .ok_or_else(|| anyhow::anyhow!("graph_json projection is registered"))
 }
 
 #[cfg(test)]

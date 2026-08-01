@@ -86,12 +86,14 @@ impl Store {
         let mut stmt = self.conn.prepare(&format!(
             "SELECT {EDGE_COLS} FROM edge_view WHERE id LIKE ?1 ORDER BY id"
         ))?;
-        let matches = stmt
+        let mut matches = stmt
             .query_map(params![format!("{key}%")], row_to_edge)?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         match matches.len() {
             0 => bail!("no edge matches '{key}'"),
-            1 => Ok(matches.into_iter().next().expect("len == 1 by match arm")),
+            1 => matches
+                .pop()
+                .ok_or_else(|| anyhow::anyhow!("len == 1 but edge vector empty")),
             n => bail!("ambiguous edge prefix '{key}': {n} edges match"),
         }
     }

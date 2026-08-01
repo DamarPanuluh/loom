@@ -198,7 +198,10 @@ pub fn baseline_path(root: &Path, journey: &str) -> PathBuf {
 
 pub fn write_baseline(root: &Path, journey: &str, outcomes: &[StepOutcome]) -> Result<PathBuf> {
     let path = baseline_path(root, journey);
-    std::fs::create_dir_all(path.parent().expect("baseline path has parent"))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow!("baseline path '{}' has no parent", path.display()))?;
+    std::fs::create_dir_all(parent)?;
     std::fs::write(
         &path,
         serde_json::to_vec_pretty(&Baseline {

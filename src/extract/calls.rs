@@ -94,7 +94,7 @@ fn callee_name(node: &Node, bytes: &[u8]) -> Option<String> {
         return callee_from_text(&target, bytes);
     }
     match segments.len() {
-        1 => Some(segments.pop().unwrap()),
+        1 => segments.pop(),
         n => Some(format!("{}::{}", segments[n - 2], segments[n - 1])),
     }
 }

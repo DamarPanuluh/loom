@@ -152,7 +152,10 @@ fn freeze(graph: Option<&Path>, name: &str, json: bool) -> Result<()> {
         })
         .collect();
     let path = store.root().join("journeys").join(format!("{name}.yaml"));
-    std::fs::create_dir_all(path.parent().expect("journey path has parent"))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("journey path '{}' has no parent", path.display()))?;
+    std::fs::create_dir_all(parent)?;
     std::fs::write(
         &path,
         serde_norway::to_string(&serde_json::json!({ "journey": name, "steps": steps }))?,

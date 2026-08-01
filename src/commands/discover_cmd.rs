@@ -79,7 +79,9 @@ pub(crate) fn find_cmd(
         }
         // Facet/tag-only: list matching Intent/CodeFile/QualityRule nodes.
         let mut rows = Vec::new();
-        let ids = filter_ids.expect("has_filters ⇒ Some");
+        let Some(ids) = filter_ids else {
+            bail!("internal: a tag/facet filter was requested but none resolved");
+        };
         for id in ids {
             if let Some(n) = store.get_node(&id)? {
                 if kinds.contains(&n.node_type) {

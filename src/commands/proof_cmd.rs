@@ -972,8 +972,10 @@ pub(crate) fn observe_run(
     let run = match &observation {
         crate::runner::Observation::Ran(run) => (**run).clone(),
         crate::runner::Observation::Blocked { reason } => {
-            let store = open(graph)?;
-            let _ = &store;
+            // Keep the store open through the journal append so the graph lock
+            // is held while the blocked proof is recorded; the binding is
+            // intentionally unused beyond its drop.
+            let _store = open(graph)?;
             // A command loom could not run is not a failing proof. Recorded as
             // blocked, visible, never green.
             crate::journal::append(

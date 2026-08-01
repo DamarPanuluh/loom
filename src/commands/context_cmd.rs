@@ -86,9 +86,9 @@ pub(crate) fn context_packet(store: &Store, input: &str) -> Result<ContextPacket
     let mut seen_edges = BTreeSet::new();
     let mut staleness_flags = Vec::new();
     for (_, _, _, id) in hits {
-        let intent = store
-            .get_node(&id)?
-            .expect("keyword_hits returns existing node ids");
+        let Some(intent) = store.get_node(&id)? else {
+            continue;
+        };
         append_intent(
             store,
             &intent,

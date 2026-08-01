@@ -86,12 +86,11 @@ impl Store {
         }
         let type_filter = node_type.map(|t| t.as_str());
         // exact name first
-        let exact = self.find_nodes_by("name = ?1", params![key], type_filter)?;
+        let mut exact = self.find_nodes_by("name = ?1", params![key], type_filter)?;
         if exact.len() == 1 {
-            return Ok(exact
-                .into_iter()
-                .next()
-                .expect("exact.len() == 1 checked above"));
+            return exact
+                .pop()
+                .ok_or_else(|| anyhow::anyhow!("exact.len() == 1 but node vector empty"));
         }
         if exact.len() > 1 {
             // Actionable ambiguity: list every colliding node with its short id
