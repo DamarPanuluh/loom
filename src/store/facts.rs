@@ -1287,10 +1287,25 @@ pub(super) fn insert_imported(
         // edited graph.json mint `verified` for a command that never executed.
         // Downgrade it to the prose it actually is: recorded, but never counting.
         // Verified is re-earned only by a local run.
+        //
+        // EXCEPT loom's own probes: a Locator/Seam run is re-resolved against
+        // the live tree by `recheck` (the probe is re-run and its hash
+        // compared), and a Prescreen/Detector run is re-checked through its
+        // covered-file hashes. A forged probe hash cannot survive that — the
+        // fresh loom re-derives the truth. Only an externally-executed Command
+        // (or a Journey composing one) needs the downgrade: loom cannot prove
+        // from the export that the command ever ran.
         let payload = match &row.payload {
-            crate::evidence::Evidence::Run(run) => crate::evidence::Evidence::Claim {
-                text: format!("imported run (unverified): {}", run.command),
-            },
+            crate::evidence::Evidence::Run(run)
+                if matches!(
+                    run.producer,
+                    crate::model::RunProducer::Command | crate::model::RunProducer::Journey
+                ) =>
+            {
+                crate::evidence::Evidence::Claim {
+                    text: format!("imported run (unverified): {}", run.command),
+                }
+            }
             other => other.clone(),
         };
         let fact_id = fact_id_remap

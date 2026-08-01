@@ -141,24 +141,15 @@ if $CHECK; then
 import json
 import sys
 
-VOLATILE_RUN = {"stdout_hash", "stdout_excerpt", "duration_ms", "ran_at"}
-
-
 def normalize(path):
     g = json.load(open(path))
-    ev = []
-    for row in g.get("evidence", []):
-        row = dict(row)
-        row.pop("recorded_at", None)
-        payload = row.get("payload")
-        if isinstance(payload, dict) and payload.get("kind") == "run":
-            payload = {k: v for k, v in payload.items() if k not in VOLATILE_RUN}
-            row["payload"] = payload
-        ev.append(row)
-    g["evidence"] = ev
+    # Evidence rows are the observation HISTORY — a fresh checkout re-runs
+    # proofs and mints new run records, so the sets can never be byte-equal.
+    # The graph's TRUTH is the fixpoint: nodes, edges, facets, facts (whose
+    # `verification` field re-earns verified/cited/expired against the local
+    # tree on import+sync), config, journal, baselines. Evidence is support.
+    g.pop("evidence", None)
     return json.dumps(g, sort_keys=True)
-
-
 left = sys.argv[1]
 right = sys.argv[2]
 same = normalize(left) == normalize(right)

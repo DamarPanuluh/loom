@@ -49,17 +49,16 @@ for spec in "$WORK"/journeys/*.yaml; do "$B" journey run "$spec" >/dev/null; don
 "$B" sync >/dev/null
 "$B" export >/dev/null
 
-# Substance compare (strip volatile run fields), mirroring dogfood.sh.
+# Substance compare (mirroring dogfood.sh): evidence rows are the observation
+# HISTORY — a fresh checkout re-runs proofs and mints new run records, so the
+# sets can never be byte-equal. The graph's TRUTH is the fixpoint: nodes,
+# edges, facets, facts (whose `verification` re-earns against the local tree
+# on import+sync), config, journal, baselines. Evidence is support.
 python3 - "$ROOT/loom.graph.json" "$WORK/loom.graph.json" <<'PY'
 import json, sys
-VOLATILE = {"stdout_hash", "stdout_excerpt", "duration_ms", "ran_at"}
 def norm(path):
     g = json.load(open(path))
-    for row in g.get("evidence", []):
-        row.pop("recorded_at", None)
-        p = row.get("payload")
-        if isinstance(p, dict) and p.get("kind") == "run":
-            row["payload"] = {k: v for k, v in p.items() if k not in VOLATILE}
+    g.pop("evidence", None)
     return json.dumps(g, sort_keys=True)
 same = norm(sys.argv[1]) == norm(sys.argv[2])
 print("fixpoint:", "OK — fresh checkout reproduces the committed graph" if same else "BROKEN")
