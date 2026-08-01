@@ -1,0 +1,15 @@
+journey: proof strength is derived from the proof's shape
+steps:
+  - name: a bare command grades S1 after sync
+    intent: proof strength is derived from the proof's shape
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      loom intent add --graph "$tmp" --name 'demo behavior' --description 'does something' --level feature &&
+      loom validation add --graph "$tmp" --name 'true proof' --type test --command 'true' --intent 'demo behavior' &&
+      loom validation run --graph "$tmp" --all &&
+      loom sync --graph "$tmp" &&
+      loom validation show --graph "$tmp" 'true proof' &&
+      rm -rf "$tmp"
+    expect:
+      exit_code: 0
+      stdout_contains: ["strength: S1"]

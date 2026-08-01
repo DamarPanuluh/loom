@@ -1,0 +1,8 @@
+journey: a green graph is pointed at its weakest standing claim
+steps:
+  - name: deepen ranks the weakest standing claim
+    intent: a green graph is pointed at its weakest standing claim
+    run: "loom deepen --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["intent_id", "next_move", "why"]

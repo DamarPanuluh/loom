@@ -1,0 +1,8 @@
+journey: divergences route to the human-only queue
+steps:
+  - name: the ratify lane serves the divergence
+    intent: divergences route to a human-only queue
+    run: "loom next --mode ratify --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["work_item", "duplicate intent"]

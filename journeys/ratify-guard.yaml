@@ -1,0 +1,11 @@
+journey: the human ratification boundary refuses automation
+steps:
+  - name: non-interactive ratification is refused
+    intent: an operator ratifies an intent as wanted
+    run: >-
+      loom intent ratify
+      'the next router serves the highest-priority asserted residue with a prompt contract'
+      --evidence 'automated probe' --json
+    expect:
+      exit_code: 1
+      stderr_contains: ["INV-8", "indistinguishable from an LLM"]

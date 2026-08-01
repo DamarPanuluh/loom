@@ -1,0 +1,8 @@
+journey: loom answers what a change here could reach
+steps:
+  - name: impact reports callers and intents at risk
+    intent: loom answers what a change here could reach
+    run: "loom impact door --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ["callers", "intents_at_risk"]

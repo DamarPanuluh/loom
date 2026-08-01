@@ -1,0 +1,12 @@
+journey: the compass is a projection of the ladder, not a second decision
+steps:
+  - name: status reports a compass pointing at the unmet rung
+    intent: the compass points at divergence only when judgment and evidence disagree
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      loom intent add --graph "$tmp" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature &&
+      loom status --graph "$tmp" --json &&
+      rm -rf "$tmp"
+    expect:
+      exit_code: 0
+      stdout_contains: ['"compass"', '"phase": "build"']

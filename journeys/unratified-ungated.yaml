@@ -1,0 +1,12 @@
+journey: absent ratification does not gate the ladder
+steps:
+  - name: an unratified intent leaves the ladder ungated
+    intent: absent ratification reads as unratified without gating the ladder
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      loom intent add --graph "$tmp" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature &&
+      loom status --graph "$tmp" --json &&
+      rm -rf "$tmp"
+    expect:
+      exit_code: 0
+      stdout_contains: ['"phase": "build"']
