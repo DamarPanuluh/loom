@@ -66,10 +66,13 @@ import json
 import sys
 
 status = json.loads(sys.argv[1])
+# `deepening` is open by design ("this queue re-orders; it never empties"),
+# and `not_applicable` rungs are lanes a graph shape cannot serve — neither
+# is a gap. Every other rung must be met for the loop to be green.
 unmet = [
     f"{r['name']}: {r['detail']}"
     for r in status["maturity"]["rungs"]
-    if r["state"] != "met"
+    if r["state"] not in ("met", "open", "not_applicable")
 ]
 queued = {name: count for name, count in status["queues"].items() if count}
 if unmet or queued:
