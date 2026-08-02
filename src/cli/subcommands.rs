@@ -107,6 +107,16 @@ pub enum PatternExemplarCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum IntentCmd {
+    /// What stands on this behavior: every intent that transitively requires it,
+    /// is a scenario of it, or decomposes into it — nearest first, each with
+    /// whether it currently has a passing proof. The intent-graph twin of
+    /// `loom impact`, which answers the same question for code.
+    Dependents {
+        key: String,
+        /// How many edges to walk back (default 5).
+        #[arg(long, default_value_t = 5)]
+        depth: usize,
+    },
     /// Add an intent.
     Add {
         #[arg(long)]

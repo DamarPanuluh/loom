@@ -552,3 +552,84 @@ impl Store {
             .collect())
     }
 }
+
+/// How a behavior was reached when walking what stands on another behavior.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Dependent {
+    pub intent: Node,
+    /// Shortest number of edges from the queried behavior to this one.
+    pub hops: usize,
+    /// Whether this behavior currently has a passing proof. A dependent with
+    /// no passing proof is the expensive kind: nothing would catch it breaking.
+    pub proven: bool,
+}
+
+impl Store {
+    /// Every behavior that transitively STANDS ON `intent_id`, nearest first.
+    ///
+    /// Plane: derived query over asserted truth. Answers the question `loom
+    /// impact` answers for code — "what could a change here reach?" — but over
+    /// the intent graph rather than the call graph, which nothing did before.
+    ///
+    /// The direction is uniform, which is why one traversal serves four edge
+    /// kinds: in `requires`, `scenario_of`, `hierarchy` and `sequence` alike,
+    /// the FROM side is the thing that stands on the TO side. A dependent is
+    /// therefore anything that points AT this behavior, transitively.
+    ///
+    /// Recursive in SQL rather than in Rust on purpose: the walk is over
+    /// asserted rows the store already indexes, so pulling every edge into
+    /// memory to chase pointers would be the slower, less honest version of a
+    /// query SQLite executes directly. `depth` bounds it, which also makes a
+    /// `requires` cycle terminate rather than needing a visited-set.
+    pub fn dependents(&self, intent_id: &str, depth: usize) -> Result<Vec<Dependent>> {
+        // MIN(hops) collapses the several paths that may reach one behavior to
+        // the shortest, so "2 hops" always means the closest route.
+        let mut stmt = self.conn.prepare(
+            "WITH RECURSIVE reach(id, hops) AS (
+                 SELECT ?1, 0
+                 UNION
+                 SELECT e.from_id, r.hops + 1
+                   FROM edge e JOIN reach r ON e.to_id = r.id
+                  WHERE e.kind IN ('requires','scenario_of','hierarchy','sequence')
+                    AND e.truth_class = 'asserted'
+                    AND r.hops < ?2
+             )
+             SELECT id, MIN(hops) AS hops FROM reach
+              WHERE id <> ?1
+              GROUP BY id
+              ORDER BY hops, id",
+        )?;
+        let rows = stmt.query_map(rusqlite::params![intent_id, depth as i64], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? as usize))
+        })?;
+
+        let mut out = Vec::new();
+        for row in rows {
+            let (id, hops) = row?;
+            let Some(intent) = self.get_node(&id)? else {
+                continue;
+            };
+            if intent.node_type != NodeType::Intent {
+                continue;
+            }
+            out.push(Dependent {
+                proven: self.has_passing_proof(&id)?,
+                intent,
+                hops,
+            });
+        }
+        Ok(out)
+    }
+
+    /// Does this behavior have at least one validation that actually passed?
+    fn has_passing_proof(&self, intent_id: &str) -> Result<bool> {
+        for e in self.edges_with(Some(EdgeKind::Validates), None, Some(intent_id))? {
+            if let Some(v) = self.get_node(&e.from_id)? {
+                if v.status == "passed" {
+                    return Ok(true);
+                }
+            }
+        }
+        Ok(false)
+    }
+}

@@ -464,6 +464,7 @@ mod facets;
 /// The write boundary: every asserted fact enters through `assert_fact`.
 pub mod facts;
 mod nodes;
+pub use edges::Dependent;
 pub use facts::{edge_verdict, Assertion, FactView, Subject};
 
 // ---- helpers -------------------------------------------------------------

@@ -87,6 +87,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             classification,
             evidence,
         } => intent_impact(graph, key, classification, evidence, json),
+        IntentCmd::Dependents { key, depth } => intent_dependents(graph, &key, depth, json),
         IntentCmd::Ratify { key, all, evidence } => {
             intent_ratify(graph, RatifyArgs { key, all, evidence }, json)
         }
@@ -963,6 +964,55 @@ fn intent_tag(graph: Option<&Path>, cmd: IntentTagCmd, json: bool) -> Result<()>
                 format!("untagged '{}' '{term}'", n.name),
             )?;
         }
+    }
+    Ok(())
+}
+
+/// Render what stands on a behavior.
+///
+/// The unproven ones are the point: a dependent with no passing proof is where
+/// a change to the queried behavior would break something silently, so they are
+/// called out rather than left for the reader to spot in a list.
+fn intent_dependents(graph: Option<&Path>, key: &str, depth: usize, json: bool) -> Result<()> {
+    let store = crate::commands::open_read(graph)?;
+    let target = store.resolve_node(key, Some(NodeType::Intent))?;
+    let found = store.dependents(&target.id, depth)?;
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "intent": { "id": target.id, "name": target.name },
+                "depth": depth,
+                "dependents": found,
+                "unproven": found.iter().filter(|d| !d.proven).count(),
+            }))?
+        );
+        return Ok(());
+    }
+
+    if found.is_empty() {
+        println!(
+            "nothing stands on '{}' within {depth} hop(s) — changing it reaches no other behavior",
+            target.name
+        );
+        return Ok(());
+    }
+    println!("{} behavior(s) stand on '{}':", found.len(), target.name);
+    for d in &found {
+        println!(
+            "  {:>2} hop{}  {:<9} {}",
+            d.hops,
+            if d.hops == 1 { " " } else { "s" },
+            if d.proven { "proven" } else { "UNPROVEN" },
+            d.intent.name
+        );
+    }
+    let unproven = found.iter().filter(|d| !d.proven).count();
+    if unproven > 0 {
+        println!(
+            "\n{unproven} of them have no passing proof — a change here would not be caught there."
+        );
     }
     Ok(())
 }
