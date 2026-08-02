@@ -114,7 +114,7 @@ fn apply_batch_creates_intents_groundings_relationships_and_records_verdicts() {
     { "name": "payment can be refunded",  "description": "refunding a payment returns the charge", "level": "feature", "lifecycle": "planned" }
   ],
   "groundings": [
-    { "intent": "payment can be captured", "codefile": "src/a.rs", "locator": "capture", "role": "realizes",
+    { "intent": "payment can be captured", "codefile": "src/a.rs", "locator": "fn behavior", "role": "realizes",
       "verdict": { "verdict": "ground", "criterion": "capture() settles the charge", "evidence": "test capture_settles passes — src/a.rs:1", "confidence": 0.9 } }
   ],
   "relationships": [
@@ -253,7 +253,7 @@ fn apply_edges_and_verdicts_are_idempotent_on_reapply() {
     { "name": "gamma works", "description": "gamma behavior", "level": "feature", "lifecycle": "planned" }
   ],
   "groundings": [
-    { "intent": "gamma works", "codefile": "src/a.rs", "locator": "g", "role": "realizes",
+    { "intent": "gamma works", "codefile": "src/a.rs", "locator": "fn behavior", "role": "realizes",
       "verdict": { "verdict": "ground", "criterion": "gamma criterion", "evidence": "gamma evidence — src/a.rs:1", "confidence": 0.9 } }
   ]
 }
@@ -280,7 +280,7 @@ fn apply_edges_and_verdicts_are_idempotent_on_reapply() {
         "second.json",
         r#"{
   "groundings": [
-    { "intent": "gamma works", "codefile": "src/a.rs", "locator": "g", "role": "realizes",
+    { "intent": "gamma works", "codefile": "src/a.rs", "locator": "fn behavior", "role": "realizes",
       "verdict": { "verdict": "ground", "criterion": "gamma criterion", "evidence": "gamma evidence — src/a.rs:1", "confidence": 0.9 } }
   ]
 }
@@ -325,7 +325,7 @@ fn apply_reapplying_intent_declarations_is_rejected_and_leaves_graph_unchanged()
     { "name": "delta works", "description": "delta behavior", "level": "feature", "lifecycle": "planned" }
   ],
   "groundings": [
-    { "intent": "delta works", "codefile": "src/a.rs", "locator": "d", "role": "realizes",
+    { "intent": "delta works", "codefile": "src/a.rs", "locator": "fn behavior", "role": "realizes",
       "verdict": { "verdict": "ground", "criterion": "delta criterion", "evidence": "delta evidence — src/a.rs:2", "confidence": 0.9 } }
   ]
 }
