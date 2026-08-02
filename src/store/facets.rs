@@ -71,6 +71,24 @@ impl Store {
             );
         }
         self.require_annotation_target(target_id, target_kind)?;
+        if target_kind == TargetKind::Edge && key == "locator" {
+            if let Some(edge) = self.get_edge(target_id)? {
+                if edge.kind == EdgeKind::Exemplar {
+                    let file = self
+                        .get_node(&edge.to_id)?
+                        .ok_or_else(|| anyhow!("Exemplar target file is missing"))?;
+                    if value.trim().is_empty()
+                        || crate::runner::unique_locator_probe(&self.root, &file.name, value)
+                            .is_none()
+                    {
+                        bail!(
+                            "Exemplar locator must resolve exactly one live symbol in '{}'",
+                            file.name
+                        );
+                    }
+                }
+            }
+        }
         self.conn.execute(
             "INSERT INTO facet(target_id,target_kind,key,value,truth_class)
              VALUES (?1,?2,?3,?4,?5)
@@ -249,6 +267,13 @@ impl Store {
             f.target_kind == TargetKind::Node
                 && f.truth_class == TruthClass::Asserted
                 && f.key == "adjudication"
+                && super::is_derived_node_id(&f.target_id)
+        }
+
+        fn is_soft_ref_fact(f: &crate::evidence::Fact) -> bool {
+            f.subject_kind == TargetKind::Node
+                && f.claim == Claim::Adjudication
+                && super::is_derived_node_id(&f.subject_id)
         }
 
         let count: i64 = self
@@ -264,6 +289,10 @@ impl Store {
             .map(|n| (n.id.as_str(), n.node_type))
             .collect();
         for n in &snap.nodes {
+            crate::pattern::validate_node_body(n.node_type, &n.body)
+                .with_context(|| format!("import: invalid body for node '{}'", n.id))?;
+            crate::research::validate_record(None, n, chrono::Utc::now(), true)
+                .with_context(|| format!("import: invalid governed research node '{}'", n.id))?;
             if !registry::node_allows_truth_class(n.node_type, n.truth_class) {
                 bail!(
                     "import: node '{}' type '{}' disallows truth_class '{}'",
@@ -295,6 +324,40 @@ impl Store {
                     e.id,
                     e.kind
                 );
+            }
+            if e.kind == EdgeKind::Exemplar {
+                let locators: Vec<_> = snap
+                    .facets
+                    .iter()
+                    .filter(|f| {
+                        f.target_kind == TargetKind::Edge
+                            && f.target_id == e.id
+                            && f.key == "locator"
+                            && !f.value.trim().is_empty()
+                    })
+                    .collect();
+                if locators.len() != 1 {
+                    bail!(
+                        "import: Exemplar edge '{}' requires exactly one nonempty locator facet",
+                        e.id
+                    );
+                }
+                let file = snap
+                    .nodes
+                    .iter()
+                    .find(|node| node.id == e.to_id && node.node_type == NodeType::CodeFile)
+                    .ok_or_else(|| {
+                        anyhow!("import: Exemplar '{}' has no CodeFile endpoint", e.id)
+                    })?;
+                if crate::runner::unique_locator_probe(&self.root, &file.name, &locators[0].value)
+                    .is_none()
+                {
+                    bail!(
+                        "import: Exemplar edge '{}' locator does not resolve exactly one live symbol in '{}'",
+                        e.id,
+                        file.name
+                    );
+                }
             }
         }
         // Facets/tags reference a node or edge by (target_id, target_kind), but
@@ -403,7 +466,59 @@ impl Store {
         // (below) re-checks each anchor against this working tree before the
         // transaction closes. This is what stops an import smuggling in a
         // verified fact whose covered files do not exist locally.
-        super::facts::insert_imported(&tx, &snap.facts, &snap.evidence)?;
+        // Legacy exports may carry delegated approvals. They are deliberately
+        // not restored: only direct human ratification can establish wantedness.
+        // Filtering evidence with its fact avoids leaving orphan anchors.
+        let mut facts = Vec::with_capacity(snap.facts.len());
+        for f in &snap.facts {
+            if f.claim == Claim::Ratification && f.asserted_by.starts_with("policy:") {
+                continue;
+            }
+            let incompatible_subject = f.subject_kind == TargetKind::Node
+                && node_types
+                    .get(f.subject_id.as_str())
+                    .is_some_and(|t| matches!(t, NodeType::TaskRecord | NodeType::Note));
+            if incompatible_subject && repair {
+                report.dropped_facts.push((
+                    f.subject_kind.as_str().to_string(),
+                    f.subject_id.clone(),
+                    f.claim.as_str().to_string(),
+                ));
+            } else if incompatible_subject {
+                bail!(
+                    "import: facts cannot attach to TaskRecord or Note subject '{}'",
+                    f.subject_id
+                );
+            } else if has_target(&f.subject_id, f.subject_kind) {
+                facts.push(f.clone());
+            } else if is_soft_ref_fact(f) {
+                report.preserved_soft_refs += 1;
+                facts.push(f.clone());
+            } else if repair {
+                report.dropped_facts.push((
+                    f.subject_kind.as_str().to_string(),
+                    f.subject_id.clone(),
+                    f.claim.as_str().to_string(),
+                ));
+            } else {
+                bail!(
+                    "import: fact '{}' on {} '{}' references a missing subject \
+                     (re-run `loom import --repair-orphans` to drop dangling facts)",
+                    f.claim,
+                    f.subject_kind,
+                    f.subject_id
+                );
+            }
+        }
+        let fact_ids: std::collections::HashSet<&str> =
+            facts.iter().map(|f| f.id.as_str()).collect();
+        let evidence: Vec<_> = snap
+            .evidence
+            .iter()
+            .filter(|e| fact_ids.contains(e.fact_id.as_str()))
+            .cloned()
+            .collect();
+        super::facts::insert_imported(&tx, &facts, &evidence)?;
         for f in &facets {
             tx.execute(
                 "INSERT INTO facet(target_id,target_kind,key,value,truth_class)
@@ -424,6 +539,11 @@ impl Store {
             )?;
         }
         for (key, value) in &snap.config {
+            // Accepted only as inert legacy input. It is neither persisted nor
+            // portable in new exports, so old config cannot restore delegation.
+            if key == "ratify_policies" {
+                continue;
+            }
             if !PORTABLE_META_KEYS.contains(&key.as_str()) {
                 bail!("import: config key '{key}' is not portable");
             }

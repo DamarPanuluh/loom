@@ -19,6 +19,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
                     serde_json::to_string_pretty(&serde_json::json!({
                         "initialized": false,
                         "intro": WELCOME_INTRO,
+                        "idea_help": PARTIAL_IDEA_HELP,
                         "get_started": [
                             "loom init",
                             "loom door \"what this codebase should do\""
@@ -52,6 +53,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
             serde_json::to_string_pretty(&serde_json::json!({
                 "initialized": true,
                 "intro": WELCOME_INTRO,
+                "idea_help": PARTIAL_IDEA_HELP,
                 "intents": active,
                 "phase": ladder.phase,
                 "state": headline,
@@ -78,9 +80,11 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
 }
 
 const WELCOME_INTRO: &str = "loom — a living map of what your code is meant to do.";
+const PARTIAL_IDEA_HELP: &str = "You can start with a partial idea. Loom helps the LLM fill technical gaps and surface the product choices that need your judgment, one understandable question at a time.";
 
 fn print_welcome_intro() {
     println!("{WELCOME_INTRO}");
+    println!("  {PARTIAL_IDEA_HELP}");
     println!();
     println!("  Every \"intent\" is one thing the codebase should do. Loom links each to the");
     println!("  code that does it, tracks what's proven vs. still owed, and always points you");

@@ -174,6 +174,9 @@ pub struct WorkItem {
     /// [`crate::packet`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub packet_id: Option<String>,
+    /// Live, fail-closed repository guidance for coding packets only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pattern_guidance: Option<crate::pattern::PatternGuidance>,
     pub mode: String,
     pub owner_role: String,
     pub effort: String,
@@ -219,6 +222,7 @@ pub struct Target {
 pub fn next(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
     let mut item = next_inner(store, lane)?;
     if let Some(w) = item.as_mut() {
+        enrich_patterns(store, w)?;
         let policy = crate::policy::load(store)?;
         if policy.gates_role(&w.owner_role) {
             w.prompt_contract.human_gate = Some(format!(
@@ -228,6 +232,44 @@ pub fn next(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
         }
     }
     Ok(item)
+}
+
+fn enrich_patterns(store: &Store, item: &mut WorkItem) -> Result<()> {
+    if item.mode != "build" && item.mode != "fix" {
+        return Ok(());
+    }
+    let paths: Vec<String> = item
+        .context
+        .read_set
+        .iter()
+        .map(|read| read.path.clone())
+        .collect();
+    let mut intent_ids = Vec::new();
+    if item.mode == "build" && item.target.kind == NodeType::Intent.as_str() {
+        intent_ids.push(item.target.id.clone());
+    } else if item.mode == "fix" {
+        if let Some(edge) = store.get_edge(&item.target.id)? {
+            for id in [&edge.from_id, &edge.to_id] {
+                if store
+                    .get_node(id)?
+                    .is_some_and(|node| node.node_type == NodeType::Intent)
+                {
+                    intent_ids.push(id.clone());
+                }
+            }
+        }
+    }
+    let mut tags = Vec::new();
+    for id in intent_ids {
+        tags.extend(store.tags_of(&id, crate::model::TargetKind::Node)?);
+    }
+    tags.sort();
+    tags.dedup();
+    let guidance = crate::pattern::guidance(store, &paths, &tags)?;
+    if guidance.matched != 0 {
+        item.pattern_guidance = Some(guidance);
+    }
+    Ok(())
 }
 
 /// Compile the work packet for one lane. The single dispatch point: adding a

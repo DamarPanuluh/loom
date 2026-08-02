@@ -149,6 +149,10 @@ fn verdict_floor(
             CURRENT_GROUNDING,
             "point --locator at the symbol that performs the behavior",
         ),
+        Some(EdgeKind::Exemplar) => Floor::new(
+            CURRENT_GROUNDING,
+            "point --locator at exactly one live symbol exemplifying the pattern",
+        ),
         // A runnable proof must be RUN. A manual check cannot be, so it settles
         // at `cited` — attested, visibly weaker than observed, and honest about
         // which it is. Making both look the same is how a graph ends up

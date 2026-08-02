@@ -87,21 +87,9 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             classification,
             evidence,
         } => intent_impact(graph, key, classification, evidence, json),
-        IntentCmd::Ratify {
-            key,
-            all,
-            evidence,
-            by_policy,
-        } => intent_ratify(
-            graph,
-            RatifyArgs {
-                key,
-                all,
-                evidence,
-                by_policy,
-            },
-            json,
-        ),
+        IntentCmd::Ratify { key, all, evidence } => {
+            intent_ratify(graph, RatifyArgs { key, all, evidence }, json)
+        }
         IntentCmd::Reject { key, reason } => intent_reject(graph, &key, &reason, json),
         IntentCmd::Tag { cmd } => intent_tag(graph, cmd, json),
     }
@@ -374,7 +362,6 @@ struct RatifyArgs {
     key: Option<String>,
     all: bool,
     evidence: Option<String>,
-    by_policy: Option<String>,
 }
 
 fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<()> {
@@ -414,31 +401,14 @@ fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<(
     // prompts ends up forging the records instead, which is exactly what
     // happened to 39 of this graph's own ratifications.
     //
-    // A declared delegation policy replaces the challenge: the human's authority
-    // was recorded once (`loom policy ratify-add`), and every record under it
-    // attributes to `policy:<name>` — the honest half of delegation.
     let subject = match targets.as_slice() {
         [one] => one.name.clone(),
         many => format!("ratify {}", many.len()),
     };
-    let presence = match &args.by_policy {
-        Some(policy_name) => {
-            let pol = crate::policy::ratify_policy(&store, policy_name)?;
-            if pol.declared_by != "human" {
-                bail!("ratify policy '{policy_name}' was not declared by a human; refusing");
-            }
-            format!("policy:{policy_name}")
-        }
-        None => super::require_challenge(&subject)?.to_string(),
-    };
+    let presence = super::require_challenge(&subject)?.to_string();
     let mut ratified = Vec::new();
     for n in &targets {
-        match &args.by_policy {
-            Some(policy_name) => {
-                store.ratify_intent_by_policy(&n.id, &evidence, &presence, policy_name)?
-            }
-            None => store.ratify_intent(&n.id, &evidence, &presence)?,
-        }
+        store.ratify_intent(&n.id, &evidence, &presence)?;
         ratified.push(serde_json::json!({ "id": n.id, "name": n.name }));
     }
     pulse::emit_line(

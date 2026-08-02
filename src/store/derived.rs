@@ -242,6 +242,9 @@ impl Store {
         if node.status == status {
             return Ok(());
         }
+        let mut prospective = node.clone();
+        prospective.status = status.into();
+        crate::research::validate_record(Some(&node), &prospective, chrono::Utc::now(), false)?;
         let now = now(&self.conn)?;
         self.conn.execute(
             "UPDATE node SET status=?2,updated_at=?3 WHERE id=?1",

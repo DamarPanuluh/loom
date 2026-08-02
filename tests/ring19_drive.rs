@@ -48,3 +48,43 @@ fn drive_freeze_compiles_a_synthetic_journaled_chain() {
     assert!(yaml.contains("printf driven"));
     assert!(tmp.path().join(".loom/baselines/demo.json").exists());
 }
+
+#[test]
+fn drive_freeze_rejects_a_failed_chain_without_baseline_or_freeze_event() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    loom::journal::append(
+        tmp.path(),
+        "drive_exchange",
+        "failed-drive",
+        serde_json::json!({
+            "utterance": "run a failing check",
+            "intent": "check succeeds",
+            "command": "false",
+        }),
+    )
+    .unwrap();
+    drop(store);
+
+    let err = loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Drive {
+            cmd: Some(DriveCmd::Freeze {
+                name: "failed-drive".into(),
+            }),
+        }),
+    })
+    .unwrap_err()
+    .to_string();
+
+    assert!(err.contains("step 'drive-1' failed"));
+    assert!(!tmp
+        .path()
+        .join(".loom/baselines/failed-drive.json")
+        .exists());
+    assert!(loom::journal::read(tmp.path())
+        .unwrap()
+        .iter()
+        .all(|entry| entry.event != "drive_freeze"));
+}

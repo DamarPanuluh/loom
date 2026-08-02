@@ -23,7 +23,7 @@
 //! guards, and a tool whose whole claim is falsifiability has to be able to
 //! turn that claim on its own records.
 
-use crate::model::{Claim, NodeType, Verification};
+use crate::model::{Claim, NodeType, TargetKind, Verification};
 use crate::store::Store;
 use crate::Result;
 use serde::Serialize;
@@ -37,10 +37,27 @@ pub const EFFICACY_MIN_SAMPLE: usize = 20;
 /// Writes by one actor inside one minute that stop looking like judgment.
 pub const BURST_THRESHOLD: usize = 10;
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(tag = "kind", content = "id", rename_all = "snake_case")]
+pub enum AuditSubject {
+    Node(String),
+    Edge(String),
+    Graph(String),
+}
+
+impl AuditSubject {
+    pub fn id(&self) -> Option<&str> {
+        match self {
+            Self::Node(id) | Self::Edge(id) => Some(id),
+            Self::Graph(_) => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AuditFinding {
     pub kind: &'static str,
-    pub subject: String,
+    pub subject: AuditSubject,
     pub detail: String,
     /// What to do — every finding names its own remedy, because an audit that
     /// only accuses is a scoreboard.
@@ -59,7 +76,7 @@ pub fn run(store: &Store) -> Result<Vec<AuditFinding>> {
     if corrupt > 0 {
         out.push(AuditFinding {
             kind: "journal_corruption",
-            subject: crate::journal::path(store.root()).display().to_string(),
+            subject: AuditSubject::Graph(crate::journal::path(store.root()).display().to_string()),
             detail: format!(
                 "{corrupt} journal line(s) failed to parse — most likely a truncated \
                  final record from an interrupted append. They are skipped, not read \
@@ -84,31 +101,40 @@ fn unjournaled_ratifications(
     store: &Store,
     entries: &[crate::journal::Entry],
 ) -> Result<Vec<AuditFinding>> {
-    let ratified_targets: std::collections::BTreeSet<&str> = entries
-        .iter()
-        .filter(|e| matches!(e.event.as_str(), "ratification" | "rejection"))
-        .map(|e| e.target_id.as_str())
-        .collect();
     let mut out = Vec::new();
-    for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
-        let state = store.ratification(&intent.id)?;
-        if state != "ratified" && state != "rejected" {
-            continue;
-        }
-        let has_entry = ratified_targets.contains(intent.id.as_str());
-        if !has_entry {
-            out.push(AuditFinding {
-                kind: "unjournaled_ratification",
-                subject: intent.id.clone(),
-                detail: format!(
-                    "'{}' is {state} with no journal entry behind it — the act was never recorded",
-                    intent.name
-                ),
-                remedy: format!(
-                    "re-ratify it deliberately (`loom intent ratify {}`), or reject it",
-                    &intent.id[..8.min(intent.id.len())]
-                ),
-            });
+    for node_type in [NodeType::Intent, NodeType::Pattern] {
+        for node in store.list_nodes(Some(node_type), usize::MAX)? {
+            let Some(view) = store.fact(
+                &crate::store::Subject::Node(node.id.clone()),
+                Claim::Ratification,
+            )?
+            else {
+                continue;
+            };
+            let state = view.fact.state;
+            if state != "ratified" && state != "rejected" {
+                continue;
+            }
+            let standing = store.ratification_with_journal(&node.id, entries)? == state;
+            if !standing {
+                let command = if node_type == NodeType::Pattern {
+                    "pattern"
+                } else {
+                    "intent"
+                };
+                out.push(AuditFinding {
+                    kind: "unjournaled_ratification",
+                    subject: AuditSubject::Node(node.id.clone()),
+                    detail: format!(
+                        "'{}' is recorded as {state}, but lacks standing human authority and matching live journal evidence",
+                        node.name
+                    ),
+                    remedy: format!(
+                        "re-ratify it deliberately (`loom {command} ratify {}`)",
+                        &node.id[..8.min(node.id.len())]
+                    ),
+                });
+            }
         }
     }
     Ok(out)
@@ -140,7 +166,7 @@ fn bursts(store: &Store) -> Result<Vec<AuditFinding>> {
         }
         out.push(AuditFinding {
             kind: "judgment_burst",
-            subject: format!("{actor}@{minute}"),
+            subject: AuditSubject::Graph(format!("{actor}@{minute}")),
             detail: format!(
                 "{} judgments by '{actor}' inside one minute ({minute}) — \
                  too fast to have been made one at a time",
@@ -168,15 +194,104 @@ fn unanchored_settled_facts(store: &Store) -> Result<Vec<AuditFinding>> {
         if fact.verification != Verification::Expired {
             continue;
         }
+        // A verdict whose edge has already been reopened is ordinary routed
+        // remeasurement work, not an audit violation. The fact deliberately
+        // retains its last observed state as history while the edge status is
+        // the live claim. Counting both made one sync turn every stale edge
+        // into a second Audit item and drowned genuine unanchored records.
+        if fact.claim == Claim::Verdict
+            && fact.subject_kind == TargetKind::Edge
+            && store.get_edge(&fact.subject_id)?.is_some_and(|edge| {
+                matches!(
+                    edge.status,
+                    crate::model::InspectionStatus::NeedsReverification
+                        | crate::model::InspectionStatus::Uninspected
+                )
+            })
+        {
+            continue;
+        }
+        // The one documented dormant reference: an adjudication on a
+        // deterministic derived Finding while sync has temporarily wiped that
+        // Finding. Its evidence is still present and the same id reattaches on
+        // rematerialization; absence is not a broken anchor.
+        if fact.claim == Claim::Adjudication
+            && fact.subject_kind == TargetKind::Node
+            && store.get_node(&fact.subject_id)?.is_none()
+            && crate::store::is_derived_node_id(&fact.subject_id)
+        {
+            continue;
+        }
         out.push(AuditFinding {
             kind: "unanchored_claim",
-            subject: fact.subject_id.clone(),
+            subject: match fact.subject_kind {
+                TargetKind::Node => AuditSubject::Node(fact.subject_id.clone()),
+                TargetKind::Edge => AuditSubject::Edge(fact.subject_id.clone()),
+            },
             detail: format!(
                 "{} is '{}' with no surviving anchor",
                 fact.claim.as_str(),
                 fact.state
             ),
             remedy: "re-establish it with evidence loom can re-check, or withdraw it".into(),
+        });
+    }
+    Ok(out)
+}
+
+/// The single actionable read path shared by status and the audit queue.
+/// Self-audit findings lead because an unearned record outranks structural
+/// cleanup. Doctor issues and unresolved smells follow in stable order.
+pub fn backlog(store: &Store) -> Result<Vec<AuditFinding>> {
+    let mut out = run(store)?;
+    for finding in &mut out {
+        let orphan = match &finding.subject {
+            AuditSubject::Node(id) if store.get_node(id)?.is_none() => Some(id.clone()),
+            AuditSubject::Edge(id) if store.get_edge(id)?.is_none() => Some(id.clone()),
+            _ => None,
+        };
+        if let Some(id) = orphan {
+            finding.detail = format!("{} (orphan audit subject: {id})", finding.detail);
+            finding.subject = AuditSubject::Graph(id);
+        }
+    }
+    for issue in crate::signal::doctor(store)? {
+        let subject = issue
+            .message
+            .split_whitespace()
+            .find(|token| token.len() == 32 && token.chars().all(|c| c.is_ascii_hexdigit()))
+            .map(|id| {
+                if store.get_node(id).ok().flatten().is_some() {
+                    AuditSubject::Node(id.to_string())
+                } else if store.get_edge(id).ok().flatten().is_some() {
+                    AuditSubject::Edge(id.to_string())
+                } else {
+                    AuditSubject::Graph(issue.kind.clone())
+                }
+            })
+            .unwrap_or_else(|| AuditSubject::Graph(issue.kind.clone()));
+        out.push(AuditFinding {
+            kind: "doctor_issue",
+            subject,
+            detail: issue.message,
+            remedy: format!("`loom doctor` reports: {}", issue.kind),
+        });
+    }
+    for smell in crate::signal::smells(store)? {
+        if crate::signal::smell_has_resolving_adjudication(store, &smell.identity)? {
+            continue;
+        }
+        let id = smell.identity.rsplit_once(':').map(|(_, id)| id);
+        let subject = match id {
+            Some(id) if store.get_node(id)?.is_some() => AuditSubject::Node(id.to_string()),
+            Some(id) if store.get_edge(id)?.is_some() => AuditSubject::Edge(id.to_string()),
+            _ => AuditSubject::Graph(smell.identity.clone()),
+        };
+        out.push(AuditFinding {
+            kind: "smell",
+            subject,
+            detail: smell.message,
+            remedy: smell.remedy,
         });
     }
     Ok(out)

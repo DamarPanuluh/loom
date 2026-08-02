@@ -131,9 +131,18 @@ impl LadderInputs {
             .collect();
 
         // Edge residue, split exactly the way the lanes serve it.
-        let failing = store
-            .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
-            .len();
+        let failing_edges =
+            store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?;
+        let failing_exemplars = failing_edges
+            .iter()
+            .filter(|edge| edge.kind == EdgeKind::Exemplar)
+            .count();
+        let failing = failing_edges.len() - failing_exemplars;
+        let open_research = store
+            .list_nodes(Some(NodeType::TaskRecord), usize::MAX)?
+            .iter()
+            .filter(|node| crate::research::is_open_research(node))
+            .count();
         let stale = store.live_edges_by_status(
             TruthClass::Asserted,
             &[InspectionStatus::NeedsReverification],
@@ -174,15 +183,6 @@ impl LadderInputs {
         let unproven_implemented = crate::workitem::unproven_implemented_intents(store)?.len();
 
         let smells = crate::signal::smells(store)?;
-        // A resolving adjudication is an accepted exception and no longer counts
-        // as open — honoring the close-out contract "open smells fixed *or
-        // adjudicated*". `needed`/`blocked`/untriaged smells still count.
-        let mut open_smells = 0usize;
-        for s in &smells {
-            if !crate::signal::smell_has_resolving_adjudication(store, &s.identity)? {
-                open_smells += 1;
-            }
-        }
         // Journey proof gaps block `proven` unless the intent's journey axis is
         // deliberately waived. (Both the waiver and this suppression are slated
         // for deletion once proof strength is derived rather than asserted.)
@@ -215,6 +215,19 @@ impl LadderInputs {
             .filter(|e| e.confidence > 0.0 && e.confidence < floor)
             .count();
 
+        // One actionable list feeds both this status projection and the audit
+        // queue. Split it only for the human-readable rung detail.
+        let audit_backlog = crate::audit::backlog(store)?;
+        let doctor_issues = audit_backlog
+            .iter()
+            .filter(|finding| finding.kind == "doctor_issue")
+            .count();
+        let backlog_smells = audit_backlog
+            .iter()
+            .filter(|finding| finding.kind == "smell")
+            .count();
+        let audit_findings = audit_backlog.len() - doctor_issues - backlog_smells;
+
         Ok(LadderInputs {
             observed: identity.observed,
             active: active.len(),
@@ -228,6 +241,8 @@ impl LadderInputs {
             ungrounded: crate::workitem::ungrounded_implemented_intents(store)?.len(),
             unowned_codefiles: crate::commands::unowned_codefiles(store)?.len(),
             failing,
+            failing_exemplars,
+            open_research,
             stale_relationships,
             uninspected_relationships,
             stale_governs,
@@ -253,13 +268,10 @@ impl LadderInputs {
                 .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
                 .count(),
             divergences: crate::divergence::blocking_count(store)?,
-            audit_findings: crate::audit::run(store)?
-                .into_iter()
-                .filter(|f| store.get_node(&f.subject).ok().flatten().is_some())
-                .count(),
+            audit_findings,
             risk_candidates: crate::risk::rank(store)?.len(),
-            doctor_issues: crate::signal::doctor(store)?.len(),
-            open_smells,
+            doctor_issues,
+            open_smells: backlog_smells,
             export_fresh: crate::travel::export_is_fresh(store)?,
         })
     }

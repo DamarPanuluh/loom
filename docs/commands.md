@@ -45,12 +45,12 @@ Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `-
 Queue partition is deliberately disjoint:
 
 - `fix`: every failing asserted edge — strictly root-cause repair. A fix packet never carries verdict authority: repair the source, run `loom sync`, and the owning lane re-measures.
-- `analyze`: uninspected and stale non-`governs`/non-`validates` asserted claims. Stale claims are served first — a settled truth that broke misleads readers; an uninspected claim only waits.
+- `analyze`: uninspected and stale non-`governs`/non-`validates` asserted claims, plus open research TaskRecords. Stale claims are served first; bounded external research follows before ordinary uninspected claims.
 - `quality`: uninspected or stale `governs` only. Failing `governs` routes to `fix`.
 - `validate`: uninspected or stale `validates` only. Failing `validates` routes to `fix`.
 - `coverage`: registered codefiles with no live realizing owner. Files grounded only by `consumes`, `configures`, or `verifies` edges remain unowned. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
 - `review`: asserted `passing` or `independent` verdicts with `0 < confidence < 0.7`, lowest confidence first. The work item keeps the edge kind's registry owner as `owner_role`, but the mindset is independent re-inspection.
-- `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet embeds the open axes and routes the builder to add missing scenarios/prerequisites/proofs/journey coverage, raise product questions, or waive non-question axes with reasons.
+- `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet tells the LLM to proactively explain that a partial idea is enough, fill technical/repository-derivable gaps, and translate a true product decision into ONE plain-language question. It records the Question, asks the user directly, waits rather than inferring consent, records the answer, then resumes. The packet also routes missing scenarios/prerequisites/proofs/journey coverage and reasoned non-question waivers.
 
 Fixer lane safety: fix the source and run `loom sync`; sync re-opens the claim (`needs_reverification` plus any `stale_cause` facet), and the owning lane re-measures it.
 
@@ -116,6 +116,28 @@ Node types, edge kinds, property registry, tag vocabulary, state machine, lifecy
 ---
 
 ## Graph init and travel
+
+## Pattern library (manual lookup and automatic coding guidance)
+
+```text
+loom pattern add --name N --rationale TEXT --when-to-use TEXT --when-not-to-use TEXT [--path GLOB]... [--intent-tag TAG]...
+loom pattern update <key> [normative fields/selectors] [--name N] --reason TEXT
+loom pattern show|list
+loom pattern lookup [--path PATH]... [--intent-tag TAG]... [--offset N]
+loom pattern ratify <key> --evidence TEXT
+loom pattern retire|remove <key> --reason TEXT
+loom pattern exemplar add <pattern> <codefile> --locator SYMBOL
+loom pattern exemplar verdict <edge> ground|issue|independent --criterion TEXT --evidence TEXT
+loom pattern exemplar remove <edge> --reason TEXT
+```
+
+Patterns are strict human-ratified guidance. Lookup serves only live `routable`
+patterns and uses OR within each selector family and AND between path and exact
+tag families. The same matcher automatically enriches build/fix packets after
+their read set is complete (maximum 5 exemplars and 12 KiB excerpt text, with
+matched/included/omitted counts and an exact lookup command). Excerpts are live,
+explicitly clipped when necessary, and never stored/exported.
+No selectors means manual-only.
 
 ```text
 loom init [<path>] [--name <graph-name>] [--observed] [--json]
@@ -260,13 +282,10 @@ loom policy show [--json]
 loom policy set-floor <fraction> [--json]
 loom policy gate-add <lane> [--json]
 loom policy gate-remove <lane> [--json]
-loom policy ratification list [--json]
-loom policy ratification set <name> [--origin <origin>]... [--level <level>]... [--lifecycle <lifecycle>]... [--disabled] [--json]
-loom policy ratification remove <name> [--json]
 loom policy reset [--json]
 ```
 
-Read or set the evidence policy. `set-floor` sets the review-confidence floor (a fraction in `[0.0, 1.0]`) below which a recorded verdict is routed to `loom next --mode review`; `gate-add`/`gate-remove` move an owner lane (`builder | analyzer | fixer | validator | quality`) in or out of the human-gated set described in `llm-driver.md`. The policy persists to portable `config.evidence_policy` and travels with the export; absent config means the shipped defaults, and `reset` drops the config to restore them. `policy ratification` separately manages portable, facet-scoped policy filters for delegated intent ratification; every set/remove is terminal-gated and requires typing the policy name back.
+Read or set the evidence policy. `set-floor` sets the review-confidence floor (a fraction in `[0.0, 1.0]`) below which a recorded verdict is routed to `loom next --mode review`; `gate-add`/`gate-remove` move an owner lane (`builder | analyzer | fixer | validator | quality`) in or out of the human-gated set described in `llm-driver.md`. The policy persists to portable `config.evidence_policy` and travels with the export; absent config means the shipped defaults, and `reset` drops the config to restore them.
 
 ```text
 loom completeness [<intent>] [--json]
@@ -310,7 +329,6 @@ loom intent update <intent> --reason "<why>"
 ```text
 loom intent ratify <intent> --evidence "<why wanted>" [--json]
 loom intent ratify --all --evidence "<why wanted>" [--json]   (bulk grandfathering)
-loom intent ratify --by-policy <name> [--json]
 loom intent confirm <intent> [--json]
 loom intent retire <intent> --reason "<why>" [--replaced-by <intent>] [--json]
 loom intent remove <intent> --reason "<why>" [--json]   (mistakes only; refuses intents that still have hierarchy children)
@@ -322,7 +340,7 @@ loom intent tag add <intent> <term> [--json]
 loom intent tag remove <intent> <term> [--json]
 ```
 
-`ratify` is the human authority's evidence-bearing "yes, this is wanted" — the ONE write rejected for every `llm:*` lane (INV-8, fail closed, no override): the LLM may author everything and ratify nothing. It also requires a real terminal and an exact typed-name challenge (once per ordinary intent; once per named policy batch); piped input is rejected because it is indistinguishable from an LLM. `--by-policy` writes machine-attributed evidence and `ratified_by=policy:<name>`, never a claim of individual human review. Redefining a ratified intent (`update --description` without `--reword`) stales its ratification to `needs_reconfirmation` and the ratify queue re-serves it. `confirm` re-affirms meaning (a note, not a ratification). `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
+`ratify` is the human authority's evidence-bearing "yes, this is wanted" — the ONE write rejected for every `llm:*` lane (INV-8, fail closed, no override): the LLM may author everything and ratify nothing. It requires a real terminal and an exact typed-name challenge; piped input is rejected because it is indistinguishable from an LLM. Ratification cannot be delegated by policy. Redefining a ratified intent (`update --description` without `--reword`) stales its ratification to `needs_reconfirmation` and the ratify queue re-serves it. `confirm` re-affirms meaning (a note, not a ratification). `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
 
 ---
 
@@ -637,7 +655,8 @@ Questions are first-class `Question` nodes linked to intents by `questions` edge
 ## TaskRecord commands
 
 ```text
-loom task add "<title>" [--kind spike|investigation|experiment|review|chore] [--json]
+loom task add "<title>" [--kind spike|investigation|experiment|review|chore|research] [--target <intent>] [--why-external "<reason>"] [--preferred-source "<guidance>"]... [--json]
+loom task source-add <task-id> --url <actual-page> --title "<title>" --publisher "<publisher>" --source-kind official_docs|standard|regulation|maintainer|primary|secondary --quote "<substantive exact quote>" [--published-at <RFC3339>] [--fresh-until <RFC3339>] [--json]
 loom task start <task> [--json]
 loom task close <task> --result "<summary>" [--json]
 loom task abandon <task> --reason "<why>" [--json]
@@ -646,7 +665,18 @@ loom task show <task> [--json]
 loom task list [--limit N] [--offset N] [--json]
 ```
 
-TaskRecords guide work but do not certify truth. Durable outcomes must be promoted to graph facts.
+TaskRecords guide work but do not certify truth. New governed research records carry
+`kind=research,research_schema=1`; an unmarked legacy `kind=research` record remains
+a generic TaskRecord. Governed research requires
+`--why-external`; preferred-source guidance may repeat. The host LLM browses—Loom
+contains no browser client. Search results are discovery only: `source-add`
+accepts strict provenance for actual pages read, stamps retrieval using Loom's clock,
+computes an exact-quote `fnv:` fingerprint, and deterministically ignores a duplicate
+URL+quote fingerprint. Research closes when at least one source is currently usable.
+Its targeted outcome is a reference note; work packets resolve the immutable TaskRecord
+and render its dated provenance dynamically, suppressing stale recommendations and
+offering successor research. Sources never become Fact evidence or verification.
+Results may honestly be conflicting, inconclusive, or require expert review.
 
 ---
 

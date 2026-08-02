@@ -305,7 +305,6 @@ fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
                 key: Some(intent.name),
                 all: false,
                 evidence: Some("an interactive human requested this".into()),
-                by_policy: None,
             },
         }),
     })

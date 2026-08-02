@@ -46,7 +46,7 @@ pub struct Export {
 }
 
 /// Current export format version.
-pub const FORMAT: u32 = 2;
+pub const FORMAT: u32 = 3;
 
 impl Export {
     pub fn from_snapshot(snap: Snapshot) -> Export {
@@ -99,9 +99,9 @@ impl Export {
             serde_json::from_str(text).context("parsing export (malformed loom.graph.json)")?;
         // Reject a format this loom does not speak, rather than silently
         // restoring it as the current schema (M-7).
-        if export.format != FORMAT {
+        if !matches!(export.format, 2 | FORMAT) {
             anyhow::bail!(
-                "export format version {} is unsupported (this loom speaks format {FORMAT}) — upgrade loom or re-export",
+                "export format version {} is unsupported (this loom accepts formats 2 and {FORMAT}) — upgrade loom or re-export",
                 export.format
             );
         }
@@ -299,7 +299,7 @@ mod tests {
         let json = e.to_json().unwrap();
         insta::assert_snapshot!(json, @r###"
 {
-  "format": 2,
+  "format": 3,
   "graph_id": "g1",
   "name": "demo",
   "observed": false,
@@ -339,7 +339,7 @@ mod tests {
         // …and an export without the optional sections still parses: `config`,
         // `facts` and `evidence` are all absent-when-empty, so a structural
         // export keeps its exact byte shape.
-        let minimal = r#"{"format":2,"graph_id":"g","name":"n","observed":false,
+        let minimal = r#"{"format":3,"graph_id":"g","name":"n","observed":false,
                           "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
         let parsed = Export::from_json(minimal).unwrap();
         assert!(parsed.config.is_empty());
@@ -462,5 +462,13 @@ mod tests {
             prop_assert_eq!(&first, &second);
             prop_assert_eq!(Export::from_json(&first).unwrap(), export);
         }
+    }
+
+    #[test]
+    fn imports_prior_format_but_rejects_legacy_and_future_formats() {
+        let base = r#"{"format":2,"graph_id":"g","name":"n","observed":false,"nodes":[],"edges":[],"facets":[],"tags":[]}"#;
+        assert_eq!(Export::from_json(base).unwrap().format, 2);
+        assert!(Export::from_json(&base.replace("\"format\":2", "\"format\":1")).is_err());
+        assert!(Export::from_json(&base.replace("\"format\":2", "\"format\":4")).is_err());
     }
 }

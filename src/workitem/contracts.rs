@@ -24,12 +24,16 @@ pub(super) fn elaborator_contract(
     let name = q(&intent.name);
     PromptContract {
         role: "builder".into(),
-        mindset: "The human gave the core idea; the surroundings are systematically \
-                  forgotten — growing them is this item's whole job. For each OPEN axis \
-                  on the scorecard: create the missing artifact, or waive the axis with a \
-                  real reason, or raise ONE crisp question to the human when it is a \
-                  product decision. Proposed scenarios are planned intents — the normal \
-                  build loop ratifies them. Never decide product questions yourself."
+        mindset: "The user may have only a partial idea and may not know Loom can help \
+                  complete it. FIRST tell them, in plain language, that you can round out \
+                  the idea: you will fill technical or repository-derivable gaps and ask \
+                  only for product choices that require their judgment. Briefly reflect \
+                  the core idea and material gaps; do not expose graph vocabulary unless \
+                  asked. Then address each OPEN axis: create the missing artifact, waive \
+                  it for a real reason, or, for a product decision, record and directly \
+                  ask ONE plain-language question. Never answer for the user or treat \
+                  silence as consent. Proposed scenarios are planned intents; the human-only \
+                  ratify queue presents them for product authority before they count as wanted."
             .into(),
         why_now: format!(
             "{} of {} completeness axes are open around this user-visible idea",
@@ -37,6 +41,7 @@ pub(super) fn elaborator_contract(
             card.axes.len()
         ),
         allowed_actions: vec![
+            "engage the user first: explain that their idea does not need to be a complete specification; summarize what is already clear and say you can fill technical/inferable gaps while asking one understandable product question at a time".into(),
             format!(
                 "scenarios: loom intent add --name '<what goes wrong / degraded path / boundary case>' --description '<falsifiable criterion>' --aspect <sad|fallback|edge_case> --visibility user_visible; then loom edge relate scenario-of '<that scenario>' {name}"
             ),
@@ -45,12 +50,16 @@ pub(super) fn elaborator_contract(
             ),
             "boundary/proof/journey: loom validation add … / loom journey coverage add … (or let the quality and validate queues drive them)".into(),
             format!(
-                "questions: loom question add \"<one crisp product question>\" --intent {name}"
+                "product decision: loom question add \"<one crisp product question>\" --intent {name}; ask that question directly in plain language, offer a recommended default with consequences when useful, WAIT for the reply, then loom question answer <question> --answer '<the user’s answer>'"
             ),
             format!("waive: loom intent waive {name} <axis> --reason '<why it deliberately does not apply>'"),
+            format!("only when a current external fact blocks elaboration: loom task add '<bounded question>' --kind research --why-external '<why current external knowledge is needed>' --preferred-source '<authoritative source guidance>' --target {name}"),
         ],
         forbidden_actions: vec![
-            "deciding a product question yourself — raise it and move on".into(),
+            "deciding a product question yourself, continuing past it, or treating silence as consent — record it, ask the user, and wait".into(),
+            "asking the user to choose implementation details the repository or engineering judgment can determine safely".into(),
+            "assuming the user knows Loom commands, scorecards, axes, or graph terminology; translate the gap into ordinary product language".into(),
+            "asking multiple product questions in one turn".into(),
             "proposing scenarios that restate the happy path".into(),
             "waiving an axis just to close it (a waiver needs a real reason)".into(),
         ],
@@ -60,8 +69,8 @@ pub(super) fn elaborator_contract(
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: "one command per open axis (see allowed actions), then loom status".into(),
-        stop_condition: "after addressing every open axis, return to loom status".into(),
+        write_back: "autonomous gap: one command per open axis; product decision: add the Question, ask the user, then record their reply with loom question answer; finally loom status".into(),
+        stop_condition: "if a product decision is needed, record it, ask ONE question, and wait for the user; otherwise, after addressing every open axis, return to loom status".into(),
         human_gate: None,
     }
 }
@@ -116,6 +125,7 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
             format!("loom intent update {name} --lifecycle implemented --reason '<what was built>'"),
             "loom sync".into(),
             FINDING_ADD_ACTION.into(),
+            format!("only when a current external fact blocks implementation: loom task add '<bounded question>' --kind research --why-external '<why current external knowledge is needed>' --preferred-source '<authoritative source guidance>' --target {name}"),
         ],
         forbidden_actions: vec![
             "loom rule verdict passing (quality lane)".into(),
@@ -259,6 +269,50 @@ pub(super) fn analyzer_contract(edge: &Edge, from_name: &str, to_name: &str) -> 
         pre_screened_hits: Vec::new(),
         write_back,
         stop_condition: "after recording the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn research_contract(task: &Node) -> PromptContract {
+    let id = &task.id;
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "Use the host's web search/browser to discover sources, then read actual pages. Prefer primary authoritative sources, record conflicts and the dates that make claims current, and preserve provenance. Search snippets are discovery only, never evidence. The outcome is advisory context: never convert it into a human preference, Fact verification, professional authority, certification, or code edits. It is valid to conclude expert review required, conflicting, or inconclusive.".into(),
+        why_now: "a current external fact is explicitly missing and blocks informed work".into(),
+        allowed_actions: vec![
+            "use the host web search/browser; read actual pages, not snippets".into(),
+            format!("loom task source-add {id} --url '<actual-http(s)-page>' --title '<page title>' --publisher '<publisher>' --source-kind <official_docs|standard|regulation|maintainer|primary|secondary> --quote '<substantive exact quote>' [--published-at <RFC3339>] [--fresh-until <RFC3339>]"),
+            format!("loom task close {id} --result '<advisory result, conflicts/current dates, or expert-review-required/inconclusive conclusion>'"),
+        ],
+        forbidden_actions: vec!["use a search snippet as evidence or record a search-results URL".into(), "edit code".into(), "convert web claims into Fact evidence, verification, human preference, or professional certification".into()],
+        evidence_clauses: Vec::new(),
+        required_evidence: "at least one substantive quote from an actual page with complete URL/title/publisher/kind and Loom-stamped retrieval provenance; note conflicts and relevant dates".into(),
+        evidence_template: None, examples: None, pre_screen: None, pre_screened_hits: Vec::new(),
+        write_back: format!("loom task source-add {id} <all required source fields>  (repeat per actual page); loom task close {id} --result '<advisory synthesis>'"),
+        stop_condition: "after recording sources and closing with an advisory result, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+pub(super) fn exemplar_contract(edge: &Edge, pattern: &str, file: &str) -> PromptContract {
+    let write_back = format!(
+        "loom pattern exemplar verdict {} <ground|issue|independent> --criterion '…' --evidence '{file}:<line>' --confidence <0.0-1.0>",
+        edge.id
+    );
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: format!("Inspect the uniquely located symbol in {file} against Pattern '{pattern}'. Decide whether the code actually exemplifies the authored rationale and use boundaries; do not infer compliance from names."),
+        why_now: format!("Exemplar edge is {} and cannot route guidance until reviewed", edge.status),
+        allowed_actions: vec!["read the Pattern body and the located symbol".into(), write_back.clone(), FINDING_ADD_ACTION.into()],
+        forbidden_actions: vec!["edit code".into(), "use generic relationship reasoning".into(), "record ground without inspecting the located source".into()],
+        evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
+        required_evidence: "a file/line citation inside the uniquely located exemplar symbol".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screen: None,
+        pre_screened_hits: Vec::new(),
+        write_back,
+        stop_condition: "after recording exactly one Exemplar verdict, return to loom status".into(),
         human_gate: None,
     }
 }
@@ -689,6 +743,7 @@ pub(super) fn prove_contract(hyp: &Node) -> PromptContract {
             format!(
                 "if SUPPORTED: loom hypothesis adopt {name} — promotes the proven idea to a planned build intent (nothing else re-queues it)"
             ),
+            "only when a current external fact blocks the verdict: loom task add '<bounded question>' --kind research --why-external '<why current external knowledge is needed>' --preferred-source '<authoritative source guidance>'".into(),
         ],
         forbidden_actions: vec![
             "adopt the hypothesis before proving it".into(),

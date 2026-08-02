@@ -16,7 +16,22 @@ loom is not the actor. Every **asserted or cognitive** state transition requires
 
 The LLM is not free-form. It reports through **typed graph writes**. Chat output alone changes nothing in the graph.
 
+Pattern drafts may be model-authored, but Pattern ratification is direct-human
+INV-8 authority. Build/fix packets automatically include applicable, live
+Pattern guidance under deterministic count/byte budgets; use the packet's exact
+`pattern lookup` command to recover omitted matches. Pattern
+guidance adds no maturity gate.
+
 The human is not always present. loom must distinguish which queues can be drained autonomously and which require human presence.
+
+When repository knowledge lacks a current external fact, create a bounded
+`kind=research` TaskRecord rather than guessing. The Analyze packet directs the
+host LLM to search and browse, prefer primary authoritative sources, read actual
+pages, and write each page back with `loom task source-add`. Search snippets are
+never evidence. Research outcomes remain dated advisory context—not Fact
+verification, human preference, professional authority, or certification—and
+may conclude conflicting, inconclusive, or expert review required. This is an
+available escalation, not a requirement to browse for every packet.
 
 ---
 
@@ -478,20 +493,27 @@ evidence required:
 The loop is deliberately cognitive-cognitive:
 
 ```text
+LLM first tells the user, in plain language, that a partial idea is enough
+  → reflects what is already clear and explains it can fill technical/inferable gaps
+  → does not assume the user knows Loom, scorecards, axes, or graph commands
 LLM proposes missing surroundings
   → add scenario intents with --aspect sad|fallback|edge_case and scenario-of edges
   → add prerequisite edges or proof/journey coverage where the answer is graph-derivable
-  → raise product decisions as questions:
+  → for a true product decision, record and directly ask ONE plain-language question:
        loom question add "<one crisp product question>" --intent <intent>
+  → offer a recommended default and consequences when useful, then WAIT
+human answers in the conversation
+  → record the answer: loom question answer <question> --answer "<human answer>"
+LLM continues elaboration
   → waive non-question axes only with a real reason:
        loom intent waive <intent> <axis> --reason "<why it deliberately does not apply>"
 
-human answers batched questions
+if no human is present, questions remain batched
   → surfaced by loom session and graph_state.open_questions
-  → answer or close the linked Question nodes before the questions axis closes
+  → never infer an answer from silence; stop and resume when a human can answer
 ```
 
-The LLM must not answer product questions for the human. It either creates the missing graph artifact, records a non-question waiver with a reason, or raises one crisp linked question.
+The LLM must not answer product questions for the human or offload safely inferable implementation choices onto them. It either creates the missing graph artifact, records a non-question waiver with a reason, or raises one crisp linked question, asks it directly in ordinary product language, and waits.
 
 ### coverage / missing-file contract
 

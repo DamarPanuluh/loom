@@ -8,6 +8,104 @@ use clap::Subcommand;
 use std::path::PathBuf;
 
 #[derive(Subcommand, Debug)]
+pub enum PatternCmd {
+    Add {
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        rationale: String,
+        #[arg(long)]
+        when_to_use: String,
+        #[arg(long)]
+        when_not_to_use: String,
+        #[arg(long = "path")]
+        paths: Vec<String>,
+        #[arg(long = "intent-tag")]
+        intent_tags: Vec<String>,
+    },
+    Update {
+        key: String,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        rationale: Option<String>,
+        #[arg(long)]
+        when_to_use: Option<String>,
+        #[arg(long)]
+        when_not_to_use: Option<String>,
+        #[arg(long = "path")]
+        paths: Vec<String>,
+        #[arg(long = "intent-tag")]
+        intent_tags: Vec<String>,
+        /// Intentionally remove every path selector.
+        #[arg(long, conflicts_with = "paths")]
+        clear_paths: bool,
+        /// Intentionally remove every intent-tag selector.
+        #[arg(long, conflicts_with = "intent_tags")]
+        clear_intent_tags: bool,
+        #[arg(long)]
+        reason: String,
+    },
+    Show {
+        key: String,
+    },
+    List,
+    Lookup {
+        #[arg(long = "path")]
+        paths: Vec<String>,
+        #[arg(long = "intent-tag")]
+        intent_tags: Vec<String>,
+        /// Skip this many matches in deterministic guidance order.
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
+    },
+    Ratify {
+        key: String,
+        #[arg(long)]
+        evidence: String,
+    },
+    Retire {
+        key: String,
+        #[arg(long)]
+        reason: String,
+    },
+    Remove {
+        key: String,
+        #[arg(long)]
+        reason: String,
+    },
+    Exemplar {
+        #[command(subcommand)]
+        cmd: PatternExemplarCmd,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum PatternExemplarCmd {
+    Add {
+        pattern: String,
+        codefile: String,
+        #[arg(long)]
+        locator: String,
+    },
+    Verdict {
+        edge: String,
+        verdict: String,
+        #[arg(long)]
+        criterion: String,
+        #[arg(long)]
+        evidence: String,
+        #[arg(long, default_value_t = 0.9)]
+        confidence: f64,
+    },
+    Remove {
+        edge: String,
+        #[arg(long)]
+        reason: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum IntentCmd {
     /// Add an intent.
     Add {
@@ -69,11 +167,6 @@ pub enum IntentCmd {
         /// Why this behavior is wanted: an utterance, source doc, or decision.
         #[arg(long)]
         evidence: Option<String>,
-        /// Ratify under a declared delegation policy instead of a per-intent
-        /// human challenge; the record attributes to `policy:<name>`. The
-        /// policy must exist (`loom policy ratify-add`).
-        #[arg(long)]
-        by_policy: Option<String>,
     },
     /// Say a behavior is NOT wanted. The cheap, high-leverage half of the
     /// authority: no typed challenge — the substantive reason IS the act —
@@ -379,7 +472,7 @@ pub enum NoteCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum TaskCmd {
-    /// Open a task record (spike|investigation|experiment|review|chore).
+    /// Open a task record (spike|investigation|experiment|review|chore|research).
     Add {
         title: String,
         #[arg(long, default_value = "spike")]
@@ -387,6 +480,30 @@ pub enum TaskCmd {
         /// Intent this task informs — the close/abandon outcome lands as a note on it.
         #[arg(long)]
         target: Option<String>,
+        /// Why current/external knowledge is required (required for research).
+        #[arg(long)]
+        why_external: Option<String>,
+        /// Preferred authoritative source guidance (repeatable; research only).
+        #[arg(long = "preferred-source")]
+        preferred_sources: Vec<String>,
+    },
+    /// Append one actual page read to a research task's provenance.
+    SourceAdd {
+        task: String,
+        #[arg(long)]
+        url: String,
+        #[arg(long)]
+        title: String,
+        #[arg(long)]
+        publisher: String,
+        #[arg(long)]
+        source_kind: String,
+        #[arg(long)]
+        quote: String,
+        #[arg(long)]
+        published_at: Option<String>,
+        #[arg(long)]
+        fresh_until: Option<String>,
     },
     /// Mark a task active.
     Start { key: String },
@@ -1092,21 +1209,6 @@ pub enum PolicyCmd {
     GateRemove {
         /// The lane to stop gating.
         role: String,
-    },
-    /// Declare a ratification-delegation policy: a named scope under which
-    /// `loom intent ratify --by-policy <name>` may ratify without a per-intent
-    /// challenge. The delegation's human provenance is `--source` — the finding
-    /// id or journal ref recording the human's decision. Ratifications under
-    /// it attribute to `policy:<name>`, never to a human reviewing per-intent.
-    RatifyAdd {
-        /// Policy name (used as `loom intent ratify --by-policy <name>`).
-        name: String,
-        /// The delegated scope, in the human's words.
-        #[arg(long)]
-        description: String,
-        /// The recorded human act behind the delegation: a finding id or journal ref.
-        #[arg(long)]
-        source: String,
     },
     /// Reset the whole policy to the shipped defaults (drops the config).
     Reset,

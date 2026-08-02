@@ -60,8 +60,8 @@ pub(crate) fn import(
         Store::find_root(&cwd).unwrap_or(cwd)
     };
     let export = travel::read_export(file)?;
-    let journal_restored = crate::journal::restore_entries(&root, &export.journal)?;
-    let baselines_restored = crate::journey::restore_baselines(&root, &export.baselines)?;
+    let imported_journal = export.journal.clone();
+    let imported_baselines = export.baselines.clone();
     let mut snapshot = export.into_snapshot();
     let quarantined_commands = travel::quarantine_imported_execution(&mut snapshot)?;
     let mut store = Store::init(&root, None, false)?;
@@ -71,6 +71,14 @@ pub(crate) fn import(
         store.restore(&snapshot)?;
         crate::store::RestoreReport::default()
     };
+    // Sidecars are installed only after structural validation and transactional
+    // graph restore succeed, so rejected/nonempty imports cannot contaminate
+    // the existing journal or journey baselines.
+    let journal_restored = crate::journal::restore_entries(&root, &imported_journal)?;
+    let baselines_restored = crate::journey::restore_baselines(&root, &imported_baselines)?;
+    // Restore's first verification pass ran before imported journal refs were
+    // installed. Recheck authority and every other anchor against final state.
+    store.reverify_all(&std::collections::BTreeSet::new())?;
     let id = store.identity()?;
     if json {
         println!(
@@ -85,6 +93,12 @@ pub(crate) fn import(
                 "baselines_restored": baselines_restored,
                 "repaired": repair_orphans,
                 "preserved_soft_refs": report.preserved_soft_refs,
+                "dropped_facts": report.dropped_facts
+                    .iter()
+                    .map(|(kind, id, claim)| serde_json::json!({
+                        "subject_kind": kind, "subject_id": id, "claim": claim,
+                    }))
+                    .collect::<Vec<_>>(),
                 "dropped_facets": report.dropped_facets
                     .iter()
                     .map(|(kind, id, key)| serde_json::json!({
@@ -112,13 +126,17 @@ pub(crate) fn import(
                 report.preserved_soft_refs
             );
         }
+        for (kind, id, claim) in &report.dropped_facts {
+            println!("  dropped orphan fact '{claim}' on {kind} {id}");
+        }
         for (kind, id, key) in &report.dropped_facets {
             println!("  dropped orphan facet '{key}' on {kind} {id}");
         }
         for (kind, id, term) in &report.dropped_tags {
             println!("  dropped orphan tag '{term}' on {kind} {id}");
         }
-        let dropped = report.dropped_facets.len() + report.dropped_tags.len();
+        let dropped =
+            report.dropped_facts.len() + report.dropped_facets.len() + report.dropped_tags.len();
         if dropped > 0 {
             println!("  ({dropped} dangling reference(s) dropped by --repair-orphans)");
         }
@@ -741,6 +759,23 @@ fn print_work_item(item: &workitem::WorkItem) {
         for read in &item.context.suggested_reads {
             println!("    - {} — {}", read.reason, read.command);
         }
+    }
+    if let Some(patterns) = &item.pattern_guidance {
+        println!(
+            "  patterns: matched={} included={} omitted={}",
+            patterns.matched, patterns.included, patterns.omitted
+        );
+        for pattern in &patterns.items {
+            println!(
+                "    - {} — {} @ {}",
+                pattern.name, pattern.path, pattern.locator
+            );
+            println!("      rationale: {}", pattern.rationale);
+            println!("      use: {}", pattern.when_to_use);
+            println!("      avoid: {}", pattern.when_not_to_use);
+            println!("      source:\n{}", pattern.source_excerpt);
+        }
+        println!("    lookup: {}", patterns.lookup_command);
     }
     let g = &item.truth_gap;
     println!("  truth axis: {} — {}", g.axis.as_str(), g.missing_form);

@@ -1111,6 +1111,15 @@ fn door_landing_menu_and_inbox_mark_contract() {
     // `loom door "x" --json` output contains landing_menu with new_intent +
     // dismiss landings and a next_step naming `loom inbox mark`.
     let door = loom_json(tmp.path(), &["door", "x"]);
+    let capability = door
+        .get("capability")
+        .and_then(|v| v.as_str())
+        .expect("DOOR+INBOX CLI: door --json must explain partial-idea elaboration");
+    assert!(
+        capability.contains("does not need to be a complete specification")
+            && capability.contains("one plain-language product question at a time"),
+        "DOOR+INBOX CLI: capability must tell a non-coder what Loom and the LLM can do, got: {capability}"
+    );
     let menu = door
         .get("landing_menu")
         .and_then(|v| v.as_array())
@@ -1133,6 +1142,24 @@ fn door_landing_menu_and_inbox_mark_contract() {
         landings.contains(&"hypothesis"),
         "DOOR+INBOX CLI: landing_menu must contain a 'hypothesis' landing, got {:?}",
         landings
+    );
+    let new_intent = menu
+        .iter()
+        .find(|m| m.get("landing").and_then(|v| v.as_str()) == Some("new_intent"))
+        .expect("DOOR+INBOX CLI: new_intent landing exists");
+    assert!(
+        new_intent
+            .get("after")
+            .and_then(|v| v.as_str())
+            .is_some_and(|after| after.contains("explain this capability")
+                && after.contains("one plain-language product question")),
+        "DOOR+INBOX CLI: new-intent landing must route the LLM into proactive user engagement"
+    );
+    let text_door = loom_run_ok(tmp.path(), &["door", "another partial idea"]);
+    assert!(
+        text_door.contains("does not need to be a complete specification")
+            && text_door.contains("then: loom next --mode elaborate"),
+        "DOOR+INBOX CLI: human-readable intake must expose the same capability and follow-up"
     );
     let next_step = door
         .get("next_step")

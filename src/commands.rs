@@ -33,6 +33,7 @@ mod intent;
 mod journey;
 mod misc_cmd;
 mod orient_cmd;
+mod pattern_cmd;
 mod proof_cmd;
 mod proposal_cmd;
 mod pulse;
@@ -94,6 +95,7 @@ pub fn run(cli: Cli) -> Result<()> {
             Ok(())
         }
         Command::Intent { cmd } => intent::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Pattern { cmd } => pattern_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Codefile { cmd } => codefile_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Export { check } => status_cmd::export(cli.graph.as_deref(), check, cli.json),
         Command::Import {

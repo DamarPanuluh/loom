@@ -571,7 +571,7 @@ fn journey_freeze(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()>
     let cwd = store.root().to_path_buf();
     drop(store);
     let outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
-    let path = crate::journey::write_baseline(&cwd, &parsed.journey, &outcomes)?;
+    let path = crate::journey::write_successful_baseline(&cwd, &parsed, &outcomes)?;
     let store = open(Some(&cwd))?;
     let entry = crate::journal::append(
         store.root(),

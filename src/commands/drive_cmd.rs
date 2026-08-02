@@ -164,7 +164,7 @@ fn freeze(graph: Option<&Path>, name: &str, json: bool) -> Result<()> {
     // chain, then freeze its first run as the journey baseline.
     let spec = crate::journey::parse(&path)?;
     let outcomes = crate::journey::execute_steps(&spec, Some(store.root()), false)?;
-    let baseline = crate::journey::write_baseline(store.root(), name, &outcomes)?;
+    let baseline = crate::journey::write_successful_baseline(store.root(), &spec, &outcomes)?;
     let entry = crate::journal::append(
         store.root(),
         "drive_freeze",

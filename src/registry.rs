@@ -224,6 +224,14 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         owner: OwnerRole::Builder,
         description: "local intent depends on upstream (federated) intent",
     },
+    EdgeKindSpec {
+        kind: EdgeKind::Exemplar,
+        from: Pattern,
+        to: CodeFile,
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Analyzer,
+        description: "reviewed live code exemplar of a ratified pattern",
+    },
 ];
 
 /// Look up the spec for an edge kind. Infallible by construction once

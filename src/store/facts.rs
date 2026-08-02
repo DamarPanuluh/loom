@@ -428,14 +428,14 @@ impl Store {
                     .ok_or_else(|| anyhow!("no node '{id}'"))?;
                 match claim {
                     Claim::Ratification => {
-                        if node.node_type != NodeType::Intent {
+                        if !matches!(node.node_type, NodeType::Intent | NodeType::Pattern) {
                             bail!(
-                                "only an intent can be ratified; '{id}' is a {}",
+                                "only an intent or pattern can be ratified; '{id}' is a {}",
                                 node.node_type
                             );
                         }
                         if node.status == "deprecated" {
-                            bail!("cannot ratify a deprecated intent — reactivate it first");
+                            bail!("cannot ratify a deprecated node — reactivate it first");
                         }
                     }
                     Claim::Adjudication | Claim::Observation => {
@@ -594,6 +594,18 @@ impl Store {
                 crate::runner::seam_probe(&self.root, &file.name, locator.as_deref())
                     .filter(|r| r.exit_code == 0)
             };
+        }
+        if edge_kind == Some(crate::model::EdgeKind::Exemplar) {
+            let edge = self
+                .get_edge(a.subject.id())?
+                .ok_or_else(|| anyhow!("no exemplar edge"))?;
+            let file = self
+                .get_node(&edge.to_id)?
+                .ok_or_else(|| anyhow!("missing exemplar file"))?;
+            let locator = self.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+            probe = locator.as_deref().and_then(|locator| {
+                crate::runner::unique_locator_probe(&self.root, &file.name, locator)
+            });
         }
 
         // A quality verdict on a rule that carries patterns is checkable the
@@ -1210,10 +1222,52 @@ impl Store {
     /// An intent's wantedness. Absence reads as `unratified` — wantedness is
     /// never presumed, and a graph that has never been asked has not said yes.
     pub fn ratification(&self, intent_id: &str) -> Result<String> {
-        Ok(self
-            .fact(&Subject::Node(intent_id.to_string()), Claim::Ratification)?
-            .map(|v| v.fact.state)
-            .unwrap_or_else(|| "unratified".to_string()))
+        let journal = crate::journal::read(self.root())?;
+        self.ratification_with_journal(intent_id, &journal)
+    }
+
+    pub(crate) fn ratification_with_journal(
+        &self,
+        intent_id: &str,
+        journal: &[crate::journal::Entry],
+    ) -> Result<String> {
+        let Some(view) = self.fact(&Subject::Node(intent_id.to_string()), Claim::Ratification)?
+        else {
+            return Ok("unratified".into());
+        };
+        if !matches!(view.fact.state.as_str(), "ratified" | "rejected") {
+            return Ok(view.fact.state);
+        }
+        let event = if view.fact.state == "rejected" {
+            "rejection"
+        } else {
+            "ratification"
+        };
+        let node = self.get_node(intent_id)?;
+        let journal_stands = view.evidence.iter().any(|row| {
+            let Evidence::Journal { r#ref } = &row.payload else {
+                return false;
+            };
+            row.holds
+                && journal.iter().any(|entry| {
+                    entry.id == *r#ref
+                        && entry.target_id == intent_id
+                        && entry.event == event
+                        && entry.payload.get("ratified_by").and_then(|v| v.as_str())
+                            == Some("human")
+                        && entry.payload.get("presence").and_then(|v| v.as_str())
+                            == Some(view.fact.criterion.as_str())
+                        && node.as_ref().is_none_or(|node| {
+                            node.node_type != NodeType::Pattern
+                                || entry.payload.get("pattern_body") == Some(&node.body)
+                        })
+                })
+        });
+        if view.fact.asserted_by == "human" && view.fact.verification.counts() && journal_stands {
+            Ok(view.fact.state)
+        } else {
+            Ok("needs_reconfirmation".into())
+        }
     }
 
     /// Who recorded the ratification, and when.

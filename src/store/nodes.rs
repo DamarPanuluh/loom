@@ -39,6 +39,7 @@ impl Store {
         if name.trim().is_empty() {
             bail!("node name must not be empty");
         }
+        crate::pattern::validate_node_body(node_type, &body)?;
         if !registry::node_allows_truth_class(node_type, TruthClass::Asserted) {
             bail!(
                 "'{node_type}' does not allow asserted nodes — use add_derived_node, not add_node"
@@ -46,6 +47,18 @@ impl Store {
         }
         let tc = TruthClass::Asserted;
         let (id, now) = id_and_now(&self.conn)?;
+        let prospective = Node {
+            id: id.clone(),
+            node_type,
+            name: name.into(),
+            description: description.into(),
+            status: status.into(),
+            truth_class: tc,
+            body: body.clone(),
+            created_at: now.clone(),
+            updated_at: now.clone(),
+        };
+        crate::research::validate_record(None, &prospective, chrono::Utc::now(), false)?;
         self.conn.execute(
             "INSERT INTO node(id,node_type,name,description,status,truth_class,body,created_at,updated_at)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?8)",
@@ -234,6 +247,12 @@ impl Store {
         if let Some(s) = status {
             node.status = s.to_string();
         }
+        crate::research::validate_record(
+            self.get_node(id)?.as_ref(),
+            &node,
+            chrono::Utc::now(),
+            false,
+        )?;
         let now = now(&self.conn)?;
         self.conn.execute(
             "UPDATE node SET name=?2,description=?3,status=?4,updated_at=?5 WHERE id=?1",
@@ -246,6 +265,21 @@ impl Store {
     /// Replace a node's JSON body (e.g. a surface's kind/identity or a
     /// validation's type/command). Asserted-node attribute edits live here.
     pub fn set_node_body(&self, id: &str, body: &serde_json::Value) -> Result<()> {
+        let node = self
+            .get_node(id)?
+            .ok_or_else(|| anyhow!("no node '{id}'"))?;
+        crate::pattern::validate_node_body(node.node_type, body)?;
+        let mut prospective = node.clone();
+        prospective.body = body.clone();
+        crate::research::validate_record(Some(&node), &prospective, chrono::Utc::now(), false)?;
+        // Pattern authority covers the exact normative body. Keep this at the
+        // persistence boundary so imports, future commands, and direct Store
+        // callers cannot let rewritten guidance borrow an earlier approval.
+        // Validation happens first; after that we deliberately fail closed if
+        // the final UPDATE fails, leaving the old text unratified.
+        if node.node_type == NodeType::Pattern && node.body != *body {
+            self.invalidate_pattern(id)?;
+        }
         let now = now(&self.conn)?;
         let n = self.conn.execute(
             "UPDATE node SET body=?2, updated_at=?3 WHERE id=?1",
@@ -305,6 +339,10 @@ impl Store {
         let tx = self.conn.unchecked_transaction()?;
         for eid in &incident {
             tx.execute(
+                "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='edge'",
+                params![eid],
+            )?;
+            tx.execute(
                 "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
                 params![eid],
             )?;
@@ -315,6 +353,10 @@ impl Store {
             tx.execute("DELETE FROM edge WHERE id=?1", params![eid])?;
         }
         tx.execute(
+            "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='node'",
+            params![id],
+        )?;
+        tx.execute(
             "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
             params![id],
         )?;
@@ -323,6 +365,10 @@ impl Store {
             params![id],
         )?;
         for note_id in &dependent_notes {
+            tx.execute(
+                "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='node'",
+                params![note_id],
+            )?;
             tx.execute(
                 "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
                 params![note_id],
@@ -352,14 +398,26 @@ impl Store {
     }
 
     /// Delete one edge and its edge-scoped facets/tags (e.g. an `implements`
-    /// locator). Asserted edges only at the command layer; this primitive is
-    /// unconditional.
+    /// locator). Ownership is enforced here so no command or direct Store
+    /// caller can erase another lane's asserted relationship.
+    pub fn require_edge_owner(&self, id: &str) -> Result<()> {
+        let edge = self
+            .get_edge(id)?
+            .ok_or_else(|| anyhow!("no edge '{id}'"))?;
+        self.check_lane(registry::spec(edge.kind).owner)
+    }
+
     pub fn delete_edge(&self, id: &str) -> Result<()> {
+        self.require_edge_owner(id)?;
         // Facets, tags, then the edge fall together; `maybe_tx` composes with an
         // outer batch when one is open, so a caller inside `begin()` keeps a
         // single unit and a lone call still gets its own. A `bail` on a missing
         // edge drops the tx (or bubbles to the outer batch) and rolls back.
         let tx = self.maybe_tx()?;
+        self.conn.execute(
+            "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='edge'",
+            params![id],
+        )?;
         self.conn.execute(
             "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
             params![id],
@@ -535,17 +593,32 @@ impl Store {
         self.ratify_intent_as(id, evidence, presence, "human")
     }
 
-    /// Record a ratification applied by a named, human-authored policy. The
-    /// caller is still required to be the solo human agent: a policy delegates
-    /// scope, never authority, so INV-8 remains enforced at this boundary.
-    pub fn ratify_intent_by_policy(
-        &self,
-        id: &str,
-        evidence: &str,
-        presence: &str,
-        policy_name: &str,
-    ) -> Result<()> {
-        self.ratify_intent_as(id, evidence, presence, &format!("policy:{policy_name}"))
+    pub fn ratify_pattern(&self, id: &str, evidence: &str, presence: &str) -> Result<()> {
+        self.ratify_intent_as(id, evidence, presence, "human")
+    }
+
+    pub fn invalidate_pattern(&self, id: &str) -> Result<usize> {
+        if self.ratification(id)? == "ratified" {
+            self.assert_fact(
+                crate::store::Assertion::new(
+                    crate::store::Subject::Node(id.to_string()),
+                    crate::model::Claim::Ratification,
+                    "needs_reconfirmation",
+                    "sync",
+                )
+                .criterion("pattern guidance or applicability changed")
+                .cited(vec![crate::evidence::CitedEvidence::Claim(
+                    "the guidance the human approved was rewritten".into(),
+                )]),
+            )?;
+        }
+        let mut reopened = 0;
+        for edge in self.edges_with(Some(EdgeKind::Exemplar), Some(id), None)? {
+            if self.stale_edge(&edge.id, "pattern guidance or applicability changed")? {
+                reopened += 1;
+            }
+        }
+        Ok(reopened)
     }
 
     fn ratify_intent_as(
@@ -590,16 +663,20 @@ impl Store {
         // "every ratified intent has a journal entry behind it" a checkable
         // invariant — the predicate that identifies the 39 facet-only
         // ratifications this graph carried from before the spine.
-        let entry = crate::journal::append(
-            self.root(),
-            event,
-            id,
-            serde_json::json!({
-                "evidence": evidence,
-                "ratified_by": ratified_by,
-                "presence": presence,
-            }),
-        )?;
+        let entry = crate::journal::append(self.root(), event, id, {
+            let mut payload = serde_json::json!({
+            "evidence": evidence,
+            "ratified_by": ratified_by,
+            "presence": presence,
+            });
+            let node = self
+                .get_node(id)?
+                .ok_or_else(|| anyhow!("no node '{id}'"))?;
+            if node.node_type == NodeType::Pattern {
+                payload["pattern_body"] = node.body;
+            }
+            payload
+        })?;
         let mut cited = crate::evidence::cite(self.root(), evidence)?;
         cited.push(crate::evidence::CitedEvidence::Journal(entry.id.clone()));
         // Authority (INV-8), the deprecated check, and the evidence floor all

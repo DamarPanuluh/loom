@@ -35,12 +35,14 @@ pub mod mcp;
 pub mod model;
 pub mod packet;
 pub mod packs;
+pub mod pattern;
 pub mod policy;
 pub mod prescan;
 pub mod proof;
 pub mod proofstrength;
 pub mod ratification;
 pub mod registry;
+pub mod research;
 pub mod risk;
 pub mod runner;
 pub mod scan;
@@ -61,7 +63,7 @@ pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 /// The on-disk schema version stamped into every graph. Bumped when the SQLite
 /// schema changes in a way that requires migration.
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 6;
 
 /// Directory holding the local graph store, relative to a project root.
 pub const LOOM_DIR: &str = ".loom";

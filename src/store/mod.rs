@@ -64,6 +64,8 @@ pub struct Snapshot {
 pub struct RestoreReport {
     /// Soft-ref facets kept despite an absent target (durable adjudications).
     pub preserved_soft_refs: usize,
+    /// Orphan facts dropped by repair, as `(subject_kind, subject_id, claim)`.
+    pub dropped_facts: Vec<(String, String, String)>,
     /// Orphan facets dropped by repair, as `(target_kind, target_id, key)`.
     pub dropped_facets: Vec<(String, String, String)>,
     /// Orphan tags dropped by repair, as `(target_kind, target_id, term)`.
@@ -83,7 +85,6 @@ pub const PORTABLE_META_KEYS: &[&str] = &[
     "scan_adapters",
     "thresholds",
     "evidence_policy",
-    "ratify_policies",
     "upstream_graphs",
 ];
 
@@ -372,6 +373,11 @@ impl Store {
         }
     }
 
+    /// Governed research is analysis work; solo remains an unrestricted driver.
+    pub fn require_research_owner(&self) -> Result<()> {
+        self.check_lane(registry::OwnerRole::Analyzer)
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -542,6 +548,17 @@ UPDATE node
    AND json_extract(body, '$.proof_level') IS NOT NULL;
 "#;
 
+/// Remove delegated ratification. Policy-authored facts cease to establish
+/// wantedness, and their evidence is removed by the fact foreign key cascade.
+/// Journal entries are intentionally append-only and live outside SQLite, so
+/// the historical acts remain available to audit.
+const MIGRATION_5_DROP_RATIFY_POLICIES: &str = r#"
+DELETE FROM meta WHERE key = 'ratify_policies';
+DELETE FROM fact
+ WHERE claim = 'ratification'
+   AND asserted_by LIKE 'policy:%';
+"#;
+
 /// Stamped into the lock-contention error so a RUNNER can recognise its own
 /// infrastructure failing, rather than attributing it to the code under test.
 /// A child blocked on a lock its parent holds exits non-zero exactly like a
@@ -566,6 +583,8 @@ fn schema_migrations() -> Migrations<'static> {
         ),
         M::up(MIGRATION_3_EVIDENCE_SPINE),
         M::up(MIGRATION_4_DROP_CLAIMED_PROOF_LEVEL),
+        M::up(MIGRATION_5_DROP_RATIFY_POLICIES),
+        M::up("SELECT 1;"),
     ])
 }
 
@@ -712,7 +731,7 @@ const DERIVED_TS: &str = "";
 /// Deterministic FNV-1a 64-bit digest over the joined parts. Returns the bare
 /// 16-hex digest (no prefix). Callers choose a plane prefix (`d` for derived
 /// rows, `c` for debt clusters, `p` for promoted findings).
-pub(crate) fn fnv_hex_digest(parts: &[&str]) -> String {
+pub fn fnv_hex_digest(parts: &[&str]) -> String {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for (i, p) in parts.iter().enumerate() {
         if i > 0 {
@@ -732,6 +751,18 @@ pub(crate) fn fnv_hex_digest(parts: &[&str]) -> String {
 /// rebuilt derived plane is byte-identical.
 fn derived_id(parts: &[&str]) -> String {
     format!("d{}", fnv_hex_digest(parts))
+}
+
+/// Whether an id has the content-addressed shape used by derived nodes.
+/// Centralized because dormant derived-Finding adjudications are the sole
+/// intentional missing-subject reference in restore and audit.
+pub(crate) fn is_derived_node_id(id: &str) -> bool {
+    id.strip_prefix('d').is_some_and(|digest| {
+        digest.len() == 16
+            && digest
+                .chars()
+                .all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c))
+    })
 }
 
 /// Generate a fresh 128-bit hex id and an RFC3339 timestamp in one query, using
@@ -878,6 +909,81 @@ mod tests {
         let store = Store::init(tmp.path(), Some("fresh"), false).unwrap();
         assert_eq!(sqlite_user_version(&store.conn), SCHEMA_VERSION);
         assert_eq!(store.identity().unwrap().schema_version, SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn migration_removes_policy_ratification_and_evidence_but_keeps_journal() {
+        let tmp = TmpRoot::new("loom-store-drop-ratify-policy");
+        let store = Store::init(tmp.path(), Some("legacy-policy"), false).unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "delegated behavior",
+                "a policy had approved this behavior",
+                "planned",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let journal = crate::journal::append(
+            tmp.path(),
+            "ratification",
+            &intent.id,
+            serde_json::json!({ "ratified_by": "policy:legacy" }),
+        )
+        .unwrap();
+        store
+            .conn
+            .execute(
+                "INSERT INTO meta(key,value) VALUES ('ratify_policies','[]')",
+                [],
+            )
+            .unwrap();
+        let insert_fact = concat!(
+            "INSERT INTO ",
+            "fact(id,subject_kind,subject_id,claim,state,criterion,verification,confidence,asserted_by,asserted_at,stale) ",
+            "VALUES ('policy-fact','node',?1,'ratification','ratified','policy approval','cited',1.0,'policy:legacy','2026-01-01T00:00:00Z','')"
+        );
+        store.conn.execute(insert_fact, [&intent.id]).unwrap();
+        store
+            .conn
+            .execute(
+                concat!(
+                    "INSERT INTO ",
+                    "evidence(id,fact_id,payload,kind,recorded_at,holds,expiry_reason) ",
+                    "VALUES ('policy-evidence','policy-fact','{}','claim','2026-01-01T00:00:00Z',1,'')"
+                ),
+                [],
+            )
+            .unwrap();
+        store
+            .conn
+            .pragma_update(None, "user_version", 4u32)
+            .unwrap();
+        drop(store);
+
+        let store = Store::open(tmp.path()).unwrap();
+        assert_eq!(store.ratification(&intent.id).unwrap(), "unratified");
+        assert_eq!(store.get_meta("ratify_policies").unwrap(), None);
+        let evidence_count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM evidence WHERE id='policy-evidence'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(evidence_count, 0, "fact evidence must cascade away");
+        assert!(
+            crate::journal::exists(tmp.path(), &journal.id).unwrap(),
+            "migration must preserve append-only history"
+        );
+    }
+
+    #[test]
+    fn derived_ids_require_lowercase_hex() {
+        assert!(is_derived_node_id("d0123456789abcdef"));
+        assert!(!is_derived_node_id("d0123456789abcdeF"));
+        assert!(!is_derived_node_id("d0123456789ABCDE"));
     }
 
     #[test]

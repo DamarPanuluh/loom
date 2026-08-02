@@ -93,6 +93,14 @@ fn a_judgment_burst_is_caught() {
         found.iter().any(|f| f.kind == "judgment_burst"),
         "judgments too fast to have been made one at a time must be reported: {found:#?}"
     );
+    let depths = loom::maturity::depths(&store).unwrap();
+    let roster = loom::workitem::queue_items(&store, loom::lane::Lane::Audit).unwrap();
+    assert_eq!(depths.get(loom::lane::Lane::Audit), found.len());
+    assert_eq!(roster.len(), found.len());
+    let packet = loom::workitem::next(&store, Some(loom::lane::Lane::Audit))
+        .unwrap()
+        .unwrap();
+    assert_eq!(packet.target.kind, "graph");
 }
 
 /// A settled claim standing on nothing re-checkable. The spine refuses these at
@@ -125,9 +133,43 @@ fn a_settled_claim_with_no_surviving_anchor_is_caught() {
     let found = loom::audit::run(&store).unwrap();
     assert!(
         found.iter().any(|f| f.kind == "unanchored_claim")
-            || store.edge_verification(&e.id).unwrap() != loom::model::Verification::Expired,
+            || store.get_edge(&e.id).unwrap().is_some_and(|edge| {
+                edge.status == loom::model::InspectionStatus::NeedsReverification
+            }),
         "either the claim re-opened or the audit names it: {found:#?}"
     );
+}
+
+#[test]
+fn a_reopened_stale_edge_is_not_duplicated_as_audit_work() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let i = intent(&store, "a behavior whose implementation can move");
+    let cf = codefile(&store, "src/moving.rs");
+    let e = store
+        .add_edge(EdgeKind::Implements, &i, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &e.id,
+            loom::model::InspectionStatus::Passing,
+            "the behavior resolves here",
+            "src/moving.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    std::fs::remove_file(tmp.path().join("src/moving.rs")).unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        store.get_edge(&e.id).unwrap().unwrap().status,
+        loom::model::InspectionStatus::NeedsReverification
+    );
+    assert!(loom::audit::run(&store)
+        .unwrap()
+        .iter()
+        .all(|finding| finding.subject.id() != Some(e.id.as_str())));
 }
 
 /// `deepen` is `Open`: never met, never unmet, and it cannot block anything.

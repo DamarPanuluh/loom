@@ -115,6 +115,7 @@ str_enum! {
         JourneyInvariantPoint => "journey_invariant_point",
         WikiPage => "wiki_page",
         UpstreamIntent => "upstream_intent",
+        Pattern => "pattern",
     }
 }
 
@@ -189,6 +190,7 @@ str_enum! {
         Documents => "documents",
         DependsOn => "depends_on",
         Questions => "questions",
+        Exemplar => "exemplar",
     }
 }
 

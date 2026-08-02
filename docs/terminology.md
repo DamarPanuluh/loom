@@ -162,6 +162,19 @@ Examples:
 
 The rule is the norm. The `GOVERNS` edge is the verdict.
 
+### Pattern
+
+Human-ratified prescriptive guidance with explicit path/tag applicability and
+reviewed live `Exemplar` symbols. Guidance is stored; snippets and excerpts are
+not. `Exemplar` is not a grounding: it owns no coverage and contributes no proof
+reach. Health and source excerpts are derived from current graph and working-tree
+state. Empty applicability means manual-only.
+
+The same typed matcher powers manual lookup and automatic build/fix WorkItem
+guidance. Delivery includes at most 5 exemplars and 12 KiB of source excerpts,
+reports matched/included/omitted counts, marks byte clipping, and supplies the
+exact lookup command. Guidance and source text are read-time only.
+
 ### CodeRule
 
 A reusable structural norm held against code.
@@ -512,6 +525,15 @@ Choose the next queue/work item based on graph state.
 
 A promptable unit of work emitted by `loom next`. Real fields are `mode`, `owner_role`, `effort`, `routing_hint`, `reason`, `target`, `stale_causes`, `prompt_contract`, `context`, `truth_gap`, and `next_step`. File hints live at `context.read_set`; allowed actions and write-back live inside `prompt_contract`.
 
+### Research TaskRecord
+
+A bounded request for current external knowledge, routed through Analyze. Loom
+stores the question rationale, preferred-source guidance, and strict records of
+actual pages read (URL, title, publisher, source kind, timestamps, quote, and
+content hash); the host LLM owns browsing. Search snippets are discovery only.
+Research is advisory context and never Fact evidence, verification, human
+preference, professional authority, or certification.
+
 ### PromptContract
 
 The LLM-facing contract for a WorkItem: mindset, allowed actions, forbidden actions, required evidence, exact write-back, stop condition, and escalation/human gate.
@@ -574,7 +596,7 @@ An unanswered product/design question captured as a first-class `Question` node 
 
 ### elaborate queue
 
-The builder queue behind `loom next --mode elaborate`. It serves the most-incomplete user-visible feature intent and asks the LLM to grow its forgotten surroundings: scenarios, prerequisites, boundary/proof/journey coverage, crisp human questions, or reasoned non-question waivers.
+The builder queue behind `loom next --mode elaborate`. It serves the most-incomplete user-visible feature intent and requires the LLM to tell the user that a partial idea is enough, grow its forgotten surroundings autonomously where repository or engineering evidence decides them, and engage the user one plain-language product question at a time where human judgment is required. The LLM records the Question, asks it directly, waits, records the answer, and then resumes; it never treats silence as consent or burdens the user with safely inferable implementation details.
 
 ### state transition
 

@@ -787,6 +787,24 @@ fn elaborate_serves_incomplete_user_visible_feature_intent() {
         !item.prompt_contract.write_back.is_empty(),
         "contract 4: elaborate prompt_contract.write_back is non-empty"
     );
+    assert!(
+        item.prompt_contract.mindset.contains("FIRST tell them")
+            && item.prompt_contract.mindset.contains("plain language")
+            && item.prompt_contract.mindset.contains("may not know Loom"),
+        "contract 4: the LLM must proactively introduce intent-completion help without assuming Loom knowledge"
+    );
+    assert!(
+        item.prompt_contract.stop_condition.contains("ask ONE question")
+            && item.prompt_contract.stop_condition.contains("wait for the user")
+            && item.prompt_contract.write_back.contains("loom question answer"),
+        "contract 4: a product decision must become one conversational question followed by a recorded human answer"
+    );
+    assert!(
+        item.prompt_contract.forbidden_actions.iter().any(|rule| {
+            rule.contains("implementation details") && rule.contains("engineering judgment")
+        }),
+        "contract 4: elaboration must not burden the user with safely inferable technical choices"
+    );
 }
 
 #[test]

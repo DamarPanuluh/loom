@@ -194,7 +194,21 @@ fn excerpt(bytes: &[u8]) -> String {
 /// true of the file on disk right now or it is not, and loom can look. The
 /// result is a Run because it IS one — an observation loom made, expiring when
 /// the file changes.
-pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<RunRecord> {
+pub struct LocatorResolution {
+    pub run: RunRecord,
+    pub match_count: usize,
+    /// Actual bounded text of the uniquely matched symbol. Presentation-only:
+    /// trust continues to compare the RunRecord fingerprint.
+    pub source_text: Option<String>,
+}
+
+/// Resolve a locator and retain the cardinality as structured data. Human
+/// excerpts are presentation only and must never be parsed for trust decisions.
+pub fn resolve_locator(
+    root: &Path,
+    file: &str,
+    locator: Option<&str>,
+) -> Option<LocatorResolution> {
     let content = std::fs::read_to_string(root.join(file)).ok()?;
     let locator = locator.map(str::trim).filter(|l| !l.is_empty())?;
     let extraction = crate::extract::extract(file, &content);
@@ -219,6 +233,14 @@ pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<R
         .filter(|sym| candidates.iter().any(|c| c == &sym.name))
         .collect();
     let hit = hits.first().copied();
+    let source_text = (hits.len() == 1).then(|| {
+        let sym = hits[0];
+        let lines: Vec<&str> = content.lines().collect();
+        lines
+            .get(sym.line_start.saturating_sub(1)..sym.line_end.min(lines.len()))
+            .map(|window| excerpt(window.join("\n").as_bytes()))
+            .unwrap_or_default()
+    });
     let (exit_code, detail) = match hit {
         // The fingerprint of the symbol's BODY, not just its position. A
         // grounding says the behavior lives in this symbol, so the symbol being
@@ -253,7 +275,7 @@ pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<R
         }
         None => (1, format!("no live symbol matching '{locator}' in {file}")),
     };
-    Some(record(
+    let run = record(
         root,
         RunProducer::Locator,
         &format!("resolve '{locator}' in {file}"),
@@ -263,7 +285,23 @@ pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<R
         detail.as_bytes(),
         &[],
         0,
-    ))
+    );
+    Some(LocatorResolution {
+        run,
+        match_count: hits.len(),
+        source_text,
+    })
+}
+
+pub fn locator_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<RunRecord> {
+    resolve_locator(root, file, locator).map(|resolution| resolution.run)
+}
+
+/// Pattern exemplars are deliberately stricter than legacy groundings: their
+/// locator must identify exactly one symbol, never a folded ambiguous set.
+pub fn unique_locator_probe(root: &Path, file: &str, locator: &str) -> Option<RunRecord> {
+    let resolution = resolve_locator(root, file, Some(locator))?;
+    (resolution.run.exit_code == 0 && resolution.match_count == 1).then_some(resolution.run)
 }
 
 /// Scan a quality rule's own patterns over the files realizing an intent, and

@@ -4,7 +4,9 @@
 //! ring-2 invariant because it requires `sync`; it is verified there.
 
 use loom::cli::{Cli, Command, IntentCmd};
-use loom::model::{EdgeKind, Facet, InspectionStatus, NodeType, Tag, TargetKind, TruthClass};
+use loom::model::{
+    Claim, EdgeKind, Facet, InspectionStatus, NodeType, Tag, TargetKind, TruthClass,
+};
 use loom::store::Store;
 use loom::travel::Export;
 mod common;
@@ -313,7 +315,7 @@ fn restore_preserves_soft_ref_adjudication_by_default() {
     // snapshot's nodes. This is a soft ref: the Finding re-materializes on the
     // next sync. Strict restore must accept it without error.
     snap.facets.push(Facet {
-        target_id: "d006b0dbff045baf".into(),
+        target_id: "d0006b0dbff045baf".into(),
         target_kind: TargetKind::Node,
         key: "adjudication".into(),
         value: r#"{"verdict":"justified","reason":"x","hash":"h","at":"2026-01-01T00:00:00Z"}"#
@@ -327,7 +329,7 @@ fn restore_preserves_soft_ref_adjudication_by_default() {
 
     // The soft-ref facet must be present in the imported store.
     let val = store2
-        .get_facet("d006b0dbff045baf", TargetKind::Node, "adjudication")
+        .get_facet("d0006b0dbff045baf", TargetKind::Node, "adjudication")
         .unwrap();
     assert!(
         val.is_some(),
@@ -348,7 +350,7 @@ fn restore_preserves_soft_ref_adjudication_by_default() {
     // sides, which would yield equal-but-empty bytes and mask the bug.
     assert!(
         store3
-            .get_facet("d006b0dbff045baf", TargetKind::Node, "adjudication")
+            .get_facet("d0006b0dbff045baf", TargetKind::Node, "adjudication")
             .unwrap()
             .is_some(),
         "soft-ref adjudication facet must be present in store3 after second restore",
@@ -371,7 +373,7 @@ fn restore_rejects_genuine_orphan_facet() {
     let mut snap = store.snapshot().unwrap();
     // A non-adjudication facet on an absent target is a true orphan.
     snap.facets.push(Facet {
-        target_id: "d006b0dbff045baf".into(),
+        target_id: "d0006b0dbff045baf".into(),
         target_kind: TargetKind::Node,
         key: "visibility".into(),
         value: "internal".into(),
@@ -419,7 +421,7 @@ fn restore_repairing_drops_orphans_keeps_soft_refs() {
     let mut snap = store.snapshot().unwrap();
     // Soft-ref adjudication — must be kept, counted in preserved_soft_refs.
     snap.facets.push(Facet {
-        target_id: "d006b0dbff045baf".into(),
+        target_id: "d0006b0dbff045baf".into(),
         target_kind: TargetKind::Node,
         key: "adjudication".into(),
         value: r#"{"verdict":"justified","reason":"x","hash":"h","at":"2026-01-01T00:00:00Z"}"#
@@ -428,7 +430,7 @@ fn restore_repairing_drops_orphans_keeps_soft_refs() {
     });
     // Genuine orphan facet — must be dropped and reported.
     snap.facets.push(Facet {
-        target_id: "d006b0dbff045baf".into(),
+        target_id: "d0006b0dbff045baf".into(),
         target_kind: TargetKind::Node,
         key: "visibility".into(),
         value: "internal".into(),
@@ -458,7 +460,7 @@ fn restore_repairing_drops_orphans_keeps_soft_refs() {
         report.dropped_facets[0],
         (
             "node".to_string(),
-            "d006b0dbff045baf".to_string(),
+            "d0006b0dbff045baf".to_string(),
             "visibility".to_string(),
         ),
         "dropped_facets entry must carry (target_kind, target_id, key)",
@@ -484,14 +486,14 @@ fn restore_repairing_drops_orphans_keeps_soft_refs() {
         repaired
             .facets
             .iter()
-            .any(|f| f.target_id == "d006b0dbff045baf" && f.key == "adjudication"),
+            .any(|f| f.target_id == "d0006b0dbff045baf" && f.key == "adjudication"),
         "soft-ref adjudication must be in the repaired store",
     );
     assert!(
         !repaired
             .facets
             .iter()
-            .any(|f| f.target_id == "d006b0dbff045baf" && f.key == "visibility"),
+            .any(|f| f.target_id == "d0006b0dbff045baf" && f.key == "visibility"),
         "orphan facet must NOT be in the repaired store",
     );
     assert!(
@@ -676,6 +678,23 @@ fn edge_remove_prunes_asserted_edge_and_its_facets() {
             TruthClass::Asserted,
         )
         .unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            loom::model::InspectionStatus::Passing,
+            "this edge owns the implementation",
+            "src/a.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    let fact_id = store
+        .fact(&loom::store::Subject::Edge(edge.id.clone()), Claim::Verdict)
+        .unwrap()
+        .unwrap()
+        .fact
+        .id;
+    assert!(!store.evidence_for(&fact_id).unwrap().is_empty());
 
     store.delete_edge(&edge.id).unwrap();
     assert!(
@@ -689,6 +708,14 @@ fn edge_remove_prunes_asserted_edge_and_its_facets() {
             .is_none(),
         "the edge's locator facet must not orphan"
     );
+    assert!(
+        store
+            .fact(&loom::store::Subject::Edge(edge.id), Claim::Verdict)
+            .unwrap()
+            .is_none(),
+        "the deleted edge's fact and cascading evidence must be gone"
+    );
+    assert!(store.evidence_for(&fact_id).unwrap().is_empty());
 }
 
 #[test]
@@ -753,6 +780,18 @@ fn delete_node_cleans_incident_edge_facets() {
         .add_edge(EdgeKind::Implements, &intent, &file, TruthClass::Asserted)
         .unwrap();
     store
+        .ratify_intent(&intent, "approved for deletion test", "tty")
+        .unwrap();
+    let node_fact = store
+        .fact(
+            &loom::store::Subject::Node(intent.clone()),
+            Claim::Ratification,
+        )
+        .unwrap()
+        .unwrap()
+        .fact
+        .id;
+    store
         .set_facet(
             &edge.id,
             TargetKind::Edge,
@@ -777,6 +816,16 @@ fn delete_node_cleans_incident_edge_facets() {
             .is_none(),
         "the cascaded edge's locator facet must not orphan"
     );
+
+    store.delete_node(&intent).unwrap();
+    assert!(
+        store
+            .fact(&loom::store::Subject::Node(intent), Claim::Ratification,)
+            .unwrap()
+            .is_none(),
+        "a hard-deleted node's fact must not survive"
+    );
+    assert!(store.evidence_for(&node_fact).unwrap().is_empty());
 }
 
 #[test]

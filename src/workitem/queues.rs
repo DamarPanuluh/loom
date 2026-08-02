@@ -8,10 +8,10 @@
 
 use super::context::{edge_context, node_context};
 use super::contracts::{
-    analyzer_contract, builder_contract, coverage_contract, elaborator_contract, fixer_contract,
-    inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
-    ratify_contract, reviewer_contract, structural_finding_triage_contract, triage_contract,
-    unproven_contract, validator_contract,
+    analyzer_contract, builder_contract, coverage_contract, elaborator_contract, exemplar_contract,
+    fixer_contract, inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
+    ratify_contract, research_contract, reviewer_contract, structural_finding_triage_contract,
+    triage_contract, unproven_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -117,6 +117,7 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
     };
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "build".into(),
         owner_role: "builder".into(),
         effort: "mid".into(),
@@ -246,6 +247,7 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
     };
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "coverage".into(),
         owner_role: "builder".into(),
         effort: "low".into(),
@@ -279,7 +281,10 @@ pub(super) fn fix_item(store: &Store) -> Result<Option<WorkItem>> {
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Failing],
     )?;
-    if let Some(e) = failing.into_iter().next() {
+    if let Some(e) = failing
+        .into_iter()
+        .find(|edge| edge.kind != EdgeKind::Exemplar)
+    {
         return Ok(Some(edge_work(
             store,
             &e,
@@ -315,6 +320,25 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
             "dependency changed — re-verify this claim",
         )?));
     }
+    if let Some(task) = open_research_tasks(store)?.into_iter().next() {
+        return Ok(Some(research_work(store, &task)?));
+    }
+    let failing_exemplars = store.live_edges_by_status(
+        crate::model::TruthClass::Asserted,
+        &[InspectionStatus::Failing],
+    )?;
+    if let Some(e) = failing_exemplars
+        .into_iter()
+        .find(|edge| edge.kind == EdgeKind::Exemplar)
+    {
+        return Ok(Some(edge_work(
+            store,
+            &e,
+            "analyze",
+            "analyzer",
+            "exemplar review failed — inspect or replace this claimed example",
+        )?));
+    }
     let uninspected = store.live_edges_by_status(
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Uninspected],
@@ -330,6 +354,39 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
         )?));
     }
     Ok(None)
+}
+
+fn open_research_tasks(store: &Store) -> Result<Vec<Node>> {
+    let mut tasks: Vec<_> = store
+        .list_nodes(Some(NodeType::TaskRecord), usize::MAX)?
+        .into_iter()
+        .filter(crate::research::is_open_research)
+        .collect();
+    tasks.sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
+    Ok(tasks)
+}
+
+fn research_work(store: &Store, task: &Node) -> Result<WorkItem> {
+    let body = crate::research::ResearchBody::parse(&task.body)?;
+    let target = body
+        .target_id
+        .as_deref()
+        .map(|id| store.get_node(id))
+        .transpose()?
+        .flatten();
+    let target_text = target
+        .as_ref()
+        .map(|n| format!("{} [{}]", n.name, n.id))
+        .unwrap_or_else(|| "none".into());
+    Ok(WorkItem {
+        packet_id: None, pattern_guidance: None, mode: "analyze".into(), owner_role: "analyzer".into(),
+        effort: "mid".into(), routing_hint: super::hint_judgment(),
+        reason: "current external knowledge is missing — research before relying on assumptions".into(),
+        target: node_target(task), stale_causes: Vec::new(), prompt_contract: research_contract(task),
+        context: node_context(store, task, &format!("Answer the bounded external question and preserve actual-page provenance; this context remains advisory. why_external: {} preferred_sources: {} resolved_target_intent: {}", body.why_external, body.preferred_sources.join(", "), target_text))?,
+        scorecard: None, truth_gap: crate::truth::TruthAxis::Verdict.gap(),
+        next_step: "record every actual page with source-add, then close with an advisory synthesis; do not edit code".into(),
+    })
 }
 
 pub(super) fn quality_item(store: &Store) -> Result<Option<WorkItem>> {
@@ -469,6 +526,7 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
     });
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "quality".into(),
         owner_role: "quality".into(),
         effort,
@@ -564,6 +622,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
         };
         return Ok(Some(WorkItem {
             packet_id: None,
+            pattern_guidance: None,
             mode: "validate".into(),
             owner_role: "validator".into(),
             effort: "high".into(),
@@ -607,6 +666,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
         };
         return Ok(Some(WorkItem {
             packet_id: None,
+            pattern_guidance: None,
             mode: "validate".into(),
             owner_role: "validator".into(),
             effort: "mid".into(),
@@ -727,6 +787,7 @@ pub(super) fn elaborate_item(store: &Store) -> Result<Option<WorkItem>> {
     );
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "elaborate".into(),
         owner_role: "builder".into(),
         effort: "high".into(),
@@ -753,6 +814,7 @@ pub(super) fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
     };
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "prove".into(),
         owner_role: "analyzer".into(),
         effort: "high".into(),
@@ -844,6 +906,7 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
     );
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "ratify".into(),
         owner_role: "human".into(),
         effort: "low".into(),
@@ -925,6 +988,7 @@ pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
     };
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort,
@@ -959,6 +1023,7 @@ fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
     let short = &item.id[..8.min(item.id.len())];
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort: "low".into(),
@@ -1007,6 +1072,7 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
         (_, "fixer") => fixer_contract(edge, &from_name, &to_name),
         (_, "quality") => quality_contract(store, edge, &from_name, &to_name)?,
         (_, "validator") => validator_contract(store, edge, &from_name, &to_name)?,
+        _ if edge.kind == EdgeKind::Exemplar => exemplar_contract(edge, &from_name, &to_name),
         _ => analyzer_contract(edge, &from_name, &to_name),
     };
     // A rule's authored inspection effort beats the generic status mapping.
@@ -1033,6 +1099,7 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
     );
     Ok(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: mode.into(),
         owner_role: role.into(),
         effort,
@@ -1290,6 +1357,7 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
     let short = &n.id[..8.min(n.id.len())];
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "deepen".into(),
         owner_role: "validator".into(),
         effort: "mid".into(),
@@ -1313,32 +1381,48 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
 /// The audit queue: this graph's own record, where it does not look earned.
 /// The audit queue.
 ///
-/// `Lane::Audit`'s depth counts doctor issues, open smells AND self-audit
-/// findings, so this must be able to serve all three — a lane that counts three
-/// things and serves one advertises work nobody can collect, which is the
-/// disagreement the lane table exists to prevent.
+/// Status and this queue read the same actionable self-audit backlog.
 pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
     let Some(f) = first_audit_subject(store)? else {
         return Ok(None);
     };
-    // A node-subject finding points a packet at that node; a graph-level issue
-    // (a doctor complaint or smell with no single node to blame) is still
-    // counted by `sound`, so it must still be servable — served against the
-    // graph itself rather than dropped, or the rung advertises work the queue
-    // cannot hand back.
-    let (target, context) = match store.get_node(&f.subject)? {
-        Some(n) => (
-            node_target(&n),
-            node_context(
-                store,
-                &n,
-                "Establish what actually happened before changing anything.",
-            )?,
-        ),
-        None => (
+    let (target, context) = match &f.subject {
+        crate::audit::AuditSubject::Node(id) => {
+            let n = store
+                .get_node(id)?
+                .ok_or_else(|| anyhow::anyhow!("audit node subject '{id}' is absent"))?;
+            (
+                node_target(&n),
+                node_context(
+                    store,
+                    &n,
+                    "Establish what actually happened before changing anything.",
+                )?,
+            )
+        }
+        crate::audit::AuditSubject::Edge(id) => {
+            let e = store
+                .get_edge(id)?
+                .ok_or_else(|| anyhow::anyhow!("audit edge subject '{id}' is absent"))?;
+            (
+                Target {
+                    kind: "edge".into(),
+                    id: e.id.clone(),
+                    name: e.kind.to_string(),
+                    from: Some(e.from_id.clone()),
+                    to: Some(e.to_id.clone()),
+                },
+                edge_context(
+                    store,
+                    &e,
+                    "Establish what actually happened before changing anything.",
+                )?,
+            )
+        }
+        crate::audit::AuditSubject::Graph(id) => (
             Target {
                 kind: "graph".into(),
-                id: String::new(),
+                id: id.clone(),
                 name: f.kind.to_string(),
                 from: None,
                 to: None,
@@ -1353,6 +1437,7 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
     };
     Ok(Some(WorkItem {
         packet_id: None,
+        pattern_guidance: None,
         mode: "audit".into(),
         owner_role: "analyzer".into(),
         effort: "mid".into(),
@@ -1410,64 +1495,14 @@ fn journey_gaps(store: &Store) -> Result<Vec<(Node, bool)>> {
 
 /// The first thing the `sound` rung is counting, whatever kind it is.
 ///
-/// Doctor issues and smells are graph-shaped problems with no self-audit
-/// finding behind them; they still gate the rung, so they still have to be
-/// servable. Each is rendered as an [`crate::audit::AuditFinding`] so the lane
-/// has one packet shape rather than three.
 fn first_audit_subject(store: &Store) -> Result<Option<crate::audit::AuditFinding>> {
     Ok(audit_subjects(store)?.into_iter().next())
 }
 
 /// Everything the `sound` rung counts, as servable findings.
 ///
-/// Fabrication signatures first — a record that was never earned outranks a
-/// structural complaint about code that is at least honestly described.
 fn audit_subjects(store: &Store) -> Result<Vec<crate::audit::AuditFinding>> {
-    let mut out: Vec<crate::audit::AuditFinding> = crate::audit::run(store)?
-        .into_iter()
-        .filter(|f| store.get_node(&f.subject).ok().flatten().is_some())
-        .collect();
-    for issue in crate::signal::doctor(store)? {
-        // `doctor` reports ids inside its message; serve only those we can
-        // point a packet at.
-        // A doctor issue names a node when it can. When it cannot, the subject
-        // is the GRAPH — and it is still counted by `sound`, so it must still be
-        // servable, or the rung advertises work the queue cannot hand back.
-        let id = issue
-            .message
-            .split_whitespace()
-            .find(|t| t.len() == 32 && t.chars().all(|c| c.is_ascii_hexdigit()))
-            .filter(|t| store.get_node(t).ok().flatten().is_some())
-            .unwrap_or("");
-        out.push(crate::audit::AuditFinding {
-            kind: "doctor_issue",
-            subject: id.to_string(),
-            detail: issue.message.clone(),
-            remedy: format!("`loom doctor` reports: {}", issue.kind),
-        });
-    }
-    for smell in crate::signal::smells(store)? {
-        // A resolving adjudication is an accepted exception: the `sound` rung no
-        // longer counts it (maturity::open_smells applies the same filter), so
-        // the queue must not keep serving it or plain `loom next` livelocks on a
-        // smell that has already been justified.
-        if crate::signal::smell_has_resolving_adjudication(store, &smell.identity)? {
-            continue;
-        }
-        let id = smell
-            .identity
-            .rsplit_once(':')
-            .map(|(_, id)| id)
-            .filter(|id| store.get_node(id).ok().flatten().is_some())
-            .unwrap_or("");
-        out.push(crate::audit::AuditFinding {
-            kind: "smell",
-            subject: id.to_string(),
-            detail: smell.message.clone(),
-            remedy: smell.remedy.clone(),
-        });
-    }
-    Ok(out)
+    crate::audit::backlog(store)
 }
 
 /// Edges the ANALYZE lane owns: everything except the two that have their own
@@ -1487,7 +1522,11 @@ fn not_measured_lane(e: &Edge) -> bool {
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_fix(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
     use crate::model::TruthClass;
-    for e in store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])? {
+    for e in store
+        .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
+        .into_iter()
+        .filter(|edge| edge.kind != EdgeKind::Exemplar)
+    {
         out.push(edge_entry(
             store,
             &e,
@@ -1516,6 +1555,26 @@ fn roster_analyze(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
             e,
             "analyze",
             "dependency changed — re-verify this claim",
+        )?);
+    }
+    for task in open_research_tasks(store)? {
+        out.push(node_entry(
+            "analyze",
+            "mid",
+            &task,
+            "current external knowledge is missing — research before relying on assumptions".into(),
+        ));
+    }
+    for e in store
+        .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Failing])?
+        .into_iter()
+        .filter(|edge| edge.kind == EdgeKind::Exemplar)
+    {
+        out.push(edge_entry(
+            store,
+            &e,
+            "analyze",
+            "exemplar review failed — inspect or replace this claimed example",
         )?);
     }
     for e in store
@@ -1803,10 +1862,20 @@ fn roster_divergence(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_audit(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
     for f in audit_subjects(store)? {
-        match store.get_node(&f.subject)? {
-            Some(n) => out.push(node_entry("audit", "mid", &n, f.detail.clone())),
-            // Nothing to point at — the subject is the graph itself.
-            None => out.push(QueueEntry {
+        match &f.subject {
+            crate::audit::AuditSubject::Node(id) => {
+                let n = store
+                    .get_node(id)?
+                    .ok_or_else(|| anyhow::anyhow!("audit node subject '{id}' is absent"))?;
+                out.push(node_entry("audit", "mid", &n, f.detail.clone()));
+            }
+            crate::audit::AuditSubject::Edge(id) => {
+                let e = store
+                    .get_edge(id)?
+                    .ok_or_else(|| anyhow::anyhow!("audit edge subject '{id}' is absent"))?;
+                out.push(edge_entry(store, &e, "audit", &f.detail)?);
+            }
+            crate::audit::AuditSubject::Graph(id) => out.push(QueueEntry {
                 mode: "audit".into(),
                 effort: "mid".into(),
                 routing_hint: Some("judgment".into()),
@@ -1815,7 +1884,7 @@ fn roster_audit(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
                 reason: f.detail.clone(),
                 target: Target {
                     kind: "graph".into(),
-                    id: String::new(),
+                    id: id.clone(),
                     name: f.kind.to_string(),
                     from: None,
                     to: None,

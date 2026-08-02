@@ -136,6 +136,18 @@ pub(super) fn edge_context(store: &Store, edge: &Edge, purpose: &str) -> Result<
     for id in [&edge.from_id, &edge.to_id] {
         push_notes(store, &mut ctx, &mut seen_entities, &mut seen_reads, id)?;
     }
+    // An Exemplar verdict is earned against the located source itself. Unlike
+    // Intent groundings, neither endpoint causes a CodeFile read set to be
+    // expanded above, so name the exemplar file and locator directly.
+    if edge.kind == EdgeKind::Exemplar {
+        if let Some(file) = store.get_node(&edge.to_id)? {
+            ctx.read_set.push(FileRead {
+                path: file.name,
+                locator: store.get_facet(&edge.id, crate::model::TargetKind::Edge, "locator")?,
+                why: "live symbol proposed as the reviewed Pattern exemplar".into(),
+            });
+        }
+    }
     Ok(ctx)
 }
 
@@ -261,6 +273,42 @@ fn push_notes(
     let notes = store.notes_for(target_id)?;
     let overflow = notes.len() > NOTE_CAP;
     for n in notes.iter().take(NOTE_CAP) {
+        if let Some(task_id) = n.body.get("research_task_id").and_then(|v| v.as_str()) {
+            if let Some(task) = store.get_node(task_id)? {
+                let mut advisory = task.clone();
+                let body = crate::research::ResearchBody::parse(&task.body)?;
+                let now = chrono::Utc::now();
+                let stale = body
+                    .conclusion_fresh_until
+                    .as_ref()
+                    .and_then(|v| chrono::DateTime::parse_from_rfc3339(v).ok())
+                    .is_some_and(|v| v.with_timezone(&chrono::Utc) < now);
+                let sources = body
+                    .sources
+                    .iter()
+                    .map(|s| {
+                        format!(
+                            "{} published={} retrieved={} fresh_until={}",
+                            s.url,
+                            s.published_at.as_deref().unwrap_or("unspecified"),
+                            s.retrieved_at,
+                            s.fresh_until.as_deref().unwrap_or("non-expiring")
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                advisory.description = if stale {
+                    format!("STALE research conclusion (not current guidance; suppress recommendation): {}. Sources: {}. Create a successor research task for current guidance; never reopen this history.", task.description, sources)
+                } else {
+                    format!(
+                        "Current advisory research conclusion: {}. Sources: {}",
+                        task.description, sources
+                    )
+                };
+                push_node_entity(ctx, seen_entities, "research_advisory", &advisory);
+                continue;
+            }
+        }
         push_node_entity(ctx, seen_entities, "note", n);
     }
     if overflow {

@@ -6,6 +6,8 @@
 
 use super::*;
 
+const DOOR_CAPABILITY: &str = "Your idea does not need to be a complete specification. Loom can help the LLM round it out, fill technical and repository-derivable gaps, and ask you one plain-language product question at a time when your judgment is needed.";
+
 pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<()> {
     // A name hit is worth two points and a description hit one. Requiring four
     // points prevents one generic verb in an intent name ("fix", "record",
@@ -53,7 +55,7 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         "landing": "new_intent",
         "why": "the utterance names a behavior no intent covers",
         "command": "loom intent add --name '<one falsifiable behavior>' --description '<what makes it true>' --level feature --visibility user_visible --aspect happy",
-        "after": "loom next --mode elaborate grows the forgotten surroundings (failure scenarios, prerequisites, questions)",
+        "after": "loom next --mode elaborate grows the forgotten surroundings; the LLM should explain this capability, fill inferable gaps, and ask the user one plain-language product question at a time",
     }));
     menu.push(serde_json::json!({
         "landing": "hypothesis",
@@ -64,6 +66,11 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         "landing": "spike",
         "why": "the utterance needs investigation before it can land anywhere",
         "command": "loom task add '<question>' --kind investigation --target '<intent>'   # --target lands the outcome as a note on the intent; omit it for a diary-only record",
+    }));
+    menu.push(serde_json::json!({
+        "landing": "external_research",
+        "why": "a current external fact is missing; this is not for discovering or replacing user preference",
+        "command": "loom task add '<bounded external question>' --kind research --why-external '<why repository knowledge is insufficient or freshness matters>' --preferred-source '<primary authoritative source guidance>' --target '<intent>'",
     }));
     for (score, _, name, id) in &weak_matches {
         menu.push(serde_json::json!({
@@ -85,45 +92,58 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "captured": node_json(&item),
+                "capability": DOOR_CAPABILITY,
                 "compass": { "phase": ladder.phase, "next_command": ladder.next_command },
                 "landing_menu": menu,
                 "next_step": format!("choose ONE landing, run it, then: {mark_routed}"),
             }))?
         );
     } else {
-        println!("captured inbox item [{short}]");
-        if !strong_matches.is_empty() {
-            println!("  closest intents:");
-            for (score, _, name, id) in &strong_matches {
-                println!(
-                    "    - {} [{}] (strong score {score})",
-                    name,
-                    &id[..8.min(id.len())]
-                );
-            }
-        }
-        if !weak_matches.is_empty() {
-            println!("  weak intent matches:");
-            for (score, _, name, id) in &weak_matches {
-                println!(
-                    "    - {} [{}] (weak score {score}; prefer new_intent unless this truly refines it)",
-                    name,
-                    &id[..8.min(id.len())]
-                );
-            }
-        }
-        println!("  landings:");
-        for m in &menu {
-            println!(
-                "    - {}: {}",
-                m["landing"].as_str().unwrap_or(""),
-                m["command"].as_str().unwrap_or("")
-            );
-        }
-        println!("  then: {mark_routed}");
+        print_door_text(&item, &menu, &strong_matches, &weak_matches, &mark_routed);
     }
     Ok(())
 }
+
+fn print_door_text(
+    item: &Node,
+    menu: &[serde_json::Value],
+    strong_matches: &[&(usize, String, String, String)],
+    weak_matches: &[&(usize, String, String, String)],
+    mark_routed: &str,
+) {
+    println!("captured inbox item [{}]", &item.id[..8.min(item.id.len())]);
+    println!("  {DOOR_CAPABILITY}");
+    for (label, matches) in [
+        ("closest intents", strong_matches),
+        ("weak intent matches", weak_matches),
+    ] {
+        if matches.is_empty() {
+            continue;
+        }
+        println!("  {label}:");
+        for (score, _, name, id) in matches {
+            let qualifier = if label == "closest intents" {
+                format!("strong score {score}")
+            } else {
+                format!("weak score {score}; prefer new_intent unless this truly refines it")
+            };
+            println!("    - {} [{}] ({qualifier})", name, &id[..8.min(id.len())]);
+        }
+    }
+    println!("  landings:");
+    for entry in menu {
+        println!(
+            "    - {}: {}",
+            entry["landing"].as_str().unwrap_or(""),
+            entry["command"].as_str().unwrap_or("")
+        );
+        if let Some(after) = entry.get("after").and_then(|v| v.as_str()) {
+            println!("      then: {after}");
+        }
+    }
+    println!("  then: {mark_routed}");
+}
+
 pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
@@ -568,13 +588,17 @@ fn task_outcome_note(
         .get("kind")
         .and_then(|v| v.as_str())
         .unwrap_or("task");
+    if crate::research::is_governed(task) {
+        store.add_node(NodeType::Note, &format!("Research reference: {}", task.name), "Governed research advisory; resolve the immutable task dynamically.", "context", serde_json::json!({"kind":"research_reference", "target_id":target_id, "research_task_id":task.id}))?;
+        return Ok(());
+    }
     store.add_note(
         target_id,
         "context",
         &format!(
             "{kind} '{}' [{}] {outcome}: {text}",
             task.name,
-            &task.id[..8]
+            &task.id[..8],
         ),
     )?;
     Ok(())
@@ -587,11 +611,29 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
             title,
             kind,
             target,
+            why_external,
+            preferred_sources,
         } => {
             let target = target
                 .map(|t| store.resolve_node(&t, Some(NodeType::Intent)))
                 .transpose()?;
-            let mut body = serde_json::json!({ "kind": kind });
+            if kind == "research" && why_external.is_none() {
+                bail!("kind=research requires --why-external");
+            }
+            if kind != "research" && (why_external.is_some() || !preferred_sources.is_empty()) {
+                bail!("--why-external and --preferred-source are only valid for kind=research");
+            }
+            let mut body = if kind == "research" {
+                serde_json::json!({
+                    "kind": "research",
+                    "research_schema": 1,
+                    "why_external": why_external.unwrap(),
+                    "preferred_sources": preferred_sources,
+                    "sources": [],
+                })
+            } else {
+                serde_json::json!({ "kind": kind })
+            };
             if let Some(t) = &target {
                 body["target_id"] = serde_json::json!(t.id);
             }
@@ -607,6 +649,52 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
                 format!("task [{}] {}", &t.id[..8], t.name),
             )
         }
+        TaskCmd::SourceAdd {
+            task,
+            url,
+            title,
+            publisher,
+            source_kind,
+            quote,
+            published_at,
+            fresh_until,
+        } => {
+            let t = store.resolve_node(&task, Some(NodeType::TaskRecord))?;
+            if !crate::research::is_open_research(&t) {
+                bail!("source-add requires a proposed or active research task");
+            }
+            store.require_research_owner()?;
+            let mut body = crate::research::ResearchBody::parse(&t.body)?;
+            let retrieved_at = store.current_timestamp()?;
+            let quote_fingerprint = crate::research::quote_fingerprint(&quote);
+            let source: crate::research::ResearchSource =
+                serde_json::from_value(serde_json::json!({
+                    "url": url, "title": title, "publisher": publisher,
+                    "source_kind": source_kind, "retrieved_at": retrieved_at,
+                    "quote": quote, "quote_fingerprint": quote_fingerprint,
+                    "published_at": published_at, "fresh_until": fresh_until,
+                }))?;
+            source.validate()?;
+            let duplicate = body
+                .sources
+                .iter()
+                .any(|s| s.url == source.url && s.quote_fingerprint == source.quote_fingerprint);
+            if !duplicate {
+                body.sources.push(source.clone());
+                store.set_node_body(&t.id, &serde_json::to_value(&body)?)?;
+            }
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "task": t.id, "source": source, "duplicate": duplicate }),
+                "loom task show",
+                if duplicate {
+                    "source already recorded"
+                } else {
+                    "research source recorded"
+                },
+            )
+        }
         TaskCmd::Start { key } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
             let t = store.update_node(&t.id, None, None, Some("active"))?;
@@ -620,6 +708,23 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
         }
         TaskCmd::Close { key, result } => {
             let t = store.resolve_node(&key, Some(NodeType::TaskRecord))?;
+            if crate::research::is_governed(&t) {
+                store.require_research_owner()?;
+                let mut body = crate::research::ResearchBody::parse(&t.body)?;
+                body.stamp_conclusion_freshness(chrono::Utc::now())?;
+                let r = result.trim().to_ascii_lowercase();
+                if result.trim().len() < 12
+                    || matches!(
+                        r.as_str(),
+                        "todo" | "tbd" | "unknown" | "placeholder" | "n/a"
+                    )
+                    || result.contains('<')
+                    || result.contains('>')
+                {
+                    bail!("research result must be a substantive advisory conclusion");
+                }
+                store.set_node_body(&t.id, &serde_json::to_value(body)?)?;
+            }
             let t = store.update_node(&t.id, None, Some(&result), Some("completed"))?;
             task_outcome_note(&store, &t, "completed", &result)?;
             pulse::emit_line(

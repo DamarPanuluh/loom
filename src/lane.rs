@@ -200,7 +200,12 @@ impl Lane {
                     + c.open_journey_proof_smells
             }
             Lane::Quality => c.stale_governs + c.uninspected_governs + c.unmeasured_quality_pairs,
-            Lane::Analyze => c.stale_relationships + c.uninspected_relationships,
+            Lane::Analyze => {
+                c.failing_exemplars
+                    + c.open_research
+                    + c.stale_relationships
+                    + c.uninspected_relationships
+            }
             Lane::Review => c.low_confidence,
             Lane::Triage => c.triage_findings + c.inbox_new,
             Lane::Prove => c.proposed_hypotheses,
@@ -307,6 +312,8 @@ pub struct LadderInputs {
     pub ungrounded: usize,
     pub unowned_codefiles: usize,
     pub failing: usize,
+    pub failing_exemplars: usize,
+    pub open_research: usize,
     pub stale_relationships: usize,
     pub uninspected_relationships: usize,
     pub stale_governs: usize,

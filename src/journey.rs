@@ -190,6 +190,15 @@ pub struct Baseline {
     pub outcomes: Vec<StepOutcome>,
 }
 
+impl Baseline {
+    /// Legacy/imported failed and truncated baselines are not proof. New writes
+    /// are gated earlier, but every read path also fails closed so an old bad
+    /// file cannot silently confer S4 strength.
+    pub fn is_successful(&self) -> bool {
+        !self.outcomes.is_empty() && self.outcomes.iter().all(|outcome| outcome.passed)
+    }
+}
+
 pub fn baseline_path(root: &Path, journey: &str) -> PathBuf {
     root.join(crate::LOOM_DIR)
         .join("baselines")
@@ -211,7 +220,9 @@ pub fn read_baselines(root: &Path) -> Result<Vec<Baseline>> {
             Err(_) => continue,
         };
         if let Ok(b) = serde_json::from_str::<Baseline>(&text) {
-            out.push(b);
+            if b.is_successful() {
+                out.push(b);
+            }
         }
     }
     out.sort_by(|a, b| a.journey.cmp(&b.journey));
@@ -223,6 +234,9 @@ pub fn read_baselines(root: &Path) -> Result<Vec<Baseline>> {
 pub fn restore_baselines(root: &Path, baselines: &[Baseline]) -> Result<usize> {
     let mut restored = 0;
     for b in baselines {
+        if !b.is_successful() {
+            continue;
+        }
         let path = baseline_path(root, &b.journey);
         if path.exists() {
             continue;
@@ -249,10 +263,43 @@ pub fn write_baseline(root: &Path, journey: &str, outcomes: &[StepOutcome]) -> R
     Ok(path)
 }
 
+/// Freeze only a complete, successful execution of an authored journey.
+///
+/// Keep this gate immediately in front of every user-facing freeze write so a
+/// failed or truncated run cannot replace the last known-good baseline.
+pub fn write_successful_baseline(
+    root: &Path,
+    spec: &JourneySpec,
+    outcomes: &[StepOutcome],
+) -> Result<PathBuf> {
+    if spec.steps.is_empty() {
+        anyhow::bail!("journey '{}' has no authored steps to freeze", spec.journey);
+    }
+    if outcomes.len() != spec.steps.len() {
+        anyhow::bail!(
+            "journey '{}' cannot be frozen: completed {}/{} authored steps",
+            spec.journey,
+            outcomes.len(),
+            spec.steps.len()
+        );
+    }
+    if let Some(outcome) = outcomes.iter().find(|outcome| !outcome.passed) {
+        anyhow::bail!(
+            "journey '{}' cannot be frozen: step '{}' failed",
+            spec.journey,
+            outcome.name
+        );
+    }
+    write_baseline(root, &spec.journey, outcomes)
+}
+
 pub fn read_baseline(root: &Path, journey: &str) -> Result<Option<Baseline>> {
     let path = baseline_path(root, journey);
     match std::fs::read(&path) {
-        Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
+        Ok(bytes) => {
+            let baseline: Baseline = serde_json::from_slice(&bytes)?;
+            Ok(baseline.is_successful().then_some(baseline))
+        }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.into()),
     }

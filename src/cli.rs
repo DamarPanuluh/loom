@@ -52,6 +52,11 @@ pub enum Command {
         #[command(subcommand)]
         cmd: IntentCmd,
     },
+    /// Human-ratified, prescriptive repository pattern library.
+    Pattern {
+        #[command(subcommand)]
+        cmd: PatternCmd,
+    },
     /// CodeFile commands.
     Codefile {
         #[command(subcommand)]
@@ -475,7 +480,39 @@ impl RoleArg {
 mod tests {
     use super::*;
     use crate::lane::Lane;
-    use clap::ValueEnum;
+    use clap::{CommandFactory, ValueEnum};
+
+    #[test]
+    fn delegated_ratification_is_absent_from_cli_and_help() {
+        assert!(Cli::try_parse_from([
+            "loom",
+            "intent",
+            "ratify",
+            "some-intent",
+            "--evidence",
+            "approved",
+            "--by-policy",
+            "legacy"
+        ])
+        .is_err());
+        assert!(Cli::try_parse_from([
+            "loom",
+            "policy",
+            "ratify-add",
+            "legacy",
+            "--description",
+            "delegated",
+            "--source",
+            "journal:old"
+        ])
+        .is_err());
+
+        let mut help = Vec::new();
+        Cli::command().write_long_help(&mut help).unwrap();
+        let help = String::from_utf8(help).unwrap();
+        assert!(!help.contains("by-policy"));
+        assert!(!help.contains("ratify-add"));
+    }
 
     /// `loom next --mode <m>` (this clap enum) and the MCP `loom_next` lane enum
     /// (built from `Lane::serves_items`) must offer the SAME lanes — a mode the
