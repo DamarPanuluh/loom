@@ -391,7 +391,30 @@ pub fn seam_present(src: &str, locator: &str) -> bool {
     }
 }
 
+/// Every file grounding this intent, whatever its role.
+///
+/// This is the EXPIRY set: a proof over the behavior must expire when the code
+/// it proves changes AND when the test that proves it changes, so both roles
+/// belong here.
 pub fn files_grounding(store: &Store, intent_id: &str) -> Result<Vec<String>> {
+    grounding_files(store, intent_id, false)
+}
+
+/// Only the files the behavior LIVES in — groundings carrying the `realizes`
+/// role (the default when no role facet is set).
+///
+/// This is the set a code-quality RULE is measured against. The distinction is
+/// not cosmetic: a `verifies` grounding is a test, and the shapes these rules
+/// forbid are idiomatic there. A test SHOULD `.unwrap()` — panicking on an
+/// unexpected `None` is how it reports failure — and a SQL-looking string in a
+/// fixture is not a query. Scanning tests for those shapes made a passing
+/// verdict unreachable for every intent whose proof is a Rust test, which is
+/// what this split fixes.
+pub fn files_realizing(store: &Store, intent_id: &str) -> Result<Vec<String>> {
+    grounding_files(store, intent_id, true)
+}
+
+fn grounding_files(store: &Store, intent_id: &str, realizing_only: bool) -> Result<Vec<String>> {
     let mut files = Vec::new();
     for e in store.edges_with(
         Some(crate::model::EdgeKind::Implements),
@@ -399,6 +422,9 @@ pub fn files_grounding(store: &Store, intent_id: &str) -> Result<Vec<String>> {
         None,
     )? {
         if store.edge_superseded(&e.id)? {
+            continue;
+        }
+        if realizing_only && store.grounding_role(&e.id)? != crate::model::GroundingRole::Realizes {
             continue;
         }
         if let Some(cf) = store.get_node(&e.to_id)? {

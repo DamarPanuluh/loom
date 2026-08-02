@@ -511,7 +511,11 @@ impl Store {
         let Some(rule) = self.get_node(&edge.from_id)? else {
             return Ok(None);
         };
-        let files = crate::runner::files_grounding(self, &edge.to_id)?;
+        // A rule is measured against the code the behavior LIVES in, not the
+        // test that verifies it: `.unwrap()` in a test is idiomatic, so
+        // scanning `verifies` groundings made a passing verdict unreachable for
+        // any intent proved by a Rust test.
+        let files = crate::runner::files_realizing(self, &edge.to_id)?;
         Ok(Some((rule, files)))
     }
 

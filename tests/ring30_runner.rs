@@ -231,3 +231,78 @@ fn an_observed_run_records_what_it_covered() {
         loom::runner::Observation::Blocked { reason } => panic!("`true` should run: {reason}"),
     }
 }
+
+/// **A quality rule is measured against the code, not against the test.**
+///
+/// The expiry set and the measurement set are different questions asked of the
+/// same groundings. A proof must expire when EITHER the code or its test moves,
+/// so `files_grounding` returns both roles. But a code-quality rule is a claim
+/// about the code the behavior lives in — and the shapes those rules forbid are
+/// idiomatic in a test. A test SHOULD `.unwrap()`; panicking on an unexpected
+/// `None` is how it reports failure.
+///
+/// Without this split loom scanned `verifies` groundings for rule violations
+/// and then refused the resulting `passing` verdict over its own test files,
+/// which made the verdict unreachable for every intent proved by a Rust test —
+/// 34 unsettleable pairs in loom's own graph.
+#[test]
+fn a_rule_is_measured_against_realizing_files_not_verifying_ones() {
+    let tmp = Tmp::new();
+    let intent = seeded(tmp.path());
+    let store = Store::open(tmp.path()).unwrap();
+
+    // Attach a test file to the same behavior, in the `verifies` role.
+    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
+    std::fs::write(
+        tmp.path().join("tests/thing_test.rs"),
+        "#[test]\nfn t() { assert_eq!(thing(), 1); }\n",
+    )
+    .unwrap();
+    let tf = store
+        .add_node(
+            NodeType::CodeFile,
+            "tests/thing_test.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let ve = store
+        .add_edge(EdgeKind::Implements, &intent, &tf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_grounding_role(&ve.id, loom::model::GroundingRole::Verifies)
+        .unwrap();
+
+    let expiry = loom::runner::files_grounding(&store, &intent).unwrap();
+    let measured = loom::runner::files_realizing(&store, &intent).unwrap();
+
+    assert!(
+        expiry.contains(&"tests/thing_test.rs".to_string())
+            && expiry.contains(&"src/thing.rs".to_string()),
+        "the expiry set is BOTH roles — an edit to the test must expire the proof too: {expiry:?}"
+    );
+    assert_eq!(
+        measured,
+        vec!["src/thing.rs".to_string()],
+        "the measurement set is the realizing code alone, with the verifying test excluded: {measured:?}"
+    );
+}
+
+/// An untagged grounding is `realizes` by default, so the role split must not
+/// silently drop a behavior's code from its own measurement.
+#[test]
+fn an_untagged_grounding_still_counts_as_realizing() {
+    let tmp = Tmp::new();
+    let intent = seeded(tmp.path());
+    let store = Store::open(tmp.path()).unwrap();
+
+    // `seeded` never writes a role facet on the src/thing.rs grounding.
+    let measured = loom::runner::files_realizing(&store, &intent).unwrap();
+    assert_eq!(
+        measured,
+        vec!["src/thing.rs".to_string()],
+        "a grounding with no role facet defaults to realizes and must stay in the \
+         measured set, or the filter would erase the very code being judged: {measured:?}"
+    );
+}
