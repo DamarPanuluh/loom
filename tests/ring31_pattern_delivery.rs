@@ -22,14 +22,9 @@ fn body(paths: &[&str], tags: &[&str]) -> serde_json::Value {
 }
 
 fn codefile(store: &Store, source: &str) -> loom::model::Node {
-    store
-        .root()
-        .join("src")
-        .is_dir()
-        .then_some(())
-        .unwrap_or_else(|| {
-            std::fs::create_dir_all(store.root().join("src")).unwrap();
-        });
+    if !store.root().join("src").is_dir() {
+        std::fs::create_dir_all(store.root().join("src")).unwrap();
+    }
     std::fs::write(store.root().join("src/example.rs"), source).unwrap();
     store
         .add_node(

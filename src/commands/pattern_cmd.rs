@@ -1,15 +1,44 @@
-use super::{open, require_challenge};
+use super::{open, pulse, require_challenge};
 use crate::cli::{PatternCmd, PatternExemplarCmd};
 use crate::model::{Claim, EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
-use crate::pattern::{Applicability, PatternBody};
+use crate::pattern::{Applicability, PatternBody, PatternGuidance, PatternView};
 use crate::store::{Assertion, Store, Subject};
 use crate::Result;
 use anyhow::bail;
 use std::path::Path;
 
+/// One command's result in both renderings.
+///
+/// `next` distinguishes the two contracts in this dispatcher: a mutation
+/// carries the driver's next move and goes out through the shared pulse, while
+/// a read (`None`) renders its own view and stops there.
+struct Emission {
+    value: serde_json::Value,
+    human: String,
+    next: Option<String>,
+}
+
+impl Emission {
+    fn wrote(value: serde_json::Value, human: impl Into<String>, next: impl Into<String>) -> Self {
+        Self {
+            value,
+            human: human.into(),
+            next: Some(next.into()),
+        }
+    }
+
+    fn read(value: serde_json::Value, human: impl Into<String>) -> Self {
+        Self {
+            value,
+            human: human.into(),
+            next: None,
+        }
+    }
+}
+
 pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let value = match cmd {
+    let out = match cmd {
         PatternCmd::Add {
             name,
             rationale,
@@ -19,13 +48,23 @@ pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()>
             intent_tags,
         } => {
             let body = body(rationale, when_to_use, when_not_to_use, paths, intent_tags)?;
-            serde_json::to_value(store.add_node(
+            let node = store.add_node(
                 NodeType::Pattern,
                 &name,
                 "",
                 "draft",
                 serde_json::to_value(body)?,
-            )?)?
+            )?;
+            // A fresh pattern is a draft: unratified and exemplar-less, so it
+            // cannot route yet. Point at ratification, the human-only gate.
+            Emission::wrote(
+                serde_json::to_value(&node)?,
+                format!("pattern '{}' added as a draft", node.name),
+                format!(
+                    "loom pattern ratify {} --evidence \"<why this is the house way>\"",
+                    node.id
+                ),
+            )
         }
         PatternCmd::Update {
             key,
@@ -75,22 +114,60 @@ pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()>
                 store.update_node(&node.id, Some(&name), None, None)?;
             }
             store.add_note(&node.id, "decision", &format!("pattern updated: {reason}"))?;
-            serde_json::to_value(
-                store
-                    .get_node(&node.id)?
-                    .ok_or_else(|| anyhow::anyhow!("Pattern vanished after update"))?,
-            )?
+            let updated = store
+                .get_node(&node.id)?
+                .ok_or_else(|| anyhow::anyhow!("Pattern vanished after update"))?;
+            // A normative edit changes what the pattern asks for, so the
+            // standing human ratification no longer covers the current text.
+            let human = if normative {
+                format!(
+                    "pattern '{}' updated; its ratification no longer covers this text",
+                    updated.name
+                )
+            } else {
+                format!("pattern '{}' updated", updated.name)
+            };
+            Emission::wrote(
+                serde_json::to_value(&updated)?,
+                human,
+                format!("loom pattern show {}", updated.id),
+            )
         }
         PatternCmd::Show { key } => {
-            show(&store, &store.resolve_node(&key, Some(NodeType::Pattern))?)?
+            let node = store.resolve_node(&key, Some(NodeType::Pattern))?;
+            let view = crate::pattern::inspect(&store, &node)?;
+            Emission::read(
+                show_value(&store, &node, &view)?,
+                human_show(&store, &view)?,
+            )
         }
-        PatternCmd::List => serde_json::Value::Array(
-            store
-                .list_nodes(Some(NodeType::Pattern), usize::MAX)?
-                .iter()
-                .map(|n| show(&store, n))
-                .collect::<Result<Vec<_>>>()?,
-        ),
+        PatternCmd::List => {
+            let nodes = store.list_nodes(Some(NodeType::Pattern), usize::MAX)?;
+            let mut values = Vec::with_capacity(nodes.len());
+            let mut lines = Vec::with_capacity(nodes.len());
+            for n in &nodes {
+                let view = crate::pattern::inspect(&store, n)?;
+                values.push(show_value(&store, n, &view)?);
+                lines.push(format!(
+                    "{:<10} {:<4} {}",
+                    view.health,
+                    view.exemplars.len(),
+                    n.name
+                ));
+            }
+            let human = if lines.is_empty() {
+                "no patterns declared".to_string()
+            } else {
+                format!(
+                    "{:<10} {:<4} {}\n{}",
+                    "HEALTH",
+                    "EX",
+                    "PATTERN",
+                    lines.join("\n")
+                )
+            };
+            Emission::read(serde_json::Value::Array(values), human)
+        }
         PatternCmd::Lookup {
             paths,
             intent_tags,
@@ -99,24 +176,31 @@ pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()>
             if paths.is_empty() && intent_tags.is_empty() {
                 bail!("pattern lookup requires --path and/or --intent-tag; selectorless patterns are manual-only");
             }
-            serde_json::to_value(crate::pattern::guidance_page(
-                &store,
-                &paths,
-                &intent_tags,
-                offset,
-            )?)?
+            let page = crate::pattern::guidance_page(&store, &paths, &intent_tags, offset)?;
+            let human = human_lookup(&page);
+            Emission::read(serde_json::to_value(&page)?, human)
         }
         PatternCmd::Ratify { key, evidence } => {
             let n = store.resolve_node(&key, Some(NodeType::Pattern))?;
             let presence = require_challenge(&n.name)?;
             store.ratify_pattern(&n.id, &evidence, presence)?;
-            show(&store, &n)?
+            let view = crate::pattern::inspect(&store, &n)?;
+            Emission::wrote(
+                show_value(&store, &n, &view)?,
+                format!("pattern '{}' ratified; health is {}", n.name, view.health),
+                format!("loom pattern show {}", n.id),
+            )
         }
         PatternCmd::Retire { key, reason } => {
             let n = store.resolve_node(&key, Some(NodeType::Pattern))?;
             store.add_note(&n.id, "decision", &format!("retired: {reason}"))?;
             store.set_node_status(&n.id, "deprecated")?;
-            show(&store, &n)?
+            let view = crate::pattern::inspect(&store, &n)?;
+            Emission::wrote(
+                show_value(&store, &n, &view)?,
+                format!("pattern '{}' retired; it no longer routes", n.name),
+                "loom pattern list",
+            )
         }
         PatternCmd::Remove { key, reason } => {
             let n = store.resolve_node(&key, Some(NodeType::Pattern))?;
@@ -128,16 +212,26 @@ pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()>
             }
             store.add_note(&n.id, "decision", &format!("removed: {reason}"))?;
             store.delete_node(&n.id)?;
-            serde_json::json!({"removed":n.id})
+            Emission::wrote(
+                serde_json::json!({"removed":n.id}),
+                format!("pattern '{}' removed", n.name),
+                "loom pattern list",
+            )
         }
         PatternCmd::Exemplar { cmd } => exemplar(&store, cmd)?,
     };
-    if json {
-        println!("{}", serde_json::to_string_pretty(&value)?);
-    } else {
-        println!("{}", serde_json::to_string_pretty(&value)?);
+
+    match out.next {
+        Some(next) => pulse::emit_line(&store, json, out.value, &next, out.human),
+        None => {
+            if json {
+                println!("{}", serde_json::to_string_pretty(&out.value)?);
+            } else {
+                println!("{}", out.human);
+            }
+            Ok(())
+        }
     }
-    Ok(())
 }
 
 fn body(
@@ -160,7 +254,7 @@ fn body(
     Ok(v)
 }
 
-fn exemplar(store: &Store, cmd: PatternExemplarCmd) -> Result<serde_json::Value> {
+fn exemplar(store: &Store, cmd: PatternExemplarCmd) -> Result<Emission> {
     match cmd {
         PatternExemplarCmd::Add {
             pattern,
@@ -186,7 +280,19 @@ fn exemplar(store: &Store, cmd: PatternExemplarCmd) -> Result<serde_json::Value>
                 &locator,
                 TruthClass::Asserted,
             )?;
-            Ok(serde_json::to_value(e)?)
+            // An exemplar is a claim about the code until an analyzer grounds
+            // it, so the next move is the verdict, not another exemplar.
+            Ok(Emission::wrote(
+                serde_json::to_value(&e)?,
+                format!(
+                    "exemplar '{}' in {} attached to pattern '{}'",
+                    locator, f.name, p.name
+                ),
+                format!(
+                    "loom pattern exemplar verdict --edge {} --verdict ground --criterion \"<what you checked>\" --evidence \"{}\"",
+                    e.id, f.name
+                ),
+            ))
         }
         PatternExemplarCmd::Verdict {
             edge,
@@ -217,9 +323,21 @@ fn exemplar(store: &Store, cmd: PatternExemplarCmd) -> Result<serde_json::Value>
                 .confidence(confidence)
                 .cited(cited),
             )?;
-            Ok(serde_json::to_value(store.get_edge(&e.id)?.ok_or_else(
-                || anyhow::anyhow!("Exemplar edge vanished after verdict"),
-            )?)?)
+            let edge = store
+                .get_edge(&e.id)?
+                .ok_or_else(|| anyhow::anyhow!("Exemplar edge vanished after verdict"))?;
+            let pattern = store.get_node(&edge.from_id)?;
+            let pattern_name = pattern
+                .map(|n| n.name)
+                .unwrap_or_else(|| edge.from_id.clone());
+            Ok(Emission::wrote(
+                serde_json::to_value(&edge)?,
+                format!(
+                    "exemplar verdict recorded: {verdict} ({state})",
+                    state = state.as_str()
+                ),
+                format!("loom pattern show {pattern_name}"),
+            ))
         }
         PatternExemplarCmd::Remove { edge, reason } => {
             let e = store.resolve_edge(&edge)?;
@@ -235,17 +353,79 @@ fn exemplar(store: &Store, cmd: PatternExemplarCmd) -> Result<serde_json::Value>
                 &format!("exemplar removed: {reason}"),
             )?;
             store.delete_edge(&e.id)?;
-            Ok(serde_json::json!({"removed":e.id}))
+            Ok(Emission::wrote(
+                serde_json::json!({"removed":e.id}),
+                format!("exemplar {} removed", e.id),
+                format!("loom pattern show {}", e.from_id),
+            ))
         }
     }
 }
 
-fn show(store: &Store, n: &crate::model::Node) -> Result<serde_json::Value> {
-    let view = crate::pattern::inspect(store, n)?;
-    let health = view.health;
-    let health_reason = view.health_reason;
-    let exemplars = view.exemplars;
+fn show_value(
+    store: &Store,
+    n: &crate::model::Node,
+    view: &PatternView,
+) -> Result<serde_json::Value> {
     Ok(
-        serde_json::json!({"pattern":n,"ratification":store.ratification(&n.id)?,"health":health,"health_reason":health_reason,"exemplars":exemplars}),
+        serde_json::json!({"pattern":n,"ratification":store.ratification(&n.id)?,"health":view.health,"health_reason":view.health_reason,"exemplars":view.exemplars}),
     )
+}
+
+fn human_show(store: &Store, view: &PatternView) -> Result<String> {
+    let n = &view.node;
+    let body = PatternBody::parse(&n.body)?;
+    let mut out = vec![
+        format!("{} [{}]", n.name, n.status),
+        format!("  health:       {} — {}", view.health, view.health_reason),
+        format!("  ratification: {}", store.ratification(&n.id)?),
+        format!("  rationale:    {}", body.rationale),
+        format!("  use when:     {}", body.when_to_use),
+        format!("  not when:     {}", body.when_not_to_use),
+    ];
+    let globs = &body.applicability.path_globs;
+    let tags = &body.applicability.intent_tags;
+    if globs.is_empty() && tags.is_empty() {
+        // Selectorless patterns never match a lookup; say so rather than
+        // printing two empty fields the reader has to interpret.
+        out.push("  applies to:   nothing automatically (manual-only)".into());
+    } else {
+        if !globs.is_empty() {
+            out.push(format!("  paths:        {}", globs.join(", ")));
+        }
+        if !tags.is_empty() {
+            out.push(format!("  intent tags:  {}", tags.join(", ")));
+        }
+    }
+    if view.exemplars.is_empty() {
+        out.push("  exemplars:    none".into());
+    } else {
+        out.push(format!("  exemplars:    {}", view.exemplars.len()));
+        for e in &view.exemplars {
+            out.push(format!("    - {}:{}", e.path, e.locator));
+        }
+    }
+    Ok(out.join("\n"))
+}
+
+fn human_lookup(page: &PatternGuidance) -> String {
+    if page.matched == 0 {
+        return "no routable pattern matches those selectors".to_string();
+    }
+    let mut out = vec![format!(
+        "{} exemplar(s) matched, {} shown, {} omitted",
+        page.matched, page.included, page.omitted
+    )];
+    for item in &page.items {
+        out.push(String::new());
+        out.push(format!("{} — {}", item.name, item.rationale));
+        out.push(format!("  use when: {}", item.when_to_use));
+        out.push(format!("  not when: {}", item.when_not_to_use));
+        out.push(format!("  example:  {}:{}", item.path, item.locator));
+    }
+    if page.omitted > 0 {
+        out.push(String::new());
+        out.push(format!("next page: {}", page.lookup_command));
+    }
+    out.join("\n")
 }
