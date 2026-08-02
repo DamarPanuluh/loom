@@ -263,3 +263,71 @@ impl CallGraph {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn chain(edges: &[(&str, &str, &str, &str)]) -> CallGraph {
+        let mut graph = CallGraph::default();
+        for &(from_file, from_symbol, to_file, to_symbol) in edges {
+            graph
+                .defines
+                .entry(from_file.into())
+                .or_default()
+                .insert(from_symbol.into());
+            graph
+                .defines
+                .entry(to_file.into())
+                .or_default()
+                .insert(to_symbol.into());
+            graph.edges.push(CallEdge {
+                from_file: from_file.into(),
+                from_symbol: from_symbol.into(),
+                to_file: to_file.into(),
+                to_symbol: to_symbol.into(),
+                resolution: Resolution::Exact,
+            });
+        }
+        for (i, e) in graph.edges.iter().enumerate() {
+            graph
+                .incoming
+                .entry(e.to_symbol.clone())
+                .or_default()
+                .push(i);
+        }
+        graph
+    }
+
+    /// Finding d3107a6d: a proof whose test reaches the grounded symbol at 6
+    /// hops was graded S2 because `call_witness` walked only 4. Depth must be
+    /// deep enough that a demonstrable exact caller is visible.
+    #[test]
+    fn impact_sees_exact_callers_beyond_four_hops() {
+        // target ← a ← b ← c ← d ← e ← test  (6 hops)
+        let g = chain(&[
+            ("src/a.rs", "a", "src/target.rs", "target"),
+            ("src/b.rs", "b", "src/a.rs", "a"),
+            ("src/c.rs", "c", "src/b.rs", "b"),
+            ("src/d.rs", "d", "src/c.rs", "c"),
+            ("src/e.rs", "e", "src/d.rs", "d"),
+            ("tests/proof.rs", "the_test", "src/e.rs", "e"),
+        ]);
+        let shallow = g.impact("target", 4);
+        assert!(
+            !shallow
+                .callers
+                .iter()
+                .any(|c| c.file == "tests/proof.rs" && c.symbol == "the_test"),
+            "depth 4 must miss the 6-hop exact caller (the old call_witness bug)"
+        );
+        let deep = g.impact("target", crate::proofstrength::CALL_WITNESS_DEPTH);
+        let hit = deep
+            .callers
+            .iter()
+            .find(|c| c.file == "tests/proof.rs" && c.symbol == "the_test")
+            .expect("CALL_WITNESS_DEPTH must see the 6-hop exact caller");
+        assert_eq!(hit.hops, 6);
+        assert_eq!(hit.resolution, Resolution::Exact);
+    }
+}

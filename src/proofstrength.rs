@@ -269,6 +269,15 @@ fn grounded_symbols(store: &Store, intent_id: &str) -> Result<Vec<String>> {
     Ok(out)
 }
 
+/// How far [`call_witness`] walks the call graph.
+///
+/// Cap of 4 hid exact callers at 6 hops (finding `d3107a6d`: ring32 research
+/// tests → `push_notes`). `loom impact <sym> --depth 8` already contradicted
+/// the S2 "nothing this proof runs reaches the symbol" grade. Eight matches
+/// that diagnostic depth and clears the documented 6-hop case with headroom
+/// for a layer or two of helpers.
+pub const CALL_WITNESS_DEPTH: usize = 8;
+
 /// Does anything this proof reaches call into a symbol the intent is grounded
 /// in? Answered from the real call graph, not from token overlap.
 ///
@@ -287,7 +296,7 @@ fn call_witness(
         return Ok(None);
     }
     for symbol in grounded_symbols(store, intent_id)? {
-        let reach = graph.impact(&symbol, 4);
+        let reach = graph.impact(&symbol, CALL_WITNESS_DEPTH);
         if reach.callers.iter().any(|c| proof_files.contains(&c.file)) {
             return Ok(Some(symbol));
         }
@@ -532,6 +541,19 @@ mod tests {
         assert!(Strength::S5 > Strength::MEANINGFUL);
         assert_eq!(Strength::parse("S3"), Some(Strength::S3));
         assert_eq!(Strength::parse("L5"), None);
+    }
+
+    /// Pin the hop budget that finding d3107a6d exposed as too shallow.
+    /// The witness case is an exact caller at 6 hops; the constant must clear
+    /// that, and stays aligned with `loom impact --depth 8`.
+    #[test]
+    fn call_witness_depth_clears_the_documented_six_hop_case() {
+        assert!(
+            CALL_WITNESS_DEPTH >= 6,
+            "CALL_WITNESS_DEPTH={CALL_WITNESS_DEPTH} would still miss the \
+             ring32→push_notes exact caller at 6 hops"
+        );
+        assert_eq!(CALL_WITNESS_DEPTH, 8);
     }
 }
 
