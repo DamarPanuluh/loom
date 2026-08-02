@@ -9,8 +9,19 @@ use crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::workitem;
 use crate::Result;
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use std::path::Path;
+
+/// Refuse a realizing locator that names no live symbol in its file.
+fn require_resolvable_locator(store: &Store, file: &str, locator: &str) -> Result<()> {
+    if crate::runner::grounding_locator_resolves(store.root(), file, locator) {
+        return Ok(());
+    }
+    bail!(
+        "locator must resolve to a live symbol in '{file}' (no match for '{locator}'); \
+         use a symbol name, or 'module …' for whole-file scope"
+    );
+}
 
 pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
@@ -105,6 +116,14 @@ fn edge_implement(
         Some(r) => parse_grounding_role(r)?,
         None => GroundingRole::Realizes,
     };
+    // A realizing locator must name something live — the same probe pattern
+    // exemplar add already enforces. Module-scope and non-realizing roles are
+    // exempt (see `runner::grounding_locator_resolves` / ripple_locator_drift).
+    if role == GroundingRole::Realizes {
+        if let Some(loc) = &locator {
+            require_resolvable_locator(store, &cf.name, loc)?;
+        }
+    }
     // Groundings are keyed by (intent, codefile, kind). Re-running implement is
     // an edit of that grounding's locator/role, not a request for a duplicate
     // edge (which the database correctly rejects).
@@ -331,6 +350,15 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
             "edge [{}] is derived — its facets are sync-owned",
             crate::model::short(&e.id)
         );
+    }
+    // Realizing implements edges carry the same probe as `edge implement`.
+    if e.kind == EdgeKind::Implements
+        && store.grounding_role(&e.id)? == GroundingRole::Realizes
+    {
+        let file = store
+            .get_node(&e.to_id)?
+            .ok_or_else(|| anyhow!("implements edge [{}] has no codefile", crate::model::short(&e.id)))?;
+        require_resolvable_locator(store, &file.name, &locator)?;
     }
     store.set_facet(
         &e.id,

@@ -260,3 +260,131 @@ fn a_consumes_seam_locator_is_not_judged_as_a_symbol() {
         "a consumes seam names an interface, not a definition, and must not be judged as a missing symbol"
     );
 }
+
+/// **Write-time probe (finding c1fb2418).** `edge implement` used to accept any
+/// locator string — including prose-with-line-numbers and names the file never
+/// contained — while `pattern exemplar add` already refused via
+/// `unique_locator_probe`. The write path now shares the sync backstop's rule:
+/// a realizing locator must match at least one live symbol; `module …` stays
+/// exempt as whole-file scope.
+#[test]
+fn edge_implement_refuses_an_unresolvable_locator() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    std::fs::write(tmp.path().join("src.rs"), "pub fn alpha() {}\n").unwrap();
+    store
+        .add_node(
+            NodeType::Intent,
+            "alpha behavior",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_node(NodeType::CodeFile, "src.rs", "", "", serde_json::json!({}))
+        .unwrap();
+
+    // Library-level: the probe helper is what the CLI and apply both call.
+    assert!(
+        !loom::runner::grounding_locator_resolves(
+            tmp.path(),
+            "src.rs",
+            "alpha:12 (stale before uninspected)"
+        ),
+        "prose + rotted line number must not resolve"
+    );
+    assert!(
+        !loom::runner::grounding_locator_resolves(tmp.path(), "src.rs", "fn never_existed"),
+        "a name the file never contained must not resolve"
+    );
+    assert!(
+        loom::runner::grounding_locator_resolves(tmp.path(), "src.rs", "fn alpha"),
+        "a live symbol must resolve"
+    );
+    assert!(
+        loom::runner::grounding_locator_resolves(tmp.path(), "src.rs", "module src"),
+        "module-scope whole-file locators stay exempt"
+    );
+}
+
+#[test]
+fn edge_implement_cli_refuses_and_module_scope_is_accepted() {
+    let tmp = Tmp::new();
+    // Use the CLI path — that is what agents actually call.
+    let bin = env!("CARGO_BIN_EXE_loom");
+    let run = |args: &[&str]| {
+        std::process::Command::new(bin)
+            .args(["--graph"])
+            .arg(tmp.path())
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    let init = std::process::Command::new(bin)
+        .args(["init"])
+        .arg(tmp.path())
+        .args(["--name", "t"])
+        .output()
+        .unwrap();
+    assert!(
+        init.status.success(),
+        "init: {}",
+        String::from_utf8_lossy(&init.stderr)
+    );
+    std::fs::write(tmp.path().join("src.rs"), "pub fn alpha() {}\n").unwrap();
+    let intent = run(&[
+        "intent",
+        "add",
+        "--name",
+        "alpha behavior",
+        "--description",
+        "alpha does something",
+        "--lifecycle",
+        "implemented",
+    ]);
+    assert!(
+        intent.status.success(),
+        "intent add: {}",
+        String::from_utf8_lossy(&intent.stderr)
+    );
+    let cf = run(&["codefile", "add", "src.rs"]);
+    assert!(
+        cf.status.success(),
+        "codefile add: {}",
+        String::from_utf8_lossy(&cf.stderr)
+    );
+
+    let bad = run(&[
+        "edge",
+        "implement",
+        "alpha behavior",
+        "src.rs",
+        "--locator",
+        "fn never_existed",
+    ]);
+    assert!(
+        !bad.status.success(),
+        "unresolvable locator must be refused: {}",
+        String::from_utf8_lossy(&bad.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&bad.stderr).contains("must resolve"),
+        "refusal names the probe: {}",
+        String::from_utf8_lossy(&bad.stderr)
+    );
+
+    let module_ok = run(&[
+        "edge",
+        "implement",
+        "alpha behavior",
+        "src.rs",
+        "--locator",
+        "module src",
+    ]);
+    assert!(
+        module_ok.status.success(),
+        "module-scope must stay accepted: {}",
+        String::from_utf8_lossy(&module_ok.stderr)
+    );
+}

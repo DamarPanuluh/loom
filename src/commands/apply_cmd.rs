@@ -24,7 +24,7 @@ use super::{open, pulse, verdict_status};
 use crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::{workitem, Result};
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, bail, Context};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -348,6 +348,16 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
             ),
         };
         if let Some(loc) = &g.locator {
+            if role == GroundingRole::Realizes
+                && !crate::runner::grounding_locator_resolves(store.root(), &codefile.name, loc)
+            {
+                bail!(
+                    "locator must resolve to a live symbol in '{}' (no match for '{}'); \
+                     use a symbol name, or 'module …' for whole-file scope",
+                    codefile.name,
+                    loc
+                );
+            }
             store.set_facet(
                 &edge.id,
                 TargetKind::Edge,

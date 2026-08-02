@@ -304,6 +304,23 @@ pub fn unique_locator_probe(root: &Path, file: &str, locator: &str) -> Option<Ru
     (resolution.run.exit_code == 0 && resolution.match_count == 1).then_some(resolution.run)
 }
 
+/// May this locator be written onto a realizing grounding?
+///
+/// Whole-file `module …` scopes are exempt (same convention as
+/// [`crate::sync`]'s `ripple_locator_drift`). Ambiguity (`match_count > 1`) is
+/// allowed — the claim still points at real code. Zero matches is refused:
+/// that is how prose-and-line-number locators and names the file never
+/// contained used to land (finding `c1fb2418`).
+pub fn grounding_locator_resolves(root: &Path, file: &str, locator: &str) -> bool {
+    let locator = locator.trim();
+    if locator.is_empty() || locator.to_ascii_lowercase().starts_with("module") {
+        return true;
+    }
+    resolve_locator(root, file, Some(locator))
+        .map(|r| r.match_count > 0)
+        .unwrap_or(false)
+}
+
 /// Scan a quality rule's own patterns over the files realizing an intent, and
 /// record what loom found — including finding nothing.
 ///
