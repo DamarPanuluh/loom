@@ -34431,6 +34431,20 @@
       "updated_at": "2026-08-01T18:49:53.415Z"
     },
     {
+      "id": "0397138e713879828948864c0705421d",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "aa3acab2245c17c66e98b4d734c3f4c5",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:22:14.693Z",
+      "updated_at": "2026-08-02T12:22:14.698Z"
+    },
+    {
       "id": "03f899ab0bbb12303536ceb048dc273d",
       "from_id": "1792c0b4d460561558bab99367bfc392",
       "to_id": "9d8618c4a7a0ddb0227c59563a91173f",
@@ -34456,7 +34470,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T18:30:14.082Z",
-      "updated_at": "2026-08-02T12:19:42.870Z"
+      "updated_at": "2026-08-02T12:24:35.709Z"
     },
     {
       "id": "043bb394cb3afdbb18c163116565f054",
@@ -34484,7 +34498,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T19:12:48.820Z",
-      "updated_at": "2026-08-02T12:20:20.266Z"
+      "updated_at": "2026-08-02T12:25:13.623Z"
     },
     {
       "id": "05242862d96c39704bedb2dfe52c4f61",
@@ -35000,7 +35014,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T19:12:49.577Z",
-      "updated_at": "2026-08-02T12:19:58.411Z"
+      "updated_at": "2026-08-02T12:24:51.522Z"
     },
     {
       "id": "10196608d4944877479fa7c77358fd91",
@@ -35989,6 +36003,20 @@
       "updated_at": "2026-08-02T07:54:51.106Z"
     },
     {
+      "id": "27aa4215075850ad5f98085ca224ceb5",
+      "from_id": "d2e01de8af8327d1b",
+      "to_id": "3ce98ed5ec61f4b5b714f8d3297f742a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:22:06.226Z",
+      "updated_at": "2026-08-02T12:22:06.234Z"
+    },
+    {
       "id": "28732fd85665b8e7abc53903e22cd3f6",
       "from_id": "c53fa1aa18f8adc90b70eabcd8f59bbe",
       "to_id": "c24c2964b5b7da2c39b27532236b7952",
@@ -36141,6 +36169,20 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T04:59:41.255Z",
       "updated_at": "2026-08-01T18:49:53.500Z"
+    },
+    {
+      "id": "2cbd855cb18b4c03a0ec50e540485b85",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "aa3acab2245c17c66e98b4d734c3f4c5",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:22:31.846Z",
+      "updated_at": "2026-08-02T12:22:31.855Z"
     },
     {
       "id": "2e4361ae051feb87b7b00af741327f94",
@@ -37986,7 +38028,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T19:12:49.690Z",
-      "updated_at": "2026-08-02T12:20:43.324Z"
+      "updated_at": "2026-08-02T12:25:37.822Z"
     },
     {
       "id": "580a859d2d95fd9d05e22e22f4cfb523",
@@ -38517,6 +38559,20 @@
       "updated_at": "2026-08-01T18:59:42.676Z"
     },
     {
+      "id": "61c38f4aa8ce272b31f3331aac2095b1",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "aa3acab2245c17c66e98b4d734c3f4c5",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:23:05.834Z",
+      "updated_at": "2026-08-02T12:23:05.843Z"
+    },
+    {
       "id": "61f9fa77419d4ebdbf66dd0eaccce647",
       "from_id": "da0094e3c821d6b7d",
       "to_id": "debde51c06b40f454f7624003c7e608d",
@@ -38656,7 +38712,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T19:12:49.056Z",
-      "updated_at": "2026-08-02T12:20:43.406Z"
+      "updated_at": "2026-08-02T12:25:37.902Z"
     },
     {
       "id": "64041a6e458c21faaec97894130df9c4",
@@ -38796,7 +38852,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T18:31:54.875Z",
-      "updated_at": "2026-08-02T12:20:43.241Z"
+      "updated_at": "2026-08-02T12:25:37.737Z"
     },
     {
       "id": "676ee19d6d5451a558219e93e385c029",
@@ -39590,7 +39646,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-07-09T19:16:53.422Z",
-      "updated_at": "2026-08-02T12:20:43.145Z"
+      "updated_at": "2026-08-02T12:25:37.638Z"
     },
     {
       "id": "79be24a34dd06c67cc3cb00516fafd49",
@@ -39604,7 +39660,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T18:30:13.837Z",
-      "updated_at": "2026-08-02T12:19:26.184Z"
+      "updated_at": "2026-08-02T12:24:18.412Z"
     },
     {
       "id": "79cd43178ad085433134bcb77a207f7e",
@@ -40555,6 +40611,20 @@
       "updated_at": "2026-08-01T19:13:46.498Z"
     },
     {
+      "id": "91b448a3f39eeb630663d834cfd752d2",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "3ce98ed5ec61f4b5b714f8d3297f742a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:22:40.323Z",
+      "updated_at": "2026-08-02T12:22:40.327Z"
+    },
+    {
       "id": "921725b7d428ee1eae63c8af5dfa768e",
       "from_id": "32c996cc72de3c4d68fd12387cdb5dff",
       "to_id": "44622b82dffeccf4fc474d85d24bdeda",
@@ -40595,6 +40665,20 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.639Z",
       "updated_at": "2026-08-02T12:16:32.996Z"
+    },
+    {
+      "id": "927bfe921cba27c0c94e39af8fc36859",
+      "from_id": "d9697ad2cc3ba5d0c",
+      "to_id": "3ce98ed5ec61f4b5b714f8d3297f742a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:22:23.276Z",
+      "updated_at": "2026-08-02T12:22:23.283Z"
     },
     {
       "id": "927d2c8be245e3eef2b09bab218b4784",
@@ -40953,6 +41037,20 @@
       "updated_at": "2026-08-02T12:16:49.191Z"
     },
     {
+      "id": "993d3358d0f5ceff6d7b9f9469ae389b",
+      "from_id": "d23f5c463fb1e4861",
+      "to_id": "aa3acab2245c17c66e98b4d734c3f4c5",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:22:48.822Z",
+      "updated_at": "2026-08-02T12:22:48.826Z"
+    },
+    {
       "id": "995d2a15e1778c326af5a0f415a07fd8",
       "from_id": "0bb4c799baf181e81c59857244d3b003",
       "to_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
@@ -40964,7 +41062,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T19:12:48.964Z",
-      "updated_at": "2026-08-02T12:20:20.372Z"
+      "updated_at": "2026-08-02T12:25:13.735Z"
     },
     {
       "id": "998a7532da7c98ca2a977854af99dfc1",
@@ -41121,6 +41219,20 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T20:16:13.323Z",
       "updated_at": "2026-08-02T10:07:06.665Z"
+    },
+    {
+      "id": "9c73a3267f85664c977f7531fc39645e",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "aa3acab2245c17c66e98b4d734c3f4c5",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:23:22.820Z",
+      "updated_at": "2026-08-02T12:23:22.832Z"
     },
     {
       "id": "9c9eea7b1f242221ba91c6d5d2c225b1",
@@ -41959,6 +42071,20 @@
       "inspected_by": "llm",
       "created_at": "2026-07-09T05:22:17.235Z",
       "updated_at": "2026-08-02T10:07:46.919Z"
+    },
+    {
+      "id": "ad95aeb026bed58a584e983eb6216b95",
+      "from_id": "da0094e3c821d6b7d",
+      "to_id": "3ce98ed5ec61f4b5b714f8d3297f742a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:22:57.322Z",
+      "updated_at": "2026-08-02T12:22:57.329Z"
     },
     {
       "id": "ad998d8cf0cc0e4684b44c757c1507b6",
@@ -45148,7 +45274,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T18:30:13.972Z",
-      "updated_at": "2026-08-02T12:20:19.877Z"
+      "updated_at": "2026-08-02T12:25:13.237Z"
     },
     {
       "id": "d8164a86f3ddec9fd",
@@ -45386,7 +45512,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T18:33:15.562Z",
-      "updated_at": "2026-08-02T12:19:11.102Z"
+      "updated_at": "2026-08-02T12:24:02.369Z"
     },
     {
       "id": "d945a254781b129e6",
@@ -45934,7 +46060,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-07-09T05:38:02.152Z",
-      "updated_at": "2026-08-02T12:19:42.602Z"
+      "updated_at": "2026-08-02T12:24:35.449Z"
     },
     {
       "id": "dc231cf66860b532a",
@@ -46918,7 +47044,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-08-01T18:32:14.948Z",
-      "updated_at": "2026-08-02T12:20:19.737Z"
+      "updated_at": "2026-08-02T12:25:13.103Z"
     },
     {
       "id": "e0667e55abb4f53202b2d3d7c67fbc77",
@@ -46976,7 +47102,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-07-25T11:11:02.490Z",
-      "updated_at": "2026-08-02T12:20:01.794Z"
+      "updated_at": "2026-08-02T12:24:55.014Z"
     },
     {
       "id": "e1fe35d016306d2159efbbc0e45653e2",
@@ -47440,7 +47566,7 @@
       "depends_on": [],
       "inspected_by": "journey",
       "created_at": "2026-07-09T05:40:55.129Z",
-      "updated_at": "2026-08-02T12:20:19.568Z"
+      "updated_at": "2026-08-02T12:25:12.946Z"
     },
     {
       "id": "eef047333b793d4f6b1c84392ccfd60a",
@@ -47969,6 +48095,20 @@
       "updated_at": "2026-08-02T09:08:09.489Z"
     },
     {
+      "id": "fb3288cf279a8b4b27671795dc93e94f",
+      "from_id": "dfe31470815685fd8",
+      "to_id": "3ce98ed5ec61f4b5b714f8d3297f742a",
+      "kind": "governs",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm",
+      "created_at": "2026-08-02T12:23:14.326Z",
+      "updated_at": "2026-08-02T12:23:14.337Z"
+    },
+    {
       "id": "fb8d57af23b69d2ff0cf4242f4933f7b",
       "from_id": "873d9c05264943d486f1535988af1765",
       "to_id": "801a7482a892d6c368b2badb7d013574",
@@ -48378,7 +48518,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:43.144Z"
+      "asserted_at": "2026-08-02T12:25:37.637Z"
     },
     {
       "id": "f06239b269dc6bf86",
@@ -49170,7 +49310,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:19:42.601Z"
+      "asserted_at": "2026-08-02T12:24:35.448Z"
     },
     {
       "id": "f1ae48110b857bcdd",
@@ -50913,6 +51053,18 @@
       "asserted_at": "2026-08-01T19:40:11.301Z"
     },
     {
+      "id": "f40dff8a06a52fab2",
+      "subject_kind": "edge",
+      "subject_id": "927bfe921cba27c0c94e39af8fc36859",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "verified",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:22:23.280Z"
+    },
+    {
       "id": "f41752f829b9d0c41",
       "subject_kind": "node",
       "subject_id": "dd4bbb327bcacf523",
@@ -51234,7 +51386,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:19.737Z"
+      "asserted_at": "2026-08-02T12:25:13.102Z"
     },
     {
       "id": "f48fcf783e41c637f",
@@ -51439,6 +51591,18 @@
       "confidence": 0.9,
       "asserted_by": "llm",
       "asserted_at": "2026-08-01T18:49:53.788Z"
+    },
+    {
+      "id": "f4d2190961484cf5d",
+      "subject_kind": "edge",
+      "subject_id": "fb3288cf279a8b4b27671795dc93e94f",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "verified",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:23:14.329Z"
     },
     {
       "id": "f4d262b65ee4a1c9b",
@@ -51930,7 +52094,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:19:11.101Z"
+      "asserted_at": "2026-08-02T12:24:02.368Z"
     },
     {
       "id": "f5982e0ebd3e95e59",
@@ -52650,7 +52814,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:19.567Z"
+      "asserted_at": "2026-08-02T12:25:12.945Z"
     },
     {
       "id": "f69b629a093215c82",
@@ -52843,6 +53007,18 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-02T12:19:09.083Z"
+    },
+    {
+      "id": "f6e08774742af16be",
+      "subject_kind": "edge",
+      "subject_id": "993d3358d0f5ceff6d7b9f9469ae389b",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "claimed",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:22:48.825Z"
     },
     {
       "id": "f6ea64c5345d797fc",
@@ -53094,7 +53270,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:43.324Z"
+      "asserted_at": "2026-08-02T12:25:37.821Z"
     },
     {
       "id": "f73d8980f42f2164b",
@@ -54174,7 +54350,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:19:26.183Z"
+      "asserted_at": "2026-08-02T12:24:18.411Z"
     },
     {
       "id": "f8ca4ad07a43ac3a2",
@@ -55365,6 +55541,18 @@
       "asserted_at": "2026-08-01T18:38:42.201Z"
     },
     {
+      "id": "fa411bb65cae639f5",
+      "subject_kind": "edge",
+      "subject_id": "0397138e713879828948864c0705421d",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "claimed",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:22:14.697Z"
+    },
+    {
       "id": "fa4819f782c497b18",
       "subject_kind": "edge",
       "subject_id": "5e7d9741cfa112c5ecca8a6055fefcc9",
@@ -55758,7 +55946,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:19.876Z"
+      "asserted_at": "2026-08-02T12:25:13.236Z"
     },
     {
       "id": "fae27d0a1f64791f0",
@@ -56406,7 +56594,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:01.793Z"
+      "asserted_at": "2026-08-02T12:24:55.013Z"
     },
     {
       "id": "fbd0ed56994d50596",
@@ -56539,6 +56727,18 @@
       "confidence": 0.9,
       "asserted_by": "llm",
       "asserted_at": "2026-08-02T10:00:30.712Z"
+    },
+    {
+      "id": "fbf6bb2bacee7ef61",
+      "subject_kind": "edge",
+      "subject_id": "61c38f4aa8ce272b31f3331aac2095b1",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "verified",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:23:05.838Z"
     },
     {
       "id": "fbf9afa199c596cfa",
@@ -56970,7 +57170,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:20.371Z"
+      "asserted_at": "2026-08-02T12:25:13.734Z"
     },
     {
       "id": "fcb7a42b477be1c67",
@@ -57546,7 +57746,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:43.405Z"
+      "asserted_at": "2026-08-02T12:25:37.902Z"
     },
     {
       "id": "fd4f1b19daa056c21",
@@ -57594,7 +57794,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:43.240Z"
+      "asserted_at": "2026-08-02T12:25:37.737Z"
     },
     {
       "id": "fd712c67e0d183698",
@@ -58053,6 +58253,18 @@
       "asserted_at": "2026-08-01T19:00:31.045Z"
     },
     {
+      "id": "fe021b5982cf33e55",
+      "subject_kind": "edge",
+      "subject_id": "91b448a3f39eeb630663d834cfd752d2",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "claimed",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:22:40.327Z"
+    },
+    {
       "id": "fe0290ebc45b8c533",
       "subject_kind": "edge",
       "subject_id": "9666457943dddcf3ff6c79b6a87a2023",
@@ -58086,7 +58298,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:19:42.869Z"
+      "asserted_at": "2026-08-02T12:24:35.709Z"
     },
     {
       "id": "fe13ac774a0e7d9ac",
@@ -58230,7 +58442,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:19:58.409Z"
+      "asserted_at": "2026-08-02T12:24:51.521Z"
     },
     {
       "id": "fe46ef3cf16f23466",
@@ -58255,6 +58467,18 @@
       "confidence": 0.9,
       "asserted_by": "llm",
       "asserted_at": "2026-08-01T18:49:53.682Z"
+    },
+    {
+      "id": "fe54a5675f31e1b34",
+      "subject_kind": "edge",
+      "subject_id": "9c73a3267f85664c977f7531fc39645e",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "verified",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:23:22.823Z"
     },
     {
       "id": "fe5bebf5b58a98252",
@@ -58953,6 +59177,18 @@
       "asserted_at": "2026-08-02T12:14:56.019Z"
     },
     {
+      "id": "ff8353fe1f7ee5c09",
+      "subject_kind": "edge",
+      "subject_id": "ad95aeb026bed58a584e983eb6216b95",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "verified",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:22:57.325Z"
+    },
+    {
       "id": "ff8370d1ba278272d",
       "subject_kind": "edge",
       "subject_id": "c3a198c0b309d951b202c3894c57d791",
@@ -59070,7 +59306,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "journey",
-      "asserted_at": "2026-08-02T12:20:20.266Z"
+      "asserted_at": "2026-08-02T12:25:13.622Z"
     },
     {
       "id": "ffa976568a27bb505",
@@ -59203,6 +59439,30 @@
       "confidence": 0.98,
       "asserted_by": "llm",
       "asserted_at": "2026-08-02T08:09:04.401Z"
+    },
+    {
+      "id": "ffd69643f4be1bdd8",
+      "subject_kind": "edge",
+      "subject_id": "2cbd855cb18b4c03a0ec50e540485b85",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "verified",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:22:31.849Z"
+    },
+    {
+      "id": "ffd7d8ed2136d243c",
+      "subject_kind": "edge",
+      "subject_id": "27aa4215075850ad5f98085ca224ceb5",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "scanned every realizing file for this rule's patterns and found nothing to answer",
+      "verification": "claimed",
+      "confidence": 0.9,
+      "asserted_by": "llm",
+      "asserted_at": "2026-08-02T12:22:06.233Z"
     },
     {
       "id": "ffdfa18368bbff14c",
@@ -60019,10 +60279,10 @@
         "kind": "claim",
         "text": "report the living graph: `loom status --json` exit 0 | recover the product intent: `loom find 'falsifiable graph' --json` exit 0 | audit graph integrity: `loom doctor --json` exit 0"
       },
-      "recorded_at": "2026-08-02T12:20:43.144Z"
+      "recorded_at": "2026-08-02T12:25:37.637Z"
     },
     {
-      "id": "ea1f2e424b6ffb352",
+      "id": "eaff664395c3b03e7",
       "fact_id": "f060a671d852d86b2",
       "payload": {
         "kind": "run",
@@ -60030,9 +60290,9 @@
         "command": "loom journey run 'loom system purpose'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "ce24513674e8bfce",
+        "stdout_hash": "34312f26f947bab8",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 121,\n    \"registered\": 121,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode quality\",\n    \"phase\": \"quality\",\n    \"rung\": \"measured\"\n  },\n  \"counts\": {\n    \"codefiles\": 123,\n    \"edges\": 973,\n    \"intents\": 102\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"f3671ca0c62ffc0fb862eecfe0983662\",\n    \"name\": \"loom\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 127,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 69,\n    \"open_findings\": 76,\n    \"open_questions\": 0,\n    \"planned\": 0,\n    \"resolved_findings\": 51,\n    \"stale\": 49,\n    \"stale_findings\": 5,\n    \"uninspected\": 0,\n    \"untriaged\": 5\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 2353,\n      \"derived\": 1826,\n      \"ratio\": 0.43694663795166305\n    },\n    \"next_command\": \"loom next --mode quality\",\n    \"phase\": \"quality\",\n    \"rung\": \"measured\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"99 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"155 registered: 155 passed, 0 failed, 0 blocked, 0 not_run, 0 unproven implemented intent(s), 0 unrun/stale proof edge(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 10,\n        \"detail\": \"0 stale, 0 uninspected, 10 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"measured\",\n        \"depth\": 49,\n        \"detail\": \"49 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"measured\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"measured\",\n        \"depth\": 10,\n        \"detail\": \"10 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"measured\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"measured\",\n        \"depth\": 2,\n        \"detail\": \"2 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"measured\",\n        \"depth\": 13,\n        \"detail\": \"13 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"measured\",\n        \"depth\": 1,\n        \"detail\": \"0 doctor issue(s), 0 open smell(s), 1 self-audit finding(s)\",\n        \"lane\": \"audit\",\n     \n…[18529 bytes omitted]…\n        \"path\": \"src/commands/proof_cmd.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"a5ecac79eb9602b1f9e177aa676a7074\",\n        \"evidence\": \"src/commands/pulse.rs:16 — locator 'emit' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn emit\",\n        \"path\": \"src/commands/pulse.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"a7d837bdbfbc8109f05d84dc40651169\",\n        \"evidence\": \"src/cli.rs:22 — locator 'Cli' resolves in the realizing file; grounding holds\",\n        \"locator\": \"struct Cli\",\n        \"path\": \"src/cli.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"a8ed805c2413dfc54a9622cb5dce7fef\",\n        \"evidence\": \"src/commands/journey/invariants.rs:1 — locator 'invariant' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn invariant\",\n        \"path\": \"src/commands/journey/invariants.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"b28b9857ee7e1f633da66314dc309a6f\",\n        \"evidence\": \"src/main.rs:4 — locator 'main' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn main\",\n        \"path\": \"src/main.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"bb21d3566a514dbe8c79905374d532f6\",\n        \"evidence\": \"src/commands/edge.rs:15 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/edge.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"bddc951c83649d94e806c32783db4a8e\",\n        \"evidence\": \"src/commands/wiki.rs:28 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/wiki.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"cabb63ce7cb3e71c00a8865082a17991\",\n        \"evidence\": \"src/cli/subcommands.rs:11 — locator IntentCmd resolves in the realizing file; grounding holds\",\n        \"locator\": \"enum IntentCmd\",\n        \"path\": \"src/cli/subcommands.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"needs_reverification\"\n      },\n      {\n        \"edge_id\": \"d404df0f2bbaea0ac46dbdea30fcbd57\",\n        \"evidence\": \"src/commands/journey/mod.rs:30 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/journey/mod.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"e65ab1fe5ff0ab9cfdb39078d5648e7f\",\n        \"evidence\": \"src/commands/journey/prompt.rs:1 — locator 'prompt' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn prompt\",\n        \"path\": \"src/commands/journey/prompt.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"f3fd42b736a5f79a155f53337f21e0d0\",\n        \"evidence\": \"src/commands/graph_cmd.rs:19 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/graph_cmd.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      }\n    ],\n    \"id\": \"59f3d2be0ec4c6138631c3fc2f034376\",\n    \"kind\": \"intent\",\n    \"name\": \"the CLI dispatches every operation through typed handlers\",\n    \"score\": 1\n  },\n  {\n    \"groundings\": [\n      {\n        \"edge_id\": \"2c8765e7d02aa04a693afbd72febc6b3\",\n        \"evidence\": \"src/workitem/mod.rs:1 — locator 'empty)' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn next_inner (returns Ok(None) when every lane is empty)\",\n        \"path\": \"src/workitem/mod.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      }\n    ],\n    \"id\": \"e35fe452b1e6408ed91d6b60c683fcdf\",\n    \"kind\": \"intent\",\n    \"name\": \"when every queue is empty next returns no work item\",\n    \"score\": 1\n  }\n]\n\nstderr:\n\nexit:0\nstdout:\n[]\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 121,\n    \"registered\": 121,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode analyze\",\n    \"phase\": \"analyze\",\n    \"rung\": \"inspected\"\n  },\n  \"counts\": {\n    \"codefiles\": 123,\n    \"edges\": 983,\n    \"intents\": 102\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"f3671ca0c62ffc0fb862eecfe0983662\",\n    \"name\": \"loom\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 127,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 69,\n    \"open_findings\": 76,\n    \"open_questions\": 0,\n    \"planned\": 0,\n    \"resolved_findings\": 51,\n    \"stale\": 49,\n    \"stale_findings\": 5,\n    \"uninspected\": 0,\n    \"untriaged\": 5\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 2363,\n      \"derived\": 1826,\n      \"ratio\": 0.4359035569348293\n    },\n    \"next_command\": \"loom next --mode analyze\",\n    \"phase\": \"analyze\",\n    \"rung\": \"inspected\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"99 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"155 registered: 155 passed, 0 failed, 0 blocked, 0 not_run, 0 unproven implemented intent(s), 0 unrun/stale proof edge(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected, 0 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 49,\n        \"detail\": \"49 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 10,\n        \"detail\": \"10 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 2,\n        \"detail\": \"2 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 13,\n        \"detail\": \"13 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 1,\n        \"detail\": \"0 doctor issue(s), 0 open smell(s), 1 self-audit finding(s)\",\n        \"lane\": \"audit\",\n        \"name\": \"sound\",\n        \"s\n…[18500 bytes omitted]…\n        \"path\": \"src/commands/proof_cmd.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"a5ecac79eb9602b1f9e177aa676a7074\",\n        \"evidence\": \"src/commands/pulse.rs:16 — locator 'emit' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn emit\",\n        \"path\": \"src/commands/pulse.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"a7d837bdbfbc8109f05d84dc40651169\",\n        \"evidence\": \"src/cli.rs:22 — locator 'Cli' resolves in the realizing file; grounding holds\",\n        \"locator\": \"struct Cli\",\n        \"path\": \"src/cli.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"a8ed805c2413dfc54a9622cb5dce7fef\",\n        \"evidence\": \"src/commands/journey/invariants.rs:1 — locator 'invariant' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn invariant\",\n        \"path\": \"src/commands/journey/invariants.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"b28b9857ee7e1f633da66314dc309a6f\",\n        \"evidence\": \"src/main.rs:4 — locator 'main' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn main\",\n        \"path\": \"src/main.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"bb21d3566a514dbe8c79905374d532f6\",\n        \"evidence\": \"src/commands/edge.rs:15 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/edge.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"bddc951c83649d94e806c32783db4a8e\",\n        \"evidence\": \"src/commands/wiki.rs:28 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/wiki.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"cabb63ce7cb3e71c00a8865082a17991\",\n        \"evidence\": \"src/cli/subcommands.rs:11 — locator IntentCmd resolves in the realizing file; grounding holds\",\n        \"locator\": \"enum IntentCmd\",\n        \"path\": \"src/cli/subcommands.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"needs_reverification\"\n      },\n      {\n        \"edge_id\": \"d404df0f2bbaea0ac46dbdea30fcbd57\",\n        \"evidence\": \"src/commands/journey/mod.rs:30 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/journey/mod.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"e65ab1fe5ff0ab9cfdb39078d5648e7f\",\n        \"evidence\": \"src/commands/journey/prompt.rs:1 — locator 'prompt' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn prompt\",\n        \"path\": \"src/commands/journey/prompt.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      },\n      {\n        \"edge_id\": \"f3fd42b736a5f79a155f53337f21e0d0\",\n        \"evidence\": \"src/commands/graph_cmd.rs:19 — locator 'dispatch' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn dispatch\",\n        \"path\": \"src/commands/graph_cmd.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      }\n    ],\n    \"id\": \"59f3d2be0ec4c6138631c3fc2f034376\",\n    \"kind\": \"intent\",\n    \"name\": \"the CLI dispatches every operation through typed handlers\",\n    \"score\": 1\n  },\n  {\n    \"groundings\": [\n      {\n        \"edge_id\": \"2c8765e7d02aa04a693afbd72febc6b3\",\n        \"evidence\": \"src/workitem/mod.rs:1 — locator 'empty)' resolves in the realizing file; grounding holds\",\n        \"locator\": \"fn next_inner (returns Ok(None) when every lane is empty)\",\n        \"path\": \"src/workitem/mod.rs\",\n        \"role\": \"realizes\",\n        \"status\": \"passing\"\n      }\n    ],\n    \"id\": \"e35fe452b1e6408ed91d6b60c683fcdf\",\n    \"kind\": \"intent\",\n    \"name\": \"when every queue is empty next returns no work item\",\n    \"score\": 1\n  }\n]\n\nstderr:\n\nexit:0\nstdout:\n[]\n\nstderr:\n\nexit:0",
         "covered": {
           "src/store/mod.rs": "b2a500f42673fdf1",
           "tests/bootstrap.rs": "6a42112c9eb5755a",
@@ -60040,10 +60300,10 @@
         },
         "assertions": 5,
         "duration_ms": 0,
-        "ran_at": "1785673243141",
+        "ran_at": "1785673537634",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:43.144Z"
+      "recorded_at": "2026-08-02T12:25:37.637Z"
     },
     {
       "id": "e40db4a08232d7333",
@@ -61666,16 +61926,7 @@
       "recorded_at": "2026-08-02T11:43:02.202Z"
     },
     {
-      "id": "e7c53dd1611807264",
-      "fact_id": "f1aca1246202b5ff2",
-      "payload": {
-        "kind": "claim",
-        "text": "capture utterance: `loom door 'ship a faster checkout flow' --json` exit 0 | mark routed: `loom inbox mark {{ inbox_id }} routed --reason 'landed as new_intent for dogfood journey'` exit 0 | remove journey fixture: `loom inbox remove {{ inbox_id }}` exit 0"
-      },
-      "recorded_at": "2026-08-02T12:19:42.601Z"
-    },
-    {
-      "id": "ef75513b4542cf7ef",
+      "id": "e309e010ac3f5129d",
       "fact_id": "f1aca1246202b5ff2",
       "payload": {
         "kind": "run",
@@ -61683,9 +61934,9 @@
         "command": "loom journey run 'door capture happy path'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "1f78f72a458cb09a",
+        "stdout_hash": "2a7eb2f5fc52631d",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\n{\n  \"capability\": \"Your idea does not need to be a complete specification. Loom can help the LLM round it out, fill technical and repository-derivable gaps, and ask you one plain-language product question at a time when your judgment is needed.\",\n  \"captured\": {\n    \"body\": {\n      \"source\": \"human\"\n    },\n    \"created_at\": \"2026-08-02T12:19:26.226Z\",\n    \"description\": \"ship a faster checkout flow\",\n    \"id\": \"b7e2ca654c1ed7eb7a68f90f4f5d6284\",\n    \"name\": \"ship a faster checkout flow\",\n    \"status\": \"new\",\n    \"truth_class\": \"asserted\",\n    \"type\": \"inbox_item\",\n    \"updated_at\": \"2026-08-02T12:19:26.226Z\"\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode validate\",\n    \"phase\": \"validate\"\n  },\n  \"landing_menu\": [\n    {\n      \"after\": \"loom next --mode elaborate grows the forgotten surroundings; the LLM should explain this capability, fill inferable gaps, and ask the user one plain-language product question at a time\",\n      \"command\": \"loom intent add --name '<one falsifiable behavior>' --description '<what makes it true>' --level feature --visibility user_visible --aspect happy\",\n      \"landing\": \"new_intent\",\n      \"why\": \"the utterance names a behavior no intent covers\"\n    },\n    {\n      \"command\": \"loom hypothesis add --name '<idea>' --claim '<what is wrong now>' --proposal '<the change>' --predicted-outcome '<measurable result>' --target '<intent>'\",\n      \"landing\": \"hypothesis\",\n      \"why\": \"the utterance is a redesign idea — prove it before it becomes work\"\n    },\n    {\n      \"command\": \"loom task add '<question>' --kind investigation --target '<intent>'   # --target lands the outcome as a note on the intent; omit it for a diary-only record\",\n      \"landing\": \"spike\",\n      \"why\": \"the utterance needs investigation before it can land anywhere\"\n    },\n    {\n      \"command\": \"loom task add '<bounded external question>' --kind research --why-external '<why repository knowledge is insufficient or freshness matters>' --preferred-source '<primary authoritative source guidance>' --target '<intent>'\",\n      \"landing\": \"external_research\",\n      \"why\": \"a current external fact is missing; this is not for discovering or replacing user preference\"\n    },\n    {\n      \"command\": \"loom intent show 'relationship claims stay settled when their cited code is unchanged'\",\n      \"confidence\": \"weak\",\n      \"id\": \"5e7c17282673008b6b70f3b2066aff2f\",\n      \"intent\": \"relationship claims stay settled when their cited code is unchanged\",\n      \"landing\": \"existing_intent\",\n      \"why\": \"weak lexical overlap only (score 3); prefer new_intent unless this truly refines the existing intent\"\n    },\n    {\n      \"command\": \"loom intent show 'a burst of verdicts too fast to be made one at a time is flagged'\",\n      \"confidence\": \"weak\",\n      \"id\": \"e54b4b2e5ca09498ecb8086746b050d1\",\n      \"intent\": \"a burst of verdicts too fast to be made one at a time is flagged\",\n      \"landing\": \"existing_intent\",\n      \"why\": \"weak lexical overlap only (score 1); prefer new_intent unless this truly refines the existing intent\"\n    },\n    {\n      \"command\": \"loom intent show 'each kind of claim states how strongly it must be anchored'\",\n      \"confidence\": \"weak\",\n      \"id\": \"2382f2515eb6dc5e223aaea4cbd3f0e4\",\n      \"intent\": \"each kind of claim states how strongly it must be anchored\",\n      \"landing\": \"existing_intent\",\n      \"why\": \"weak lexical overlap only (score 1); prefer new_intent unless this truly refines the existing intent\"\n    },\n    {\n      \"command\": \"loom inbox mark b7e2ca65 rejected --reason '<why>'\",\n      \"landing\": \"dismiss\",\n      \"why\": \"not actionable — record why so it does not resurface\"\n    }\n  ],\n  \"next_step\": \"choose ONE landing, run it, then: loom inbox mark b7e2ca65 routed --reason '<destination>'\"\n}\n\nstderr:\n\nexit:0\nstdout:\ninbox item 'b7e2ca65' → routed\nnext: loom status\n\nstderr:\n\nexit:0\nstdout:\nremoved inbox item [b7e2ca65]\nnext: loom status\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\n{\n  \"capability\": \"Your idea does not need to be a complete specification. Loom can help the LLM round it out, fill technical and repository-derivable gaps, and ask you one plain-language product question at a time when your judgment is needed.\",\n  \"captured\": {\n    \"body\": {\n      \"source\": \"human\"\n    },\n    \"created_at\": \"2026-08-02T12:24:18.454Z\",\n    \"description\": \"ship a faster checkout flow\",\n    \"id\": \"206936bc68d089ca0e5381458fcc3531\",\n    \"name\": \"ship a faster checkout flow\",\n    \"status\": \"new\",\n    \"truth_class\": \"asserted\",\n    \"type\": \"inbox_item\",\n    \"updated_at\": \"2026-08-02T12:24:18.454Z\"\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode analyze\",\n    \"phase\": \"analyze\"\n  },\n  \"landing_menu\": [\n    {\n      \"after\": \"loom next --mode elaborate grows the forgotten surroundings; the LLM should explain this capability, fill inferable gaps, and ask the user one plain-language product question at a time\",\n      \"command\": \"loom intent add --name '<one falsifiable behavior>' --description '<what makes it true>' --level feature --visibility user_visible --aspect happy\",\n      \"landing\": \"new_intent\",\n      \"why\": \"the utterance names a behavior no intent covers\"\n    },\n    {\n      \"command\": \"loom hypothesis add --name '<idea>' --claim '<what is wrong now>' --proposal '<the change>' --predicted-outcome '<measurable result>' --target '<intent>'\",\n      \"landing\": \"hypothesis\",\n      \"why\": \"the utterance is a redesign idea — prove it before it becomes work\"\n    },\n    {\n      \"command\": \"loom task add '<question>' --kind investigation --target '<intent>'   # --target lands the outcome as a note on the intent; omit it for a diary-only record\",\n      \"landing\": \"spike\",\n      \"why\": \"the utterance needs investigation before it can land anywhere\"\n    },\n    {\n      \"command\": \"loom task add '<bounded external question>' --kind research --why-external '<why repository knowledge is insufficient or freshness matters>' --preferred-source '<primary authoritative source guidance>' --target '<intent>'\",\n      \"landing\": \"external_research\",\n      \"why\": \"a current external fact is missing; this is not for discovering or replacing user preference\"\n    },\n    {\n      \"command\": \"loom intent show 'relationship claims stay settled when their cited code is unchanged'\",\n      \"confidence\": \"weak\",\n      \"id\": \"5e7c17282673008b6b70f3b2066aff2f\",\n      \"intent\": \"relationship claims stay settled when their cited code is unchanged\",\n      \"landing\": \"existing_intent\",\n      \"why\": \"weak lexical overlap only (score 3); prefer new_intent unless this truly refines the existing intent\"\n    },\n    {\n      \"command\": \"loom intent show 'a burst of verdicts too fast to be made one at a time is flagged'\",\n      \"confidence\": \"weak\",\n      \"id\": \"e54b4b2e5ca09498ecb8086746b050d1\",\n      \"intent\": \"a burst of verdicts too fast to be made one at a time is flagged\",\n      \"landing\": \"existing_intent\",\n      \"why\": \"weak lexical overlap only (score 1); prefer new_intent unless this truly refines the existing intent\"\n    },\n    {\n      \"command\": \"loom intent show 'each kind of claim states how strongly it must be anchored'\",\n      \"confidence\": \"weak\",\n      \"id\": \"2382f2515eb6dc5e223aaea4cbd3f0e4\",\n      \"intent\": \"each kind of claim states how strongly it must be anchored\",\n      \"landing\": \"existing_intent\",\n      \"why\": \"weak lexical overlap only (score 1); prefer new_intent unless this truly refines the existing intent\"\n    },\n    {\n      \"command\": \"loom inbox mark 206936bc rejected --reason '<why>'\",\n      \"landing\": \"dismiss\",\n      \"why\": \"not actionable — record why so it does not resurface\"\n    }\n  ],\n  \"next_step\": \"choose ONE landing, run it, then: loom inbox mark 206936bc routed --reason '<destination>'\"\n}\n\nstderr:\n\nexit:0\nstdout:\ninbox item '206936bc' → routed\nnext: loom status\n\nstderr:\n\nexit:0\nstdout:\nremoved inbox item [206936bc]\nnext: loom status\n\nstderr:\n\nexit:0",
         "covered": {
           "src/commands/capture_cmd.rs": "f5f8df1ea0c41bea",
           "tests/intake_fidelity.rs": "c2ec8e6b0d2a612f",
@@ -61693,10 +61944,19 @@
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785673182599",
+        "ran_at": "1785673475445",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:19:42.601Z"
+      "recorded_at": "2026-08-02T12:24:35.448Z"
+    },
+    {
+      "id": "e7c53dd1611807264",
+      "fact_id": "f1aca1246202b5ff2",
+      "payload": {
+        "kind": "claim",
+        "text": "capture utterance: `loom door 'ship a faster checkout flow' --json` exit 0 | mark routed: `loom inbox mark {{ inbox_id }} routed --reason 'landed as new_intent for dogfood journey'` exit 0 | remove journey fixture: `loom inbox remove {{ inbox_id }}` exit 0"
+      },
+      "recorded_at": "2026-08-02T12:24:35.448Z"
     },
     {
       "id": "e1aa3184b62a48059",
@@ -65156,6 +65416,36 @@
       "recorded_at": "2026-08-01T19:40:11.301Z"
     },
     {
+      "id": "e936ce2f3b290ae9d",
+      "fact_id": "f40dff8a06a52fab2",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 1 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/research.rs": "52f19bf4680120aa"
+        },
+        "assertions": 3,
+        "duration_ms": 0,
+        "ran_at": "1785673343283",
+        "loom_version": "0.28.0"
+      },
+      "recorded_at": "2026-08-02T12:22:23.280Z"
+    },
+    {
+      "id": "ebe438b0af1a1b24b",
+      "fact_id": "f40dff8a06a52fab2",
+      "payload": {
+        "kind": "claim",
+        "text": "src/research.rs — scanned 1 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:22:23.280Z"
+    },
+    {
       "id": "e755f8b6a502044c8",
       "fact_id": "f41752f829b9d0c41",
       "payload": {
@@ -65772,10 +66062,10 @@
         "kind": "claim",
         "text": "default next serves builder work, not the ratify lane: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature && loom next --graph \"$tmp\" --json && rm -rf \"$tmp\"` exit 0"
       },
-      "recorded_at": "2026-08-02T12:20:19.737Z"
+      "recorded_at": "2026-08-02T12:25:13.102Z"
     },
     {
-      "id": "eb6f2d79642cfc352",
+      "id": "e7c7e8dd68c4f9d02",
       "fact_id": "f48d1e118fdbe580d",
       "payload": {
         "kind": "run",
@@ -65783,19 +66073,19 @@
         "command": "loom journey run 'plain next never serves a human-only ratify packet'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "cda8656e5905d5c5",
+        "stdout_hash": "0b1b5e1a2fb38f2b",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (4b4819d6) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.g7wM5KCRsD/.loom\nadded intent 'unspoken behavior' [977027a0]\nnext: loom status\n{\n  \"work_item\": {\n    \"packet_id\": \"pkt-1785673219717-0\",\n    \"mode\": \"build\",\n    \"owner_role\": \"builder\",\n    \"effort\": \"mid\",\n    \"routing_hint\": \"judgment\",\n    \"reason\": \"intent is planned and not yet realized\",\n    \"target\": {\n      \"kind\": \"intent\",\n      \"id\": \"977027a0ce39efe1add125f08b3c84a3\",\n      \"name\": \"unspoken behavior\"\n    },\n    \"prompt_contract\": {\n      \"role\": \"builder\",\n      \"mindset\": \"Use Loom first to understand why this work exists, which entities/files are likely relevant, and what prior evidence says; then inspect the relevant code before editing. Functions/symbols are locators, not intents. Do not self-certify quality or proofs.\",\n      \"why_now\": \"intent 'unspoken behavior' is planned and not yet realized\",\n      \"allowed_actions\": [\n        \"loom status\",\n        \"loom next --all\",\n        \"loom intent show 'unspoken behavior'\",\n        \"loom codefile list\",\n        \"loom codefile show <file>\",\n        \"edit code\",\n        \"loom edge implement 'unspoken behavior' <codefile> --locator <symbol>\",\n        \"loom intent update 'unspoken behavior' --lifecycle implemented --reason '<what was built>'\",\n        \"loom sync\",\n        \"loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>\",\n        \"only when a current external fact blocks implementation: loom task add '<bounded question>' --kind research --why-external '<why current external knowledge is needed>' --preferred-source '<authoritative source guidance>' --target 'unspoken behavior'\"\n      ],\n      \"forbidden_actions\": [\n        \"loom rule verdict passing (quality lane)\",\n        \"loom validation verdict passed (validator lane)\",\n        \"silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold\"\n      ],\n      \"required_evidence\": \"Loom context checked, relevant code inspected, code written, locator confirmed, sync clean\",\n      \"evidence_clauses\": [\n        {\n          \"clause\": \"cites_spans\",\n          \"n\": 1\n        },\n        {\n          \"clause\": \"verification_at_least\",\n          \"level\": \"cited\"\n        }\n      ],\n      \"write_back\": \"loom edge implement 'unspoken behavior' <codefile> --locator <symbol>; loom intent update 'unspoken behavior' --lifecycle implemented --reason '<what was built>'\",\n      \"stop_condition\": \"after grounding + sync, return to loom status\",\n      \"human_gate\": null\n    },\n    \"context\": {\n      \"purpose\": \"Understand the behavior and likely implementation files before coding. Any inlined `note` entities are the prior record — adopted PoC/experiment evidence and past decisions — read them first; they say what was already tried and why.\",\n      \"linked_entities\": [\n        {\n          \"role\": \"target\",\n          \"kind\": \"intent\",\n          \"id\": \"977027a0ce39efe1add125f08b3c84a3\",\n          \"name\": \"unspoken behavior\",\n          \"description\": \"nobody has ratified it\",\n          \"status\": \"planned\"\n        }\n      ],\n      \"suggested_reads\": [\n        {\n          \"reason\": \"show target entity\",\n          \"command\": \"loom intent show 977027a0ce39efe1add125f08b3c84a3\"\n        },\n        {\n          \"reason\": \"survey registered codefiles when no grounding exists yet\",\n          \"command\": \"loom codefile list\"\n        }\n      ]\n    },\n    \"truth_gap\": {\n      \"axis\": \"implementation\",\n      \"missing_form\": \"intent has no code grounding (or a registered file has no owning intent)\",\n      \"correct_when\": \"every implements edge carries a locator that resolves to a live symbol which actually performs the named behavior (not merely references it), and every registered file has an owning intent or a recorded ignore reason\",\n      \"authoritative_write\": \"inspect the relevant files, edit code, then loom edge implement <intent> <codefile> --locator <symbol>\",\n      \"forbidden_write\": \"marking quality or validation passing (those are other axes)\",\n      \"after_write\": \"loom sync\"\n    },\n    \"next_step\": \"after grounding + sync, run `loom status`\"\n  },\n  \"graph_state\": {\n    \"planned\": 1,\n    \"stale\": 0,\n    \"uninspected\": 0,\n    \"findings\": 0,\n    \"untriaged\": 0,\n    \"stale_findings\": 0,\n    \"needed\": 0,\n    \"open_findings\": 0,\n    \"resolved_findings\": 0,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"open_questions\": 0\n  }\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (59827e8c) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.LJ69l3sQDk/.loom\nadded intent 'unspoken behavior' [6e1e8542]\nnext: loom status\n{\n  \"work_item\": {\n    \"packet_id\": \"pkt-1785673513084-0\",\n    \"mode\": \"build\",\n    \"owner_role\": \"builder\",\n    \"effort\": \"mid\",\n    \"routing_hint\": \"judgment\",\n    \"reason\": \"intent is planned and not yet realized\",\n    \"target\": {\n      \"kind\": \"intent\",\n      \"id\": \"6e1e854271456993be38052838bf6f15\",\n      \"name\": \"unspoken behavior\"\n    },\n    \"prompt_contract\": {\n      \"role\": \"builder\",\n      \"mindset\": \"Use Loom first to understand why this work exists, which entities/files are likely relevant, and what prior evidence says; then inspect the relevant code before editing. Functions/symbols are locators, not intents. Do not self-certify quality or proofs.\",\n      \"why_now\": \"intent 'unspoken behavior' is planned and not yet realized\",\n      \"allowed_actions\": [\n        \"loom status\",\n        \"loom next --all\",\n        \"loom intent show 'unspoken behavior'\",\n        \"loom codefile list\",\n        \"loom codefile show <file>\",\n        \"edit code\",\n        \"loom edge implement 'unspoken behavior' <codefile> --locator <symbol>\",\n        \"loom intent update 'unspoken behavior' --lifecycle implemented --reason '<what was built>'\",\n        \"loom sync\",\n        \"loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>\",\n        \"only when a current external fact blocks implementation: loom task add '<bounded question>' --kind research --why-external '<why current external knowledge is needed>' --preferred-source '<authoritative source guidance>' --target 'unspoken behavior'\"\n      ],\n      \"forbidden_actions\": [\n        \"loom rule verdict passing (quality lane)\",\n        \"loom validation verdict passed (validator lane)\",\n        \"silently skipping a material non-blocking smell; either capture it as a finding, reject it with evidence in triage, or leave it unmentioned because it is below capture threshold\"\n      ],\n      \"required_evidence\": \"Loom context checked, relevant code inspected, code written, locator confirmed, sync clean\",\n      \"evidence_clauses\": [\n        {\n          \"clause\": \"cites_spans\",\n          \"n\": 1\n        },\n        {\n          \"clause\": \"verification_at_least\",\n          \"level\": \"cited\"\n        }\n      ],\n      \"write_back\": \"loom edge implement 'unspoken behavior' <codefile> --locator <symbol>; loom intent update 'unspoken behavior' --lifecycle implemented --reason '<what was built>'\",\n      \"stop_condition\": \"after grounding + sync, return to loom status\",\n      \"human_gate\": null\n    },\n    \"context\": {\n      \"purpose\": \"Understand the behavior and likely implementation files before coding. Any inlined `note` entities are the prior record — adopted PoC/experiment evidence and past decisions — read them first; they say what was already tried and why.\",\n      \"linked_entities\": [\n        {\n          \"role\": \"target\",\n          \"kind\": \"intent\",\n          \"id\": \"6e1e854271456993be38052838bf6f15\",\n          \"name\": \"unspoken behavior\",\n          \"description\": \"nobody has ratified it\",\n          \"status\": \"planned\"\n        }\n      ],\n      \"suggested_reads\": [\n        {\n          \"reason\": \"show target entity\",\n          \"command\": \"loom intent show 6e1e854271456993be38052838bf6f15\"\n        },\n        {\n          \"reason\": \"survey registered codefiles when no grounding exists yet\",\n          \"command\": \"loom codefile list\"\n        }\n      ]\n    },\n    \"truth_gap\": {\n      \"axis\": \"implementation\",\n      \"missing_form\": \"intent has no code grounding (or a registered file has no owning intent)\",\n      \"correct_when\": \"every implements edge carries a locator that resolves to a live symbol which actually performs the named behavior (not merely references it), and every registered file has an owning intent or a recorded ignore reason\",\n      \"authoritative_write\": \"inspect the relevant files, edit code, then loom edge implement <intent> <codefile> --locator <symbol>\",\n      \"forbidden_write\": \"marking quality or validation passing (those are other axes)\",\n      \"after_write\": \"loom sync\"\n    },\n    \"next_step\": \"after grounding + sync, run `loom status`\"\n  },\n  \"graph_state\": {\n    \"planned\": 1,\n    \"stale\": 0,\n    \"uninspected\": 0,\n    \"findings\": 0,\n    \"untriaged\": 0,\n    \"stale_findings\": 0,\n    \"needed\": 0,\n    \"open_findings\": 0,\n    \"resolved_findings\": 0,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"open_questions\": 0\n  }\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/workitem/mod.rs": "6869fccbe3174d3b",
           "tests/ring14_ratify.rs": "991eedf0b9a33859"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785673219734",
+        "ran_at": "1785673513099",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:19.737Z"
+      "recorded_at": "2026-08-02T12:25:13.102Z"
     },
     {
       "id": "e847fb49ecfa779f3",
@@ -66199,6 +66489,36 @@
         "hash": "bf7ea1dd8324acd0"
       },
       "recorded_at": "2026-08-01T18:49:53.788Z"
+    },
+    {
+      "id": "e4a6426280ff3c0a5",
+      "fact_id": "f4d2190961484cf5d",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 1 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/research.rs": "52f19bf4680120aa"
+        },
+        "assertions": 3,
+        "duration_ms": 0,
+        "ran_at": "1785673394336",
+        "loom_version": "0.28.0"
+      },
+      "recorded_at": "2026-08-02T12:23:14.329Z"
+    },
+    {
+      "id": "ec7734b6b17cb3b47",
+      "fact_id": "f4d2190961484cf5d",
+      "payload": {
+        "kind": "claim",
+        "text": "src/research.rs — scanned 1 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:23:14.329Z"
     },
     {
       "id": "e42f6936f762b8259",
@@ -67163,10 +67483,10 @@
         "kind": "claim",
         "text": "status reports a compass pointing at the unmet rung: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature && loom status --graph \"$tmp\" --json && rm -rf \"$tmp\"` exit 0"
       },
-      "recorded_at": "2026-08-02T12:19:11.101Z"
+      "recorded_at": "2026-08-02T12:24:02.368Z"
     },
     {
-      "id": "e8fae5935e6d2b2a6",
+      "id": "ebf1d226e56b47ee1",
       "fact_id": "f597e6e0c84c27046",
       "payload": {
         "kind": "run",
@@ -67174,19 +67494,19 @@
         "command": "loom journey run 'the compass is a projection of the ladder, not a second decision'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "3006e36bd624d26f",
+        "stdout_hash": "627b05e43628ec9c",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (c819997a) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.ejgk9G7uCX/.loom\nadded intent 'unspoken behavior' [e8b0b161]\nnext: loom status\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 0,\n    \"registered\": 0,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\"\n  },\n  \"counts\": {\n    \"codefiles\": 0,\n    \"edges\": 0,\n    \"intents\": 1\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"c819997acdbc95f23fd781625f21d661\",\n    \"name\": \"t\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 0,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 0,\n    \"open_findings\": 0,\n    \"open_questions\": 0,\n    \"planned\": 1,\n    \"resolved_findings\": 0,\n    \"stale\": 0,\n    \"stale_findings\": 0,\n    \"uninspected\": 0,\n    \"untriaged\": 0\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 3,\n      \"derived\": 0,\n      \"ratio\": 0.0\n    },\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"1 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 1,\n        \"detail\": \"1 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 registered: 0 passed, 0 failed, 0 blocked, 0 not_run, 0 unproven implemented intent(s), 0 unrun/stale proof edge(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"not_applicable\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected, 0 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 doctor issue(s), 0 open smell(s), 0 self-audit finding(s)\",\n        \"lane\": \"audit\",\n        \"name\": \"sound\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 1,\n        \"detail\": \"loom.graph.json missing or stale\",\n        \"lane\": \"export\",\n        \"name\": \"published\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 behavior(s) worth strengthening\",\n        \"lane\": \"deepen\",\n        \"name\": \"deepening\",\n        \"state\": \"not_applicable\"\n      }\n    ],\n    \"truth_axis\": \"implementation\"\n  },\n  \"queues\": {\n    \"analyze\": 0,\n    \"audit\": 0,\n    \"build\": 1,\n    \"coverage\": 0,\n    \"deepen\": 0,\n    \"elaborate\": 0,\n    \"export\": 1,\n    \"fix\": 0,\n    \"prove\": 0,\n    \"quality\": 0,\n    \"ratify\": 0,\n    \"review\": 0,\n    \"seed\": 0,\n    \"triage\": 0,\n    \"validate\": 0\n  },\n  \"validation_summary\": {\n    \"blocked\": 0,\n    \"failed\": 0,\n    \"not_run\": 0,\n    \"other\": 0,\n    \"passed\": 0,\n    \"registered\": 0\n  }\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (8e67fb49) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.WjqnDaGp6A/.loom\nadded intent 'unspoken behavior' [b188ccfe]\nnext: loom status\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 0,\n    \"registered\": 0,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\"\n  },\n  \"counts\": {\n    \"codefiles\": 0,\n    \"edges\": 0,\n    \"intents\": 1\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"8e67fb49576a4541c521c05913585013\",\n    \"name\": \"t\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 0,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 0,\n    \"open_findings\": 0,\n    \"open_questions\": 0,\n    \"planned\": 1,\n    \"resolved_findings\": 0,\n    \"stale\": 0,\n    \"stale_findings\": 0,\n    \"uninspected\": 0,\n    \"untriaged\": 0\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 3,\n      \"derived\": 0,\n      \"ratio\": 0.0\n    },\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"1 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 1,\n        \"detail\": \"1 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 registered: 0 passed, 0 failed, 0 blocked, 0 not_run, 0 unproven implemented intent(s), 0 unrun/stale proof edge(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"not_applicable\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected, 0 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 doctor issue(s), 0 open smell(s), 0 self-audit finding(s)\",\n        \"lane\": \"audit\",\n        \"name\": \"sound\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 1,\n        \"detail\": \"loom.graph.json missing or stale\",\n        \"lane\": \"export\",\n        \"name\": \"published\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 behavior(s) worth strengthening\",\n        \"lane\": \"deepen\",\n        \"name\": \"deepening\",\n        \"state\": \"not_applicable\"\n      }\n    ],\n    \"truth_axis\": \"implementation\"\n  },\n  \"queues\": {\n    \"analyze\": 0,\n    \"audit\": 0,\n    \"build\": 1,\n    \"coverage\": 0,\n    \"deepen\": 0,\n    \"elaborate\": 0,\n    \"export\": 1,\n    \"fix\": 0,\n    \"prove\": 0,\n    \"quality\": 0,\n    \"ratify\": 0,\n    \"review\": 0,\n    \"seed\": 0,\n    \"triage\": 0,\n    \"validate\": 0\n  },\n  \"validation_summary\": {\n    \"blocked\": 0,\n    \"failed\": 0,\n    \"not_run\": 0,\n    \"other\": 0,\n    \"passed\": 0,\n    \"registered\": 0\n  }\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/maturity.rs": "6274d2347e64d1c8",
           "tests/ring5.rs": "ba7fb378aa851e29"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785673151098",
+        "ran_at": "1785673442365",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:19:11.101Z"
+      "recorded_at": "2026-08-02T12:24:02.368Z"
     },
     {
       "id": "e085ead422f7cae0d",
@@ -68627,7 +68947,7 @@
       "recorded_at": "2026-08-01T19:44:17.732Z"
     },
     {
-      "id": "ec620700e0bdc2dd6",
+      "id": "e0cbf58babec26135",
       "fact_id": "f69a883384372d8ad",
       "payload": {
         "kind": "run",
@@ -68635,9 +68955,9 @@
         "command": "loom journey run 'next router serves residue'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "27dc548befa0f248",
+        "stdout_hash": "ba40b9fccde80227",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 121,\n    \"registered\": 121,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode validate\",\n    \"phase\": \"validate\",\n    \"rung\": \"proven\"\n  },\n  \"counts\": {\n    \"codefiles\": 123,\n    \"edges\": 973,\n    \"intents\": 102\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"f3671ca0c62ffc0fb862eecfe0983662\",\n    \"name\": \"loom\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 128,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 69,\n    \"open_findings\": 77,\n    \"open_questions\": 0,\n    \"planned\": 0,\n    \"resolved_findings\": 51,\n    \"stale\": 49,\n    \"stale_findings\": 5,\n    \"uninspected\": 0,\n    \"untriaged\": 6\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 2353,\n      \"derived\": 1827,\n      \"ratio\": 0.4370813397129187\n    },\n    \"next_command\": \"loom next --mode validate\",\n    \"phase\": \"validate\",\n    \"rung\": \"proven\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"99 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 8,\n        \"detail\": \"155 registered: 155 passed, 0 failed, 0 blocked, 0 not_run, 7 unproven implemented intent(s), 0 unrun/stale proof edge(s), 1 journey proof gap(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 10,\n        \"detail\": \"0 stale, 0 uninspected, 10 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 49,\n        \"detail\": \"49 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 11,\n        \"detail\": \"11 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 3,\n        \"detail\": \"3 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 12,\n        \"detail\": \"12 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 2,\n        \"detail\": \"0 doctor issue(s), 1 open smell(s), 1 self-audit finding(s)\",\n        \"lane\": \"audit\",\n        \"name\": \"sound\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 1,\n        \"detail\": \"loom.graph.json missing or stale\",\n        \"lane\": \"export\",\n        \"name\": \"published\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"proven\",\n        \"depth\": 0,\n        \"detail\": \"83 behavior(s) worth strengthening\",\n        \"lane\": \"deepen\",\n        \"name\": \"deepening\",\n        \"state\": \"open\"\n      }\n    ],\n    \"truth_axis\": \"proof\"\n  },\n  \"queues\": {\n    \"analyze\": 49,\n    \"audit\": 2,\n    \"build\": 0,\n    \"coverage\": 0,\n    \"deepen\": 0,\n    \"elaborate\": 3,\n    \"export\": 1,\n    \"fix\": 0,\n    \"prove\": 0,\n    \"quality\": 10,\n    \"ratify\": 12,\n    \"review\": 0,\n    \"seed\": 0,\n    \"triage\": 11,\n    \"validate\": 8\n  },\n  \"validation_summary\": {\n    \"blocked\": 0,\n    \"failed\": 0,\n    \"not_run\": 0,\n    \"other\": 0,\n    \"passed\": 155,\n    \"registered\": 155\n  }\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 121,\n    \"registered\": 121,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode analyze\",\n    \"phase\": \"analyze\",\n    \"rung\": \"inspected\"\n  },\n  \"counts\": {\n    \"codefiles\": 123,\n    \"edges\": 983,\n    \"intents\": 102\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"f3671ca0c62ffc0fb862eecfe0983662\",\n    \"name\": \"loom\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 127,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 69,\n    \"open_findings\": 76,\n    \"open_questions\": 0,\n    \"planned\": 0,\n    \"resolved_findings\": 51,\n    \"stale\": 49,\n    \"stale_findings\": 5,\n    \"uninspected\": 0,\n    \"untriaged\": 5\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 2363,\n      \"derived\": 1826,\n      \"ratio\": 0.4359035569348293\n    },\n    \"next_command\": \"loom next --mode analyze\",\n    \"phase\": \"analyze\",\n    \"rung\": \"inspected\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"99 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"155 registered: 155 passed, 0 failed, 0 blocked, 0 not_run, 0 unproven implemented intent(s), 0 unrun/stale proof edge(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected, 0 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 49,\n        \"detail\": \"49 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 10,\n        \"detail\": \"10 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 2,\n        \"detail\": \"2 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 13,\n        \"detail\": \"13 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 1,\n        \"detail\": \"0 doctor issue(s), 0 open smell(s), 1 self-audit finding(s)\",\n        \"lane\": \"audit\",\n        \"name\": \"sound\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 1,\n        \"detail\": \"loom.graph.json missing or stale\",\n        \"lane\": \"export\",\n        \"name\": \"published\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"inspected\",\n        \"depth\": 0,\n        \"detail\": \"83 behavior(s) worth strengthening\",\n        \"lane\": \"deepen\",\n        \"name\": \"deepening\",\n        \"state\": \"open\"\n      }\n    ],\n    \"truth_axis\": \"verdict\"\n  },\n  \"queues\": {\n    \"analyze\": 49,\n    \"audit\": 1,\n    \"build\": 0,\n    \"coverage\": 0,\n    \"deepen\": 0,\n    \"elaborate\": 2,\n    \"export\": 1,\n    \"fix\": 0,\n    \"prove\": 0,\n    \"quality\": 0,\n    \"ratify\": 13,\n    \"review\": 0,\n    \"seed\": 0,\n    \"triage\": 10,\n    \"validate\": 0\n  },\n  \"validation_summary\": {\n    \"blocked\": 0,\n    \"failed\": 0,\n    \"not_run\": 0,\n    \"other\": 0,\n    \"passed\": 155,\n    \"registered\": 155\n  }\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/workitem/mod.rs": "6869fccbe3174d3b",
           "src/workitem/queues.rs": "518bbe2fb5a86d53",
@@ -68645,10 +68965,10 @@
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785673219564",
+        "ran_at": "1785673512942",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:19.567Z"
+      "recorded_at": "2026-08-02T12:25:12.945Z"
     },
     {
       "id": "ee1cab948eb6d6dbc",
@@ -68657,7 +68977,7 @@
         "kind": "claim",
         "text": "status exposes router inputs: `loom status --json` exit 0"
       },
-      "recorded_at": "2026-08-02T12:20:19.567Z"
+      "recorded_at": "2026-08-02T12:25:12.945Z"
     },
     {
       "id": "e3b5241e6355d3072",
@@ -69042,6 +69362,15 @@
         "text": "`cargo test --test ring27_observe -q` exit 0"
       },
       "recorded_at": "2026-08-02T12:19:09.083Z"
+    },
+    {
+      "id": "e5674e702b372aaf6",
+      "fact_id": "f6e08774742af16be",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/pattern_cmd.rs, src/pattern.rs — scanned 2 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:22:48.825Z"
     },
     {
       "id": "e63b0c6d942fba983",
@@ -69640,7 +69969,16 @@
       "recorded_at": "2026-08-01T19:22:38.490Z"
     },
     {
-      "id": "e91ad651e0b4b91c1",
+      "id": "eb9bc9aba770d75cb",
+      "fact_id": "f739483d6c79b629c",
+      "payload": {
+        "kind": "claim",
+        "text": "an intent with no evidence reports unratified: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'unspoken behavior' --description 'nobody has approved it' --level feature && loom intent show --graph \"$tmp\" 'unspoken behavior' --json && rm -rf \"$tmp\"` exit 0"
+      },
+      "recorded_at": "2026-08-02T12:25:37.821Z"
+    },
+    {
+      "id": "ee7e3bdba656c7cb9",
       "fact_id": "f739483d6c79b629c",
       "payload": {
         "kind": "run",
@@ -69648,9 +69986,9 @@
         "command": "loom journey run 'wantedness is not presumed'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "242f0b3dfe74111c",
+        "stdout_hash": "ab0b866171d58972",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (fc21be2a) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.CaBkZxxSRp/.loom\nadded intent 'unspoken behavior' [8f7927b9]\nnext: loom status\n{\n  \"aspect\": null,\n  \"body\": {\n    \"level\": \"feature\"\n  },\n  \"created_at\": \"2026-08-02T12:20:43.300Z\",\n  \"description\": \"nobody has approved it\",\n  \"id\": \"8f7927b95def41f23375c19692decc5a\",\n  \"layer\": null,\n  \"level\": \"feature\",\n  \"name\": \"unspoken behavior\",\n  \"origin\": \"llm\",\n  \"ratification\": \"unratified\",\n  \"ratified_at\": null,\n  \"ratified_by\": null,\n  \"status\": \"planned\",\n  \"tags\": [],\n  \"truth_class\": \"asserted\",\n  \"type\": \"intent\",\n  \"updated_at\": \"2026-08-02T12:20:43.300Z\",\n  \"visibility\": null\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (651758ab) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.gkgNwl8MK2/.loom\nadded intent 'unspoken behavior' [17d9f665]\nnext: loom status\n{\n  \"aspect\": null,\n  \"body\": {\n    \"level\": \"feature\"\n  },\n  \"created_at\": \"2026-08-02T12:25:37.798Z\",\n  \"description\": \"nobody has approved it\",\n  \"id\": \"17d9f66549f2f2df87bec8027268e874\",\n  \"layer\": null,\n  \"level\": \"feature\",\n  \"name\": \"unspoken behavior\",\n  \"origin\": \"llm\",\n  \"ratification\": \"unratified\",\n  \"ratified_at\": null,\n  \"ratified_by\": null,\n  \"status\": \"planned\",\n  \"tags\": [],\n  \"truth_class\": \"asserted\",\n  \"type\": \"intent\",\n  \"updated_at\": \"2026-08-02T12:25:37.798Z\",\n  \"visibility\": null\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/ratification.rs": "6ee2ff5b196a218a",
           "tests/ring24_ratification.rs": "b081077de334b37c",
@@ -69658,19 +69996,10 @@
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785673243321",
+        "ran_at": "1785673537817",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:43.324Z"
-    },
-    {
-      "id": "eb9bc9aba770d75cb",
-      "fact_id": "f739483d6c79b629c",
-      "payload": {
-        "kind": "claim",
-        "text": "an intent with no evidence reports unratified: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'unspoken behavior' --description 'nobody has approved it' --level feature && loom intent show --graph \"$tmp\" 'unspoken behavior' --json && rm -rf \"$tmp\"` exit 0"
-      },
-      "recorded_at": "2026-08-02T12:20:43.324Z"
+      "recorded_at": "2026-08-02T12:25:37.821Z"
     },
     {
       "id": "e7145338dd13f9584",
@@ -71926,10 +72255,10 @@
         "kind": "claim",
         "text": "the ratify lane answers with the routing envelope: `loom next --mode ratify --json` exit 0"
       },
-      "recorded_at": "2026-08-02T12:19:26.183Z"
+      "recorded_at": "2026-08-02T12:24:18.411Z"
     },
     {
-      "id": "e442db49a9cd8c44f",
+      "id": "ed8eddca17af57078",
       "fact_id": "f8c9e8133a86245f2",
       "payload": {
         "kind": "run",
@@ -71937,9 +72266,9 @@
         "command": "loom journey run 'divergences route to the human-only queue'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "e3501f89834f01da",
+        "stdout_hash": "2aefe21d7fe186ce",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\n{\n  \"work_item\": {\n    \"packet_id\": \"pkt-1785673166060-0\",\n    \"mode\": \"ratify\",\n    \"owner_role\": \"human\",\n    \"effort\": \"low\",\n    \"routing_hint\": \"judgment\",\n    \"reason\": \"discovered behavior: 'loom answers what a change here could reach' — realized in src/callgraph.rs, proven by loom answers what a change here could reach, exercised directly\",\n    \"target\": {\n      \"kind\": \"intent\",\n      \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n      \"name\": \"loom answers what a change here could reach\"\n    },\n    \"prompt_contract\": {\n      \"role\": \"human\",\n      \"mindset\": \"Product authority. Decide whether this behavior is wanted. An LLM presenting this packet summarizes the intent and stops — it must not ratify, and it must not answer for the human.\",\n      \"why_now\": \"the intent's wantedness is unestablished: minted without ratification, or redefined after it\",\n      \"allowed_actions\": [\n        \"loom intent show cde73673\",\n        \"loom intent ratify cde73673 --evidence <why this is wanted>\",\n        \"loom intent retire cde73673 --reason <why it is not wanted>\",\n        \"loom intent update cde73673 --description <corrected criterion> --reason <…>  (then re-ratify)\"\n      ],\n      \"forbidden_actions\": [\n        \"ratifying from an llm:* lane (INV-8 — the write boundary rejects it; do not work around it)\",\n        \"treating silence or plausibility as ratification\"\n      ],\n      \"required_evidence\": \"the human's reason this behavior is wanted: an utterance, a source doc, a decision\",\n      \"evidence_clauses\": [\n        {\n          \"clause\": \"prose\"\n        },\n        {\n          \"clause\": \"verification_at_least\",\n          \"level\": \"cited\"\n        }\n      ],\n      \"write_back\": \"loom intent ratify cde73673 --evidence '…'\",\n      \"stop_condition\": \"if no human is present, stop — batch ratify packets for the next human session instead of draining them\",\n      \"human_gate\": \"ratification is human-only: present the packet, then wait for the human's decision\"\n    },\n    \"context\": {\n      \"purpose\": \"Present this divergence to the human with the evidence already gathered, and both prefilled commands. The ratify/reject decision is theirs.\",\n      \"linked_entities\": [\n        {\n          \"role\": \"target\",\n          \"kind\": \"intent\",\n          \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n          \"name\": \"loom answers what a change here could reach\",\n          \"description\": \"A call graph resolved from extraction across languages, reporting exact and heuristic resolutions separately rather than blending them into a number nobody can act on.\",\n          \"status\": \"implemented\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"1ede954da478af5b00a73a4d87885765\",\n          \"name\": \"d23f5c463fb1e4861 governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d23f5c463fb1e4861\",\n          \"name\": \"iso5055-rel-resource-release\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"74f3595c2b14d0ab8b1e7ad53872a1a4\",\n          \"name\": \"d2e01de8af8327d1b governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d2e01de8af8327d1b\",\n          \"name\": \"iso5055-main-no-dead-or-duplicate-code\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"419bf331af3e7bab806d5d32514f7b00\",\n          \"name\": \"d9697ad2cc3ba5d0c governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"independent\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d9697ad2cc3ba5d0c\",\n          \"name\": \"iso5055-rel-no-unchecked-failure\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"\n…[6680 bytes omitted]…\nshow da0094e3c821d6b7d\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 07fbd28fdc263bd0650d1d3dc0c6fe5e\"\n        },\n        {\n          \"reason\": \"inspect incoming_governs\",\n          \"command\": \"loom rule show dfe31470815685fd8\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7104d6aab8de21c5d1630196344ef7de\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show 34892231367b73f6aecf8a6f858f8b35\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 1d13ec8e5e213c0016b4baec8670e5c5\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show e8144eba31454517f0347a52ee443987\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 676ee19d6d5451a558219e93e385c029\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show fbff97dbe5292fc4602c6058c57d38f9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 9375303a54a75e13bab852b008152945\"\n        },\n        {\n          \"reason\": \"inspect outgoing_relates\",\n          \"command\": \"loom intent show 532576fe14cb8bc3d398797ca58f08c0\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7af99fd2468ef0d64f19f72a7b430dc0\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5c18f06b58b4aa0d81e8ac7cf8e7079f\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show e850e38c9ef9350f4cb089032a804aa3\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5cd898b6196450ac49f9a7d3d86db3e9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 453df69bb981755567276593f059ca5c\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 737461675358638a9d38e30546eb4db2\"\n        }\n      ],\n      \"read_set\": [\n        {\n          \"path\": \"src/callgraph.rs\",\n          \"locator\": \"build\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"src/extract/calls.rs\",\n          \"locator\": \"extract_calls\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"tests/ring5.rs\",\n          \"why\": \"exercises intent 'loom answers what a change here could reach' across a seam (verifies) — context, not where the behavior lives\"\n        }\n      ]\n    },\n    \"truth_gap\": {\n      \"axis\": \"intent\",\n      \"missing_form\": \"behavior is not named as an intent\",\n      \"correct_when\": \"each active intent names exactly one falsifiable behavior, sized for reuse: small enough to recur under multiple parents (overlap with other intents is acceptable), big enough that the graph does not devolve into noise. If the description needs 'and', split it; if the name is just a function/symbol, it is a locator on an implements edge, not an intent\",\n      \"authoritative_write\": \"loom door \\\"<utterance>\\\" then loom intent add --name … --description …\",\n      \"forbidden_write\": \"writing code or proofs before the behavior is named\",\n      \"after_write\": \"loom status\"\n    },\n    \"next_step\": \"loom intent ratify cde73673 --evidence '<why this is wanted>' — or — loom intent reject cde73673 --reason '<why this is not>'\"\n  },\n  \"graph_state\": {\n    \"planned\": 0,\n    \"stale\": 49,\n    \"uninspected\": 0,\n    \"findings\": 128,\n    \"untriaged\": 6,\n    \"stale_findings\": 5,\n    \"needed\": 69,\n    \"open_findings\": 77,\n    \"resolved_findings\": 51,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"open_questions\": 0\n  }\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\n{\n  \"work_item\": {\n    \"packet_id\": \"pkt-1785673458283-0\",\n    \"mode\": \"ratify\",\n    \"owner_role\": \"human\",\n    \"effort\": \"low\",\n    \"routing_hint\": \"judgment\",\n    \"reason\": \"discovered behavior: 'loom answers what a change here could reach' — realized in src/callgraph.rs, proven by loom answers what a change here could reach, exercised directly\",\n    \"target\": {\n      \"kind\": \"intent\",\n      \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n      \"name\": \"loom answers what a change here could reach\"\n    },\n    \"prompt_contract\": {\n      \"role\": \"human\",\n      \"mindset\": \"Product authority. Decide whether this behavior is wanted. An LLM presenting this packet summarizes the intent and stops — it must not ratify, and it must not answer for the human.\",\n      \"why_now\": \"the intent's wantedness is unestablished: minted without ratification, or redefined after it\",\n      \"allowed_actions\": [\n        \"loom intent show cde73673\",\n        \"loom intent ratify cde73673 --evidence <why this is wanted>\",\n        \"loom intent retire cde73673 --reason <why it is not wanted>\",\n        \"loom intent update cde73673 --description <corrected criterion> --reason <…>  (then re-ratify)\"\n      ],\n      \"forbidden_actions\": [\n        \"ratifying from an llm:* lane (INV-8 — the write boundary rejects it; do not work around it)\",\n        \"treating silence or plausibility as ratification\"\n      ],\n      \"required_evidence\": \"the human's reason this behavior is wanted: an utterance, a source doc, a decision\",\n      \"evidence_clauses\": [\n        {\n          \"clause\": \"prose\"\n        },\n        {\n          \"clause\": \"verification_at_least\",\n          \"level\": \"cited\"\n        }\n      ],\n      \"write_back\": \"loom intent ratify cde73673 --evidence '…'\",\n      \"stop_condition\": \"if no human is present, stop — batch ratify packets for the next human session instead of draining them\",\n      \"human_gate\": \"ratification is human-only: present the packet, then wait for the human's decision\"\n    },\n    \"context\": {\n      \"purpose\": \"Present this divergence to the human with the evidence already gathered, and both prefilled commands. The ratify/reject decision is theirs.\",\n      \"linked_entities\": [\n        {\n          \"role\": \"target\",\n          \"kind\": \"intent\",\n          \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n          \"name\": \"loom answers what a change here could reach\",\n          \"description\": \"A call graph resolved from extraction across languages, reporting exact and heuristic resolutions separately rather than blending them into a number nobody can act on.\",\n          \"status\": \"implemented\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"1ede954da478af5b00a73a4d87885765\",\n          \"name\": \"d23f5c463fb1e4861 governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d23f5c463fb1e4861\",\n          \"name\": \"iso5055-rel-resource-release\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"74f3595c2b14d0ab8b1e7ad53872a1a4\",\n          \"name\": \"d2e01de8af8327d1b governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d2e01de8af8327d1b\",\n          \"name\": \"iso5055-main-no-dead-or-duplicate-code\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"419bf331af3e7bab806d5d32514f7b00\",\n          \"name\": \"d9697ad2cc3ba5d0c governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"independent\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d9697ad2cc3ba5d0c\",\n          \"name\": \"iso5055-rel-no-unchecked-failure\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"\n…[6680 bytes omitted]…\nshow da0094e3c821d6b7d\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 07fbd28fdc263bd0650d1d3dc0c6fe5e\"\n        },\n        {\n          \"reason\": \"inspect incoming_governs\",\n          \"command\": \"loom rule show dfe31470815685fd8\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7104d6aab8de21c5d1630196344ef7de\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show 34892231367b73f6aecf8a6f858f8b35\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 1d13ec8e5e213c0016b4baec8670e5c5\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show e8144eba31454517f0347a52ee443987\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 676ee19d6d5451a558219e93e385c029\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show fbff97dbe5292fc4602c6058c57d38f9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 9375303a54a75e13bab852b008152945\"\n        },\n        {\n          \"reason\": \"inspect outgoing_relates\",\n          \"command\": \"loom intent show 532576fe14cb8bc3d398797ca58f08c0\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7af99fd2468ef0d64f19f72a7b430dc0\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5c18f06b58b4aa0d81e8ac7cf8e7079f\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show e850e38c9ef9350f4cb089032a804aa3\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5cd898b6196450ac49f9a7d3d86db3e9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 453df69bb981755567276593f059ca5c\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 737461675358638a9d38e30546eb4db2\"\n        }\n      ],\n      \"read_set\": [\n        {\n          \"path\": \"src/callgraph.rs\",\n          \"locator\": \"build\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"src/extract/calls.rs\",\n          \"locator\": \"extract_calls\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"tests/ring5.rs\",\n          \"why\": \"exercises intent 'loom answers what a change here could reach' across a seam (verifies) — context, not where the behavior lives\"\n        }\n      ]\n    },\n    \"truth_gap\": {\n      \"axis\": \"intent\",\n      \"missing_form\": \"behavior is not named as an intent\",\n      \"correct_when\": \"each active intent names exactly one falsifiable behavior, sized for reuse: small enough to recur under multiple parents (overlap with other intents is acceptable), big enough that the graph does not devolve into noise. If the description needs 'and', split it; if the name is just a function/symbol, it is a locator on an implements edge, not an intent\",\n      \"authoritative_write\": \"loom door \\\"<utterance>\\\" then loom intent add --name … --description …\",\n      \"forbidden_write\": \"writing code or proofs before the behavior is named\",\n      \"after_write\": \"loom status\"\n    },\n    \"next_step\": \"loom intent ratify cde73673 --evidence '<why this is wanted>' — or — loom intent reject cde73673 --reason '<why this is not>'\"\n  },\n  \"graph_state\": {\n    \"planned\": 0,\n    \"stale\": 49,\n    \"uninspected\": 0,\n    \"findings\": 127,\n    \"untriaged\": 5,\n    \"stale_findings\": 5,\n    \"needed\": 69,\n    \"open_findings\": 76,\n    \"resolved_findings\": 51,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"open_questions\": 0\n  }\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/maturity.rs": "6274d2347e64d1c8",
           "src/workitem/queues.rs": "518bbe2fb5a86d53",
@@ -71947,10 +72276,10 @@
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785673166180",
+        "ran_at": "1785673458408",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:19:26.183Z"
+      "recorded_at": "2026-08-02T12:24:18.411Z"
     },
     {
       "id": "e20289b58cd4d9458",
@@ -74375,6 +74704,15 @@
       "recorded_at": "2026-08-01T18:38:42.201Z"
     },
     {
+      "id": "e460cf85b518b2ae7",
+      "fact_id": "fa411bb65cae639f5",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/pattern_cmd.rs, src/pattern.rs — scanned 2 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:22:14.697Z"
+    },
+    {
       "id": "e44b61d39446b241d",
       "fact_id": "fa4819f782c497b18",
       "payload": {
@@ -75082,10 +75420,10 @@
         "kind": "claim",
         "text": "a bare command grades S1 after sync: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'demo behavior' --description 'does something' --level feature && loom validation add --graph \"$tmp\" --name 'true proof' --type test --command 'true' --intent 'demo behavior' && loom validation run --graph \"$tmp\" --all && loom sync --graph \"$tmp\" && loom validation show --graph \"$tmp\" 'true proof' && rm -rf \"$tmp\"` exit 0"
       },
-      "recorded_at": "2026-08-02T12:20:19.876Z"
+      "recorded_at": "2026-08-02T12:25:13.236Z"
     },
     {
-      "id": "eeb631f2a859cec7c",
+      "id": "e8aba159237ca3cd6",
       "fact_id": "fadedaded5000c754",
       "payload": {
         "kind": "run",
@@ -75093,19 +75431,19 @@
         "command": "loom journey run 'proof strength is derived from the proof's shape'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "c71d9b7546139dbc",
+        "stdout_hash": "3516fcf1576d97d7",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (3f39d7ce) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.2ar2Vjq4JB/.loom\nadded intent 'demo behavior' [7c4b7d1e]\nnext: loom status\nadded validation 'true proof' → 'demo behavior'\nnext: loom status\nPASS true proof\nnext: loom status\nsync: 0 scanned, 0 changed, 0 edges staled, 0 validations reset, 0 findings\ntrue proof [b8bc529a245c651b422580bd3cab2737]\n  status: passed\n  {\"command\":\"true\",\"type\":\"test\"}\n  strength: S1\n    ran and passed: true | content assertions: 0 | call witness: none | baseline clean: false | boundary: none\n    next: assert something about the OUTPUT, not just the exit code — a spec with `stdout_contains`/`body`/`exists`, or a command whose runner reports what it checked\n  validates: demo behavior\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (353b0b9e) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.oOqfG9eLzh/.loom\nadded intent 'demo behavior' [64383818]\nnext: loom status\nadded validation 'true proof' → 'demo behavior'\nnext: loom status\nPASS true proof\nnext: loom status\nsync: 0 scanned, 0 changed, 0 edges staled, 0 validations reset, 0 findings\ntrue proof [d95470b38ff6e78d07534c7d6374036c]\n  status: passed\n  {\"command\":\"true\",\"type\":\"test\"}\n  strength: S1\n    ran and passed: true | content assertions: 0 | call witness: none | baseline clean: false | boundary: none\n    next: assert something about the OUTPUT, not just the exit code — a spec with `stdout_contains`/`body`/`exists`, or a command whose runner reports what it checked\n  validates: demo behavior\n\nstderr:\n\nexit:0",
         "covered": {
           "src/proofstrength.rs": "c6205d96862be84a",
           "tests/ring6.rs": "ff88f805fbfb314a"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785673219873",
+        "ran_at": "1785673513233",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:19.876Z"
+      "recorded_at": "2026-08-02T12:25:13.236Z"
     },
     {
       "id": "e3de8088258c5c059",
@@ -76472,10 +76810,10 @@
         "kind": "claim",
         "text": "initialize and list tools over stdio: `printf '%s\\n%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}' '{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}' | loom mcp serve` exit 0 | a tool call returns real graph data: `printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_impact\",\"arguments\":{\"target\":\"assert_fact\"}}}' | loom mcp serve` exit 0 | an unknown tool name is a protocol error naming the tool: `printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_nope\",\"arguments\":{}}}' | loom mcp serve` exit 0 | a tool that runs and fails reports why and keeps the transport alive: `printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_context\",\"arguments\":{\"target\":\"nothing in this graph matches\"}}}' | loom mcp serve` exit 0"
       },
-      "recorded_at": "2026-08-02T12:20:01.793Z"
+      "recorded_at": "2026-08-02T12:24:55.013Z"
     },
     {
-      "id": "ec69349b1d5abf312",
+      "id": "ef421ab175eb163fe",
       "fact_id": "fbc31e0270e501129",
       "payload": {
         "kind": "run",
@@ -76483,19 +76821,19 @@
         "command": "loom journey run 'loom serves its capabilities in band'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "8f54f404e4ae2bcb",
+        "stdout_hash": "7be1b2b801733b86",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\n{\"id\":1,\"jsonrpc\":\"2.0\",\"result\":{\"capabilities\":{\"tools\":{}},\"instructions\":\"loom holds a falsifiable graph of what this codebase should do, where that lives, and how it is proven. Call loom_status to orient, loom_next for the next correct work, loom_context before editing unfamiliar code. loom records truth it can re-check; it will refuse a claim you cannot anchor.\",\"protocolVersion\":\"2024-11-05\",\"serverInfo\":{\"name\":\"loom\",\"version\":\"0.28.0\"}}}\n{\"id\":2,\"jsonrpc\":\"2.0\",\"result\":{\"tools\":[{\"description\":\"Where this graph stands: the maturity ladder, the compass (the single next move), per-lane queue depths, and code ownership. Call this first in a session and after any change, the way you would read a build status.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"name\":\"loom_status\"},{\"description\":\"The next correct unit of work, compiled into a prompt contract: the role to adopt, what is allowed and forbidden, the evidence required, the exact write-back, and the files to read first. Omit `lane` to take whatever the compass points at. Every packet carries a packet_id.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"lane\":{\"description\":\"Optional lane to serve from (see loom_status.queues).\",\"enum\":[\"fix\",\"build\",\"coverage\",\"validate\",\"quality\",\"analyze\",\"review\",\"triage\",\"prove\",\"elaborate\",\"ratify\",\"audit\",\"deepen\"],\"type\":\"string\"}},\"type\":\"object\"},\"name\":\"loom_next\"},{\"description\":\"Read-only context for an intent, a registered file path, or a free-text query: what the behavior is, where it is grounded, what proves it, which rules govern it, and what has gone stale. Pull this BEFORE editing code you did not write.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"target\":{\"description\":\"Intent id/name/prefix, registered codefile path, or free text.\",\"type\":\"string\"}},\"required\":[\"target\"],\"type\":\"object\"},\"name\":\"loom_context\"},{\"description\":\"What a change here could reach: the symbols that transitively call a target,                  nearest first, from the real call graph. Exact and heuristic resolutions are                  reported separately and never blended. Call this BEFORE editing a symbol you                  did not write.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"depth\":{\"description\":\"Call hops to walk back (default 3).\",\"maximum\":10,\"minimum\":1,\"type\":\"integer\"},\"target\":{\"description\":\"A symbol name or a registered codefile path.\",\"type\":\"string\"}},\"required\":[\"target\"],\"type\":\"object\"},\"name\":\"loom_impact\"},{\"description\":\"Run a command loom watches and keep what it saw. Prefix the test command you                  were going to run anyway: the run becomes a re-checkable record over the files                  it covered, and with `for_behavior` it binds to that behavior's proof and is                  graded. loom reports the outcome — you cannot supply one.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"description\":\"argv, unquoted — loom quotes it for the shell.\",\"items\":{\"type\":\"string\"},\"minItems\":1,\"type\":\"array\"},\"for_behavior\":{\"description\":\"Intent id/name this run is evidence about.\",\"type\":\"string\"},\"timeout\":{\"description\":\"Seconds before giving up (default 900). A timeout records as blocked, never as a failure.\",\"type\":\"integer\"}},\"required\":[\"command\"],\"type\":\"object\"},\"name\":\"loom_observe\"},{\"description\":\"Read the working tree and return the graph mutations it implies: new symbols in                  owned files, symbols whose callers all belong to one behavior, locators naming                  code that moved, files nothing owns. Observes only — nothing is written, and                  items loom cannot derive say what they need from you.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"name\":\"loom_absorb\"},{\"description\":\"The append-only record of what happened to this graph: ratifications,                  rejections, observed runs, journey runs, drive turns. Read it to establish what                  actually occurred before changing anything �\n…[82202 bytes omitted]…\ned edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 7d1d3d5929e489351a1ab626298fa027\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show b484685ca66b0d952b7d3c6b36687a32\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show e1fe35d016306d2159efbbc0e45653e2\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 47fb50df452229dc53167ee58e6103c9\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom intent show aca5667ea98003fde3cb5a22805006cc\\\",\\n        \\\"reason\\\": \\\"inspect intent criterion\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 7ef4c3e3f721fb766b66cf790513b330\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show f3e04151b624102494dc7613fb5d8ef8\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show a6b97d4a03247fca98fcae6718ee1474\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 229c38114910f5c14398a0abc83b568d\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show b550f64a0fea50a98d2f83752b3c13f1\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom intent show ff5d38e1d8e842cecd760ea1e4d3f9d7\\\",\\n        \\\"reason\\\": \\\"inspect intent criterion\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 0434c31249d421d9e12786265647a736\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show c609aeb751ac2737a13ad89a88de3fb5\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 3078fe1a9e3af1df39f4e0d84c469ed5\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 3b7fc0fdfc3297dfc95386b0e2ed6bde\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 4e263bc396b642b2061f026d0423d325\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 567bcacc216cc31c17d4306cb50cb9c4\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 7032dbfc3581fdce59cd5254d4570ebd\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 783472395e1b3e1c76d532d718b8d494\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 3089b7b6974c6b799dbe9aa9c1bbdaaa\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 8e68ef3d3f997d522877c30d19fd3b52\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 94caa8c0e6f21b819d4cea7bf127ba61\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 998a7532da7c98ca2a977854af99dfc1\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show bb74bb5d58a40163fe8faec133cace10\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show d954c5622a68b22d6014eb888e51777f\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show f02b93ccddfe4d6041de620c92e1812d\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      }\\n    ]\\n  },\\n  \\\"packet_id\\\": \\\"pkt-1785673201772-0\\\",\\n  \\\"target\\\": {\\n    \\\"id\\\": \\\"query:nothing in this graph matches\\\",\\n    \\\"kind\\\": \\\"query\\\",\\n    \\\"name\\\": \\\"nothing in this graph matches\\\",\\n    \\\"role\\\": \\\"query\\\"\\n  }\\n}\",\"type\":\"text\"}],\"isError\":false}}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\n{\"id\":1,\"jsonrpc\":\"2.0\",\"result\":{\"capabilities\":{\"tools\":{}},\"instructions\":\"loom holds a falsifiable graph of what this codebase should do, where that lives, and how it is proven. Call loom_status to orient, loom_next for the next correct work, loom_context before editing unfamiliar code. loom records truth it can re-check; it will refuse a claim you cannot anchor.\",\"protocolVersion\":\"2024-11-05\",\"serverInfo\":{\"name\":\"loom\",\"version\":\"0.28.0\"}}}\n{\"id\":2,\"jsonrpc\":\"2.0\",\"result\":{\"tools\":[{\"description\":\"Where this graph stands: the maturity ladder, the compass (the single next move), per-lane queue depths, and code ownership. Call this first in a session and after any change, the way you would read a build status.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"name\":\"loom_status\"},{\"description\":\"The next correct unit of work, compiled into a prompt contract: the role to adopt, what is allowed and forbidden, the evidence required, the exact write-back, and the files to read first. Omit `lane` to take whatever the compass points at. Every packet carries a packet_id.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"lane\":{\"description\":\"Optional lane to serve from (see loom_status.queues).\",\"enum\":[\"fix\",\"build\",\"coverage\",\"validate\",\"quality\",\"analyze\",\"review\",\"triage\",\"prove\",\"elaborate\",\"ratify\",\"audit\",\"deepen\"],\"type\":\"string\"}},\"type\":\"object\"},\"name\":\"loom_next\"},{\"description\":\"Read-only context for an intent, a registered file path, or a free-text query: what the behavior is, where it is grounded, what proves it, which rules govern it, and what has gone stale. Pull this BEFORE editing code you did not write.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"target\":{\"description\":\"Intent id/name/prefix, registered codefile path, or free text.\",\"type\":\"string\"}},\"required\":[\"target\"],\"type\":\"object\"},\"name\":\"loom_context\"},{\"description\":\"What a change here could reach: the symbols that transitively call a target,                  nearest first, from the real call graph. Exact and heuristic resolutions are                  reported separately and never blended. Call this BEFORE editing a symbol you                  did not write.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"depth\":{\"description\":\"Call hops to walk back (default 3).\",\"maximum\":10,\"minimum\":1,\"type\":\"integer\"},\"target\":{\"description\":\"A symbol name or a registered codefile path.\",\"type\":\"string\"}},\"required\":[\"target\"],\"type\":\"object\"},\"name\":\"loom_impact\"},{\"description\":\"Run a command loom watches and keep what it saw. Prefix the test command you                  were going to run anyway: the run becomes a re-checkable record over the files                  it covered, and with `for_behavior` it binds to that behavior's proof and is                  graded. loom reports the outcome — you cannot supply one.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"description\":\"argv, unquoted — loom quotes it for the shell.\",\"items\":{\"type\":\"string\"},\"minItems\":1,\"type\":\"array\"},\"for_behavior\":{\"description\":\"Intent id/name this run is evidence about.\",\"type\":\"string\"},\"timeout\":{\"description\":\"Seconds before giving up (default 900). A timeout records as blocked, never as a failure.\",\"type\":\"integer\"}},\"required\":[\"command\"],\"type\":\"object\"},\"name\":\"loom_observe\"},{\"description\":\"Read the working tree and return the graph mutations it implies: new symbols in                  owned files, symbols whose callers all belong to one behavior, locators naming                  code that moved, files nothing owns. Observes only — nothing is written, and                  items loom cannot derive say what they need from you.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"name\":\"loom_absorb\"},{\"description\":\"The append-only record of what happened to this graph: ratifications,                  rejections, observed runs, journey runs, drive turns. Read it to establish what                  actually occurred before changing anything �\n…[82202 bytes omitted]…\ned edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 7d1d3d5929e489351a1ab626298fa027\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show b484685ca66b0d952b7d3c6b36687a32\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show e1fe35d016306d2159efbbc0e45653e2\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 47fb50df452229dc53167ee58e6103c9\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom intent show aca5667ea98003fde3cb5a22805006cc\\\",\\n        \\\"reason\\\": \\\"inspect intent criterion\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 7ef4c3e3f721fb766b66cf790513b330\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show f3e04151b624102494dc7613fb5d8ef8\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show a6b97d4a03247fca98fcae6718ee1474\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 229c38114910f5c14398a0abc83b568d\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show b550f64a0fea50a98d2f83752b3c13f1\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom intent show ff5d38e1d8e842cecd760ea1e4d3f9d7\\\",\\n        \\\"reason\\\": \\\"inspect intent criterion\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 0434c31249d421d9e12786265647a736\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show c609aeb751ac2737a13ad89a88de3fb5\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 3078fe1a9e3af1df39f4e0d84c469ed5\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 3b7fc0fdfc3297dfc95386b0e2ed6bde\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 4e263bc396b642b2061f026d0423d325\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 567bcacc216cc31c17d4306cb50cb9c4\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 7032dbfc3581fdce59cd5254d4570ebd\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 783472395e1b3e1c76d532d718b8d494\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom validation show 3089b7b6974c6b799dbe9aa9c1bbdaaa\\\",\\n        \\\"reason\\\": \\\"inspect proof definition and last result\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 8e68ef3d3f997d522877c30d19fd3b52\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 94caa8c0e6f21b819d4cea7bf127ba61\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show 998a7532da7c98ca2a977854af99dfc1\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show bb74bb5d58a40163fe8faec133cace10\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show d954c5622a68b22d6014eb888e51777f\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      },\\n      {\\n        \\\"command\\\": \\\"loom edge show f02b93ccddfe4d6041de620c92e1812d\\\",\\n        \\\"reason\\\": \\\"inspect linked edge\\\"\\n      }\\n    ]\\n  },\\n  \\\"packet_id\\\": \\\"pkt-1785673494993-0\\\",\\n  \\\"target\\\": {\\n    \\\"id\\\": \\\"query:nothing in this graph matches\\\",\\n    \\\"kind\\\": \\\"query\\\",\\n    \\\"name\\\": \\\"nothing in this graph matches\\\",\\n    \\\"role\\\": \\\"query\\\"\\n  }\\n}\",\"type\":\"text\"}],\"isError\":false}}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/mcp.rs": "84bc7bca07fd2ff1",
           "tests/ring22_mcp_packets.rs": "4ddd3359bb421e69"
         },
         "assertions": 16,
         "duration_ms": 0,
-        "ran_at": "1785673201790",
+        "ran_at": "1785673495010",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:01.793Z"
+      "recorded_at": "2026-08-02T12:24:55.013Z"
     },
     {
       "id": "ed03bdfa87ec5c7bd",
@@ -76764,6 +77102,37 @@
         "text": "src/workitem/mod.rs, src/workitem/queues.rs — parameterized queries / escaped boundaries (no query or command construction present)"
       },
       "recorded_at": "2026-08-02T10:00:30.712Z"
+    },
+    {
+      "id": "e0d0407bd738d1394",
+      "fact_id": "fbf6bb2bacee7ef61",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/pattern_cmd.rs, src/pattern.rs — scanned 2 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:23:05.838Z"
+    },
+    {
+      "id": "ea9ab41ed8f5c51a6",
+      "fact_id": "fbf6bb2bacee7ef61",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 2 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/commands/pattern_cmd.rs": "7baac6c483191d17",
+          "src/pattern.rs": "0a0a2e230255a786"
+        },
+        "assertions": 2,
+        "duration_ms": 0,
+        "ran_at": "1785673385843",
+        "loom_version": "0.28.0"
+      },
+      "recorded_at": "2026-08-02T12:23:05.838Z"
     },
     {
       "id": "e6c84b4204a84177e",
@@ -77672,10 +78041,10 @@
         "kind": "claim",
         "text": "a true command records passed: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'demo behavior' --description 'does something' --level feature && loom validation add --graph \"$tmp\" --name 'true proof' --type test --command 'true' --intent 'demo behavior' && loom validation run --graph \"$tmp\" --all && rm -rf \"$tmp\"` exit 0"
       },
-      "recorded_at": "2026-08-02T12:20:20.371Z"
+      "recorded_at": "2026-08-02T12:25:13.734Z"
     },
     {
-      "id": "edcf29a3597e087f4",
+      "id": "e4c3e802d614ce646",
       "fact_id": "fcb764a9e4703ece6",
       "payload": {
         "kind": "run",
@@ -77683,9 +78052,9 @@
         "command": "loom journey run 'loom runs a proof and reports the outcome'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "75be347e523eb94c",
+        "stdout_hash": "351dc25e8fd2ba1c",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (7df08adf) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.cW7YotiJ2d/.loom\nadded intent 'demo behavior' [80ec927e]\nnext: loom status\nadded validation 'true proof' → 'demo behavior'\nnext: loom status\nPASS true proof\nnext: loom status\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (01760acd) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.F3UXAgLCP9/.loom\nadded intent 'demo behavior' [02c42c0e]\nnext: loom status\nadded validation 'true proof' → 'demo behavior'\nnext: loom status\nPASS true proof\nnext: loom status\n\nstderr:\n\nexit:0",
         "covered": {
           "src/runner.rs": "e073d45d75d9883b",
           "src/subprocess.rs": "cbf416b538ddbc32",
@@ -77694,10 +78063,10 @@
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785673220368",
+        "ran_at": "1785673513731",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:20.371Z"
+      "recorded_at": "2026-08-02T12:25:13.734Z"
     },
     {
       "id": "e9550896687369fff",
@@ -78735,10 +79104,10 @@
         "kind": "claim",
         "text": "absorb proposes mutations from the tree: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && printf 'fn demo() {}\\n' > \"$tmp/src.rs\" && loom codefile add --graph \"$tmp\" src.rs && loom absorb --graph \"$tmp\" --json && rm -rf \"$tmp\"` exit 0"
       },
-      "recorded_at": "2026-08-02T12:20:43.405Z"
+      "recorded_at": "2026-08-02T12:25:37.902Z"
     },
     {
-      "id": "ea3cc73a9cc872f14",
+      "id": "e2c8a76b7eea5e3eb",
       "fact_id": "fd46b5942b79513b6",
       "payload": {
         "kind": "run",
@@ -78746,19 +79115,19 @@
         "command": "loom journey run 'loom writes the graph from what it observed'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "b6def70c0ce26d27",
+        "stdout_hash": "6d14bb3e312772fb",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (234be27b) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.mA3qQo9KaG/.loom\nregistered 1 codefile(s) (1 matched, 0 already present)\nnext: loom sync\n{\n  \"items\": [\n    {\n      \"evidence\": {\n        \"file\": \"src.rs\",\n        \"fingerprint\": \"64110968dae23f0d\",\n        \"symbol\": \"\"\n      },\n      \"intent_id\": null,\n      \"kind\": \"resolve_coverage\",\n      \"needs\": [\n        \"which behavior this file realizes, or that it is a seam\"\n      ],\n      \"text\": \"src.rs is registered but no behavior owns it\"\n    }\n  ],\n  \"needs_you\": 1,\n  \"proposal\": \"db55c7c590a79f3428de734ad92568a7\",\n  \"ready\": 0\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (d638389f) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.T5aPinHoDS/.loom\nregistered 1 codefile(s) (1 matched, 0 already present)\nnext: loom sync\n{\n  \"items\": [\n    {\n      \"evidence\": {\n        \"file\": \"src.rs\",\n        \"fingerprint\": \"64110968dae23f0d\",\n        \"symbol\": \"\"\n      },\n      \"intent_id\": null,\n      \"kind\": \"resolve_coverage\",\n      \"needs\": [\n        \"which behavior this file realizes, or that it is a seam\"\n      ],\n      \"text\": \"src.rs is registered but no behavior owns it\"\n    }\n  ],\n  \"needs_you\": 1,\n  \"proposal\": \"c93d4bde5f03b4c49a2f7f83f4a1a536\",\n  \"ready\": 0\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/absorb.rs": "8e44eb42c88a3428",
           "tests/ring26_absorb.rs": "e897c8cfaf707f9c"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785673243402",
+        "ran_at": "1785673537899",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:43.405Z"
+      "recorded_at": "2026-08-02T12:25:37.902Z"
     },
     {
       "id": "e8b1481023a4cdc75",
@@ -78835,7 +79204,16 @@
       "recorded_at": "2026-08-01T18:49:53.696Z"
     },
     {
-      "id": "e0ea17f0bd645e5b2",
+      "id": "e90205f32c8bbcac9",
+      "fact_id": "fd708b05559a11afa",
+      "payload": {
+        "kind": "claim",
+        "text": "an unratified intent leaves the ladder ungated: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature && loom status --graph \"$tmp\" --json && rm -rf \"$tmp\"` exit 0"
+      },
+      "recorded_at": "2026-08-02T12:25:37.737Z"
+    },
+    {
+      "id": "eb84bcb0367cace14",
       "fact_id": "fd708b05559a11afa",
       "payload": {
         "kind": "run",
@@ -78843,28 +79221,19 @@
         "command": "loom journey run 'absent ratification does not gate the ladder'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "bdc75716da69e2f6",
+        "stdout_hash": "b6827b57e4f82161",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (33535878) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.cbHvfEs4yl/.loom\nadded intent 'unspoken behavior' [2f74bab6]\nnext: loom status\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 0,\n    \"registered\": 0,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\"\n  },\n  \"counts\": {\n    \"codefiles\": 0,\n    \"edges\": 0,\n    \"intents\": 1\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"335358784e580f7e3f98db2acebce24e\",\n    \"name\": \"t\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 0,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 0,\n    \"open_findings\": 0,\n    \"open_questions\": 0,\n    \"planned\": 1,\n    \"resolved_findings\": 0,\n    \"stale\": 0,\n    \"stale_findings\": 0,\n    \"uninspected\": 0,\n    \"untriaged\": 0\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 3,\n      \"derived\": 0,\n      \"ratio\": 0.0\n    },\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"1 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 1,\n        \"detail\": \"1 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 registered: 0 passed, 0 failed, 0 blocked, 0 not_run, 0 unproven implemented intent(s), 0 unrun/stale proof edge(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"not_applicable\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected, 0 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 doctor issue(s), 0 open smell(s), 0 self-audit finding(s)\",\n        \"lane\": \"audit\",\n        \"name\": \"sound\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 1,\n        \"detail\": \"loom.graph.json missing or stale\",\n        \"lane\": \"export\",\n        \"name\": \"published\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 behavior(s) worth strengthening\",\n        \"lane\": \"deepen\",\n        \"name\": \"deepening\",\n        \"state\": \"not_applicable\"\n      }\n    ],\n    \"truth_axis\": \"implementation\"\n  },\n  \"queues\": {\n    \"analyze\": 0,\n    \"audit\": 0,\n    \"build\": 1,\n    \"coverage\": 0,\n    \"deepen\": 0,\n    \"elaborate\": 0,\n    \"export\": 1,\n    \"fix\": 0,\n    \"prove\": 0,\n    \"quality\": 0,\n    \"ratify\": 0,\n    \"review\": 0,\n    \"seed\": 0,\n    \"triage\": 0,\n    \"validate\": 0\n  },\n  \"validation_summary\": {\n    \"blocked\": 0,\n    \"failed\": 0,\n    \"not_run\": 0,\n    \"other\": 0,\n    \"passed\": 0,\n    \"registered\": 0\n  }\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (e603509d) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.84mRK9ybRD/.loom\nadded intent 'unspoken behavior' [cfe3c28e]\nnext: loom status\n{\n  \"code_ownership\": {\n    \"blocking\": false,\n    \"observed\": 0,\n    \"owned\": 0,\n    \"registered\": 0,\n    \"unowned\": 0,\n    \"unowned_files\": []\n  },\n  \"compass\": {\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\"\n  },\n  \"counts\": {\n    \"codefiles\": 0,\n    \"edges\": 0,\n    \"intents\": 1\n  },\n  \"detectors\": {\n    \"layering\": {\n      \"armed\": false,\n      \"layer_count\": 0,\n      \"layers\": [],\n      \"order\": [],\n      \"warning\": \"fewer than two layers declared\"\n    }\n  },\n  \"graph\": {\n    \"graph_id\": \"e603509dff24b62ca796ddc01a290a7f\",\n    \"name\": \"t\",\n    \"observed\": false,\n    \"schema_version\": 6\n  },\n  \"graph_state\": {\n    \"findings\": 0,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"needed\": 0,\n    \"open_findings\": 0,\n    \"open_questions\": 0,\n    \"planned\": 1,\n    \"resolved_findings\": 0,\n    \"stale\": 0,\n    \"stale_findings\": 0,\n    \"uninspected\": 0,\n    \"untriaged\": 0\n  },\n  \"maturity\": {\n    \"derived_floor\": {\n      \"asserted\": 3,\n      \"derived\": 0,\n      \"ratio\": 0.0\n    },\n    \"next_command\": \"loom next --mode build\",\n    \"phase\": \"build\",\n    \"rung\": \"grounded\",\n    \"rungs\": [\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"1 active intent(s)\",\n        \"lane\": \"seed\",\n        \"name\": \"seeded\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 0,\n        \"detail\": \"0 failing claim(s)\",\n        \"lane\": \"fix\",\n        \"name\": \"repaired\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": false,\n        \"depth\": 1,\n        \"detail\": \"1 unrealized, 0 ungrounded implemented intent(s)\",\n        \"lane\": \"build\",\n        \"name\": \"grounded\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unowned codefile(s)\",\n        \"lane\": \"coverage\",\n        \"name\": \"covered\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 registered: 0 passed, 0 failed, 0 blocked, 0 not_run, 0 unproven implemented intent(s), 0 unrun/stale proof edge(s)\",\n        \"lane\": \"validate\",\n        \"name\": \"proven\",\n        \"state\": \"not_applicable\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected, 0 never-measured rule pair(s)\",\n        \"lane\": \"quality\",\n        \"name\": \"measured\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 stale, 0 uninspected relationship claim(s)\",\n        \"lane\": \"analyze\",\n        \"name\": \"inspected\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 verdict(s) below the review floor\",\n        \"lane\": \"review\",\n        \"name\": \"reviewed\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 unjudged/stale finding(s), 0 new inbox item(s)\",\n        \"lane\": \"triage\",\n        \"name\": \"triaged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 proposed hypothesis(es)\",\n        \"lane\": \"prove\",\n        \"name\": \"investigated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 user-visible idea(s) with open completeness axes\",\n        \"lane\": \"elaborate\",\n        \"name\": \"elaborated\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 divergence(s) where judgment and evidence disagree\",\n        \"lane\": \"divergence\",\n        \"name\": \"converged\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 doctor issue(s), 0 open smell(s), 0 self-audit finding(s)\",\n        \"lane\": \"audit\",\n        \"name\": \"sound\",\n        \"state\": \"met\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 1,\n        \"detail\": \"loom.graph.json missing or stale\",\n        \"lane\": \"export\",\n        \"name\": \"published\",\n        \"state\": \"unmet\"\n      },\n      {\n        \"blocked\": true,\n        \"blocked_by\": \"grounded\",\n        \"depth\": 0,\n        \"detail\": \"0 behavior(s) worth strengthening\",\n        \"lane\": \"deepen\",\n        \"name\": \"deepening\",\n        \"state\": \"not_applicable\"\n      }\n    ],\n    \"truth_axis\": \"implementation\"\n  },\n  \"queues\": {\n    \"analyze\": 0,\n    \"audit\": 0,\n    \"build\": 1,\n    \"coverage\": 0,\n    \"deepen\": 0,\n    \"elaborate\": 0,\n    \"export\": 1,\n    \"fix\": 0,\n    \"prove\": 0,\n    \"quality\": 0,\n    \"ratify\": 0,\n    \"review\": 0,\n    \"seed\": 0,\n    \"triage\": 0,\n    \"validate\": 0\n  },\n  \"validation_summary\": {\n    \"blocked\": 0,\n    \"failed\": 0,\n    \"not_run\": 0,\n    \"other\": 0,\n    \"passed\": 0,\n    \"registered\": 0\n  }\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/workitem/queues.rs": "518bbe2fb5a86d53",
           "tests/ring14_ratify.rs": "991eedf0b9a33859"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785673243237",
+        "ran_at": "1785673537734",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:43.240Z"
-    },
-    {
-      "id": "e90205f32c8bbcac9",
-      "fact_id": "fd708b05559a11afa",
-      "payload": {
-        "kind": "claim",
-        "text": "an unratified intent leaves the ladder ungated: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature && loom status --graph \"$tmp\" --json && rm -rf \"$tmp\"` exit 0"
-      },
-      "recorded_at": "2026-08-02T12:20:43.240Z"
+      "recorded_at": "2026-08-02T12:25:37.737Z"
     },
     {
       "id": "e14d749a8a6e7ff69",
@@ -79745,6 +80114,15 @@
       "recorded_at": "2026-08-01T19:00:31.045Z"
     },
     {
+      "id": "e695cd8f6cf4626ab",
+      "fact_id": "fe021b5982cf33e55",
+      "payload": {
+        "kind": "claim",
+        "text": "src/research.rs — scanned 1 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:22:40.327Z"
+    },
+    {
       "id": "e7c80b331ac813cf9",
       "fact_id": "fe0290ebc45b8c533",
       "payload": {
@@ -79781,10 +80159,10 @@
         "kind": "claim",
         "text": "deepen ranks the weakest standing claim: `loom deepen --json` exit 0"
       },
-      "recorded_at": "2026-08-02T12:19:42.869Z"
+      "recorded_at": "2026-08-02T12:24:35.709Z"
     },
     {
-      "id": "e8a334424e6ee3511",
+      "id": "efbcb367d084c6f48",
       "fact_id": "fe0f2715d69c34714",
       "payload": {
         "kind": "run",
@@ -79792,19 +80170,19 @@
         "command": "loom journey run 'a green graph is pointed at its weakest standing claim'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "d45631344b2379db",
+        "stdout_hash": "8a0ccb38cf2454d8",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\n[\n  {\n    \"intent_id\": \"59f3d2be0ec4c6138631c3fc2f034376\",\n    \"intent_name\": \"the CLI dispatches every operation through typed handlers\",\n    \"score\": 0.06020032235781718,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.20066774119272393,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"737461675358638a9d38e30546eb4db2\",\n    \"intent_name\": \"a symbol with no callers reports empty impact rather than erroring\",\n    \"score\": 0.023658761224959704,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.07886253741653235,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"5cd898b6196450ac49f9a7d3d86db3e9\",\n    \"intent_name\": \"an ambiguous name resolves heuristically by file proximity and is labeled heuristic\",\n    \"score\": 0.023658761224959704,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.07886253741653235,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"5c18f06b58b4aa0d81e8ac7cf8e7079f\",\n    \"intent_name\": \"an unresolved call is counted as unresolved, never guessed\",\n    \"score\": 0.023658761224959704,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.07886253741653235,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"be6570d7348fa6fe2f64b70f8b6d3d60\",\n    \"intent_name\": \"loom runs proofs and reports what it observed\",\n    \"score\": 0.022334791618696753,\n    \"next_move\": \"strengthen_assertions\",\n    \"why\": \"this proof establishes that the code runs, not that it works — assert something about what it produces\",\n    \"blast_radius\": 0.044669583237393506,\n    \"proof_strength\": \"S0\",\n    \"evidence_age_days\": 0\n  }\n]\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\n[\n  {\n    \"intent_id\": \"59f3d2be0ec4c6138631c3fc2f034376\",\n    \"intent_name\": \"the CLI dispatches every operation through typed handlers\",\n    \"score\": 0.06020032235781718,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.20066774119272393,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"737461675358638a9d38e30546eb4db2\",\n    \"intent_name\": \"a symbol with no callers reports empty impact rather than erroring\",\n    \"score\": 0.023658761224959704,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.07886253741653235,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"5cd898b6196450ac49f9a7d3d86db3e9\",\n    \"intent_name\": \"an ambiguous name resolves heuristically by file proximity and is labeled heuristic\",\n    \"score\": 0.023658761224959704,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.07886253741653235,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"5c18f06b58b4aa0d81e8ac7cf8e7079f\",\n    \"intent_name\": \"an unresolved call is counted as unresolved, never guessed\",\n    \"score\": 0.023658761224959704,\n    \"next_move\": \"anchor_to_code\",\n    \"why\": \"nothing this proof runs reaches the symbol the behavior is grounded in, so it could pass forever while the behavior is broken\",\n    \"blast_radius\": 0.07886253741653235,\n    \"proof_strength\": \"S2\",\n    \"evidence_age_days\": 0\n  },\n  {\n    \"intent_id\": \"418b5ebb5624aafa8df49c4f826c1d20\",\n    \"intent_name\": \"loom maintains a falsifiable graph for LLM-driven codebase work\",\n    \"score\": 0.01782178217821782,\n    \"next_move\": \"freeze_baseline\",\n    \"why\": \"freeze a baseline so a change in the SHAPE of the output is noticed, not just a change in pass/fail\",\n    \"blast_radius\": 0.0891089108910891,\n    \"proof_strength\": \"S3\",\n    \"evidence_age_days\": 0\n  }\n]\n\nstderr:\n\nexit:0",
         "covered": {
           "src/risk.rs": "16ce4a78326c6be6",
           "tests/ring25_audit_deepen.rs": "47e9a8a8e871530e"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785673182866",
+        "ran_at": "1785673475706",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:19:42.869Z"
+      "recorded_at": "2026-08-02T12:24:35.709Z"
     },
     {
       "id": "e37437fa6c8b62544",
@@ -80069,10 +80447,10 @@
         "kind": "claim",
         "text": "the ratify lane serves a divergence: `loom next --mode ratify --json` exit 0"
       },
-      "recorded_at": "2026-08-02T12:19:58.409Z"
+      "recorded_at": "2026-08-02T12:24:51.521Z"
     },
     {
-      "id": "e8c5d161bd30903ce",
+      "id": "e56bc92157ede9386",
       "fact_id": "fe453eab9bf8f118c",
       "payload": {
         "kind": "run",
@@ -80080,19 +80458,19 @@
         "command": "loom journey run 'divergences reach the human, not the machine'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "d05cf20a21b72d96",
+        "stdout_hash": "0efdf0f7e99d4153",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\n{\n  \"work_item\": {\n    \"packet_id\": \"pkt-1785673198281-0\",\n    \"mode\": \"ratify\",\n    \"owner_role\": \"human\",\n    \"effort\": \"low\",\n    \"routing_hint\": \"judgment\",\n    \"reason\": \"discovered behavior: 'loom answers what a change here could reach' — realized in src/callgraph.rs, proven by loom answers what a change here could reach, exercised directly\",\n    \"target\": {\n      \"kind\": \"intent\",\n      \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n      \"name\": \"loom answers what a change here could reach\"\n    },\n    \"prompt_contract\": {\n      \"role\": \"human\",\n      \"mindset\": \"Product authority. Decide whether this behavior is wanted. An LLM presenting this packet summarizes the intent and stops — it must not ratify, and it must not answer for the human.\",\n      \"why_now\": \"the intent's wantedness is unestablished: minted without ratification, or redefined after it\",\n      \"allowed_actions\": [\n        \"loom intent show cde73673\",\n        \"loom intent ratify cde73673 --evidence <why this is wanted>\",\n        \"loom intent retire cde73673 --reason <why it is not wanted>\",\n        \"loom intent update cde73673 --description <corrected criterion> --reason <…>  (then re-ratify)\"\n      ],\n      \"forbidden_actions\": [\n        \"ratifying from an llm:* lane (INV-8 — the write boundary rejects it; do not work around it)\",\n        \"treating silence or plausibility as ratification\"\n      ],\n      \"required_evidence\": \"the human's reason this behavior is wanted: an utterance, a source doc, a decision\",\n      \"evidence_clauses\": [\n        {\n          \"clause\": \"prose\"\n        },\n        {\n          \"clause\": \"verification_at_least\",\n          \"level\": \"cited\"\n        }\n      ],\n      \"write_back\": \"loom intent ratify cde73673 --evidence '…'\",\n      \"stop_condition\": \"if no human is present, stop — batch ratify packets for the next human session instead of draining them\",\n      \"human_gate\": \"ratification is human-only: present the packet, then wait for the human's decision\"\n    },\n    \"context\": {\n      \"purpose\": \"Present this divergence to the human with the evidence already gathered, and both prefilled commands. The ratify/reject decision is theirs.\",\n      \"linked_entities\": [\n        {\n          \"role\": \"target\",\n          \"kind\": \"intent\",\n          \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n          \"name\": \"loom answers what a change here could reach\",\n          \"description\": \"A call graph resolved from extraction across languages, reporting exact and heuristic resolutions separately rather than blending them into a number nobody can act on.\",\n          \"status\": \"implemented\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"1ede954da478af5b00a73a4d87885765\",\n          \"name\": \"d23f5c463fb1e4861 governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d23f5c463fb1e4861\",\n          \"name\": \"iso5055-rel-resource-release\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"74f3595c2b14d0ab8b1e7ad53872a1a4\",\n          \"name\": \"d2e01de8af8327d1b governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d2e01de8af8327d1b\",\n          \"name\": \"iso5055-main-no-dead-or-duplicate-code\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"419bf331af3e7bab806d5d32514f7b00\",\n          \"name\": \"d9697ad2cc3ba5d0c governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"independent\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d9697ad2cc3ba5d0c\",\n          \"name\": \"iso5055-rel-no-unchecked-failure\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"\n…[6680 bytes omitted]…\nshow da0094e3c821d6b7d\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 07fbd28fdc263bd0650d1d3dc0c6fe5e\"\n        },\n        {\n          \"reason\": \"inspect incoming_governs\",\n          \"command\": \"loom rule show dfe31470815685fd8\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7104d6aab8de21c5d1630196344ef7de\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show 34892231367b73f6aecf8a6f858f8b35\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 1d13ec8e5e213c0016b4baec8670e5c5\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show e8144eba31454517f0347a52ee443987\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 676ee19d6d5451a558219e93e385c029\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show fbff97dbe5292fc4602c6058c57d38f9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 9375303a54a75e13bab852b008152945\"\n        },\n        {\n          \"reason\": \"inspect outgoing_relates\",\n          \"command\": \"loom intent show 532576fe14cb8bc3d398797ca58f08c0\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7af99fd2468ef0d64f19f72a7b430dc0\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5c18f06b58b4aa0d81e8ac7cf8e7079f\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show e850e38c9ef9350f4cb089032a804aa3\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5cd898b6196450ac49f9a7d3d86db3e9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 453df69bb981755567276593f059ca5c\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 737461675358638a9d38e30546eb4db2\"\n        }\n      ],\n      \"read_set\": [\n        {\n          \"path\": \"src/callgraph.rs\",\n          \"locator\": \"build\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"src/extract/calls.rs\",\n          \"locator\": \"extract_calls\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"tests/ring5.rs\",\n          \"why\": \"exercises intent 'loom answers what a change here could reach' across a seam (verifies) — context, not where the behavior lives\"\n        }\n      ]\n    },\n    \"truth_gap\": {\n      \"axis\": \"intent\",\n      \"missing_form\": \"behavior is not named as an intent\",\n      \"correct_when\": \"each active intent names exactly one falsifiable behavior, sized for reuse: small enough to recur under multiple parents (overlap with other intents is acceptable), big enough that the graph does not devolve into noise. If the description needs 'and', split it; if the name is just a function/symbol, it is a locator on an implements edge, not an intent\",\n      \"authoritative_write\": \"loom door \\\"<utterance>\\\" then loom intent add --name … --description …\",\n      \"forbidden_write\": \"writing code or proofs before the behavior is named\",\n      \"after_write\": \"loom status\"\n    },\n    \"next_step\": \"loom intent ratify cde73673 --evidence '<why this is wanted>' — or — loom intent reject cde73673 --reason '<why this is not>'\"\n  },\n  \"graph_state\": {\n    \"planned\": 0,\n    \"stale\": 49,\n    \"uninspected\": 0,\n    \"findings\": 128,\n    \"untriaged\": 6,\n    \"stale_findings\": 5,\n    \"needed\": 69,\n    \"open_findings\": 77,\n    \"resolved_findings\": 51,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"open_questions\": 0\n  }\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\n{\n  \"work_item\": {\n    \"packet_id\": \"pkt-1785673491399-0\",\n    \"mode\": \"ratify\",\n    \"owner_role\": \"human\",\n    \"effort\": \"low\",\n    \"routing_hint\": \"judgment\",\n    \"reason\": \"discovered behavior: 'loom answers what a change here could reach' — realized in src/callgraph.rs, proven by loom answers what a change here could reach, exercised directly\",\n    \"target\": {\n      \"kind\": \"intent\",\n      \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n      \"name\": \"loom answers what a change here could reach\"\n    },\n    \"prompt_contract\": {\n      \"role\": \"human\",\n      \"mindset\": \"Product authority. Decide whether this behavior is wanted. An LLM presenting this packet summarizes the intent and stops — it must not ratify, and it must not answer for the human.\",\n      \"why_now\": \"the intent's wantedness is unestablished: minted without ratification, or redefined after it\",\n      \"allowed_actions\": [\n        \"loom intent show cde73673\",\n        \"loom intent ratify cde73673 --evidence <why this is wanted>\",\n        \"loom intent retire cde73673 --reason <why it is not wanted>\",\n        \"loom intent update cde73673 --description <corrected criterion> --reason <…>  (then re-ratify)\"\n      ],\n      \"forbidden_actions\": [\n        \"ratifying from an llm:* lane (INV-8 — the write boundary rejects it; do not work around it)\",\n        \"treating silence or plausibility as ratification\"\n      ],\n      \"required_evidence\": \"the human's reason this behavior is wanted: an utterance, a source doc, a decision\",\n      \"evidence_clauses\": [\n        {\n          \"clause\": \"prose\"\n        },\n        {\n          \"clause\": \"verification_at_least\",\n          \"level\": \"cited\"\n        }\n      ],\n      \"write_back\": \"loom intent ratify cde73673 --evidence '…'\",\n      \"stop_condition\": \"if no human is present, stop — batch ratify packets for the next human session instead of draining them\",\n      \"human_gate\": \"ratification is human-only: present the packet, then wait for the human's decision\"\n    },\n    \"context\": {\n      \"purpose\": \"Present this divergence to the human with the evidence already gathered, and both prefilled commands. The ratify/reject decision is theirs.\",\n      \"linked_entities\": [\n        {\n          \"role\": \"target\",\n          \"kind\": \"intent\",\n          \"id\": \"cde73673e54340c65e7e91db1c0cc44b\",\n          \"name\": \"loom answers what a change here could reach\",\n          \"description\": \"A call graph resolved from extraction across languages, reporting exact and heuristic resolutions separately rather than blending them into a number nobody can act on.\",\n          \"status\": \"implemented\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"1ede954da478af5b00a73a4d87885765\",\n          \"name\": \"d23f5c463fb1e4861 governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d23f5c463fb1e4861\",\n          \"name\": \"iso5055-rel-resource-release\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"74f3595c2b14d0ab8b1e7ad53872a1a4\",\n          \"name\": \"d2e01de8af8327d1b governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"passing\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d2e01de8af8327d1b\",\n          \"name\": \"iso5055-main-no-dead-or-duplicate-code\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"edge\",\n          \"id\": \"419bf331af3e7bab806d5d32514f7b00\",\n          \"name\": \"d9697ad2cc3ba5d0c governs cde73673e54340c65e7e91db1c0cc44b\",\n          \"edge_kind\": \"governs\",\n          \"edge_status\": \"independent\"\n        },\n        {\n          \"role\": \"incoming_governs\",\n          \"kind\": \"quality_rule\",\n          \"id\": \"d9697ad2cc3ba5d0c\",\n          \"name\": \"iso5055-rel-no-unchecked-failure\"\n        },\n        {\n          \"role\": \"linked_edge\",\n          \"kind\": \"\n…[6680 bytes omitted]…\nshow da0094e3c821d6b7d\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 07fbd28fdc263bd0650d1d3dc0c6fe5e\"\n        },\n        {\n          \"reason\": \"inspect incoming_governs\",\n          \"command\": \"loom rule show dfe31470815685fd8\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7104d6aab8de21c5d1630196344ef7de\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show 34892231367b73f6aecf8a6f858f8b35\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 1d13ec8e5e213c0016b4baec8670e5c5\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show e8144eba31454517f0347a52ee443987\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 676ee19d6d5451a558219e93e385c029\"\n        },\n        {\n          \"reason\": \"inspect outgoing_implements\",\n          \"command\": \"loom codefile show fbff97dbe5292fc4602c6058c57d38f9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 9375303a54a75e13bab852b008152945\"\n        },\n        {\n          \"reason\": \"inspect outgoing_relates\",\n          \"command\": \"loom intent show 532576fe14cb8bc3d398797ca58f08c0\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 7af99fd2468ef0d64f19f72a7b430dc0\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5c18f06b58b4aa0d81e8ac7cf8e7079f\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show e850e38c9ef9350f4cb089032a804aa3\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 5cd898b6196450ac49f9a7d3d86db3e9\"\n        },\n        {\n          \"reason\": \"inspect linked edge\",\n          \"command\": \"loom edge show 453df69bb981755567276593f059ca5c\"\n        },\n        {\n          \"reason\": \"inspect incoming_scenario_of\",\n          \"command\": \"loom intent show 737461675358638a9d38e30546eb4db2\"\n        }\n      ],\n      \"read_set\": [\n        {\n          \"path\": \"src/callgraph.rs\",\n          \"locator\": \"build\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"src/extract/calls.rs\",\n          \"locator\": \"extract_calls\",\n          \"why\": \"grounds intent 'loom answers what a change here could reach' (realizes — behavior lives here)\"\n        },\n        {\n          \"path\": \"tests/ring5.rs\",\n          \"why\": \"exercises intent 'loom answers what a change here could reach' across a seam (verifies) — context, not where the behavior lives\"\n        }\n      ]\n    },\n    \"truth_gap\": {\n      \"axis\": \"intent\",\n      \"missing_form\": \"behavior is not named as an intent\",\n      \"correct_when\": \"each active intent names exactly one falsifiable behavior, sized for reuse: small enough to recur under multiple parents (overlap with other intents is acceptable), big enough that the graph does not devolve into noise. If the description needs 'and', split it; if the name is just a function/symbol, it is a locator on an implements edge, not an intent\",\n      \"authoritative_write\": \"loom door \\\"<utterance>\\\" then loom intent add --name … --description …\",\n      \"forbidden_write\": \"writing code or proofs before the behavior is named\",\n      \"after_write\": \"loom status\"\n    },\n    \"next_step\": \"loom intent ratify cde73673 --evidence '<why this is wanted>' — or — loom intent reject cde73673 --reason '<why this is not>'\"\n  },\n  \"graph_state\": {\n    \"planned\": 0,\n    \"stale\": 49,\n    \"uninspected\": 0,\n    \"findings\": 127,\n    \"untriaged\": 5,\n    \"stale_findings\": 5,\n    \"needed\": 69,\n    \"open_findings\": 76,\n    \"resolved_findings\": 51,\n    \"inbox\": 0,\n    \"low_confidence\": 0,\n    \"open_questions\": 0\n  }\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/divergence.rs": "e1596fe4e75e470f",
           "tests/ring14_ratify.rs": "991eedf0b9a33859"
         },
         "assertions": 1,
         "duration_ms": 0,
-        "ran_at": "1785673198406",
+        "ran_at": "1785673491519",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:19:58.409Z"
+      "recorded_at": "2026-08-02T12:24:51.521Z"
     },
     {
       "id": "e0516b7b8c17e9a88",
@@ -80157,6 +80535,37 @@
         "hash": "4ce6220e5b8c4a1e"
       },
       "recorded_at": "2026-08-01T18:49:53.682Z"
+    },
+    {
+      "id": "eafc3266281f9f264",
+      "fact_id": "fe54a5675f31e1b34",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/pattern_cmd.rs, src/pattern.rs — scanned 2 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:23:22.823Z"
+    },
+    {
+      "id": "ebb7b355226ada130",
+      "fact_id": "fe54a5675f31e1b34",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 2 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/commands/pattern_cmd.rs": "7baac6c483191d17",
+          "src/pattern.rs": "0a0a2e230255a786"
+        },
+        "assertions": 3,
+        "duration_ms": 0,
+        "ran_at": "1785673402831",
+        "loom_version": "0.28.0"
+      },
+      "recorded_at": "2026-08-02T12:23:22.823Z"
     },
     {
       "id": "e35a4ca56ddb0dc49",
@@ -81564,6 +81973,36 @@
       "recorded_at": "2026-08-02T12:14:56.019Z"
     },
     {
+      "id": "e2e0400787631e2e6",
+      "fact_id": "ff8353fe1f7ee5c09",
+      "payload": {
+        "kind": "claim",
+        "text": "src/research.rs — scanned 1 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:22:57.325Z"
+    },
+    {
+      "id": "e731ea56a1bd026c0",
+      "fact_id": "ff8353fe1f7ee5c09",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 1 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/research.rs": "52f19bf4680120aa"
+        },
+        "assertions": 2,
+        "duration_ms": 0,
+        "ran_at": "1785673377329",
+        "loom_version": "0.28.0"
+      },
+      "recorded_at": "2026-08-02T12:22:57.325Z"
+    },
+    {
       "id": "e65e61ed5e2f4f43f",
       "fact_id": "ff8370d1ba278272d",
       "payload": {
@@ -81791,16 +82230,7 @@
       "recorded_at": "2026-08-01T18:49:53.505Z"
     },
     {
-      "id": "e8a58d0fbaf35fca4",
-      "fact_id": "ffa33f0eaac07cdb6",
-      "payload": {
-        "kind": "claim",
-        "text": "editing the grounded symbol stales the verdict: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'demo behavior' --description 'does something' --level feature && printf 'fn demo() {}\\n' > \"$tmp/src.rs\" && loom codefile add --graph \"$tmp\" src.rs && loom edge implement --graph \"$tmp\" 'demo behavior' src.rs --locator 'fn demo' && eid=$(loom edge list --graph \"$tmp\" --json | python3 -c \"import json,sys; print(json.load(sys.stdin)['items'][0]['id'])\") && loom edge verdict --graph \"$tmp\" \"$eid\" ground --criterion 'demo grounding' --evidence 'src.rs:1 — fn demo realizes the behavior' && loom sync --graph \"$tmp\" && printf 'fn other() {}\\n' > \"$tmp/src.rs\" && loom sync --graph \"$tmp\" --json && rm -rf \"$tmp\"` exit 0"
-      },
-      "recorded_at": "2026-08-02T12:20:20.266Z"
-    },
-    {
-      "id": "ee36ee70d24c9802b",
+      "id": "e5ffd667012ddd4dd",
       "fact_id": "ffa33f0eaac07cdb6",
       "payload": {
         "kind": "run",
@@ -81808,19 +82238,28 @@
         "command": "loom journey run 'a settled claim re-opens when its anchor moves'",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "777f0ae299878c3e",
+        "stdout_hash": "365ee72740520251",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "stdout:\ninitialized graph 't' (6ae7f975) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.WvFVSDZ4Um/.loom\nadded intent 'demo behavior' [6d2b864b]\nnext: loom status\nregistered 1 codefile(s) (1 matched, 0 already present)\nnext: loom sync\ngrounded 'demo behavior' in 'src.rs' as realizes [b5b2f289]\nnext: loom sync\nrecorded passing on edge [b5b2f289]\nnext: loom status\nsync: 1 scanned, 0 changed, 0 edges staled, 0 validations reset, 0 findings\n{\n  \"contracts_reset\": 0,\n  \"edges_spared\": 0,\n  \"edges_staled\": 1,\n  \"federation\": {\n    \"edges_staled\": 0,\n    \"shadows_created\": 0,\n    \"shadows_updated\": 0,\n    \"upstreams_checked\": 0\n  },\n  \"files_changed\": 1,\n  \"files_deleted\": 0,\n  \"files_scanned\": 1,\n  \"findings\": 0,\n  \"missing\": [],\n  \"new_files\": [],\n  \"new_observed\": 0,\n  \"reexported\": false,\n  \"surfaces_affected\": 0,\n  \"validations_reset\": 0,\n  \"wiki_staled\": 0\n}\n\nstderr:\n\nexit:0",
+        "stdout_excerpt": "stdout:\ninitialized graph 't' (71ffc8df) at /var/folders/jl/0ytjkq411f96wd9_txdvchs40000gn/T/tmp.27rDlP2L8G/.loom\nadded intent 'demo behavior' [47cbe1b4]\nnext: loom status\nregistered 1 codefile(s) (1 matched, 0 already present)\nnext: loom sync\ngrounded 'demo behavior' in 'src.rs' as realizes [2ddee11e]\nnext: loom sync\nrecorded passing on edge [2ddee11e]\nnext: loom status\nsync: 1 scanned, 0 changed, 0 edges staled, 0 validations reset, 0 findings\n{\n  \"contracts_reset\": 0,\n  \"edges_spared\": 0,\n  \"edges_staled\": 1,\n  \"federation\": {\n    \"edges_staled\": 0,\n    \"shadows_created\": 0,\n    \"shadows_updated\": 0,\n    \"upstreams_checked\": 0\n  },\n  \"files_changed\": 1,\n  \"files_deleted\": 0,\n  \"files_scanned\": 1,\n  \"findings\": 0,\n  \"missing\": [],\n  \"new_files\": [],\n  \"new_observed\": 0,\n  \"reexported\": false,\n  \"surfaces_affected\": 0,\n  \"validations_reset\": 0,\n  \"wiki_staled\": 0\n}\n\nstderr:\n\nexit:0",
         "covered": {
           "src/sync.rs": "826f51db17b1b092",
           "tests/ring13_precision.rs": "e038847624a792cd"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785673220263",
+        "ran_at": "1785673513619",
         "loom_version": "0.28.0"
       },
-      "recorded_at": "2026-08-02T12:20:20.266Z"
+      "recorded_at": "2026-08-02T12:25:13.622Z"
+    },
+    {
+      "id": "e8a58d0fbaf35fca4",
+      "fact_id": "ffa33f0eaac07cdb6",
+      "payload": {
+        "kind": "claim",
+        "text": "editing the grounded symbol stales the verdict: `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'demo behavior' --description 'does something' --level feature && printf 'fn demo() {}\\n' > \"$tmp/src.rs\" && loom codefile add --graph \"$tmp\" src.rs && loom edge implement --graph \"$tmp\" 'demo behavior' src.rs --locator 'fn demo' && eid=$(loom edge list --graph \"$tmp\" --json | python3 -c \"import json,sys; print(json.load(sys.stdin)['items'][0]['id'])\") && loom edge verdict --graph \"$tmp\" \"$eid\" ground --criterion 'demo grounding' --evidence 'src.rs:1 — fn demo realizes the behavior' && loom sync --graph \"$tmp\" && printf 'fn other() {}\\n' > \"$tmp/src.rs\" && loom sync --graph \"$tmp\" --json && rm -rf \"$tmp\"` exit 0"
+      },
+      "recorded_at": "2026-08-02T12:25:13.622Z"
     },
     {
       "id": "e6f455cbf16a76510",
@@ -82093,6 +82532,46 @@
         "hash": "387ca4dce9dcea49"
       },
       "recorded_at": "2026-08-02T08:09:04.401Z"
+    },
+    {
+      "id": "e7e2f7cd6035c1079",
+      "fact_id": "ffd69643f4be1bdd8",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/pattern_cmd.rs, src/pattern.rs — scanned 2 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:22:31.849Z"
+    },
+    {
+      "id": "ec84f4c14d1ddf6af",
+      "fact_id": "ffd69643f4be1bdd8",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 2 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/commands/pattern_cmd.rs": "7baac6c483191d17",
+          "src/pattern.rs": "0a0a2e230255a786"
+        },
+        "assertions": 3,
+        "duration_ms": 0,
+        "ran_at": "1785673351855",
+        "loom_version": "0.28.0"
+      },
+      "recorded_at": "2026-08-02T12:22:31.849Z"
+    },
+    {
+      "id": "e818889b0b176205f",
+      "fact_id": "ffd7d8ed2136d243c",
+      "payload": {
+        "kind": "claim",
+        "text": "src/research.rs — scanned 1 realizing file(s); no hit"
+      },
+      "recorded_at": "2026-08-02T12:22:06.233Z"
     },
     {
       "id": "e3e6010f1554058b7",
