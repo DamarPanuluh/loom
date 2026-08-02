@@ -476,3 +476,74 @@ fn coverage_and_the_rung_count_the_same_files() {
         "a test file with a verifies grounding is owned in BOTH: {queue:?}"
     );
 }
+
+/// **A parked verdict is not a burst.**
+///
+/// A Finding is a DERIVED node with a deterministic id: `sync` wipes and
+/// rebuilds it every run, and the adjudication on that id deliberately outlives
+/// it so the verdict re-attaches when the finding recurs
+/// (`wipe_structural_findings` deletes derived finding NODES and never touches
+/// the fact table). A verdict whose subject is not currently derived is
+/// therefore parked, not lost — and this finding's remedy, "re-open them and
+/// judge them individually", cannot be carried out on a subject that is absent.
+///
+/// Counting them produced a burst no action could close: 44 parked verdicts
+/// held loom's own `sound` rung open with no move available.
+#[test]
+fn a_burst_whose_subjects_are_not_currently_derived_is_not_reported() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    for n in 0..loom::audit::BURST_THRESHOLD + 5 {
+        let cf = codefile(&store, &format!("src/f{n}.rs"));
+        let f = store
+            .add_derived_node(
+                NodeType::Finding,
+                &format!("burst-parked-{n}"),
+                &format!("finding {n}"),
+                "flagged",
+                "code_audit",
+                serde_json::json!({ "kind": "code_audit", "file": format!("src/f{n}.rs") }),
+            )
+            .unwrap();
+        store.add_derived_edge(EdgeKind::Flags, &f.id, &cf.id).ok();
+        store
+            .record_finding_verdict(
+                &f.id,
+                "justified",
+                "looked at it",
+                &format!("src/f{n}.rs:1"),
+            )
+            .unwrap();
+    }
+    assert!(
+        loom::audit::run(&store)
+            .unwrap()
+            .iter()
+            .any(|f| f.kind == "judgment_burst"),
+        "precondition: while the subjects are derived, the burst IS reported"
+    );
+
+    // Exactly what a sync rebuild does when the flagged condition stops holding.
+    store.wipe_structural_findings().unwrap();
+
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        !found.iter().any(|f| f.kind == "judgment_burst"),
+        "a burst with nothing left to re-open must not be reported: {found:#?}"
+    );
+
+    // Nothing was erased to achieve that — the verdicts are still in the graph,
+    // waiting to re-attach if the finding recurs.
+    let parked = store
+        .all_facts()
+        .unwrap()
+        .into_iter()
+        .filter(|f| f.claim == loom::model::Claim::Adjudication)
+        .count();
+    assert_eq!(
+        parked,
+        loom::audit::BURST_THRESHOLD + 5,
+        "the adjudications are preserved, not deleted — they are parked"
+    );
+}

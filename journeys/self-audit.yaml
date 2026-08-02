@@ -1,8 +1,39 @@
 journey: the self-audit reports what it finds
 steps:
-  - name: audit surfaces integrity signals and exits non-zero
+  # This step used to assert exit 1 against loom's OWN graph — it proved the
+  # audit works by requiring this repo to be unhealthy, so clearing the last
+  # finding broke the proof. A check that only passes while you are broken is
+  # not a check. The behavior has two halves, and each is now asserted directly.
+  - name: a clean graph is reported as clean
     intent: loom can fail its own falsifiability check
     run: "loom audit --json"
     expect:
+      exit_code: 0
+      # An empty finding set, not a silent success.
+      stdout_contains: ["[]"]
+
+  - name: a seeded defect is detected, named, and exits non-zero
+    intent: loom can fail its own falsifiability check
+    # Seed the very signature the audit exists to catch — a judgment burst —
+    # in a throwaway graph, then require the audit to find it. Detection is
+    # proven against a defect loom created on purpose, so the assertion holds
+    # whatever state this repository happens to be in.
+    #
+    # Every line sits at one indent level: a folded scalar keeps the newline on
+    # any MORE-indented line, which would split a command in half.
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      printf 'pub fn a() {}\n' > "$tmp/f.rs" &&
+      loom codefile add --graph "$tmp" f.rs &&
+      for n in 1 2 3 4 5 6 7 8 9 10 11; do
+      loom finding add --graph "$tmp" "finding $n" --source code_audit --kind code_audit --file f.rs --evidence 'f.rs:1 — observed' --impact 'matters' --confidence 0.8 || exit 1;
+      done &&
+      loom finding list --graph "$tmp" --json | python3 -c "import json,sys;[print(i['node']['id']) for i in json.load(sys.stdin)]" > "$tmp/ids" &&
+      while read -r id; do
+      loom finding verdict --graph "$tmp" "$id" justified --reason 'checked it' --evidence 'f.rs:1' || exit 1;
+      done < "$tmp/ids" &&
+      loom audit --graph "$tmp" --json; rc=$?; rm -rf "$tmp"; exit $rc
+    expect:
       exit_code: 1
-      stdout_contains: ["kind", "detail"]
+      # Named, with a remedy — an audit that only accuses is a scoreboard.
+      stdout_contains: ["kind", "detail", "judgment_burst", "remedy"]

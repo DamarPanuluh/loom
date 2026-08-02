@@ -151,6 +151,25 @@ fn bursts(store: &Store) -> Result<Vec<AuditFinding>> {
         if fact.claim != Claim::Ratification && fact.claim != Claim::Adjudication {
             continue;
         }
+        // Only judgments there is still something to re-open.
+        //
+        // A finding is a DERIVED node with a deterministic id: sync wipes and
+        // rebuilds it every run, and an adjudication on that id deliberately
+        // outlives it so the verdict re-attaches when the finding recurs
+        // (`store::derived`). So a verdict whose subject does not currently
+        // resolve is parked, not lost — and this finding's remedy, "re-open
+        // them and judge them individually", cannot be carried out on a
+        // subject that is not there.
+        //
+        // Counting them made a burst that no action could close: 44 parked
+        // verdicts held the `sound` rung open with no move available. Nothing
+        // is concealed by skipping them, because the verdicts themselves are
+        // preserved; if those findings recur, the subjects resolve again and
+        // the burst returns — correctly, since by then there IS something to
+        // re-judge.
+        if store.get_node(&fact.subject_id)?.is_none() {
+            continue;
+        }
         // Minute precision: the timestamps are ISO-8601, so truncating at the
         // colon before seconds is the whole grouping key.
         let minute: String = fact.asserted_at.chars().take(16).collect();
