@@ -55,8 +55,12 @@ pub fn prescreen(
         let text = fs::read_to_string(root.join(path))
             .with_context(|| format!("reading grounded file '{path}' for quality pre-screen"))?;
 
+        let mut skip = SkipState::default();
         for (line_index, line) in text.lines().enumerate() {
             let line_number = line_index + 1;
+            if skip.skips(line) {
+                continue;
+            }
             for (pattern, regex) in &compiled {
                 if regex.is_match(line) {
                     hits.push(PreScreenHit {
@@ -74,6 +78,72 @@ pub fn prescreen(
     }
 
     Ok(hits)
+}
+
+/// What the scan must not read: prose, and tests.
+///
+/// A comment is not code. Left unfiltered, a rule's own documentation trips it
+/// — the doc comment on `files_realizing` explaining that "a test SHOULD
+/// `.unwrap()`" was itself reported as an unchecked failure, and doc comments
+/// mentioning DELETE or UPDATE were reported as SQL injection.
+///
+/// A `#[cfg(test)]` module is a test even when it lives in a `src/` file. The
+/// grounding-role split stopped whole test FILES being scanned; this stops the
+/// test modules inside source files, which is the same mistake one level down.
+/// `src/store/mod.rs` alone contributed 40 such hits, every one of them inside
+/// `#[cfg(test)]`.
+///
+/// Deliberately conservative: only a line that is ENTIRELY a comment is
+/// skipped. Stripping a trailing `//` would corrupt any line holding a string
+/// with `//` in it, and a real hit sharing a line with a trailing comment is
+/// still a real hit.
+#[derive(Default)]
+struct SkipState {
+    /// Brace depth at which the enclosing `#[cfg(test)]` item opened.
+    test_depth: Option<i32>,
+    /// A `#[cfg(test)]` was seen; the next `{` opens the region it guards.
+    pending_test: bool,
+    depth: i32,
+    in_block_comment: bool,
+}
+
+impl SkipState {
+    fn skips(&mut self, line: &str) -> bool {
+        let trimmed = line.trim();
+
+        if self.in_block_comment {
+            if trimmed.contains("*/") {
+                self.in_block_comment = false;
+            }
+            return true;
+        }
+        if trimmed.starts_with("/*") && !trimmed.contains("*/") {
+            self.in_block_comment = true;
+            return true;
+        }
+        // Line comments and doc comments (`//`, `///`, `//!`).
+        if trimmed.starts_with("//") {
+            return true;
+        }
+
+        if trimmed.starts_with("#[cfg(test)]") {
+            self.pending_test = true;
+        }
+        let opens = line.matches('{').count() as i32;
+        let closes = line.matches('}').count() as i32;
+        if self.pending_test && opens > 0 {
+            self.test_depth = Some(self.depth);
+            self.pending_test = false;
+        }
+        let inside_test = self.test_depth.is_some();
+        self.depth += opens - closes;
+        if let Some(open_depth) = self.test_depth {
+            if self.depth <= open_depth {
+                self.test_depth = None;
+            }
+        }
+        inside_test
+    }
 }
 
 fn truncate_excerpt(excerpt: &str, max_chars: usize) -> String {

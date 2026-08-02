@@ -1384,3 +1384,102 @@ fn layer_order_set_via_meta_appears_in_snapshot_and_survives_restore() {
         "contract 7: get_meta(\"layer_order\") returns the traveled value after restore"
     );
 }
+
+/// **The pre-screen reads code, not prose and not tests.**
+///
+/// A rule's patterns are regexes over raw lines, so without filtering the
+/// scanner reports a module's own DOCUMENTATION as a violation of the rule that
+/// documentation describes — loom's doc comment explaining that "a test SHOULD
+/// `.unwrap()`" was itself reported as an unchecked failure, and doc comments
+/// mentioning DELETE or UPDATE were reported as SQL injection.
+///
+/// `#[cfg(test)]` modules are the same mistake one level down from scanning
+/// whole test files: `src/store/mod.rs` alone contributed 40 hits, every one
+/// inside `#[cfg(test)]`.
+#[test]
+fn the_prescreen_skips_comments_and_cfg_test_modules() {
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("src/sample.rs"),
+        r#"//! A doc comment that mentions .unwrap() in prose.
+/// Another one describing DELETE FROM {table} interpolation.
+pub fn real() -> u8 {
+    Some(1).expect("this one is real code")
+}
+// A line comment with .unwrap() in it.
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn t() {
+        let v: Option<u8> = Some(1);
+        assert_eq!(v.unwrap(), 1);
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    let patterns = vec![
+        r#"\bunwrap\(\)"#.to_string(),
+        r#"\bexpect\s*\("#.to_string(),
+    ];
+    let hits =
+        loom::prescan::prescreen(root, &["src/sample.rs".to_string()], &patterns, 50).unwrap();
+
+    assert_eq!(
+        hits.len(),
+        1,
+        "only the one real production call is a hit: {hits:?}"
+    );
+    assert_eq!(hits[0].line, 4, "the expect() inside fn real: {hits:?}");
+    assert!(
+        hits[0].excerpt.contains("this one is real code"),
+        "and it is the production line, not prose or a test: {hits:?}"
+    );
+}
+
+/// A `}` closing the test module must hand scanning back to production code —
+/// otherwise everything after the first test module goes unscanned, which
+/// would turn a false-positive fix into a false-negative one.
+#[test]
+fn production_code_after_a_test_module_is_still_scanned() {
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("src/after.rs"),
+        r#"#[cfg(test)]
+mod tests {
+    #[test]
+    fn t() {
+        let v: Option<u8> = Some(1);
+        assert_eq!(v.unwrap(), 1);
+    }
+}
+
+pub fn after_the_tests() -> u8 {
+    Some(7).expect("production again")
+}
+"#,
+    )
+    .unwrap();
+
+    let patterns = vec![
+        r#"\bunwrap\(\)"#.to_string(),
+        r#"\bexpect\s*\("#.to_string(),
+    ];
+    let hits =
+        loom::prescan::prescreen(root, &["src/after.rs".to_string()], &patterns, 50).unwrap();
+
+    assert_eq!(
+        hits.len(),
+        1,
+        "the post-test production line is a hit: {hits:?}"
+    );
+    assert!(
+        hits[0].excerpt.contains("production again"),
+        "scanning resumed after the test module closed: {hits:?}"
+    );
+}
