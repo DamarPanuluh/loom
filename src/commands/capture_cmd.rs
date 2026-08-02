@@ -624,10 +624,14 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
                 bail!("--why-external and --preferred-source are only valid for kind=research");
             }
             let mut body = if kind == "research" {
+                // Invariant: kind=research requires --why-external — bailed above
+                // when why_external.is_none(), and this arm is kind=="research" only.
                 serde_json::json!({
                     "kind": "research",
                     "research_schema": 1,
-                    "why_external": why_external.unwrap(),
+                    "why_external": why_external.expect(
+                        "kind=research requires --why-external (bailed above)"
+                    ),
                     "preferred_sources": preferred_sources,
                     "sources": [],
                 })

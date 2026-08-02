@@ -548,11 +548,12 @@ mod tests {
     /// that, and stays aligned with `loom impact --depth 8`.
     #[test]
     fn call_witness_depth_clears_the_documented_six_hop_case() {
-        assert!(
-            CALL_WITNESS_DEPTH >= 6,
-            "CALL_WITNESS_DEPTH={CALL_WITNESS_DEPTH} would still miss the \
-             ring32→push_notes exact caller at 6 hops"
-        );
+        const {
+            assert!(
+                CALL_WITNESS_DEPTH >= 6,
+                "CALL_WITNESS_DEPTH would still miss the ring32→push_notes exact caller at 6 hops"
+            );
+        }
         assert_eq!(CALL_WITNESS_DEPTH, 8);
     }
 }
