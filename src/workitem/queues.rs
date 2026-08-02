@@ -21,16 +21,33 @@ use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType, TargetKind}
 use crate::store::Store;
 use crate::Result;
 
-/// Prerequisites (`requires` targets) of `intent_id` that are not yet realized.
-/// Matches the completeness prerequisites axis exactly — a target is unmet
-/// unless its status is `implemented` — so the build lane and the scorecard
-/// agree on when a dependent is ready to build.
+/// Why `intent_id` is not ready to build yet, one phrase per blocker.
+///
+/// Two relations gate readiness, and they are deliberately NOT the same thing:
+///
+/// * `requires` — this behavior cannot function without the target. That is
+///   also the completeness `prerequisites` axis, and the two must keep
+///   agreeing: a dependent the scorecard calls unmet is one the build lane
+///   must not serve.
+/// * `sequence` — this behavior is the step AFTER the target in a flow. It may
+///   be perfectly complete as a specification while its predecessor is
+///   unbuilt; what it is not is the next thing to build. So sequence gates
+///   routing and deliberately does NOT touch the completeness axis —
+///   ordering is not incompleteness.
+///
+/// Both read the same direction as everywhere else in the graph: the FROM side
+/// stands on the TO side. A target counts as met only at `implemented`.
 fn unmet_prerequisites(store: &Store, intent_id: &str) -> Result<Vec<String>> {
     let mut unmet = Vec::new();
-    for e in store.edges_with(Some(EdgeKind::Requires), Some(intent_id), None)? {
-        if let Some(target) = store.get_node(&e.to_id)? {
-            if target.status != "implemented" {
-                unmet.push(format!("'{}' ({})", target.name, target.status));
+    for (kind, relation) in [
+        (EdgeKind::Requires, "requires"),
+        (EdgeKind::Sequence, "follows"),
+    ] {
+        for e in store.edges_with(Some(kind), Some(intent_id), None)? {
+            if let Some(target) = store.get_node(&e.to_id)? {
+                if target.status != "implemented" {
+                    unmet.push(format!("{relation} '{}' ({})", target.name, target.status));
+                }
             }
         }
     }
@@ -99,7 +116,7 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
             break;
         } else if blocked.is_none() {
             let reason = format!(
-                "blocked: requires {} — build the prerequisite(s) first, or break the requires cycle",
+                "blocked: {} — build what it stands on first, or break the cycle",
                 unmet.join(", ")
             );
             blocked = Some((intent, reason));
@@ -1708,14 +1725,14 @@ fn roster_build(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
             out.push(node_entry("build", "mid", intent, build_reason(intent)));
         } else {
             blocked.push(node_entry(
-                    "build",
-                    "mid",
-                    intent,
-                    format!(
-                        "blocked: requires {} — build the prerequisite(s) first, or break the requires cycle",
-                        unmet.join(", ")
-                    ),
-                ));
+                "build",
+                "mid",
+                intent,
+                format!(
+                    "blocked: {} — build what it stands on first, or break the cycle",
+                    unmet.join(", ")
+                ),
+            ));
         }
     }
     out.extend(blocked);

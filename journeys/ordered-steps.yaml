@@ -1,0 +1,28 @@
+journey: loom serves ordered steps in order
+steps:
+  - name: the earlier step is served and the later one is blocked by name
+    intent: ordered steps are served in order, one readiness gate not a task list
+    # A three-step flow in a throwaway graph, nothing built. The lane must hand
+    # back step one, not whichever intent sorts first.
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      loom intent add --graph "$tmp" --name 'add to cart' --description 'an item lands in the cart' &&
+      loom intent add --graph "$tmp" --name 'checkout' --description 'the cart becomes an order' &&
+      loom edge relate --graph "$tmp" sequence 'checkout' 'add to cart' &&
+      loom next --graph "$tmp" --mode build; rc=$?; rm -rf "$tmp"; exit $rc
+    expect:
+      exit_code: 0
+      stdout_contains: ["[build] add to cart"]
+
+  - name: building the earlier step releases the later one
+    intent: ordered steps are served in order, one readiness gate not a task list
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      loom intent add --graph "$tmp" --name 'add to cart' --description 'an item lands in the cart' &&
+      loom intent add --graph "$tmp" --name 'checkout' --description 'the cart becomes an order' &&
+      loom edge relate --graph "$tmp" sequence 'checkout' 'add to cart' &&
+      loom intent update --graph "$tmp" 'add to cart' --lifecycle implemented --reason 'built the cart' &&
+      loom next --graph "$tmp" --mode build; rc=$?; rm -rf "$tmp"; exit $rc
+    expect:
+      exit_code: 0
+      stdout_contains: ["[build] checkout"]
