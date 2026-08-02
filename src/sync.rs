@@ -92,6 +92,13 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     report.edges_staled += pass.demoted;
     report.edges_spared += pass.spared;
     report.validations_reset += pass.validations_reset;
+    // AFTER the pass, deliberately. The anchor machinery is more precise —
+    // it distinguishes a redefined symbol from a missing one and spares
+    // untouched groundings — so it gets first say, and this is the backstop
+    // for anchors it never re-checks at all: a locator whose verdict was
+    // settled on a cited span, which carries no locator Run to re-resolve.
+    // Running it first double-counted an edge both mechanisms would stale.
+    ripple_locator_drift(store, root, &mut report)?;
     ripple_wiki_drift(store, &mut report)?;
     // Grade every proof from its own shape. Derived, so it is recomputed here
     // rather than trusted from whoever registered the validation — the string
@@ -364,6 +371,71 @@ pub fn wiki_scope_hash(store: &Store, page_id: &str) -> Result<String> {
 /// recorded. Mirrors the artifact/runner drift gates — a recorded page's stored
 /// `scope_hash` is compared to the live one; a `draft` page (never recorded
 /// fresh) is left alone. loom curates freshness; an agent rewrites the prose.
+/// Re-open a grounding whose locator names nothing.
+///
+/// A locator is the promise "this behavior lives at this symbol". Nothing was
+/// checking it. `recheck` expires a LOCATOR run when its symbol stops
+/// resolving, but a verdict recorded with a cited span carries no such run —
+/// so a grounding could name a deleted symbol and stay `passing` forever. On
+/// this repository that was 13 live claims at confidence 0.95 pointing at
+/// symbols that no longer existed, including four left by a hard-cut, while
+/// `doctor` reported clean and the ladder showed `grounded` met.
+///
+/// A locator that opens with `module` is a WHOLE-FILE scope, not a symbol —
+/// the long-standing convention here for "the behavior is this file". Those
+/// are left alone; requiring them to resolve would reject 39 legitimate
+/// groundings to catch 13 broken ones.
+fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {
+    for edge in store.edges_with(Some(EdgeKind::Implements), None, None)? {
+        if store.edge_superseded(&edge.id)? {
+            continue;
+        }
+        // Only a REALIZES grounding promises a symbol. A `consumes` locator
+        // names a seam — an interface string the consumer calls, which is not a
+        // definition and will never resolve as one; `recheck` re-runs those
+        // through their own Seam arm. `configures` and `verifies` make no
+        // symbol claim either. Judging them here would stale every seam
+        // grounding on every sync, which ring11 catches.
+        if store.grounding_role(&edge.id)? != crate::model::GroundingRole::Realizes {
+            continue;
+        }
+        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
+            continue;
+        };
+        let locator = locator.trim();
+        if locator.is_empty() || locator.to_ascii_lowercase().starts_with("module") {
+            continue;
+        }
+        let Some(file) = store.get_node(&edge.to_id)? else {
+            continue;
+        };
+        // A missing FILE is already someone else's ripple; only judge the
+        // symbol when the file is there to look in.
+        if !root.join(&file.name).exists() {
+            continue;
+        }
+        // `resolve_locator` returns Some whenever the FILE is readable — the
+        // cardinality is carried separately, which is why `unique_locator_probe`
+        // reads match_count rather than the Option. A locator that matched
+        // nothing is the broken case; matching several is ambiguous but still
+        // points at real code, and the ripple already spares those.
+        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))
+            .map(|r| r.match_count)
+            .unwrap_or(0);
+        if matched > 0 {
+            continue;
+        }
+        // Name the anchor that fell: a cause that says only "a locator broke"
+        // leaves the reader to work out which one, and ring13 requires the
+        // symbol or the file by name.
+        let cause = format!("locator '{locator}' names no symbol in {}", file.name);
+        if store.stale_edge(&edge.id, &cause)? {
+            report.edges_staled += 1;
+        }
+    }
+    Ok(())
+}
+
 fn ripple_wiki_drift(store: &Store, report: &mut SyncReport) -> Result<()> {
     for page in store.list_nodes(Some(NodeType::WikiPage), usize::MAX)? {
         if page.status == "draft" || page.status == "stale" {
