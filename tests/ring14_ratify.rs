@@ -53,6 +53,11 @@ fn cli_add_intent(root: &std::path::Path, name: &str) {
 // =========================================================================
 #[test]
 fn inv8_ratify_rejects_every_llm_lane() {
+    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
+    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
+    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
+    // the ratification below. A mutex only the writers hold protects nothing.
+    let _guard = CLI_LOCK.lock().unwrap();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -102,6 +107,11 @@ fn inv8_ratify_rejects_every_llm_lane() {
 // =========================================================================
 #[test]
 fn ratify_requires_substantive_evidence() {
+    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
+    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
+    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
+    // the ratification below. A mutex only the writers hold protects nothing.
+    let _guard = CLI_LOCK.lock().unwrap();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -136,6 +146,11 @@ fn ratify_requires_substantive_evidence() {
 // =========================================================================
 #[test]
 fn an_unratified_intent_with_no_evidence_is_not_a_divergence() {
+    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
+    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
+    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
+    // the ratification below. A mutex only the writers hold protects nothing.
+    let _guard = CLI_LOCK.lock().unwrap();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -193,6 +208,11 @@ fn an_unratified_intent_with_no_evidence_is_not_a_divergence() {
 // =========================================================================
 #[test]
 fn redefinition_stales_ratification() {
+    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
+    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
+    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
+    // the ratification below. A mutex only the writers hold protects nothing.
+    let _guard = CLI_LOCK.lock().unwrap();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -235,6 +255,11 @@ fn redefinition_stales_ratification() {
 // =========================================================================
 #[test]
 fn ratification_records_human_and_timestamp() {
+    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
+    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
+    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
+    // the ratification below. A mutex only the writers hold protects nothing.
+    let _guard = CLI_LOCK.lock().unwrap();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -403,6 +428,11 @@ fn semantic_impact_preserves_or_routes_human_reconfirmation() {
 
 #[test]
 fn ratification_provenance_survives_redefinition_staleness() {
+    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
+    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
+    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
+    // the ratification below. A mutex only the writers hold protects nothing.
+    let _guard = CLI_LOCK.lock().unwrap();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
