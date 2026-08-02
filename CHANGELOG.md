@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.29.0] - 2026-08-03
+- locator drift re-opens groundings that name nothing, shared proof commands are reported, ordered steps gate readiness, and loom answers what stands on a behavior
+
 ## [0.28.0] - 2026-08-01
 **Breaking** (minor bump because 0.x): all 16 paginated `list --json` commands now
 return a self-describing `{ "items": [...], "pagination": {...} }` envelope
