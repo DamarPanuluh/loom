@@ -315,12 +315,18 @@ pub fn unique_locator_probe(root: &Path, file: &str, locator: &str) -> Option<Ru
 ///
 /// The machinery already existed and threw its answer away: `prescreen_for`
 /// computes exactly this to populate a quality packet, then discards it.
+/// Returns the probe AND the hits behind it.
+///
+/// The caller needs the structured hits, not just the rendered run: a passing
+/// verdict is allowed to stand over a hit the author cited and explained, and
+/// deciding that per hit means comparing file and line, not re-parsing the
+/// canonical text this function renders.
 pub fn prescreen_probe(
     root: &Path,
     rule_name: &str,
     patterns: &[String],
     files: &[String],
-) -> Option<RunRecord> {
+) -> Option<(RunRecord, Vec<crate::prescan::PreScreenHit>)> {
     if patterns.is_empty() || files.is_empty() {
         return None;
     }
@@ -333,7 +339,7 @@ pub fn prescreen_probe(
         .collect();
     lines.sort();
     let detail = lines.join("\n");
-    Some(record(
+    let run = record(
         root,
         RunProducer::Prescreen,
         &format!(
@@ -347,7 +353,8 @@ pub fn prescreen_probe(
         detail.as_bytes(),
         &[],
         0,
-    ))
+    );
+    Some((run, hits))
 }
 
 /// The files a run over this intent's code depends on: every file grounded to

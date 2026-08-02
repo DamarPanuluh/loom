@@ -519,25 +519,67 @@ impl Store {
         Ok(Some((rule, files)))
     }
 
-    /// Pattern hits contradict a `passing` verdict outright: loom found the very
-    /// shape the rule forbids. Refuse it and print what it found, rather than
-    /// storing a green verdict beside the evidence against it.
+    /// Pattern hits contradict a `passing` verdict — unless the author cited
+    /// the hit and said why it is not what the rule means.
+    ///
+    /// The patterns are declared prompt hints that "do not replace adjudicated
+    /// quality verdicts" (`packs.rs`), so they must not override adjudication
+    /// outright. But an unexamined `passing` beside a hit is exactly the
+    /// unearned green this gate exists to stop. Both hold if the exemption is
+    /// per hit: cite the span, and the verdict stands for that one.
+    ///
+    /// This is a HIGHER bar than a blanket pass, not a lower one — every hit
+    /// must be answered individually. And because a citation is stamped with a
+    /// hash of the lines it names, the exemption expires the moment that code
+    /// changes; you cannot cite once and coast.
     fn refuse_passing_over_hits(
         &self,
         a: &Assertion<'_>,
         rule_name: &str,
         probe: Option<&RunRecord>,
+        hits: &[crate::prescan::PreScreenHit],
     ) -> Result<()> {
         let Some(run) = probe else { return Ok(()) };
         if run.exit_code == 0 || a.state != "passing" {
             return Ok(());
         }
+        // Read the spans the caller already cited, not the raw prose: by this
+        // point each is stamped with a hash of the lines it names, which is
+        // what makes the exemption expire when that code changes.
+        let cited: Vec<&crate::evidence::SpanStamp> = a
+            .cited
+            .iter()
+            .filter_map(|c| match c {
+                CitedEvidence::Span(s) => Some(s),
+                _ => None,
+            })
+            .collect();
+        let uncited: Vec<&crate::prescan::PreScreenHit> = hits
+            .iter()
+            .filter(|h| {
+                !cited
+                    .iter()
+                    .any(|s| s.file == h.path && s.start <= h.line && h.line <= s.end)
+            })
+            .collect();
+        if uncited.is_empty() {
+            return Ok(());
+        }
+        let listed = uncited
+            .iter()
+            .map(|h| format!("{}:{} {}\n    {}", h.path, h.line, h.pattern, h.excerpt))
+            .collect::<Vec<_>>()
+            .join("\n");
         bail!(
-            "'{}' scanned these patterns and found hits — a passing verdict \
-             contradicts them:\n{}\n\nRecord `failing`, or cite a span per hit \
-             explaining why each is not what the rule means.",
+            "'{}' found {} hit(s) this verdict does not answer — a passing \
+             verdict contradicts them:\n{}\n\nRecord `failing`, or cite each \
+             span above in --evidence and say why it is not what the rule \
+             means. {} of {} hit(s) are already cited.",
             rule_name,
-            run.stdout_excerpt.trim()
+            uncited.len(),
+            listed,
+            hits.len() - uncited.len(),
+            hits.len()
         )
     }
 
@@ -627,14 +669,20 @@ impl Store {
                             .collect()
                     })
                     .unwrap_or_default();
-                probe = crate::runner::prescreen_probe(&self.root, &rule.name, &patterns, &files);
+                let scanned =
+                    crate::runner::prescreen_probe(&self.root, &rule.name, &patterns, &files);
+                let hits = scanned
+                    .as_ref()
+                    .map(|(_, hits)| hits.clone())
+                    .unwrap_or_default();
+                probe = scanned.map(|(run, _)| run);
                 // The floor follows what loom actually DID, not what it could
                 // have tried. The scan fails closed on a file it cannot read,
                 // and demanding `verified` from a scan that never happened
                 // would refuse an honest verdict for loom's own inability to
                 // look.
                 shape.scannable_rule = probe.is_some();
-                self.refuse_passing_over_hits(a, &rule.name, probe.as_ref())?;
+                self.refuse_passing_over_hits(a, &rule.name, probe.as_ref(), &hits)?;
             }
         }
 
