@@ -352,12 +352,13 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
         );
     }
     // Realizing implements edges carry the same probe as `edge implement`.
-    if e.kind == EdgeKind::Implements
-        && store.grounding_role(&e.id)? == GroundingRole::Realizes
-    {
-        let file = store
-            .get_node(&e.to_id)?
-            .ok_or_else(|| anyhow!("implements edge [{}] has no codefile", crate::model::short(&e.id)))?;
+    if e.kind == EdgeKind::Implements && store.grounding_role(&e.id)? == GroundingRole::Realizes {
+        let file = store.get_node(&e.to_id)?.ok_or_else(|| {
+            anyhow!(
+                "implements edge [{}] has no codefile",
+                crate::model::short(&e.id)
+            )
+        })?;
         require_resolvable_locator(store, &file.name, &locator)?;
     }
     store.set_facet(
