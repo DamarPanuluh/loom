@@ -214,6 +214,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
 
     let mut out = Vec::new();
     out.extend(ownership_smells(&snap, &owners, &rel_adjacency));
+    out.extend(shared_proof_command_smells(&snap));
     out.extend(consumer_owned_file_smells(&snap, &owners));
     out.extend(undeclared_coupling_smells(
         &snap,
@@ -295,6 +296,72 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
 /// Two unrelated intents on one file fire. Ten related intents stay silent
 /// (maybe large, but not undeclared). Former `overlapping_ownership` is the
 /// two-owner case of the same rule; identity is always `tangled_file:{cf}`.
+/// Behaviors whose proof is the SAME command.
+///
+/// If one command proves seven behaviors, it is at most proving one of them.
+/// The others inherit its green from whatever it really exercises, and a claim
+/// stays proven for exactly as long as some unrelated suite keeps passing.
+///
+/// This is not hypothetical. An intent claiming "a locator that cannot resolve
+/// falls back to file-scope reopening" carried TWO passing validations, both
+/// running `cargo test --test ring6 -q`, while thirteen groundings with
+/// unresolvable locators sat green underneath it — the behavior did not exist
+/// at all. Nothing caught it: `proof_too_shallow_for_intent` gates only
+/// user-visible intents, and the strength machinery already grades these S2
+/// (no call witness) without any rung consuming that below user_visible.
+///
+/// Reported, not gated. A ring genuinely covering several behaviors is a
+/// legitimate shape, so this wants a verdict with a reason — the same way
+/// measured structural debt is judged rather than auto-blocked.
+fn shared_proof_command_smells(snap: &Snapshot) -> Vec<Smell> {
+    // validation id -> the intent it validates
+    let mut proves: BTreeMap<&str, &str> = BTreeMap::new();
+    for e in &snap.edges {
+        if e.kind == EdgeKind::Validates {
+            proves.insert(e.from_id.as_str(), e.to_id.as_str());
+        }
+    }
+    // command -> the distinct behaviors leaning on it
+    let mut by_command: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for n in &snap.nodes {
+        if n.node_type != NodeType::Validation {
+            continue;
+        }
+        let Some(command) = n.body.get("command").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        if command.trim().is_empty() {
+            continue;
+        }
+        if let Some(intent) = proves.get(n.id.as_str()) {
+            by_command.entry(command).or_default().insert(intent);
+        }
+    }
+
+    let mut out = Vec::new();
+    for (command, intents) in by_command {
+        if intents.len() < 2 {
+            continue;
+        }
+        // Identity keys on the COMMAND, not on the intents: the set of
+        // behaviors leaning on one suite changes as work lands, and an
+        // adjudication should survive that rather than re-open on every new
+        // sibling.
+        out.push(Smell {
+            kind: "shared_proof_command".into(),
+            message: format!(
+                "{} behaviors are proved by the same command `{}` — it can be exercising at most one of them",
+                intents.len(),
+                command
+            ),
+            remedy: "narrow each proof to the behavior it proves (a single test, or a journey step asserting that behavior's output), or record why one suite legitimately proves them all"
+                .into(),
+            identity: format!("shared_proof_command:{command}"),
+        });
+    }
+    out
+}
+
 fn ownership_smells<'a>(
     snap: &'a Snapshot,
     owners: &BTreeMap<&'a str, Vec<&'a str>>,
