@@ -297,3 +297,174 @@ fn an_in_band_batch_is_gated_like_any_other_write() {
         "an invalid batch must fail as a tool result, not silently apply: {response}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// The transport loop itself.
+//
+// `handle` answers one request; `serve` is the loop around it, and the loop has
+// its own contract: a session survives bad input. Driving it over in-memory
+// buffers proves the real code path end to end — the same function
+// `loom mcp serve` runs, not a re-implementation of it.
+// ---------------------------------------------------------------------------
+
+/// Drive the real serve loop over `input`, returning one parsed response per
+/// line it wrote.
+fn serve_lines(root: &std::path::Path, input: &str) -> Vec<Value> {
+    let mut out: Vec<u8> = Vec::new();
+    loom::mcp::serve(Some(root), std::io::Cursor::new(input.as_bytes()), &mut out)
+        .expect("the loop ends cleanly at EOF");
+    String::from_utf8(out)
+        .expect("responses are UTF-8")
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| serde_json::from_str(l).expect("each line is one JSON-RPC response"))
+        .collect()
+}
+
+/// The loop answers each request in order and stops at EOF.
+#[test]
+fn the_serve_loop_answers_every_request_and_ends_at_eof() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+
+    let responses = serve_lines(
+        tmp.path(),
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\n\
+         {\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}\n",
+    );
+
+    assert_eq!(
+        responses.len(),
+        2,
+        "one response per request: {responses:?}"
+    );
+    assert_eq!(responses[0]["id"], 1);
+    assert_eq!(responses[1]["id"], 2);
+    assert!(
+        responses[1]["result"]["tools"]
+            .as_array()
+            .expect("tools/list returns an array")
+            .iter()
+            .any(|t| t["name"] == "loom_status"),
+        "the listed tools are the real ones: {:?}",
+        responses[1]
+    );
+}
+
+/// A blank line is not a request. Skipping it must not cost a response.
+#[test]
+fn blank_lines_are_skipped_rather_than_answered() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+
+    let responses = serve_lines(
+        tmp.path(),
+        "\n\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\",\"params\":{}}\n\n",
+    );
+    assert_eq!(
+        responses.len(),
+        1,
+        "only the request is answered: {responses:?}"
+    );
+    assert_eq!(responses[0]["id"], 1);
+}
+
+/// Unparseable input is a -32700 with a null id — the id is unknowable — and
+/// the session keeps going. A loop that died here would fail every later
+/// request for the wrong reason.
+#[test]
+fn a_parse_error_is_answered_and_the_session_survives() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+
+    let responses = serve_lines(
+        tmp.path(),
+        "not json at all\n{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"ping\",\"params\":{}}\n",
+    );
+
+    assert_eq!(
+        responses.len(),
+        2,
+        "both lines produced a response: {responses:?}"
+    );
+    assert_eq!(responses[0]["error"]["code"], -32700);
+    assert!(
+        responses[0]["id"].is_null(),
+        "an unparseable line has no knowable id"
+    );
+    assert_eq!(
+        responses[1]["id"], 7,
+        "the request after the bad line is still served: {responses:?}"
+    );
+}
+
+/// A notification has no id and must not be answered at all.
+#[test]
+fn a_notification_draws_no_response() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+
+    let responses = serve_lines(
+        tmp.path(),
+        "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\",\"params\":{}}\n\
+         {\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"ping\",\"params\":{}}\n",
+    );
+
+    assert_eq!(
+        responses.len(),
+        1,
+        "the notification is silent; only the ping is answered: {responses:?}"
+    );
+    assert_eq!(responses[0]["id"], 9);
+}
+
+/// Non-UTF-8 bytes must not abort the server: they decode lossily and come
+/// back as a parse error like any other malformed line.
+#[test]
+fn invalid_utf8_is_a_parse_error_not_a_dead_session() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+
+    let mut input: Vec<u8> = vec![0xff, 0xfe, b'\n'];
+    input.extend_from_slice(b"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"ping\",\"params\":{}}\n");
+    let mut out: Vec<u8> = Vec::new();
+    loom::mcp::serve(Some(tmp.path()), std::io::Cursor::new(input), &mut out)
+        .expect("bad bytes do not abort the loop");
+
+    let responses: Vec<Value> = String::from_utf8(out)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+
+    assert_eq!(responses.len(), 2, "{responses:?}");
+    assert_eq!(responses[0]["error"]["code"], -32700);
+    assert_eq!(responses[1]["id"], 3, "the session survived the bad bytes");
+}
+
+/// A tool that exists but cannot answer is `isError` on a live transport —
+/// distinct from -32602, which means the tool was never there.
+#[test]
+fn a_failing_tool_and_an_unknown_tool_are_different_conditions() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+
+    let responses = serve_lines(
+        tmp.path(),
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_nope\",\"arguments\":{}}}\n\
+         {\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_context\",\"arguments\":{\"target\":\"nothing in this graph matches\"}}}\n",
+    );
+
+    assert_eq!(responses.len(), 2, "{responses:?}");
+    assert_eq!(
+        responses[0]["error"]["code"], -32602,
+        "an unknown tool is a bad request, not a tool that ran: {:?}",
+        responses[0]
+    );
+    assert_eq!(
+        responses[1]["result"]["isError"], true,
+        "a tool that ran and could not answer reports isError: {:?}",
+        responses[1]
+    );
+}

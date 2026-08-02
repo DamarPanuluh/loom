@@ -261,11 +261,24 @@ fn tools() -> Vec<Tool> {
 }
 
 /// Serve MCP over stdio until stdin closes.
-pub fn serve(graph: Option<&Path>) -> Result<()> {
-    let graph = graph.map(PathBuf::from);
+///
+/// The transport is the caller's, not this function's: `loom mcp serve` hands
+/// it stdin/stdout, and a test hands it a pair of in-memory buffers. That is
+/// deliberate — the loop's real behavior (a parse error answered as -32700, a
+/// panicking tool answered as -32603 without killing the session, EOF ending
+/// the session cleanly) is only provable if the loop itself can be driven.
+pub fn serve_stdio(graph: Option<&Path>) -> Result<()> {
     let stdin = std::io::stdin();
-    let mut reader = stdin.lock();
-    let mut stdout = std::io::stdout();
+    serve(graph, stdin.lock(), std::io::stdout())
+}
+
+/// Serve MCP over one reader/writer pair until the reader reaches EOF.
+pub fn serve<R: BufRead, W: Write>(
+    graph: Option<&Path>,
+    mut reader: R,
+    mut writer: W,
+) -> Result<()> {
+    let graph = graph.map(PathBuf::from);
     let mut buf = Vec::new();
     loop {
         buf.clear();
@@ -304,8 +317,8 @@ pub fn serve(graph: Option<&Path>) -> Result<()> {
             )),
         };
         if let Some(response) = response {
-            writeln!(stdout, "{}", serde_json::to_string(&response)?)?;
-            stdout.flush()?;
+            writeln!(writer, "{}", serde_json::to_string(&response)?)?;
+            writer.flush()?;
         }
     }
     Ok(())

@@ -211,7 +211,7 @@ pub fn run(cli: Cli) -> Result<()> {
             diagnostics_cmd::deepen_cmd(cli.graph.as_deref(), limit, cli.json)
         }
         Command::Mcp { cmd } => match cmd {
-            crate::cli::McpCmd::Serve => crate::mcp::serve(cli.graph.as_deref()),
+            crate::cli::McpCmd::Serve => crate::mcp::serve_stdio(cli.graph.as_deref()),
         },
         Command::Wiki { cmd } => wiki::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Scan { cmd } => diagnostics_cmd::scan_cmd(cli.graph.as_deref(), cmd, cli.json),
