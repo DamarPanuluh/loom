@@ -240,9 +240,17 @@ fn push_node_entity(
     }
     // The behavioral criterion is the core input for primary entities; keep
     // peripheral entities lean so the packet stays small.
+    //
+    // `research_advisory` is primary because its description is the ONLY thing
+    // that distinguishes a current conclusion from an expired one: the branch
+    // above rewrites it to either "Current advisory research conclusion: …" or
+    // "STALE research conclusion (not current guidance; suppress
+    // recommendation): …", plus the source list that makes either checkable.
+    // Filtering it out computed a warning and then threw it away, leaving a
+    // reader unable to tell guidance from history.
     let primary = matches!(
         role,
-        "target" | "from" | "to" | "grounded_codefile" | "note"
+        "target" | "from" | "to" | "grounded_codefile" | "note" | "research_advisory"
     );
     ctx.linked_entities.push(LinkedEntity {
         role: role.into(),

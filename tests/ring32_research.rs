@@ -199,3 +199,168 @@ fn door_offers_external_research() {
     let text = String::from_utf8(output.stdout).unwrap();
     assert!(text.contains("external_research") && text.contains("--why-external"));
 }
+
+/// **A non-expiring source makes the conclusion non-expiring.**
+///
+/// Freshness is bound at close from the sources still usable then, and the
+/// binding takes the EARLIEST expiry among them — except that a source with no
+/// expiry at all cannot be outlived, so it makes the whole conclusion
+/// non-expiring. Getting this backwards (taking the earliest and ignoring the
+/// non-expiring source) would retire a conclusion that nothing has actually
+/// invalidated.
+#[test]
+fn a_non_expiring_source_makes_the_conclusion_non_expiring() {
+    let now = chrono::DateTime::parse_from_rfc3339("2026-08-02T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+
+    // Two sources that expire, one that never does.
+    let mut body = ResearchBody::parse(&research_body(vec![
+        source(Some("2027-01-01T00:00:00Z")),
+        source(Some("2030-01-01T00:00:00Z")),
+        source(None),
+    ]))
+    .unwrap();
+    body.stamp_conclusion_freshness(now).unwrap();
+    assert_eq!(
+        body.conclusion_fresh_until, None,
+        "a source that never expires cannot be outlived by one that does"
+    );
+
+    // With every source dated, the conclusion inherits the EARLIEST of them:
+    // the first fact to go stale is the one that bounds the synthesis.
+    let mut dated = ResearchBody::parse(&research_body(vec![
+        source(Some("2030-01-01T00:00:00Z")),
+        source(Some("2027-01-01T00:00:00Z")),
+    ]))
+    .unwrap();
+    dated.stamp_conclusion_freshness(now).unwrap();
+    assert_eq!(
+        dated.conclusion_fresh_until.as_deref(),
+        Some("2027-01-01T00:00:00Z"),
+        "the earliest usable expiry bounds the conclusion"
+    );
+}
+
+/// **An already-stale source does not shorten a conclusion its replacement
+/// supports.**
+///
+/// Historical sources stay in the record as provenance. If a fresher source
+/// covers the same ground, the conclusion is bound by the fresh one — otherwise
+/// keeping honest history would silently expire the answer.
+#[test]
+fn a_stale_source_does_not_bound_a_conclusion_a_current_one_supports() {
+    let now = chrono::DateTime::parse_from_rfc3339("2026-08-02T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let mut stale = source(Some("2020-01-01T00:00:00Z"));
+    stale.retrieved_at = "2019-01-01T00:00:00Z".into();
+    stale.published_at = None;
+
+    let mut body = ResearchBody::parse(&research_body(vec![
+        stale,
+        source(Some("2030-01-01T00:00:00Z")),
+    ]))
+    .unwrap();
+    body.stamp_conclusion_freshness(now).unwrap();
+    assert_eq!(
+        body.conclusion_fresh_until.as_deref(),
+        Some("2030-01-01T00:00:00Z"),
+        "the expired source is provenance, not a bound on the current answer"
+    );
+}
+
+/// **An expired conclusion is still served — labelled stale, and never
+/// re-queued.**
+///
+/// The product decision behind this (question f06e8b72): when a conclusion
+/// passes its freshness date, loom keeps showing it with a stale marker where a
+/// reader will see it, and does NOT route it back for a refresh. Surfacing
+/// staleness at the point of use is how loom treats staleness everywhere;
+/// turning every expiring source into queue work would manufacture an
+/// obligation only a human could clear.
+///
+/// Both halves are asserted, because the second is the one a future change
+/// would break silently.
+#[test]
+fn an_expired_conclusion_is_served_labelled_stale_and_never_queued() {
+    let tmp = Tmp::new();
+    std::fs::write(tmp.path().join("cart.rs"), "pub fn add_item() {}\n").unwrap();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "items can be added to a cart",
+            "an item lands in the cart",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = store
+        .add_node(NodeType::CodeFile, "cart.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    store
+        .add_edge(
+            loom::model::EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            loom::model::TruthClass::Asserted,
+        )
+        .unwrap();
+
+    // A completed research task whose conclusion has lapsed. Conclusion
+    // freshness is immutable once stamped, so it can expire while a
+    // later-appended source is still current — exactly the state that must
+    // still reach the reader, marked.
+    let mut body =
+        ResearchBody::parse(&research_body(vec![source(Some("2030-01-01T00:00:00Z"))])).unwrap();
+    body.conclusion_fresh_until = Some("2020-01-01T00:00:00Z".into());
+    let task = store
+        .add_node(
+            NodeType::TaskRecord,
+            "which cart semantics does the spec require",
+            "the spec requires idempotent add",
+            "completed",
+            serde_json::to_value(&body).unwrap(),
+        )
+        .unwrap();
+    store
+        .add_node(
+            NodeType::Note,
+            &format!("Research reference: {}", task.name),
+            "Governed research advisory",
+            "context",
+            serde_json::json!({
+                "kind": "research_reference",
+                "target_id": intent.id,
+                "research_task_id": task.id
+            }),
+        )
+        .unwrap();
+
+    // Served: the work packet for this behavior carries the conclusion, marked,
+    // with the recommendation suppressed rather than the entry dropped.
+    let packet = loom::workitem::next(&store, Some(Lane::Validate))
+        .unwrap()
+        .expect("an implemented intent with no proof is validate work");
+    let rendered = serde_json::to_string(&packet).unwrap();
+    assert!(
+        rendered.contains("STALE research conclusion"),
+        "an expired conclusion must still reach the reader, marked: {rendered}"
+    );
+    assert!(
+        rendered.contains("suppress recommendation"),
+        "and must tell the reader not to act on it: {rendered}"
+    );
+
+    // NOT re-queued: expiry is surfaced where it is read, never turned into
+    // work. No lane may serve the research task itself.
+    for lane in Lane::LADDER {
+        let items = loom::workitem::queue_items(&store, *lane).unwrap();
+        assert!(
+            !items.iter().any(|i| i.target.id == task.id),
+            "expired research must not become queue work in lane {lane:?}"
+        );
+    }
+}
