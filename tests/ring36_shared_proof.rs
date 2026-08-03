@@ -257,3 +257,183 @@ fn registering_a_command_that_already_proves_another_behavior_still_succeeds() {
         "including which behavior it collides with: {stderr}"
     );
 }
+
+/// **In-process path reaches the warning (call witness).**
+///
+/// The CLI-spawn test above proves the user-visible stderr contract, but a
+/// subprocess spawn does not appear in loom's call graph — so proof strength
+/// could not witness `warn_if_command_already_proves_another`. Calling the
+/// typed handler the binary uses closes that gap without weakening the CLI
+/// assertion.
+#[test]
+fn in_process_add_of_a_shared_command_reaches_the_warning() {
+    use loom::cli::{Cli, Command, IntentCmd, ValidationCmd};
+
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = behavior(&store, "the first behavior");
+    proved_by(&store, &a, "first proof", "cargo test --test ring6 -q");
+    drop(store);
+
+    loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: false,
+        command: Some(Command::Intent {
+            cmd: IntentCmd::Add {
+                name: "the second behavior".into(),
+                description: "does another thing".into(),
+                level: "feature".into(),
+                lifecycle: "implemented".into(),
+                visibility: None,
+                layer: None,
+                aspect: None,
+                allow_symbol_name: false,
+            },
+        }),
+    })
+    .expect("fixture intent");
+
+    loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: false,
+        command: Some(Command::Validation {
+            cmd: ValidationCmd::Add {
+                name: "second proof".into(),
+                r#type: "test".into(),
+                command: "cargo test --test ring6 -q".into(),
+                intent: "the second behavior".into(),
+                proof_kind: None,
+                journey_id: None,
+                repo_native_kind: None,
+                artifact: None,
+            },
+        }),
+    })
+    .expect("shared command is a warning, not a refusal");
+
+    let store = Store::open(tmp.path()).unwrap();
+    let v = store
+        .resolve_node("second proof", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(
+        v.body.get("command").and_then(|c| c.as_str()),
+        Some("cargo test --test ring6 -q")
+    );
+}
+
+/// Attack: `validation update` must skip the validation being edited.
+#[test]
+fn updating_a_validation_command_skips_self_and_still_warns_on_others() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = behavior(&store, "the first behavior");
+    let b = behavior(&store, "the second behavior");
+    proved_by(&store, &a, "first proof", "cargo test --test ring6 -q");
+    proved_by(&store, &b, "second proof", "true");
+    drop(store);
+
+    // Updating second proof TO the shared command should warn about first.
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+        .args([
+            "--graph",
+            tmp.path().to_str().unwrap(),
+            "validation",
+            "update",
+            "second proof",
+            "--command",
+            "cargo test --test ring6 -q",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "update must succeed (warn, not refuse)");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("already the proof of"),
+        "update path must warn: {stderr}"
+    );
+    assert!(
+        stderr.contains("the first behavior"),
+        "and name the other behavior: {stderr}"
+    );
+
+    // Updating first proof to the SAME command it already has must NOT warn
+    // about itself (skip_validation).
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+        .args([
+            "--graph",
+            tmp.path().to_str().unwrap(),
+            "validation",
+            "update",
+            "first proof",
+            "--command",
+            "cargo test --test ring6 -q",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    // It will still warn about second proof (now also on that command) — that is
+    // correct. It must not list 'the first behavior' as a collision with itself.
+    assert!(
+        !stderr.contains("'the first behavior'"),
+        "skip-self must not name the intent this validation already proves: {stderr}"
+    );
+}
+
+/// Attack: under `--json`, the collision warning still goes to stderr.
+#[test]
+fn duplicate_command_warning_goes_to_stderr_even_with_json() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = behavior(&store, "the first behavior");
+    proved_by(&store, &a, "first proof", "cargo test --test ring6 -q");
+    drop(store);
+
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+        .args([
+            "--graph",
+            tmp.path().to_str().unwrap(),
+            "--json",
+            "intent",
+            "add",
+            "--name",
+            "the second behavior",
+            "--description",
+            "does another thing",
+            "--lifecycle",
+            "implemented",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+        .args([
+            "--graph",
+            tmp.path().to_str().unwrap(),
+            "--json",
+            "validation",
+            "add",
+            "--name",
+            "second proof",
+            "--type",
+            "test",
+            "--command",
+            "cargo test --test ring6 -q",
+            "--intent",
+            "the second behavior",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        serde_json::from_str::<serde_json::Value>(&stdout).is_ok(),
+        "stdout must stay parseable JSON under --json: {stdout}"
+    );
+    assert!(
+        stderr.contains("already the proof of"),
+        "warning is on stderr, not folded into the JSON envelope: {stderr}"
+    );
+}

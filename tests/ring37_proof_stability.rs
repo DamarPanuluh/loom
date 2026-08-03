@@ -174,3 +174,211 @@ fn the_first_run_records_its_anchor_set() {
         "the anchor digest names the covered file: {anchors}"
     );
 }
+
+/// Attack: a single flake followed by two matching greens clears the flag.
+///
+/// The claim says a genuinely flaky proof "keeps re-tripping". That is true for
+/// strict alternation, but a mostly-passing flake — the INV-8 shape of "fails
+/// one in five" — clears as soon as any two consecutive runs agree. Dogfood
+/// that re-runs a flaky suite twice after a one-off fail will report stability.
+#[test]
+fn a_mostly_passing_flake_clears_after_two_matching_greens() {
+    let tmp = Tmp::new();
+    let (store, val) = seeded(&tmp, "sh -c 'test ! -f flip'");
+    run_proof(&store, &val); // pass
+    std::fs::write(tmp.path().join("flip"), "").unwrap();
+    run_proof(&store, &val); // fail → flagged
+    assert!(unstable(&store, &val).is_some());
+    std::fs::remove_file(tmp.path().join("flip")).unwrap();
+    run_proof(&store, &val); // pass (still flagged: failed→passed)
+    assert!(
+        unstable(&store, &val).is_some(),
+        "a flip back to pass is still a flip"
+    );
+    run_proof(&store, &val); // pass again → clears
+    assert!(
+        unstable(&store, &val).is_none(),
+        "two greens after a one-off fail erase the instability record"
+    );
+}
+
+/// Attack: editing a verifies-role test file changes the digest and hides a flake.
+#[test]
+fn a_test_file_edit_suppresses_flake_detection() {
+    let tmp = Tmp::new();
+    std::fs::write(tmp.path().join("s.rs"), "pub fn a() {}\n").unwrap();
+    std::fs::write(tmp.path().join("t.rs"), "// test\n").unwrap();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "a behavior",
+            "does something",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let src = store
+        .add_node(NodeType::CodeFile, "s.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    let test = store
+        .add_node(NodeType::CodeFile, "t.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    let g_src = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &src.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &g_src.id,
+            TargetKind::Edge,
+            "locator",
+            "fn a",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let g_test = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &test.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_grounding_role(&g_test.id, loom::model::GroundingRole::Verifies)
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "the proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "sh -c 'test ! -f flip'" }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Validates,
+            &val.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    run_proof(&store, &val.id); // pass
+    std::fs::write(tmp.path().join("flip"), "").unwrap();
+    // Edit the TEST file (not the realizing source) at the same time as the flake.
+    std::fs::write(tmp.path().join("t.rs"), "// test changed\n").unwrap();
+    run_proof(&store, &val.id); // fail, but anchors moved because verifies is in the digest
+
+    assert_eq!(store.get_node(&val.id).unwrap().unwrap().status, "failed");
+    assert!(
+        unstable(&store, &val.id).is_none(),
+        "a verifies-role edit moves the digest and suppresses the flake signal"
+    );
+}
+
+/// Attack: passed → blocked is recorded as instability.
+///
+/// A blocked outcome is usually infrastructure (lock, missing binary, empty
+/// command) — not a flake about the code. Treating it like passed↔failed
+/// conflates "the harness could not run" with "the proof disagreed with itself".
+#[test]
+fn passed_to_blocked_is_flagged_as_instability() {
+    let tmp = Tmp::new();
+    let (store, val) = seeded(&tmp, "true");
+    run_proof(&store, &val);
+    assert_eq!(store.get_node(&val).unwrap().unwrap().status, "passed");
+
+    // Untrusted import blocks before execution — infrastructure, not a flake.
+    let mut body = store.get_node(&val).unwrap().unwrap().body;
+    body["command_trusted"] = serde_json::json!(false);
+    store.set_node_body(&val, &body).unwrap();
+    run_proof(&store, &val);
+
+    assert_eq!(store.get_node(&val).unwrap().unwrap().status, "blocked");
+    let detail = unstable(&store, &val).expect("passed→blocked is flagged today");
+    assert!(
+        detail.contains("passed") && detail.contains("blocked"),
+        "infrastructure block is recorded as instability: {detail}"
+    );
+}
+
+/// Attack: a validation over TWO intents clears instability when EITHER moves.
+#[test]
+fn a_sibling_intent_file_change_clears_instability_for_the_shared_proof() {
+    let tmp = Tmp::new();
+    std::fs::write(tmp.path().join("a.rs"), "pub fn a() {}\n").unwrap();
+    std::fs::write(tmp.path().join("b.rs"), "pub fn b() {}\n").unwrap();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let ia = store
+        .add_node(
+            NodeType::Intent,
+            "behavior a",
+            "a",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let ib = store
+        .add_node(
+            NodeType::Intent,
+            "behavior b",
+            "b",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cfa = store
+        .add_node(NodeType::CodeFile, "a.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    let cfb = store
+        .add_node(NodeType::CodeFile, "b.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    let ga = store
+        .add_edge(EdgeKind::Implements, &ia.id, &cfa.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(&ga.id, TargetKind::Edge, "locator", "fn a", TruthClass::Asserted)
+        .unwrap();
+    let gb = store
+        .add_edge(EdgeKind::Implements, &ib.id, &cfb.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(&gb.id, TargetKind::Edge, "locator", "fn b", TruthClass::Asserted)
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "shared proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "sh -c 'test ! -f flip'" }),
+        )
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Validates, &val.id, &ia.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Validates, &val.id, &ib.id, TruthClass::Asserted)
+        .unwrap();
+
+    run_proof(&store, &val.id);
+    std::fs::write(tmp.path().join("flip"), "").unwrap();
+    run_proof(&store, &val.id);
+    assert!(unstable(&store, &val.id).is_some(), "precondition: flagged");
+
+    // Change ONLY sibling B's realizing file — A (and the flake trigger) untouched.
+    std::fs::write(tmp.path().join("b.rs"), "pub fn b_renamed() {}\n").unwrap();
+    run_proof(&store, &val.id); // still fails (flip present), but digest moved
+
+    assert!(
+        unstable(&store, &val.id).is_none(),
+        "a change to a sibling intent's file clears instability for the shared validation"
+    );
+}
