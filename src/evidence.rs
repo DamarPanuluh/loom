@@ -315,10 +315,13 @@ pub fn level(rows: &[EvidenceRow]) -> Verification {
 
 /// A `path.ext:start[-end]` citation. The path needs an alphabetic extension
 /// so version numbers ("1.2:3") and times ("12:30") never match; existence
-/// under the root is the real gate.
+/// under the root is the real gate. `+ [ ] @` are path characters because
+/// route-file conventions depend on them (SvelteKit `+layout.svelte`,
+/// `r/[id]/+page@.svelte`; Next.js `[id]`, `@modal`) — without them a
+/// citation into such a file silently degrades to "claimed".
 static CITATION_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"(?P<file>[A-Za-z0-9_][A-Za-z0-9_./\-]*\.[A-Za-z][A-Za-z0-9_]*):(?P<start>\d{1,7})(?:-(?P<end>\d{1,7}))?",
+        r"(?P<file>[A-Za-z0-9_][A-Za-z0-9_./\-+\[\]@]*\.[A-Za-z][A-Za-z0-9_]*):(?P<start>\d{1,7})(?:-(?P<end>\d{1,7}))?",
     )
     .expect("citation regex is valid")
 });
@@ -500,6 +503,21 @@ mod tests {
             .map(|c| c["file"].to_string())
             .collect();
         assert_eq!(caps, vec!["src/foo.rs", "lib/bar.py"]);
+    }
+
+    /// Route-file conventions (SvelteKit, Next.js) put `+`, `[`, `]`, `@` in
+    /// real paths; a citation into one must parse as the whole path, not a
+    /// truncated suffix that fails to resolve.
+    #[test]
+    fn parses_route_convention_paths() {
+        let caps: Vec<_> = CITATION_RE
+            .captures_iter("web/src/routes/+layout.svelte:14-18 and web/src/routes/r/[id]/+page@.svelte:3")
+            .map(|c| c["file"].to_string())
+            .collect();
+        assert_eq!(
+            caps,
+            vec!["web/src/routes/+layout.svelte", "web/src/routes/r/[id]/+page@.svelte"]
+        );
     }
 
     #[test]
