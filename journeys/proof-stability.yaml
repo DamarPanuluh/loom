@@ -1,0 +1,21 @@
+journey: a proof that flips over unchanged code is reported
+steps:
+  - name: a flip over unchanged anchors is visible in smells after sync
+    intent: a proof that flips over unchanged code is reported as unstable
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      printf 'pub fn a() {}\n' > "$tmp/s.rs" &&
+      loom codefile add --graph "$tmp" s.rs &&
+      loom intent add --graph "$tmp" --name 'a behavior' --description 'does something' --lifecycle implemented &&
+      loom edge implement --graph "$tmp" 'a behavior' s.rs --locator 'fn a' &&
+      loom validation add --graph "$tmp" --name 'flip proof' --type test --command "sh -c 'test ! -f flip'" --intent 'a behavior' &&
+      loom validation run --graph "$tmp" 'flip proof' &&
+      printf '' > "$tmp/flip" &&
+      loom validation run --graph "$tmp" 'flip proof' &&
+      loom sync --graph "$tmp" &&
+      loom smells --graph "$tmp"; rc=$?; rm -rf "$tmp"; exit $rc
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "unstable_proof"
+        - "unchanged code"
