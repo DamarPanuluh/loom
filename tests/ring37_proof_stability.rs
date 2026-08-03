@@ -443,35 +443,102 @@ fn a_realizing_file_edit_does_not_wipe_a_sticky_flake_record() {
 /// Structural, and it reads loom's own source, because this is a claim about
 /// WHERE code may live and no runtime assertion can defend it. The first
 /// version of stability tracking guarded `validation run` alone — and
-/// `journey run` sets its status directly, so the proofs covering every
-/// user-visible behavior were never watched. Fixing one call site is not the
-/// same as closing the door.
+/// `journey run` settles its status directly, so the proofs covering every
+/// user-visible behavior were never watched.
 ///
-/// A new path that settles a proof and skips `record_proof_stability` re-opens
-/// exactly that hole, silently, and only for whichever proofs use it.
+/// The FIRST version of this test had the same shape of hole it exists to
+/// catch: it scanned only the files it already knew about, so a new settling
+/// path in a new file would have been invisible to it. It now walks every file
+/// under src/ and every `set_node_status` call must account for itself — either
+/// by recording stability first, or by appearing in the exempt table below with
+/// a reason. A file gaining an unaccounted call fails this test, which is the
+/// point: the next person to add one has to say which kind it is.
 #[test]
 fn every_proof_status_write_records_stability_first() {
-    let sanctioned: &[(&str, &str)] = &[
-        ("src/commands/proof_cmd.rs", "validation run"),
-        ("src/journey.rs", "journey run"),
-    ];
-    let mut offenders: Vec<String> = Vec::new();
+    // Files that settle a PROOF's outcome. Each call here must be preceded by
+    // Store::record_proof_stability.
+    let settles_a_proof: &[&str] = &["src/commands/proof_cmd.rs", "src/journey.rs"];
 
-    for entry in std::fs::read_dir("src").unwrap().flatten() {
-        walk(&entry.path(), sanctioned, &mut offenders);
+    // Everything else that moves a node's status, with why it is not a proof
+    // outcome. The COUNT is the guard: a file gaining another call fails until
+    // someone classifies it.
+    let exempt: &[(&str, usize, &str)] = &[
+        ("src/sync.rs", 1, "marks a wiki page stale"),
+        (
+            "src/commands/capture_cmd.rs",
+            2,
+            "answers a question / resolves an inbox item",
+        ),
+        (
+            "src/commands/intent.rs",
+            2,
+            "retires and reactivates an intent",
+        ),
+        (
+            "src/commands/wiki.rs",
+            2,
+            "moves a wiki page between draft and fresh",
+        ),
+        ("src/commands/pattern_cmd.rs", 1, "retires a pattern"),
+        (
+            "src/commands/domain_cmd.rs",
+            3,
+            "moves a hypothesis through its lifecycle",
+        ),
+        (
+            "src/commands/journey/mod.rs",
+            1,
+            "resets a proof to not_run — not a settled outcome",
+        ),
+        (
+            "src/store/nodes.rs",
+            2,
+            "resets a proof to not_run on ripple; retires a node",
+        ),
+        ("src/store/mod.rs", 2, "in-module tests"),
+    ];
+
+    let mut offenders: Vec<String> = Vec::new();
+    let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
+    walk(
+        std::path::Path::new("src"),
+        settles_a_proof,
+        &mut counts,
+        &mut offenders,
+    );
+
+    for (file, seen) in &counts {
+        if settles_a_proof.iter().any(|f| file.ends_with(f)) {
+            continue;
+        }
+        match exempt.iter().find(|(f, _, _)| file.ends_with(f)) {
+            Some((_, allowed, _)) if seen <= allowed => {}
+            Some((_, allowed, why)) => offenders.push(format!(
+                "  {file}: {seen} set_node_status calls but {allowed} accounted for ({why}) \
+                 — classify the new one: proof outcome, or add it here"
+            )),
+            None => offenders.push(format!(
+                "  {file}: {seen} set_node_status call(s) and this file is unknown to the \
+                 stability guard — if it settles a proof, record stability first; if not, \
+                 add it to the exempt table with a reason"
+            )),
+        }
     }
     assert!(
         offenders.is_empty(),
-        "these settle a proof's status without recording stability first — either \
-         route them through Store::record_proof_stability or, if they do not settle \
-         a PROOF, say so here:\n{}",
+        "unaccounted proof-status writes:\n{}",
         offenders.join("\n")
     );
 
-    fn walk(path: &std::path::Path, sanctioned: &[(&str, &str)], out: &mut Vec<String>) {
+    fn walk(
+        path: &std::path::Path,
+        settles: &[&str],
+        counts: &mut std::collections::BTreeMap<String, usize>,
+        out: &mut Vec<String>,
+    ) {
         if path.is_dir() {
             for e in std::fs::read_dir(path).unwrap().flatten() {
-                walk(&e.path(), sanctioned, out);
+                walk(&e.path(), settles, counts, out);
             }
             return;
         }
@@ -480,23 +547,22 @@ fn every_proof_status_write_records_stability_first() {
         }
         let rel = path.to_string_lossy().replace('\\', "/");
         let src = std::fs::read_to_string(path).unwrap();
-        // Only the two files that settle PROOF status are in scope; every other
-        // set_node_status call moves an intent, a question, a wiki page.
-        let Some((_, what)) = sanctioned.iter().find(|(f, _)| rel.ends_with(f)) else {
-            return;
-        };
-        for (i, line) in src.lines().enumerate() {
-            if !line.contains("set_node_status") || line.trim_start().starts_with("//") {
+        let lines: Vec<&str> = src.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            let t = line.trim_start();
+            // The definition and doc references are not call sites.
+            if !line.contains("set_node_status(") || t.starts_with("//") || t.starts_with("pub fn")
+            {
                 continue;
             }
-            // The stability call must appear within the preceding few lines —
-            // close enough that a reader sees them as one act.
-            let lines: Vec<&str> = src.lines().collect();
+            *counts.entry(rel.clone()).or_default() += 1;
+            if !settles.iter().any(|f| rel.ends_with(f)) {
+                continue;
+            }
             let from = i.saturating_sub(8);
-            let window = lines[from..i].join("\n");
-            if !window.contains("record_proof_stability") {
+            if !lines[from..i].join("\n").contains("record_proof_stability") {
                 out.push(format!(
-                    "  {rel}:{} ({what}) — settles a proof without record_proof_stability above it",
+                    "  {rel}:{} settles a proof without record_proof_stability above it",
                     i + 1
                 ));
             }
