@@ -331,7 +331,7 @@ fn unstable_proof_smells(snap: &Snapshot) -> Vec<Smell> {
                 "proof '{}' reported {detail} — its outcome does not depend only on the code it covers",
                 n.name
             ),
-            remedy: "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then run it twice over unchanged code — a matching pair clears this"
+            remedy: "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it"
                 .into(),
             identity: format!("unstable_proof:{}", n.id),
         });

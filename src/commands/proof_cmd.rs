@@ -613,16 +613,15 @@ fn warn_if_command_already_proves_another(
 /// `LOOM_AGENT` made the human-presence boundary pass or fail on thread
 /// scheduling.
 ///
-/// A flip is only evidence of instability when the code underneath did NOT
-/// move. If a covered file changed, a different outcome is the system working;
-/// the anchor set is what tells the two apart, and it is already recorded on
-/// every run.
+/// A flip is only evidence of instability when the realizing code underneath
+/// did NOT move. If a realizing file changed, a different outcome is the system
+/// working; the realizing-only anchor digest is what tells the two apart.
 ///
-/// Self-clearing on purpose: a later run that agrees with the one before it,
-/// over the same anchors, clears the flag. One flip is evidence of instability;
-/// consistent runs afterwards are evidence it settled. A genuinely flaky proof
-/// keeps re-tripping this, which is the signal wanted — loom reports what it
-/// observed rather than deciding how many runs constitute proof.
+/// The flag is STICKY: agreement never clears it. Clearing goes through the
+/// same adjudication lifecycle every other smell uses (`justified` / `deferred`
+/// / `resolved` — see `signal::resolving_verdict`). An earlier version cleared
+/// on any matching consecutive pair, which undercut the INV-8 case that
+/// motivated the feature (fails roughly one run in five; greens would wipe it).
 fn record_stability(store: &Store, val_id: &str, new_status: &str) -> Result<()> {
     let Some(val) = store.get_node(val_id)? else {
         return Ok(());

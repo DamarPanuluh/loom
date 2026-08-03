@@ -197,7 +197,7 @@ fn a_mostly_passing_flake_stays_flagged_through_later_greens() {
         unstable(&store, &val).is_some(),
         "a flip back to pass is still a flip"
     );
-    run_proof(&store, &val); // pass again → clears
+    run_proof(&store, &val); // pass again — must NOT clear
     assert!(
         unstable(&store, &val).is_some(),
         "a flake that mostly passes is still a flake — greens must not erase the record"
@@ -402,5 +402,33 @@ fn a_sibling_intent_file_change_clears_instability_for_the_shared_proof() {
     assert!(
         unstable(&store, &val.id).is_none(),
         "a change to a sibling intent's file clears instability for the shared validation"
+    );
+}
+
+/// Attack: sticky + "clear on realizing-file change" lets an edit hide a flake.
+///
+/// After a flip is flagged, editing the realizing file is the ONLY automatic
+/// reset. A genuinely flaky proof whose outcome still depends on outside state
+/// loses its record the moment anyone (or rustfmt, or a drive-by edit) touches
+/// the realizing surface — even when the flake trigger is untouched and the
+/// next run still fails.
+#[test]
+fn a_realizing_file_edit_clears_a_sticky_flake_record() {
+    let tmp = Tmp::new();
+    let (store, val) = seeded(&tmp, "sh -c 'test ! -f flip'");
+    run_proof(&store, &val); // pass
+    std::fs::write(tmp.path().join("flip"), "").unwrap();
+    run_proof(&store, &val); // fail → sticky flag
+    assert!(unstable(&store, &val).is_some(), "precondition: flagged");
+
+    // Touch the realizing file only (whitespace). Flake trigger still present.
+    std::fs::write(tmp.path().join("s.rs"), "pub fn a() {}\n// touch\n").unwrap();
+    run_proof(&store, &val); // still fails
+
+    assert_eq!(store.get_node(&val).unwrap().unwrap().status, "failed");
+    assert!(
+        unstable(&store, &val).is_none(),
+        "editing the realizing file cleared the sticky flake record while the \
+         proof was still failing for a reason outside that file"
     );
 }
