@@ -550,6 +550,7 @@ impl Store {
                 if k == EdgeKind::Validates {
                     // A failed reset would leave the proof showing its old
                     // result while the command reports success (M-11) — surface it.
+                    // loom-stability-exempt: resets a proof to not_run on ripple
                     self.set_node_status(&e.from_id, "not_run")?;
                 }
             }
@@ -714,6 +715,7 @@ impl Store {
             None => format!("retired: {reason}"),
         };
         self.add_note(id, "decision", &note)?;
+        // loom-stability-exempt: retires a node
         self.set_node_status(id, "deprecated")?;
         Ok(())
     }

@@ -159,6 +159,7 @@ fn intent_reject(graph: Option<&Path>, key: &str, reason: &str, json: bool) -> R
         store.ensure_edge(EdgeKind::Flags, &finding.id, &cf.id)?;
         minted.push(serde_json::json!({ "id": finding.id, "file": cf.name }));
     }
+    // loom-stability-exempt: retires an intent
     store.set_node_status(&intent.id, "deprecated")?;
     pulse::emit_line(
         &store,
@@ -564,6 +565,7 @@ fn intent_reactivate(graph: Option<&Path>, key: String, reason: String, json: bo
             n.status
         );
     }
+    // loom-stability-exempt: reactivates a retired intent
     store.set_node_status(&n.id, "planned")?;
     store.add_note(&n.id, "transition", &format!("reactivated: {reason}"))?;
     let mut intent = node_json(&n);

@@ -194,6 +194,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()>
         PatternCmd::Retire { key, reason } => {
             let n = store.resolve_node(&key, Some(NodeType::Pattern))?;
             store.add_note(&n.id, "decision", &format!("retired: {reason}"))?;
+            // loom-stability-exempt: retires a pattern
             store.set_node_status(&n.id, "deprecated")?;
             let view = crate::pattern::inspect(&store, &n)?;
             Emission::wrote(

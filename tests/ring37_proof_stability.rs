@@ -319,6 +319,35 @@ fn passed_to_blocked_is_not_flagged_as_instability() {
     );
 }
 
+/// **An intervening non-comparable status hides a real flip.**
+///
+/// `comparable()` admits only passed|failed. Ripple resets a proof to `not_run`
+/// before the next run; a flake that was `passed` and becomes `failed` after
+/// that reset is observed as `not_run→failed`, which is skipped. The same shape
+/// exists for `passed→blocked→failed`. The flip happened over unchanged code;
+/// the detector never sees the comparable pair.
+#[test]
+fn an_intervening_not_run_hides_a_passed_to_failed_flip() {
+    let tmp = Tmp::new();
+    let (store, val) = seeded(&tmp, "sh -c 'test ! -f flip'");
+    run_proof(&store, &val);
+    assert_eq!(store.get_node(&val).unwrap().unwrap().status, "passed");
+
+    // What sync/ripple does before the next observe — not a settled outcome,
+    // and deliberately exempt from stability recording.
+    store.set_node_status(&val, "not_run").unwrap();
+
+    std::fs::write(tmp.path().join("flip"), "").unwrap();
+    run_proof(&store, &val);
+
+    assert_eq!(store.get_node(&val).unwrap().unwrap().status, "failed");
+    assert!(
+        unstable(&store, &val).is_none(),
+        "characterization: not_run→failed is not a comparable pair, so the \
+         passed→failed flake across the reset is invisible"
+    );
+}
+
 /// **A sibling intent's code moving does not clear a shared proof's record.**
 ///
 /// Characterization of a real defect, now inverted by removing the last
@@ -448,97 +477,35 @@ fn a_realizing_file_edit_does_not_wipe_a_sticky_flake_record() {
 ///
 /// The FIRST version of this test had the same shape of hole it exists to
 /// catch: it scanned only the files it already knew about, so a new settling
-/// path in a new file would have been invisible to it. It now walks every file
-/// under src/ and every `set_node_status` call must account for itself — either
-/// by recording stability first, or by appearing in the exempt table below with
-/// a reason. A file gaining an unaccounted call fails this test, which is the
-/// point: the next person to add one has to say which kind it is.
+/// path in a new file would have been invisible to it. It then walked every
+/// file under src/ but classified non-settling sites by FILE COUNT — and that
+/// was defeatable: remove one exempt call and add a settling one in the same
+/// file, the count holds, and the new settling path is never checked for
+/// `record_proof_stability` because the file is not on the settles list.
+///
+/// Per-call markers close that. Every `set_node_status` call must either
+/// (a) sit in a settling file with `record_proof_stability` above it, or
+/// (b) carry a `// loom-stability-exempt: …` marker in the eight lines above.
+/// Swapping an exempt call for an unmarked settling one fails the marker
+/// check; a new file with an unmarked call fails the same way.
 #[test]
 fn every_proof_status_write_records_stability_first() {
     // Files that settle a PROOF's outcome. Each call here must be preceded by
     // Store::record_proof_stability.
     let settles_a_proof: &[&str] = &["src/commands/proof_cmd.rs", "src/journey.rs"];
 
-    // Everything else that moves a node's status, with why it is not a proof
-    // outcome. The COUNT is the guard: a file gaining another call fails until
-    // someone classifies it.
-    let exempt: &[(&str, usize, &str)] = &[
-        ("src/sync.rs", 1, "marks a wiki page stale"),
-        (
-            "src/commands/capture_cmd.rs",
-            2,
-            "answers a question / resolves an inbox item",
-        ),
-        (
-            "src/commands/intent.rs",
-            2,
-            "retires and reactivates an intent",
-        ),
-        (
-            "src/commands/wiki.rs",
-            2,
-            "moves a wiki page between draft and fresh",
-        ),
-        ("src/commands/pattern_cmd.rs", 1, "retires a pattern"),
-        (
-            "src/commands/domain_cmd.rs",
-            3,
-            "moves a hypothesis through its lifecycle",
-        ),
-        (
-            "src/commands/journey/mod.rs",
-            1,
-            "resets a proof to not_run — not a settled outcome",
-        ),
-        (
-            "src/store/nodes.rs",
-            2,
-            "resets a proof to not_run on ripple; retires a node",
-        ),
-        ("src/store/mod.rs", 2, "in-module tests"),
-    ];
-
     let mut offenders: Vec<String> = Vec::new();
-    let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
-    walk(
-        std::path::Path::new("src"),
-        settles_a_proof,
-        &mut counts,
-        &mut offenders,
-    );
-
-    for (file, seen) in &counts {
-        if settles_a_proof.iter().any(|f| file.ends_with(f)) {
-            continue;
-        }
-        match exempt.iter().find(|(f, _, _)| file.ends_with(f)) {
-            Some((_, allowed, _)) if seen <= allowed => {}
-            Some((_, allowed, why)) => offenders.push(format!(
-                "  {file}: {seen} set_node_status calls but {allowed} accounted for ({why}) \
-                 — classify the new one: proof outcome, or add it here"
-            )),
-            None => offenders.push(format!(
-                "  {file}: {seen} set_node_status call(s) and this file is unknown to the \
-                 stability guard — if it settles a proof, record stability first; if not, \
-                 add it to the exempt table with a reason"
-            )),
-        }
-    }
+    walk(std::path::Path::new("src"), settles_a_proof, &mut offenders);
     assert!(
         offenders.is_empty(),
         "unaccounted proof-status writes:\n{}",
         offenders.join("\n")
     );
 
-    fn walk(
-        path: &std::path::Path,
-        settles: &[&str],
-        counts: &mut std::collections::BTreeMap<String, usize>,
-        out: &mut Vec<String>,
-    ) {
+    fn walk(path: &std::path::Path, settles: &[&str], out: &mut Vec<String>) {
         if path.is_dir() {
             for e in std::fs::read_dir(path).unwrap().flatten() {
-                walk(&e.path(), settles, counts, out);
+                walk(&e.path(), settles, out);
             }
             return;
         }
@@ -555,14 +522,24 @@ fn every_proof_status_write_records_stability_first() {
             {
                 continue;
             }
-            *counts.entry(rel.clone()).or_default() += 1;
-            if !settles.iter().any(|f| rel.ends_with(f)) {
+            let from = i.saturating_sub(8);
+            let window = lines[from..=i].join("\n");
+            let settles_here = settles.iter().any(|f| rel.ends_with(f));
+            if settles_here {
+                if !window.contains("record_proof_stability") {
+                    out.push(format!(
+                        "  {rel}:{} settles a proof without record_proof_stability above it",
+                        i + 1
+                    ));
+                }
                 continue;
             }
-            let from = i.saturating_sub(8);
-            if !lines[from..i].join("\n").contains("record_proof_stability") {
+            if !window.contains("loom-stability-exempt:") {
                 out.push(format!(
-                    "  {rel}:{} settles a proof without record_proof_stability above it",
+                    "  {rel}:{} moves node status without recording stability and without a \
+                     `// loom-stability-exempt: <why>` marker — if it settles a proof, call \
+                     record_proof_stability first (and list this file as settling); if not, \
+                     mark it exempt with a reason",
                     i + 1
                 ));
             }

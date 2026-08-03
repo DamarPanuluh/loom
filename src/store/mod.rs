@@ -1166,6 +1166,7 @@ mod tests {
             )
             .unwrap();
 
+        // loom-stability-exempt: in-module test of set_node_status itself
         store.set_node_status(&validation.id, "passed").unwrap();
         store
             .conn
@@ -1174,6 +1175,7 @@ mod tests {
                 params![validation.id],
             )
             .unwrap();
+        // loom-stability-exempt: in-module test of set_node_status itself
         store.set_node_status(&validation.id, "passed").unwrap();
 
         assert_eq!(

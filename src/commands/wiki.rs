@@ -86,6 +86,7 @@ fn wiki_plan(
     body["path"] = json!(path);
     body.as_object_mut().map(|o| o.remove("scope_hash"));
     store.set_node_body(&page.id, &body)?;
+    // loom-stability-exempt: moves a wiki page to draft
     store.set_node_status(&page.id, "draft")?;
     pulse::emit_line(
         &store,
@@ -137,6 +138,7 @@ fn wiki_record(graph: Option<&Path>, title: &str, json: bool) -> Result<()> {
     let mut body = page.body.clone();
     body["scope_hash"] = json!(hash);
     store.set_node_body(&page.id, &body)?;
+    // loom-stability-exempt: moves a wiki page to fresh
     store.set_node_status(&page.id, "fresh")?;
     pulse::emit_line(
         &store,

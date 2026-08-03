@@ -369,6 +369,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                 bail!("question answer requires a substantive answer");
             }
             let n = store.resolve_node(&key, Some(NodeType::Question))?;
+            // loom-stability-exempt: answers a question
             store.set_node_status(&n.id, "answered")?;
             store.add_note(&n.id, "decision", &format!("answered: {answer}"))?;
             pulse::emit_line(
@@ -394,6 +395,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                 bail!("question close requires a substantive reason");
             }
             let n = store.resolve_node(&key, Some(NodeType::Question))?;
+            // loom-stability-exempt: resolves an inbox question
             store.set_node_status(&n.id, &status)?;
             store.add_note(&n.id, "decision", &format!("{status}: {reason}"))?;
             pulse::emit_line(

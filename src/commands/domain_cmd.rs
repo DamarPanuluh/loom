@@ -89,6 +89,7 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
             if crate::model::is_placeholder(&evidence) {
                 bail!("{status} verdict requires substantive evidence (not a placeholder like '…' or '<reason>')");
             }
+            // loom-stability-exempt: moves a hypothesis through its lifecycle
             store.set_node_status(&h.id, status)?;
             store.add_note(&h.id, "decision", &format!("{status}: {evidence}"))?;
             // Teach the follow-through where it is most needed: a supported
@@ -159,6 +160,7 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                         .and_then(|d| d.strip_prefix("supported: ").map(str::to_string))
                 })
                 .unwrap_or_else(|| "(proof evidence unavailable)".into());
+            // loom-stability-exempt: adopts a supported hypothesis
             store.set_node_status(&h.id, "adopted")?;
             let intent = store.add_node(
                 NodeType::Intent,
@@ -206,6 +208,7 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
         }
         HypothesisCmd::Reject { key, reason } => {
             let h = store.resolve_node(&key, Some(NodeType::Hypothesis))?;
+            // loom-stability-exempt: rejects a hypothesis
             store.set_node_status(&h.id, "rejected")?;
             store.add_note(&h.id, "decision", &format!("rejected: {reason}"))?;
             pulse::emit_line(

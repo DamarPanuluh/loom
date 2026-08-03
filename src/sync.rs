@@ -448,6 +448,7 @@ fn ripple_wiki_drift(store: &Store, report: &mut SyncReport) -> Result<()> {
             .and_then(|v| v.as_str())
             .unwrap_or_default();
         if current != stored {
+            // loom-stability-exempt: marks a wiki page stale
             store.set_node_status(&page.id, "stale")?;
             report.wiki_staled += 1;
         }

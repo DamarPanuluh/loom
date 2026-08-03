@@ -94,6 +94,7 @@ fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
             if keep.body != body {
                 store.set_node_body(&keep.id, &body)?;
                 if keep.status != "not_run" {
+                    // loom-stability-exempt: resets a proof to not_run — not a settled outcome
                     store.set_node_status(&keep.id, "not_run")?;
                 }
             }
