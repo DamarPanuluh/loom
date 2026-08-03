@@ -247,6 +247,93 @@ fn crossed_binary(run: &str) -> Option<String> {
         .next()
 }
 
+/// Parse the symbol names carried by one realizing locator.
+///
+/// A locator may name several symbols with `;`. Each member must still look
+/// like a locator, not prose: a bare/qualified symbol, optionally with a line
+/// suffix, or a symbol preceded only by declaration modifiers (`fn`, `enum`,
+/// `pub`, ...). This matters to proof grading. Taking the final word of prose
+/// such as `subject case state-machine tests` would let an unrelated symbol
+/// named `tests` manufacture a call witness.
+fn locator_symbols(locator: &str) -> Vec<String> {
+    locator.split(';').filter_map(locator_symbol).collect()
+}
+
+fn locator_symbol(member: &str) -> Option<String> {
+    let member = member.trim();
+    if member.is_empty() || member.to_ascii_lowercase().starts_with("module ") {
+        return None;
+    }
+
+    let words: Vec<&str> = member.split_whitespace().collect();
+    let token = *words.last()?;
+    if words.len() > 1 {
+        let prefixes = &words[..words.len() - 1];
+        let declaration = prefixes.iter().any(|word| {
+            matches!(
+                *word,
+                "fn" | "struct"
+                    | "enum"
+                    | "trait"
+                    | "impl"
+                    | "class"
+                    | "def"
+                    | "function"
+                    | "interface"
+                    | "type"
+            )
+        });
+        let all_are_declaration_words = prefixes.iter().all(|word| {
+            matches!(
+                *word,
+                "fn" | "struct"
+                    | "enum"
+                    | "trait"
+                    | "impl"
+                    | "class"
+                    | "def"
+                    | "function"
+                    | "interface"
+                    | "type"
+                    | "async"
+                    | "unsafe"
+                    | "extern"
+                    | "const"
+                    // TS/JS/JVM visibility + member modifiers — `export` is
+                    // TypeScript's `pub`; without these, a locator such as
+                    // `export async function getDeck` parses as prose and the
+                    // grounded symbol silently drops out of proof grading.
+                    | "export"
+                    | "default"
+                    | "public"
+                    | "private"
+                    | "protected"
+                    | "static"
+                    | "readonly"
+                    | "abstract"
+                    | "override"
+            ) || *word == "pub"
+                || word.starts_with("pub(")
+        });
+        if !declaration || !all_are_declaration_words {
+            return None;
+        }
+    }
+
+    // Qualification must be removed before a `:line` suffix: splitting
+    // `Type::method` at `:` first yields `Type` and makes the method branch
+    // unreachable.
+    let token = token.rsplit("::").next().unwrap_or(token);
+    let token = token.split(':').next().unwrap_or(token);
+    is_symbol_name(token).then(|| token.to_string())
+}
+
+fn is_symbol_name(candidate: &str) -> bool {
+    let mut chars = candidate.chars();
+    matches!(chars.next(), Some(first) if first == '_' || first == '$' || first.is_alphabetic())
+        && chars.all(|c| c == '_' || c == '$' || c.is_alphanumeric())
+}
+
 /// The symbols an intent is grounded in, via its realizing locators.
 fn grounded_symbols(store: &Store, intent_id: &str) -> Result<Vec<String>> {
     let mut out = Vec::new();
@@ -254,14 +341,11 @@ fn grounded_symbols(store: &Store, intent_id: &str) -> Result<Vec<String>> {
         if store.edge_superseded(&e.id)? {
             continue;
         }
+        if store.grounding_role(&e.id)? != crate::model::GroundingRole::Realizes {
+            continue;
+        }
         if let Some(loc) = store.get_facet(&e.id, TargetKind::Edge, "locator")? {
-            if let Some(tok) = loc.split_whitespace().next_back() {
-                let tok = tok.split(':').next().unwrap_or(tok);
-                let tok = tok.rsplit("::").next().unwrap_or(tok);
-                if !tok.is_empty() {
-                    out.push(tok.to_string());
-                }
-            }
+            out.extend(locator_symbols(&loc));
         }
     }
     out.sort();
@@ -503,6 +587,25 @@ pub fn of(store: &Store, validation_id: &str) -> Result<Strength> {
 mod tests {
     use super::*;
 
+    fn temp_root(label: &str) -> std::path::PathBuf {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "loom-proofstrength-{label}-{}-{nonce}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        root
+    }
+
+    fn node(store: &Store, kind: NodeType, name: &str) -> Node {
+        store
+            .add_node(kind, name, "", "", serde_json::json!({}))
+            .unwrap()
+    }
+
     /// The exact regression that motivated this module: a step asserting only
     /// its exit code establishes liveness and nothing else.
     #[test]
@@ -555,6 +658,149 @@ mod tests {
             );
         }
         assert_eq!(CALL_WITNESS_DEPTH, 8);
+    }
+
+    #[test]
+    fn locator_parser_keeps_every_semicolon_member_and_the_method_name() {
+        assert_eq!(
+            locator_symbols("getSubjectCase; listSubjectCases; a;b;c"),
+            ["getSubjectCase", "listSubjectCases", "a", "b", "c"]
+        );
+        assert_eq!(
+            locator_symbols("DurableSignalLedger::rotate_checkpoint_authority_exact"),
+            ["rotate_checkpoint_authority_exact"]
+        );
+        assert_eq!(locator_symbols("Type::method:42-57"), ["method"]);
+    }
+
+    #[test]
+    fn locator_parser_accepts_declarations_but_not_prose_or_module_scopes() {
+        assert_eq!(locator_symbols("fn perform_behavior"), ["perform_behavior"]);
+        assert_eq!(
+            locator_symbols("pub async fn perform_behavior"),
+            ["perform_behavior"]
+        );
+        assert!(locator_symbols("subject case state-machine tests").is_empty());
+        assert!(locator_symbols("private-CA PostgreSQL acceptance runner").is_empty());
+        assert!(locator_symbols("module proof strength grading").is_empty());
+    }
+
+    /// `export` is TypeScript's `pub` — a TS/JS grounding such as
+    /// `export async function getDeck` must keep its symbol, or every proof
+    /// witness through a web-side grounding silently degrades to S2.
+    #[test]
+    fn locator_parser_accepts_ts_and_jvm_declaration_modifiers() {
+        assert_eq!(locator_symbols("export function getDeck"), ["getDeck"]);
+        assert_eq!(locator_symbols("export async function getDeck"), ["getDeck"]);
+        assert_eq!(locator_symbols("export default class RoomDeck"), ["RoomDeck"]);
+        assert_eq!(locator_symbols("public static def render"), ["render"]);
+        // Modifiers alone still aren't a declaration — prose stays prose.
+        assert!(locator_symbols("export the deck roster").is_empty());
+    }
+
+    #[test]
+    fn grounded_symbols_only_uses_realizing_edges() {
+        let root = temp_root("roles");
+        let store = Store::init(&root, Some("proof strength roles"), false).unwrap();
+        let intent = node(&store, NodeType::Intent, "behavior");
+
+        for (role, symbol) in [
+            (crate::model::GroundingRole::Realizes, "real_symbol"),
+            (crate::model::GroundingRole::Consumes, "consumed_symbol"),
+            (crate::model::GroundingRole::Configures, "configured_symbol"),
+            (crate::model::GroundingRole::Verifies, "verifying_symbol"),
+        ] {
+            let file = node(&store, NodeType::CodeFile, &format!("{symbol}.rs"));
+            let edge = store
+                .add_edge(
+                    EdgeKind::Implements,
+                    &intent.id,
+                    &file.id,
+                    crate::model::TruthClass::Asserted,
+                )
+                .unwrap();
+            store.set_grounding_role(&edge.id, role).unwrap();
+            store
+                .set_facet(
+                    &edge.id,
+                    TargetKind::Edge,
+                    "locator",
+                    symbol,
+                    crate::model::TruthClass::Asserted,
+                )
+                .unwrap();
+        }
+
+        assert_eq!(
+            grounded_symbols(&store, &intent.id).unwrap(),
+            ["real_symbol"]
+        );
+        drop(store);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn semicolon_locator_earns_a_witness_through_its_first_symbol() {
+        let root = temp_root("multi-symbol");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::create_dir_all(root.join("tests")).unwrap();
+        std::fs::write(
+            root.join("src/subjects.rs"),
+            "pub fn get_subject_case() {}\npub fn list_subject_cases() {}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("tests/recovery.rs"),
+            "pub fn exercise_isolated_writer_rotation() { get_subject_case(); }\n",
+        )
+        .unwrap();
+
+        let store = Store::init(&root, Some("multi-symbol witness"), false).unwrap();
+        let intent = node(&store, NodeType::Intent, "release recovery path works");
+        let implementation = node(&store, NodeType::CodeFile, "src/subjects.rs");
+        let realizing = store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &implementation.id,
+                crate::model::TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &realizing.id,
+                TargetKind::Edge,
+                "locator",
+                "get_subject_case; list_subject_cases",
+                crate::model::TruthClass::Asserted,
+            )
+            .unwrap();
+
+        let proof = node(&store, NodeType::CodeFile, "tests/recovery.rs");
+        let verifies = store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &proof.id,
+                crate::model::TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_grounding_role(&verifies.id, crate::model::GroundingRole::Verifies)
+            .unwrap();
+
+        crate::sync::run(&store, &root).unwrap();
+        let graph = crate::callgraph::build(&store).unwrap();
+        let files = proof_files(&store, &intent.id).unwrap();
+        assert_eq!(
+            call_witness(&store, &graph, &intent.id, &files)
+                .unwrap()
+                .as_deref(),
+            Some("get_subject_case")
+        );
+
+        drop(store);
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
 
