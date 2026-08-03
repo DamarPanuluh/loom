@@ -307,6 +307,14 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
 /// It matters most exactly where it is least visible: the INV-8 proofs, which
 /// defend the human-presence ratification boundary, were flaky for want of a
 /// lock and passed four runs out of five.
+///
+/// SCOPE, stated so the claim is not oversold: this reports. Being a smell it
+/// blocks the `sound` rung like any other, but it does NOT feed proof strength
+/// and does NOT gate `proven` — an unstable proof still counts as a proof for
+/// the ladder. Wiring it into strength would re-open every affected claim at
+/// once, which is the debt wall the calibration ratchet exists to prevent. If
+/// that trade is ever revisited, revisit it deliberately rather than by
+/// widening this.
 fn unstable_proof_smells(snap: &Snapshot) -> Vec<Smell> {
     let flagged = facet_map(snap, "proof_unstable");
     let mut out = Vec::new();

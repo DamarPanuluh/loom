@@ -640,8 +640,12 @@ fn record_stability(store: &Store, val_id: &str, new_status: &str) -> Result<()>
         &anchors,
         TruthClass::Derived,
     )?;
-    // A first observation has nothing to disagree with.
-    if !matches!(val.status.as_str(), "passed" | "failed" | "blocked") {
+    // Only a pass/fail pair can disagree ABOUT THE CODE. `blocked` means loom
+    // could not observe at all — a timeout, a missing command, its own lock —
+    // so passed→blocked is the harness failing, not the proof wavering.
+    // Conflating them dilutes the signal until nobody reads it.
+    let comparable = |s: &str| matches!(s, "passed" | "failed");
+    if !comparable(&val.status) || !comparable(new_status) {
         return Ok(());
     }
 
@@ -651,8 +655,18 @@ fn record_stability(store: &Store, val_id: &str, new_status: &str) -> Result<()>
         store.clear_facet(val_id, TargetKind::Node, "proof_unstable")?;
         return Ok(());
     }
+    // STICKY. An earlier version cleared on any matching consecutive pair, and
+    // that was wrong for the exact case that motivated the feature: the INV-8
+    // proofs failed roughly one run in five, so two greens — which arrive
+    // constantly — would have wiped the flag before anyone saw it. A flake that
+    // mostly passes is still a flake, and the whole point is that loom noticed.
+    //
+    // So agreement does not clear it. What clears it is the existing
+    // adjudication lifecycle every other smell already uses (`justified`,
+    // `deferred`, `resolved` — see signal::resolving_verdict), i.e. a person
+    // saying what they decided. Inventing a second, weaker clearing rule
+    // alongside that one is what produced the hole.
     if val.status == new_status {
-        store.clear_facet(val_id, TargetKind::Node, "proof_unstable")?;
         return Ok(());
     }
     store.set_facet(
@@ -665,12 +679,22 @@ fn record_stability(store: &Store, val_id: &str, new_status: &str) -> Result<()>
     Ok(())
 }
 
-/// The anchor set a proof last ran over, as one comparable string: every file
-/// grounding every intent it validates, with the hash in force now.
+/// The code a proof last ran over, as one comparable string: every REALIZING
+/// file of every intent it validates, with the hash in force now.
+///
+/// Realizing-only, deliberately — this is not the expiry set. Expiry asks "could
+/// this run still be valid?", so it must include the test itself: editing a test
+/// invalidates the run. Flake discrimination asks a different question — "did the
+/// CODE UNDER TEST move?" — and including the test file there opens a hole, since
+/// editing a test would reset the digest and suppress detection of the flake that
+/// edit may well have introduced. Same files, opposite purposes.
 fn current_anchor_digest(store: &Store, val_id: &str) -> Result<String> {
     let mut parts: Vec<String> = Vec::new();
     for e in store.edges_with(Some(EdgeKind::Validates), Some(val_id), None)? {
-        for (file, hash) in covered_hashes(store, &e.to_id)? {
+        for file in crate::runner::files_realizing(store, &e.to_id)? {
+            let hash = std::fs::read_to_string(store.root().join(&file))
+                .map(|c| crate::artifact::fingerprint(&c))
+                .unwrap_or_default();
             parts.push(format!("{file}={hash}"));
         }
     }

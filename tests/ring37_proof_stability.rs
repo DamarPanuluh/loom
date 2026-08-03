@@ -110,14 +110,14 @@ fn an_outcome_that_flips_over_unchanged_code_is_flagged() {
     );
 }
 
-/// **A consistent pair clears it.**
+/// **Agreement does not clear it; adjudication does.**
 ///
-/// One flip is evidence of instability; runs that agree afterwards are evidence
-/// it settled. A genuinely flaky proof keeps re-tripping this, which is the
-/// signal wanted — loom reports what it observed rather than deciding how many
-/// runs constitute proof.
+/// I wrote this the other way round first — a matching pair cleared the flag —
+/// and the review was right that it undercut the motivating case. Clearing now
+/// goes through the same adjudication lifecycle every other smell uses, rather
+/// than a second, weaker rule competing with it.
 #[test]
-fn a_matching_pair_over_unchanged_code_clears_it() {
+fn agreement_alone_does_not_clear_the_instability() {
     let tmp = Tmp::new();
     let (store, val) = seeded(&tmp, "sh -c 'test ! -f flip'");
     run_proof(&store, &val);
@@ -127,8 +127,9 @@ fn a_matching_pair_over_unchanged_code_clears_it() {
 
     run_proof(&store, &val); // fails again — consistent with the run before it
     assert!(
-        unstable(&store, &val).is_none(),
-        "two runs agreeing over the same anchors is a settled proof"
+        unstable(&store, &val).is_some(),
+        "agreement is not evidence the proof became deterministic; only a person \
+         adjudicating it clears the record"
     );
 }
 
@@ -175,14 +176,15 @@ fn the_first_run_records_its_anchor_set() {
     );
 }
 
-/// Attack: a single flake followed by two matching greens clears the flag.
+/// **A mostly-passing flake stays flagged through the greens that follow.**
 ///
-/// The claim says a genuinely flaky proof "keeps re-tripping". That is true for
-/// strict alternation, but a mostly-passing flake — the INV-8 shape of "fails
-/// one in five" — clears as soon as any two consecutive runs agree. Dogfood
-/// that re-runs a flaky suite twice after a one-off fail will report stability.
+/// This began as a characterization test of a real defect: the flag used to
+/// clear on any two consecutive agreeing runs, so the INV-8 shape — failing
+/// roughly one run in five — would be wiped by the greens that arrive
+/// constantly, before anyone saw it. The flag is now sticky and only the
+/// adjudication lifecycle clears it, so the assertion is inverted.
 #[test]
-fn a_mostly_passing_flake_clears_after_two_matching_greens() {
+fn a_mostly_passing_flake_stays_flagged_through_later_greens() {
     let tmp = Tmp::new();
     let (store, val) = seeded(&tmp, "sh -c 'test ! -f flip'");
     run_proof(&store, &val); // pass
@@ -197,14 +199,20 @@ fn a_mostly_passing_flake_clears_after_two_matching_greens() {
     );
     run_proof(&store, &val); // pass again → clears
     assert!(
-        unstable(&store, &val).is_none(),
-        "two greens after a one-off fail erase the instability record"
+        unstable(&store, &val).is_some(),
+        "a flake that mostly passes is still a flake — greens must not erase the record"
     );
 }
 
-/// Attack: editing a verifies-role test file changes the digest and hides a flake.
+/// **Editing the TEST must not hide a flake in the code under test.**
+///
+/// Characterization of a real defect, now inverted: the digest was built from
+/// `files_grounding` (both roles), so touching a verifies-role test reset it and
+/// suppressed detection — including of a flake that very edit might have
+/// introduced. It is built from `files_realizing` now. Expiry and flake
+/// discrimination use the same files for opposite purposes.
 #[test]
-fn a_test_file_edit_suppresses_flake_detection() {
+fn a_test_file_edit_does_not_suppress_flake_detection() {
     let tmp = Tmp::new();
     std::fs::write(tmp.path().join("s.rs"), "pub fn a() {}\n").unwrap();
     std::fs::write(tmp.path().join("t.rs"), "// test\n").unwrap();
@@ -278,18 +286,20 @@ fn a_test_file_edit_suppresses_flake_detection() {
 
     assert_eq!(store.get_node(&val.id).unwrap().unwrap().status, "failed");
     assert!(
-        unstable(&store, &val.id).is_none(),
-        "a verifies-role edit moves the digest and suppresses the flake signal"
+        unstable(&store, &val.id).is_some(),
+        "editing the test must not reset the digest — the code under test did not move, \
+         and the flake may be the very thing that edit introduced"
     );
 }
 
-/// Attack: passed → blocked is recorded as instability.
+/// **passed → blocked is the harness failing, not the proof wavering.**
 ///
-/// A blocked outcome is usually infrastructure (lock, missing binary, empty
-/// command) — not a flake about the code. Treating it like passed↔failed
-/// conflates "the harness could not run" with "the proof disagreed with itself".
+/// Characterization of a real defect, now inverted. `blocked` means loom could
+/// not observe at all — a timeout, a missing binary, its own lock. Recording
+/// that as instability conflates "could not run" with "disagreed with itself",
+/// and dilutes the signal until nobody reads it.
 #[test]
-fn passed_to_blocked_is_flagged_as_instability() {
+fn passed_to_blocked_is_not_flagged_as_instability() {
     let tmp = Tmp::new();
     let (store, val) = seeded(&tmp, "true");
     run_proof(&store, &val);
@@ -302,10 +312,10 @@ fn passed_to_blocked_is_flagged_as_instability() {
     run_proof(&store, &val);
 
     assert_eq!(store.get_node(&val).unwrap().unwrap().status, "blocked");
-    let detail = unstable(&store, &val).expect("passed→blocked is flagged today");
     assert!(
-        detail.contains("passed") && detail.contains("blocked"),
-        "infrastructure block is recorded as instability: {detail}"
+        unstable(&store, &val).is_none(),
+        "loom could not observe at all — that is the harness failing, not the proof \
+         disagreeing with itself"
     );
 }
 
