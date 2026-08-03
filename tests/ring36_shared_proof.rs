@@ -345,7 +345,10 @@ fn updating_a_validation_command_skips_self_and_still_warns_on_others() {
         ])
         .output()
         .unwrap();
-    assert!(out.status.success(), "update must succeed (warn, not refuse)");
+    assert!(
+        out.status.success(),
+        "update must succeed (warn, not refuse)"
+    );
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("already the proof of"),

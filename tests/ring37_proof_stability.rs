@@ -344,13 +344,25 @@ fn a_sibling_intent_file_change_clears_instability_for_the_shared_proof() {
         .add_edge(EdgeKind::Implements, &ia.id, &cfa.id, TruthClass::Asserted)
         .unwrap();
     store
-        .set_facet(&ga.id, TargetKind::Edge, "locator", "fn a", TruthClass::Asserted)
+        .set_facet(
+            &ga.id,
+            TargetKind::Edge,
+            "locator",
+            "fn a",
+            TruthClass::Asserted,
+        )
         .unwrap();
     let gb = store
         .add_edge(EdgeKind::Implements, &ib.id, &cfb.id, TruthClass::Asserted)
         .unwrap();
     store
-        .set_facet(&gb.id, TargetKind::Edge, "locator", "fn b", TruthClass::Asserted)
+        .set_facet(
+            &gb.id,
+            TargetKind::Edge,
+            "locator",
+            "fn b",
+            TruthClass::Asserted,
+        )
         .unwrap();
     let val = store
         .add_node(
