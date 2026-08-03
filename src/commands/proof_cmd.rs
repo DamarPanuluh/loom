@@ -575,14 +575,8 @@ fn warn_if_command_already_proves_another(
         return Ok(());
     }
     let mut others: Vec<String> = Vec::new();
-    for v in store.list_nodes(Some(NodeType::Validation), usize::MAX)? {
-        if Some(v.id.as_str()) == skip_validation {
-            continue;
-        }
-        if v.body.get("command").and_then(|c| c.as_str()) != Some(command) {
-            continue;
-        }
-        for e in store.edges_with(Some(EdgeKind::Validates), Some(&v.id), None)? {
+    for val_id in store.validations_with_command(command, skip_validation)? {
+        for e in store.edges_with(Some(EdgeKind::Validates), Some(&val_id), None)? {
             if e.to_id == intent_id {
                 continue;
             }
@@ -728,6 +722,15 @@ pub fn observe_validation(
 }
 
 /// Recompute one validation's derived grade in place.
+///
+/// Must be called by EVERY path that settles a proof's outcome. It was called
+/// only from `observe_validation`, which the `loom validation run` CLI bypasses
+/// (see the dispatch at `ValidationCmd::Run`), so the documented way to run a
+/// proof left the grade at whatever it was before the run. That is not a
+/// cosmetic staleness: `sync` grades a reset validation S0, the run then passes
+/// it, and the S0 stands — this session watched `proven` report 19 unproven
+/// intents with all 189 proofs green, and a bare `loom sync` fix 26 grades at
+/// once. Grade where the status is written, or the two drift.
 fn regrade(store: &Store, validation_id: &str) -> Result<()> {
     let Some(val) = store.get_node(validation_id)? else {
         return Ok(());
@@ -836,6 +839,7 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
             crate::proof::ProofOutcome::Passed { evidence, run } => {
                 let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "passed", &evidence, "", Some(*run))?;
+                regrade(&store, &v.id)?;
                 drop(store);
                 results.push(serde_json::json!({
                     "id": v.id,
@@ -853,6 +857,7 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
             } => {
                 let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "failed", &evidence, "", Some(*run))?;
+                regrade(&store, &v.id)?;
                 drop(store);
                 let mut row = serde_json::json!({
                     "id": v.id,
@@ -868,6 +873,7 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
             crate::proof::ProofOutcome::Blocked { reason } => {
                 let store = open(Some(&root))?;
                 mark_validation(&store, &v.id, "blocked", "", &reason, None)?;
+                regrade(&store, &v.id)?;
                 drop(store);
                 results.push(serde_json::json!({
                     "id": v.id,

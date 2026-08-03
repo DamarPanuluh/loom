@@ -352,9 +352,9 @@ fn an_intervening_not_run_does_not_hide_a_passed_to_failed_flip() {
 /// **A sibling intent's code moving does not clear a shared proof's record.**
 ///
 /// Characterization of a real defect, now inverted by removing the last
-/// automatic reset. The digest still UNIONS every validated intent's realizing
-/// files — finding 5c4bc814 — so a sibling moving still suppresses FLAGGING a
-/// fresh flip. What it no longer does is wipe a record already taken.
+/// automatic reset. Its companion below covers the other half — a sibling no
+/// longer suppresses FLAGGING a fresh flip either, which it did for as long as
+/// the anchors were one unioned digest (finding 5c4bc814).
 #[test]
 fn a_sibling_intent_file_change_does_not_clear_the_shared_proofs_record() {
     let tmp = Tmp::new();
@@ -437,6 +437,185 @@ fn a_sibling_intent_file_change_does_not_clear_the_shared_proofs_record() {
     assert!(
         unstable(&store, &val.id).is_some(),
         "a sibling intent's file moving must not erase a record already taken"
+    );
+}
+
+/// **A sibling intent's code moving does not excuse a FRESH flip either.**
+///
+/// The other half of finding 5c4bc814, and the half that made the signal lie.
+/// Anchors were one digest unioned over every validated intent, so it changed
+/// when ANY of them changed — and a flip in behavior A was read as "the code
+/// moved" because somebody edited behavior B. On a shared ring, where flakes
+/// actually live, the detector could be silenced by an unrelated commit.
+///
+/// Now the digest is kept per intent and a flip is excused only when ALL the
+/// code the proof exercises moved. A is untouched here, so it is flagged, and
+/// the record names A rather than the proof.
+#[test]
+fn a_sibling_intent_file_change_does_not_excuse_a_fresh_flip() {
+    let tmp = Tmp::new();
+    std::fs::write(tmp.path().join("a.rs"), "pub fn a() {}\n").unwrap();
+    std::fs::write(tmp.path().join("b.rs"), "pub fn b() {}\n").unwrap();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let ia = store
+        .add_node(
+            NodeType::Intent,
+            "behavior a",
+            "a",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let ib = store
+        .add_node(
+            NodeType::Intent,
+            "behavior b",
+            "b",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cfa = store
+        .add_node(NodeType::CodeFile, "a.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    let cfb = store
+        .add_node(NodeType::CodeFile, "b.rs", "", "", serde_json::json!({}))
+        .unwrap();
+    let ga = store
+        .add_edge(EdgeKind::Implements, &ia.id, &cfa.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(
+            &ga.id,
+            TargetKind::Edge,
+            "locator",
+            "fn a",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let gb = store
+        .add_edge(EdgeKind::Implements, &ib.id, &cfb.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .set_facet(
+            &gb.id,
+            TargetKind::Edge,
+            "locator",
+            "fn b",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "shared proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "sh -c 'test ! -f flip'" }),
+        )
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Validates, &val.id, &ia.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .add_edge(EdgeKind::Validates, &val.id, &ib.id, TruthClass::Asserted)
+        .unwrap();
+
+    run_proof(&store, &val.id);
+    assert!(
+        unstable(&store, &val.id).is_none(),
+        "precondition: one clean run is not a flip"
+    );
+
+    // The flip and the sibling edit land together — the commit that touches B
+    // while A's proof starts failing. A's code never moved.
+    std::fs::write(tmp.path().join("b.rs"), "pub fn b_renamed() {}\n").unwrap();
+    std::fs::write(tmp.path().join("flip"), "").unwrap();
+    run_proof(&store, &val.id);
+
+    let record = unstable(&store, &val.id)
+        .expect("a flip over untouched behavior A is a flake, whatever happened to B");
+    assert!(
+        record.contains("behavior a"),
+        "the record must name the behavior that held still, got: {record}"
+    );
+    assert!(
+        !record.contains("behavior b"),
+        "behavior b's code did move, so it is not what went unsteady, got: {record}"
+    );
+}
+
+/// **A flip is excused only when EVERY validated behavior's code moved.**
+///
+/// The boundary on the rule above. Both behaviors move, so nothing held still
+/// and there is nothing to explain — the proof is not flagged.
+#[test]
+fn a_flip_is_excused_when_all_validated_behaviors_moved() {
+    let tmp = Tmp::new();
+    std::fs::write(tmp.path().join("a.rs"), "pub fn a() {}\n").unwrap();
+    std::fs::write(tmp.path().join("b.rs"), "pub fn b() {}\n").unwrap();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let mut intents = Vec::new();
+    for (name, file, locator) in [
+        ("behavior a", "a.rs", "fn a"),
+        ("behavior b", "b.rs", "fn b"),
+    ] {
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                name,
+                "",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let cf = store
+            .add_node(NodeType::CodeFile, file, "", "", serde_json::json!({}))
+            .unwrap();
+        let g = store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &cf.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &g.id,
+                TargetKind::Edge,
+                "locator",
+                locator,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        intents.push(intent.id);
+    }
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "shared proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "sh -c 'test ! -f flip'" }),
+        )
+        .unwrap();
+    for intent in &intents {
+        store
+            .add_edge(EdgeKind::Validates, &val.id, intent, TruthClass::Asserted)
+            .unwrap();
+    }
+
+    run_proof(&store, &val.id);
+    // Every behavior the proof covers moved, alongside the flip.
+    std::fs::write(tmp.path().join("a.rs"), "pub fn a_renamed() {}\n").unwrap();
+    std::fs::write(tmp.path().join("b.rs"), "pub fn b_renamed() {}\n").unwrap();
+    std::fs::write(tmp.path().join("flip"), "").unwrap();
+    run_proof(&store, &val.id);
+
+    assert!(
+        unstable(&store, &val.id).is_none(),
+        "when all the code moved, a different outcome is the system working"
     );
 }
 
@@ -546,4 +725,65 @@ fn every_proof_status_write_records_stability_first() {
             }
         }
     }
+}
+
+/// **Running a proof leaves a grade that reflects the run.**
+///
+/// `regrade` lived only in `observe_validation`, and the `loom validation run`
+/// CLI dispatches around it — so the documented way to run a proof recorded the
+/// outcome and left the strength facet at its pre-run value (finding 1b274ada).
+/// It is a false-green in the other direction: `sync` grades a reset validation
+/// S0, the run passes it, the S0 stands, and `proven` reports unproven intents
+/// while every proof is green. Observed on this graph as 26 stale S0 grades that
+/// a bare `loom sync` corrected with no proof re-run.
+///
+/// Asserted through the same seam the CLI uses, so a future dispatch that skips
+/// the regrade fails here rather than in a dogfood three commits later.
+#[test]
+fn running_a_proof_through_the_cli_path_leaves_a_fresh_grade() {
+    let tmp = Tmp::new();
+    let (store, val) = seeded(&tmp, "true");
+    // Grade it S0 by hand, the state `sync` leaves behind on a reset proof.
+    store
+        .set_facet(
+            &val,
+            TargetKind::Node,
+            "proof_strength",
+            &serde_json::json!({ "grade": "S0", "ran_and_passed": false }).to_string(),
+            TruthClass::Derived,
+        )
+        .unwrap();
+    let root = tmp.path().to_path_buf();
+    drop(store);
+
+    // Through the real dispatch, not the library helper: the bypass being
+    // guarded lives in `ValidationCmd::Run`'s early return, so a test that
+    // called `observe_validation` directly would pass while the CLI stayed
+    // broken — which is exactly how this survived.
+    loom::commands::run(loom::cli::Cli {
+        graph: Some(root.clone()),
+        json: true,
+        command: Some(loom::cli::Command::Validation {
+            cmd: loom::cli::ValidationCmd::Run {
+                key: val.clone(),
+                all: false,
+            },
+        }),
+    })
+    .expect("the proof runs");
+
+    let store = Store::open(&root).unwrap();
+    let graded = store
+        .get_facet(&val, TargetKind::Node, "proof_strength")
+        .unwrap()
+        .expect("the run records a grade");
+    let grade: serde_json::Value = serde_json::from_str(&graded).unwrap();
+    assert_ne!(
+        grade["grade"], "S0",
+        "a passing run must lift the grade off S0, not leave the figure from before it: {graded}"
+    );
+    assert_eq!(
+        grade["ran_and_passed"], true,
+        "the witness must reflect the run that just happened: {graded}"
+    );
 }

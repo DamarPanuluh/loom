@@ -440,3 +440,78 @@ fn duplicate_command_warning_goes_to_stderr_even_with_json() {
         "warning is on stderr, not folded into the JSON envelope: {stderr}"
     );
 }
+
+/// **The collision lookup asks SQLite, and asks it exactly.**
+///
+/// The warning behind these tests runs on every `validation add`/`update`, and
+/// used to find its collisions by listing EVERY validation in the graph with an
+/// unbounded limit, deserializing each body, then running an edge query per node
+/// — to discard all but the handful that matched (finding e8735f90). The
+/// question is now a single indexed statement that returns only real collisions.
+///
+/// Asserted through the store rather than through timing: a benchmark would pin
+/// the machine, not the behavior. What matters is that the lookup is exact —
+/// matching commands only, never a prefix or a near-miss, and never the
+/// validation being edited.
+#[test]
+fn the_command_collision_lookup_returns_only_exact_matches() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let mk = |name: &str, command: &str| {
+        store
+            .add_node(
+                NodeType::Validation,
+                name,
+                "",
+                "not_run",
+                serde_json::json!({ "type": "test", "command": command }),
+            )
+            .unwrap()
+            .id
+    };
+    let one = mk("one", "cargo test --test ring6 -q");
+    let two = mk("two", "cargo test --test ring6 -q");
+    // A prefix of the target, and a superstring of it: both must be excluded, or
+    // the warning would accuse commands that share a suite but not a test.
+    let _prefix = mk("prefix", "cargo test --test ring6");
+    let _longer = mk("longer", "cargo test --test ring6 -q --nocapture");
+    // A validation with no command key at all must not explode the extract.
+    store
+        .add_node(
+            NodeType::Validation,
+            "bodyless",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test" }),
+        )
+        .unwrap();
+
+    let hits = store
+        .validations_with_command("cargo test --test ring6 -q", None)
+        .unwrap();
+    assert_eq!(
+        hits.len(),
+        2,
+        "exactly the two validations registering that command, got {hits:?}"
+    );
+    assert!(hits.contains(&one) && hits.contains(&two));
+
+    // Skipping self is how `update` avoids warning about the row it is editing.
+    let others = store
+        .validations_with_command("cargo test --test ring6 -q", Some(&one))
+        .unwrap();
+    assert_eq!(
+        others,
+        vec![two.clone()],
+        "self is excluded, the sibling is not"
+    );
+
+    assert!(
+        store
+            .validations_with_command("cargo test --test nothing", None)
+            .unwrap()
+            .is_empty(),
+        "a command nobody registers collides with nobody"
+    );
+}

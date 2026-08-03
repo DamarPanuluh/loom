@@ -11,6 +11,7 @@
 
 use super::*;
 use anyhow::Context;
+use std::collections::BTreeMap;
 
 /// Inputs for promoting a live debt cluster into one asserted Finding.
 ///
@@ -933,21 +934,33 @@ impl Store {
     /// earlier versions each invented their own clearing rule and each left a
     /// hole; there is now exactly one.
     pub fn record_proof_stability(&self, val_id: &str, new_status: &str) -> Result<()> {
-        let Some(val) = self.get_node(val_id)? else {
+        // Existence is the only thing wanted from the node here; the outcome
+        // being compared arrives as `new_status`. Binding it and discarding it
+        // at the end left a `let _ =` that read as a dropped result.
+        if self.get_node(val_id)?.is_none() {
             return Ok(());
-        };
+        }
         // Only a passed/failed pair can disagree ABOUT THE CODE. `blocked` means
         // loom could not observe at all — a timeout, a missing binary, its own
         // lock — and `not_run` means it has not looked yet. Neither is the proof
         // wavering.
         let comparable = |s: &str| matches!(s, "passed" | "failed");
         let anchors = self.realizing_anchor_digest(val_id)?;
-        let prior_anchors = self.get_facet(val_id, TargetKind::Node, "proof_anchors")?;
+        let prior_anchors = self
+            .get_facet(val_id, TargetKind::Node, "proof_anchors")?
+            .and_then(|raw| {
+                // A pre-fix graph holds the old unioned STRING here. It will not
+                // parse, and that reads as "no prior" — one run re-records in the
+                // new shape and comparison resumes. Silently, because a schema the
+                // graph outgrew is not a finding about the graph.
+                serde_json::from_str::<BTreeMap<String, String>>(&raw).ok()
+            })
+            .unwrap_or_default();
         self.set_facet(
             val_id,
             TargetKind::Node,
             "proof_anchors",
-            &anchors,
+            &serde_json::to_string(&anchors)?,
             TruthClass::Derived,
         )?;
         if !comparable(new_status) {
@@ -971,45 +984,79 @@ impl Store {
         let Some(last) = last else {
             return Ok(()); // nothing has been settled before; nothing to disagree with
         };
-        // The code moved, so THIS flip is honest and is not flagged. It is not
-        // evidence the proof became deterministic either, so a record already
-        // taken stands.
-        if prior_anchors.as_deref() != Some(anchors.as_str()) {
-            return Ok(());
-        }
         if last == new_status {
             return Ok(());
         }
+        // Which behaviors sat STILL across this flip. Asked per intent, because
+        // asking it of a union answered the wrong question: one digest over every
+        // validated intent's files changes when ANY of them changes, so editing a
+        // sibling excused a flip in a behavior nobody had touched (finding
+        // 5c4bc814). A flip is explained by code movement only when ALL the code
+        // it exercises moved; if even one behavior held still, the proof changed
+        // its mind about that behavior for no reason it can point at.
+        let unchanged: Vec<&String> = anchors
+            .iter()
+            .filter(|(intent, digest)| prior_anchors.get(*intent) == Some(*digest))
+            .map(|(intent, _)| intent)
+            .collect();
+        // Empty and non-empty mean opposite things here. No intent held still
+        // (with intents present) is the excused case. No intents AT ALL is a proof
+        // anchored to nothing, which explains nothing and stays flagged.
+        if unchanged.is_empty() && !anchors.is_empty() {
+            return Ok(());
+        }
+        // Name the behavior, not the file set. Whoever reads this is deciding
+        // whether a flake is real, and "which claim went unsteady" is the question
+        // they are actually holding.
+        let mut named: Vec<String> = Vec::new();
+        for intent in &unchanged {
+            if let Some(node) = self.get_node(intent)? {
+                named.push(format!("'{}'", node.name));
+            }
+        }
+        named.sort();
+        let detail = if named.is_empty() {
+            String::new()
+        } else {
+            format!(" for {}", named.join(", "))
+        };
         self.set_facet(
             val_id,
             TargetKind::Node,
             "proof_unstable",
-            &format!("{last} then {new_status} over unchanged code"),
+            &format!("{last} then {new_status} over unchanged code{detail}"),
             TruthClass::Derived,
         )?;
-        let _ = val;
         Ok(())
     }
 
-    /// The code a proof last ran over: every REALIZING file of every intent it
-    /// validates, with the hash in force now.
+    /// The code a proof last ran over, kept SEPARATE per validated intent.
     ///
     /// Realizing-only, deliberately — this is not the expiry set. Expiry asks
     /// "could this run still be valid?" and must include the test. Flake
     /// discrimination asks "did the code under test move?" and must not, or
     /// editing a test suppresses detection of the flake that edit introduced.
-    fn realizing_anchor_digest(&self, val_id: &str) -> Result<String> {
-        let mut parts: Vec<String> = Vec::new();
+    ///
+    /// Per intent rather than one union, because a union cannot answer the
+    /// question the caller asks it. Merged into a single digest, a shared proof's
+    /// anchors change whenever ANY validated behavior's files change, so a flip
+    /// in behavior A was excused by an unrelated edit to behavior B. Keyed by
+    /// intent, "did THIS behavior's code move?" stays answerable however many
+    /// behaviors ride the same command.
+    fn realizing_anchor_digest(&self, val_id: &str) -> Result<BTreeMap<String, String>> {
+        let mut per_intent = BTreeMap::new();
         for e in self.edges_with(Some(EdgeKind::Validates), Some(val_id), None)? {
+            let mut parts: Vec<String> = Vec::new();
             for file in crate::runner::files_realizing(self, &e.to_id)? {
                 let hash = std::fs::read_to_string(self.root().join(&file))
                     .map(|c| crate::artifact::fingerprint(&c))
                     .unwrap_or_default();
                 parts.push(format!("{file}={hash}"));
             }
+            parts.sort();
+            parts.dedup();
+            per_intent.insert(e.to_id.clone(), parts.join(","));
         }
-        parts.sort();
-        parts.dedup();
-        Ok(parts.join(","))
+        Ok(per_intent)
     }
 }

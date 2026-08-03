@@ -210,6 +210,39 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
+    /// Ids of the validations registering exactly `command`, minus `skip`.
+    ///
+    /// Asked in SQL rather than by listing every validation and comparing in
+    /// Rust. The caller is a WRITE-TIME warning on `validation add`/`update`, so
+    /// its cost is paid on every proof anyone registers; the listing form
+    /// deserialized the body JSON of every validation in the graph and then ran
+    /// an edge query per node, to discard nearly all of them. Here SQLite reads
+    /// the command out of the body itself and returns only genuine collisions —
+    /// which is almost always none, and never many.
+    ///
+    /// Still a scan of the validation rows (`idx_node_type` bounds it to those);
+    /// what it no longer does is materialize them. An expression index would make
+    /// it a lookup, and at the graph sizes loom sees the difference is not
+    /// measurable — that is a schema migration to buy on evidence, not on
+    /// principle.
+    pub fn validations_with_command(
+        &self,
+        command: &str,
+        skip: Option<&str>,
+    ) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id FROM node
+              WHERE node_type = ?1
+                AND json_extract(body, '$.command') = ?2
+                AND (?3 IS NULL OR id <> ?3)
+              ORDER BY id",
+        )?;
+        let rows = stmt.query_map(params![NodeType::Validation.as_str(), command, skip], |r| {
+            r.get::<_, String>(0)
+        })?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
     /// Total node count of a type (or all types). Backs the "showing N–M of
     /// TOTAL" page footer so a `list` caller knows more rows exist beyond the
     /// current page — the signal whose absence hid duplicates during recovery.
