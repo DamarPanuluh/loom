@@ -907,3 +907,91 @@ impl Store {
         })
     }
 }
+
+impl Store {
+    /// Notice a proof that changed its mind about unchanged code.
+    ///
+    /// loom re-runs every registered proof on every dogfood and used to forget
+    /// that it had — a validation carried one outcome and the next run
+    /// overwrote it. So a proof passing four runs and failing the fifth was
+    /// recorded as whichever run loom happened to observe. That is exactly what
+    /// happened to the INV-8 proofs, where tests mutating process-global
+    /// `LOOM_AGENT` made the human-presence boundary pass or fail on thread
+    /// scheduling.
+    ///
+    /// Lives on the STORE, not in a command, because there are two paths that
+    /// settle a proof's status — `validation run` and `journey run` — and the
+    /// first version guarded only one. A journey proof, which is what covers
+    /// every user-visible behavior, was never on the stability path at all.
+    /// One door, like every other thing that moves truth here.
+    ///
+    /// STICKY. Agreement does not clear the flag: a flake that mostly passes is
+    /// still a flake, and the greens arrive constantly. Nor does an edit to the
+    /// realizing code — an incidental touch, even whitespace, must not wipe a
+    /// live record of non-determinism. What clears it is the adjudication
+    /// lifecycle every other smell uses (`signal::resolving_verdict`). Two
+    /// earlier versions each invented their own clearing rule and each left a
+    /// hole; there is now exactly one.
+    pub fn record_proof_stability(&self, val_id: &str, new_status: &str) -> Result<()> {
+        let Some(val) = self.get_node(val_id)? else {
+            return Ok(());
+        };
+        // Only a passed/failed pair can disagree ABOUT THE CODE. `blocked` means
+        // loom could not observe at all — a timeout, a missing binary, its own
+        // lock — so passed→blocked is the harness failing, not the proof
+        // wavering, and conflating them dilutes the signal until nobody reads it.
+        let comparable = |s: &str| matches!(s, "passed" | "failed");
+        let anchors = self.realizing_anchor_digest(val_id)?;
+        let prior = self.get_facet(val_id, TargetKind::Node, "proof_anchors")?;
+        self.set_facet(
+            val_id,
+            TargetKind::Node,
+            "proof_anchors",
+            &anchors,
+            TruthClass::Derived,
+        )?;
+        if !comparable(&val.status) || !comparable(new_status) {
+            return Ok(());
+        }
+        // The code moved, so THIS flip is honest and is not flagged. It is not
+        // evidence the proof became deterministic either, so any existing record
+        // stands — clearing here was the hole that made a whitespace edit wipe a
+        // live flake.
+        if prior.as_deref() != Some(anchors.as_str()) {
+            return Ok(());
+        }
+        if val.status == new_status {
+            return Ok(());
+        }
+        self.set_facet(
+            val_id,
+            TargetKind::Node,
+            "proof_unstable",
+            &format!("{} then {} over unchanged code", val.status, new_status),
+            TruthClass::Derived,
+        )?;
+        Ok(())
+    }
+
+    /// The code a proof last ran over: every REALIZING file of every intent it
+    /// validates, with the hash in force now.
+    ///
+    /// Realizing-only, deliberately — this is not the expiry set. Expiry asks
+    /// "could this run still be valid?" and must include the test. Flake
+    /// discrimination asks "did the code under test move?" and must not, or
+    /// editing a test suppresses detection of the flake that edit introduced.
+    fn realizing_anchor_digest(&self, val_id: &str) -> Result<String> {
+        let mut parts: Vec<String> = Vec::new();
+        for e in self.edges_with(Some(EdgeKind::Validates), Some(val_id), None)? {
+            for file in crate::runner::files_realizing(self, &e.to_id)? {
+                let hash = std::fs::read_to_string(self.root().join(&file))
+                    .map(|c| crate::artifact::fingerprint(&c))
+                    .unwrap_or_default();
+                parts.push(format!("{file}={hash}"));
+            }
+        }
+        parts.sort();
+        parts.dedup();
+        Ok(parts.join(","))
+    }
+}

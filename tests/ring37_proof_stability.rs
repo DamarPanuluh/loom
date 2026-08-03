@@ -319,9 +319,14 @@ fn passed_to_blocked_is_not_flagged_as_instability() {
     );
 }
 
-/// Attack: a validation over TWO intents clears instability when EITHER moves.
+/// **A sibling intent's code moving does not clear a shared proof's record.**
+///
+/// Characterization of a real defect, now inverted by removing the last
+/// automatic reset. The digest still UNIONS every validated intent's realizing
+/// files — finding 5c4bc814 — so a sibling moving still suppresses FLAGGING a
+/// fresh flip. What it no longer does is wipe a record already taken.
 #[test]
-fn a_sibling_intent_file_change_clears_instability_for_the_shared_proof() {
+fn a_sibling_intent_file_change_does_not_clear_the_shared_proofs_record() {
     let tmp = Tmp::new();
     std::fs::write(tmp.path().join("a.rs"), "pub fn a() {}\n").unwrap();
     std::fs::write(tmp.path().join("b.rs"), "pub fn b() {}\n").unwrap();
@@ -400,20 +405,20 @@ fn a_sibling_intent_file_change_clears_instability_for_the_shared_proof() {
     run_proof(&store, &val.id); // still fails (flip present), but digest moved
 
     assert!(
-        unstable(&store, &val.id).is_none(),
-        "a change to a sibling intent's file clears instability for the shared validation"
+        unstable(&store, &val.id).is_some(),
+        "a sibling intent's file moving must not erase a record already taken"
     );
 }
 
-/// Attack: sticky + "clear on realizing-file change" lets an edit hide a flake.
+/// **An edit to the realizing code does not wipe a live flake record.**
 ///
-/// After a flip is flagged, editing the realizing file is the ONLY automatic
-/// reset. A genuinely flaky proof whose outcome still depends on outside state
-/// loses its record the moment anyone (or rustfmt, or a drive-by edit) touches
-/// the realizing surface — even when the flake trigger is untouched and the
-/// next run still fails.
+/// Characterization of a real defect, now inverted. "Clear on realizing-file
+/// change" was the last automatic reset, and it meant rustfmt or a drive-by
+/// whitespace touch erased the evidence while the flake trigger sat untouched
+/// and the next run still failed. Nothing clears the flag automatically now;
+/// only adjudication does.
 #[test]
-fn a_realizing_file_edit_clears_a_sticky_flake_record() {
+fn a_realizing_file_edit_does_not_wipe_a_sticky_flake_record() {
     let tmp = Tmp::new();
     let (store, val) = seeded(&tmp, "sh -c 'test ! -f flip'");
     run_proof(&store, &val); // pass
@@ -427,8 +432,74 @@ fn a_realizing_file_edit_clears_a_sticky_flake_record() {
 
     assert_eq!(store.get_node(&val).unwrap().unwrap().status, "failed");
     assert!(
-        unstable(&store, &val).is_none(),
-        "editing the realizing file cleared the sticky flake record while the \
-         proof was still failing for a reason outside that file"
+        unstable(&store, &val).is_some(),
+        "an incidental edit must not erase evidence that the proof is \
+         non-deterministic — the flake trigger was untouched and it still failed"
     );
+}
+
+/// **Every path that settles a proof's status goes through the stability door.**
+///
+/// Structural, and it reads loom's own source, because this is a claim about
+/// WHERE code may live and no runtime assertion can defend it. The first
+/// version of stability tracking guarded `validation run` alone — and
+/// `journey run` sets its status directly, so the proofs covering every
+/// user-visible behavior were never watched. Fixing one call site is not the
+/// same as closing the door.
+///
+/// A new path that settles a proof and skips `record_proof_stability` re-opens
+/// exactly that hole, silently, and only for whichever proofs use it.
+#[test]
+fn every_proof_status_write_records_stability_first() {
+    let sanctioned: &[(&str, &str)] = &[
+        ("src/commands/proof_cmd.rs", "validation run"),
+        ("src/journey.rs", "journey run"),
+    ];
+    let mut offenders: Vec<String> = Vec::new();
+
+    for entry in std::fs::read_dir("src").unwrap().flatten() {
+        walk(&entry.path(), sanctioned, &mut offenders);
+    }
+    assert!(
+        offenders.is_empty(),
+        "these settle a proof's status without recording stability first — either \
+         route them through Store::record_proof_stability or, if they do not settle \
+         a PROOF, say so here:\n{}",
+        offenders.join("\n")
+    );
+
+    fn walk(path: &std::path::Path, sanctioned: &[(&str, &str)], out: &mut Vec<String>) {
+        if path.is_dir() {
+            for e in std::fs::read_dir(path).unwrap().flatten() {
+                walk(&e.path(), sanctioned, out);
+            }
+            return;
+        }
+        if path.extension().is_none_or(|e| e != "rs") {
+            return;
+        }
+        let rel = path.to_string_lossy().replace('\\', "/");
+        let src = std::fs::read_to_string(path).unwrap();
+        // Only the two files that settle PROOF status are in scope; every other
+        // set_node_status call moves an intent, a question, a wiki page.
+        let Some((_, what)) = sanctioned.iter().find(|(f, _)| rel.ends_with(f)) else {
+            return;
+        };
+        for (i, line) in src.lines().enumerate() {
+            if !line.contains("set_node_status") || line.trim_start().starts_with("//") {
+                continue;
+            }
+            // The stability call must appear within the preceding few lines —
+            // close enough that a reader sees them as one act.
+            let lines: Vec<&str> = src.lines().collect();
+            let from = i.saturating_sub(8);
+            let window = lines[from..i].join("\n");
+            if !window.contains("record_proof_stability") {
+                out.push(format!(
+                    "  {rel}:{} ({what}) — settles a proof without record_proof_stability above it",
+                    i + 1
+                ));
+            }
+        }
+    }
 }

@@ -723,7 +723,12 @@ pub fn record_outcomes(
         stale_unreached_passing_steps(store, spec, &journey.id, idx + 1)?;
     }
     let all_pass = !outcomes.is_empty() && outcomes.iter().all(|o| o.passed);
-    store.set_node_status(&journey.id, if all_pass { "passed" } else { "failed" })?;
+    let outcome = if all_pass { "passed" } else { "failed" };
+    // A journey is a proof too, and it covers every user-visible behavior. The
+    // first stability guard sat in `validation run` only, so this path — the one
+    // dogfood exercises most — was never watched.
+    store.record_proof_stability(&journey.id, outcome)?;
+    store.set_node_status(&journey.id, outcome)?;
     Ok(journey)
 }
 
