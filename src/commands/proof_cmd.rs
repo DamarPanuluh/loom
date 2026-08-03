@@ -279,6 +279,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 ),
             };
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
+            warn_if_command_already_proves_another(&store, &command, &i.id, None)?;
             let has_journey_metadata =
                 journey_id.is_some() || repo_native_kind.is_some() || artifact.is_some();
             if has_journey_metadata && proof_kind.as_deref() != Some("journey") {
@@ -395,6 +396,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 body["type"] = serde_json::json!(t);
             }
             if let Some(c) = &command {
+                warn_if_command_already_proves_another(&store, c, "", Some(&val.id))?;
                 body["command"] = serde_json::json!(c);
                 // Re-entering the command through the local CLI is the explicit
                 // approval step for a command quarantined during import.
@@ -542,6 +544,141 @@ fn covered_hashes(
         .collect())
 }
 
+/// Say so when a command is already registered as another behavior's proof.
+///
+/// A warning, never a refusal. A ring genuinely covering several behaviors is a
+/// legitimate shape — fifteen of this repo's shared commands are exactly that —
+/// so refusing would break honest work to catch dishonest work. But the shape
+/// is also how a claim goes green over code it never touches: an intent
+/// claiming "a locator that cannot resolve falls back to file-scope reopening"
+/// carried two passing validations, both running `cargo test --test ring6 -q`,
+/// while the behavior did not exist at all.
+///
+/// Said at write time, which is the only moment it is cheap. Afterwards it
+/// costs a smell, a triage verdict, and eventually someone re-deriving why.
+fn warn_if_command_already_proves_another(
+    store: &Store,
+    command: &str,
+    intent_id: &str,
+    skip_validation: Option<&str>,
+) -> Result<()> {
+    let command = command.trim();
+    if command.is_empty() {
+        return Ok(());
+    }
+    let mut others: Vec<String> = Vec::new();
+    for v in store.list_nodes(Some(NodeType::Validation), usize::MAX)? {
+        if Some(v.id.as_str()) == skip_validation {
+            continue;
+        }
+        if v.body.get("command").and_then(|c| c.as_str()) != Some(command) {
+            continue;
+        }
+        for e in store.edges_with(Some(EdgeKind::Validates), Some(&v.id), None)? {
+            if e.to_id == intent_id {
+                continue;
+            }
+            if let Some(other) = store.get_node(&e.to_id)? {
+                others.push(other.name);
+            }
+        }
+    }
+    others.sort();
+    others.dedup();
+    if others.is_empty() {
+        return Ok(());
+    }
+    eprintln!(
+        "warning: `{command}` is already the proof of {} other behavior(s): {}.\n\
+         \x20        One command exercises at most one of them; the rest stand on whatever it\n\
+         \x20        really tests. Narrow this proof to the test that asserts THIS behavior,\n\
+         \x20        or accept it knowingly — `loom smells` will keep reporting it.",
+        others.len(),
+        others
+            .iter()
+            .map(|n| format!("'{n}'"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    Ok(())
+}
+
+/// Notice a proof that changed its mind about unchanged code.
+///
+/// loom re-runs every registered proof on every dogfood and, until now, forgot
+/// that it had: a validation carried one outcome, and the next run simply
+/// overwrote it. So a proof that passes four times and fails the fifth was
+/// recorded as whichever run loom happened to observe — which is exactly what
+/// happened to the INV-8 proofs, where tests mutating process-global
+/// `LOOM_AGENT` made the human-presence boundary pass or fail on thread
+/// scheduling.
+///
+/// A flip is only evidence of instability when the code underneath did NOT
+/// move. If a covered file changed, a different outcome is the system working;
+/// the anchor set is what tells the two apart, and it is already recorded on
+/// every run.
+///
+/// Self-clearing on purpose: a later run that agrees with the one before it,
+/// over the same anchors, clears the flag. One flip is evidence of instability;
+/// consistent runs afterwards are evidence it settled. A genuinely flaky proof
+/// keeps re-tripping this, which is the signal wanted — loom reports what it
+/// observed rather than deciding how many runs constitute proof.
+fn record_stability(store: &Store, val_id: &str, new_status: &str) -> Result<()> {
+    let Some(val) = store.get_node(val_id)? else {
+        return Ok(());
+    };
+    // Record the anchor set on EVERY observation, including the first — a run
+    // that stores nothing leaves the next one with nothing to compare against,
+    // so the second run would always read as "the code moved" and no flip could
+    // ever be seen.
+    let anchors = current_anchor_digest(store, val_id)?;
+    let prior_anchors = store.get_facet(val_id, TargetKind::Node, "proof_anchors")?;
+    store.set_facet(
+        val_id,
+        TargetKind::Node,
+        "proof_anchors",
+        &anchors,
+        TruthClass::Derived,
+    )?;
+    // A first observation has nothing to disagree with.
+    if !matches!(val.status.as_str(), "passed" | "failed" | "blocked") {
+        return Ok(());
+    }
+
+    // The anchors moved: a different outcome is the code changing, not the
+    // proof wavering. Any earlier instability was about different code.
+    if prior_anchors.as_deref() != Some(anchors.as_str()) {
+        store.clear_facet(val_id, TargetKind::Node, "proof_unstable")?;
+        return Ok(());
+    }
+    if val.status == new_status {
+        store.clear_facet(val_id, TargetKind::Node, "proof_unstable")?;
+        return Ok(());
+    }
+    store.set_facet(
+        val_id,
+        TargetKind::Node,
+        "proof_unstable",
+        &format!("{} then {} over unchanged code", val.status, new_status),
+        TruthClass::Derived,
+    )?;
+    Ok(())
+}
+
+/// The anchor set a proof last ran over, as one comparable string: every file
+/// grounding every intent it validates, with the hash in force now.
+fn current_anchor_digest(store: &Store, val_id: &str) -> Result<String> {
+    let mut parts: Vec<String> = Vec::new();
+    for e in store.edges_with(Some(EdgeKind::Validates), Some(val_id), None)? {
+        for (file, hash) in covered_hashes(store, &e.to_id)? {
+            parts.push(format!("{file}={hash}"));
+        }
+    }
+    parts.sort();
+    parts.dedup();
+    Ok(parts.join(","))
+}
+
 fn mark_validation(
     store: &Store,
     val_id: &str,
@@ -593,6 +730,7 @@ fn mark_validation(
         }
         store.assert_fact(assertion)?;
     }
+    record_stability(store, val_id, node_status)?;
     store.set_node_status(val_id, node_status)?;
     crate::journal::append(
         store.root(),

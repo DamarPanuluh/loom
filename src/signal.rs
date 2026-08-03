@@ -215,6 +215,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
     let mut out = Vec::new();
     out.extend(ownership_smells(&snap, &owners, &rel_adjacency));
     out.extend(shared_proof_command_smells(&snap));
+    out.extend(unstable_proof_smells(&snap));
     out.extend(consumer_owned_file_smells(&snap, &owners));
     out.extend(undeclared_coupling_smells(
         &snap,
@@ -296,6 +297,40 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
 /// Two unrelated intents on one file fire. Ten related intents stay silent
 /// (maybe large, but not undeclared). Former `overlapping_ownership` is the
 /// two-owner case of the same rule; identity is always `tangled_file:{cf}`.
+/// Proofs that changed their mind about unchanged code.
+///
+/// `record_stability` flags a validation whose outcome flipped while its anchor
+/// set stood still. That is a proof whose colour depends on something other
+/// than the code — scheduling, ordering, a clock, the network — and a proof
+/// like that establishes nothing on the run you happened to observe.
+///
+/// It matters most exactly where it is least visible: the INV-8 proofs, which
+/// defend the human-presence ratification boundary, were flaky for want of a
+/// lock and passed four runs out of five.
+fn unstable_proof_smells(snap: &Snapshot) -> Vec<Smell> {
+    let flagged = facet_map(snap, "proof_unstable");
+    let mut out = Vec::new();
+    for n in &snap.nodes {
+        if n.node_type != NodeType::Validation {
+            continue;
+        }
+        let Some(detail) = flagged.get(n.id.as_str()) else {
+            continue;
+        };
+        out.push(Smell {
+            kind: "unstable_proof".into(),
+            message: format!(
+                "proof '{}' reported {detail} — its outcome does not depend only on the code it covers",
+                n.name
+            ),
+            remedy: "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then run it twice over unchanged code — a matching pair clears this"
+                .into(),
+            identity: format!("unstable_proof:{}", n.id),
+        });
+    }
+    out
+}
+
 /// Behaviors whose proof is the SAME command.
 ///
 /// If one command proves seven behaviors, it is at most proving one of them.

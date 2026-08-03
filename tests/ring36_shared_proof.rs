@@ -190,3 +190,70 @@ fn an_unlinked_validation_is_not_counted() {
         "an unlinked validation lends its green to nobody"
     );
 }
+
+/// **The duplicate command is called out at WRITE time, not only later.**
+///
+/// A warning, never a refusal: a ring genuinely covering several behaviors is a
+/// legitimate shape — fifteen of this repo's shared commands are exactly that —
+/// so refusing would break honest work to catch dishonest work. But saying it
+/// when the proof is registered is the only moment it is cheap; afterwards it
+/// costs a smell, a triage verdict, and someone re-deriving why.
+#[test]
+fn registering_a_command_that_already_proves_another_behavior_still_succeeds() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let a = behavior(&store, "the first behavior");
+    proved_by(&store, &a, "first proof", "cargo test --test ring6 -q");
+    drop(store);
+
+    // The second registration goes through the real CLI so the warning path is
+    // the one a user actually hits.
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+        .args([
+            "--graph",
+            tmp.path().to_str().unwrap(),
+            "intent",
+            "add",
+            "--name",
+            "the second behavior",
+            "--description",
+            "does another thing",
+            "--lifecycle",
+            "implemented",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "fixture intent added");
+
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+        .args([
+            "--graph",
+            tmp.path().to_str().unwrap(),
+            "validation",
+            "add",
+            "--name",
+            "second proof",
+            "--type",
+            "test",
+            "--command",
+            "cargo test --test ring6 -q",
+            "--intent",
+            "the second behavior",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        out.status.success(),
+        "a shared command is a warning, not a refusal — honest rings must still register"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("already the proof of"),
+        "and the warning names the collision: {stderr}"
+    );
+    assert!(
+        stderr.contains("the first behavior"),
+        "including which behavior it collides with: {stderr}"
+    );
+}
