@@ -319,15 +319,16 @@ fn passed_to_blocked_is_not_flagged_as_instability() {
     );
 }
 
-/// **An intervening non-comparable status hides a real flip.**
+/// **An intervening non-comparable status does not hide a real flip.**
 ///
-/// `comparable()` admits only passed|failed. Ripple resets a proof to `not_run`
-/// before the next run; a flake that was `passed` and becomes `failed` after
-/// that reset is observed as `not_run→failed`, which is skipped. The same shape
-/// exists for `passed→blocked→failed`. The flip happened over unchanged code;
-/// the detector never sees the comparable pair.
+/// Characterization of a real hole, now inverted. `comparable()` still admits
+/// only passed|failed, but the comparison no longer reads the node's CURRENT
+/// status — it reads the last SETTLED outcome, held in its own facet. A ripple
+/// reset to `not_run` (or a redefinition, which leaves the realizing code
+/// untouched) therefore cannot launder a passed→failed flake by standing
+/// between the two runs. Same shape for passed→blocked→failed.
 #[test]
-fn an_intervening_not_run_hides_a_passed_to_failed_flip() {
+fn an_intervening_not_run_does_not_hide_a_passed_to_failed_flip() {
     let tmp = Tmp::new();
     let (store, val) = seeded(&tmp, "sh -c 'test ! -f flip'");
     run_proof(&store, &val);
@@ -342,9 +343,9 @@ fn an_intervening_not_run_hides_a_passed_to_failed_flip() {
 
     assert_eq!(store.get_node(&val).unwrap().unwrap().status, "failed");
     assert!(
-        unstable(&store, &val).is_none(),
-        "characterization: not_run→failed is not a comparable pair, so the \
-         passed→failed flake across the reset is invisible"
+        unstable(&store, &val).is_some(),
+        "a reset standing between two runs must not launder the flip — the \
+         comparison is against the last settled outcome, not the current status"
     );
 }
 

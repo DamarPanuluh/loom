@@ -938,11 +938,11 @@ impl Store {
         };
         // Only a passed/failed pair can disagree ABOUT THE CODE. `blocked` means
         // loom could not observe at all — a timeout, a missing binary, its own
-        // lock — so passed→blocked is the harness failing, not the proof
-        // wavering, and conflating them dilutes the signal until nobody reads it.
+        // lock — and `not_run` means it has not looked yet. Neither is the proof
+        // wavering.
         let comparable = |s: &str| matches!(s, "passed" | "failed");
         let anchors = self.realizing_anchor_digest(val_id)?;
-        let prior = self.get_facet(val_id, TargetKind::Node, "proof_anchors")?;
+        let prior_anchors = self.get_facet(val_id, TargetKind::Node, "proof_anchors")?;
         self.set_facet(
             val_id,
             TargetKind::Node,
@@ -950,26 +950,44 @@ impl Store {
             &anchors,
             TruthClass::Derived,
         )?;
-        if !comparable(&val.status) || !comparable(new_status) {
+        if !comparable(new_status) {
+            // A non-outcome must not ERASE the history either — that was the
+            // hole: comparing against the node's current status meant an
+            // intervening `not_run` (a ripple reset, or redefining the intent,
+            // which leaves the realizing code untouched) made a real
+            // passed→failed flip invisible.
             return Ok(());
         }
+        // Compare against the last SETTLED outcome, held separately from the
+        // node's status precisely so a reset cannot launder a flip.
+        let last = self.get_facet(val_id, TargetKind::Node, "proof_last_outcome")?;
+        self.set_facet(
+            val_id,
+            TargetKind::Node,
+            "proof_last_outcome",
+            new_status,
+            TruthClass::Derived,
+        )?;
+        let Some(last) = last else {
+            return Ok(()); // nothing has been settled before; nothing to disagree with
+        };
         // The code moved, so THIS flip is honest and is not flagged. It is not
-        // evidence the proof became deterministic either, so any existing record
-        // stands — clearing here was the hole that made a whitespace edit wipe a
-        // live flake.
-        if prior.as_deref() != Some(anchors.as_str()) {
+        // evidence the proof became deterministic either, so a record already
+        // taken stands.
+        if prior_anchors.as_deref() != Some(anchors.as_str()) {
             return Ok(());
         }
-        if val.status == new_status {
+        if last == new_status {
             return Ok(());
         }
         self.set_facet(
             val_id,
             TargetKind::Node,
             "proof_unstable",
-            &format!("{} then {} over unchanged code", val.status, new_status),
+            &format!("{last} then {new_status} over unchanged code"),
             TruthClass::Derived,
         )?;
+        let _ = val;
         Ok(())
     }
 

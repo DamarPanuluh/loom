@@ -403,6 +403,14 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 if let Some(object) = body.as_object_mut() {
                     object.remove("command_trusted");
                 }
+                // A different command is a different proof, so the outcome
+                // history is about something else now. Clearing it here is the
+                // one place a reset is honest — and it is the flip COMPARISON
+                // that resets, never the instability record, which stays until
+                // a person adjudicates it.
+                if val.body.get("command").and_then(|v| v.as_str()) != Some(c.as_str()) {
+                    store.clear_facet(&val.id, TargetKind::Node, "proof_last_outcome")?;
+                }
             }
             store.set_node_body(&val.id, &body)?;
             pulse::emit_line(
