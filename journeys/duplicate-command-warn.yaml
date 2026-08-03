@@ -1,0 +1,15 @@
+journey: registering a shared proof command warns at once
+steps:
+  - name: adding a second behavior on the same command warns and still succeeds
+    intent: registering a proof command another behavior already uses says so at once
+    run: >-
+      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
+      loom intent add --graph "$tmp" --name 'the first behavior' --description 'does one thing' --lifecycle implemented &&
+      loom intent add --graph "$tmp" --name 'the second behavior' --description 'does another thing' --lifecycle implemented &&
+      loom validation add --graph "$tmp" --name 'first proof' --type test --command 'true' --intent 'the first behavior' &&
+      loom validation add --graph "$tmp" --name 'second proof' --type test --command 'true' --intent 'the second behavior'; rc=$?; rm -rf "$tmp"; exit $rc
+    expect:
+      exit_code: 0
+      stderr_contains:
+        - "already the proof of"
+        - "the first behavior"
