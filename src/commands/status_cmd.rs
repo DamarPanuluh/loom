@@ -403,7 +403,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     // rungs above are climbed, so the queue line reads as the work behind them.
     let backlog: Vec<String> = crate::lane::Lane::LADDER
         .iter()
-        .filter(|l| l.serves_items() && !l.human_only())
+        .filter(|l| l.serves_items() && !l.requires_human_decision())
         .map(|l| format!("{}={}", l.as_str(), queues.get(*l)))
         .collect();
     println!(
@@ -433,12 +433,12 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<(
     // Surface the depth alongside so "one line per queue" never reads as "this
     // queue holds one item" (the counts also live in `loom status`).
     //
-    // The human-presence lane is excluded from the served set: minting a packet
+    // The human-decision lane is excluded from the served set: minting a packet
     // for it here would route an LLM driver into a write it is denied (INV-8).
     // This is the same filter the `loom status` queues line uses.
     let modes: Vec<(&'static str, crate::lane::Lane, usize)> = crate::lane::Lane::LADDER
         .iter()
-        .filter(|l| l.serves_items() && !l.human_only())
+        .filter(|l| l.serves_items() && !l.requires_human_decision())
         .map(|&l| (l.as_str(), l, counts.get(l)))
         .collect();
     // Compute each queue's top item once, then mint one packet per served item
@@ -858,7 +858,15 @@ fn print_work_item(item: &workitem::WorkItem) {
     println!("  write-back: {}", c.write_back);
     println!("  stop: {}", c.stop_condition);
     if let Some(gate) = &c.human_gate {
-        println!("  ⚠ HUMAN GATE: {gate}");
+        println!("  ⚠ HUMAN GATE: {}", gate.question);
+        for option in &gate.options {
+            println!(
+                "    - {}: {} — {}",
+                option.id, option.label, option.description
+            );
+        }
+        println!("    recommendation: {}", gate.recommendation);
+        println!("    after answer: {}", gate.after_answer);
     }
     println!("  next_step: {}", item.next_step);
 }

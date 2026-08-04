@@ -1,6 +1,6 @@
 //! Ratification — whether a behavior is WANTED, and who gets to say so.
 //!
-//! Plane: asserted judgment (human-only, INV-8) over a derived witness.
+//! Plane: asserted judgment (human-authorized, INV-8) over a derived witness.
 //!
 //! Contract — **asserted judgment always wins; evidence speaks only where the
 //! human is silent.** An unratified intent that the code demonstrably performs,
@@ -21,12 +21,61 @@
 use crate::model::{EdgeKind, NodeType, TargetKind, Verification};
 use crate::store::Store;
 use crate::Result;
+use anyhow::bail;
 use serde::{Deserialize, Serialize};
 
 /// The states a human may assert. `de_facto` is deliberately absent — it is
 /// derived, and there is no path from caller input to it.
 pub const ASSERTED_STATES: &[&str] =
     &["unratified", "ratified", "rejected", "needs_reconfirmation"];
+
+/// Evidence that a human made the product decision.
+///
+/// This separates the authority from the executor. A direct decision is made
+/// and recorded by the person running Loom. A mediated decision is made by a
+/// person in the host conversation, then recorded mechanically by an LLM. The
+/// latter is deliberately explicit: merely running in an LLM lane never
+/// acquires product authority.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum HumanDecision {
+    Direct { presence: String },
+    Mediated { response: String },
+}
+
+impl HumanDecision {
+    /// A person made and recorded the decision in the same interaction.
+    pub fn direct(presence: impl Into<String>) -> Result<Self> {
+        let presence = presence.into();
+        if presence.trim().is_empty() {
+            bail!("ratification requires a human-presence descriptor");
+        }
+        Ok(Self::Direct { presence })
+    }
+
+    /// A person answered in the host conversation and an LLM is recording the
+    /// answer. `response` is the human's actual answer, not the LLM's summary.
+    pub fn mediated(response: impl Into<String>) -> Result<Self> {
+        let response = response.into();
+        if response.trim().is_empty() || crate::model::is_placeholder(&response) {
+            bail!(
+                "--human-decision must contain the human's actual answer; silence or a placeholder is not authority"
+            );
+        }
+        Ok(Self::Mediated { response })
+    }
+
+    pub(crate) fn presence(&self) -> &str {
+        match self {
+            Self::Direct { presence } => presence,
+            Self::Mediated { .. } => "host-mediated",
+        }
+    }
+
+    pub(crate) fn permits_mediated_recording(&self) -> bool {
+        matches!(self, Self::Mediated { .. })
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -326,5 +375,16 @@ mod tests {
         assert!(Ratification::DeFacto.settled());
         assert!(!Ratification::Unratified.settled());
         assert!(!Ratification::Rejected.settled());
+    }
+
+    #[test]
+    fn mediated_authority_requires_an_actual_human_answer() {
+        for answer in ["", "  ", "…", "todo", "<answer>"] {
+            assert!(
+                HumanDecision::mediated(answer).is_err(),
+                "{answer:?} is not a human decision"
+            );
+        }
+        assert!(HumanDecision::mediated("Keep behavior").is_ok());
     }
 }

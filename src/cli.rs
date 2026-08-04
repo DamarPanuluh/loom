@@ -413,8 +413,8 @@ pub enum ModeArg {
     Triage,
     Review,
     Elaborate,
-    /// Human-presence queue: intents awaiting the human authority's
-    /// ratification (never served by plain `loom next`).
+    /// Human-decision queue: an LLM may present/recommend/record, but the human
+    /// selects the outcome (never served by plain `loom next`).
     Ratify,
     /// Self-fabrication and risk signals worth acting on.
     Audit,
@@ -489,7 +489,7 @@ mod tests {
     use clap::{CommandFactory, ValueEnum};
 
     #[test]
-    fn delegated_ratification_is_absent_from_cli_and_help() {
+    fn policy_delegation_stays_absent_but_mediated_human_decisions_are_typed() {
         assert!(Cli::try_parse_from([
             "loom",
             "intent",
@@ -501,6 +501,17 @@ mod tests {
             "legacy"
         ])
         .is_err());
+        assert!(Cli::try_parse_from([
+            "loom",
+            "intent",
+            "ratify",
+            "some-intent",
+            "--evidence",
+            "approved after review",
+            "--human-decision",
+            "Keep behavior"
+        ])
+        .is_ok());
         assert!(Cli::try_parse_from([
             "loom",
             "policy",

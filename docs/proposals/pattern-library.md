@@ -12,8 +12,9 @@ which makes the pattern manual-only. A Pattern never persists a snippet,
 excerpt, `active`, or `stale` field.
 
 Draft capture may come from a human or model. Ratification is a fact-model
-`ratification` claim and uses the same direct-human INV-8 boundary and exact
-typed challenge as Intent ratification. Normative body or applicability edits
+`ratification` claim and uses the same human-authority INV-8 seam as Intent
+ratification: direct use retains the typed challenge; a host LLM may instead
+record the human's exact answer with `--human-decision`. Normative body or applicability edits
 demote ratification to `needs_reconfirmation` and reopen every exemplar verdict;
 a name-only relabel does neither. Pattern facts do not participate in the
 Intent-only maturity ladder.

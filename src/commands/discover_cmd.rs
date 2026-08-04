@@ -627,7 +627,7 @@ fn grammar_json() -> serde_json::Value {
         },
         "authorship": {
             "mint": "any agent (solo or any llm:* lane) may add intents, edges, findings, notes",
-            "ratify": "human-only (INV-8): `loom intent ratify` is rejected for every llm:* lane, fail closed, no override — the LLM may author everything and ratify nothing",
+            "ratify": "human-authorized (INV-8): an LLM may present options, recommend, wait, and record an explicit --human-decision; without that answer every llm:* direct write is rejected",
             "verdicts": "asserted verdicts need non-placeholder criterion AND evidence (INV-6); confidence < 0.7 routes to review",
             "derived": "sync alone writes derived facts; no agent re-judges a machine fact (INV-5)",
         },
@@ -719,7 +719,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
     println!("grammar (write-boundary rules):");
     println!("  intent name: behavioral phrase, never a code symbol (override: --allow-symbol-name + behavioral --description, audited)");
     println!(
-        "  ratification: {} — human-only write (INV-8): any lane may mint, only a human ratifies",
+        "  ratification: {} — human-only decision (INV-8): a host LLM may record the human's explicit answer with --human-decision",
         RATIFICATION_STATES.join(" | ")
     );
     println!("  evidence: criterion/evidence/reason must be substantive; whole-field placeholders rejected (INV-6)");

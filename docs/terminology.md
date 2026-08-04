@@ -175,6 +175,15 @@ guidance. Delivery includes at most 5 exemplars and 12 KiB of source excerpts,
 reports matched/included/omitted counts, marks byte clipping, and supplies the
 exact lookup command. Guidance and source text are read-time only.
 
+### Ratification
+
+The human product authority's evidence-bearing decision that an Intent or
+Pattern is wanted. Authority and execution are distinct: a human may answer in
+the host conversation and an LLM may record that exact answer through the typed
+`--human-decision` path. The fact is asserted by `human`; the journal separately
+records the executing agent. A direct LLM decision, silence, or a placeholder is
+not ratification.
+
 ### CodeRule
 
 A reusable structural norm held against code.

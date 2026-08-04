@@ -247,6 +247,33 @@ fn redefinition_stales_ratification() {
             .get(Lane::Divergence),
         1
     );
+    let packet = loom::workitem::next(&store, Lane::parse("ratify"))
+        .unwrap()
+        .expect("redefinition should be presented for a human decision");
+    let gate = packet
+        .prompt_contract
+        .human_gate
+        .expect("ratification packet carries a host decision request");
+    assert_eq!(
+        gate.options
+            .iter()
+            .map(|option| option.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["ratify", "reject", "revise"]
+    );
+    assert!(gate.recommendation.contains("must recommend"));
+    assert!(
+        gate.options[0]
+            .write_back
+            .as_deref()
+            .is_some_and(|command| command.contains("--human-decision")),
+        "the LLM-facing write-back records the human's answer"
+    );
+    assert!(
+        packet.next_step.matches("--human-decision").count() >= 2,
+        "every top-level decision command must carry mediated authority: {}",
+        packet.next_step
+    );
 }
 
 // =========================================================================
@@ -303,8 +330,8 @@ fn ratification_records_human_and_timestamp() {
 }
 
 // =========================================================================
-// 5b. The CLI ratification path rejects piped input before it can delegate to
-// the store. The store remains directly testable without a TTY.
+// 5b. Direct CLI ratification still rejects piped input. Authority can instead
+// arrive as an explicit human answer from the host conversation (5c).
 // =========================================================================
 #[test]
 fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
@@ -330,6 +357,7 @@ fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
                 key: Some(intent.name),
                 all: false,
                 evidence: Some("an interactive human requested this".into()),
+                human_decision: None,
             },
         }),
     })
@@ -340,7 +368,71 @@ fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
 }
 
 // =========================================================================
-// 5c. A builder may assess code impact, but never silently reconfirm human
+// 5c. Decision authority and command execution are separate. A lane cannot
+// decide, but it may record the exact answer a human gave through the host.
+// =========================================================================
+#[test]
+fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
+    let _guard = CLI_LOCK.lock().unwrap();
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "host-mediated ratification is recorded",
+            "a behavior",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    drop(store);
+
+    let prior_agent = std::env::var_os("LOOM_AGENT");
+    std::env::set_var("LOOM_AGENT", "llm:builder");
+    let result = loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Intent {
+            cmd: IntentCmd::Ratify {
+                key: Some(intent.name.clone()),
+                all: false,
+                evidence: Some("the human chose to keep this behavior after reviewing it".into()),
+                human_decision: Some("Keep behavior — this is still required".into()),
+            },
+        }),
+    });
+    match prior_agent {
+        Some(value) => std::env::set_var("LOOM_AGENT", value),
+        None => std::env::remove_var("LOOM_AGENT"),
+    }
+    result.expect("an LLM may record, but not make, an explicit human decision");
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(store.ratification(&intent.id).unwrap(), "ratified");
+    assert_eq!(
+        store.ratified_by(&intent.id).unwrap().map(|(by, _)| by),
+        Some("human".into()),
+        "the authority is the human, not the recorder"
+    );
+    assert_eq!(
+        store.ratified_presence(&intent.id).unwrap().as_deref(),
+        Some("host-mediated")
+    );
+    let journal = loom::journal::read(tmp.path()).unwrap();
+    let event = journal
+        .iter()
+        .rev()
+        .find(|entry| entry.event == "ratification" && entry.target_id == intent.id)
+        .expect("ratification journal event");
+    assert_eq!(event.actor, "llm:builder", "the executor remains auditable");
+    assert_eq!(
+        event.payload["human_decision"]["response"],
+        "Keep behavior — this is still required"
+    );
+}
+
+// =========================================================================
+// 5d. A builder may assess code impact, but never silently reconfirm human
 // wantedness. Preserved behavior leaves ratification intact; a changed
 // criterion returns the intent to the human-only ratify queue.
 // =========================================================================

@@ -895,15 +895,15 @@ pub fn unratified_intents(store: &Store) -> Result<Vec<Node>> {
     Ok(out)
 }
 
-/// The ratify queue: human-presence work. An LLM lane can PRESENT this packet
-/// (summarize the intent, its grounding, its origin) but the write itself is
-/// denied to every llm:* lane (INV-8) — so the contract carries a human gate.
+/// The ratify queue: human-decision work. An LLM presents this packet, makes an
+/// evidence-backed recommendation, waits for the human, then may record the
+/// exact answer through the mediated decision path. It never owns the choice.
 /// The divergence queue: the ONE question loom asks a human — *should this
 /// exist?* — and only where evidence and judgment actually disagree.
 ///
-/// Served one at a time, ranked kind-first. Plain `loom next` serves this lane
-/// only when a person is present: a non-tty driver would be denied the write
-/// anyway, so handing it the packet would just be a dead end it cannot act on.
+/// Served one at a time, ranked kind-first. Plain `loom next` does not interrupt
+/// an autonomous loop with a product question; a host requests `--mode ratify`
+/// when it has a conversation channel to the human.
 pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
     let Some(d) = crate::divergence::all(store)?
         .into_iter()
@@ -914,7 +914,6 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
     let Some(n) = store.get_node(&d.intent_id)? else {
         return Ok(None);
     };
-    let short = &n.id[..8.min(n.id.len())];
     let reason = format!(
         "{}: '{}' — {}",
         d.kind.as_str().replace('_', " "),
@@ -931,12 +930,13 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
         reason,
         target: node_target(&n),
         stale_causes: Vec::new(),
-        prompt_contract: ratify_contract(short),
+        prompt_contract: ratify_contract(&n),
         context: node_context(
             store,
             &n,
-            "Present this divergence to the human with the evidence already gathered, \
-             and both prefilled commands. The ratify/reject decision is theirs.",
+            "Present this divergence to the human with the evidence already gathered. \
+             Recommend one of the structured options, ask through the host, wait, then \
+             record the human's answer with the prefilled command.",
         )?,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Intent.gap(),

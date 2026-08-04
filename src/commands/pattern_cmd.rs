@@ -1,4 +1,4 @@
-use super::{open, pulse, require_challenge};
+use super::{open, pulse, ratification_decision};
 use crate::cli::{PatternCmd, PatternExemplarCmd};
 use crate::model::{Claim, EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use crate::pattern::{Applicability, PatternBody, PatternGuidance, PatternView};
@@ -56,7 +56,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()>
                 serde_json::to_value(body)?,
             )?;
             // A fresh pattern is a draft: unratified and exemplar-less, so it
-            // cannot route yet. Point at ratification, the human-only gate.
+            // cannot route yet. Point at the human-decision ratification gate.
             Emission::wrote(
                 serde_json::to_value(&node)?,
                 format!("pattern '{}' added as a draft", node.name),
@@ -180,10 +180,14 @@ pub fn dispatch(graph: Option<&Path>, cmd: PatternCmd, json: bool) -> Result<()>
             let human = human_lookup(&page);
             Emission::read(serde_json::to_value(&page)?, human)
         }
-        PatternCmd::Ratify { key, evidence } => {
+        PatternCmd::Ratify {
+            key,
+            evidence,
+            human_decision,
+        } => {
             let n = store.resolve_node(&key, Some(NodeType::Pattern))?;
-            let presence = require_challenge(&n.name)?;
-            store.ratify_pattern(&n.id, &evidence, presence)?;
+            let decision = ratification_decision(&n.name, human_decision)?;
+            store.ratify_pattern_from_human(&n.id, &evidence, &decision)?;
             let view = crate::pattern::inspect(&store, &n)?;
             Emission::wrote(
                 show_value(&store, &n, &view)?,

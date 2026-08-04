@@ -34,7 +34,7 @@ pub enum Lane {
     Prove,
     Elaborate,
     /// Where the graph's evidence and the human's recorded judgment disagree.
-    /// Human-presence work; never served by plain `loom next`.
+    /// Human-decision work; never served by plain `loom next`.
     Divergence,
     Audit,
     Export,
@@ -165,9 +165,9 @@ impl Lane {
         )
     }
 
-    /// Served by plain `loom next` only when a human is at the terminal — an
-    /// LLM driver must never be routed into a write it is denied (INV-8).
-    pub fn human_only(self) -> bool {
+    /// Requires a host conversation with the human, so plain `loom next` does
+    /// not interrupt an autonomous loop with it.
+    pub fn requires_human_decision(self) -> bool {
         matches!(self, Lane::Divergence)
     }
 

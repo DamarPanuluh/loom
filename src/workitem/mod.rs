@@ -61,7 +61,28 @@ pub struct PromptContract {
     pub pre_screen: Option<String>,
     pub write_back: String,
     pub stop_condition: String,
-    pub human_gate: Option<String>,
+    pub human_gate: Option<HumanGate>,
+}
+
+/// A host-facing decision request. It is structured so an LLM can map it to
+/// an ask-user tool without inventing choices or hiding consequences.
+#[derive(Debug, Clone, Serialize)]
+pub struct HumanGate {
+    pub question: String,
+    pub options: Vec<HumanGateOption>,
+    /// How the presenting LLM should form its recommendation. The human still
+    /// chooses; this field prevents a content-free menu with no useful advice.
+    pub recommendation: String,
+    pub after_answer: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HumanGateOption {
+    pub id: String,
+    pub label: String,
+    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub write_back: Option<String>,
 }
 
 /// One machine-checkable requirement on the evidence a packet asks for.
@@ -225,10 +246,28 @@ pub fn next(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
         enrich_patterns(store, w)?;
         let policy = crate::policy::load(store)?;
         if policy.gates_role(&w.owner_role) {
-            w.prompt_contract.human_gate = Some(format!(
-                "policy: the {} lane is human-gated — obtain human sign-off before recording this write",
-                w.owner_role
-            ));
+            w.prompt_contract.human_gate = Some(HumanGate {
+                question: format!(
+                    "May the {} lane record the proposed write for this packet?",
+                    w.owner_role
+                ),
+                options: vec![
+                    HumanGateOption {
+                        id: "approve".into(),
+                        label: "Approve write".into(),
+                        description: "Allow the lane to record this packet's proposed write.".into(),
+                        write_back: None,
+                    },
+                    HumanGateOption {
+                        id: "defer".into(),
+                        label: "Defer".into(),
+                        description: "Leave the packet unchanged for later review.".into(),
+                        write_back: None,
+                    },
+                ],
+                recommendation: "Recommend approve only when the packet's required evidence is satisfied; otherwise recommend defer.".into(),
+                after_answer: "Wait for the human answer before recording the gated write.".into(),
+            });
         }
     }
     Ok(item)
@@ -312,10 +351,9 @@ fn next_inner(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
         Some(l) => lane_item(store, l),
         None => {
             for &l in Lane::LADDER {
-                // Human-presence lanes are served ONLY on explicit request: an
-                // LLM driver must never be routed into a write it is denied
-                // (INV-8). Those packets batch for the next human session.
-                if l.human_only() || !l.serves_items() {
+                // Human-decision lanes are served ONLY on explicit request so
+                // an autonomous loop never blocks waiting for conversation.
+                if l.requires_human_decision() || !l.serves_items() {
                     continue;
                 }
                 if let Some(w) = lane_item(store, l)? {

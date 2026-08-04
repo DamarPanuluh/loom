@@ -167,8 +167,12 @@ fn make(
         intent_id: intent.id.clone(),
         intent_name: intent.name.clone(),
         evidence,
-        ratify_command: format!("loom intent ratify {short} --evidence '<why this is wanted>'"),
-        reject_command: format!("loom intent reject {short} --reason '<why this is not>'"),
+        ratify_command: format!(
+            "loom intent ratify {short} --evidence '<why this is wanted>' --human-decision '<exact human answer>'"
+        ),
+        reject_command: format!(
+            "loom intent reject {short} --reason '<why this is not>' --human-decision '<exact human answer>'"
+        ),
         blocking,
         blast_radius,
     }

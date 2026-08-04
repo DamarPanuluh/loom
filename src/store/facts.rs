@@ -118,6 +118,10 @@ pub struct Assertion<'a> {
     /// Machine-observed evidence. `pub(crate)` so only in-process runner call
     /// sites can attach one — a caller cannot express this field at all.
     pub(crate) run: Option<Box<RunRecord>>,
+    /// A host conversation carried an explicit human answer and the current
+    /// agent is only recording it. Crate-private so generic callers cannot
+    /// turn an ordinary LLM assertion into human authority.
+    pub(crate) mediated_human_decision: bool,
     /// One-shot escape used ONLY by `loom carry-forward`, which imports a legacy
     /// graph whose facts were never anchored. Records them honestly below the
     /// floor rather than pretending they meet it.
@@ -136,6 +140,7 @@ impl<'a> Assertion<'a> {
             asserted_by,
             cited: Vec::new(),
             run: None,
+            mediated_human_decision: false,
             below_floor: None,
         }
     }
@@ -162,6 +167,11 @@ impl<'a> Assertion<'a> {
     #[allow(dead_code)]
     pub(crate) fn observed(mut self, run: RunRecord) -> Self {
         self.run = Some(Box::new(run));
+        self
+    }
+
+    pub(crate) fn mediated_human_decision(mut self) -> Self {
+        self.mediated_human_decision = true;
         self
     }
 }
@@ -204,7 +214,11 @@ impl Store {
             // of authority but a loss of standing, which sync performs whenever
             // meaning drifts; requiring a human there would mean stale
             // wantedness could only be noticed by the person it was hidden from.
-            Claim::Ratification if matches!(a.state, "ratified" | "rejected") => {
+            // A mediated_human_decision carries the person's explicit answer;
+            // the current lane is the recorder, not the authority.
+            Claim::Ratification
+                if matches!(a.state, "ratified" | "rejected") && !a.mediated_human_decision =>
+            {
                 self.require_human_authority()?
             }
             Claim::Ratification => {}
@@ -1302,13 +1316,25 @@ impl Store {
             };
             row.holds
                 && journal.iter().any(|entry| {
+                    let presence = entry.payload.get("presence").and_then(|v| v.as_str());
+                    let mediated_stands = presence != Some("host-mediated")
+                        || entry
+                            .payload
+                            .get("human_decision")
+                            .and_then(|decision| decision.get("mode").zip(decision.get("response")))
+                            .and_then(|(mode, response)| Some((mode.as_str()?, response.as_str()?)))
+                            .is_some_and(|(mode, response)| {
+                                mode == "mediated"
+                                    && !response.trim().is_empty()
+                                    && !crate::model::is_placeholder(response)
+                            });
                     entry.id == *r#ref
                         && entry.target_id == intent_id
                         && entry.event == event
                         && entry.payload.get("ratified_by").and_then(|v| v.as_str())
                             == Some("human")
-                        && entry.payload.get("presence").and_then(|v| v.as_str())
-                            == Some(view.fact.criterion.as_str())
+                        && presence == Some(view.fact.criterion.as_str())
+                        && mediated_stands
                         && node.as_ref().is_none_or(|node| {
                             node.node_type != NodeType::Pattern
                                 || entry.payload.get("pattern_body") == Some(&node.body)
@@ -1329,9 +1355,9 @@ impl Store {
             .map(|v| (v.fact.asserted_by, v.fact.asserted_at)))
     }
 
-    /// The presence descriptor recorded with the ratification (`tty+challenge`
-    /// when a human answered a live challenge). Stored as the fact's criterion:
-    /// it is what would falsify "a human did this".
+    /// The authority channel recorded with the ratification (`tty+challenge`
+    /// for a direct decision, `host-mediated` when an LLM recorded the human's
+    /// answer). Stored as the fact's criterion.
     pub fn ratified_presence(&self, intent_id: &str) -> Result<Option<String>> {
         Ok(self
             .fact(&Subject::Node(intent_id.to_string()), Claim::Ratification)?

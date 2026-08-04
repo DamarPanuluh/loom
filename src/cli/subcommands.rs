@@ -63,6 +63,10 @@ pub enum PatternCmd {
         key: String,
         #[arg(long)]
         evidence: String,
+        /// Exact answer the human gave in the host conversation. Lets an LLM
+        /// record the decision without acquiring authority to make it.
+        #[arg(long)]
+        human_decision: Option<String>,
     },
     Retire {
         key: String,
@@ -167,8 +171,8 @@ pub enum IntentCmd {
         offset: usize,
     },
     /// Ratify an intent (or --all unratified): the human authority's
-    /// evidence-bearing "yes, this is wanted". Human-only — every llm:* lane
-    /// is denied this one write (INV-8); minting stays open to all lanes.
+    /// evidence-bearing "yes, this is wanted". A host LLM may record an
+    /// explicit --human-decision, but may never make the decision itself.
     Ratify {
         key: Option<String>,
         /// Ratify every active unratified intent (bulk grandfathering).
@@ -177,6 +181,10 @@ pub enum IntentCmd {
         /// Why this behavior is wanted: an utterance, source doc, or decision.
         #[arg(long)]
         evidence: Option<String>,
+        /// Exact answer the human gave in the host conversation. Required for
+        /// non-interactive or llm:* execution; omit for a direct TTY challenge.
+        #[arg(long)]
+        human_decision: Option<String>,
     },
     /// Say a behavior is NOT wanted. The cheap, high-leverage half of the
     /// authority: no typed challenge — the substantive reason IS the act —
@@ -186,6 +194,10 @@ pub enum IntentCmd {
         /// Why this is not wanted. Recorded verbatim on the rejection.
         #[arg(long)]
         reason: String,
+        /// Exact answer the human gave in the host conversation. Required for
+        /// non-interactive or llm:* execution.
+        #[arg(long)]
+        human_decision: Option<String>,
     },
     /// One mutation verb for an intent. --description redefines (ripples one
     /// hop; --reword: same concept, no ripple). --name relabels, --level /

@@ -305,7 +305,7 @@ fn pack_drift_smells(snap: &Snapshot) -> Vec<Smell> {
 /// like that establishes nothing on the run you happened to observe.
 ///
 /// It matters most exactly where it is least visible: the INV-8 proofs, which
-/// defend the human-presence ratification boundary, were flaky for want of a
+/// defend the human-authority ratification seam, were flaky for want of a
 /// lock and passed four runs out of five.
 ///
 /// SCOPE, stated so the claim is not oversold: this reports. Being a smell it

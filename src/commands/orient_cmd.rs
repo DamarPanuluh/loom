@@ -387,7 +387,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "lane": l.as_str(),
                     "rung": l.rung(),
                     "axis": l.axis().as_str(),
-                    "human_only": l.human_only(),
+                    "human_only": l.requires_human_decision(),
                 })).collect::<Vec<_>>(),
                 "closeout": ["loom coverage", "loom doctor", "loom next --all", "loom export", "loom export --check"],
                 "operator_loops": operator_loops(),

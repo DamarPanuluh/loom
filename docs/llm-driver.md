@@ -16,8 +16,9 @@ loom is not the actor. Every **asserted or cognitive** state transition requires
 
 The LLM is not free-form. It reports through **typed graph writes**. Chat output alone changes nothing in the graph.
 
-Pattern drafts may be model-authored, but Pattern ratification is direct-human
-INV-8 authority. Build/fix packets automatically include applicable, live
+Pattern drafts may be model-authored, but Pattern ratification remains human
+INV-8 authority. An LLM may present the decision and record the human's explicit
+host response; it may not supply that response itself. Build/fix packets automatically include applicable, live
 Pattern guidance under deterministic count/byte budgets; use the packet's exact
 `pattern lookup` command to recover omitted matches. Pattern
 guidance adds no maturity gate.
@@ -629,7 +630,7 @@ missing prerequisite for human gate:
 
 ## Human gate patterns
 
-Some queues require human presence. loom distinguishes autonomous and human-gated queues.
+Some queues require a human decision. loom distinguishes autonomous and human-gated queues without requiring the human to operate the CLI.
 
 ```text
 autonomous until they raise a human question (LLM drains alone):
@@ -640,6 +641,31 @@ human-gated (requires human):
   blocked proofs (external prerequisite or credential)
   hypothesis adoption/rejection rulings
   major product decisions captured through InboxItem routing
+```
+
+A ratification packet carries a structured `human_gate` with three options
+(Keep, Remove, Revise), recommendation guidance, and exact write-back commands.
+The LLM summarizes the evidence, recommends one option with consequences, asks
+through the host's ask-user interaction, and waits. When the human selects Keep
+or Remove, the LLM executes the corresponding command with
+`--human-decision '<exact human answer>'`. Loom records the authority as human
+and the journal actor as the executing lane. If no answer arrives, nothing is
+written. Direct terminal confirmation remains available when no mediated answer
+is supplied.
+
+```json
+{
+  "human_gate": {
+    "question": "Should 'users can export reports' remain a wanted behavior?",
+    "options": [
+      { "id": "ratify", "label": "Keep behavior", "description": "…", "write_back": "loom intent ratify … --human-decision '<exact human answer>'" },
+      { "id": "reject", "label": "Remove behavior", "description": "…", "write_back": "loom intent reject … --human-decision '<exact human answer>'" },
+      { "id": "revise", "label": "Revise criterion", "description": "…", "write_back": "loom intent update …" }
+    ],
+    "recommendation": "The presenting LLM must recommend one option from the packet evidence…",
+    "after_answer": "Wait; record the exact human answer, or write nothing."
+  }
+}
 ```
 
 `loom session`, `loom question list --status open`, and `graph_state.open_questions` surface the human-gated remainder so the LLM can batch questions for one conversation window instead of interrupting repeatedly.

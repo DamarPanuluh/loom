@@ -157,10 +157,10 @@ fn rejecting_turns_live_code_into_tracked_work() {
     );
 }
 
-/// The presence rule, stated as a test: an agent lane is never a person, and
-/// neither is an unset agent in automation.
+/// The authority rule: an agent lane is never the product authority. This is
+/// the direct path; mediated recording has its own explicit HumanDecision.
 #[test]
-fn an_llm_lane_may_author_everything_and_ratify_nothing() {
+fn an_llm_lane_cannot_make_a_ratification_decision() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let i = intent(&store, "a behavior an agent built");

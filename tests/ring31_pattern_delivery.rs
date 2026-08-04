@@ -129,6 +129,18 @@ fn body_authority_and_edge_types_fail_closed() {
         .unwrap_err()
         .to_string()
         .contains("INV-8"));
+    let decision = loom::ratification::HumanDecision::mediated(
+        "Adopt this pattern — it is our reviewed house style",
+    )
+    .unwrap();
+    store
+        .ratify_pattern_from_human(
+            &pattern.id,
+            "the human adopted this guidance after reviewing its applicability",
+            &decision,
+        )
+        .expect("a lane may record the human's explicit pattern decision");
+    assert_eq!(store.ratification(&pattern.id).unwrap(), "ratified");
     store.set_agent(Agent::Solo);
     let intent = store
         .add_node(

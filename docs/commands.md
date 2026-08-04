@@ -30,7 +30,7 @@ Turn-zero entry when the user says "use loom" without a specific task. Returns a
 loom next [--mode <queue>] [--all] [--json]
 ```
 
-Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `--mode`, routes by compass priority. The `ratify` queue is human-presence work and is NEVER served by plain `loom next` — an LLM driver is denied the ratify write (INV-8), so the default loop only serves autonomously-drainable lanes; the compass still points at `--mode ratify` when unratified intents gate the ladder.
+Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `--mode`, routes by compass priority. The `ratify` queue is human-decision work and is NEVER served by plain `loom next`, so an autonomous loop is not interrupted by a product question. `loom next --mode ratify` returns a structured host gate: Keep, Remove, or Revise, plus recommendation guidance and exact write-backs. The LLM presents and recommends, waits for the human, then records that answer.
 
 ```text
 --mode: build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate | ratify
@@ -124,7 +124,7 @@ loom pattern add --name N --rationale TEXT --when-to-use TEXT --when-not-to-use 
 loom pattern update <key> [normative fields/selectors] [--name N] --reason TEXT
 loom pattern show|list
 loom pattern lookup [--path PATH]... [--intent-tag TAG]... [--offset N]
-loom pattern ratify <key> --evidence TEXT
+loom pattern ratify <key> --evidence TEXT [--human-decision "<exact human answer>"]
 loom pattern retire|remove <key> --reason TEXT
 loom pattern exemplar add <pattern> <codefile> --locator SYMBOL
 loom pattern exemplar verdict <edge> ground|issue|independent --criterion TEXT --evidence TEXT
@@ -327,8 +327,9 @@ loom intent update <intent> --reason "<why>"
 `update` is the single mutation verb. The ripple rule lives in the fields, not in command choice: a `--description` change is a redefinition and ripples one hop (passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers are cleared so waived axes re-open, and old wording is preserved in decision notes); `--reword` is same meaning, clearer words, no ripple. `--name`, `--level`, `--visibility`, `--aspect`, and `--lifecycle` never ripple. Every update records `--reason`.
 
 ```text
-loom intent ratify <intent> --evidence "<why wanted>" [--json]
-loom intent ratify --all --evidence "<why wanted>" [--json]   (bulk grandfathering)
+loom intent ratify <intent> --evidence "<why wanted>" [--human-decision "<exact human answer>"] [--json]
+loom intent ratify --all --evidence "<why wanted>" [--human-decision "<exact human answer>"] [--json]
+loom intent reject <intent> --reason "<why unwanted>" [--human-decision "<exact human answer>"] [--json]
 loom intent confirm <intent> [--json]
 loom intent retire <intent> --reason "<why>" [--replaced-by <intent>] [--json]
 loom intent remove <intent> --reason "<why>" [--json]   (mistakes only; refuses intents that still have hierarchy children)
@@ -340,7 +341,7 @@ loom intent tag add <intent> <term> [--json]
 loom intent tag remove <intent> <term> [--json]
 ```
 
-`ratify` is the human authority's evidence-bearing "yes, this is wanted" — the ONE write rejected for every `llm:*` lane (INV-8, fail closed, no override): the LLM may author everything and ratify nothing. It requires a real terminal and an exact typed-name challenge; piped input is rejected because it is indistinguishable from an LLM. Ratification cannot be delegated by policy. Redefining a ratified intent (`update --description` without `--reword`) stales its ratification to `needs_reconfirmation` and the ratify queue re-serves it. `confirm` re-affirms meaning (a note, not a ratification). `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
+`ratify` and `reject` are human-authorized decisions (INV-8), but the human no longer has to execute the CLI write. In a host conversation, the LLM summarizes the packet, recommends Keep / Remove / Revise with reasons, asks the human, and waits. After the reply it may execute the selected command with `--human-decision` containing the human's exact answer. Loom records `ratified_by=human` while the journal separately retains the executing `llm:*` actor and the mediated response. Without `--human-decision`, every `llm:*` direct write is rejected; a solo terminal retains the exact typed challenge. This is mediation, not policy delegation: silence, a placeholder, or an LLM-generated answer grants no authority. Redefining a ratified intent (`update --description` without `--reword`) stales its ratification to `needs_reconfirmation` and the ratify queue re-serves it. `confirm` re-affirms meaning (a note, not a ratification). `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
 
 ---
 

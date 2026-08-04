@@ -307,7 +307,7 @@ pub(crate) fn human_present() -> bool {
 pub(crate) fn require_challenge(subject: &str) -> Result<&'static str> {
     if !io::stdin().is_terminal() {
         bail!(
-            "INV-8 / finding 62b197cc: non-interactive ratification is indistinguishable from an LLM"
+            "INV-8 / finding 62b197cc: direct non-interactive ratification is indistinguishable from an LLM; obtain the human's answer through the host and pass it as --human-decision"
         );
     }
     print!("Human presence required. Type '{subject}' to confirm: ");
@@ -318,6 +318,19 @@ pub(crate) fn require_challenge(subject: &str) -> Result<&'static str> {
         bail!("confirmation did not match '{subject}'; ratification was not written");
     }
     Ok("tty+challenge")
+}
+
+/// Resolve the two legitimate ways a human decision reaches a ratification
+/// write. With a host answer, the current process is only the recorder and no
+/// With no mediated answer, retain the direct typed challenge.
+pub(crate) fn ratification_decision(
+    subject: &str,
+    response: Option<String>,
+) -> Result<crate::ratification::HumanDecision> {
+    match response {
+        Some(response) => crate::ratification::HumanDecision::mediated(response),
+        None => crate::ratification::HumanDecision::direct(require_challenge(subject)?),
+    }
 }
 
 /// Open the target graph read-only (shared lock, `query_only`). Read commands

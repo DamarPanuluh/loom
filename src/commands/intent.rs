@@ -6,8 +6,9 @@
 //!
 //! Contract (ratification): every intent carries `origin` (who minted it) and
 //! `ratification` (whether the product authority wants it). Any lane may mint;
-//! ONLY a human (solo agent) may ratify — the one write every `llm:*` lane is
-//! denied (INV-8). Redefining a ratified intent stales its ratification to
+//! ONLY a human may decide ratification (INV-8). A solo human can write it
+//! directly; an LLM lane can only record an explicit answer returned by the
+//! host conversation. Redefining a ratified intent stales its ratification to
 //! `needs_reconfirmation`, exactly as sync stales a verdict.
 
 use super::{node_json, open, pulse, require_lane};
@@ -88,10 +89,26 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             evidence,
         } => intent_impact(graph, key, classification, evidence, json),
         IntentCmd::Dependents { key, depth } => intent_dependents(graph, &key, depth, json),
-        IntentCmd::Ratify { key, all, evidence } => {
-            intent_ratify(graph, RatifyArgs { key, all, evidence }, json)
-        }
-        IntentCmd::Reject { key, reason } => intent_reject(graph, &key, &reason, json),
+        IntentCmd::Ratify {
+            key,
+            all,
+            evidence,
+            human_decision,
+        } => intent_ratify(
+            graph,
+            RatifyArgs {
+                key,
+                all,
+                evidence,
+                human_decision,
+            },
+            json,
+        ),
+        IntentCmd::Reject {
+            key,
+            reason,
+            human_decision,
+        } => intent_reject(graph, &key, &reason, human_decision, json),
         IntentCmd::Tag { cmd } => intent_tag(graph, cmd, json),
     }
 }
@@ -120,19 +137,26 @@ fn loom_assertion<'a>(id: &'a str, state: &'a str) -> crate::store::Assertion<'a
 /// behavior becomes a finding, so removing it enters triage as ordinary work
 /// with the evidence already attached — and until it is gone, the intent is a
 /// `ZombieBehavior` the ladder blocks on.
-fn intent_reject(graph: Option<&Path>, key: &str, reason: &str, json: bool) -> Result<()> {
+fn intent_reject(
+    graph: Option<&Path>,
+    key: &str,
+    reason: &str,
+    human_decision: Option<String>,
+    json: bool,
+) -> Result<()> {
     let store = open(graph)?;
     if crate::model::is_placeholder(reason) {
         bail!("--reason must say why this is not wanted, substantively");
     }
-    if !super::human_present() {
-        bail!(
-            "INV-8: only a human may judge whether a behavior is wanted — \
-             rejecting requires a person at a terminal"
-        );
-    }
+    let decision = match human_decision {
+        Some(response) => crate::ratification::HumanDecision::mediated(response)?,
+        None if super::human_present() => crate::ratification::HumanDecision::direct("tty")?,
+        None => bail!(
+            "INV-8: only a human may judge whether a behavior is wanted — ask the human, then pass their exact answer with --human-decision"
+        ),
+    };
     let intent = store.resolve_node(key, Some(NodeType::Intent))?;
-    store.reject_intent(&intent.id, reason, "tty")?;
+    store.reject_intent_from_human(&intent.id, reason, &decision)?;
 
     // Every realizing grounding becomes removal work, with the reason attached.
     let mut minted = Vec::new();
@@ -355,15 +379,16 @@ pub(crate) fn create_intent(store: &Store, args: &IntentAddArgs) -> Result<Node>
 }
 
 /// Ratify an intent (or every unratified intent with `--all`): the human
-/// authority's evidence-bearing "yes, this is wanted". The ONE write in the
-/// system denied to every `llm:*` lane — the LLM may author everything and
-/// ratify nothing (INV-8; fail closed, no override flag).
+/// authority's evidence-bearing "yes, this is wanted". A lane may record an
+/// explicit host-mediated human answer, but its direct write remains denied
+/// (INV-8).
 /// One `loom intent ratify` invocation's parameters, bundled so the handler
 /// stays under the excess-args gate as the surface grows.
 struct RatifyArgs {
     key: Option<String>,
     all: bool,
     evidence: Option<String>,
+    human_decision: Option<String>,
 }
 
 fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<()> {
@@ -398,19 +423,20 @@ fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<(
         )?;
         return Ok(());
     }
-    // ONE challenge authorizes this invocation, not one per intent. Asking 51
-    // times is not 51 times the assurance — it is how a worker facing 51
-    // prompts ends up forging the records instead, which is exactly what
-    // happened to 39 of this graph's own ratifications.
+    // ONE human decision authorizes this invocation, whether direct or host
+    // mediated, not one prompt per intent. Asking 51 times is not 51 times the
+    // assurance — it is how a worker facing 51 prompts ends up forging the
+    // records instead, which is exactly what happened to 39 of this graph's own
+    // ratifications.
     //
     let subject = match targets.as_slice() {
         [one] => one.name.clone(),
         many => format!("ratify {}", many.len()),
     };
-    let presence = super::require_challenge(&subject)?.to_string();
+    let decision = super::ratification_decision(&subject, args.human_decision)?;
     let mut ratified = Vec::new();
     for n in &targets {
-        store.ratify_intent(&n.id, &evidence, &presence)?;
+        store.ratify_intent_from_human(&n.id, &evidence, &decision)?;
         ratified.push(serde_json::json!({ "id": n.id, "name": n.name }));
     }
     pulse::emit_line(

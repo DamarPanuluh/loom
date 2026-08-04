@@ -16,11 +16,13 @@ impl Store {
         now(&self.conn)
     }
 
-    /// Refuse an authority-bearing write from every declared LLM lane.
+    /// Refuse a direct authority-bearing write from every declared LLM lane.
+    /// A mediated human decision takes a separate typed path; this method is
+    /// intentionally unaware of it.
     pub fn require_human_authority(&self) -> Result<()> {
         if let Agent::Lane(r) = self.agent.get() {
             bail!(
-                "INV-8: ratification authority is human-only — agent 'llm:{}' may not author or apply ratification policy",
+                "INV-8: ratification authority is human-only — agent 'llm:{}' may not decide; ask the human and record their exact answer with --human-decision",
                 r.as_str()
             );
         }
@@ -613,22 +615,51 @@ impl Store {
     /// Retire an intent: status → deprecated. Invisible to computation, visible
     /// to history. Builder lane.
     /// Ratify an intent: the human authority's evidence-bearing "yes, this is
-    /// wanted". INV-8, enforced at the write boundary: ANY declared `llm:*`
-    /// lane is rejected — not just wrong lanes. The LLM may author everything
-    /// and ratify nothing; only the solo (human) agent may write this fact.
-    /// Fail closed, no override.
+    /// wanted". INV-8 is about who decides, not who types: an LLM lane may
+    /// record an explicit mediated [`HumanDecision`], but may never supply the
+    /// decision itself. The ordinary direct path remains denied to every lane.
     /// Record that a behavior is NOT wanted. Same boundary, same authority
     /// check, same journal — refusal is an act of the same kind as approval.
     pub fn reject_intent(&self, id: &str, reason: &str, presence: &str) -> Result<()> {
-        self.ratify_intent_as_state(id, "rejected", reason, presence, "human")
+        let decision = crate::ratification::HumanDecision::direct(presence)?;
+        self.apply_human_decision(id, "rejected", reason, &decision)
+    }
+
+    pub fn reject_intent_from_human(
+        &self,
+        id: &str,
+        reason: &str,
+        decision: &crate::ratification::HumanDecision,
+    ) -> Result<()> {
+        self.apply_human_decision(id, "rejected", reason, decision)
     }
 
     pub fn ratify_intent(&self, id: &str, evidence: &str, presence: &str) -> Result<()> {
-        self.ratify_intent_as(id, evidence, presence, "human")
+        let decision = crate::ratification::HumanDecision::direct(presence)?;
+        self.apply_human_decision(id, "ratified", evidence, &decision)
+    }
+
+    pub fn ratify_intent_from_human(
+        &self,
+        id: &str,
+        evidence: &str,
+        decision: &crate::ratification::HumanDecision,
+    ) -> Result<()> {
+        self.apply_human_decision(id, "ratified", evidence, decision)
     }
 
     pub fn ratify_pattern(&self, id: &str, evidence: &str, presence: &str) -> Result<()> {
-        self.ratify_intent_as(id, evidence, presence, "human")
+        let decision = crate::ratification::HumanDecision::direct(presence)?;
+        self.apply_human_decision(id, "ratified", evidence, &decision)
+    }
+
+    pub fn ratify_pattern_from_human(
+        &self,
+        id: &str,
+        evidence: &str,
+        decision: &crate::ratification::HumanDecision,
+    ) -> Result<()> {
+        self.apply_human_decision(id, "ratified", evidence, decision)
     }
 
     pub fn invalidate_pattern(&self, id: &str) -> Result<usize> {
@@ -655,27 +686,20 @@ impl Store {
         Ok(reopened)
     }
 
-    fn ratify_intent_as(
-        &self,
-        id: &str,
-        evidence: &str,
-        presence: &str,
-        ratified_by: &str,
-    ) -> Result<()> {
-        self.ratify_intent_as_state(id, "ratified", evidence, presence, ratified_by)
-    }
-
     /// Both halves of the authority — approval and refusal — through one gate.
-    fn ratify_intent_as_state(
+    fn apply_human_decision(
         &self,
         id: &str,
         state: &str,
         evidence: &str,
-        presence: &str,
-        ratified_by: &str,
+        decision: &crate::ratification::HumanDecision,
     ) -> Result<()> {
-        if presence.trim().is_empty() {
-            bail!("ratification requires a human-presence descriptor")
+        let presence = decision.presence();
+        // Fail before journaling. The assertion boundary repeats this check so
+        // no alternate caller can bypass it, but doing it here avoids leaving
+        // a journal event for a write that was refused.
+        if !decision.permits_mediated_recording() {
+            self.require_human_authority()?;
         }
         // The prose anchors the WANT; the journal entry below anchors the ACT.
         // Both are required: without this check the journal ref loom writes
@@ -700,8 +724,9 @@ impl Store {
         let entry = crate::journal::append(self.root(), event, id, {
             let mut payload = serde_json::json!({
             "evidence": evidence,
-            "ratified_by": ratified_by,
+            "ratified_by": "human",
             "presence": presence,
+            "human_decision": decision,
             });
             let node = self
                 .get_node(id)?
@@ -715,17 +740,19 @@ impl Store {
         cited.push(crate::evidence::CitedEvidence::Journal(entry.id.clone()));
         // Authority (INV-8), the deprecated check, and the evidence floor all
         // live at the boundary now — this function only shapes the assertion.
-        self.assert_fact(
-            crate::store::Assertion::new(
-                crate::store::Subject::Node(id.to_string()),
-                crate::model::Claim::Ratification,
-                state,
-                ratified_by,
-            )
-            .criterion(presence)
-            .confidence(1.0)
-            .cited(cited),
-        )?;
+        let mut assertion = crate::store::Assertion::new(
+            crate::store::Subject::Node(id.to_string()),
+            crate::model::Claim::Ratification,
+            state,
+            "human",
+        )
+        .criterion(presence)
+        .confidence(1.0)
+        .cited(cited);
+        if decision.permits_mediated_recording() {
+            assertion = assertion.mediated_human_decision();
+        }
+        self.assert_fact(assertion)?;
         // A mint-time ratification writes no note: the fact and the journal
         // entry already record that the minting act WAS the ratification, and a
         // note on every solo mint is pure audit-trail bloat.

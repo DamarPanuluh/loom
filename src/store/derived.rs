@@ -917,7 +917,7 @@ impl Store {
     /// overwrote it. So a proof passing four runs and failing the fifth was
     /// recorded as whichever run loom happened to observe. That is exactly what
     /// happened to the INV-8 proofs, where tests mutating process-global
-    /// `LOOM_AGENT` made the human-presence boundary pass or fail on thread
+    /// `LOOM_AGENT` made the direct human-authority check pass or fail on thread
     /// scheduling.
     ///
     /// Lives on the STORE, not in a command, because there are two paths that

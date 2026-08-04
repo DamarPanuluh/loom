@@ -467,7 +467,7 @@ impl Store {
         // transaction closes. This is what stops an import smuggling in a
         // verified fact whose covered files do not exist locally.
         // Legacy exports may carry delegated approvals. They are deliberately
-        // not restored: only direct human ratification can establish wantedness.
+        // not restored: only an explicit human decision can establish wantedness.
         // Filtering evidence with its fact avoids leaving orphan anchors.
         let mut facts = Vec::with_capacity(snap.facts.len());
         for f in &snap.facts {

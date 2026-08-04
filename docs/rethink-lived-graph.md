@@ -60,11 +60,11 @@ utterances:    [] journal refs — the recorded human expressions of this want
 
 Rules, riding machinery that already exists:
 
-1. **Anyone may mint; only a human may ratify.** `loom intent add` is open to every lane —
-   an `llm:*` agent minting an intent is normal, not an exception. `loom intent ratify` is the
-   **one write in the system rejected for every `llm:*` lane** (INV-7 extended; unknown agents
-   already fail closed). This replaces paragraphs of "seeding-mode" prose with a single
-   write-boundary rule.
+1. **Anyone may mint; only a human may decide ratification.** `loom intent add` is open to every
+   lane — an `llm:*` agent minting an intent is normal, not an exception. Direct lane ratification
+   is rejected. A host LLM may present options and a recommendation, wait, then mechanically
+   record the human's exact answer through `--human-decision`; authority and execution are stored
+   separately. This replaces paragraphs of "seeding-mode" prose with one authority rule.
 2. **Ratification needs evidence** (INV-6 applies): a journal ref, an utterance, a source doc —
    *why do we believe this is wanted.* Human-minted intents are born ratified with the minting
    utterance as evidence. LLM-minted intents are born `unratified`.
@@ -78,8 +78,8 @@ Rules, riding machinery that already exists:
 
 The division of labor collapses into one symmetric sentence:
 
-> **The LLM may author everything and ratify nothing. The human must author nothing and may
-> ratify everything.**
+> **The LLM may author and record; it may not choose wantedness. The human may choose without
+> operating Loom.**
 
 That sentence *is* the completed concept: human-in-the-loop stops being a workflow convention
 and becomes a write permission on a single state, recorded on the intent node with evidence.
@@ -93,9 +93,9 @@ seeded → wanted → realized → proven → hardened → excellent → exporte
 - **`wanted`** — every active intent is ratified (none `unratified`/`needs_reconfirmation`).
   Sits between seeded and realized: an unratified spine correctly blocks everything above it,
   and the compass — lowest unmet rung — routes the human to ratification as *the* next move.
-- `loom next --mode ratify` serves the queue. It is the canonical **human-presence queue**
-  (`llm-driver.md` already demands loom distinguish these; now the distinction is structural:
-  the ratify queue is precisely the work no LLM lane can write).
+- `loom next --mode ratify` serves the canonical **human-decision queue**. Its structured gate
+  lets an LLM present Keep / Remove / Revise through the host, make an evidence-backed
+  recommendation, wait, and record the selection without owning it.
 - This is the user's "LLM can add intents anyway — but still failing": minted freely, first-class
   immediately, and honestly red on the ladder until a human says *yes, wanted* and a proof says
   *yes, true*. Two independent failure axes:
@@ -172,8 +172,9 @@ The rethink is faithful because the dream's machinery already carries it:
 
 New invariants:
 
-- **INV-8 — Ratification is human-only.** `intent ratify` (and any future ratifying write) is
-  rejected for every `llm:*` lane; unknown agents fail closed. No flag overrides it.
+- **INV-8 — Ratification authority is human-only.** Direct `llm:*` ratify/reject writes are
+  rejected. The typed mediated path accepts only an explicit human response, records the fact as
+  human-authored, and journals the lane that executed it. Silence never authorizes.
 - **INV-9 — Provenance is immutable; the journal is append-only.** `origin` is never rewritten;
   journal entries are never edited or deleted. History doesn't get rewritten.
 

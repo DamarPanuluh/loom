@@ -7,7 +7,7 @@
 //! around INV-4/5/6. No store writes happen here.
 
 use super::queues::prescreen_for;
-use super::{q, EvidenceClause, PromptContract};
+use super::{q, EvidenceClause, HumanGate, HumanGateOption, PromptContract};
 use crate::model::{Edge, EdgeKind, Node};
 use crate::store::Store;
 use crate::Result;
@@ -843,23 +843,26 @@ pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
     }
 }
 
-/// Ratification: the one write denied to every llm:* lane (INV-8). The LLM's
-/// job in this packet is presentation — compile the intent's criterion, origin,
-/// grounding and proof state for the human — never the decision itself.
-pub(super) fn ratify_contract(id: &str) -> PromptContract {
+/// Ratification: the decision is human-only; presentation and recording may be
+/// mediated by an LLM. The host-facing gate is structured so the LLM can offer
+/// useful choices and a recommendation, wait, then perform the typed write.
+pub(super) fn ratify_contract(intent: &Node) -> PromptContract {
+    let id = &intent.id[..8.min(intent.id.len())];
     PromptContract {
         role: "human".into(),
-        mindset: "Product authority. Decide whether this behavior is wanted. An LLM presenting this packet summarizes the intent and stops — it must not ratify, and it must not answer for the human."
+        mindset: "Product authority. The LLM summarizes the evidence, recommends one option with reasons, asks the human, waits, then records the human's answer. It may execute the write; it may not choose the answer."
             .into(),
         why_now: "the intent's wantedness is unestablished: minted without ratification, or redefined after it".into(),
         allowed_actions: vec![
             format!("loom intent show {id}"),
-            format!("loom intent ratify {id} --evidence <why this is wanted>"),
-            format!("loom intent retire {id} --reason <why it is not wanted>"),
+            "ask the human with the three options in human_gate; mark the evidence-backed recommendation and explain its tradeoff".into(),
+            format!("loom intent ratify {id} --evidence <why this is wanted> --human-decision <exact human answer>"),
+            format!("loom intent reject {id} --reason <why it is not wanted> --human-decision <exact human answer>"),
             format!("loom intent update {id} --description <corrected criterion> --reason <…>  (then re-ratify)"),
         ],
         forbidden_actions: vec![
-            "ratifying from an llm:* lane (INV-8 — the write boundary rejects it; do not work around it)".into(),
+            "supplying --human-decision before the human answers, paraphrasing silence as approval, or choosing on the human's behalf".into(),
+            "using the direct ratification path from an llm:* lane (INV-8 rejects it)".into(),
             "treating silence or plausibility as ratification".into(),
         ],
         evidence_clauses: vec![
@@ -874,11 +877,33 @@ pub(super) fn ratify_contract(id: &str) -> PromptContract {
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!("loom intent ratify {id} --evidence '…'"),
-        stop_condition: "if no human is present, stop — batch ratify packets for the next human session instead of draining them".into(),
-        human_gate: Some(
-            "ratification is human-only: present the packet, then wait for the human's decision".into(),
-        ),
+        write_back: format!("after the answer: loom intent ratify {id} --evidence '…' --human-decision '<exact answer>'  (or the selected reject/update command)"),
+        stop_condition: "wait for the human; after recording their selected option, return to loom status. If they defer or do not answer, write nothing".into(),
+        human_gate: Some(HumanGate {
+            question: format!("Should '{}' remain a wanted behavior?", intent.name),
+            options: vec![
+                HumanGateOption {
+                    id: "ratify".into(),
+                    label: "Keep behavior".into(),
+                    description: "Ratify the current criterion as wanted and continue proving or maintaining it.".into(),
+                    write_back: Some(format!("loom intent ratify {id} --evidence '<why wanted>' --human-decision '<exact human answer>'")),
+                },
+                HumanGateOption {
+                    id: "reject".into(),
+                    label: "Remove behavior".into(),
+                    description: "Reject it as unwanted; Loom will track any live implementation as removal work.".into(),
+                    write_back: Some(format!("loom intent reject {id} --reason '<why unwanted>' --human-decision '<exact human answer>'")),
+                },
+                HumanGateOption {
+                    id: "revise".into(),
+                    label: "Revise criterion".into(),
+                    description: "Correct what the behavior should mean before deciding whether to keep it.".into(),
+                    write_back: Some(format!("loom intent update {id} --description '<corrected criterion>' --reason '<human decision>'")),
+                },
+            ],
+            recommendation: "The presenting LLM must recommend one option from the packet's current implementation, proof, usage, and divergence evidence; state uncertainty and never treat the recommendation as the decision.".into(),
+            after_answer: "Wait for the human's selection. Record Keep/Remove with their exact answer in --human-decision; for Revise, obtain the corrected criterion before writing. No answer means no write.".into(),
+        }),
     }
 }
 

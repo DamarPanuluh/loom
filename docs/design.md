@@ -332,9 +332,10 @@ a vector (not a scalar), with the lowest unmet rung as the routing focus.
 `Wanted` (a deliberate 2026-07 addition — see `rethink-lived-graph.md`) gates on **ratification**:
 every active intent needs the human authority's evidence-bearing "yes, this is wanted". Any agent
 (human or `llm:*` lane) may mint intents — a solo mint is born ratified (the minting act is the
-evidence); a lane mint is born unratified and honestly fails this rung until a human runs
-`loom intent ratify`. Ratification is the one write denied to every LLM lane (INV-8): the LLM may
-author everything and ratify nothing. Redefining a ratified intent stales its ratification to
+evidence); a lane mint is born unratified and honestly fails this rung until a human decides it.
+Ratification authority is human-only (INV-8), while execution may be mediated: an LLM presents
+options and a recommendation, waits, then records the exact human answer with `--human-decision`.
+Without that answer its direct write is denied. Redefining a ratified intent stales its ratification to
 `needs_reconfirmation` — wantedness rots with meaning, like every other asserted fact.
 
 Each rung's `state` is its own per-concern truth, computed independently, so the ladder never
@@ -379,9 +380,11 @@ Two more joined the contract during the build (the "7 invariants" of `build-plan
   or evidence is rejected at the write boundary.
 - **INV-7 — Role gate.** A write from the wrong lane (per `LOOM_AGENT`) is rejected; unknown
   agent strings fail closed.
-- **INV-8 — Ratification is human-only.** `loom intent ratify` is rejected for EVERY `llm:*`
-  lane (not just wrong lanes), fail closed, no override flag. Absent ratification reads as
-  unratified — wantedness is never presumed.
+- **INV-8 — Ratification authority is human-only.** Every direct `llm:*` ratify/reject write is
+  rejected. A lane may record a mediated decision only when it supplies the human's explicit host
+  answer through the typed `--human-decision` path; the fact remains asserted by `human` and the
+  journal separately records the executing lane. Silence never authorizes. Absent ratification
+  reads as unratified — wantedness is never presumed.
 
 **Precision on INV-5 — invalidation vs authorship.** Sync never *authors* asserted truth, but it
 does *invalidate* it: staling an asserted edge to `needs_reverification`, resetting an asserted

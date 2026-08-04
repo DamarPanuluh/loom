@@ -1,7 +1,7 @@
 journey: the human ratification boundary refuses automation
 steps:
-  - name: non-interactive ratification is refused
-    intent: an operator ratifies an intent as wanted
+  - name: direct non-interactive ratification is refused
+    intent: an operator records a human decision on an intent as wanted
     run: >-
       loom intent ratify
       'the next router serves the highest-priority asserted residue with a prompt contract'
