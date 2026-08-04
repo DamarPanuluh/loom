@@ -1516,3 +1516,77 @@ fn migration_drops_the_claimed_proof_level() {
         fresh.body
     );
 }
+
+/// Migration 7 must NOT rewrite legitimate double-space names. An earlier
+/// draft did, and turned `checks payment  retry policy` into an unrelated
+/// intent title. Repair of true excision damage (`…  proof`) is doctor's job.
+#[test]
+fn migration_preserves_legitimate_double_space_validation_names() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "a proof whose command cannot run grades S0",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "checks payment  retry policy",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "true" }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Validates,
+            &val.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    drop(store);
+
+    let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
+    conn.pragma_update(None, "user_version", 6u32).unwrap();
+    drop(conn);
+
+    let store = Store::open(tmp.path()).unwrap();
+    let fresh = store.get_node(&val.id).unwrap().unwrap();
+    assert_eq!(
+        fresh.name, "checks payment  retry policy",
+        "migration must leave mid-phrase double spaces alone"
+    );
+    assert!(
+        !loom::signal::doctor(&store)
+            .unwrap()
+            .iter()
+            .any(|i| i.kind == "malformed_validation_name"),
+        "doctor must not flag legitimate mid-phrase double spaces"
+    );
+}
+
+#[test]
+fn doctor_flags_validation_names_ending_in_excised_proof() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store
+        .add_node(
+            NodeType::Validation,
+            "a proof whose command cannot run grades  proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "true" }),
+        )
+        .unwrap();
+    let issues = loom::signal::doctor(&store).unwrap();
+    assert!(
+        issues.iter().any(|i| i.kind == "malformed_validation_name"),
+        "doctor must flag a name ending in '  proof': {issues:?}"
+    );
+}

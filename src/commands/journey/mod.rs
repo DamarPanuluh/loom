@@ -4,7 +4,7 @@
 //! needs a journey proof. It is linked via a `Covers` edge to the Intent whose
 //! behavior the flow exercises. Coverage STATUS IS DERIVED, never asserted: a
 //! coverage node reads "effectively covered" iff its covered intent currently
-//! has a passing L5/L6 journey validation (proof_kind=journey). This avoids a
+//! has a passing S3-or-stronger journey validation (proof_kind=journey). This avoids a
 //! second stale truth source — when sync stales the proof, coverage reads
 //! uncovered automatically (see the artifact-drift gate in `sync`).
 //!
@@ -287,7 +287,7 @@ fn proof_gap_reason(base: &str, proof_status: &str, coverage_status: &str) -> St
         ("failed", _) => "journey validation exists, but current journey proof is failing".into(),
         ("stale", _) => "journey validation exists, but proof needs reverification".into(),
         ("unproven", _) => {
-            "journey validation exists, but no current passing L5/L6 proof covers this intent"
+            "journey validation exists, but no current passing S3-or-stronger journey proof covers this intent"
                 .into()
         }
         _ => base.into(),

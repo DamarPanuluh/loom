@@ -260,8 +260,8 @@ fn coverage_remove(graph: Option<&std::path::Path>, key: &str, json: bool) -> Re
     )
 }
 
-/// Discover coverage gaps: user-visible implemented intents with no passing L5
-/// journey proof and no existing journey_coverage node. This is graph-derived
+/// Discover coverage gaps: user-visible implemented intents with no passing
+/// S3-or-stronger journey proof and no existing journey_coverage node. This is graph-derived
 /// discovery (from visibility + lifecycle + validations), not static call-graph
 /// flow analysis — loom's extraction has symbols/imports but no inter-symbol
 /// call edges, so an honest entry→mutation→projection matcher is not feasible
@@ -443,7 +443,7 @@ fn coverage_drift(graph: Option<&std::path::Path>, json: bool) -> Result<()> {
                         "intent": intent.name,
                         "expected_artifact": coverage_artifact,
                         "actual_artifacts": actual_artifacts,
-                        "message": "coverage contract_artifact does not match any current passing L5 journey proof artifact",
+                        "message": "coverage contract_artifact does not match any current passing S3-or-stronger journey proof artifact",
                         "remedy": "update the coverage node, validation artifact, or rerun the correct journey proof",
                     }));
                 }
@@ -464,7 +464,7 @@ fn coverage_drift(graph: Option<&std::path::Path>, json: bool) -> Result<()> {
                 "coverage": cov.name,
                 "intent": intent.name,
                 "proof": proof.name,
-                "message": "current passing L5 journey proof has no body.artifact, so contract drift cannot be tracked",
+                "message": "current passing S3-or-stronger journey proof has no body.artifact, so contract drift cannot be tracked",
                 "remedy": "add/update the validation with --artifact pointing at the contract/journey/runner artifact",
             })),
         }

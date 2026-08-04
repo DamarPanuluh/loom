@@ -227,9 +227,17 @@ fn journey_proof_smell_fires_when_user_visible_intent_has_no_validation() {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let _ = visible_intent(&store, "checkout completes");
     let smells = loom::signal::smells(&store).unwrap();
-    assert!(smells
+    let smell = smells
         .iter()
-        .any(|s| s.kind == "missing_journey_proof" && s.message.contains("checkout completes")),);
+        .find(|s| s.kind == "missing_journey_proof" && s.message.contains("checkout completes"))
+        .expect("missing journey proof smell");
+    assert!(
+        smell.message.contains("S3-or-stronger")
+            && !smell.message.contains("L5")
+            && !smell.message.contains("L6"),
+        "smell must use the derived strength scale, not retired L5/L6: {}",
+        smell.message
+    );
 }
 
 #[test]
@@ -260,10 +268,19 @@ fn journey_proof_smell_fires_when_validation_is_too_shallow() {
         loom::commands::observe_validation(&store, &fresh).unwrap();
     }
     let smells = loom::signal::smells(&store).unwrap();
-    assert!(smells
+    let smell = smells
         .iter()
-        .any(|s| s.kind == "proof_too_shallow_for_intent"
-            && s.message.contains("checkout completes")),);
+        .find(|s| {
+            s.kind == "proof_too_shallow_for_intent" && s.message.contains("checkout completes")
+        })
+        .expect("shallow proof smell");
+    assert!(
+        smell.message.contains("S3-or-stronger")
+            && !smell.message.contains("L5")
+            && !smell.message.contains("L6"),
+        "smell must use the derived strength scale, not retired L5/L6: {}",
+        smell.message
+    );
 }
 
 #[test]

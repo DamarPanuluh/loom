@@ -313,8 +313,10 @@ impl Store {
         // binary is behind, and there is nothing the operator can run to fix
         // that here — telling them to `loom sync` invites an action that fails
         // with raw migration-library jargon, which is how a clear failure
-        // becomes a confusing one.
-        if user_version > SCHEMA_VERSION {
+        // becomes a confusing one. Phantom stamps (aborted no-op bumps that
+        // never changed the schema) are the same shape as SCHEMA_VERSION and
+        // stay readable; a write open reclaim-downstamps them.
+        if user_version > SCHEMA_VERSION && !is_phantom_schema(user_version) {
             bail!(
                 "this graph is v{user_version}; this loom understands v{SCHEMA_VERSION}. \
                  It was written by a newer loom — upgrade this one \
@@ -322,7 +324,7 @@ impl Store {
                  only ever moves forward"
             );
         }
-        if user_version != SCHEMA_VERSION {
+        if user_version < SCHEMA_VERSION {
             bail!(
                 "graph schema (v{user_version}) needs migration to v{SCHEMA_VERSION} — run a \
                  write command (e.g. `loom sync`) once to migrate before read-only commands"
@@ -589,19 +591,48 @@ fn schema_migrations() -> Migrations<'static> {
     ])
 }
 
+/// Schema versions a retracted local bump stamped with **no** on-disk change.
+///
+/// v7 ran only `SELECT 1` and never shipped; graphs that touched the uncommitted
+/// bump are still readable and are downstamped back to [`SCHEMA_VERSION`] on the
+/// next write open. A real future schema (not listed here) still refuses.
+const PHANTOM_SCHEMA_VERSIONS: &[u32] = &[7];
+
+fn is_phantom_schema(user_version: u32) -> bool {
+    user_version > SCHEMA_VERSION && PHANTOM_SCHEMA_VERSIONS.contains(&user_version)
+}
+
+/// Reclaim a phantom future stamp so rusqlite_migration can proceed.
+fn reclaim_phantom_schema(conn: &Connection, user_version: u32) -> Result<()> {
+    if !is_phantom_schema(user_version) {
+        return Ok(());
+    }
+    conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    let _ = conn.execute(
+        "UPDATE meta SET value=?1 WHERE key='schema_version'",
+        params![SCHEMA_VERSION.to_string()],
+    )?;
+    Ok(())
+}
+
 fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
     adopt_legacy_schema_version(conn)?;
     // Refuse a graph from the future BEFORE handing it to the migrator, which
     // reports it as "migration number that is too high" — an accurate sentence
     // about its own internals and a useless one to the person holding an old
     // binary. Migrations only move forward; the fix is always to upgrade loom.
+    // Phantom stamps (aborted no-op bumps) are reclaimed, not refused.
     let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
     if user_version > SCHEMA_VERSION {
-        bail!(
-            "this graph is v{user_version}; this loom understands v{SCHEMA_VERSION}. \
-             It was written by a newer loom — upgrade this one \
-             (`cargo install --path .`). The graph is untouched."
-        );
+        if is_phantom_schema(user_version) {
+            reclaim_phantom_schema(conn, user_version)?;
+        } else {
+            bail!(
+                "this graph is v{user_version}; this loom understands v{SCHEMA_VERSION}. \
+                 It was written by a newer loom — upgrade this one \
+                 (`cargo install --path .`). The graph is untouched."
+            );
+        }
     }
     schema_migrations()
         .to_latest(conn)
@@ -910,6 +941,30 @@ mod tests {
         let store = Store::init(tmp.path(), Some("fresh"), false).unwrap();
         assert_eq!(sqlite_user_version(&store.conn), SCHEMA_VERSION);
         assert_eq!(store.identity().unwrap().schema_version, SCHEMA_VERSION);
+    }
+
+    /// The aborted v7 no-op stamp must not brick a local graph after rollback.
+    #[test]
+    fn phantom_v7_is_readable_and_write_reclaims_to_current() {
+        let tmp = TmpRoot::new("loom-store-phantom-v7");
+        {
+            let store = Store::init(tmp.path(), Some("phantom"), false).unwrap();
+            drop(store);
+        }
+        let db = tmp.path().join(crate::LOOM_DIR).join(crate::GRAPH_DB);
+        let conn = Connection::open(&db).unwrap();
+        conn.pragma_update(None, "user_version", 7u32).unwrap();
+        conn.execute("UPDATE meta SET value='7' WHERE key='schema_version'", [])
+            .unwrap();
+        drop(conn);
+
+        let reader = Store::open_read(tmp.path()).expect("phantom v7 must stay readable");
+        assert_eq!(sqlite_user_version(&reader.conn), 7);
+        drop(reader);
+
+        let writer = Store::open(tmp.path()).expect("write open reclaims phantom v7");
+        assert_eq!(sqlite_user_version(&writer.conn), SCHEMA_VERSION);
+        assert_eq!(writer.identity().unwrap().schema_version, SCHEMA_VERSION);
     }
 
     #[test]

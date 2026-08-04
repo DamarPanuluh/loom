@@ -67,6 +67,25 @@ pub fn is_placeholder(s: &str) -> bool {
     PLACEHOLDER_TOKENS.contains(&raw.to_ascii_lowercase().as_str())
 }
 
+/// A validation name with a hole left where a retired proof-level token was
+/// excised immediately before a trailing `proof`.
+///
+/// The retired L0–L6 token was removed from some names without rejoining words,
+/// leaving fingerprints such as `grades  proof` or `empty  proof`. Only a
+/// double-space immediately before a final `proof` counts — a mid-phrase
+/// double space (`checks payment  retry policy`) is legitimate whitespace, not
+/// this corruption.
+pub fn excised_proof_level_name(name: &str) -> bool {
+    let name = name.trim_end();
+    let Some(proof_at) = name.rfind("proof") else {
+        return false;
+    };
+    if proof_at + "proof".len() != name.len() {
+        return false;
+    }
+    name[..proof_at].ends_with("  ")
+}
+
 /// Does this name look like a code symbol rather than a behavior? Behaviors
 /// read as phrases; symbols are single tokens such as `capture_payment`,
 /// `runWithSqlite`, `Store::open`, or `handle()`.
@@ -87,7 +106,23 @@ fn has_internal_caps(s: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_placeholder, looks_like_symbol};
+    use super::{excised_proof_level_name, is_placeholder, looks_like_symbol};
+
+    #[test]
+    fn excised_proof_level_names_leave_a_double_space_hole() {
+        assert!(excised_proof_level_name(
+            "a proof whose command cannot run grades  proof"
+        ));
+        assert!(excised_proof_level_name(
+            "an offset past the end returns an empty  proof"
+        ));
+        assert!(!excised_proof_level_name(
+            "a proof whose command cannot run grades S0"
+        ));
+        assert!(!excised_proof_level_name("typed CLI dispatch contracts"));
+        // Mid-phrase double space is not the excision fingerprint.
+        assert!(!excised_proof_level_name("checks payment  retry policy"));
+    }
 
     #[test]
     fn rejects_whole_field_placeholders() {

@@ -740,12 +740,12 @@ fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
         };
         let message = if validations.is_empty() {
             format!(
-                "user-visible intent '{}' has no linked validation; boundary-facing behavior needs an L5 journey proof",
+                "user-visible intent '{}' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
                 intent.name
             )
         } else {
             format!(
-                "user-visible intent '{}' has validations but no passing L5/L6 journey proof",
+                "user-visible intent '{}' has validations but no passing S3-or-stronger journey proof",
                 intent.name
             )
         };
@@ -1069,6 +1069,23 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
         }
     }
     issues.extend(hierarchy_cycle_issues(&snap));
+    // Validation names ending in `  proof` — the fingerprint left when a
+    // retired proof-level token was excised immediately before a trailing
+    // `proof` without rejoining words. Mid-phrase double spaces are legitimate.
+    for n in &snap.nodes {
+        if n.node_type != NodeType::Validation {
+            continue;
+        }
+        if crate::grammar::excised_proof_level_name(&n.name) {
+            issues.push(DoctorIssue {
+                kind: "malformed_validation_name".into(),
+                message: format!(
+                    "validation '{}' has a name damaged by proof-level excision (ends with '  proof') — rename it to the behavior it proves",
+                    n.name
+                ),
+            });
+        }
+    }
     // Orphaned upstream intents: shadows whose alias no longer matches any
     // linked upstream (after `graph unlink` without `--prune`). The node
     // persists deliberately so re-link can reattach, but the unlinked state is

@@ -11,11 +11,31 @@ use serde_json::Value;
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
+#[cfg(test)]
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 const JOURNAL_DIR: &str = "journal";
 const EVENTS_FILE: &str = "events.jsonl";
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+/// Process-local count of full journal parses (`read` / `read_counting`).
+///
+/// Permanent regression probe for the N×reread bug in hot paths — compiled
+/// only into test builds (`cfg(test)`), not release instrumentation.
+#[cfg(test)]
+static FULL_READS: AtomicUsize = AtomicUsize::new(0);
+
+/// How many times this process has fully parsed the journal (test builds only).
+#[cfg(test)]
+pub fn full_read_count() -> usize {
+    FULL_READS.load(Ordering::Relaxed)
+}
+
+/// Reset the full-read counter before a regression assertion (test builds only).
+#[cfg(test)]
+pub fn reset_full_read_count() {
+    FULL_READS.store(0, Ordering::Relaxed);
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
@@ -51,13 +71,42 @@ pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Resu
         target_id: target_id.into(),
         payload,
     };
-    let file = path(root);
-    fs::create_dir_all(file.parent().expect("journal file has a parent"))?;
-    let mut out = OpenOptions::new().create(true).append(true).open(&file)?;
-    serde_json::to_writer(&mut out, &entry)?;
-    out.write_all(b"\n")?;
-    out.sync_data()?;
+    // Serialize the full JSONL record first, then append under a dedicated
+    // journal lock. Shared graph readers may append from many processes at
+    // once; split `to_writer` + newline writes interleave into corrupt lines.
+    let mut line = serde_json::to_vec(&entry)?;
+    line.push(b'\n');
+    write_record(root, &line)?;
     Ok(entry)
+}
+
+/// Exclusive lock for the journal directory — not the graph lock.
+///
+/// Readers share the graph lock and still append here; serializing only the
+/// complete JSONL record under this file keeps concurrent appends well-formed.
+fn journal_lock(root: &Path) -> Result<std::fs::File> {
+    let dir = path(root)
+        .parent()
+        .expect("journal file has a parent")
+        .to_path_buf();
+    fs::create_dir_all(&dir)?;
+    let lock_path = dir.join("lock");
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(false)
+        .open(&lock_path)?;
+    file.lock()?;
+    Ok(file)
+}
+
+fn write_record(root: &Path, line: &[u8]) -> Result<()> {
+    let file = path(root);
+    let _guard = journal_lock(root)?;
+    let mut out = OpenOptions::new().create(true).append(true).open(&file)?;
+    out.write_all(line)?;
+    out.sync_data()?;
+    Ok(())
 }
 
 /// Well-formed entries plus a count of lines that could not be parsed.
@@ -66,6 +115,8 @@ pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Resu
 /// fatal read: it is counted and skipped so `status` and `next` stay live on a
 /// journal whose tail was damaged. Only genuine IO errors propagate.
 pub fn read_counting(root: &Path) -> Result<(Vec<Entry>, usize)> {
+    #[cfg(test)]
+    FULL_READS.fetch_add(1, Ordering::Relaxed);
     let file = path(root);
     let Ok(file) = OpenOptions::new().read(true).open(&file) else {
         return Ok((Vec::new(), 0));
@@ -139,14 +190,15 @@ pub fn restore_entries(root: &Path, entries: &[Entry]) -> Result<usize> {
         read(root)?.into_iter().map(|e| e.id).collect();
     let mut restored = 0;
     let file = path(root);
-    fs::create_dir_all(file.parent().expect("journal file has a parent"))?;
+    let _guard = journal_lock(root)?;
     let mut out = OpenOptions::new().create(true).append(true).open(&file)?;
     for entry in entries {
         if existing.contains(&entry.id) {
             continue;
         }
-        serde_json::to_writer(&mut out, entry)?;
-        out.write_all(b"\n")?;
+        let mut line = serde_json::to_vec(entry)?;
+        line.push(b'\n');
+        out.write_all(&line)?;
         restored += 1;
     }
     out.sync_data()?;

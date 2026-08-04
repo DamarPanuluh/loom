@@ -290,8 +290,8 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
         // journey proof(s) this coverage actually stands behind, so a sibling
         // proof for the same intent isn't disturbed. When the coverage declares
         // a `contract_artifact`, match it to the validation's `body.artifact`;
-        // otherwise fall back to the intent's current passing L5/L6 journey
-        // proofs. Restricting to passing L5/L6 keeps an already-unproven or
+        // otherwise fall back to the intent's current passing S3-or-stronger
+        // journey proofs. Restricting to S3-or-stronger keeps an already-unproven or
         // shallow validation untouched.
         let Some(cover_edge) = store
             .edges_with(Some(EdgeKind::Covers), Some(&cov.id), None)?
@@ -403,7 +403,7 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
             continue;
         };
         let locator = locator.trim();
-        if locator.is_empty() || locator.to_ascii_lowercase().starts_with("module") {
+        if locator.is_empty() || crate::locator::is_module_scope(locator) {
             continue;
         }
         let Some(file) = store.get_node(&edge.to_id)? else {

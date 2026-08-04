@@ -245,12 +245,8 @@ pub fn still_holds(root: &Path, item: &Item) -> bool {
 
 /// The symbol a locator names, if it names one.
 fn locator_symbol(locator: &str) -> Option<String> {
-    let tok = locator.split_whitespace().next_back()?;
-    // Path qualification first, THEN the line suffix. The other order splits
-    // `Store::open` at the first colon and yields the type name.
-    let tok = tok.rsplit("::").next().unwrap_or(tok);
-    let tok = tok.split(':').next().unwrap_or(tok);
-    (!tok.is_empty()).then(|| tok.to_string())
+    // First member only — absorb records one observation per item.
+    crate::locator::symbols(locator).into_iter().next()
 }
 
 /// Persist a batch as a Proposal, reusing the ordinary adopt/defer/reject flow.

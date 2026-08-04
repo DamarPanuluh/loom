@@ -119,6 +119,12 @@ pub enum Command {
         /// would serve, in priority order).
         #[arg(long)]
         all: bool,
+        /// With unscoped `--all --json`, emit full work packets (prompt
+        /// contract + context) and mint packet ids. Default closeout JSON is
+        /// compact: depth, target, and reason per lane — no packet minting.
+        /// Does not apply to `--mode <m> --all` (lightweight roster).
+        #[arg(long)]
+        full: bool,
     },
     /// Edge commands.
     Edge {
@@ -532,5 +538,20 @@ mod tests {
             modes, lanes,
             "the CLI --mode enum and the MCP lane enum must serve the same lanes"
         );
+    }
+
+    #[test]
+    fn journey_coverage_help_uses_the_derived_strength_scale() {
+        let mut cmd = Cli::command();
+        let coverage = cmd
+            .find_subcommand_mut("journey")
+            .and_then(|journey| journey.find_subcommand_mut("coverage"))
+            .expect("journey coverage command");
+        let mut help = Vec::new();
+        coverage.write_long_help(&mut help).unwrap();
+        let help = String::from_utf8(help).unwrap();
+        assert!(help.contains("S3-or-stronger"), "{help}");
+        assert!(!help.contains("L5"), "{help}");
+        assert!(!help.contains("L6"), "{help}");
     }
 }

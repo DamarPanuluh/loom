@@ -409,7 +409,12 @@ fn epoch_millis(stamp: &str) -> Option<i64> {
 }
 
 pub fn efficacy(store: &Store) -> Result<Efficacy> {
-    // When each subject first reached a re-checkable state.
+    // When each subject most recently reached a re-checkable state.
+    //
+    // Earliest-wins discarded re-verification: a packet about an already-
+    // established target never converted even when later qualifying work
+    // landed. Latest-wins credits any post-serve settle (still statistical —
+    // timestamp correlation, not packet citation).
     let mut settled_at: BTreeMap<String, String> = BTreeMap::new();
     for fact in store.all_facts()? {
         if !fact.verification.counts() {
@@ -419,7 +424,7 @@ pub fn efficacy(store: &Store) -> Result<Efficacy> {
         settled_at
             .entry(fact.subject_id.clone())
             .and_modify(|e| {
-                if at < *e {
+                if at > *e {
                     *e = at.clone();
                 }
             })
@@ -435,7 +440,7 @@ pub fn efficacy(store: &Store) -> Result<Efficacy> {
                 node_settled
                     .entry(endpoint)
                     .and_modify(|e| {
-                        if at < e {
+                        if at > e {
                             *e = at.clone();
                         }
                     })

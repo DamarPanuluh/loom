@@ -427,6 +427,64 @@ fn the_efficacy_ratio_distinguishes_helped_from_ignored() {
     assert!((e.ratio - 0.5).abs() < f64::EPSILON, "{e:?}");
 }
 
+/// A packet about an already-settled target still converts when later
+/// qualifying work lands. Earliest-fact tracking permanently failed those.
+#[test]
+fn efficacy_credits_reverification_after_an_earlier_fact() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let i = intent(&store, "a behavior revisited");
+    let cf = codefile(&store, "src/thing.rs");
+    let edge = store
+        .add_edge(EdgeKind::Implements, &i, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    store
+        .record_verdict(
+            &edge.id,
+            loom::model::InspectionStatus::Passing,
+            "lives here",
+            "src/thing.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    loom::packet::serve(
+        tmp.path(),
+        &[loom::packet::Served {
+            id: "pkt-revisit".into(),
+            kind: "analyze".into(),
+            target: i.clone(),
+        }],
+    )
+    .unwrap();
+
+    // Before re-work: already-settled, not converted.
+    let before = loom::audit::efficacy(&store).unwrap();
+    assert_eq!(before.served, 1);
+    assert_eq!(before.converted, 0);
+
+    // Later qualifying write on the same subject — must count.
+    std::thread::sleep(std::time::Duration::from_millis(2));
+    store
+        .record_verdict(
+            &edge.id,
+            loom::model::InspectionStatus::Passing,
+            "still lives here after revisit",
+            "src/thing.rs:1",
+            0.95,
+            "llm",
+        )
+        .unwrap();
+
+    let after = loom::audit::efficacy(&store).unwrap();
+    assert_eq!(after.served, 1);
+    assert_eq!(
+        after.converted, 1,
+        "re-verification after the packet must convert: {after:?}"
+    );
+}
+
 /// One definition of the coverage gap, not two that agree by coincidence.
 ///
 /// `code_ownership_summary` carried its own copy of the ownership rule. When

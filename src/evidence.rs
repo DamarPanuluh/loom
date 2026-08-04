@@ -511,12 +511,17 @@ mod tests {
     #[test]
     fn parses_route_convention_paths() {
         let caps: Vec<_> = CITATION_RE
-            .captures_iter("web/src/routes/+layout.svelte:14-18 and web/src/routes/r/[id]/+page@.svelte:3")
+            .captures_iter(
+                "web/src/routes/+layout.svelte:14-18 and web/src/routes/r/[id]/+page@.svelte:3",
+            )
             .map(|c| c["file"].to_string())
             .collect();
         assert_eq!(
             caps,
-            vec!["web/src/routes/+layout.svelte", "web/src/routes/r/[id]/+page@.svelte"]
+            vec![
+                "web/src/routes/+layout.svelte",
+                "web/src/routes/r/[id]/+page@.svelte"
+            ]
         );
     }
 

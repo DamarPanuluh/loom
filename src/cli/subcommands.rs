@@ -1056,7 +1056,7 @@ pub enum JourneyCoverageCmd {
     Remove { key: String },
     /// List journey coverage nodes with their effective coverage status.
     /// effective_status is DERIVED: "covered" iff the linked intent currently
-    /// has a passing L5/L6 journey validation (proof_kind=journey). Runner/test
+    /// has a passing S3-or-stronger journey validation. Runner/test
     /// ref existence alone does not flip coverage; run the proof first.
     List {
         #[arg(long, default_value_t = 50)]
@@ -1065,8 +1065,8 @@ pub enum JourneyCoverageCmd {
         offset: usize,
     },
     /// Discover coverage gaps: user-visible implemented intents with no passing
-    /// L5 journey proof and no journey_coverage node. Graph-derived (from
-    /// visibility + lifecycle + validations), not static call-graph analysis.
+    /// S3-or-stronger journey proof and no journey_coverage node. Graph-derived
+    /// (from visibility + lifecycle + validations), not static call-graph analysis.
     /// With --spawn-missing, auto-create a journey_coverage node for each gap.
     Discover {
         /// Auto-create a journey_coverage node for each discovered gap.
@@ -1075,7 +1075,7 @@ pub enum JourneyCoverageCmd {
     },
     /// Enforce drift metadata around covered journey entries: configured
     /// runner/test refs must still exist, and configured contract artifacts must
-    /// match the current passing L5 journey proof.
+    /// match the current passing S3-or-stronger journey proof.
     Drift,
 }
 

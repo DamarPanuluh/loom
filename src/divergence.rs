@@ -80,12 +80,16 @@ pub fn all(store: &Store) -> Result<Vec<Divergence>> {
     let mut out = Vec::new();
     let graph = crate::callgraph::build(store)?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
+    // One journal parse for the whole walk. Store::ratification re-reads the
+    // events file per intent; with a multi-MB journal that turns O(intents)
+    // into gigabytes of repeated JSONL parsing on every status/next call.
+    let journal = crate::journal::read(store.root())?;
 
     for intent in &intents {
-        if intent.status == "deprecated" && !is_rejected(store, &intent.id)? {
+        if intent.status == "deprecated" && !is_rejected(store, &intent.id, &journal)? {
             continue;
         }
-        let asserted = Ratification::parse(&store.ratification(&intent.id)?);
+        let asserted = Ratification::parse(&store.ratification_with_journal(&intent.id, &journal)?);
         let witness = ratification::witness(store, &intent.id)?;
         let demonstrated = witness.as_ref().and_then(|w| w.demonstrated_in.clone());
         let holds = witness.as_ref().map(|w| w.holds()).unwrap_or(false);
@@ -170,8 +174,8 @@ fn make(
     }
 }
 
-fn is_rejected(store: &Store, intent_id: &str) -> Result<bool> {
-    Ok(store.ratification(intent_id)? == "rejected")
+fn is_rejected(store: &Store, intent_id: &str, journal: &[crate::journal::Entry]) -> Result<bool> {
+    Ok(store.ratification_with_journal(intent_id, journal)? == "rejected")
 }
 
 /// Name the conjunct that fell, so a broken promise says WHAT broke.
@@ -241,29 +245,22 @@ fn blast_radius(
     intent_id: &str,
 ) -> Result<usize> {
     let mut total = 0usize;
-    for e in store.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
-        if store.edge_superseded(&e.id)? {
-            continue;
-        }
-        let Some(loc) = store.get_facet(&e.id, TargetKind::Edge, "locator")? else {
-            continue;
-        };
-        let Some(tok) = loc.split_whitespace().next_back() else {
-            continue;
-        };
-        let symbol = tok.split(':').next().unwrap_or(tok);
-        let symbol = symbol.rsplit("::").next().unwrap_or(symbol);
-        total += graph.impact(symbol, 3).callers.len();
+    for symbol in crate::locator::realizing_symbols(store, intent_id)? {
+        total += graph.impact(&symbol, 3).callers.len();
     }
     Ok(total)
 }
 
-/// Two intents describing the same behavior: shared realizing files, a tag
-/// overlap, and a shared locator. All three, because any one alone is common
-/// and harmless — two behaviors in one file is normal, and so is a shared tag.
+/// Two intents describing the same behavior: a shared realizing (file, symbol)
+/// key and a tag overlap. Verifies/consumes/configures edges are seams, not
+/// the behavior's home — sharing a test helper must not route as a duplicate.
+/// Locator comparison uses canonical symbols so `;`-reordered members still match.
 fn duplicates(store: &Store, intents: &[crate::model::Node]) -> Result<Vec<Divergence>> {
-    let mut files: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    let mut locators: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    use crate::model::GroundingRole;
+    use std::collections::BTreeSet;
+
+    // intent → realizing (file_id, symbol) keys. Empty symbol = module scope.
+    let mut realizing: BTreeMap<String, BTreeSet<(String, String)>> = BTreeMap::new();
     let mut tags: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for intent in intents {
         if intent.status == "deprecated" {
@@ -273,13 +270,22 @@ fn duplicates(store: &Store, intents: &[crate::model::Node]) -> Result<Vec<Diver
             if store.edge_superseded(&e.id)? {
                 continue;
             }
-            files
-                .entry(intent.id.clone())
-                .or_default()
-                .push(e.to_id.clone());
-            if let Some(loc) = store.get_facet(&e.id, TargetKind::Edge, "locator")? {
-                if !loc.trim().is_empty() {
-                    locators.entry(intent.id.clone()).or_default().push(loc);
+            if store.grounding_role(&e.id)? != GroundingRole::Realizes {
+                continue;
+            }
+            let file = e.to_id.clone();
+            let keys = realizing.entry(intent.id.clone()).or_default();
+            match store.get_facet(&e.id, TargetKind::Edge, "locator")? {
+                Some(loc) if crate::locator::is_module_scope(&loc) => {
+                    keys.insert((file, String::new()));
+                }
+                Some(loc) => {
+                    for sym in crate::locator::symbols(&loc) {
+                        keys.insert((file.clone(), sym));
+                    }
+                }
+                None => {
+                    keys.insert((file, String::new()));
                 }
             }
         }
@@ -315,16 +321,10 @@ fn duplicates(store: &Store, intents: &[crate::model::Node]) -> Result<Vec<Diver
             if parent_child || siblings {
                 continue;
             }
-            let (Some(fa), Some(fb)) = (files.get(&a.id), files.get(&b.id)) else {
+            let (Some(ka), Some(kb)) = (realizing.get(&a.id), realizing.get(&b.id)) else {
                 continue;
             };
-            if !fa.iter().any(|f| fb.contains(f)) {
-                continue;
-            }
-            let (Some(la), Some(lb)) = (locators.get(&a.id), locators.get(&b.id)) else {
-                continue;
-            };
-            if !la.iter().any(|l| lb.contains(l)) {
+            if ka.is_empty() || kb.is_empty() || ka.is_disjoint(kb) {
                 continue;
             }
             let (ta, tb) = (
@@ -377,6 +377,34 @@ pub fn is_subject(node: &crate::model::Node) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::NodeType;
+    use crate::store::Store;
+    use std::fs;
+
+    struct Tmp(std::path::PathBuf);
+    impl Tmp {
+        fn new(tag: &str) -> Self {
+            let p = std::env::temp_dir().join(format!(
+                "loom-div-{}-{}-{}",
+                tag,
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos()
+            ));
+            let _ = fs::remove_dir_all(&p);
+            Self(p)
+        }
+        fn path(&self) -> &std::path::Path {
+            &self.0
+        }
+    }
+    impl Drop for Tmp {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
 
     #[test]
     fn a_zombie_outranks_a_question() {
@@ -400,5 +428,188 @@ mod tests {
         assert_eq!(jaccard(&a, &b), 1.0);
         let c = vec!["payments".to_string(), "refunds".to_string(), "x".into()];
         assert!(jaccard(&a, &c) < 0.5, "one shared tag is not a duplicate");
+    }
+
+    #[test]
+    fn sharing_a_verifier_is_not_a_duplicate() {
+        use crate::model::{EdgeKind, GroundingRole, TargetKind, TruthClass};
+
+        let tmp = Tmp::new("dup-verifies");
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let a = store
+            .add_node(
+                NodeType::Intent,
+                "behavior a",
+                "d",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let b = store
+            .add_node(
+                NodeType::Intent,
+                "behavior b",
+                "d",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        for id in [&a.id, &b.id] {
+            store.set_tag(id, TargetKind::Node, "payments").unwrap();
+            store.set_tag(id, TargetKind::Node, "checkout").unwrap();
+        }
+        let test = store
+            .add_node(
+                NodeType::CodeFile,
+                "tests/shared.rs",
+                "",
+                "present",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        for intent in [&a.id, &b.id] {
+            let e = store
+                .add_edge(EdgeKind::Implements, intent, &test.id, TruthClass::Asserted)
+                .unwrap();
+            store
+                .set_grounding_role(&e.id, GroundingRole::Verifies)
+                .unwrap();
+            store
+                .set_facet(
+                    &e.id,
+                    TargetKind::Edge,
+                    "locator",
+                    "helper_assert",
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+        }
+        let intents = store.list_nodes(Some(NodeType::Intent), 100).unwrap();
+        let dups: Vec<_> = duplicates(&store, &intents)
+            .unwrap()
+            .into_iter()
+            .filter(|d| d.kind == Kind::DuplicateIntent)
+            .collect();
+        assert!(
+            dups.is_empty(),
+            "shared verifies grounding must not be a duplicate: {dups:?}"
+        );
+    }
+
+    #[test]
+    fn reordered_locator_symbols_still_match_as_duplicates() {
+        use crate::model::{EdgeKind, TargetKind, TruthClass};
+
+        let tmp = Tmp::new("dup-reorder");
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let a = store
+            .add_node(
+                NodeType::Intent,
+                "behavior a",
+                "d",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let b = store
+            .add_node(
+                NodeType::Intent,
+                "behavior b",
+                "d",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        for id in [&a.id, &b.id] {
+            store.set_tag(id, TargetKind::Node, "payments").unwrap();
+            store.set_tag(id, TargetKind::Node, "checkout").unwrap();
+        }
+        let cf = store
+            .add_node(
+                NodeType::CodeFile,
+                "src/pay.rs",
+                "",
+                "present",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let e_a = store
+            .add_edge(EdgeKind::Implements, &a.id, &cf.id, TruthClass::Asserted)
+            .unwrap();
+        let e_b = store
+            .add_edge(EdgeKind::Implements, &b.id, &cf.id, TruthClass::Asserted)
+            .unwrap();
+        store
+            .set_facet(
+                &e_a.id,
+                TargetKind::Edge,
+                "locator",
+                "charge; refund",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &e_b.id,
+                TargetKind::Edge,
+                "locator",
+                "refund; charge",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        let intents = store.list_nodes(Some(NodeType::Intent), 100).unwrap();
+        let dups: Vec<_> = duplicates(&store, &intents)
+            .unwrap()
+            .into_iter()
+            .filter(|d| d.kind == Kind::DuplicateIntent)
+            .collect();
+        assert_eq!(
+            dups.len(),
+            1,
+            "reordered realizing symbols must still match: {dups:?}"
+        );
+    }
+
+    /// `divergence::all` must parse the journal once, not once per intent.
+    ///
+    /// Asserted via the test-only journal read counter rather than a wall-clock
+    /// bench: a bench pins the machine; the bug is the N×reread shape.
+    #[test]
+    fn all_reads_the_journal_once() {
+        let tmp = Tmp::new("journal-once");
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        for i in 0..24 {
+            let id = store
+                .add_node(
+                    NodeType::Intent,
+                    &format!("behavior {i}"),
+                    "a behavior",
+                    "implemented",
+                    serde_json::json!({}),
+                )
+                .unwrap()
+                .id;
+            if i % 3 == 0 {
+                // loom-stability-exempt: deprecates an Intent fixture, not a proof outcome
+                store.set_node_status(&id, "deprecated").unwrap();
+            }
+        }
+        for i in 0..40 {
+            crate::journal::append(
+                tmp.path(),
+                "note",
+                &format!("target-{i}"),
+                serde_json::json!({ "i": i }),
+            )
+            .unwrap();
+        }
+
+        crate::journal::reset_full_read_count();
+        let _ = all(&store).unwrap();
+        let reads = crate::journal::full_read_count();
+        assert_eq!(
+            reads, 1,
+            "divergence::all must fully parse the journal exactly once, got {reads}"
+        );
     }
 }

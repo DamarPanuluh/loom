@@ -471,7 +471,7 @@ fn validate_finding_verdict(verdict: &str) -> Result<()> {
     }
 }
 pub(crate) fn doctor_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    let store = open_read(graph)?;
     let issues = crate::signal::doctor(&store)?;
     if json {
         println!("{}", serde_json::to_string_pretty(&issues)?);
@@ -490,7 +490,7 @@ pub(crate) fn doctor_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     }
 }
 pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    let store = open_read(graph)?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
     let active: Vec<_> = intents
         .iter()

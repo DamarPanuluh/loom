@@ -937,6 +937,7 @@ fn monitoring_self_teaching_surfaces_run_clean() {
         Command::Next {
             mode: None,
             all: false,
+            full: false,
         },
     );
 }
@@ -1657,6 +1658,11 @@ fn global_json_next_all_emits_per_mode_queues() {
         obj.contains_key("graph_state"),
         "next --all --json has `graph_state`"
     );
+    assert_eq!(
+        obj.get("packets").and_then(|p| p.as_str()),
+        Some("compact"),
+        "default closeout JSON is compact"
+    );
     let queues = obj
         .get("queues")
         .and_then(|q| q.as_object())
@@ -1666,7 +1672,136 @@ fn global_json_next_all_emits_per_mode_queues() {
         "fix", "validate", "build", "quality", "prove", "analyze", "triage",
     ] {
         assert!(queues.contains_key(mode), "queues has `{mode}`");
+        let row = queues.get(mode).and_then(|q| q.as_object()).unwrap();
+        assert!(row.contains_key("depth"), "compact row has depth");
+        assert!(
+            !row.contains_key("prompt_contract"),
+            "compact closeout must not carry full packets"
+        );
     }
+}
+
+#[test]
+fn next_all_json_full_opt_in_emits_work_packets() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), None);
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "a behavior needing analysis",
+                "d",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let cf = codefile(&store, "src/a.rs");
+        store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &cf.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+
+    let compact = loom_json_out(tmp.path(), &["next", "--all", "--json"]);
+    let full = loom_json_out(tmp.path(), &["next", "--all", "--full", "--json"]);
+    assert_eq!(compact["packets"], "compact");
+    assert_eq!(full["packets"], "full");
+
+    let analyze = full["queues"]["analyze"]
+        .as_object()
+        .expect("analyze queue present");
+    assert!(
+        analyze.contains_key("prompt_contract") && analyze.contains_key("context"),
+        "--full must emit the complete work packet: {analyze:?}"
+    );
+    assert!(analyze.contains_key("depth"));
+
+    let compact_analyze = compact["queues"]["analyze"].as_object().unwrap();
+    assert!(compact_analyze.contains_key("depth"));
+    assert!(compact_analyze.contains_key("reason"));
+    assert!(compact_analyze.contains_key("target"));
+    assert!(
+        !compact_analyze.contains_key("packet_id"),
+        "compact closeout must not mint packets (efficacy denominator)"
+    );
+    assert!(!compact_analyze.contains_key("prompt_contract"));
+}
+
+#[test]
+fn full_is_rejected_on_mode_scoped_all() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), None);
+    let mut cmd = std::process::Command::new(loom_bin());
+    let out = cmd
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["next", "--mode", "analyze", "--all", "--full", "--json"])
+        .output()
+        .unwrap();
+    assert!(
+        !out.status.success(),
+        "--full with --mode --all must fail, not silently emit a roster"
+    );
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("--full applies to"),
+        "stderr should name the valid --full surface: {err}"
+    );
+}
+
+#[test]
+fn full_without_json_is_rejected_and_does_not_journal() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), None);
+    {
+        let store = Store::open(tmp.path()).unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "a behavior needing analysis",
+                "d",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let cf = codefile(&store, "src/a.rs");
+        store
+            .add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &cf.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+    let before = loom::journal::read(tmp.path()).unwrap().len();
+    let mut cmd = std::process::Command::new(loom_bin());
+    let out = cmd
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["next", "--all", "--full"])
+        .output()
+        .unwrap();
+    assert!(
+        !out.status.success(),
+        "--full without --json must fail: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("--full requires --json"),
+        "stderr must name the requirement: {err}"
+    );
+    let after = loom::journal::read(tmp.path()).unwrap().len();
+    assert_eq!(
+        after, before,
+        "rejected --full must not mint a packet_served batch"
+    );
 }
 
 #[test]

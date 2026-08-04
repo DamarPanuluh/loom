@@ -245,6 +245,12 @@ fn analyze_packet_carries_the_lane_that_owns_the_write() {
         item.owner_role, "builder",
         "packet must name the registry owner of the write, not the mode's default lane"
     );
+    assert_eq!(
+        item.prompt_contract.role, item.owner_role,
+        "prompt_contract.role must match owner_role so a driver following the \
+         contract selects an identity that can record the verdict (found when \
+         analyze packets advertised owner_role=builder beside role=analyzer)"
+    );
     let roster = workitem::queue_items(&store, Lane::Analyze).unwrap();
     assert_eq!(roster[0].owner_role.as_deref(), Some("builder"));
 

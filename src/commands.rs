@@ -112,17 +112,40 @@ pub fn run(cli: Cli) -> Result<()> {
             mode.map(crate::cli::GraphModeArg::is_observed),
             cli.json,
         ),
-        Command::Next { mode, all } => match (mode, all) {
+        Command::Next { mode, all, full } => match (mode, all) {
             // `--mode <m> --all`: the full roster of that one queue (depth view).
-            (Some(m), true) => status_cmd::queue_list(cli.graph.as_deref(), m.as_str(), cli.json),
+            (Some(m), true) => {
+                if full {
+                    bail!(
+                        "--full applies to `loom next --all --json` (unscoped closeout), not \
+                         `--mode <m> --all` (lightweight roster; work the top with \
+                         `loom next --mode {}`)",
+                        m.as_str()
+                    );
+                }
+                status_cmd::queue_list(cli.graph.as_deref(), m.as_str(), cli.json)
+            }
             // `--all` alone: the closeout — top item of every queue.
-            (_, true) => status_cmd::next_all(cli.graph.as_deref(), cli.json),
+            (_, true) => {
+                if full && !cli.json {
+                    bail!(
+                        "--full requires --json (`loom next --all --full --json`); without \
+                         --json the closeout is a text roster and must not mint packets"
+                    );
+                }
+                status_cmd::next_all(cli.graph.as_deref(), cli.json, full)
+            }
             // Default: the single next work item (full packet).
-            (m, false) => status_cmd::next_cmd(
-                cli.graph.as_deref(),
-                m.map(crate::cli::ModeArg::as_str),
-                cli.json,
-            ),
+            (m, false) => {
+                if full {
+                    bail!("--full applies to `loom next --all --json` (singular next is already a full packet)");
+                }
+                status_cmd::next_cmd(
+                    cli.graph.as_deref(),
+                    m.map(crate::cli::ModeArg::as_str),
+                    cli.json,
+                )
+            }
         },
         Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Door { utterance } => misc_cmd::door(cli.graph.as_deref(), &utterance, cli.json),

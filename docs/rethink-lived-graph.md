@@ -150,7 +150,7 @@ This upgrades journey proofs from binary to differential:
 
 - **Replay compares against the baseline transcript**, not just `expect:` clauses. Deviations
   (drifted output, new warnings, latency cliffs) are reported even when exit codes still pass —
-  far stronger L5/L6 evidence.
+  far stronger S3-or-stronger journey-proof evidence.
 - **Lazy repair fork on deviation** (cockpit's rule, loom's machinery): either the tool changed
   — update the journey and re-freeze the baseline, journaled — or it regressed — mint a Finding.
   The same stale-or-wrong fork sync already applies to groundings, extended to journeys.

@@ -220,7 +220,7 @@ updated_at
  
 ### JourneyCoverage
 
-A flow that should have an L5/L6 journey proof for an intent. Its effective coverage status is derived: covered iff the linked intent currently has a passing journey validation.
+A flow that should have an S3-or-stronger journey proof for an intent. Its effective coverage status is derived: covered iff the linked intent currently has a passing S3-or-stronger journey validation.
 
 Fields:
 

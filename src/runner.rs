@@ -212,21 +212,16 @@ pub fn resolve_locator(
     let content = std::fs::read_to_string(root.join(file)).ok()?;
     let locator = locator.map(str::trim).filter(|l| !l.is_empty())?;
     let extraction = crate::extract::extract(file, &content);
-    // The same candidate expansion the ripple uses: verbatim, the last
-    // whitespace token with any `:line` suffix stripped, then its final `::`
-    // segment. `fn capture_payment`, `capture_payment:88`, `Store::open`.
-    let mut candidates: Vec<String> = vec![locator.to_string()];
-    if let Some(tok) = locator.split_whitespace().next_back() {
-        let tok = tok.split(':').next().unwrap_or(tok);
-        candidates.push(tok.to_string());
-        if let Some(seg) = tok.rsplit("::").next() {
-            candidates.push(seg.to_string());
-        }
-    }
-    // ALL symbols carrying the name, not the first. Two functions called
-    // `helper` in one file are not distinguishable by a locator, so the honest
-    // anchor covers both: either one being rewritten re-opens the claim,
-    // because loom cannot tell which one the grounding meant.
+    // One shared parse with proof strength / risk / divergence. Semicolon
+    // lists, `Type::method:line`, declaration modifiers, and prose rejection
+    // all live in `locator::symbols` — expanding candidates ad hoc here is
+    // how those planes used to disagree about the same grounding. Prose that
+    // parses to no symbols yields zero hits (file still readable → Some).
+    let candidates = crate::locator::symbols(locator);
+    // ALL symbols carrying any named member, not the first. Two functions
+    // called `helper` in one file are not distinguishable by a locator, so
+    // the honest anchor covers both: either one being rewritten re-opens the
+    // claim, because loom cannot tell which one the grounding meant.
     let hits: Vec<&crate::extract::Symbol> = extraction
         .symbols
         .iter()
@@ -313,7 +308,7 @@ pub fn unique_locator_probe(root: &Path, file: &str, locator: &str) -> Option<Ru
 /// contained used to land (finding `c1fb2418`).
 pub fn grounding_locator_resolves(root: &Path, file: &str, locator: &str) -> bool {
     let locator = locator.trim();
-    if locator.is_empty() || locator.to_ascii_lowercase().starts_with("module") {
+    if locator.is_empty() || crate::locator::is_module_scope(locator) {
         return true;
     }
     resolve_locator(root, file, Some(locator))

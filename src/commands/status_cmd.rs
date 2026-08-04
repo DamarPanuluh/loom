@@ -425,7 +425,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     );
     Ok(())
 }
-pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
+pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<()> {
     let store = open_read(graph)?;
     let (ladder, counts) = crate::maturity::ladder_and_depths(&store)?;
     let pulse = workitem::graph_state(&store)?;
@@ -449,32 +449,57 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool) -> Result<()> {
     for &(name, m, depth) in &modes {
         rows.push((name, depth, workitem::next(&store, Some(m))?));
     }
-    let pairs: Vec<(&str, &str)> = rows
-        .iter()
-        .filter_map(|(_, _, item)| {
-            item.as_ref()
-                .map(|w| (w.mode.as_str(), w.target.id.as_str()))
-        })
-        .collect();
-    let served = crate::packet::mint_batch(&pairs);
-    crate::packet::serve(store.root(), &served)?;
-    let mut ids = served.into_iter().map(|s| s.id);
-    for (_, _, item) in rows.iter_mut() {
-        if let Some(w) = item.as_mut() {
-            w.packet_id = ids.next();
+    // Compact closeouts are a roster, not packet delivery. Minting here
+    // inflates efficacy's denominator: every lane gets a "served" id, then
+    // the driver picks one lane and `next --mode` mints a different packet.
+    // Only `--full` (and singular `next`) actually hands out work packets.
+    if full {
+        let pairs: Vec<(&str, &str)> = rows
+            .iter()
+            .filter_map(|(_, _, item)| {
+                item.as_ref()
+                    .map(|w| (w.mode.as_str(), w.target.id.as_str()))
+            })
+            .collect();
+        let served = crate::packet::mint_batch(&pairs);
+        crate::packet::serve(store.root(), &served)?;
+        let mut ids = served.into_iter().map(|s| s.id);
+        for (_, _, item) in rows.iter_mut() {
+            if let Some(w) = item.as_mut() {
+                w.packet_id = ids.next();
+            }
         }
     }
     if json {
         let mut queues = serde_json::Map::new();
-        for (name, _, item) in &rows {
-            queues.insert(name.to_string(), serde_json::to_value(item)?);
+        for (name, depth, item) in &rows {
+            // Default closeout JSON is compact: prompt contracts + context on
+            // every lane blew past 20k tokens on a dogfood graph. Opt into the
+            // full packet with `--full` when a driver will actually work a lane.
+            let value = match item {
+                None => serde_json::json!({ "depth": depth }),
+                Some(w) if full => {
+                    let mut v = serde_json::to_value(w)?;
+                    if let Some(obj) = v.as_object_mut() {
+                        obj.insert("depth".into(), serde_json::json!(depth));
+                    }
+                    v
+                }
+                Some(w) => serde_json::json!({
+                    "depth": depth,
+                    "reason": w.reason,
+                    "target": w.target,
+                }),
+            };
+            queues.insert(name.to_string(), value);
         }
         let out = serde_json::json!({
             "compass": { "phase": ladder.phase, "next_command": ladder.next_command },
             "graph_state": pulse,
-            // Top item per queue (the closeout view). Depths are in `queue_depths`.
+            // Top item per queue (the closeout view). Depths are also in `queue_depths`.
             "queues": queues,
             "queue_depths": counts,
+            "packets": if full { "full" } else { "compact" },
         });
         println!("{}", serde_json::to_string_pretty(&out)?);
     } else {

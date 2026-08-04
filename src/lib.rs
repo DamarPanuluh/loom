@@ -30,6 +30,7 @@ pub mod grammar;
 pub mod journal;
 pub mod journey;
 pub mod lane;
+pub mod locator;
 pub mod maturity;
 pub mod mcp;
 pub mod model;

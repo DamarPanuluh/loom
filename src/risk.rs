@@ -15,7 +15,7 @@
 //!
 //! [`RungState::Open`]: crate::maturity::RungState::Open
 
-use crate::model::{EdgeKind, NodeType, TargetKind};
+use crate::model::{EdgeKind, NodeType};
 use crate::proofstrength::Strength;
 use crate::store::Store;
 use crate::Result;
@@ -164,19 +164,8 @@ fn strength_fraction(s: Strength) -> f64 {
 /// How many symbols transitively reach this behavior's code.
 fn fan_in(store: &Store, graph: &crate::callgraph::CallGraph, intent_id: &str) -> Result<usize> {
     let mut total = 0usize;
-    for e in store.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
-        if store.edge_superseded(&e.id)? {
-            continue;
-        }
-        let Some(loc) = store.get_facet(&e.id, TargetKind::Edge, "locator")? else {
-            continue;
-        };
-        let Some(tok) = loc.split_whitespace().next_back() else {
-            continue;
-        };
-        let sym = tok.split(':').next().unwrap_or(tok);
-        let sym = sym.rsplit("::").next().unwrap_or(sym);
-        total += graph.impact(sym, 3).callers.len();
+    for sym in crate::locator::realizing_symbols(store, intent_id)? {
+        total += graph.impact(&sym, 3).callers.len();
     }
     Ok(total)
 }

@@ -416,7 +416,6 @@ Coverage exclusions live in the graph with a recorded reason. `loom coverage` ho
 loom validation add --name "<name>" --intent <intent>
   [--type test|assertion|benchmark|manual_check|journey|scenario|contract]
   [--command "<cmd>"]
-  [--proof-level L0|L1|L2|L3|L4|L5|L6]
   [--proof-kind journey]
   [--journey-id <id>]
   [--repo-native-kind <kind>]
@@ -424,7 +423,7 @@ loom validation add --name "<name>" --intent <intent>
   [--json]
 ```
 
-Journey metadata flags require `--proof-kind journey`; the canonical journey creation path is `loom journey add <spec>`.
+Proof strength is derived (S0–S5), never authored. Journey metadata flags require `--proof-kind journey`; the canonical journey creation path is `loom journey add <spec>`.
 
 ```text
 loom validation verdict <validation> passed|failed|blocked
@@ -469,7 +468,7 @@ loom journey run <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--
 loom journey diagnose <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--json]
 ```
 
-`add` creates a `Validation` whose body uses `type: "journey"`, `proof_level: "L5"`, `proof_kind: "journey"`, and command `loom journey run <artifact>`. It links resolved step intents with `validates`. It does NOT link steps with `sequence` — a spec's step order is a test script, not a domain claim; assert ordering deliberately with `loom edge relate sequence` if it is real. Unresolved step intents do not fail the add: they are reported as `unmatched_steps` (both native specs and HTTP-contract routes).
+`add` creates a `Validation` whose body uses `type: "journey"`, `proof_kind: "journey"`, and command `loom journey run <artifact>`. Strength is derived when the proof runs (user-visible coverage expects an S3-or-stronger journey proof). It links resolved step intents with `validates`. It does NOT link steps with `sequence` — a spec's step order is a test script, not a domain claim; assert ordering deliberately with `loom edge relate sequence` if it is real. Unresolved step intents do not fail the add: they are reported as `unmatched_steps` (both native specs and HTTP-contract routes).
 
 Native specs accept JSON or YAML:
 
@@ -526,7 +525,7 @@ loom journey coverage discover [--spawn-missing] [--json]
 loom journey coverage drift [--json]
 ```
 
-Coverage nodes mark flows that need a journey proof. Effective coverage is derived: covered iff the linked intent has a passing L5/L6 journey validation. Runner/test refs alone do not satisfy coverage; the proof must run.
+Coverage nodes mark flows that need a journey proof. Effective coverage is derived: covered iff the linked intent has a passing S3-or-stronger journey validation. Runner/test refs alone do not satisfy coverage; the proof must run.
 
 ### Journey invariant points
 

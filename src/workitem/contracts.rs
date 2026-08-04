@@ -243,10 +243,24 @@ pub(super) fn coverage_contract(codefile: &Node) -> PromptContract {
     }
 }
 
-pub(super) fn analyzer_contract(edge: &Edge, from_name: &str, to_name: &str) -> PromptContract {
+/// Analyze / re-verify contract for an asserted edge.
+///
+/// `owner_role` is the registry lane that may record the verdict (implements →
+/// builder, relates → analyzer, …). It must appear as `prompt_contract.role`
+/// so a driver following the contract selects an identity that can write —
+/// hardcoding `"analyzer"` here is what made analyze packets advertise
+/// `owner_role: builder` beside `prompt_contract.role: analyzer`. The
+/// analyzer *mindset* (inspect, do not fix) stays regardless of which lane
+/// owns the write.
+pub(super) fn analyzer_contract(
+    edge: &Edge,
+    owner_role: &str,
+    from_name: &str,
+    to_name: &str,
+) -> PromptContract {
     let write_back = verdict_write_back(edge, from_name, to_name);
     PromptContract {
-        role: "analyzer".into(),
+        role: owner_role.into(),
         mindset: "Read both sides. Form a hypothesis before inspecting code. Record exactly what \
                   the code shows. Do not fix code; do not preserve the old verdict by assumption."
             .into(),

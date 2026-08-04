@@ -1090,7 +1090,7 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
         (_, "quality") => quality_contract(store, edge, &from_name, &to_name)?,
         (_, "validator") => validator_contract(store, edge, &from_name, &to_name)?,
         _ if edge.kind == EdgeKind::Exemplar => exemplar_contract(edge, &from_name, &to_name),
-        _ => analyzer_contract(edge, &from_name, &to_name),
+        _ => analyzer_contract(edge, role, &from_name, &to_name),
     };
     // A rule's authored inspection effort beats the generic status mapping.
     let base_effort = if edge.kind == EdgeKind::Governs {

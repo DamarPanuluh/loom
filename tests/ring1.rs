@@ -889,9 +889,10 @@ fn a_graph_from_the_future_says_upgrade_rather_than_migrate() {
         let store = Store::init(tmp.path(), Some("t"), false).unwrap();
         drop(store);
     }
-    // Stamp the graph as written by a loom newer than this one.
+    // Stamp the graph as written by a loom newer than this one — beyond any
+    // phantom reclaim list (v7 was an aborted no-op; SCHEMA+10 is a real future).
     let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
-    conn.pragma_update(None, "user_version", loom::SCHEMA_VERSION + 1)
+    conn.pragma_update(None, "user_version", loom::SCHEMA_VERSION + 10)
         .unwrap();
     drop(conn);
 
