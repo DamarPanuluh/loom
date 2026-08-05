@@ -45,7 +45,7 @@ pub struct JourneySpec {
     pub steps: Vec<Step>,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Deserialize)]
 pub struct Step {
     #[serde(default)]
     pub name: String,
@@ -60,6 +60,12 @@ pub struct Step {
     pub expect: Expect,
     #[serde(default)]
     pub capture: BTreeMap<String, String>,
+    /// Per-step wall-clock limit in seconds. A step that needs longer than
+    /// the default declares it here rather than failing opaquely at 300s
+    /// (CLI) or 30s (HTTP); a killed step always names timeout_secs at
+    /// violation time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_secs: Option<u64>,
 }
 
 impl Step {
@@ -67,7 +73,21 @@ impl Step {
     pub fn is_cli(&self) -> bool {
         !self.run.trim().is_empty()
     }
+
+    /// The step's effective limit: declared, else the CLI/HTTP default.
+    pub fn effective_timeout_secs(&self) -> u64 {
+        self.timeout_secs
+            .filter(|s| *s > 0)
+            .unwrap_or(if self.is_cli() {
+                crate::runner::DEFAULT_TIMEOUT_SECS
+            } else {
+                DEFAULT_HTTP_TIMEOUT_SECS
+            })
+    }
 }
+
+/// Default wall-clock limit for one HTTP step.
+pub const DEFAULT_HTTP_TIMEOUT_SECS: u64 = 30;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct Request {
@@ -401,6 +421,7 @@ fn http_contract_to_journey(contract: HttpContract) -> JourneySpec {
                 name,
                 intent,
                 run: String::new(),
+                timeout_secs: None,
                 request: Request {
                     method,
                     url: normalize_path_params(&route.path),
@@ -530,6 +551,11 @@ pub fn execute_in(
 /// Use this from `journey run` after dropping the exclusive lock so CLI steps
 /// that invoke the same repo's loom (or any other graph writer) can open the
 /// graph. Call [`record_outcomes`] afterward to stamp proofs.
+///
+/// Dry-run parity contract: `diagnose_style` changes ONLY the verbosity of
+/// failure details. Pass criteria (status, body, capture, exit code, text
+/// assertions, timeouts) are identical either way — a diagnose success must
+/// predict a run success, so the two modes share every check on this path.
 pub fn execute_steps(
     spec: &JourneySpec,
     cwd: Option<&Path>,
@@ -539,7 +565,7 @@ pub fn execute_steps(
     let client = if has_http {
         Some(
             reqwest::blocking::Client::builder()
-                .timeout(Duration::from_secs(30))
+                .timeout(Duration::from_secs(DEFAULT_HTTP_TIMEOUT_SECS))
                 .build()
                 .context("building http client")?,
         )
@@ -557,7 +583,13 @@ pub fn execute_steps(
         }
         let started = Instant::now();
         let mut outcome = if step.is_cli() {
-            run_cli_step(step, &mut vars, cwd, diagnose_style)?
+            match run_cli_step(step, &mut vars, cwd, diagnose_style) {
+                Ok(outcome) => outcome,
+                Err(error) => match error.downcast_ref::<RunnerKill>() {
+                    Some(kill) => kill.outcome.clone(),
+                    None => return Err(error),
+                },
+            }
         } else {
             let client = client
                 .as_ref()
@@ -582,7 +614,9 @@ fn run_http_step(
     diagnose_style: bool,
 ) -> Result<StepOutcome> {
     let base = interpolate(&spec.base, vars);
-    if diagnose_style && (base.is_empty() || base.contains("{{")) {
+    // Fail fast on an unusable base in BOTH modes — run previously discovered
+    // this as an opaque reqwest error while diagnose bailed early.
+    if base.is_empty() || base.contains("{{") {
         bail_no_usable_base(spec, &base)?;
     }
     let url = interpolate(&format!("{base}{}", step.request.url), vars);
@@ -605,8 +639,20 @@ fn run_http_step(
     if let Some(body) = &step.request.json {
         request = request.json(&interpolate_json(body, vars));
     }
+    // A declared per-step limit overrides the client default for this request.
+    if let Some(secs) = step.timeout_secs.filter(|s| *s > 0) {
+        request = request.timeout(Duration::from_secs(secs));
+    }
     Ok(match request.send() {
         Ok(response) => check_response(step, response, vars, diagnose_style),
+        Err(error) if error.is_timeout() => failed_step(
+            step,
+            format!(
+                "killed: step '{}' exceeded timeout_secs={}",
+                step.name,
+                step.effective_timeout_secs()
+            ),
+        ),
         Err(error) => failed_step(
             step,
             if diagnose_style {
@@ -638,23 +684,31 @@ pub fn record_outcomes(
 ) -> Result<Node> {
     let journey = resolve_validation(store, &spec.journey, true)?;
     let mut first_fail_idx: Option<usize> = None;
+    let mut runner_killed = false;
     let mut intent_outcomes: BTreeMap<String, (InspectionStatus, Vec<String>)> = BTreeMap::new();
     for (idx, outcome) in outcomes.iter_mut().enumerate() {
-        match store.resolve_node(&outcome.intent, Some(NodeType::Intent)) {
-            Ok(intent) => {
-                let entry = intent_outcomes
-                    .entry(intent.id)
-                    .or_insert_with(|| (InspectionStatus::Passing, Vec::new()));
-                if !outcome.passed {
-                    entry.0 = InspectionStatus::Failing;
+        if is_runner_kill(outcome) {
+            // Timeout is an inability to observe, not evidence that the
+            // behavior failed. Keep it out of intent verdicts while still
+            // blocking the journey and staling steps that were never reached.
+            runner_killed = true;
+        } else {
+            match store.resolve_node(&outcome.intent, Some(NodeType::Intent)) {
+                Ok(intent) => {
+                    let entry = intent_outcomes
+                        .entry(intent.id)
+                        .or_insert_with(|| (InspectionStatus::Passing, Vec::new()));
+                    if !outcome.passed {
+                        entry.0 = InspectionStatus::Failing;
+                    }
+                    entry
+                        .1
+                        .push(format!("{}: {}", outcome.name, outcome.detail));
                 }
-                entry
-                    .1
-                    .push(format!("{}: {}", outcome.name, outcome.detail));
-            }
-            Err(e) => {
-                outcome.passed = false;
-                outcome.detail = format!("unresolved step intent '{}': {e}", outcome.intent);
+                Err(e) => {
+                    outcome.passed = false;
+                    outcome.detail = format!("unresolved step intent '{}': {e}", outcome.intent);
+                }
             }
         }
         if !outcome.passed && first_fail_idx.is_none() {
@@ -683,7 +737,7 @@ pub fn record_outcomes(
                     + st.expect.stderr_contains.len()
             })
             .sum();
-        let covered = crate::runner::files_grounding(store, &intent_id)?;
+        let covered = store.files_grounding(&intent_id)?;
         let transcript: String = outcomes
             .iter()
             .map(|o| o.transcript.as_str())
@@ -723,7 +777,13 @@ pub fn record_outcomes(
         stale_unreached_passing_steps(store, spec, &journey.id, idx + 1)?;
     }
     let all_pass = !outcomes.is_empty() && outcomes.iter().all(|o| o.passed);
-    let outcome = if all_pass { "passed" } else { "failed" };
+    let outcome = if all_pass {
+        "passed"
+    } else if runner_killed {
+        "blocked"
+    } else {
+        "failed"
+    };
     // A journey is a proof too, and it covers every user-visible behavior. The
     // first stability guard sat in `validation run` only, so this path — the one
     // dogfood exercises most — was never watched.
@@ -732,49 +792,101 @@ pub fn record_outcomes(
     Ok(journey)
 }
 
+#[derive(Debug)]
+struct RunnerKill {
+    outcome: StepOutcome,
+}
+
+impl std::fmt::Display for RunnerKill {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "step '{}': {}", self.outcome.name, self.outcome.detail)
+    }
+}
+
+impl std::error::Error for RunnerKill {}
+
 fn run_cli_step(
     step: &Step,
     vars: &mut BTreeMap<String, String>,
     cwd: Option<&Path>,
-    diagnose_style: bool,
+    _diagnose_style: bool,
 ) -> Result<StepOutcome> {
     let command = interpolate(&step.run, vars);
-    // The same default the runner uses, so a journey step and a validation obey
-    // one timeout policy rather than contradicting each other.
-    let timeout_secs = crate::runner::DEFAULT_TIMEOUT_SECS;
+    // Declared per step, else the shared default, so a journey step and a
+    // validation obey one timeout policy rather than contradicting each other.
+    let timeout_secs = step.effective_timeout_secs();
     let output = execute_cli_command(step, &command, cwd, timeout_secs)?;
-    // A timeout is a failure to OBSERVE, not a failing behavior — recording it
-    // as a failed step would attribute breakage to code loom never got to watch.
-    // Surface it as an error so the journey run stops honestly instead.
-    let Some(output) = output else {
-        anyhow::bail!(
-            "step '{}': `{command}` timed out after {timeout_secs}s — could not observe",
-            step.name
-        );
+    let output = match output {
+        crate::subprocess::Observed::Exited(output) => output,
+        crate::subprocess::Observed::Killed {
+            stdout,
+            stderr,
+            stdout_total,
+            stderr_total,
+        } => {
+            let stdout = String::from_utf8_lossy(&stdout).into_owned();
+            let stderr = String::from_utf8_lossy(&stderr).into_owned();
+            let outcome = failed_cli_step(
+                step,
+                CliFailure {
+                    command: &command,
+                    stdout: &stdout,
+                    stderr: &stderr,
+                    stdout_total,
+                    stderr_total,
+                    classification: "runner_kill",
+                    summary: &format!("killed: command exceeded timeout_secs={timeout_secs}"),
+                },
+            );
+            return Err(RunnerKill { outcome }.into());
+        }
     };
     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
     let code = output.status.code().unwrap_or(-1) as i32;
     let want = step.expect.exit_code.unwrap_or(0);
     if code != want {
-        return Ok(failed_step(
+        return Ok(failed_cli_step(
             step,
-            if diagnose_style {
-                format!(
-                    "exit {code} (want {want}); stderr: {}",
-                    truncate(&stderr, 200)
-                )
-            } else {
-                format!("exit {code} (want {want})")
+            CliFailure {
+                command: &command,
+                stdout: &stdout,
+                stderr: &stderr,
+                stdout_total: output.stdout_total,
+                stderr_total: output.stderr_total,
+                classification: "step_exit",
+                summary: &format!("exit {code} (want {want})"),
             },
         ));
     }
     if let Some(detail) = cli_text_failure(step, &stdout, &stderr, vars) {
-        return Ok(failed_step(step, detail));
+        return Ok(failed_cli_step(
+            step,
+            CliFailure {
+                command: &command,
+                stdout: &stdout,
+                stderr: &stderr,
+                stdout_total: output.stdout_total,
+                stderr_total: output.stderr_total,
+                classification: "step_exit",
+                summary: &detail,
+            },
+        ));
     }
     let stdout_json = serde_json::from_str::<serde_json::Value>(stdout.trim()).ok();
     if let Some(detail) = apply_cli_json_contract(step, stdout_json.as_ref(), vars) {
-        return Ok(failed_step(step, detail));
+        return Ok(failed_cli_step(
+            step,
+            CliFailure {
+                command: &command,
+                stdout: &stdout,
+                stderr: &stderr,
+                stdout_total: output.stdout_total,
+                stderr_total: output.stderr_total,
+                classification: "step_exit",
+                summary: &detail,
+            },
+        ));
     }
     // Always expose raw streams for later interpolation when useful.
     vars.insert("stdout".into(), stdout.clone());
@@ -798,10 +910,68 @@ fn execute_cli_command(
     command: &str,
     cwd: Option<&Path>,
     timeout_secs: u64,
-) -> Result<Option<crate::subprocess::Captured>> {
+) -> Result<crate::subprocess::Observed> {
     let dir = cwd.unwrap_or_else(|| Path::new("."));
-    crate::subprocess::run(command, dir, Duration::from_secs(timeout_secs))
+    crate::subprocess::run_observed(command, dir, Duration::from_secs(timeout_secs))
         .with_context(|| format!("step '{}': running `{command}`", step.name))
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CliFailure<'a> {
+    command: &'a str,
+    stdout: &'a str,
+    stderr: &'a str,
+    stdout_total: usize,
+    stderr_total: usize,
+    classification: &'a str,
+    summary: &'a str,
+}
+
+fn failed_cli_step(step: &Step, failure: CliFailure<'_>) -> StepOutcome {
+    let CliFailure {
+        command,
+        stdout,
+        stderr,
+        stdout_total,
+        stderr_total,
+        classification,
+        summary,
+    } = failure;
+    let stdout_tail = stream_tail(stdout, 2_000);
+    let stderr_tail = stream_tail(stderr, 2_000);
+    StepOutcome {
+        name: step.name.clone(),
+        intent: step.intent.clone(),
+        passed: false,
+        detail: format!(
+            "{summary}\n  command: `{command}`\n  classification: {classification}\n  \
+             stdout tail ({stdout_total} bytes):\n{stdout_tail}\n  \
+             stderr tail ({stderr_total} bytes):\n{stderr_tail}"
+        ),
+        transcript: format!(
+            "classification:{classification}\ncommand:{command}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        ),
+        latency_ms: 0,
+    }
+}
+
+fn stream_tail(stream: &str, max_chars: usize) -> String {
+    let trimmed = stream.trim_end();
+    if trimmed.is_empty() {
+        return "<empty>".into();
+    }
+    let count = trimmed.chars().count();
+    if count <= max_chars {
+        return trimmed.to_string();
+    }
+    let tail: String = trimmed.chars().skip(count - max_chars).collect();
+    format!("…[{} chars omitted]…\n{tail}", count - max_chars)
+}
+
+fn is_runner_kill(outcome: &StepOutcome) -> bool {
+    outcome
+        .transcript
+        .starts_with("classification:runner_kill\n")
 }
 
 fn cli_text_failure(
@@ -873,16 +1043,6 @@ fn failed_step(step: &Step, detail: impl Into<String>) -> StepOutcome {
     }
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    let t = s.trim();
-    if t.chars().count() <= max {
-        t.to_string()
-    } else {
-        let cut: String = t.chars().take(max).collect();
-        format!("{cut}…")
-    }
-}
-
 fn bail_no_usable_base(spec: &JourneySpec, resolved_base: &str) -> Result<()> {
     anyhow::bail!(
         "journey '{}' has no usable base URL (spec base='{}' resolved to '{resolved_base}'). \
@@ -925,19 +1085,21 @@ fn check_response(
     let body_text = resp.text().unwrap_or_default();
     let body_parse: Result<serde_json::Value, _> = serde_json::from_str(&body_text);
     let transcript = || format!("status:{status}\nbody:\n{body_text}");
-    let status_ok = if diagnose_style {
-        status == step.expect.status.unwrap_or(200)
-    } else {
-        match step.expect.status {
-            Some(want) => status == want,
-            None => (200..300).contains(&status),
-        }
+    // One pass criterion for diagnose and run alike: an undeclared status
+    // accepts any 2xx. Diagnose previously demanded exactly 200, so a dry-run
+    // failure predicted nothing about the recorded run.
+    let status_ok = match step.expect.status {
+        Some(want) => status == want,
+        None => (200..300).contains(&status),
     };
     if !status_ok {
         let detail = if diagnose_style {
             format!(
                 "expected status {}, got {status}",
-                step.expect.status.unwrap_or(200)
+                step.expect
+                    .status
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "2xx".into())
             )
         } else {
             format!("expected status {:?}, got {status}", step.expect.status)
@@ -1274,6 +1436,7 @@ mod tests {
             name: "use captured id".into(),
             intent: "captured values remain ephemeral".into(),
             run: "true # {{ item_id }}".into(),
+            timeout_secs: None,
             request: Request::default(),
             expect: Expect::default(),
             capture: BTreeMap::new(),
@@ -1285,5 +1448,51 @@ mod tests {
         assert!(outcome.passed);
         assert_eq!(outcome.detail, "`true # {{ item_id }}` exit 0");
         assert!(!outcome.detail.contains("random-runtime-id"));
+    }
+
+    #[test]
+    fn declared_step_timeout_overrides_the_default() {
+        let http = Step {
+            timeout_secs: Some(9),
+            ..Step::default()
+        };
+        assert_eq!(http.effective_timeout_secs(), 9);
+        let cli_default = Step {
+            run: "true".into(),
+            ..Step::default()
+        };
+        assert_eq!(
+            cli_default.effective_timeout_secs(),
+            crate::runner::DEFAULT_TIMEOUT_SECS
+        );
+        let http_default = Step::default();
+        assert_eq!(
+            http_default.effective_timeout_secs(),
+            DEFAULT_HTTP_TIMEOUT_SECS
+        );
+        // A zero declaration is not a limit; it falls back to the default.
+        let zero = Step {
+            timeout_secs: Some(0),
+            ..Step::default()
+        };
+        assert_eq!(zero.effective_timeout_secs(), DEFAULT_HTTP_TIMEOUT_SECS);
+    }
+
+    #[test]
+    fn a_killed_cli_step_names_timeout_secs_and_the_value() {
+        let step = Step {
+            name: "hangs".into(),
+            intent: "i".into(),
+            run: "sleep 5".into(),
+            timeout_secs: Some(1),
+            ..Step::default()
+        };
+        let mut vars = BTreeMap::new();
+        let err = run_cli_step(&step, &mut vars, None, false).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("exceeded timeout_secs=1"),
+            "unnamed kill: {msg}"
+        );
     }
 }

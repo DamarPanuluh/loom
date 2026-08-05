@@ -91,8 +91,8 @@ Real `WorkItem` fields:
 
 ```text
 WorkItem
-  mode:            build | coverage | fix | analyze | validate | quality | prove | triage | review | elaborate
-  owner_role:      builder | analyzer | fixer | validator | quality
+  mode:            build | coverage | fix | analyze | validate | quality | prove | triage | review | elaborate | rectify | ratify | audit | deepen
+  owner_role:      builder | analyzer | fixer | validator | quality | rectify | human
   effort:          low | mid | high
   routing_hint:    mechanical | judgment   # optional; orchestrators map to model tiers
   reason:          why this item is next
@@ -455,6 +455,36 @@ evidence required:
   phrased using evidence_template when possible
 ```
 
+### rectify
+
+Clears needless ratify friction without deciding wantedness. INV-8 stays human: this role may demote visibility, relate scenarios, retire false duplicates, or escalate a real product call — it may never invent a yes or no.
+
+```text
+mindset:
+  Clear NEEDLESS ratify friction.
+  Structural fixes only — false duplicates, mis-marked visibility, missing scenario_of/relates.
+  If the behavior is a real user-visible product call an LLM cannot honestly decide, escalate.
+  Never invent a yes or no on wantedness.
+
+allowed:
+  loom next --mode rectify
+  loom intent update <intent> --visibility internal --reason '…'
+  loom intent update <intent> --rectify escalated|clear --reason '…'
+  loom edge relate scenario-of / relates
+  loom intent retire --replaced-by <keeper>
+  loom intent update --description '…' --reword (same meaning, clearer words)
+
+forbidden:
+  loom intent ratify / reject (product decision — escalate instead)
+  supplying --human-decision or treating obviousness as ratification
+  editing production code to silence a divergence
+  loom edge implement (does not ground new behavior)
+
+evidence required:
+  file:line or graph structure showing why the friction was false,
+  or a concrete reason the human must decide
+```
+
 ### interviewer
 
 Translates human language into graph options. One question per turn. Captures before proposing.
@@ -570,6 +600,8 @@ target nodes exist?
 dependency stale cause handled?
 ```
 
+The same contract runs in reverse at serve time (uniform adjudicability): every served packet's `write_back` names the exact runnable command(s) that close it, and that command accepts the packet's own target id (short-id prefix, name, or edge endpoints count — the commands resolve them). `fix` and `audit` packets close through state re-reads (`loom sync`, `loom audit --json`), so their closeout takes no target argument. A packet whose closure cannot be named is never served: the default walk skips it, `--mode` refuses with the defect named, and it is journaled as `unservable_packet`. You will not be handed work you cannot close; if a queue seems to skip an item `loom status` still counts, grep the journal for `unservable_packet`.
+
 ---
 
 ## Out-of-scope finding capture
@@ -669,6 +701,18 @@ is supplied.
 ```
 
 `loom session`, `loom question list --status open`, and `graph_state.open_questions` surface the human-gated remainder so the LLM can batch questions for one conversation window instead of interrupting repeatedly.
+
+### The judgment inbox (staged proposals)
+
+Candidates the LLM discovers OUTSIDE a served ratify packet — a junk intent found during triage, an intent whose statement drifted from the code — should not wait in the LLM's memory or squat in a work queue. Stage them:
+
+```text
+loom judgment propose reject <intent> --evidence "<why unwanted>"            # candidate removal
+loom judgment propose ratify <intent> --evidence "<why wanted>"              # candidate ratification
+loom judgment propose redefine <intent> --evidence "<why>" --description "<replacement statement>"
+```
+
+Staging is ungated (recommending is not deciding) and deduplicated per (kind, intent). The human reviews `loom judgment digest` and the LLM executes each `loom judgment confirm <id> --human-decision '<exact human answer>'` — the SAME mediated gate as the direct commands: if no human answer arrives, confirm refuses (INV-8) and the proposal stays staged. Withdraw wrong candidates with `loom judgment withdraw <id> --reason …`. `loom status` shows the staged count.
 
 ---
 

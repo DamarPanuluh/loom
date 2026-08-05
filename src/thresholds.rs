@@ -268,8 +268,7 @@ fn fitted(samples: &mut [f64], floor: f64, step: f64, current: f64) -> f64 {
     if samples.is_empty() {
         return current;
     }
-    samples.sort_by(f64::total_cmp);
-    let q = crate::signal::quantile(samples, CALIBRATION_QUANTILE);
+    let q = crate::statistics::quantile(samples, CALIBRATION_QUANTILE);
     ((q / step).ceil() * step).max(floor).max(current)
 }
 

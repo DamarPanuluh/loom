@@ -1,7 +1,7 @@
 journey: plain next never serves a human-only ratify packet
 steps:
   - name: default next serves builder work, not the ratify lane
-    intent: plain loom next never serves a human-only ratify packet
+    intent: plain loom next never interrupts autonomous work with a human decision
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&
       loom intent add --graph "$tmp" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature &&

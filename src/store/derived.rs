@@ -506,6 +506,18 @@ impl Store {
         reason: &str,
         evidence: &str,
     ) -> Result<()> {
+        self.record_finding_verdict_batch(finding_id, verdict, reason, evidence, None)
+    }
+
+    /// Record a finding verdict, optionally under a sealed batch envelope.
+    pub fn record_finding_verdict_batch(
+        &self,
+        finding_id: &str,
+        verdict: &str,
+        reason: &str,
+        evidence: &str,
+        batch_id: Option<&str>,
+    ) -> Result<()> {
         // The judgment itself is a FACT: it goes through the write boundary,
         // where it picks up its anchors and its floor. The reason and the
         // anchor are separate on purpose: a judge who writes a good sentence
@@ -518,17 +530,19 @@ impl Store {
             evidence
         };
         let cited = crate::evidence::cite(self.root(), anchor)?;
-        self.assert_fact(
-            crate::store::Assertion::new(
-                crate::store::Subject::Node(finding_id.to_string()),
-                crate::model::Claim::Adjudication,
-                verdict,
-                "llm",
-            )
-            .criterion(reason)
-            .confidence(1.0)
-            .cited(cited),
-        )?;
+        let mut assertion = crate::store::Assertion::new(
+            crate::store::Subject::Node(finding_id.to_string()),
+            crate::model::Claim::Adjudication,
+            verdict,
+            "llm",
+        )
+        .criterion(reason)
+        .confidence(1.0)
+        .cited(cited);
+        if let Some(batch_id) = batch_id {
+            assertion = assertion.batch(batch_id);
+        }
+        self.assert_fact(assertion)?;
         // The hash/metric stamp is DERIVED bookkeeping, not a claim: it records
         // what the world looked like when the judgment was made, so a resolving
         // verdict can be band-staled instead of reopening on every byte change.
@@ -1047,7 +1061,7 @@ impl Store {
         let mut per_intent = BTreeMap::new();
         for e in self.edges_with(Some(EdgeKind::Validates), Some(val_id), None)? {
             let mut parts: Vec<String> = Vec::new();
-            for file in crate::runner::files_realizing(self, &e.to_id)? {
+            for file in self.files_realizing(&e.to_id)? {
                 let hash = std::fs::read_to_string(self.root().join(&file))
                     .map(|c| crate::artifact::fingerprint(&c))
                     .unwrap_or_default();

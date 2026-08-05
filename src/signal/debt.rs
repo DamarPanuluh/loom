@@ -14,6 +14,8 @@ use cochange::co_change_clusters;
 use git::{read_git_history, HistoryAvailability};
 use serde::Serialize;
 
+pub(crate) use git::{CO_CHANGE_GIT_TIMEOUT_SECS as GIT_TIMEOUT_SECS, CO_CHANGE_MAX_COMMITS};
+
 /// A statistical debt signal: ranked, advisory, never stored.
 #[derive(Debug, Clone, Serialize)]
 pub struct DebtCluster {
@@ -97,8 +99,8 @@ fn size_outlier_clusters(snap: &Snapshot) -> Vec<DebtCluster> {
     if locs.len() >= 4 {
         let mut vals: Vec<f64> = locs.iter().map(|(_, v)| *v).collect();
         vals.sort_by(|a, b| a.total_cmp(b));
-        let q1 = super::quantile(&vals, 0.25);
-        let q3 = super::quantile(&vals, 0.75);
+        let q1 = crate::statistics::quantile(&mut vals, 0.25);
+        let q3 = crate::statistics::quantile(&mut vals, 0.75);
         let fence = q3 + 1.5 * (q3 - q1);
         for (id, v) in &locs {
             if *v > fence && *v > 200.0 {

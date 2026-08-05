@@ -121,19 +121,146 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             Ok(())
         }
         CodefileCmd::Rescan => codefile_rescan(graph, json),
-        CodefileCmd::Remove { key } => {
+        CodefileCmd::Remove { key, successor } => {
             let store = open(graph)?;
             let n = store.resolve_node(&key, Some(NodeType::CodeFile))?;
+            // The graph must survive refactors of its own subjects (P10):
+            // removing a codefile with live asserted edges is either refused
+            // with every blocker named, or — with --successor — expressed as
+            // ONE recorded operation: each edge retargeted in place (verdict
+            // history intact) before the node goes. Ghost registrations warn
+            // forever; a rename/split should not manufacture them.
+            let live = |e: &crate::model::Edge| -> Result<bool> {
+                Ok(e.truth_class == TruthClass::Asserted && !store.edge_superseded(&e.id)?)
+            };
+            let mut to_incident = Vec::new();
+            for e in store.edges_with(None, None, Some(&n.id))? {
+                if live(&e)? {
+                    to_incident.push(e);
+                }
+            }
+            let mut from_incident = Vec::new();
+            for e in store.edges_with(None, Some(&n.id), None)? {
+                if live(&e)? {
+                    from_incident.push(e);
+                }
+            }
+            let describe = |e: &crate::model::Edge| -> Result<String> {
+                let from = store
+                    .get_node(&e.from_id)?
+                    .map(|x| x.name)
+                    .unwrap_or_else(|| e.from_id.clone());
+                Ok(format!(
+                    "  [{}] {} '{}' → {} [{}] — loom edge retarget {} --to <successor> --reason '…'",
+                    crate::model::short(&e.id),
+                    e.kind,
+                    from,
+                    n.name,
+                    e.status.as_str(),
+                    crate::model::short(&e.id)
+                ))
+            };
+            // From-incident live edges can never be auto-cascaded (which
+            // successor would own the outgoing claim is ambiguous) — they are
+            // blockers with or without --successor.
+            if !from_incident.is_empty() {
+                let mut lines = Vec::new();
+                for e in &from_incident {
+                    lines.push(describe(e)?);
+                }
+                anyhow::bail!(
+                    "cannot remove codefile '{}': {} live edge(s) originate FROM it and cannot \
+                     be cascaded to a successor — retarget or remove them first:\n{}",
+                    n.name,
+                    from_incident.len(),
+                    lines.join("\n")
+                );
+            }
+            let succ = match &successor {
+                None => {
+                    if !to_incident.is_empty() {
+                        let mut lines = Vec::new();
+                        for e in &to_incident {
+                            lines.push(describe(e)?);
+                        }
+                        anyhow::bail!(
+                            "cannot remove codefile '{}': {} live edge(s) still target it — \
+                             removing it now would orphan their claims. Either cascade them in \
+                             one operation (`loom codefile remove {0} --successor <file>` after \
+                             registering the successor) or retarget each:\n{}",
+                            n.name,
+                            to_incident.len(),
+                            lines.join("\n")
+                        );
+                    }
+                    None
+                }
+                Some(key) => {
+                    let s = store.resolve_node(key, Some(NodeType::CodeFile))?;
+                    if s.id == n.id {
+                        anyhow::bail!(
+                            "successor is the file being removed — nothing to cascade to"
+                        );
+                    }
+                    Some(s)
+                }
+            };
+            let mut retargeted = Vec::new();
+            if let Some(s) = &succ {
+                for e in &to_incident {
+                    let reason = format!(
+                        "codefile '{}' removed; behavior carried by successor '{}'",
+                        n.name, s.name
+                    );
+                    store.retarget_edge(&e.id, &s.id, &reason)?;
+                    crate::journal::append(
+                        store.root(),
+                        "edge_retargeted",
+                        &e.id,
+                        serde_json::json!({
+                            "kind": e.kind,
+                            "from": { "id": e.from_id },
+                            "old_to": { "id": n.id, "name": n.name },
+                            "new_to": { "id": s.id, "name": s.name },
+                            "reason": reason,
+                            "via": "codefile remove --successor",
+                        }),
+                    )?;
+                    retargeted.push(crate::model::short(&e.id).to_string());
+                }
+            }
             store.delete_node(&n.id)?;
+            crate::journal::append(
+                store.root(),
+                "node_removed",
+                &n.id,
+                serde_json::json!({
+                    "kind": "codefile",
+                    "name": n.name,
+                    "successor": succ.as_ref().map(|s| s.name.clone()),
+                    "retargeted_edges": retargeted,
+                }),
+            )?;
             pulse::emit_line(
                 &store,
                 json,
                 serde_json::json!({
                     "removed": true,
                     "codefile": node_json(&n),
+                    "successor": succ.as_ref().map(node_json),
+                    "retargeted_edges": retargeted,
                 }),
-                "loom status",
-                format!("removed codefile '{}' (and its groundings)", n.name),
+                "loom sync",
+                match &succ {
+                    Some(s) => format!(
+                        "removed codefile '{}': {} edge(s) retargeted to '{}' in place \
+                         (verdict history kept; `loom sync` re-verifies evidence at the new location)",
+                        n.name,
+                        retargeted.len(),
+                        s.name
+                    ),
+                    None => format!("removed codefile '{}'", n.name),
+                },
             )?;
             Ok(())
         }
@@ -170,7 +297,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                     println!(
                         "{} [{}]{}",
                         n.name,
-                        &n.id[..8],
+                        crate::model::short(&n.id),
                         if codefile_observed(n) {
                             "  (observed)"
                         } else {
@@ -417,7 +544,7 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
     println!(
         "{} [{}]{}",
         n.name,
-        &n.id[..8.min(n.id.len())],
+        crate::model::short(&n.id),
         if observed { "  (observed)" } else { "" }
     );
     let mut facets = Vec::new();

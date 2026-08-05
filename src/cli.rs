@@ -254,6 +254,9 @@ pub enum Command {
         #[command(subcommand)]
         cmd: LayerCmd,
     },
+    /// Every enforced resource limit, named with its value, scope, and remedy.
+    /// Violations name the same limits at failure time.
+    Limits,
     /// Structural smells (computed from graph shape, each with a remedy).
     Smells,
     /// Statistical debt feed (advisory; never required work). Promote a cluster
@@ -283,6 +286,13 @@ pub enum Command {
     Proposal {
         #[command(subcommand)]
         cmd: ProposalCmd,
+    },
+    /// The judgment inbox: an LLM stages a proposed ratify/reject/redefine
+    /// with evidence; the human reviews a digest and confirms each through
+    /// the same typed challenge the direct command demands.
+    Judgment {
+        #[command(subcommand)]
+        cmd: JudgmentCmd,
     },
     /// Journey proof, coverage, and invariant-point commands.
     Journey {
@@ -356,11 +366,15 @@ pub enum Command {
     },
     /// Turn the falsifiability claim on loom's own record: fabricated
     /// ratifications, judgment bursts too fast to have been made one at a
-    /// time, and settled claims standing on nothing re-checkable.
+    /// time, and settled claims standing on nothing re-checkable. Subcommands
+    /// seal legacy bursts; bare `loom audit` still runs the fabrication checks.
     Audit {
+        #[command(subcommand)]
+        cmd: Option<AuditCmd>,
         /// Instead of the fabrication checks, report how often a served packet
         /// was followed by work that established something re-checkable about
-        /// its target. Statistical — reported, never gating.
+        /// its target. Statistical — reported, never gating. Ignored when a
+        /// subcommand is given.
         #[arg(long)]
         efficacy: bool,
     },
@@ -413,6 +427,8 @@ pub enum ModeArg {
     Triage,
     Review,
     Elaborate,
+    /// LLM prep: clear needless ratify friction without deciding wantedness.
+    Rectify,
     /// Human-decision queue: an LLM may present/recommend/record, but the human
     /// selects the outcome (never served by plain `loom next`).
     Ratify,
@@ -435,6 +451,7 @@ impl ModeArg {
             ModeArg::Triage => "triage",
             ModeArg::Review => "review",
             ModeArg::Elaborate => "elaborate",
+            ModeArg::Rectify => "rectify",
             ModeArg::Ratify => "ratify",
             ModeArg::Audit => "audit",
             ModeArg::Deepen => "deepen",
@@ -466,6 +483,7 @@ pub enum RoleArg {
     Fixer,
     Validator,
     Quality,
+    Rectify,
     Monitor,
 }
 
@@ -477,6 +495,7 @@ impl RoleArg {
             RoleArg::Fixer => "fixer",
             RoleArg::Validator => "validator",
             RoleArg::Quality => "quality",
+            RoleArg::Rectify => "rectify",
             RoleArg::Monitor => "monitor",
         }
     }

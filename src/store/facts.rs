@@ -28,6 +28,7 @@ use crate::model::{Claim, InspectionStatus, NodeType, StaleCause, TargetKind, Ve
 use crate::registry;
 use crate::Result;
 use anyhow::{anyhow, bail};
+use rusqlite::OptionalExtension;
 use std::collections::BTreeSet;
 use std::str::FromStr;
 
@@ -41,6 +42,64 @@ pub struct Reverified {
     pub spared: usize,
     /// Validation nodes reset to `not_run` because their proof's anchor broke.
     pub validations_reset: usize,
+    /// Evidence spans whose stored coordinates moved while their content
+    /// stood — re-anchored in place and journaled, no re-verdict demanded.
+    pub reanchored: usize,
+}
+
+/// How one anchor fared against the working tree.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AnchorFate {
+    /// Still says what it said, where it said it.
+    Holds,
+    /// Same content, new coordinates: the span moved inside its file, or its
+    /// file was deleted and exactly one registered successor holds the body.
+    /// The verdict stands; the stored stamp is re-anchored and the move
+    /// journaled. Line numbers are display metadata, not identity.
+    Moved {
+        file: String,
+        start: usize,
+        end: usize,
+    },
+    Broken(StaleCause),
+}
+
+/// One recorded move: where a span was cited, where its content now lives.
+/// Journaled as `evidence_reanchor` so the graph's history shows the move
+/// without demanding a fresh verdict for it.
+#[derive(Debug, Clone)]
+struct Reanchor {
+    from_file: String,
+    from_start: usize,
+    from_end: usize,
+    symbol: String,
+    to_file: String,
+    to_start: usize,
+    to_end: usize,
+}
+
+/// Lazily-loaded `(path, content)` pairs of every registered codefile still
+/// on disk — the declared successors a deleted citation may re-anchor into.
+/// Loaded at most once per pass, and only when a cited file has disappeared,
+/// so a routine sync never pays for it.
+#[derive(Default)]
+struct SuccessorCache(Option<Vec<(String, String)>>);
+
+impl SuccessorCache {
+    fn get(&mut self, store: &Store) -> &[(String, String)] {
+        if self.0.is_none() {
+            let mut files = Vec::new();
+            if let Ok(codefiles) = store.codefiles() {
+                for node in codefiles {
+                    if let Ok(content) = std::fs::read_to_string(store.root().join(&node.name)) {
+                        files.push((node.name, content));
+                    }
+                }
+            }
+            self.0 = Some(files);
+        }
+        self.0.as_deref().unwrap_or(&[])
+    }
 }
 
 /// Widen a grounding's citations to the whole file.
@@ -126,6 +185,9 @@ pub struct Assertion<'a> {
     /// graph whose facts were never anchored. Records them honestly below the
     /// floor rather than pretending they meet it.
     pub(crate) below_floor: Option<StaleCause>,
+    /// Batch provenance. Empty `batch_id` means an individual judgment.
+    pub(crate) decision_mode: crate::model::DecisionMode,
+    pub(crate) batch_id: &'a str,
 }
 
 impl<'a> Assertion<'a> {
@@ -142,6 +204,8 @@ impl<'a> Assertion<'a> {
             run: None,
             mediated_human_decision: false,
             below_floor: None,
+            decision_mode: crate::model::DecisionMode::Individual,
+            batch_id: "",
         }
     }
 
@@ -172,6 +236,12 @@ impl<'a> Assertion<'a> {
 
     pub(crate) fn mediated_human_decision(mut self) -> Self {
         self.mediated_human_decision = true;
+        self
+    }
+
+    pub(crate) fn batch(mut self, batch_id: &'a str) -> Self {
+        self.decision_mode = crate::model::DecisionMode::Batch;
+        self.batch_id = batch_id;
         self
     }
 }
@@ -291,6 +361,8 @@ impl Store {
             confidence: a.confidence,
             asserted_by,
             asserted_at,
+            decision_mode: a.decision_mode,
+            batch_id: a.batch_id.to_string(),
             stale,
         };
 
@@ -323,13 +395,14 @@ impl Store {
         let tx = self.maybe_tx()?;
         self.conn.execute(
             "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,verification,\
-                               confidence,asserted_by,asserted_at,stale)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
+                               confidence,asserted_by,asserted_at,stale,decision_mode,batch_id)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
              ON CONFLICT(id) DO UPDATE SET
                 state=excluded.state, criterion=excluded.criterion,
                 verification=excluded.verification, confidence=excluded.confidence,
                 asserted_by=excluded.asserted_by, asserted_at=excluded.asserted_at,
-                stale=excluded.stale",
+                stale=excluded.stale, decision_mode=excluded.decision_mode,
+                batch_id=excluded.batch_id",
             rusqlite::params![
                 fact.id,
                 fact.subject_kind.as_str(),
@@ -342,6 +415,8 @@ impl Store {
                 fact.asserted_by,
                 fact.asserted_at,
                 stale,
+                fact.decision_mode.as_str(),
+                fact.batch_id,
             ],
         )?;
         // The evidence set is replaced wholesale: an assertion's anchors are
@@ -529,7 +604,7 @@ impl Store {
         // test that verifies it: `.unwrap()` in a test is idiomatic, so
         // scanning `verifies` groundings made a passing verdict unreachable for
         // any intent proved by a Rust test.
-        let files = crate::runner::files_realizing(self, &edge.to_id)?;
+        let files = self.files_realizing(&edge.to_id)?;
         Ok(Some((rule, files)))
     }
 
@@ -568,32 +643,46 @@ impl Store {
                 _ => None,
             })
             .collect();
-        let uncited: Vec<&crate::prescan::PreScreenHit> = hits
-            .iter()
-            .filter(|h| {
-                !cited
-                    .iter()
-                    .any(|s| s.file == h.path && s.start <= h.line && h.line <= s.end)
-            })
-            .collect();
-        if uncited.is_empty() {
+        // A hit is answered three ways: cited in this verdict's evidence,
+        // or suppressed once as a hit-level adjudication — keyed by the
+        // matched text's content hash, so the judgment follows the text
+        // wherever it moves and expires when the text changes.
+        let mut unanswered = Vec::new();
+        let mut suppressed = 0usize;
+        for h in hits {
+            let cited_here = cited
+                .iter()
+                .any(|s| s.file == h.path && s.start <= h.line && h.line <= s.end);
+            if cited_here {
+                continue;
+            }
+            if self.is_hit_suppressed(rule_name, &h.excerpt)? {
+                suppressed += 1;
+                continue;
+            }
+            unanswered.push(h);
+        }
+        if unanswered.is_empty() {
             return Ok(());
         }
-        let listed = uncited
+        let listed = unanswered
             .iter()
             .map(|h| format!("{}:{} {}\n    {}", h.path, h.line, h.pattern, h.excerpt))
             .collect::<Vec<_>>()
             .join("\n");
         bail!(
             "'{}' found {} hit(s) this verdict does not answer — a passing \
-             verdict contradicts them:\n{}\n\nRecord `failing`, or cite each \
-             span above in --evidence and say why it is not what the rule \
-             means. {} of {} hit(s) are already cited.",
+             verdict contradicts them:\n{}\n\nRecord `failing`, cite each span \
+             above in --evidence and say why it is not what the rule means, or \
+             suppress a false positive once and durably with `loom rule \
+             suppress '{}' --excerpt '<matched text>' --reason '<why>'. \
+             {} hit(s) already answered ({} suppressed).",
             rule_name,
-            uncited.len(),
+            unanswered.len(),
             listed,
-            hits.len() - uncited.len(),
-            hits.len()
+            rule_name,
+            hits.len() - unanswered.len(),
+            suppressed,
         )
     }
 
@@ -736,6 +825,8 @@ impl Store {
                 && existing.fact.confidence.to_bits() == fact.confidence.to_bits()
                 && existing.fact.asserted_by == fact.asserted_by
                 && existing.fact.verification == fact.verification
+                && existing.fact.decision_mode == fact.decision_mode
+                && existing.fact.batch_id == fact.batch_id
                 && existing.fact.stale.as_ref().map(|s| s.cause)
                     == fact.stale.as_ref().map(|s| s.cause);
             let before: std::collections::BTreeSet<&str> =
@@ -793,7 +884,8 @@ impl Store {
     pub fn fact_by_id(&self, id: &str) -> Result<Option<FactView>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,subject_kind,subject_id,claim,state,criterion,verification,\
-                    confidence,asserted_by,asserted_at,stale FROM fact WHERE id = ?1",
+                    confidence,asserted_by,asserted_at,stale,decision_mode,batch_id \
+             FROM fact WHERE id = ?1",
         )?;
         let fact = stmt
             .query_row([id], |r| Ok(row_to_fact(r)))
@@ -840,7 +932,8 @@ impl Store {
     pub fn all_facts(&self) -> Result<Vec<Fact>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,subject_kind,subject_id,claim,state,criterion,verification,\
-                    confidence,asserted_by,asserted_at,stale FROM fact ORDER BY id",
+                    confidence,asserted_by,asserted_at,stale,decision_mode,batch_id \
+             FROM fact ORDER BY id",
         )?;
         let rows = stmt.query_map([], |r| Ok(row_to_fact(r)))?;
         let mut out = Vec::new();
@@ -848,6 +941,30 @@ impl Store {
             out.push(row??);
         }
         Ok(out)
+    }
+
+    /// Stamp existing facts as covered by a batch envelope without rewriting
+    /// `asserted_at` / `asserted_by` — timestamp replay is never a remedy.
+    pub fn stamp_batch_ids(
+        &self,
+        subject_ids: &[String],
+        claim: Claim,
+        batch_id: &str,
+    ) -> Result<usize> {
+        let tx = self.maybe_tx()?;
+        let mut n = 0;
+        for subject_id in subject_ids {
+            let changed = self.conn.execute(
+                "UPDATE fact SET decision_mode = 'batch', batch_id = ?1 \
+                 WHERE subject_id = ?2 AND claim = ?3",
+                rusqlite::params![batch_id, subject_id, claim.as_str()],
+            )?;
+            n += changed;
+        }
+        if let Some(tx) = tx {
+            tx.commit()?;
+        }
+        Ok(n)
     }
 
     /// Re-check every anchor in the graph against the working tree, recompute
@@ -875,21 +992,85 @@ impl Store {
         // with an outer batch when one is open (`restore` runs it after its own
         // commit; `sync` outside any tx), so this never nests.
         let tx = self.maybe_tx()?;
+        let mut successors = SuccessorCache::default();
+        // Re-anchors are journaled only AFTER the transaction commits — the
+        // journal must never record a move the store rolled back.
+        let mut reanchors: Vec<(String, String, Reanchor)> = Vec::new();
         for fact in facts {
             let rows = self.evidence_for(&fact.id)?;
             let mut checked = Vec::with_capacity(rows.len());
             for mut row in rows {
-                let broke = self.recheck(&fact.subject_id, &row.payload);
-                row.holds = broke.is_none();
-                row.expiry_reason = broke;
-                self.conn.execute(
-                    "UPDATE evidence SET holds = ?1, expiry_reason = ?2 WHERE id = ?3",
-                    rusqlite::params![
-                        i64::from(row.holds),
-                        row.expiry_reason.map(|c| c.as_str()).unwrap_or(""),
-                        row.id
-                    ],
-                )?;
+                match self.recheck(&fact.subject_id, &row.payload, &mut successors) {
+                    AnchorFate::Holds => {
+                        row.holds = true;
+                        row.expiry_reason = None;
+                        self.conn.execute(
+                            "UPDATE evidence SET holds = 1, expiry_reason = '' WHERE id = ?1",
+                            [&row.id],
+                        )?;
+                    }
+                    AnchorFate::Moved { file, start, end } => {
+                        row.holds = true;
+                        row.expiry_reason = None;
+                        let Evidence::Span(from) = &row.payload else {
+                            bail!("AnchorFate::Moved from a non-span anchor");
+                        };
+                        let reanchor = Reanchor {
+                            from_file: from.file.clone(),
+                            from_start: from.start,
+                            from_end: from.end,
+                            symbol: from.symbol.clone(),
+                            to_file: file,
+                            to_start: start,
+                            to_end: end,
+                        };
+                        let mut payload = row.payload.clone();
+                        if let Evidence::Span(span) = &mut payload {
+                            span.file = reanchor.to_file.clone();
+                            span.start = reanchor.to_start;
+                            span.end = reanchor.to_end;
+                        }
+                        // Ids are content-addressed, so new coordinates change
+                        // identity — recomputed here, as widen_to_file_scope
+                        // does for scope. A row already carrying the recomputed
+                        // identity makes this one redundant: merge, don't
+                        // violate the primary key.
+                        let new_id = EvidenceRow::id_for(&fact.id, &payload);
+                        let collision = new_id != row.id
+                            && self
+                                .conn
+                                .query_row(
+                                    "SELECT 1 FROM evidence WHERE id = ?1",
+                                    [&new_id],
+                                    |_| Ok(()),
+                                )
+                                .optional()?
+                                .is_some();
+                        if collision {
+                            self.conn
+                                .execute("DELETE FROM evidence WHERE id = ?1", [&row.id])?;
+                            reanchors.push((fact.id.clone(), String::new(), reanchor));
+                            continue; // the surviving twin already holds
+                        }
+                        self.conn.execute(
+                            "UPDATE evidence SET id = ?1, payload = ?2, holds = 1, expiry_reason = ''
+                             WHERE id = ?3",
+                            rusqlite::params![new_id, serde_json::to_string(&payload)?, row.id],
+                        )?;
+                        reanchors.push((fact.id.clone(), new_id.clone(), reanchor));
+                        row.id = new_id;
+                        row.payload = payload;
+                        out.reanchored += 1;
+                    }
+                    AnchorFate::Broken(cause) => {
+                        row.holds = false;
+                        row.expiry_reason = Some(cause);
+                        self.conn.execute(
+                            "UPDATE evidence SET holds = 0, expiry_reason = ?1 WHERE id = ?2",
+                            rusqlite::params![cause.as_str(), row.id],
+                        )?;
+                    }
+                }
                 checked.push(row);
             }
             let strength = level(&checked);
@@ -979,8 +1160,42 @@ impl Store {
         if let Some(tx) = tx {
             tx.commit()?;
         }
+        // The store's word is final; now the journal records what moved. A
+        // re-anchored verdict was NOT re-inspected — the journal entry is the
+        // audit trail that lets a reviewer tell a content-identical move from
+        // a silent rewrite.
+        for (fact_id, evidence_id, r) in reanchors {
+            crate::journal::append(
+                &self.root,
+                crate::evidence::REANCHOR_EVENT,
+                if evidence_id.is_empty() {
+                    &fact_id
+                } else {
+                    &evidence_id
+                },
+                serde_json::json!({
+                    "fact_id": fact_id,
+                    "evidence_id": evidence_id,
+                    "symbol": r.symbol,
+                    "from": { "file": r.from_file, "start": r.from_start, "end": r.from_end },
+                    "to": { "file": r.to_file, "start": r.to_start, "end": r.to_end },
+                }),
+            )?;
+        }
         Ok(out)
     }
+}
+
+/// The trailing `[body-fingerprint]` of a locator probe's detail line — the
+/// part that is identity. Everything before it (kind, name, FILE, match
+/// count) is display metadata: a symbol that crossed files with its body
+/// intact is the same subject, not a redefinition.
+fn locator_body_fingerprint(detail: &str) -> Option<&str> {
+    let detail = detail.trim_end();
+    let close = detail.strip_suffix(']')?;
+    let open = close.rfind('[')?;
+    let fp = &close[open + 1..];
+    (!fp.is_empty() && fp.chars().all(|c| c.is_ascii_hexdigit())).then_some(fp)
 }
 
 /// One broken anchor, in a sentence a worker can act on.
@@ -1037,14 +1252,21 @@ impl Store {
             .map(str::to_string)
     }
 
-    /// Does this anchor still hold? `Some(cause)` when it broke. `subject_id` is
-    /// the fact's subject, used only to resolve a validation Run's current
-    /// command so a rewritten command re-opens its proof.
-    fn recheck(&self, subject_id: &str, payload: &Evidence) -> Option<StaleCause> {
+    /// Does this anchor still hold? `subject_id` is the fact's subject, used
+    /// only to resolve a validation Run's current command so a rewritten
+    /// command re-opens its proof. `successors` feeds the deleted-file search:
+    /// a span whose file is gone re-anchors into the ONE registered codefile
+    /// still holding its content, when there is exactly one.
+    fn recheck(
+        &self,
+        subject_id: &str,
+        payload: &Evidence,
+        successors: &mut SuccessorCache,
+    ) -> AnchorFate {
         match payload {
             // Prose cannot rot mechanically — and never counts, so nothing turns
             // on it either way.
-            Evidence::Claim { .. } => None,
+            Evidence::Claim { .. } => AnchorFate::Holds,
             // A LOCATOR run asserts "this symbol is here", so it expires when
             // the symbol stops resolving — not when an unrelated line in the
             // same file moves. Comparing file hashes would re-open every
@@ -1062,20 +1284,39 @@ impl Store {
                     .and_then(|r| r.split_once("' in "))
                 else {
                     // The command prose does not match the shape this arm mints.
-                    // recheck's None means "holds", so a `?` here would make an
+                    // recheck's Holds means "holds", so a `?` here would make an
                     // unparseable (or crafted/imported) seam run immortal. Fail
                     // closed: an anchor we cannot re-resolve is a broken anchor.
-                    return Some(StaleCause::AnchorMissing);
+                    return AnchorFate::Broken(StaleCause::AnchorMissing);
                 };
                 match std::fs::read_to_string(self.root.join(file)) {
                     // The consumer surface itself is gone.
-                    Err(_) => Some(StaleCause::SpanFileDeleted),
-                    Ok(content) => (!crate::runner::seam_present(&content, locator))
-                        .then_some(StaleCause::SeamGone),
+                    Err(_) => AnchorFate::Broken(StaleCause::SpanFileDeleted),
+                    Ok(content) => {
+                        if crate::runner::seam_present(&content, locator) {
+                            AnchorFate::Holds
+                        } else {
+                            AnchorFate::Broken(StaleCause::SeamGone)
+                        }
+                    }
                 }
             }
             Evidence::Run(run) if run.producer == crate::model::RunProducer::Locator => {
-                let file = run.covered.keys().next().cloned().unwrap_or_default();
+                // The locator claim belongs to the EDGE, not to the file path
+                // recorded when it was minted: after `edge retarget` (a file
+                // rename/split) the edge's CURRENT target is where the symbol
+                // must resolve — the recorded path is provenance, not
+                // identity. Same body under the new path → Holds (the move is
+                // journaled by the retarget itself); a body that changed in
+                // the move → SubjectRedefined, an honest re-open.
+                let file = self
+                    .get_edge(subject_id)
+                    .ok()
+                    .flatten()
+                    .and_then(|e| self.get_node(&e.to_id).ok().flatten())
+                    .map(|n| n.name)
+                    .filter(|name| self.root.join(name).is_file())
+                    .unwrap_or_else(|| run.covered.keys().next().cloned().unwrap_or_default());
                 let locator = run
                     .command
                     .strip_prefix("resolve '")
@@ -1086,11 +1327,28 @@ impl Store {
                     // else moved in the file. This is the symbol-scoped sparing
                     // that keeps a large repo workable.
                     Some(fresh) if fresh.exit_code == 0 && fresh.stdout_hash == run.stdout_hash => {
-                        None
+                        AnchorFate::Holds
                     }
-                    Some(fresh) if fresh.exit_code == 0 => Some(StaleCause::SubjectRedefined),
-                    Some(_) => Some(StaleCause::AnchorMissing),
-                    None => Some(StaleCause::SpanFileDeleted),
+                    // The symbol's BODY fingerprint is the identity; the file
+                    // path inside the probe's detail line is display metadata.
+                    // A retargeted edge probes its new target, so the full
+                    // output differs even when the body crossed intact —
+                    // compare the bracketed body fingerprint before declaring
+                    // a redefinition. Anchors recorded before excerpts existed
+                    // fall back to the strict full-output compare above.
+                    Some(fresh) if fresh.exit_code == 0 => {
+                        match (
+                            locator_body_fingerprint(&run.stdout_excerpt),
+                            locator_body_fingerprint(&fresh.stdout_excerpt),
+                        ) {
+                            (Some(recorded), Some(current)) if recorded == current => {
+                                AnchorFate::Holds
+                            }
+                            _ => AnchorFate::Broken(StaleCause::SubjectRedefined),
+                        }
+                    }
+                    Some(_) => AnchorFate::Broken(StaleCause::AnchorMissing),
+                    None => AnchorFate::Broken(StaleCause::SpanFileDeleted),
                 }
             }
             Evidence::Run(run) => {
@@ -1105,29 +1363,42 @@ impl Store {
                 if run.producer == crate::model::RunProducer::Command {
                     if let Some(cmd) = self.validation_command_for(subject_id) {
                         if cmd != run.command {
-                            return Some(StaleCause::RunCommandChanged);
+                            return AnchorFate::Broken(StaleCause::RunCommandChanged);
                         }
                     }
                 }
-                crate::runner::covered_intact(&self.root, run)
-                    .map(|_| StaleCause::RunCoveredFileChanged)
+                match crate::runner::covered_intact(&self.root, run) {
+                    Some(_) => AnchorFate::Broken(StaleCause::RunCoveredFileChanged),
+                    None => AnchorFate::Holds,
+                }
             }
             Evidence::Span(stamp) => match std::fs::read_to_string(self.root.join(&stamp.file)) {
-                Err(_) => Some(StaleCause::SpanFileDeleted),
-                Ok(content) => {
-                    let lines: Vec<&str> = content.lines().collect();
-                    match crate::evidence::span_outcome(stamp, &lines) {
-                        crate::evidence::SpanOutcome::Intact => None,
-                        crate::evidence::SpanOutcome::ScopeChanged => {
-                            Some(StaleCause::ScopeFileChanged)
-                        }
-                        crate::evidence::SpanOutcome::Rewritten => Some(StaleCause::SpanRewritten),
+                Ok(content) => match crate::evidence::span_fate(stamp, &stamp.file, &content) {
+                    crate::evidence::SpanFate::Intact => AnchorFate::Holds,
+                    crate::evidence::SpanFate::Moved { start, end } => AnchorFate::Moved {
+                        file: stamp.file.clone(),
+                        start,
+                        end,
+                    },
+                    crate::evidence::SpanFate::ScopeChanged => {
+                        AnchorFate::Broken(StaleCause::ScopeFileChanged)
                     }
-                }
+                    crate::evidence::SpanFate::Rewritten => {
+                        AnchorFate::Broken(StaleCause::SpanRewritten)
+                    }
+                },
+                // The cited file is gone. Before re-opening the claim, look for
+                // the body in the registered codefiles still on disk: exactly
+                // one match is a declared successor and the verdict crosses
+                // with its evidence; zero or two-plus matches fail closed.
+                Err(_) => match crate::evidence::find_elsewhere(stamp, successors.get(self)) {
+                    Some((file, start, end)) => AnchorFate::Moved { file, start, end },
+                    None => AnchorFate::Broken(StaleCause::SpanFileDeleted),
+                },
             },
             Evidence::Journal { r#ref } => match crate::journal::exists(&self.root, r#ref) {
-                Ok(true) => None,
-                _ => Some(StaleCause::JournalMissing),
+                Ok(true) => AnchorFate::Holds,
+                _ => AnchorFate::Broken(StaleCause::JournalMissing),
             },
         }
     }
@@ -1174,6 +1445,8 @@ fn row_to_fact(r: &rusqlite::Row) -> Result<Fact> {
         confidence: r.get("confidence")?,
         asserted_by: r.get("asserted_by")?,
         asserted_at: r.get("asserted_at")?,
+        decision_mode: crate::model::DecisionMode::parse(&r.get::<_, String>("decision_mode")?),
+        batch_id: r.get("batch_id")?,
         stale: if stale.is_empty() {
             None
         } else {
@@ -1328,7 +1601,8 @@ impl Store {
                                     && !response.trim().is_empty()
                                     && !crate::model::is_placeholder(response)
                             });
-                    entry.id == *r#ref
+                    entry.origin == crate::journal::Origin::Local
+                        && entry.id == *r#ref
                         && entry.target_id == intent_id
                         && entry.event == event
                         && entry.payload.get("ratified_by").and_then(|v| v.as_str())
@@ -1389,13 +1663,28 @@ pub(super) fn insert_imported(
     // every evidence row's fact_id through the same table.
     let mut fact_id_remap: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
+    // Validate the complete batch before the first INSERT: a malformed later
+    // fact must not leave earlier rows staged in the caller's transaction.
+    for fact in facts {
+        if crate::journal::stamp_millis(&fact.asserted_at).is_none() {
+            bail!(
+                "cannot import {} fact '{}' for {} '{}': invalid asserted_at timestamp {:?}",
+                fact.claim.as_str(),
+                fact.id,
+                fact.subject_kind.as_str(),
+                fact.subject_id,
+                fact.asserted_at
+            );
+        }
+    }
     for fact in facts {
         let canonical = Fact::id_for(fact.subject_kind, &fact.subject_id, fact.claim);
         fact_id_remap.insert(fact.id.clone(), canonical.clone());
         tx.execute(
             "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,\
-                               verification,confidence,asserted_by,asserted_at,stale)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+                               verification,confidence,asserted_by,asserted_at,stale,\
+                               decision_mode,batch_id)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
             rusqlite::params![
                 canonical,
                 fact.subject_kind.as_str(),
@@ -1408,6 +1697,8 @@ pub(super) fn insert_imported(
                 fact.asserted_by,
                 fact.asserted_at,
                 "",
+                fact.decision_mode.as_str(),
+                fact.batch_id,
             ],
         )?;
     }
@@ -1458,4 +1749,122 @@ pub(super) fn insert_imported(
         )?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod imported_tests {
+    use super::*;
+
+    struct Tmp(std::path::PathBuf);
+
+    impl Tmp {
+        fn new() -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "loom-ratification-origin-test-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for Tmp {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn imported_fact(asserted_at: &str) -> Fact {
+        Fact {
+            id: "exported-fact-id".into(),
+            subject_kind: TargetKind::Node,
+            subject_id: "subject-123".into(),
+            claim: Claim::Adjudication,
+            state: "justified".into(),
+            criterion: String::new(),
+            verification: Verification::Cited,
+            confidence: 1.0,
+            asserted_by: "human".into(),
+            asserted_at: asserted_at.into(),
+            decision_mode: crate::model::DecisionMode::Individual,
+            batch_id: String::new(),
+            stale: None,
+        }
+    }
+
+    #[test]
+    fn imported_ratification_and_rejection_journal_rows_have_no_local_authority() {
+        for (state, event) in [("ratified", "ratification"), ("rejected", "rejection")] {
+            let tmp = Tmp::new();
+            let store = Store::init(&tmp.0, Some("origin test"), false).unwrap();
+            let intent = store
+                .add_node(
+                    NodeType::Intent,
+                    &format!("locally {state} behavior"),
+                    "a behavior whose decision authority is under test",
+                    "planned",
+                    serde_json::json!({}),
+                )
+                .unwrap();
+            if state == "ratified" {
+                store
+                    .ratify_intent(&intent.id, "the local human wants this", "test fixture")
+                    .unwrap();
+            } else {
+                store
+                    .reject_intent(
+                        &intent.id,
+                        "the local human does not want this",
+                        "test fixture",
+                    )
+                    .unwrap();
+            }
+
+            let journal = crate::journal::read(&tmp.0).unwrap();
+            assert!(journal.iter().any(|entry| {
+                entry.event == event && entry.origin == crate::journal::Origin::Local
+            }));
+            assert_eq!(
+                store
+                    .ratification_with_journal(&intent.id, &journal)
+                    .unwrap(),
+                state,
+                "a local direct {event} must count"
+            );
+
+            let imported = journal
+                .into_iter()
+                .map(|mut entry| {
+                    entry.origin = crate::journal::Origin::Imported;
+                    entry
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(
+                store
+                    .ratification_with_journal(&intent.id, &imported)
+                    .unwrap(),
+                "needs_reconfirmation",
+                "an imported {event} must not confer local authority"
+            );
+        }
+    }
+
+    #[test]
+    fn insert_imported_rejects_invalid_asserted_at_before_sql() {
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+        let tx = conn.transaction().unwrap();
+        let fact = imported_fact("2026-02-29T07:10:25Z");
+        let error = insert_imported(&tx, &[fact], &[]).unwrap_err().to_string();
+        assert!(error.contains("subject-123"), "{error}");
+        assert!(error.contains("exported-fact-id"), "{error}");
+        assert!(error.contains("2026-02-29T07:10:25Z"), "{error}");
+        assert!(
+            !error.contains("no such table"),
+            "validation must happen before SQL: {error}"
+        );
+    }
 }

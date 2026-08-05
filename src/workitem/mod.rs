@@ -19,7 +19,7 @@ pub(crate) use queues::unproven_implemented_intents;
 pub use queues::unratified_intents;
 use queues::{
     analyze_item, audit_item, build_item, coverage_item, deepen_item, elaborate_item, fix_item,
-    prove_item, quality_item, ratify_item, review_item, triage_item, validate_item,
+    prove_item, quality_item, ratify_item, rectify_item, review_item, triage_item, validate_item,
 };
 pub use queues::{queue_items, QueueEntry};
 use serde::Serialize;
@@ -332,6 +332,7 @@ pub(crate) fn lane_item(store: &Store, lane: Lane) -> Result<Option<WorkItem>> {
         Lane::Triage => triage_item(store),
         Lane::Review => review_item(store),
         Lane::Divergence => ratify_item(store),
+        Lane::Rectify => rectify_item(store),
         Lane::Elaborate => elaborate_item(store),
         // Lanes that route to a whole-graph command rather than a per-item
         // packet (`loom door`, `loom doctor`, `loom export`).
@@ -346,9 +347,30 @@ pub(crate) fn lane_item(store: &Store, lane: Lane) -> Result<Option<WorkItem>> {
 /// The default (no lane) walks `Lane::LADDER` in order — the SAME order the
 /// maturity rungs and the compass use. There is no second priority list to keep
 /// in step.
+///
+/// Contract invariant (uniform adjudicability): every served packet's
+/// write_back names the runnable loom command(s) that close it, and — for
+/// every lane whose closure is a graph write — that command accepts the
+/// packet's own target (id, name, or edge endpoints). An item whose closure
+/// command cannot be named is a loom defect, not work: it is journaled as
+/// `unservable_packet` and never handed to a worker. The default walk skips
+/// it; an explicit `--mode` refuses with the defect named.
 fn next_inner(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
     match lane {
-        Some(l) => lane_item(store, l),
+        Some(l) => {
+            let item = lane_item(store, l)?;
+            if let Some(w) = &item {
+                if let Some(problem) = closure_problem(w) {
+                    journal_unservable(store, w, &problem)?;
+                    anyhow::bail!(
+                        "unservable packet (a loom defect, not work): {problem} — target '{}' \
+                         stays queued and the defect is journaled as unservable_packet",
+                        w.target.id
+                    );
+                }
+            }
+            Ok(item)
+        }
         None => {
             for &l in Lane::LADDER {
                 // Human-decision lanes are served ONLY on explicit request so
@@ -356,13 +378,93 @@ fn next_inner(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
                 if l.requires_human_decision() || !l.serves_items() {
                     continue;
                 }
-                if let Some(w) = lane_item(store, l)? {
-                    return Ok(Some(w));
+                let Some(w) = lane_item(store, l)? else {
+                    continue;
+                };
+                match closure_problem(&w) {
+                    Some(problem) => journal_unservable(store, &w, &problem)?,
+                    None => return Ok(Some(w)),
                 }
             }
             Ok(None)
         }
     }
+}
+
+/// Why this item may not be served, or None. Pure in the item: the same
+/// packet always gets the same answer, so a journaled defect does not flap
+/// with graph state.
+pub(crate) fn closure_problem(item: &WorkItem) -> Option<String> {
+    let commands = named_commands(&item.prompt_contract.write_back);
+    if commands.is_empty() {
+        return Some(format!(
+            "mode '{}' names no runnable loom command in its write_back",
+            item.mode
+        ));
+    }
+    // Fix and audit packets close through STATE re-reads (sync re-checks the
+    // code; audit re-reads the record), not a write keyed by the target id —
+    // their uniform closeout names the runnable command without a target
+    // argument. Graph-wide subjects have no target id to accept.
+    if STATE_CLOSED.contains(&item.mode.as_str()) || item.target.kind == "graph" {
+        return None;
+    }
+    // The closure command must accept the packet's own target. Commands carry
+    // the full id, the short id prefix, the name, or — for edge pairs — the
+    // endpoint names; name-resolving commands make all of them equivalent.
+    let short: String = item.target.id.chars().take(8).collect();
+    let handles: Vec<&str> = [
+        Some(item.target.id.as_str()),
+        Some(item.target.name.as_str()),
+        item.target.from.as_deref(),
+        item.target.to.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .filter(|h| !h.is_empty())
+    .collect();
+    if commands
+        .iter()
+        .any(|c| handles.iter().any(|h| c.contains(h)) || c.contains(short.as_str()))
+    {
+        None
+    } else {
+        Some(format!(
+            "mode '{}' write_back names no closure command accepting its target ('{}')",
+            item.mode, item.target.id
+        ))
+    }
+}
+
+/// Modes whose closure is a state change loom re-reads, not a graph write
+/// naming the target: the runnable closeout (`loom sync`, `loom audit`) does
+/// not take the target id.
+const STATE_CLOSED: &[&str] = &["fix", "audit"];
+
+/// The loom commands a write_back names: `;`- and newline-separated segments
+/// containing `loom `. Multi-command write_backs separate commands that way.
+fn named_commands(write_back: &str) -> Vec<&str> {
+    write_back
+        .split([';', '\n'])
+        .map(str::trim)
+        .filter(|s| s.contains("loom "))
+        .collect()
+}
+
+/// Record the defect that made a packet unservable. Propagates: a defect we
+/// cannot journal is a defect we must not hide.
+fn journal_unservable(store: &Store, item: &WorkItem, problem: &str) -> Result<()> {
+    crate::journal::append(
+        store.root(),
+        "unservable_packet",
+        &item.target.id,
+        serde_json::json!({
+            "mode": item.mode,
+            "problem": problem,
+            "write_back": item.prompt_contract.write_back,
+        }),
+    )?;
+    Ok(())
 }
 
 fn node_target(n: &Node) -> Target {
@@ -580,4 +682,125 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
             .filter(|e| e.confidence > 0.0 && e.confidence < floor)
             .count(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(mode: &str, kind: &str, id: &str, name: &str, write_back: &str) -> WorkItem {
+        WorkItem {
+            packet_id: None,
+            pattern_guidance: None,
+            mode: mode.into(),
+            owner_role: "analyzer".into(),
+            effort: "mid".into(),
+            routing_hint: None,
+            reason: String::new(),
+            target: Target {
+                kind: kind.into(),
+                id: id.into(),
+                name: name.into(),
+                from: None,
+                to: None,
+            },
+            stale_causes: Vec::new(),
+            prompt_contract: PromptContract {
+                role: "analyzer".into(),
+                mindset: String::new(),
+                why_now: String::new(),
+                allowed_actions: Vec::new(),
+                forbidden_actions: Vec::new(),
+                evidence_clauses: Vec::new(),
+                required_evidence: String::new(),
+                evidence_template: None,
+                examples: None,
+                pre_screen: None,
+                pre_screened_hits: Vec::new(),
+                write_back: write_back.into(),
+                stop_condition: String::new(),
+                human_gate: None,
+            },
+            context: TraversalContext {
+                purpose: String::new(),
+                linked_entities: Vec::new(),
+                suggested_reads: Vec::new(),
+                read_set: Vec::new(),
+            },
+            scorecard: None,
+            truth_gap: crate::truth::TruthAxis::Intent.gap(),
+            next_step: String::new(),
+        }
+    }
+
+    #[test]
+    fn prose_write_back_is_unservable() {
+        let it = item(
+            "triage",
+            "finding",
+            "abc123def456",
+            "f",
+            "look and decide; do not fix here",
+        );
+        assert!(closure_problem(&it)
+            .expect("prose cannot close anything")
+            .contains("no runnable loom command"));
+    }
+
+    #[test]
+    fn a_command_that_never_names_the_target_is_unservable() {
+        let it = item("triage", "finding", "abc123def456", "f", "loom status");
+        assert!(closure_problem(&it)
+            .expect("loom status accepts no target")
+            .contains("accepting its target"));
+    }
+
+    #[test]
+    fn the_short_id_prefix_counts_as_accepting_the_target() {
+        let it = item(
+            "triage",
+            "finding",
+            "abc123def4567890",
+            "f",
+            "loom finding verdict abc123de justified --reason '…'",
+        );
+        assert_eq!(closure_problem(&it), None);
+    }
+
+    #[test]
+    fn name_resolving_commands_accept_the_target_by_endpoint_name() {
+        let mut it = item(
+            "quality",
+            "edge",
+            "edgeid",
+            "no-prints —governs→ users can check out",
+            "loom rule verdict no-prints 'users can check out' passing --criterion '…'",
+        );
+        it.target.from = Some("no-prints".into());
+        it.target.to = Some("users can check out".into());
+        assert_eq!(closure_problem(&it), None);
+    }
+
+    #[test]
+    fn state_closed_lanes_need_the_closeout_command_not_a_target_argument() {
+        let it = item(
+            "fix",
+            "edge",
+            "edgeid",
+            "x",
+            "fix the source at root cause, then loom sync — sync re-opens this claim",
+        );
+        assert_eq!(closure_problem(&it), None);
+        // A graph subject has no target id, but a runnable closeout is still owed.
+        let it = item("audit", "graph", "g", "g", "inspect the record");
+        assert!(closure_problem(&it).is_some());
+        let it = item(
+            "audit",
+            "graph",
+            "g",
+            "g",
+            "fix per the remedy, then loom audit --json",
+        );
+        assert_eq!(closure_problem(&it), None);
+    }
 }

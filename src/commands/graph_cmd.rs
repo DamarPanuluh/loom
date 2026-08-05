@@ -53,7 +53,7 @@ fn link(graph: Option<&Path>, export_path: &Path, alias: Option<&str>, json: boo
         bail!(
             "upstream '{}' ({}) is already linked — unlink first to re-register",
             alias,
-            &upstream_id[..8.min(upstream_id.len())]
+            crate::model::short(upstream_id)
         );
     }
 
@@ -99,7 +99,7 @@ fn link(graph: Option<&Path>, export_path: &Path, alias: Option<&str>, json: boo
         format!(
             "linked upstream '{}' ({}) — {} shadow node(s) created",
             alias,
-            &upstream_id[..8.min(upstream_id.len())],
+            crate::model::short(upstream_id),
             created
         ),
     )
@@ -351,7 +351,7 @@ fn blocked_summary(report: &OrphanPruneReport) -> String {
                 o.dependent_intents.join(", "),
                 o.depends_on_edge_ids
                     .first()
-                    .map(|id| &id[..8.min(id.len())])
+                    .map(|id| crate::model::short(id))
                     .unwrap_or("?")
             )
         })
@@ -404,7 +404,7 @@ fn list(graph: Option<&Path>, json: bool) -> Result<()> {
             println!(
                 "{} [{}]  {}",
                 e.alias,
-                &e.graph_id[..8.min(e.graph_id.len())],
+                crate::model::short(&e.graph_id),
                 e.path
             );
         }

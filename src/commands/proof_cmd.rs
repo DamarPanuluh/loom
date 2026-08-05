@@ -240,6 +240,69 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             }
             Ok(())
         }
+        RuleCmd::Suppress {
+            rule,
+            excerpt,
+            reason,
+        } => {
+            let r = store.resolve_node(&rule, Some(NodeType::QualityRule))?;
+            let row = store.suppress_hit(&r.name, &excerpt, &reason)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "suppression": row }),
+                "loom rule suppressions",
+                format!(
+                    "suppressed '{}' hit [{}] — answers the same matched text on every future scan",
+                    r.name,
+                    crate::model::short(&row.content_hash)
+                ),
+            )?;
+            Ok(())
+        }
+        RuleCmd::Unsuppress { rule, key } => {
+            let r = store.resolve_node(&rule, Some(NodeType::QualityRule))?;
+            let row = store.unsuppress_hit(&r.name, &key)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "withdrawn": row }),
+                "loom rule suppressions",
+                format!(
+                    "withdrew suppression [{}] on '{}' — the hit re-opens on the next scan",
+                    crate::model::short(&row.content_hash),
+                    r.name
+                ),
+            )?;
+            Ok(())
+        }
+        RuleCmd::Suppressions { rule } => {
+            let rule_name = match rule {
+                Some(k) => Some(store.resolve_node(&k, Some(NodeType::QualityRule))?.name),
+                None => None,
+            };
+            let rows = store.hit_adjudications(rule_name.as_deref())?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else if rows.is_empty() {
+                println!("no hit suppressions recorded");
+            } else {
+                for row in &rows {
+                    println!(
+                        "{} [{}] {}",
+                        row.rule_name,
+                        crate::model::short(&row.content_hash),
+                        row.excerpt
+                    );
+                    println!(
+                        "  reason: {} — {} ({})",
+                        row.reason, row.actor, row.created_at
+                    );
+                }
+                println!("\n{} suppression(s)", rows.len());
+            }
+            Ok(())
+        }
     }
 }
 fn verdict_status_quality(s: &str) -> Result<InspectionStatus> {
@@ -540,7 +603,7 @@ fn covered_hashes(
     store: &Store,
     intent_id: &str,
 ) -> Result<std::collections::BTreeMap<String, String>> {
-    let files = crate::runner::files_grounding(store, intent_id)?;
+    let files = store.files_grounding(intent_id)?;
     Ok(files
         .into_iter()
         .map(|f| {
@@ -818,6 +881,10 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
     let root = store.root().to_path_buf();
     drop(store);
 
+    // Serialize proof EXECUTION (not graph writes): a second runner would
+    // share ports/processes with this one and mint false failing verdicts.
+    let _harness = crate::harness::acquire(&root, "validation run")?;
+
     let mut results = Vec::new();
     let mut human_lines = Vec::new();
     for v in &vals {
@@ -1030,13 +1097,14 @@ pub(crate) fn observe_run(
         match target {
             Some(key) => {
                 let node = store.resolve_node(key, Some(NodeType::Intent))?;
-                let files = crate::runner::files_grounding(&store, &node.id)?;
+                let files = store.files_grounding(&node.id)?;
                 (Some(node), files, root)
             }
             None => (None, Vec::new(), root),
         }
     };
 
+    let _harness = crate::harness::acquire(&root, "observe")?;
     let observation = crate::runner::observe_command(
         &root,
         crate::model::RunProducer::Command,

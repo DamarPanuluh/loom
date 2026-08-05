@@ -10,8 +10,8 @@ use super::context::{edge_context, node_context};
 use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, elaborator_contract, exemplar_contract,
     fixer_contract, inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
-    ratify_contract, research_contract, reviewer_contract, structural_finding_triage_contract,
-    triage_contract, unproven_contract, validator_contract,
+    ratify_contract, rectify_contract, research_contract, reviewer_contract,
+    structural_finding_triage_contract, triage_contract, unproven_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -238,7 +238,7 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
     // The first unowned, non-ignored CodeFile (stable by name). Coverage is
     // grounding truth: either the file belongs to an intent (ground it) or it
     // does not belong in the graph (unregister it, or `loom ignore` it).
-    let Some(cf) = crate::commands::unowned_codefiles(store)?
+    let Some(cf) = crate::coverage::unowned_codefiles(store)?
         .into_iter()
         .next()
     else {
@@ -647,7 +647,10 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             reason,
             target: node_target(&intent),
             stale_causes: Vec::new(),
-            prompt_contract: unproven_contract(&intent, shallow),
+            prompt_contract: unproven_contract(
+                &intent,
+                crate::proofstrength::assess(store, &intent.id)?,
+            ),
             context: node_context(
                 store,
                 &intent,
@@ -662,15 +665,21 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
         }));
     }
 
-    // An implemented leaf intent with NO passing proof at all counts toward the
-    // `proven` rung, so the lane must serve it — otherwise the compass points
-    // here and the queue answers "no work", which is the disagreement the lane
-    // table exists to make impossible.
+    // An implemented leaf intent without a meaningful passing proof counts
+    // toward the `proven` rung, so the lane must serve it — otherwise the
+    // compass points here and the queue answers "no work".
     if let Some(intent) = unproven_implemented_intents(store)?.into_iter().next() {
-        let has_any = !store
-            .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?
-            .is_empty();
-        let reason = if has_any {
+        let proof = crate::proofstrength::assess(store, &intent.id)?;
+        let reason = if proof.any_passing && !proof.meaningful_passing {
+            let best = proof
+                .best_passing_strength
+                .unwrap_or(crate::proofstrength::Strength::S0)
+                .as_str();
+            format!(
+                "'{}' has a proof that ran and passed, but it is {best}: liveness only — strengthen it to S2 with an output/content assertion and rerun",
+                intent.name
+            )
+        } else if proof.any_registered {
             format!(
                 "'{}' is implemented and has registered proof(s), but none is passing — run them",
                 intent.name
@@ -691,7 +700,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             reason,
             target: node_target(&intent),
             stale_causes: Vec::new(),
-            prompt_contract: unproven_contract(&intent, has_any),
+            prompt_contract: unproven_contract(&intent, proof),
             context: node_context(
                 store,
                 &intent,
@@ -719,23 +728,11 @@ pub(crate) fn unproven_implemented_intents(store: &Store) -> Result<Vec<Node>> {
         if parents.contains(&n.id) {
             continue;
         }
-        let proofs = store.edges_with(Some(EdgeKind::Validates), None, Some(&n.id))?;
         // A PASSING proof is not enough — it must establish something. An S1
         // proof means loom ran a command and it exited zero, which is liveness,
-        // not behavior. Accepting it here is how a queue gets drained by
-        // binding `cargo test --test ringN` to whatever intent the packet
-        // named: every run honest, every claim unestablished, the rung green.
-        //
-        // That is the original sin one level up. The old graph had 54 of 59
-        // proofs whose outcome nobody observed; a graph of suite-level S1
-        // bindings has proofs loom DID observe that still do not say the
-        // behavior works.
-        let proven = proofs.iter().any(|e| {
-            e.status == InspectionStatus::Passing
-                && crate::proofstrength::of(store, &e.from_id)
-                    .unwrap_or(crate::proofstrength::Strength::S0)
-                    >= crate::proofstrength::Strength::MEANINGFUL
-        });
+        // not behavior. Keep the decision in proofstrength::assess so the queue
+        // and completeness scorecard cannot disagree about this floor.
+        let proven = crate::proofstrength::assess(store, &n.id)?.meaningful_passing;
         if !proven {
             out.push(n);
         }
@@ -898,17 +895,13 @@ pub fn unratified_intents(store: &Store) -> Result<Vec<Node>> {
 /// The ratify queue: human-decision work. An LLM presents this packet, makes an
 /// evidence-backed recommendation, waits for the human, then may record the
 /// exact answer through the mediated decision path. It never owns the choice.
-/// The divergence queue: the ONE question loom asks a human — *should this
-/// exist?* — and only where evidence and judgment actually disagree.
 ///
-/// Served one at a time, ranked kind-first. Plain `loom next` does not interrupt
-/// an autonomous loop with a product question; a host requests `--mode ratify`
-/// when it has a conversation channel to the human.
+/// Skips rectifiable friction (duplicates / un-escalated discoveries) — those
+/// belong to [`rectify_item`]. Served one at a time, ranked kind-first. Plain
+/// `loom next` does not interrupt an autonomous loop with a product question;
+/// a host requests `--mode ratify` when it has a conversation channel to the human.
 pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
-    let Some(d) = crate::divergence::all(store)?
-        .into_iter()
-        .find(|d| d.blocking)
-    else {
+    let Some(d) = crate::divergence::next_human_blocking(store)? else {
         return Ok(None);
     };
     let Some(n) = store.get_node(&d.intent_id)? else {
@@ -944,12 +937,48 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
     }))
 }
 
+/// The rectify queue: LLM prep that clears needless ratify friction without
+/// deciding wantedness. Plain `loom next` serves this lane so an autonomous
+/// loop can shrink the human queue before asking.
+pub(super) fn rectify_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(d) = crate::divergence::next_rectifiable(store)? else {
+        return Ok(None);
+    };
+    let Some(n) = store.get_node(&d.intent_id)? else {
+        return Ok(None);
+    };
+    let kind = d.kind.as_str().replace('_', " ");
+    let reason = format!("{kind}: '{}' — {}", n.name, d.evidence);
+    Ok(Some(WorkItem {
+        packet_id: None,
+        pattern_guidance: None,
+        mode: "rectify".into(),
+        owner_role: "rectify".into(),
+        effort: "low".into(),
+        routing_hint: super::hint_judgment(),
+        reason,
+        target: node_target(&n),
+        stale_causes: Vec::new(),
+        prompt_contract: rectify_contract(&n, &kind),
+        context: node_context(
+            store,
+            &n,
+            "Inspect whether this blocking divergence is false friction. Prefer \
+             structural fixes (visibility, scenario_of, retire duplicate). Escalate \
+             to human ratify only when wantedness is a real product call.",
+        )?,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Intent.gap(),
+        next_step: "after the structural write or escalation, loom status".into(),
+    }))
+}
+
 pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
     let findings = crate::signal::triage_findings(store)?;
     let Some(fv) = findings.into_iter().next() else {
         return inbox_triage_item(store);
     };
-    let short = &fv.node.id[..8.min(fv.node.id.len())];
+    let short = crate::model::short(&fv.node.id);
     // Cohesion evidence from the graph: which intents own the flagged file.
     // Owner-count is a hint for the LLM, not a verdict — a catch-all file can
     // still "own" intents. Graph-shape smells flag no file: remedy is context.
@@ -1037,7 +1066,7 @@ fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
     else {
         return Ok(None);
     };
-    let short = &item.id[..8.min(item.id.len())];
+    let short = crate::model::short(&item.id);
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
@@ -1154,6 +1183,11 @@ pub struct PreScreen {
     pub patterns: usize,
     pub files: usize,
     pub hits: Vec<crate::prescan::PreScreenHit>,
+    /// Hits a recorded adjudication already answered (`loom rule suppress`).
+    /// Filtered out of `hits` so a packet never re-litigates a judged false
+    /// positive; counted so the suppression is visible, not silent.
+    #[serde(default)]
+    pub suppressed: usize,
 }
 
 pub(super) fn prescreen_for(
@@ -1178,8 +1212,8 @@ pub(super) fn prescreen_for(
         return Ok(PreScreen::default());
     }
     let mut files = Vec::new();
-    // Pre-screen every realizing file. A cap here would let the quality packet
-    // omit a violation solely because its file sorted after the eighth edge.
+    // Pre-screen every realizing file: the grounding-file set is intentionally
+    // unbounded, while the retained hit set is bounded by PRESCREEN_HIT_CAP.
     for e in store.realizing_groundings(intent_id)? {
         if let Some(cf) = store.get_node(&e.to_id)? {
             files.push(cf.name);
@@ -1188,12 +1222,29 @@ pub(super) fn prescreen_for(
     if files.is_empty() {
         return Ok(PreScreen::default());
     }
-    let hits = crate::prescan::prescreen(store.root(), &files, &patterns, 20)?;
+    let hits = crate::prescan::prescreen(
+        store.root(),
+        &files,
+        &patterns,
+        crate::runner::PRESCREEN_HIT_CAP,
+    )?;
+    // Drop hits a recorded adjudication already answered: judged once by
+    // content hash, they are never re-served for the same matched text.
+    let mut open = Vec::with_capacity(hits.len());
+    let mut suppressed = 0usize;
+    for h in hits {
+        if store.is_hit_suppressed(&rule.name, &h.excerpt)? {
+            suppressed += 1;
+        } else {
+            open.push(h);
+        }
+    }
     Ok(PreScreen {
         ran: true,
         patterns: patterns.len(),
         files: files.len(),
-        hits,
+        hits: open,
+        suppressed,
     })
 }
 
@@ -1278,6 +1329,7 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
     let owner_role = match mode {
         "build" | "coverage" | "prove" | "elaborate" => Some("builder".into()),
         "triage" => Some("analyzer".into()),
+        "rectify" => Some("rectify".into()),
         "ratify" => Some("human".into()),
         _ => None,
     };
@@ -1315,6 +1367,7 @@ pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEn
         Lane::Triage => roster_triage(store, &mut out)?,
         Lane::Review => roster_review(store, &mut out)?,
         Lane::Elaborate => roster_elaborate(store, &mut out)?,
+        Lane::Rectify => roster_rectify(store, &mut out)?,
         Lane::Divergence => roster_divergence(store, &mut out)?,
         Lane::Audit => roster_audit(store, &mut out)?,
         // Lanes that route to a whole-graph command instead of a per-item
@@ -1371,7 +1424,7 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
     let Some(n) = store.get_node(&c.intent_id)? else {
         return Ok(None);
     };
-    let short = &n.id[..8.min(n.id.len())];
+    let short = crate::model::short(&n.id);
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
@@ -1382,7 +1435,7 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
         reason: format!("'{}' is at {} — {}", n.name, c.proof_strength, c.why),
         target: node_target(&n),
         stale_causes: Vec::new(),
-        prompt_contract: super::contracts::deepen_contract(short, c.next_move.as_str()),
+        prompt_contract: super::contracts::deepen_contract(short, &n.name, c.next_move.as_str()),
         context: node_context(
             store,
             &n,
@@ -1646,12 +1699,19 @@ fn roster_validate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
     // the roster shorter than the depth it is supposed to enumerate —
     // the same quantity derived a third time and drifting again.
     for intent in unproven_implemented_intents(store)? {
-        out.push(node_entry(
-            "validate",
-            "mid",
-            &intent,
-            "implemented, with no proof that establishes the behavior".into(),
-        ));
+        let proof = crate::proofstrength::assess(store, &intent.id)?;
+        let reason = if proof.any_passing && !proof.meaningful_passing {
+            let best = proof
+                .best_passing_strength
+                .unwrap_or(crate::proofstrength::Strength::S0)
+                .as_str();
+            format!(
+                "implemented; passing proof is {best} (liveness only) — strengthen to S2 with an output/content assertion and rerun"
+            )
+        } else {
+            "implemented, with no proof that establishes the behavior".into()
+        };
+        out.push(node_entry("validate", "mid", &intent, reason));
     }
     for (intent, shallow) in journey_gaps(store)? {
         let why = if shallow {
@@ -1743,7 +1803,7 @@ fn roster_build(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// `queue_items` was a 297-line match that only dispatched, so every lane's
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_coverage(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
-    for cf in crate::commands::unowned_codefiles(store)? {
+    for cf in crate::coverage::unowned_codefiles(store)? {
         let missing = !store.root().join(&cf.name).exists();
         let reason = if missing {
             "no longer exists on disk — unregister it (or re-register its successor)"
@@ -1858,7 +1918,7 @@ fn roster_elaborate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_divergence(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
     for d in crate::divergence::all(store)? {
-        if !d.blocking {
+        if !d.blocking || crate::divergence::is_rectifiable(store, &d)? {
             continue;
         }
         let Some(n) = store.get_node(&d.intent_id)? else {
@@ -1866,6 +1926,24 @@ fn roster_divergence(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
         };
         out.push(node_entry(
             "ratify",
+            "low",
+            &n,
+            format!("{}: {}", d.kind.as_str().replace('_', " "), d.evidence),
+        ));
+    }
+    Ok(())
+}
+
+fn roster_rectify(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for d in crate::divergence::all(store)? {
+        if !crate::divergence::is_rectifiable(store, &d)? {
+            continue;
+        }
+        let Some(n) = store.get_node(&d.intent_id)? else {
+            continue;
+        };
+        out.push(node_entry(
+            "rectify",
             "low",
             &n,
             format!("{}: {}", d.kind.as_str().replace('_', " "), d.evidence),

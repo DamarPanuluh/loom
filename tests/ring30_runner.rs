@@ -34,6 +34,25 @@ fn loom_bin() -> std::path::PathBuf {
     p.join("loom")
 }
 
+fn shell_token(value: &std::path::Path) -> String {
+    let value = value.to_string_lossy();
+    if !value.is_empty()
+        && value
+            .chars()
+            .all(|c| c.is_alphanumeric() || "._-/=:@+,".contains(c))
+    {
+        value.into_owned()
+    } else if !value.contains('\'') {
+        format!("'{value}'")
+    } else {
+        assert!(
+            !value.contains('"') && !value.chars().any(|c| matches!(c, '$' | '`' | '\\')),
+            "test path cannot be represented by the strict whole-token parser: {value}"
+        );
+        format!("\"{value}\"")
+    }
+}
+
 fn seeded(root: &std::path::Path) -> String {
     let store = Store::init(root, Some("t"), false).unwrap();
     std::fs::create_dir_all(root.join("src")).unwrap();
@@ -96,8 +115,8 @@ fn no_runner_holds_the_graph_while_it_observes() {
         // `loom journey run` and `loom sync` do.
         let child = format!(
             "{} --graph {} sync",
-            loom_bin().display(),
-            tmp.path().display()
+            shell_token(&loom_bin()),
+            shell_token(tmp.path())
         );
         {
             let store = Store::open(tmp.path()).unwrap();
@@ -149,48 +168,295 @@ fn no_runner_holds_the_graph_while_it_observes() {
 
 /// **Infrastructure failure is never attributed to the code.**
 ///
-/// If a runner ever does hold the lock again, the outcome must be `blocked` —
-/// recorded, visible, never green, and never a claim that the behavior broke.
-/// Defence in depth for the failure mode above.
+/// A direct, simple current-loom `sync` command that encounters a held graph
+/// lock must be classified as blocked rather than recorded as a code failure.
 #[test]
 fn a_failure_loom_caused_is_blocked_not_failed() {
-    let tmp = Tmp::new();
-    let _intent = seeded(tmp.path());
+    let observer = Tmp::new();
+    let _intent = seeded(observer.path());
+    let contended = Tmp::new();
+    let _other_intent = seeded(contended.path());
+    let held = Store::open(contended.path()).unwrap();
+    let bin = loom_bin();
+    let child_args = [
+        bin.to_string_lossy().into_owned(),
+        "--graph".into(),
+        contended.path().to_string_lossy().into_owned(),
+        "sync".into(),
+    ];
+    let out = std::process::Command::new(&bin)
+        .arg("--graph")
+        .arg(observer.path())
+        .arg("--json")
+        .arg("observe")
+        .arg("--")
+        .args(&child_args)
+        .output()
+        .expect("spawn observing loom");
+    drop(held);
 
-    // Hold the graph, then run a command that needs it — the exact shape of the
-    // original bug, forced deliberately.
-    let held = Store::open(tmp.path()).unwrap();
-    let child = format!(
-        "{} --graph {} sync",
-        loom_bin().display(),
-        tmp.path().display()
+    assert!(
+        out.status.success(),
+        "a blocked observation is recorded, not a CLI failure: {}",
+        String::from_utf8_lossy(&out.stderr)
     );
+    let value: serde_json::Value = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|e| panic!("blocked observation JSON: {e}: {:?}", out));
+    assert_eq!(value["observed"], false, "{value}");
+    assert!(
+        value["blocked"]
+            .as_str()
+            .is_some_and(|reason| reason.contains("infrastructure contention")),
+        "{value}"
+    );
+}
+
+/// Exit 75 is only loom contention when an exact out-of-band attestation
+/// accompanies it. Other programs may use the same conventional
+/// temporary-failure code, and their result remains an observed run rather than
+/// an infrastructure block.
+#[test]
+fn an_arbitrary_shell_exit_75_is_recorded_as_ran() {
+    let tmp = Tmp::new();
     let observation = loom::runner::observe_command(
         tmp.path(),
         loom::model::RunProducer::Command,
-        &child,
+        "exit 75",
         &[],
         0,
         60,
     )
     .expect("no io failure");
-    drop(held);
 
     match observation {
+        loom::runner::Observation::Ran(run) => assert_eq!(run.exit_code, 75),
         loom::runner::Observation::Blocked { reason } => {
-            assert!(
-                reason.contains("loom held it") || reason.contains("could not be observed"),
-                "the reason must name loom's own infrastructure: {reason}"
-            );
-        }
-        loom::runner::Observation::Ran(run) => {
-            assert_eq!(
-                run.exit_code, 0,
-                "a non-zero exit caused by loom's own lock must never be recorded \
-                 as a run — that is a false fact about the code"
-            );
+            panic!("an arbitrary exit 75 is a completed run, not contention: {reason}")
         }
     }
+}
+
+/// Even the exact private frame cannot spoof contention when an arbitrary
+/// command discovers the public environment variable name. It receives no
+/// capability, so its conventional exit 75 remains a completed run.
+#[cfg(unix)]
+#[test]
+fn an_arbitrary_command_cannot_write_a_spoofed_attestation() {
+    let tmp = Tmp::new();
+    let command = r#"if [ -n "$LOOM_CONTENTION_FD" ]; then eval "printf 'LOOM-CONTENTION/1\\n' >&$LOOM_CONTENTION_FD"; fi; exit 75"#;
+    let observation = loom::runner::observe_command(
+        tmp.path(),
+        loom::model::RunProducer::Command,
+        command,
+        &[],
+        0,
+        60,
+    )
+    .expect("no io failure");
+
+    match observation {
+        loom::runner::Observation::Ran(run) => assert_eq!(run.exit_code, 75),
+        loom::runner::Observation::Blocked { reason } => {
+            panic!("an arbitrary command must not receive the private FD: {reason}")
+        }
+    }
+}
+
+/// A PATH-spoofed `sh` must not become the intermediary for a directly
+/// attestable loom invocation. Besides preventing command substitution, this
+/// keeps the private descriptor out of any shell chosen by untrusted PATH.
+#[cfg(unix)]
+#[test]
+fn direct_current_loom_bypasses_a_malicious_path_shell() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let observer = Tmp::new();
+    let _intent = seeded(observer.path());
+    let contended = Tmp::new();
+    let contended_root = contended.path().join("contended graph");
+    let _other_intent = seeded(&contended_root);
+    let held = Store::open(&contended_root).unwrap();
+
+    let helpers = observer.path().join("helpers");
+    std::fs::create_dir_all(&helpers).unwrap();
+    let leaked = observer.path().join("path-sh-saw-contention-fd");
+    let sh = helpers.join("sh");
+    std::fs::write(
+        &sh,
+        format!(
+            "#!/bin/sh\nif [ -n \"$LOOM_CONTENTION_FD\" ]; then printf leaked > '{}'; fi\nexec /bin/sh \"$@\"\n",
+            leaked.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&sh, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let old_path = std::env::var_os("PATH").unwrap_or_default();
+    let mut paths = vec![helpers];
+    paths.extend(std::env::split_paths(&old_path));
+    let path = std::env::join_paths(paths).unwrap();
+    let bin = loom_bin();
+    let spaced_bin = observer.path().join("loom alias with spaces");
+    std::os::unix::fs::symlink(&bin, &spaced_bin).unwrap();
+    let out = std::process::Command::new(&bin)
+        .arg("--graph")
+        .arg(observer.path())
+        .arg("--json")
+        .arg("observe")
+        .arg("--")
+        .arg(&spaced_bin)
+        .arg("--graph")
+        .arg(&contended_root)
+        .arg("sync")
+        .env("PATH", path)
+        .output()
+        .expect("spawn observing loom");
+    drop(held);
+
+    assert!(
+        out.status.success(),
+        "direct contention should be recorded as blocked: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(value["observed"], false, "{value}");
+    assert!(value["blocked"].is_string(), "{value}");
+    assert!(
+        !leaked.exists(),
+        "no PATH-selected shell may observe the direct mode's private FD"
+    );
+}
+
+/// Shell-mode commands retain normal shell semantics but have the capability
+/// environment explicitly removed.
+#[cfg(unix)]
+#[test]
+fn ordinary_shell_commands_work_without_the_attestation_environment() {
+    let tmp = Tmp::new();
+    let captured = loom::subprocess::run(
+        r#"printf 'left-'; printf '%s' "${LOOM_CONTENTION_FD-unset}"; printf '%s' '-right'"#,
+        tmp.path(),
+        std::time::Duration::from_secs(5),
+    )
+    .expect("shell spawn")
+    .expect("shell completed");
+
+    assert_eq!(captured.status.code(), Some(0));
+    assert_eq!(captured.stdout, b"left-unset-right");
+}
+
+/// Public diagnostic marker text is not an attestation, on either output
+/// stream. A test may legitimately print loom's graph or harness error text and
+/// use exit 75; that completed failure must stay a run.
+#[test]
+fn public_contention_markers_cannot_spoof_a_block() {
+    let tmp = Tmp::new();
+    for command in [
+        "printf 'loom-lock-contention\\n'; exit 75",
+        "printf 'loom-harness-contention\\n' >&2; exit 75",
+    ] {
+        let observation = loom::runner::observe_command(
+            tmp.path(),
+            loom::model::RunProducer::Command,
+            command,
+            &[],
+            0,
+            60,
+        )
+        .expect("no io failure");
+        match observation {
+            loom::runner::Observation::Ran(run) => assert_eq!(run.exit_code, 75),
+            loom::runner::Observation::Blocked { reason } => {
+                panic!("public marker text must not attest contention: {reason}")
+            }
+        }
+    }
+}
+
+/// Shell control syntax disables capability installation even when the command
+/// starts with the current executable. The strict parser behavior is exercised
+/// directly in `subprocess` unit tests; this integration check confirms such a
+/// command still runs normally through the shell.
+#[cfg(unix)]
+#[test]
+fn shell_metacharacters_after_current_exe_disable_attestation() {
+    let tmp = Tmp::new();
+    let command = format!(
+        "{} --graph {} sync; exit 0",
+        std::env::current_exe().unwrap().display(),
+        tmp.path().display()
+    );
+    let observation = loom::runner::observe_command(
+        tmp.path(),
+        loom::model::RunProducer::Command,
+        &command,
+        &[],
+        0,
+        60,
+    )
+    .expect("no io failure");
+
+    match observation {
+        loom::runner::Observation::Ran(run) => assert_eq!(run.exit_code, 0),
+        loom::runner::Observation::Blocked { reason } => {
+            panic!("a frame without final exit 75 is not contention: {reason}")
+        }
+    }
+}
+
+/// A directly attested loom consumes the capability at startup. Its own `sync`
+/// may spawn arbitrary helper commands, which must not see the capability. A
+/// fake `git` placed first on PATH records any environment leak.
+#[cfg(unix)]
+#[test]
+fn nested_arbitrary_command_cannot_inherit_the_attestation_capability() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = Tmp::new();
+    let _intent = seeded(tmp.path());
+    let helpers = tmp.path().join("helpers");
+    std::fs::create_dir_all(&helpers).unwrap();
+    let leaked = tmp.path().join("contention-fd-leaked");
+    let git = helpers.join("git");
+    std::fs::write(
+        &git,
+        format!(
+            "#!/bin/sh\nif [ -n \"$LOOM_CONTENTION_FD\" ]; then printf leaked > '{}'; fi\nexit 1\n",
+            leaked.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&git, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let old_path = std::env::var_os("PATH").unwrap_or_default();
+    let mut paths = vec![helpers.clone()];
+    paths.extend(std::env::split_paths(&old_path));
+    let path = std::env::join_paths(paths).unwrap();
+    let bin = loom_bin();
+    let child_args = [
+        bin.to_string_lossy().into_owned(),
+        "--graph".into(),
+        tmp.path().to_string_lossy().into_owned(),
+        "sync".into(),
+    ];
+    let out = std::process::Command::new(&bin)
+        .arg("--graph")
+        .arg(tmp.path())
+        .arg("observe")
+        .arg("--")
+        .args(&child_args)
+        .env("PATH", path)
+        .output()
+        .expect("spawn directly attested loom");
+    assert!(
+        out.status.success(),
+        "nested sync observation should complete: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !leaked.exists(),
+        "startup must remove LOOM_CONTENTION_FD before nested commands spawn"
+    );
 }
 
 /// A run records what it covered, so an edit expires it. Without this a proof
@@ -201,7 +467,7 @@ fn an_observed_run_records_what_it_covered() {
     let tmp = Tmp::new();
     let intent = seeded(tmp.path());
     let store = Store::open(tmp.path()).unwrap();
-    let files = loom::runner::files_grounding(&store, &intent).unwrap();
+    let files = store.files_grounding(&intent).unwrap();
     assert!(
         files.contains(&"src/thing.rs".to_string()),
         "the behavior's grounded files are the run's covered set: {files:?}"
@@ -274,8 +540,8 @@ fn a_rule_is_measured_against_realizing_files_not_verifying_ones() {
         .set_grounding_role(&ve.id, loom::model::GroundingRole::Verifies)
         .unwrap();
 
-    let expiry = loom::runner::files_grounding(&store, &intent).unwrap();
-    let measured = loom::runner::files_realizing(&store, &intent).unwrap();
+    let expiry = store.files_grounding(&intent).unwrap();
+    let measured = store.files_realizing(&intent).unwrap();
 
     assert!(
         expiry.contains(&"tests/thing_test.rs".to_string())
@@ -298,7 +564,7 @@ fn an_untagged_grounding_still_counts_as_realizing() {
     let store = Store::open(tmp.path()).unwrap();
 
     // `seeded` never writes a role facet on the src/thing.rs grounding.
-    let measured = loom::runner::files_realizing(&store, &intent).unwrap();
+    let measured = store.files_realizing(&intent).unwrap();
     assert_eq!(
         measured,
         vec!["src/thing.rs".to_string()],

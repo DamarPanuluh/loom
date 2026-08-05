@@ -1126,6 +1126,48 @@ fn quality_work_item_carries_pre_screened_hits_for_grounded_intent() {
 }
 
 #[test]
+fn quality_packet_retains_twenty_one_matching_lines_under_canonical_cap() {
+    let tmp = Tmp::new();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    let matching_lines = (0..21)
+        .map(|_| "let api_key = \"sk-live-abcdefghijklmnop\";\n")
+        .collect::<String>();
+    std::fs::write(root.join("src/auth.rs"), matching_lines).unwrap();
+
+    let store = Store::init(root, Some("t"), false).unwrap();
+    packs::seed(&store, "iso5055").unwrap();
+    let rule = store
+        .resolve_node(
+            "iso5055-sec-no-hardcoded-secrets",
+            Some(NodeType::QualityRule),
+        )
+        .unwrap();
+    let intent = feature_intent(&store, "many secret candidates", Some("user_visible"));
+    let codefile = codefile(&store, "src/auth.rs");
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &codefile.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Governs, &rule.id, &intent.id)
+        .unwrap();
+
+    let item = workitem::next(&store, Some(Lane::Quality))
+        .unwrap()
+        .expect("quality item");
+    assert_eq!(
+        item.prompt_contract.pre_screened_hits.len(),
+        21,
+        "quality packets retain all 21 matches below the canonical 200-hit cap"
+    );
+}
+
+#[test]
 fn quality_packet_reads_and_prescreens_every_grounded_file() {
     let tmp = Tmp::new();
     let root = tmp.path();

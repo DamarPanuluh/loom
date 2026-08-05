@@ -379,7 +379,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "falsifiable_design_claim": "loom hypothesis add --name '…' --claim '…' --target <intent> — prove supported|refuted before it becomes work",
                     "timeboxed_activity": "loom task add '<title>' --kind spike --target '<intent>' — close with a result (lands as a note on the target intent); targetless stays diary-only"
                 },
-                "roles": ["builder", "analyzer", "fixer", "validator", "quality", "monitor"],
+                "roles": ["builder", "analyzer", "fixer", "validator", "quality", "rectify", "monitor"],
                 // Derived from the lane table so this can never drift from the
                 // ladder it describes.
                 "rung_gates": crate::lane::Lane::LADDER.iter().map(|l| l.rung()).collect::<Vec<_>>(),
@@ -424,7 +424,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                 println!("      make true:    {}", g.authoritative_write);
                 println!("      then:         {}", g.after_write);
             }
-            println!("Roles: builder | analyzer | fixer | validator | quality (see `loom guide --role`).");
+            println!("Roles: builder | analyzer | fixer | validator | quality | rectify (see `loom guide --role`).");
             println!("Integration monitoring (watch an upstream you depend on): loom guide --role monitor");
             Ok(())
         }
@@ -463,6 +463,12 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "loom rule verdict <rule> <intent> passing|failing|independent --criterion '…' --evidence '…' --confidence <n>",
                     "edit code; mark passing without inspecting; mark independent without evidence",
                     crate::truth::TruthAxis::Verdict,
+                ),
+                "rectify" => (
+                    "Clear NEEDLESS ratify friction without deciding wantedness. Fix false duplicates (scenario_of / retire), demote mis-marked visibility to internal, or escalate real product calls to human ratify. Never invent a yes.",
+                    "loom next --mode rectify; loom intent update --visibility internal; loom intent update --rectify escalated; loom edge relate scenario-of; loom intent retire --replaced-by",
+                    "loom intent ratify; loom intent reject; supplying --human-decision; editing code to silence a divergence",
+                    crate::truth::TruthAxis::Intent,
                 ),
                 other => bail!("unknown role '{other}'"),
             };

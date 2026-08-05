@@ -90,7 +90,7 @@ fn invariant_add(
         "added journey invariant '{}' → asserts '{}' [{}]",
         node.name,
         intent.name,
-        &node.id[..8]
+        crate::model::short(&node.id)
     );
     pulse::emit_line(
         &store,
@@ -131,7 +131,7 @@ fn invariant_list(
         } else {
             println!(
                 "{}  {}  field={}  asserts={}",
-                &n.id[..8],
+                crate::model::short(&n.id),
                 n.name,
                 n.body.get("field").and_then(|v| v.as_str()).unwrap_or(""),
                 asserts_name.as_deref().unwrap_or("—"),

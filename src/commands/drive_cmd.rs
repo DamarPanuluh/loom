@@ -33,7 +33,12 @@ fn drive(graph: Option<&Path>, json: bool) -> Result<()> {
             5,
         )?;
         for (index, (score, _, name, id)) in hits.iter().enumerate() {
-            println!("  {}. {} [{}] score={score}", index + 1, name, &id[..8]);
+            println!(
+                "  {}. {} [{}] score={score}",
+                index + 1,
+                name,
+                crate::model::short(id)
+            );
         }
         let picked = prompt("pick number, intent id, or m to mint: ")?
             .ok_or_else(|| anyhow::anyhow!("drive ended while choosing an intent"))?;

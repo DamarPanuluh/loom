@@ -270,6 +270,35 @@ impl Store {
             .is_some())
     }
 
+    /// Every file grounding this intent, whatever its role.
+    ///
+    /// This is the EXPIRY set: a proof over the behavior must expire when the
+    /// code it proves changes AND when the test that proves it changes, so both
+    /// roles belong here.
+    pub fn files_grounding(&self, intent_id: &str) -> Result<Vec<String>> {
+        self.grounding_files(intent_id, false)
+    }
+
+    fn grounding_files(&self, intent_id: &str, realizing_only: bool) -> Result<Vec<String>> {
+        grounding_files_from(
+            self.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)?,
+            realizing_only,
+            |edge| self.edge_superseded(&edge.id),
+            |edge| self.grounding_role(&edge.id),
+            |edge| Ok(self.get_node(&edge.to_id)?.map(|node| node.name)),
+        )
+    }
+
+    /// Only the files the behavior LIVES in — groundings carrying the
+    /// `realizes` role (the default when no role facet is set).
+    ///
+    /// This is the set a code-quality RULE is measured against. A `verifies`
+    /// grounding is a test, and shapes forbidden in production code may be
+    /// idiomatic in tests, so quality scans deliberately exclude it.
+    pub fn files_realizing(&self, intent_id: &str) -> Result<Vec<String>> {
+        self.grounding_files(intent_id, true)
+    }
+
     /// Live (non-superseded) `implements` edges into `codefile_id` whose role
     /// is `realizes` — the only role that confers ownership. A file grounded
     /// solely by `consumes`/`configures`/`verifies` edges is still unowned.
@@ -425,6 +454,64 @@ impl Store {
         Ok((old, new))
     }
 
+    /// Re-point an asserted edge's `to` endpoint at a successor node — the
+    /// recorded operation of a file rename/split (`loom edge retarget`).
+    /// Unlike `rehome_grounding` this is IN PLACE: the edge keeps its id,
+    /// its facets (locator/role), and its verdict facts, because the claim
+    /// is unchanged — the subject moved. What still holds is decided by the
+    /// normal reverification path: content that moved intact re-anchors and
+    /// keeps its verdict; content that changed is staled honestly. A fresh
+    /// verdict is never forced by the move itself.
+    pub fn retarget_edge(&self, edge_id: &str, new_to: &str, reason: &str) -> Result<Edge> {
+        let e = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if e.truth_class != TruthClass::Asserted {
+            bail!("cannot retarget a derived edge — derived edges are sync-owned and rebuilt");
+        }
+        let reason = reason.trim();
+        if reason.is_empty() {
+            bail!("retarget requires a substantive --reason — it is the audit of why the subject moved");
+        }
+        if e.to_id == new_to {
+            bail!("edge '{edge_id}' already targets '{new_to}' — nothing to retarget");
+        }
+        self.check_lane(registry::spec(e.kind).owner)?;
+        self.validate_edge_endpoints(e.kind, &e.from_id, new_to, TruthClass::Asserted)?;
+        // A live edge of the same kind already bridging these endpoints would
+        // make the retarget a silent duplicate: refuse and name it.
+        if let Some(dup) = self
+            .edges_with(Some(e.kind), Some(&e.from_id), Some(new_to))?
+            .into_iter()
+            .find(|x| x.id != e.id && !self.edge_superseded(&x.id).unwrap_or(false))
+        {
+            bail!(
+                "a live {} edge from this {} already targets '{new_to}' [{}] — \
+                 retarget would duplicate it; remove one (loom edge remove {}) first",
+                e.kind,
+                registry::spec(e.kind).from,
+                crate::model::short(&dup.id),
+                crate::model::short(&dup.id)
+            );
+        }
+        let (_, now) = id_and_now(&self.conn)?;
+        self.conn.execute(
+            "UPDATE edge SET to_id=?1, updated_at=?2 WHERE id=?3",
+            params![new_to, now, edge_id],
+        )?;
+        self.add_note(
+            &e.from_id,
+            "decision",
+            &format!(
+                "edge {} retargeted from '{}' to '{new_to}': {reason}",
+                crate::model::short(edge_id),
+                e.to_id
+            ),
+        )?;
+        self.get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("edge vanished after retarget"))
+    }
+
     /// Asserted edges of the given statuses, excluding any superseded by a
     /// `rehome`. Work queues and maturity counts read this so a superseded
     /// grounding (history) never re-enters a lane as live work.
@@ -550,6 +637,84 @@ impl Store {
             .into_iter()
             .filter(|n| statuses.contains(&n.status.as_str()))
             .collect())
+    }
+}
+
+fn grounding_files_from<FS, FR, FN>(
+    edges: Vec<Edge>,
+    realizing_only: bool,
+    mut superseded: FS,
+    mut role: FR,
+    mut file_name: FN,
+) -> Result<Vec<String>>
+where
+    FS: FnMut(&Edge) -> Result<bool>,
+    FR: FnMut(&Edge) -> Result<GroundingRole>,
+    FN: FnMut(&Edge) -> Result<Option<String>>,
+{
+    let mut files = Vec::new();
+    for edge in edges {
+        if superseded(&edge)? {
+            continue;
+        }
+        if realizing_only && role(&edge)? != GroundingRole::Realizes {
+            continue;
+        }
+        if let Some(name) = file_name(&edge)? {
+            files.push(name);
+        }
+    }
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
+
+#[cfg(test)]
+mod grounding_file_tests {
+    use super::*;
+
+    fn edge(id: &str, to_id: &str) -> Edge {
+        Edge {
+            id: id.into(),
+            from_id: "intent".into(),
+            to_id: to_id.into(),
+            kind: EdgeKind::Implements,
+            truth_class: TruthClass::Asserted,
+            status: InspectionStatus::Uninspected,
+            criterion: String::new(),
+            confidence: 0.0,
+            depends_on: serde_json::json!([]),
+            inspected_by: String::new(),
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    #[test]
+    fn grounding_file_query_filters_roles_superseded_rows_and_duplicates() {
+        let edges = vec![
+            edge("real", "a"),
+            edge("verify", "b"),
+            edge("old", "c"),
+            edge("dup", "a"),
+        ];
+        let role = |edge: &Edge| {
+            Ok(if edge.id == "verify" {
+                GroundingRole::Verifies
+            } else {
+                GroundingRole::Realizes
+            })
+        };
+        let names = |edge: &Edge| Ok(Some(format!("{}.rs", edge.to_id)));
+
+        assert_eq!(
+            grounding_files_from(edges.clone(), false, |e| Ok(e.id == "old"), role, names).unwrap(),
+            vec!["a.rs", "b.rs"]
+        );
+        assert_eq!(
+            grounding_files_from(edges, true, |e| Ok(e.id == "old"), role, names).unwrap(),
+            vec!["a.rs"]
+        );
     }
 }
 

@@ -23,6 +23,97 @@ fn require_resolvable_locator(store: &Store, file: &str, locator: &str) -> Resul
     );
 }
 
+/// Symbol kinds the call graph can treat as callable — the only symbols a
+/// proof can call its way to (S3+).
+const CALLABLE_KINDS: &[&str] = &["function", "method"];
+
+/// Proof-strength lints, computed at edge-write time: a grounding that makes
+/// the top strength grades permanently unreachable says so NOW — not later as
+/// the symptom "nothing reaches the grounded symbol". Each lint says what
+/// WOULD be indexable. Warnings, never refusals: the resolution gate refuses
+/// fabrications; these are honest-but-capped groundings.
+fn grounding_lints(
+    root: &Path,
+    file: &str,
+    locator: Option<&str>,
+    role: GroundingRole,
+) -> Vec<String> {
+    let Ok(content) = std::fs::read_to_string(root.join(file)) else {
+        return Vec::new(); // an unreadable file is the resolution gate's refusal
+    };
+    let ex = crate::extract::extract(file, &content);
+    let callable_names: Vec<&str> = ex
+        .symbols
+        .iter()
+        .filter(|s| CALLABLE_KINDS.contains(&s.kind.as_str()))
+        .map(|s| s.name.as_str())
+        .collect();
+    let mut out = Vec::new();
+    match role {
+        GroundingRole::Realizes => {
+            let Some(loc) = locator else { return out };
+            if crate::locator::is_module_scope(loc) {
+                return out;
+            }
+            for name in crate::locator::symbols(loc) {
+                // An unresolved name is require_resolvable_locator's refusal,
+                // not a lint.
+                let Some(sym) = ex.symbols.iter().find(|s| s.name == name) else {
+                    continue;
+                };
+                if !CALLABLE_KINDS.contains(&sym.kind.as_str()) {
+                    let alternatives = if callable_names.is_empty() {
+                        "this file declares no callable symbol — ground through a different file"
+                            .to_string()
+                    } else {
+                        format!(
+                            "callable symbols here: {}",
+                            callable_names
+                                .iter()
+                                .take(5)
+                                .cloned()
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    };
+                    out.push(format!(
+                        "locator '{name}' is a {} in '{file}', which the call graph cannot treat \
+                         as callable — no proof can reach S3 (call-graph witness) through it; \
+                         the verdict symptom would be \"nothing reaches the grounded symbol\". {alternatives}",
+                        sym.kind
+                    ));
+                }
+            }
+        }
+        GroundingRole::Verifies => {
+            if ex.symbols.is_empty() {
+                out.push(format!(
+                    "witness file '{file}' exposes no indexable symbols (language: {}) — a \
+                     call-graph witness needs a callable symbol that calls the grounded symbol, \
+                     so a proof resting on this file caps below S3. Indexable languages: rust, \
+                     python, go, javascript, typescript",
+                    ex.language.as_str()
+                ));
+            } else if callable_names.is_empty() {
+                let kinds: Vec<&str> = ex
+                    .symbols
+                    .iter()
+                    .map(|s| s.kind.as_str())
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .into_iter()
+                    .collect();
+                out.push(format!(
+                    "witness file '{file}' declares no callable symbol (only: {}) — nothing here \
+                     can call the grounded symbol, so a proof resting on this file caps below S3",
+                    kinds.join(", ")
+                ));
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
 pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
@@ -68,6 +159,11 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
             to,
             reason,
         } => edge_rehome(&store, edge_id, to, reason, json),
+        EdgeCmd::Retarget {
+            edge_id,
+            to,
+            reason,
+        } => edge_retarget(&store, edge_id, to, reason, json),
         EdgeCmd::Show { edge_id } => edge_show(&store, edge_id, json),
         EdgeCmd::List { limit, offset } => edge_list(&store, limit, offset, json),
         EdgeCmd::DependsOn { intent, upstream } => edge_depends_on(&store, intent, upstream, json),
@@ -97,7 +193,7 @@ fn edge_depends_on(store: &Store, intent: String, upstream: String, json: bool) 
             "depends_on: '{}' → upstream '{}' [{}]",
             i.name,
             u.name,
-            &e.id[..8.min(e.id.len())]
+            crate::model::short(&e.id)
         ),
     )
 }
@@ -116,6 +212,35 @@ fn edge_implement(
         Some(r) => parse_grounding_role(r)?,
         None => GroundingRole::Realizes,
     };
+    let existing = store
+        .edges_with(Some(EdgeKind::Implements), Some(&i.id), Some(&cf.id))?
+        .into_iter()
+        .next();
+    let mut update_existing_locator = false;
+    if let Some(edge) = &existing {
+        let current_role = store.grounding_role(&edge.id)?;
+        let current_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+        let locator_changed = locator
+            .as_deref()
+            .is_some_and(|new| current_locator.as_deref() != Some(new));
+        if current_role != role
+            || (locator_changed && edge.status != crate::model::InspectionStatus::Uninspected)
+        {
+            bail!(
+                "edge exists for intent '{}' and codefile '{}' as {} [{}] — \
+                 use `loom edge set-role {}` / `loom edge set-locator {}` or remove it first",
+                i.name,
+                cf.name,
+                current_role,
+                crate::model::short(&edge.id),
+                crate::model::short(&edge.id),
+                crate::model::short(&edge.id),
+            );
+        }
+        // Preserve the long-standing pre-verdict re-grounding convenience.
+        // Once inspected, locator changes cross the explicit set-locator gate.
+        update_existing_locator = locator_changed;
+    }
     // A realizing locator must name something live — the same probe pattern
     // exemplar add already enforces. Module-scope and non-realizing roles are
     // exempt (see `runner::grounding_locator_resolves` / ripple_locator_drift).
@@ -124,23 +249,29 @@ fn edge_implement(
             require_resolvable_locator(store, &cf.name, loc)?;
         }
     }
-    // Groundings are keyed by (intent, codefile, kind). Re-running implement is
-    // an edit of that grounding's locator/role, not a request for a duplicate
-    // edge (which the database correctly rejects).
-    let e = store.ensure_edge(EdgeKind::Implements, &i.id, &cf.id)?;
-    if let Some(loc) = &locator {
-        store.set_facet(
-            &e.id,
-            TargetKind::Edge,
-            "locator",
-            loc,
-            TruthClass::Asserted,
-        )?;
+    let created = existing.is_none();
+    let e = match existing {
+        Some(edge) => edge,
+        None => store.add_edge(EdgeKind::Implements, &i.id, &cf.id, TruthClass::Asserted)?,
+    };
+    if created || update_existing_locator {
+        if let Some(loc) = &locator {
+            store.set_facet(
+                &e.id,
+                TargetKind::Edge,
+                "locator",
+                loc,
+                TruthClass::Asserted,
+            )?;
+        }
     }
-    // Persist the role facet only when non-default: a `realizes` grounding needs
-    // no facet (it is the default), so pre-role graphs keep their byte-format.
-    if role != GroundingRole::Realizes {
+    // Persist the role facet only for a newly-created non-default grounding.
+    if created && role != GroundingRole::Realizes {
         store.set_grounding_role(&e.id, role)?;
+    }
+    let lints = grounding_lints(store.root(), &cf.name, locator.as_deref(), role);
+    for l in &lints {
+        eprintln!("lint: {l}");
     }
     pulse::emit_line(
         store,
@@ -151,6 +282,7 @@ fn edge_implement(
             "codefile": { "id": cf.id, "path": cf.name },
             "locator": locator,
             "role": role.as_str(),
+            "lints": lints,
         }),
         "loom sync",
         format!(
@@ -232,6 +364,59 @@ fn edge_rehome(
             crate::model::short(&old.id),
             successor.name,
             crate::model::short(&new.id)
+        ),
+    )?;
+    Ok(())
+}
+
+/// Re-point an asserted edge's target at a successor node, in place (P10):
+/// the recorded operation of a file rename/split. The edge keeps its id,
+/// locator/role, and verdict facts — sync's reverification decides what
+/// still holds (content that moved intact re-anchors; the move itself never
+/// forces a re-verdict).
+fn edge_retarget(
+    store: &Store,
+    edge_id: String,
+    to: String,
+    reason: String,
+    json: bool,
+) -> Result<()> {
+    let e = store.resolve_edge(&edge_id)?;
+    let successor = store.resolve_node(&to, None)?;
+    let old_to = e.to_id.clone();
+    let old_name = store
+        .get_node(&old_to)?
+        .map(|n| n.name)
+        .unwrap_or_else(|| old_to.clone());
+    let updated = store.retarget_edge(&e.id, &successor.id, &reason)?;
+    crate::journal::append(
+        store.root(),
+        "edge_retargeted",
+        &e.id,
+        serde_json::json!({
+            "kind": updated.kind,
+            "from": { "id": updated.from_id },
+            "old_to": { "id": old_to, "name": old_name },
+            "new_to": { "id": successor.id, "name": successor.name },
+            "reason": reason,
+        }),
+    )?;
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": updated,
+            "old_to": { "id": old_to, "name": old_name },
+            "new_to": { "id": successor.id, "name": successor.name },
+            "reason": reason,
+            "facets": store.facets_of(&updated.id, TargetKind::Edge)?,
+        }),
+        "loom sync",
+        format!(
+            "retargeted edge [{}] {} → '{}' (id/verdicts kept; `loom sync` re-verifies evidence at the new location)",
+            crate::model::short(&e.id),
+            old_name,
+            successor.name
         ),
     )?;
     Ok(())
@@ -352,14 +537,22 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
         );
     }
     // Realizing implements edges carry the same probe as `edge implement`.
-    if e.kind == EdgeKind::Implements && store.grounding_role(&e.id)? == GroundingRole::Realizes {
+    let mut lints = Vec::new();
+    if e.kind == EdgeKind::Implements {
+        let role = store.grounding_role(&e.id)?;
         let file = store.get_node(&e.to_id)?.ok_or_else(|| {
             anyhow!(
                 "implements edge [{}] has no codefile",
                 crate::model::short(&e.id)
             )
         })?;
-        require_resolvable_locator(store, &file.name, &locator)?;
+        if role == GroundingRole::Realizes {
+            require_resolvable_locator(store, &file.name, &locator)?;
+        }
+        lints = grounding_lints(store.root(), &file.name, Some(&locator), role);
+        for l in &lints {
+            eprintln!("lint: {l}");
+        }
     }
     store.set_facet(
         &e.id,
@@ -374,6 +567,7 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
         serde_json::json!({
             "edge": e,
             "locator": locator,
+            "lints": lints,
         }),
         "loom sync",
         format!(

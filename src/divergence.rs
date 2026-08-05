@@ -18,7 +18,7 @@
 //! the human wakes to a handful of real scope questions with the evidence
 //! already attached.
 
-use crate::model::{EdgeKind, NodeType, TargetKind};
+use crate::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use crate::ratification::{self, Ratification};
 use crate::store::Store;
 use crate::Result;
@@ -154,6 +154,149 @@ pub fn blocking_count(store: &Store) -> Result<usize> {
     Ok(all(store)?.iter().filter(|d| d.blocking).count())
 }
 
+/// Facet key: when set to `escalated`, a discovered behavior leaves the
+/// rectify lane and enters human ratify — the LLM inspected it and could not
+/// clear the friction without a product decision.
+pub const RECTIFY_FACET: &str = "rectify";
+pub const RECTIFY_ESCALATED: &str = "escalated";
+
+/// A false-duplicate decision is scoped to one peer and the exact two intent
+/// descriptions inspected. The peer stays in the key; the value is the
+/// description-pair fingerprint, so rewording either intent reopens the
+/// heuristic without losing the prior decision note.
+const RECTIFY_DUPLICATE_CLEAR_PREFIX: &str = "rectify_duplicate_clear:";
+
+fn duplicate_clear_key(peer_id: &str) -> String {
+    format!("{RECTIFY_DUPLICATE_CLEAR_PREFIX}{peer_id}")
+}
+
+fn duplicate_description_hash(a: &crate::model::Node, b: &crate::model::Node) -> String {
+    let (left, right) = if a.id <= b.id { (a, b) } else { (b, a) };
+    crate::artifact::fingerprint(&format!(
+        "{}:{}\0{}:{}",
+        left.description.len(),
+        left.description,
+        right.description.len(),
+        right.description
+    ))
+}
+
+fn duplicate_pair_is_cleared(
+    store: &Store,
+    a: &crate::model::Node,
+    b: &crate::model::Node,
+) -> Result<bool> {
+    let expected = duplicate_description_hash(a, b);
+    for (target, peer) in [(a, b), (b, a)] {
+        if store
+            .get_facet(&target.id, TargetKind::Node, &duplicate_clear_key(&peer.id))?
+            .as_deref()
+            == Some(expected.as_str())
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Record that every currently-derived duplicate pair containing `intent_id`
+/// is distinct. Returns zero when the intent is not in a live duplicate pair.
+/// The decision automatically expires when either description changes.
+pub fn clear_duplicate_pairs(store: &Store, intent_id: &str, reason: &str) -> Result<usize> {
+    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
+    let mut cleared = 0usize;
+    for (a, b) in duplicate_pairs(store, &intents)? {
+        let peer = if a.id == intent_id {
+            b
+        } else if b.id == intent_id {
+            a
+        } else {
+            continue;
+        };
+        let target = if a.id == intent_id { a } else { b };
+        store.set_facet(
+            &target.id,
+            TargetKind::Node,
+            &duplicate_clear_key(&peer.id),
+            &duplicate_description_hash(a, b),
+            TruthClass::Asserted,
+        )?;
+        store.add_note(
+            &target.id,
+            "decision",
+            &format!(
+                "duplicate pair with '{}' cleared for the current descriptions: {reason}",
+                peer.name
+            ),
+        )?;
+        cleared += 1;
+    }
+    Ok(cleared)
+}
+
+/// Whether a blocking divergence is structural friction an LLM may clear
+/// without deciding wantedness (INV-8 stays on the human ratify lane).
+pub fn is_rectifiable(store: &Store, d: &Divergence) -> Result<bool> {
+    if !d.blocking {
+        return Ok(false);
+    }
+    match d.kind {
+        Kind::DuplicateIntent => Ok(true),
+        Kind::DiscoveredBehavior => {
+            // Escalated discoveries need the human; everything else in this
+            // kind is "demote visibility / relate / reword" prep work.
+            let escalated = store
+                .get_facet(&d.intent_id, TargetKind::Node, RECTIFY_FACET)?
+                .as_deref()
+                == Some(RECTIFY_ESCALATED);
+            Ok(!escalated)
+        }
+        Kind::ZombieBehavior | Kind::PromiseBroken | Kind::MeaningDrifted => Ok(false),
+    }
+}
+
+/// Blocking divergences the `rectify` lane serves.
+pub fn rectifiable_count(store: &Store) -> Result<usize> {
+    let mut n = 0;
+    for d in all(store)? {
+        if is_rectifiable(store, &d)? {
+            n += 1;
+        }
+    }
+    Ok(n)
+}
+
+/// Blocking divergences the human `ratify` lane serves (not rectifiable).
+pub fn human_blocking_count(store: &Store) -> Result<usize> {
+    let mut n = 0;
+    for d in all(store)? {
+        if d.blocking && !is_rectifiable(store, &d)? {
+            n += 1;
+        }
+    }
+    Ok(n)
+}
+
+/// Next rectifiable divergence, kind-first (same order as [`all`]).
+pub fn next_rectifiable(store: &Store) -> Result<Option<Divergence>> {
+    for d in all(store)? {
+        if is_rectifiable(store, &d)? {
+            return Ok(Some(d));
+        }
+    }
+    Ok(None)
+}
+
+/// Next human-facing blocking divergence (skips rectifiable prep work).
+pub fn next_human_blocking(store: &Store) -> Result<Option<Divergence>> {
+    for d in all(store)? {
+        if d.blocking && !is_rectifiable(store, &d)? {
+            return Ok(Some(d));
+        }
+    }
+    Ok(None)
+}
+
 fn make(
     intent: &crate::model::Node,
     kind: Kind,
@@ -161,7 +304,7 @@ fn make(
     blocking: bool,
     blast_radius: usize,
 ) -> Divergence {
-    let short = &intent.id[..8.min(intent.id.len())];
+    let short = crate::model::short(&intent.id);
     Divergence {
         kind,
         intent_id: intent.id.clone(),
@@ -259,7 +402,10 @@ fn blast_radius(
 /// key and a tag overlap. Verifies/consumes/configures edges are seams, not
 /// the behavior's home — sharing a test helper must not route as a duplicate.
 /// Locator comparison uses canonical symbols so `;`-reordered members still match.
-fn duplicates(store: &Store, intents: &[crate::model::Node]) -> Result<Vec<Divergence>> {
+fn duplicate_pairs<'a>(
+    store: &Store,
+    intents: &'a [crate::model::Node],
+) -> Result<Vec<(&'a crate::model::Node, &'a crate::model::Node)>> {
     use crate::model::GroundingRole;
     use std::collections::BTreeSet;
 
@@ -338,14 +484,25 @@ fn duplicates(store: &Store, intents: &[crate::model::Node]) -> Result<Vec<Diver
             if jaccard(&ta, &tb) < 0.5 {
                 continue;
             }
-            out.push(make(
-                b,
-                Kind::DuplicateIntent,
-                format!("describes the same behavior as '{}'", a.name),
-                true,
-                0,
-            ));
+            out.push((a, b));
         }
+    }
+    Ok(out)
+}
+
+fn duplicates(store: &Store, intents: &[crate::model::Node]) -> Result<Vec<Divergence>> {
+    let mut out = Vec::new();
+    for (a, b) in duplicate_pairs(store, intents)? {
+        if duplicate_pair_is_cleared(store, a, b)? {
+            continue;
+        }
+        out.push(make(
+            b,
+            Kind::DuplicateIntent,
+            format!("describes the same behavior as '{}'", a.name),
+            true,
+            0,
+        ));
     }
     Ok(out)
 }

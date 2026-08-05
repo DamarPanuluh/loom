@@ -8,6 +8,13 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [Unreleased]
+- TypeScript `export const <name>` locators resolve consistently across syncs.
+- Grounding creation refuses role collisions and locator changes on inspected edges instead of mutating settled evidence; same-role pre-verdict re-grounding remains available, while settled changes require explicit `set-role`, `set-locator`, or removal.
+- Duplicate-intent rectify clears persist for the exact pair of intent descriptions and reopen only when either description changes.
+- Failing journey CLI steps report the resolved command, bounded stdout/stderr tails, and whether the process exited or the runner killed it on timeout.
+
+
 ## [0.29.0] - 2026-08-03
 - locator drift re-opens groundings that name nothing, shared proof commands are reported, ordered steps gate readiness, and loom answers what stands on a behavior
 

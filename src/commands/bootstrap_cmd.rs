@@ -109,7 +109,7 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
                 "candidates": candidates.len(),
                 "next": format!(
                     "loom proposal item adopt {} <n> --as intent --name '<pillar>' --description '<criterion>'",
-                    &node.id[..8]
+                    crate::model::short(&node.id)
                 ),
             }))?
         );
@@ -123,18 +123,18 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
             }),
             &format!(
                 "loom proposal item adopt {} 1 --as intent --name '<pillar>' --description '<criterion>'",
-                &node.id[..8]
+                crate::model::short(&node.id)
             ),
             format!(
                 "bootstrap suggest: proposal '{}' [{}] with {} candidate pillar(s)",
                 node.name,
-                &node.id[..8],
+                crate::model::short(&node.id),
                 candidates.len()
             ),
         )?;
         println!(
             "  adopt each: loom proposal item adopt {} <n> --as intent",
-            &node.id[..8]
+            crate::model::short(&node.id)
         );
         println!("  never auto-implements or marks implemented — planned only");
     }

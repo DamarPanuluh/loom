@@ -514,3 +514,125 @@ fn a_runnable_proof_is_never_offered_a_hand_written_verdict() {
         item.prompt_contract.allowed_actions
     );
 }
+
+/// A passing S1 proof stays open everywhere until its shape earns S2.
+///
+/// This is the CLI-smoke regression: the command really ran and passed, so the
+/// packet must not say "run it" and completeness must not call the proof met.
+#[test]
+fn passing_liveness_proof_is_routed_to_strengthen_then_clears_at_s2() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(tmp.path().join("src/thing.rs"), "pub fn behavior() {}\n").unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "implemented behavior needs meaningful proof",
+            "observable behavior",
+            "implemented",
+            serde_json::json!({ "level": "feature" }),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &intent.id,
+            loom::model::TargetKind::Node,
+            "level",
+            "feature",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let cf = codefile(&store, "src/thing.rs");
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let proof = store
+        .add_node(
+            NodeType::Validation,
+            "weak grep proof",
+            "",
+            "not_run",
+            serde_json::json!({ "type": "test", "command": "grep -q behavior src/thing.rs" }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &proof.id, &intent.id)
+        .unwrap();
+    loom::commands::observe_validation(&store, &proof).unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    assert_eq!(
+        loom::proofstrength::of(&store, &proof.id).unwrap(),
+        loom::proofstrength::Strength::S1
+    );
+    let item = workitem::next(&store, Some(loom::lane::Lane::Validate))
+        .unwrap()
+        .expect("weak passing proof remains in validate");
+    assert!(item.reason.contains("ran and passed"), "{}", item.reason);
+    assert!(item.reason.contains("S1"), "{}", item.reason);
+    assert!(item.reason.contains("S2"), "{}", item.reason);
+    assert!(
+        item.prompt_contract.why_now.contains("S1") && item.prompt_contract.why_now.contains("S2"),
+        "{}",
+        item.prompt_contract.why_now
+    );
+    assert!(
+        item.prompt_contract
+            .write_back
+            .contains("validation update")
+            && item.prompt_contract.write_back.contains("validation run"),
+        "{}",
+        item.prompt_contract.write_back
+    );
+    assert!(
+        item.prompt_contract.stop_condition.contains("S2")
+            && item.prompt_contract.stop_condition.contains("meaningful"),
+        "{}",
+        item.prompt_contract.stop_condition
+    );
+    let card = loom::completeness::scorecard(&store, &intent).unwrap();
+    let proof_axis = card.axes.iter().find(|axis| axis.axis == "proof").unwrap();
+    assert_eq!(proof_axis.state, "open");
+    assert!(
+        proof_axis.detail.contains("S1") && proof_axis.detail.contains("S2"),
+        "{}",
+        proof_axis.detail
+    );
+
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    let spec = format!(
+        "journey: strong-proof\nsteps:\n  - name: assert output\n    intent: {}\n    run: echo behavior-ok\n    expect:\n      stdout_contains: [\"behavior-ok\"]\n",
+        intent.name
+    );
+    std::fs::write(tmp.path().join("journeys/strong-proof.yaml"), spec).unwrap();
+    let mut body = proof.body.clone();
+    body["proof_kind"] = serde_json::json!("journey");
+    body["journey"] = serde_json::json!("strong-proof");
+    body["artifact"] = serde_json::json!("journeys/strong-proof.yaml");
+    body["command"] = serde_json::json!("echo behavior-ok");
+    store.set_node_body(&proof.id, &body).unwrap();
+    let updated = store.get_node(&proof.id).unwrap().unwrap();
+    loom::commands::observe_validation(&store, &updated).unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    assert_eq!(
+        loom::proofstrength::of(&store, &proof.id).unwrap(),
+        loom::proofstrength::Strength::S2
+    );
+    assert!(
+        loom::proofstrength::assess(&store, &intent.id)
+            .unwrap()
+            .meaningful_passing,
+        "S2 clears the validate proof gate"
+    );
+    let card = loom::completeness::scorecard(&store, &intent).unwrap();
+    let proof_axis = card.axes.iter().find(|axis| axis.axis == "proof").unwrap();
+    assert_eq!(proof_axis.state, "met");
+    assert!(proof_axis.detail.contains("S2"), "{}", proof_axis.detail);
+}

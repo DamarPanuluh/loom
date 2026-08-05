@@ -54,6 +54,8 @@ Examples:
 
 Observed support for a graph write. Evidence must point to inspected code, command output, validation result, source document, external contract, or human decision.
 
+A `file:line` citation anchors to its content and its enclosing symbol, not to its line position: when the cited body moves intact — within the file, or into exactly one registered successor file after a rename — `sync` re-anchors the stored coordinates, journals an `evidence_reanchor` entry, and keeps the verdict. Only a changed body re-opens the claim. Line numbers are display metadata, not identity.
+
 ### provenance
 
 Who or what produced a fact or verdict, when, by which role/source, and from what evidence.

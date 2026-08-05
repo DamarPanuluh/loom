@@ -9,8 +9,8 @@ use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
 
-const CO_CHANGE_MAX_COMMITS: usize = 1000;
-const CO_CHANGE_GIT_TIMEOUT_SECS: u64 = 10;
+pub(crate) const CO_CHANGE_MAX_COMMITS: usize = 1000;
+pub(crate) const CO_CHANGE_GIT_TIMEOUT_SECS: u64 = 10;
 const CO_CHANGE_GIT_OUTPUT_CAP: usize = 16 * 1024 * 1024;
 
 /// Whether git history could be sampled for co-change.

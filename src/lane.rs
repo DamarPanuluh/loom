@@ -33,6 +33,10 @@ pub enum Lane {
     Triage,
     Prove,
     Elaborate,
+    /// LLM prep that clears needless ratify friction (false duplicates,
+    /// mis-marked visibility) without deciding wantedness. Served by plain
+    /// `loom next`. Human ratify follows for what remains.
+    Rectify,
     /// Where the graph's evidence and the human's recorded judgment disagree.
     /// Human-decision work; never served by plain `loom next`.
     Divergence,
@@ -57,6 +61,7 @@ impl Lane {
         Lane::Triage,
         Lane::Prove,
         Lane::Elaborate,
+        Lane::Rectify,
         Lane::Divergence,
         Lane::Audit,
         Lane::Export,
@@ -80,6 +85,7 @@ impl Lane {
             Lane::Triage => "triaged",
             Lane::Prove => "investigated",
             Lane::Elaborate => "elaborated",
+            Lane::Rectify => "rectified",
             Lane::Divergence => "converged",
             Lane::Audit => "sound",
             Lane::Export => "published",
@@ -101,6 +107,7 @@ impl Lane {
             Lane::Triage => "triage",
             Lane::Prove => "prove",
             Lane::Elaborate => "elaborate",
+            Lane::Rectify => "rectify",
             // `ratify` is the operator-facing name for the divergence queue.
             Lane::Divergence => "ratify",
             Lane::Audit => "audit",
@@ -122,6 +129,7 @@ impl Lane {
             "triage" => Some(Lane::Triage),
             "prove" => Some(Lane::Prove),
             "elaborate" => Some(Lane::Elaborate),
+            "rectify" => Some(Lane::Rectify),
             "ratify" | "divergence" => Some(Lane::Divergence),
             "audit" => Some(Lane::Audit),
             "export" => Some(Lane::Export),
@@ -146,7 +154,7 @@ impl Lane {
     /// arm by grepping the command text.
     pub fn axis(self) -> TruthAxis {
         match self {
-            Lane::Seed | Lane::Elaborate | Lane::Divergence => TruthAxis::Intent,
+            Lane::Seed | Lane::Elaborate | Lane::Rectify | Lane::Divergence => TruthAxis::Intent,
             Lane::Fix | Lane::Build | Lane::Coverage => TruthAxis::Implementation,
             Lane::Validate => TruthAxis::Proof,
             Lane::Quality | Lane::Analyze | Lane::Review | Lane::Prove => TruthAxis::Verdict,
@@ -210,6 +218,7 @@ impl Lane {
             Lane::Triage => c.triage_findings + c.inbox_new,
             Lane::Prove => c.proposed_hypotheses,
             Lane::Elaborate => c.open_elaborations,
+            Lane::Rectify => c.rectifiable_divergences,
             Lane::Divergence => c.divergences,
             Lane::Audit => c.doctor_issues + c.open_smells + c.audit_findings,
             Lane::Export => usize::from(!c.export_fresh),
@@ -261,6 +270,10 @@ impl Lane {
             Lane::Elaborate => format!(
                 "{} user-visible idea(s) with open completeness axes",
                 c.open_elaborations
+            ),
+            Lane::Rectify => format!(
+                "{} divergence(s) an LLM can clear without deciding wantedness",
+                c.rectifiable_divergences
             ),
             Lane::Divergence => format!(
                 "{} divergence(s) where judgment and evidence disagree",
@@ -329,6 +342,10 @@ pub struct LadderInputs {
     pub inbox_new: usize,
     pub proposed_hypotheses: usize,
     pub open_elaborations: usize,
+    /// Blocking divergences an LLM can clear without deciding wantedness
+    /// (false duplicates, mis-marked visibility) — the `rectify` lane.
+    pub rectifiable_divergences: usize,
+    /// Blocking divergences that still need a human decision — the `ratify` lane.
     pub divergences: usize,
     pub doctor_issues: usize,
     pub open_smells: usize,

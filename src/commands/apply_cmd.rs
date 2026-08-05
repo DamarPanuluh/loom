@@ -269,7 +269,7 @@ pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()>
             report.tags
         );
         for (name, id) in &report.intent_ids {
-            println!("  + intent '{}' [{}]", name, &id[..8.min(id.len())]);
+            println!("  + intent '{}' [{}]", name, crate::model::short(id));
         }
         if reexported {
             println!(
@@ -335,18 +335,30 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
             )?
             .into_iter()
             .next();
-        let (edge, created) = match existing {
-            Some(e) => (e, false),
-            None => (
-                store.add_edge(
-                    EdgeKind::Implements,
-                    &intent.id,
-                    &codefile.id,
-                    TruthClass::Asserted,
-                )?,
-                true,
-            ),
-        };
+        let mut update_existing_locator = false;
+        if let Some(edge) = &existing {
+            let current_role = store.grounding_role(&edge.id)?;
+            let current_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+            let locator_changed = g
+                .locator
+                .as_deref()
+                .is_some_and(|new| current_locator.as_deref() != Some(new));
+            if current_role != role
+                || (locator_changed && edge.status != crate::model::InspectionStatus::Uninspected)
+            {
+                bail!(
+                    "edge exists for intent '{}' and codefile '{}' as {} [{}] — \
+                     use `loom edge set-role {}` / `loom edge set-locator {}` or remove it first",
+                    intent.name,
+                    codefile.name,
+                    current_role,
+                    crate::model::short(&edge.id),
+                    crate::model::short(&edge.id),
+                    crate::model::short(&edge.id),
+                );
+            }
+            update_existing_locator = locator_changed;
+        }
         if let Some(loc) = &g.locator {
             if role == GroundingRole::Realizes
                 && !crate::runner::grounding_locator_resolves(store.root(), &codefile.name, loc)
@@ -358,30 +370,30 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
                     loc
                 );
             }
-            store.set_facet(
-                &edge.id,
-                TargetKind::Edge,
-                "locator",
-                loc,
+        }
+        let created = existing.is_none();
+        let edge = match existing {
+            Some(edge) => edge,
+            None => store.add_edge(
+                EdgeKind::Implements,
+                &intent.id,
+                &codefile.id,
                 TruthClass::Asserted,
-            )?;
+            )?,
+        };
+        if created || update_existing_locator {
+            if let Some(loc) = &g.locator {
+                store.set_facet(
+                    &edge.id,
+                    TargetKind::Edge,
+                    "locator",
+                    loc,
+                    TruthClass::Asserted,
+                )?;
+            }
         }
         if created && role != GroundingRole::Realizes {
             store.set_grounding_role(&edge.id, role)?;
-        } else if !created {
-            // A pre-existing edge may already carry a role. An explicitly
-            // declared role must not be silently dropped: reclassify when it
-            // differs so the settled claim re-opens under the new role's
-            // criterion, rather than leaving an evidence floor the edge no
-            // longer qualifies for.
-            let current = store.grounding_role(&edge.id)?;
-            if role != current {
-                store.reclassify_grounding(
-                    &edge.id,
-                    role,
-                    "apply batch redeclared grounding role",
-                )?;
-            }
         }
         report.groundings += 1;
         if let Some(v) = &g.verdict {
@@ -431,13 +443,55 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
         .with_context(|| format!("verdict on edge '{}'", v.edge))?;
         report.verdicts += 1;
     }
+    let adj_batch_id = if spec.adjudications.len() > 1 {
+        let mut subjects = Vec::new();
+        for a in &spec.adjudications {
+            let finding = store
+                .resolve_finding(&a.finding)
+                .with_context(|| format!("adjudication for finding '{}'", a.finding))?;
+            subjects.push(finding.id);
+        }
+        let digest = crate::batch_auth::subject_digest(&subjects);
+        let criterion = format!(
+            "apply batch adjudications ({}) — shared sealed set",
+            subjects.len()
+        );
+        let pre = crate::journal::append(
+            store.root(),
+            "batch_apply",
+            &digest,
+            serde_json::json!({
+                "operation": "adjudicate",
+                "subjects": subjects,
+                "routing_class": "mechanical_apply",
+            }),
+        )?;
+        let now = crate::journal::now_iso();
+        let envelope = crate::batch_auth::BatchAuthorization::seal(
+            crate::batch_auth::BatchClaim::Adjudication,
+            "verdict",
+            subjects,
+            "llm",
+            "llm",
+            criterion,
+            vec![format!("journal:{}", pre.id)],
+        )?
+        .with_command_id(format!("apply-adjudications:{}", spec.adjudications.len()))
+        .with_time_bounds(&now, &now)
+        .with_routing_class("mechanical_apply");
+        let entry = crate::batch_auth::append_envelope(store.root(), &envelope)?;
+        Some(entry.id)
+    } else {
+        None
+    };
     for a in &spec.adjudications {
-        super::diagnostics_cmd::adjudicate_finding(
+        super::diagnostics_cmd::adjudicate_finding_batch(
             store,
             &a.finding,
             &a.verdict,
             &a.reason,
             &a.evidence,
+            adj_batch_id.as_deref(),
         )
         .with_context(|| format!("adjudication for finding '{}'", a.finding))?;
         report.adjudications += 1;

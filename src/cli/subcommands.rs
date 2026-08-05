@@ -222,6 +222,10 @@ pub enum IntentCmd {
         /// planned | implemented | needs_change
         #[arg(long)]
         lifecycle: Option<String>,
+        /// Rectify-lane handoff: `escalated` moves a discovered behavior to
+        /// human ratify; `clear` removes the handoff marker.
+        #[arg(long)]
+        rectify: Option<String>,
         #[arg(long)]
         reason: String,
         /// Clearer words, same concept: no ripple.
@@ -286,9 +290,18 @@ pub enum CodefileCmd {
     /// Re-expand every glob ever registered and add any newly-appeared files
     /// (e.g. an endpoint an upstream just added). Run before `loom sync`.
     Rescan,
-    /// Unregister a codefile (e.g. the file was deleted on disk). Removes the
-    /// node and cascades its implements/exposes edges.
-    Remove { key: String },
+    /// Unregister a codefile (e.g. the file was deleted/renamed/split on
+    /// disk). With live asserted edges pointing at it and no --successor,
+    /// refuses and lists every blocker. With --successor, each such edge is
+    /// retargeted in place (keeping its verdict history) before the node is
+    /// removed — one recorded graph operation for a rename/split.
+    Remove {
+        key: String,
+        /// Successor codefile that now carries this file's behavior. Must be
+        /// registered (`loom codefile add <path>` first).
+        #[arg(long)]
+        successor: Option<String>,
+    },
     /// Show a codefile.
     Show { key: String },
     /// List codefiles.
@@ -383,6 +396,19 @@ pub enum EdgeCmd {
     /// carries stale_cause: rehomed.
     Rehome {
         edge_id: String,
+        #[arg(long)]
+        to: String,
+        #[arg(long)]
+        reason: String,
+    },
+    /// Re-point an asserted edge's target at a successor node — the recorded
+    /// operation of a file rename/split. In place: the edge keeps its id,
+    /// locator/role, and verdict facts; sync's reverification re-anchors
+    /// evidence that moved intact and stales what genuinely changed.
+    Retarget {
+        edge_id: String,
+        /// Successor node (name, path, id, or fragment) — typically the
+        /// renamed/split-to codefile.
         #[arg(long)]
         to: String,
         #[arg(long)]
@@ -658,6 +684,28 @@ pub enum RuleCmd {
     Remove { key: String },
     /// Stop a rule governing an intent (removes the governs edge by name).
     Unlink { rule: String, intent: String },
+    /// Judge one pre-screen hit as not-what-the-rule-means, keyed by the
+    /// matched text's content hash: judged once, it answers the same text on
+    /// every future scan (any rule×intent pair, any shifted line) and expires
+    /// by construction when the matched text changes.
+    Suppress {
+        rule: String,
+        /// The matched text as shown in the hit listing (after `    `).
+        #[arg(long)]
+        excerpt: String,
+        /// Why this hit is not what the rule means. The audit, not a formality.
+        #[arg(long)]
+        reason: String,
+    },
+    /// Withdraw a suppression; the hit re-opens on the next scan.
+    Unsuppress {
+        rule: String,
+        /// Content hash (a prefix works) or the exact matched text.
+        #[arg(long)]
+        key: String,
+    },
+    /// The auditable ledger of hit suppressions, optionally scoped to one rule.
+    Suppressions { rule: Option<String> },
 }
 
 #[derive(Subcommand, Debug)]
@@ -905,6 +953,52 @@ pub enum ProposalCmd {
     Item {
         #[command(subcommand)]
         cmd: ProposalItemCmd,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum JudgmentCmd {
+    /// Stage a proposed ratify/reject/redefine for an intent, with the
+    /// evidence a human will review. Staging is not gated — recommending is
+    /// not deciding. One live proposal per (kind, intent).
+    Propose {
+        /// ratify | reject | redefine
+        kind: String,
+        /// The intent the proposal judges (name, id, or fragment).
+        intent: String,
+        /// Why the judgment holds: reject reason, ratify evidence, or
+        /// redefine rationale. Substantive — this is what the human reviews.
+        #[arg(long)]
+        evidence: String,
+        /// The replacement statement. Required for redefine; ignored
+        /// otherwise.
+        #[arg(long)]
+        description: Option<String>,
+    },
+    /// The human's review surface: every staged proposal, oldest first,
+    /// with the exact confirm command for each.
+    Digest {
+        /// Also show decided (confirmed/withdrawn) proposals.
+        #[arg(long)]
+        all: bool,
+    },
+    /// Execute a staged proposal through the SAME human gate the direct
+    /// command demands: ratify/reject require the human's answer (mediated
+    /// via --human-decision, or the typed challenge at a solo terminal);
+    /// redefine applies the staged statement with its ripple.
+    Confirm {
+        key: String,
+        /// Exact answer the human gave in the host conversation. Required
+        /// for ratify/reject when the executor is an llm:* agent.
+        #[arg(long)]
+        human_decision: Option<String>,
+    },
+    /// Drop a staged proposal (the candidate was wrong, or the intent
+    /// changed since staging). Requires a substantive reason.
+    Withdraw {
+        key: String,
+        #[arg(long)]
+        reason: String,
     },
 }
 
@@ -1315,6 +1409,41 @@ pub enum GraphCmd {
     },
     /// List linked upstream graphs.
     List,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AuditCmd {
+    /// Seal a typed batch authorization over a legacy judgment burst.
+    ///
+    /// Requires contemporaneous evidence (journal events, apply/command
+    /// records, validation runs, import tickets). A prose note written
+    /// afterward is acknowledgment, not sufficient proof. Does not rewrite
+    /// fact timestamps.
+    AttestBurst {
+        /// Burst key as reported by audit: `{actor}@{YYYY-MM-DDTHH:MM}`.
+        subject: String,
+        /// ratification | adjudication
+        #[arg(long)]
+        claim: String,
+        /// Shared batch criterion / predicate.
+        #[arg(long)]
+        criterion: String,
+        /// Contemporaneous evidence refs (repeatable). Prefer `journal:<id>`.
+        #[arg(long = "evidence", required = true)]
+        evidence: Vec<String>,
+        /// Who authorized the batch (human for ratification).
+        #[arg(long)]
+        authority: String,
+        /// Who executed the writes (often the LOOM_AGENT / llm).
+        #[arg(long)]
+        executor: String,
+        /// Required when the batch claims mechanical routing safety.
+        #[arg(long)]
+        routing_class: Option<String>,
+        /// Permitted operation (default: ratify / verdict by claim).
+        #[arg(long)]
+        operation: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]

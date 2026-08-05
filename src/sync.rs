@@ -30,6 +30,9 @@ pub struct SyncReport {
     /// the file was rewritten) — the payoff of symbol-scoped staleness.
     pub edges_spared: usize,
     pub validations_reset: usize,
+    /// Evidence spans re-anchored to new coordinates (a move, not a rewrite) —
+    /// journaled as `evidence_reanchor`, no re-verdict demanded.
+    pub evidence_reanchored: usize,
     /// Interface surfaces whose backing code changed this run (integration monitoring).
     pub surfaces_affected: usize,
     /// Contracts (validations exercising an affected surface) reset to `not_run`.
@@ -92,6 +95,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     report.edges_staled += pass.demoted;
     report.edges_spared += pass.spared;
     report.validations_reset += pass.validations_reset;
+    report.evidence_reanchored += pass.reanchored;
     // AFTER the pass, deliberately. The anchor machinery is more precise —
     // it distinguishes a redefined symbol from a missing one and spares
     // untouched groundings — so it gets first say, and this is the backstop

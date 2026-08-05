@@ -248,7 +248,7 @@ fn print_find_hits(
                 "{:<10} {} [{}] (score {}){mark}",
                 row.kind,
                 row.name,
-                &row.id[..8],
+                crate::model::short(&row.id),
                 row.score
             );
             if row.kind == "intent" {
@@ -448,7 +448,7 @@ pub(crate) fn explain_cmd(graph: Option<&Path>, intent_key: &str, json: bool) ->
     if json {
         println!("{}", serde_json::to_string_pretty(&brief)?);
     } else {
-        println!("{} [{}]", intent.name, &intent.id[..8]);
+        println!("{} [{}]", intent.name, crate::model::short(&intent.id));
         println!("  lifecycle: {}", intent.status);
         if let Some(v) = &visibility {
             println!("  visibility: {v}");
@@ -492,7 +492,7 @@ pub(crate) fn explain_cmd(graph: Option<&Path>, intent_key: &str, json: bool) ->
             println!(
                 "    {} [{}] proof={}",
                 v["name"].as_str().unwrap_or(""),
-                &v["id"].as_str().unwrap_or("")[..8.min(v["id"].as_str().unwrap_or("").len())],
+                crate::model::short(v["id"].as_str().unwrap_or("")),
                 v["status"].as_str().unwrap_or("")
             );
         }
@@ -733,6 +733,15 @@ mod tests {
     use crate::grammar::{
         ACTIVE_LIFECYCLES, ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
     };
+
+    #[test]
+    fn empty_json_validation_id_formats_without_panicking() {
+        let validation = serde_json::json!({});
+        assert_eq!(
+            crate::model::short(validation["id"].as_str().unwrap_or("")),
+            ""
+        );
+    }
 
     #[test]
     fn schema_json_grammar_uses_the_write_gate_tables() {

@@ -4,6 +4,7 @@
 //! ring-2 invariant because it requires `sync`; it is verified there.
 
 use loom::cli::{Cli, Command, IntentCmd};
+use loom::journal;
 use loom::model::{
     Claim, EdgeKind, Facet, InspectionStatus, NodeType, Tag, TargetKind, TruthClass,
 };
@@ -300,6 +301,75 @@ fn import_refuses_nonempty_graph() {
 fn malformed_import_is_rejected_loudly() {
     assert!(Export::from_json("{ not valid json").is_err());
     assert!(Export::from_json(r#"{"format":1}"#).is_err()); // missing required fields
+}
+
+#[test]
+fn journal_collision_fails_before_graph_restore_and_corrected_import_can_retry() {
+    let source = Tmp::new();
+    let source_store = Store::init(source.path(), Some("source"), false).unwrap();
+    let imported_id = seed_intent(&source_store, "imported behavior");
+    let mut export = Export::from_snapshot(source_store.snapshot().unwrap());
+    let colliding = journal::Entry {
+        id: "colliding-export-journal-id".into(),
+        ts: "1000".into(),
+        actor: "exporter".into(),
+        event: "ratification".into(),
+        target_id: imported_id.clone(),
+        payload: serde_json::json!({"decision": "accepted"}),
+        origin: journal::Origin::Local,
+    };
+    export.journal.push(colliding.clone());
+    let export_file = source.path().join("collision-export.json");
+    std::fs::write(&export_file, export.to_json().unwrap()).unwrap();
+
+    let destination = Tmp::new();
+    journal::append(
+        destination.path(),
+        "local authority",
+        "local-target",
+        serde_json::json!({}),
+    )
+    .unwrap();
+    // Preserve the locally-minted row's authority but force the exported id so
+    // import preflight encounters the collision before Store::init/restore.
+    let mut local = journal::read(destination.path()).unwrap().remove(0);
+    local.id.clone_from(&colliding.id);
+    let journal_file = journal::path(destination.path());
+    std::fs::write(
+        &journal_file,
+        format!("{}\n", serde_json::to_string(&local).unwrap()),
+    )
+    .unwrap();
+
+    let failed = loom::commands::run(Cli {
+        graph: Some(destination.path().to_path_buf()),
+        json: false,
+        command: Some(Command::Import {
+            file: export_file.clone(),
+            repair_orphans: false,
+        }),
+    })
+    .unwrap_err();
+    assert!(failed.to_string().contains("existing provenance is local"));
+    assert!(
+        !destination.path().join(".loom/graph.sqlite").exists(),
+        "journal validation must fail before Store::init creates graph state"
+    );
+
+    export.journal.clear();
+    std::fs::write(&export_file, export.to_json().unwrap()).unwrap();
+    loom::commands::run(Cli {
+        graph: Some(destination.path().to_path_buf()),
+        json: false,
+        command: Some(Command::Import {
+            file: export_file,
+            repair_orphans: false,
+        }),
+    })
+    .expect("corrected import can retry after preflight rejection");
+    let restored = Store::open(destination.path()).unwrap();
+    assert!(restored.get_node(&imported_id).unwrap().is_some());
+    assert_eq!(restored.list_nodes(None, 100).unwrap().len(), 1);
 }
 
 // ---- import soft-ref + repair -------------------------------------------

@@ -23,7 +23,7 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         "new",
         serde_json::json!({ "source": "human" }),
     )?;
-    let short = &item.id[..8.min(item.id.len())];
+    let short = crate::model::short(&item.id);
     // Routing context: the closest existing intents, the compass, and a landing
     // menu of prefilled commands. The caller (usually the PM-side model) picks
     // ONE landing, runs it, then marks the capture routed — nothing is decided
@@ -111,7 +111,7 @@ fn print_door_text(
     weak_matches: &[&(usize, String, String, String)],
     mark_routed: &str,
 ) {
-    println!("captured inbox item [{}]", &item.id[..8.min(item.id.len())]);
+    println!("captured inbox item [{}]", crate::model::short(&item.id));
     println!("  {DOOR_CAPABILITY}");
     for (label, matches) in [
         ("closest intents", strong_matches),
@@ -127,7 +127,7 @@ fn print_door_text(
             } else {
                 format!("weak score {score}; prefer new_intent unless this truly refines it")
             };
-            println!("    - {} [{}] ({qualifier})", name, &id[..8.min(id.len())]);
+            println!("    - {} [{}] ({qualifier})", name, crate::model::short(id));
         }
     }
     println!("  landings:");
@@ -174,7 +174,7 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
                 json,
                 serde_json::json!({ "inbox_item": node_json(&item) }),
                 "return to the current work item; triage routes it later",
-                format!("inbox item [{}]", &item.id[..8]),
+                format!("inbox item [{}]", crate::model::short(&item.id)),
             )
         }
         InboxCmd::List {
@@ -205,7 +205,12 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
                     println!("inbox empty");
                 }
                 for n in &items {
-                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                    println!(
+                        "{:<10} {} [{}]",
+                        n.status,
+                        n.name,
+                        crate::model::short(&n.id)
+                    );
                 }
                 if let Some(footer) = super::page_footer(items.len(), offset, total) {
                     println!("{footer}");
@@ -218,7 +223,12 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
             if json {
                 println!("{}", serde_json::to_string_pretty(&inbox_json(&n))?);
             } else {
-                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                println!(
+                    "{:<10} {} [{}]",
+                    n.status,
+                    n.name,
+                    crate::model::short(&n.id)
+                );
                 println!("{}", n.description);
             }
             Ok(())
@@ -245,7 +255,7 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
                 json,
                 serde_json::json!({ "id": n.id, "status": status, "reason": reason }),
                 "loom status",
-                format!("inbox item '{}' → {status}", &n.id[..8]),
+                format!("inbox item '{}' → {status}", crate::model::short(&n.id)),
             )
         }
         InboxCmd::Remove { key } => {
@@ -256,7 +266,7 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
                 json,
                 serde_json::json!({ "removed": n.id }),
                 "loom status",
-                format!("removed inbox item [{}]", &n.id[..8]),
+                format!("removed inbox item [{}]", crate::model::short(&n.id)),
             )
         }
     }
@@ -301,7 +311,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
             )?;
             let next_step = format!(
                 "ask the human, then loom question answer {} --answer '…'",
-                &question.id[..8.min(question.id.len())]
+                crate::model::short(&question.id)
             );
             pulse::emit_line(
                 &store,
@@ -313,7 +323,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                 &next_step,
                 format!(
                     "question [{}] opened for '{}'",
-                    &question.id[..8.min(question.id.len())],
+                    crate::model::short(&question.id),
                     intent.name
                 ),
             )
@@ -343,7 +353,12 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                     println!("questions empty");
                 }
                 for n in &items {
-                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                    println!(
+                        "{:<10} {} [{}]",
+                        n.status,
+                        n.name,
+                        crate::model::short(&n.id)
+                    );
                 }
                 if let Some(footer) = super::page_footer(items.len(), offset, total) {
                     println!("{footer}");
@@ -359,7 +374,12 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                     serde_json::to_string_pretty(&question_json(&store, &n)?)?
                 );
             } else {
-                println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                println!(
+                    "{:<10} {} [{}]",
+                    n.status,
+                    n.name,
+                    crate::model::short(&n.id)
+                );
                 println!("{}", n.description);
             }
             Ok(())
@@ -377,7 +397,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                 json,
                 serde_json::json!({ "id": n.id, "status": "answered", "answer": answer }),
                 "loom status",
-                format!("question [{}] answered", &n.id[..8]),
+                format!("question [{}] answered", crate::model::short(&n.id)),
             )
         }
         QuestionCmd::Close {
@@ -403,7 +423,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                 json,
                 serde_json::json!({ "id": n.id, "status": status, "reason": reason }),
                 "loom status",
-                format!("question [{}] → {status}", &n.id[..8]),
+                format!("question [{}] → {status}", crate::model::short(&n.id)),
             )
         }
         QuestionCmd::Remove { key } => {
@@ -414,7 +434,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                 json,
                 serde_json::json!({ "removed": n.id }),
                 "loom status",
-                format!("removed question [{}]", &n.id[..8]),
+                format!("removed question [{}]", crate::model::short(&n.id)),
             )
         }
     }
@@ -499,7 +519,10 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
                     "target": { "id": target_id, "name": target_name },
                 }),
                 "loom status",
-                format!("noted {kind} on '{target_name}' [{}]", &note.id[..8]),
+                format!(
+                    "noted {kind} on '{target_name}' [{}]",
+                    crate::model::short(&note.id)
+                ),
             )
         }
         NoteCmd::Remove { id } => {
@@ -516,7 +539,7 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
                 format!(
                     "removed accidental note '{}' [{}]",
                     note.description,
-                    &note.id[..8]
+                    crate::model::short(&note.id)
                 ),
             )
         }
@@ -558,7 +581,12 @@ pub(crate) fn note(graph: Option<&Path>, cmd: NoteCmd, json: bool) -> Result<()>
                     println!("no notes");
                 }
                 for n in &notes {
-                    println!("{:<9} {} [{}]", n.status, n.description, &n.id[..8]);
+                    println!(
+                        "{:<9} {} [{}]",
+                        n.status,
+                        n.description,
+                        crate::model::short(&n.id)
+                    );
                 }
                 if let Some(footer) = super::page_footer(notes.len(), offset, total) {
                     println!("{footer}");
@@ -600,7 +628,7 @@ fn task_outcome_note(
         &format!(
             "{kind} '{}' [{}] {outcome}: {text}",
             task.name,
-            &task.id[..8],
+            crate::model::short(&task.id),
         ),
     )?;
     Ok(())
@@ -652,7 +680,7 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
                     "target": target.as_ref().map(|n| serde_json::json!({ "id": n.id, "name": n.name })),
                 }),
                 "loom status",
-                format!("task [{}] {}", &t.id[..8], t.name),
+                format!("task [{}] {}", crate::model::short(&t.id), t.name),
             )
         }
         TaskCmd::SourceAdd {
@@ -764,7 +792,11 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
                     "task": node_json(&t),
                 }),
                 "loom status",
-                format!("removed accidental task '{}' [{}]", t.name, &t.id[..8]),
+                format!(
+                    "removed accidental task '{}' [{}]",
+                    t.name,
+                    crate::model::short(&t.id)
+                ),
             )
         }
         TaskCmd::Show { key } => {
@@ -794,7 +826,12 @@ pub(crate) fn task(graph: Option<&Path>, cmd: TaskCmd, json: bool) -> Result<()>
                     println!("no tasks");
                 }
                 for n in &tasks {
-                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                    println!(
+                        "{:<10} {} [{}]",
+                        n.status,
+                        n.name,
+                        crate::model::short(&n.id)
+                    );
                 }
                 if let Some(footer) = super::page_footer(tasks.len(), offset, total) {
                     println!("{footer}");

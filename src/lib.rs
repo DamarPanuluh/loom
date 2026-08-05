@@ -16,10 +16,12 @@ pub mod absorb;
 pub mod anchor;
 pub mod artifact;
 pub mod audit;
+pub mod batch_auth;
 pub mod callgraph;
 pub mod cli;
 pub mod commands;
 pub mod completeness;
+pub mod coverage;
 pub mod deriver;
 pub mod divergence;
 pub mod evidence;
@@ -27,9 +29,11 @@ pub mod extract;
 pub mod federation;
 pub mod fsglob;
 pub mod grammar;
+pub mod harness;
 pub mod journal;
 pub mod journey;
 pub mod lane;
+pub mod limits;
 pub mod locator;
 pub mod maturity;
 pub mod mcp;
@@ -49,6 +53,7 @@ pub mod runner;
 pub mod scan;
 pub mod seed;
 pub mod signal;
+pub mod statistics;
 pub mod store;
 pub mod subprocess;
 pub mod sync;
@@ -64,7 +69,7 @@ pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 /// The on-disk schema version stamped into every graph. Bumped when the SQLite
 /// schema changes in a way that requires migration.
-pub const SCHEMA_VERSION: u32 = 6;
+pub const SCHEMA_VERSION: u32 = 9;
 
 /// Directory holding the local graph store, relative to a project root.
 pub const LOOM_DIR: &str = ".loom";
@@ -74,3 +79,7 @@ pub const GRAPH_DB: &str = "graph.sqlite";
 
 /// The committed, portable export filename at the project root.
 pub const GRAPH_EXPORT: &str = "loom.graph.json";
+
+/// Process exit code for infrastructure contention (graph or proof-harness
+/// lock), distinct from a failed proof or command error.
+pub const LOCK_CONTENTION_EXIT_CODE: i32 = 75;

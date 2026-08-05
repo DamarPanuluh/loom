@@ -27,7 +27,16 @@ fn graph(root: &std::path::Path) -> String {
             "an order can be placed",
             "a behavior",
             "implemented",
-            serde_json::json!({}),
+            serde_json::json!({ "level": "feature" }),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "level",
+            "feature",
+            TruthClass::Asserted,
         )
         .unwrap();
     let cf = store
@@ -93,6 +102,24 @@ fn loom_bin() -> std::path::PathBuf {
     p.join("loom")
 }
 
+fn cli_json(root: &std::path::Path, args: &[&str]) -> serde_json::Value {
+    let out = std::process::Command::new(loom_bin())
+        .arg("--graph")
+        .arg(root)
+        .arg("--json")
+        .args(args)
+        .output()
+        .expect("spawn loom CLI");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    serde_json::from_str(&stdout).unwrap_or_else(|e| {
+        panic!(
+            "loom {:?} did not emit JSON: {e}\n--stdout--\n{stdout}\n--stderr--\n{}",
+            args,
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
 /// The command that runs is the command that was typed.
 ///
 /// Joining argv on spaces looks right and is wrong: it hands
@@ -139,6 +166,48 @@ fn an_observed_run_binds_and_grades_as_liveness() {
         .list_nodes(Some(NodeType::Validation), usize::MAX)
         .unwrap();
     assert_eq!(vals.len(), 1, "one proof, minted by the observation");
+    drop(store);
+
+    let next = cli_json(tmp.path(), &["next", "--mode", "validate"]);
+    let item = &next["work_item"];
+    assert_eq!(item["mode"], "validate", "{next}");
+    for field in ["reason", "prompt_contract"] {
+        assert!(!item[field].is_null(), "{field} is present: {next}");
+    }
+    assert!(
+        item["reason"]
+            .as_str()
+            .unwrap_or("")
+            .contains("ran and passed")
+            && item["reason"].as_str().unwrap_or("").contains("S1")
+            && item["reason"].as_str().unwrap_or("").contains("S2"),
+        "packet explains weak passing proof: {next}"
+    );
+    assert!(
+        item["prompt_contract"]["write_back"]
+            .as_str()
+            .unwrap_or("")
+            .contains("validation update")
+            && item["prompt_contract"]["stop_condition"]
+                .as_str()
+                .unwrap_or("")
+                .contains("S2"),
+        "contract instructs strengthening to meaningful proof: {next}"
+    );
+
+    let cards = cli_json(tmp.path(), &["completeness", "an order can be placed"]);
+    let proof_axis = cards[0]["axes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|axis| axis["axis"] == "proof")
+        .unwrap();
+    assert_eq!(proof_axis["state"], "open", "{cards}");
+    assert!(
+        proof_axis["detail"].as_str().unwrap_or("").contains("S1")
+            && proof_axis["detail"].as_str().unwrap_or("").contains("S2"),
+        "completeness reports the passing proof as weak: {cards}"
+    );
 }
 
 /// Running the same command twice updates one proof rather than littering the

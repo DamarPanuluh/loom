@@ -69,7 +69,11 @@ pub(super) fn elaborator_contract(
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: "autonomous gap: one command per open axis; product decision: add the Question, ask the user, then record their reply with loom question answer; finally loom status".into(),
+        write_back: format!(
+            "autonomous gap: one command per open axis (see the scorecard); product decision: \
+             loom question add \"<one crisp question>\" --intent {name}, ask the user, then \
+             loom question answer <question> --answer '<their reply>'; finally loom status"
+        ),
         stop_condition: "if a product decision is needed, record it, ask ONE question, and wait for the user; otherwise, after addressing every open axis, return to loom status".into(),
         human_gate: None,
     }
@@ -642,32 +646,77 @@ pub(super) fn validator_contract(
     })
 }
 
-/// An implemented intent carrying no passing proof. Distinct from
-/// `validator_contract`, which re-runs an EXISTING proof: here the proof itself
-/// is the missing form, so the packet's job is to get one registered and run.
-pub(super) fn unproven_contract(intent: &Node, has_registered_proof: bool) -> PromptContract {
+/// Contract for an implemented intent whose proof floor is still open. Distinct
+/// from `validator_contract`, which re-runs an EXISTING pending proof: here the
+/// proof must be added or strengthened (or, for user-visible behavior, raised
+/// from meaningful S2 to end-to-end S3).
+pub(super) fn unproven_contract(
+    intent: &Node,
+    proof: crate::proofstrength::ProofAssessment,
+) -> PromptContract {
     let name = q(&intent.name);
+    let weak_passing = proof.any_passing && !proof.meaningful_passing;
+    let end_to_end_gap = proof.meaningful_passing;
+    let best = proof
+        .best_passing_strength
+        .unwrap_or(crate::proofstrength::Strength::S0)
+        .as_str();
     PromptContract {
         role: "validator".into(),
-        mindset: "An implemented claim with no passing proof is a claim, not truth. Write a proof \
-                  that would FAIL if this behavior broke — a check that only asserts the process \
-                  exited 0 proves liveness, not behavior."
-            .into(),
-        why_now: if has_registered_proof {
+        mindset: if end_to_end_gap {
+            "This user-visible behavior has meaningful proof, but not an end-to-end journey that reaches the code it claims to prove. Add or strengthen a journey with output/content assertions, run it through the real path, and rerun until it earns S3.".into()
+        } else if weak_passing {
+            format!(
+                "This proof ran and passed, but its {best} grade proves only liveness. Strengthen \
+                 the proof so it would FAIL if this behavior broke: add an output/content assertion, \
+                 update or replace the registered command/spec, and rerun it."
+            )
+        } else {
+            "An implemented claim with no passing proof is a claim, not truth. Write a proof \
+             that would FAIL if this behavior broke — a check that only asserts the process \
+             exited 0 proves liveness, not behavior."
+                .into()
+        },
+        why_now: if end_to_end_gap {
+            "meaningful proof exists, but user-visible behavior still lacks an S3 end-to-end journey proof".into()
+        } else if weak_passing {
+            format!("implemented, proof ran and passed at {best}, but meaningful proof requires S2")
+        } else if proof.any_registered {
             "implemented, proof registered, none passing".into()
         } else {
             "implemented with no registered proof at all".into()
         },
-        allowed_actions: vec![
-            format!("loom intent show {}", q(&intent.id)),
-            "read the grounded files listed in this packet's read set".into(),
-            format!(
-                "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent {name}"
-            ),
-            format!("loom validation run {name}"),
-            "for a user-visible flow: loom journey add <spec> then loom journey run <spec>".into(),
-            FINDING_ADD_ACTION.into(),
-        ],
+        allowed_actions: {
+            let mut actions = vec![
+                format!("loom intent show {}", q(&intent.id)),
+                "read the grounded files listed in this packet's read set".into(),
+            ];
+            if end_to_end_gap {
+                actions.extend([
+                    "add or strengthen a journey whose steps assert output/content and whose call closure reaches the grounded behavior".into(),
+                    "loom journey add <spec> then loom journey run <spec>".into(),
+                ]);
+            } else if weak_passing {
+                actions.extend([
+                    "strengthen or replace the proof with an output/content assertion (for example stdout_contains/body/exists, or a runner command that reports passing assertions)".into(),
+                    "loom validation update <validation> --command '<command whose output/content assertion establishes the behavior>'".into(),
+                    format!("loom validation run {name}"),
+                ]);
+            } else {
+                actions.extend([
+                    format!(
+                        "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent {name}"
+                    ),
+                    format!("loom validation run {name}"),
+                ]);
+            }
+            actions.extend([
+                "for a user-visible flow: loom journey add <spec> then loom journey run <spec>"
+                    .into(),
+                FINDING_ADD_ACTION.into(),
+            ]);
+            actions
+        },
         forbidden_actions: vec![
             "recording a passing result without running the command".into(),
             "asserting only an exit code when the behavior has observable output".into(),
@@ -676,9 +725,7 @@ pub(super) fn unproven_contract(intent: &Node, has_registered_proof: bool) -> Pr
         ],
         evidence_clauses: vec![
             EvidenceClause::CitesRun,
-            EvidenceClause::ProofStrengthAtLeast {
-                grade: "S2".into(),
-            },
+            EvidenceClause::ProofStrengthAtLeast { grade: "S2".into() },
         ],
         required_evidence:
             "the command loom ran, its exit status, and the assertion that would have caught a \
@@ -688,10 +735,22 @@ pub(super) fn unproven_contract(intent: &Node, has_registered_proof: bool) -> Pr
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!(
-            "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent {name}  then  loom validation run {name}"
-        ),
-        stop_condition: "stop once one proof for this intent has actually run".into(),
+        write_back: if end_to_end_gap {
+            "loom journey add <spec with output/content assertions over the real path>  then  loom journey run <spec>".into()
+        } else if weak_passing {
+            format!(
+                "loom validation update <validation> --command '<stronger command with an output/content assertion>'  then  loom validation run {name}  (or add a new S2+ proof)"
+            )
+        } else {
+            format!(
+                "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent {name}  then  loom validation run {name}"
+            )
+        },
+        stop_condition: if end_to_end_gap {
+            "stop when the user-visible intent has a passing end-to-end journey proof at S3 or stronger".into()
+        } else {
+            "stop when this intent has a passing meaningful proof at S2 or stronger; an S1 run is liveness only".into()
+        },
         human_gate: None,
     }
 }
@@ -847,7 +906,7 @@ pub(super) fn structural_finding_triage_contract(id: &str) -> PromptContract {
 /// mediated by an LLM. The host-facing gate is structured so the LLM can offer
 /// useful choices and a recommendation, wait, then perform the typed write.
 pub(super) fn ratify_contract(intent: &Node) -> PromptContract {
-    let id = &intent.id[..8.min(intent.id.len())];
+    let id = crate::model::short(&intent.id);
     PromptContract {
         role: "human".into(),
         mindset: "Product authority. The LLM summarizes the evidence, recommends one option with reasons, asks the human, waits, then records the human's answer. It may execute the write; it may not choose the answer."
@@ -907,6 +966,74 @@ pub(super) fn ratify_contract(intent: &Node) -> PromptContract {
     }
 }
 
+/// Prep lane: shrink the human ratify queue. Never invents wantedness.
+pub(super) fn rectify_contract(intent: &Node, kind: &str) -> PromptContract {
+    let id = crate::model::short(&intent.id);
+    let name = q(&intent.name);
+    let mut allowed_actions = vec![
+        format!("loom intent show {id}"),
+        format!("loom intent update {id} --visibility internal --reason '<why this is not user-facing product surface>'"),
+        format!("loom intent update {id} --rectify escalated --reason '<why a human must decide wantedness>'"),
+        format!("loom edge relate scenario-of {name} <parent-intent>"),
+        format!("loom edge relate relates {name} <sibling-intent>"),
+        format!("loom edge explore {name} <peer> ground --criterion '…' --evidence 'file:line — …' --confidence <0.0-1.0>"),
+        format!("loom intent retire {id} --reason '<duplicate of better-named intent>' --replaced-by <keeper>"),
+        format!("loom intent update {id} --description '<sharper falsifiable criterion>' --reword --reason '<same meaning, clearer words>'"),
+    ];
+    if kind == "duplicate_intent" {
+        allowed_actions.push(format!(
+            "loom intent update {id} --rectify clear --reason '<description discriminator proving these intents are distinct>'"
+        ));
+    }
+    PromptContract {
+        role: "rectify".into(),
+        mindset: "Clear NEEDLESS ratify friction. Structural fixes only — false duplicates, \
+                  mis-marked visibility, missing scenario_of/relates. If the behavior is a \
+                  real user-visible product call that an LLM cannot honestly decide, escalate \
+                  it to the human ratify lane. Never invent a yes or no on wantedness."
+            .into(),
+        why_now: format!(
+            "blocking divergence '{kind}' looks like prep work, not a product decision yet"
+        ),
+        allowed_actions,
+        forbidden_actions: vec![
+            "loom intent ratify (INV-8 — wantedness is human-only)".into(),
+            "loom intent reject (that is a product decision; escalate instead)".into(),
+            "supplying --human-decision or treating obviousness as ratification".into(),
+            "editing production code to silence a divergence".into(),
+            "loom edge implement (rectify does not ground new behavior)".into(),
+        ],
+        evidence_clauses: vec![
+            EvidenceClause::Prose,
+            EvidenceClause::VerificationAtLeast {
+                level: "cited".into(),
+            },
+        ],
+        required_evidence: "file:line (or graph structure) showing why the friction was false, \
+                            or a concrete reason the human must decide"
+            .into(),
+        evidence_template: None,
+        examples: None,
+        pre_screen: None,
+        pre_screened_hits: Vec::new(),
+        write_back: if kind == "duplicate_intent" {
+            format!(
+                "record the pair-specific discriminator with `loom intent update {id} \
+                 --rectify clear --reason '…'`, or apply a structural fix (scenario-of / retire / reword)"
+            )
+        } else {
+            format!(
+                "structural fix (visibility / scenario-of / retire / reword) OR \
+                 loom intent update {id} --rectify escalated --reason '…'"
+            )
+        },
+        stop_condition: "after the write, return to loom status. If escalated, the item \
+                         leaves rectify and appears on loom next --mode ratify"
+            .into(),
+        human_gate: None,
+    }
+}
+
 pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
     PromptContract {
         role: "analyzer".into(),
@@ -937,7 +1064,8 @@ pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
 /// The deepen contract. Unlike every other lane, this one does not close a gap
 /// — it raises a floor that is already met, so the stop condition is a single
 /// move rather than an empty queue.
-pub(super) fn deepen_contract(id: &str, next_move: &str) -> PromptContract {
+pub(super) fn deepen_contract(id: &str, name: &str, next_move: &str) -> PromptContract {
+    let name = q(name);
     PromptContract {
         role: "validator".into(),
         mindset: "This behavior is already green. You are not fixing it — you are making \
@@ -971,7 +1099,13 @@ pub(super) fn deepen_contract(id: &str, next_move: &str) -> PromptContract {
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!("the move for this behavior is: {next_move}"),
+        write_back: format!(
+            "the move for this behavior is: {next_move} — close it with one proof move: \
+             loom validation add --intent {name} --name '<what it proves>' --type test \
+             --command '<cmd>' then loom validation run <name>; or loom journey add <spec> \
+             for the behavior; or loom journey freeze <journey> to pin the baseline. \
+             loom sync then re-grades the proof and re-ranks this queue"
+        ),
         stop_condition: "stop after ONE move — this queue re-ranks after every change, \
                          and the next-most-important thing is probably no longer this one"
             .into(),
@@ -1008,7 +1142,17 @@ pub(super) fn audit_contract(remedy: &str) -> PromptContract {
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: remedy.to_string(),
+        // Uniform adjudicability: every audit packet's write_back names a
+        // runnable closeout. Remedies that already name one keep it; prose
+        // remedies get the universal state-closure: fix, then re-read the
+        // record — the finding must be absent.
+        write_back: if remedy.contains("loom ") {
+            remedy.to_string()
+        } else {
+            format!(
+                "{remedy}; close: fix per the remedy, then loom audit --json — the finding must be absent"
+            )
+        },
         stop_condition: "stop when the claim is either anchored or withdrawn — never when \
                          it merely stops being reported"
             .into(),

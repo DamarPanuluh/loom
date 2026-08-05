@@ -18,7 +18,7 @@
 //! after next.
 
 use crate::journey::{Expect, JourneySpec};
-use crate::model::{EdgeKind, Node, NodeType, TargetKind};
+use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
 use serde::{Deserialize, Serialize};
@@ -84,6 +84,48 @@ impl Strength {
     /// axis, journey coverage, and the shallow-proof smell hold out for —
     /// everywhere the old code read `proof_level in {L5, L6}`.
     pub const END_TO_END: Strength = Strength::S3;
+}
+
+/// Summary of the registered proof state for one intent.
+///
+/// This is deliberately small: callers still own their presentation, while the
+/// business decision about whether a passing proof is meaningful lives here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProofAssessment {
+    pub any_registered: bool,
+    pub any_passing: bool,
+    pub best_passing_strength: Option<Strength>,
+    pub meaningful_passing: bool,
+}
+
+/// Assess all validations registered for one intent.
+///
+/// A passing edge below [`Strength::MEANINGFUL`] is still useful evidence that
+/// the command ran, but it establishes only liveness and does not close the
+/// proof gate.
+pub fn assess(store: &Store, intent_id: &str) -> Result<ProofAssessment> {
+    let proofs = store.edges_with(Some(EdgeKind::Validates), None, Some(intent_id))?;
+    let mut best_passing_strength = None;
+    for edge in &proofs {
+        if edge.status != InspectionStatus::Passing {
+            continue;
+        }
+        let strength = of(store, &edge.from_id)?;
+        best_passing_strength = Some(
+            best_passing_strength
+                .map(|best: Strength| best.max(strength))
+                .unwrap_or(strength),
+        );
+    }
+    let any_passing = best_passing_strength.is_some();
+    let meaningful_passing =
+        best_passing_strength.is_some_and(|strength| strength >= Strength::MEANINGFUL);
+    Ok(ProofAssessment {
+        any_registered: !proofs.is_empty(),
+        any_passing,
+        best_passing_strength,
+        meaningful_passing,
+    })
 }
 
 /// Every conjunct, recorded. The point is that a grade can be argued with.

@@ -1405,6 +1405,7 @@ fn intent_set_corrects_facets() {
                 visibility: Some("internal".into()),
                 aspect: None,
                 lifecycle: None,
+                rectify: None,
                 reason: "attribute correction".into(),
                 reword: false,
             },

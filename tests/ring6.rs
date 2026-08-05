@@ -1940,13 +1940,14 @@ routes:
     );
 }
 
-// ---- journey add soft intent resolution -----------------------------------
+// ---- journey add validates graph references at registration ---------------
 //
-// `journey add` must not fail when step intents don't resolve to graph nodes.
-// It should report unmatched steps and create the Validation node anyway.
+// A step intent that does not resolve can never be proven by any run, so
+// registration refuses the spec BEFORE any write — the failure belongs at
+// authoring time, not at execution.
 
 #[test]
-fn journey_add_tolerates_unresolved_intents() {
+fn journey_add_refuses_unresolvable_step_intents_before_any_write() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     // Only add ONE intent; leave the other unresolvable.
@@ -1978,27 +1979,89 @@ fn journey_add_tolerates_unresolved_intents() {
     )
     .unwrap();
 
-    let out = run_cli_json(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
-    assert!(out["added"] == true, "journey add succeeded: {out}");
-    assert_eq!(out["linked_steps"], 1, "one intent resolved: {out}");
-    let unmatched = out["unmatched_steps"].as_array().unwrap();
-    assert_eq!(unmatched.len(), 1, "one step unmatched: {out}");
-    assert_eq!(
-        unmatched[0]["intent"],
-        "Consumer records a verified peer vouch through the four-method seam",
-        "the unmatched intent is reported: {unmatched:?}"
+    let out = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")))
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["journey", "add", spec_path.to_str().unwrap()])
+        .output()
+        .expect("spawn loom journey add");
+    assert!(
+        !out.status.success(),
+        "an unprovable spec must be refused at registration"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("Consumer records a verified peer vouch through the four-method seam"),
+        "the refusal names the unresolvable intent text: {stderr}"
+    );
+    assert!(
+        stderr.contains("not registrable"),
+        "the refusal says why: {stderr}"
+    );
+    assert!(
+        stderr.contains("loom intent add"),
+        "the refusal names the remedy: {stderr}"
     );
 
-    // The Validation node exists and is usable despite the unmatched step.
+    // Nothing was written: no validation node, no edges.
+    let store = Store::open(tmp.path()).unwrap();
+    assert!(
+        store
+            .resolve_node("soft-resolution", Some(NodeType::Validation))
+            .is_err(),
+        "a refused registration leaves no validation node behind"
+    );
+}
+
+#[test]
+fn journey_add_links_every_step_once_all_intents_resolve() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _known = intent(&store, "register a person", "implemented");
+    let _other = intent(
+        &store,
+        "Consumer records a verified peer vouch through the four-method seam",
+        "implemented",
+    );
+    drop(store);
+
+    let spec_path = tmp.path().join("full.contract.json");
+    std::fs::write(
+        &spec_path,
+        serde_json::json!({
+            "name": "full-resolution",
+            "base": "http://127.0.0.1:0",
+            "routes": [
+                {
+                    "method": "POST",
+                    "path": "/v1/persons",
+                    "intent": "register a person",
+                    "success_status": 201
+                },
+                {
+                    "method": "GET",
+                    "path": "/v1/vouches",
+                    "intent": "Consumer records a verified peer vouch through the four-method seam",
+                    "success_status": 200
+                }
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let out = run_cli_json(tmp.path(), &["journey", "add", spec_path.to_str().unwrap()]);
+    assert!(out["added"] == true, "journey add succeeded: {out}");
+    assert_eq!(out["linked_steps"], 2, "both intents resolved: {out}");
+
     let store = Store::open(tmp.path()).unwrap();
     let journey = store
-        .resolve_node("soft-resolution", Some(NodeType::Validation))
+        .resolve_node("full-resolution", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(journey.status, "not_run");
     let validates = store
         .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
         .unwrap();
-    assert_eq!(validates.len(), 1, "only the resolved intent is linked");
+    assert_eq!(validates.len(), 2, "every resolved intent is linked");
 }
 
 #[test]

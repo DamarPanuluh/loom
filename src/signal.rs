@@ -35,6 +35,7 @@ pub struct Smell {
 #[path = "signal/debt.rs"]
 mod debt;
 pub use debt::{debt, debt_cluster_id, DebtCluster};
+pub(crate) use debt::{CO_CHANGE_MAX_COMMITS, GIT_TIMEOUT_SECS};
 
 /// A doctor finding: an integrity violation.
 #[derive(Debug, Clone, Serialize)]
@@ -1541,19 +1542,5 @@ fn layer_order(store: &Store) -> Result<Option<Vec<String>>> {
             })
         }
         None => Ok(None),
-    }
-}
-
-pub(crate) fn quantile(sorted: &[f64], q: f64) -> f64 {
-    if sorted.is_empty() {
-        return 0.0;
-    }
-    let pos = q * (sorted.len() - 1) as f64;
-    let lo = pos.floor() as usize;
-    let hi = pos.ceil() as usize;
-    if lo == hi {
-        sorted[lo]
-    } else {
-        sorted[lo] + (pos - lo as f64) * (sorted[hi] - sorted[lo])
     }
 }

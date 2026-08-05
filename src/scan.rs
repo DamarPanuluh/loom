@@ -20,7 +20,7 @@ const DEFAULT_MAP: &str =
 /// A bare `file:line[:col]` location with no trailing message — the first half
 /// of a two-line diagnostic (svelte-check-style human output).
 const LOCATION_ONLY_MAP: &str = r"^(?P<file>(?:[A-Za-z]:)?[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?\s*$";
-const SCAN_TIMEOUT_SECS: u64 = 120;
+pub(crate) const SCAN_TIMEOUT_SECS: u64 = 120;
 const TITLE_MSG_LIMIT: usize = 96;
 
 /// How an adapter's output is parsed into diagnostics.
@@ -596,7 +596,9 @@ fn run_adapter_command(
         crate::subprocess::run(&script, root, Duration::from_secs(SCAN_TIMEOUT_SECS))
             .with_context(|| format!("running scan adapter '{adapter_name}'"))?
     else {
-        bail!("scan adapter '{adapter_name}' timed out after {SCAN_TIMEOUT_SECS}s");
+        bail!(
+            "killed: scan adapter '{adapter_name}' exceeded scan_timeout_secs={SCAN_TIMEOUT_SECS}"
+        );
     };
     Ok((
         String::from_utf8_lossy(&captured.stdout).into_owned(),

@@ -42,7 +42,7 @@ pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     "adjudicate": if *materialized {
                         format!(
                             "loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'",
-                            &id[..8.min(id.len())]
+                            crate::model::short(id)
                         )
                     } else {
                         "loom sync   (materializes this smell as a finding first)".to_string()
@@ -66,7 +66,7 @@ pub(crate) fn smells_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     if *materialized {
                         println!(
                             "    adjudicate: loom finding verdict {} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'",
-                            &id[..8.min(id.len())]
+                            crate::model::short(id)
                         );
                     } else {
                         println!(
@@ -149,7 +149,7 @@ fn debt_promote(
     })?;
 
     let finding = result.finding;
-    let short = &finding.id[..8.min(finding.id.len())];
+    let short = crate::model::short(&finding.id);
     let next_step = format!(
         "loom finding verdict {short} <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason '…'"
     );
@@ -353,7 +353,10 @@ fn finding_add(graph: Option<&Path>, input: FindingAddInput, json: bool) -> Resu
         json,
         serde_json::json!({ "finding": node_json(&finding) }),
         "loom next --mode triage",
-        format!("finding [{}] captured for triage", &finding.id[..8]),
+        format!(
+            "finding [{}] captured for triage",
+            crate::model::short(&finding.id)
+        ),
     )
 }
 fn finding_list(
@@ -387,7 +390,7 @@ fn finding_list(
         } else {
             for fv in &findings {
                 let stale = if fv.stale { "·STALE" } else { "" };
-                let id = &fv.node.id[..8.min(fv.node.id.len())];
+                let id = crate::model::short(&fv.node.id);
                 println!("[{}{}] {} {}", fv.state, stale, id, fv.node.name);
                 if !fv.node.description.is_empty() {
                     println!("  ↳ {}", fv.node.description);
@@ -421,12 +424,23 @@ pub(crate) fn adjudicate_finding(
     reason: &str,
     evidence: &str,
 ) -> Result<crate::model::Node> {
+    adjudicate_finding_batch(store, id, verdict, reason, evidence, None)
+}
+
+pub(crate) fn adjudicate_finding_batch(
+    store: &Store,
+    id: &str,
+    verdict: &str,
+    reason: &str,
+    evidence: &str,
+    batch_id: Option<&str>,
+) -> Result<crate::model::Node> {
     validate_finding_verdict(verdict)?;
     if crate::model::is_placeholder(reason) {
         bail!("finding verdict requires a substantive reason (not a placeholder like '…' or '<reason>')");
     }
     let finding = store.resolve_finding(id)?;
-    store.record_finding_verdict(&finding.id, verdict, reason, evidence)?;
+    store.record_finding_verdict_batch(&finding.id, verdict, reason, evidence, batch_id)?;
     Ok(finding)
 }
 fn finding_verdict(
@@ -808,7 +822,7 @@ pub(crate) fn completeness_cmd(graph: Option<&Path>, key: Option<&str>, json: bo
         println!(
             "{} [{}]  open={}",
             card.intent_name,
-            &card.intent_id[..8.min(card.intent_id.len())],
+            crate::model::short(&card.intent_id),
             card.open
         );
         for a in &card.axes {
@@ -1121,7 +1135,7 @@ pub(crate) fn impact_report(
                 .count();
             at_risk.push(serde_json::json!({
                 "intent": intent.name,
-                "id": &intent.id[..8.min(intent.id.len())],
+                "id": crate::model::short(&intent.id),
                 "proofs": proofs.len(),
                 "passing": passing,
             }));
@@ -1328,7 +1342,7 @@ pub(crate) fn absorb_cmd(graph: Option<&Path>, confirm: bool, json: bool) -> Res
     println!(
         "absorbed {} observation(s) into proposal {} ({} ready, {} need you)",
         items.len(),
-        &proposal.id[..8.min(proposal.id.len())],
+        crate::model::short(&proposal.id),
         ready.len(),
         items.len() - ready.len()
     );
@@ -1341,7 +1355,7 @@ pub(crate) fn absorb_cmd(graph: Option<&Path>, confirm: bool, json: bool) -> Res
     if confirm {
         println!(
             "\nadopt with: loom proposal item adopt {} <n>",
-            &proposal.id[..8.min(proposal.id.len())]
+            crate::model::short(&proposal.id)
         );
     }
     Ok(())

@@ -305,17 +305,41 @@ fn boundary_axis(store: &Store, intent: &Node) -> Result<AxisState> {
     }
 }
 
-/// The behavior has an observed, passing proof.
+/// The behavior has an observed, passing proof strong enough to establish
+/// behavior rather than liveness alone.
 fn proof_axis(store: &Store, intent: &Node) -> Result<AxisState> {
-    let validates = store.edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?;
-    if validates.is_empty() {
+    let proof = crate::proofstrength::assess(store, &intent.id)?;
+    if !proof.any_registered {
         return Ok(axis("proof", "open", "no validation registered".into()));
     }
+    if proof.meaningful_passing {
+        let best = proof
+            .best_passing_strength
+            .unwrap_or(crate::proofstrength::Strength::MEANINGFUL)
+            .as_str();
+        return Ok(axis(
+            "proof",
+            "met",
+            format!("passing meaningful proof on record ({best})"),
+        ));
+    }
+    if proof.any_passing {
+        let best = proof
+            .best_passing_strength
+            .unwrap_or(crate::proofstrength::Strength::S0)
+            .as_str();
+        return Ok(axis(
+            "proof",
+            "open",
+            format!(
+                "passing proof is {best} and proves liveness only — strengthen it to S2 with an output/content assertion and rerun"
+            ),
+        ));
+    }
+
+    let validates = store.edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?;
     let mut blocked = 0usize;
     for e in &validates {
-        if e.status.as_str() == "passing" {
-            return Ok(axis("proof", "met", "passing proof on record".into()));
-        }
         if let Some(v) = store.get_node(&e.from_id)? {
             if v.status == "blocked" {
                 blocked += 1;

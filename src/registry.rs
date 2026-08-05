@@ -20,6 +20,9 @@ pub enum OwnerRole {
     Fixer,
     Validator,
     Quality,
+    /// Prep lane that clears needless ratify friction (false duplicates,
+    /// mis-marked visibility) without deciding wantedness (INV-8).
+    Rectify,
     Sync,
 }
 
@@ -31,8 +34,20 @@ impl OwnerRole {
             OwnerRole::Fixer => "fixer",
             OwnerRole::Validator => "validator",
             OwnerRole::Quality => "quality",
+            OwnerRole::Rectify => "rectify",
             OwnerRole::Sync => "sync",
         }
+    }
+
+    /// Whether this agent lane may write facts owned by `required`.
+    ///
+    /// `rectify` may perform the structural prep writes that normally sit on
+    /// builder/analyzer (scenario_of / relates / visibility). It still cannot
+    /// ratify — that gate is INV-8, not the lane table.
+    pub fn satisfies(self, required: Self) -> bool {
+        self == required
+            || (self == OwnerRole::Rectify
+                && matches!(required, OwnerRole::Builder | OwnerRole::Analyzer))
     }
 }
 

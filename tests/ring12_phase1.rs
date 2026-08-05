@@ -1498,7 +1498,16 @@ fn migration_drops_the_claimed_proof_level() {
         [&val.id],
     )
     .unwrap();
-    // Re-run migrations from a version before this one.
+    // Re-run migrations from a version before this one. A faithful v3 graph
+    // also lacks the columns later migrations added, or migration 7 re-adds
+    // what is already there and the simulation fails on its own bookkeeping.
+    conn.execute_batch(
+        "ALTER TABLE fact DROP COLUMN decision_mode;
+         ALTER TABLE fact DROP COLUMN batch_id;
+         DROP TABLE hit_adjudication;
+         DROP TABLE judgment_proposal;",
+    )
+    .unwrap();
     conn.pragma_update(None, "user_version", 3u32).unwrap();
     drop(conn);
 
@@ -1553,6 +1562,15 @@ fn migration_preserves_legitimate_double_space_validation_names() {
     drop(store);
 
     let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
+    // Rewind faithfully: a v6 graph does not yet carry the v7 columns or the
+    // v8/v9 tables.
+    conn.execute_batch(
+        "ALTER TABLE fact DROP COLUMN decision_mode;
+         ALTER TABLE fact DROP COLUMN batch_id;
+         DROP TABLE hit_adjudication;
+         DROP TABLE judgment_proposal;",
+    )
+    .unwrap();
     conn.pragma_update(None, "user_version", 6u32).unwrap();
     drop(conn);
 

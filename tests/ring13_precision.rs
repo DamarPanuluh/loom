@@ -434,7 +434,7 @@ fn evidence_stamped_and_integrity() {
             "test",
         )
         .unwrap_err();
-    assert!(err.to_string().contains("more than 16 distinct spans"));
+    assert!(err.to_string().contains("exceeds max_spans=16"));
     assert_eq!(edge_status(&store, &e4), InspectionStatus::Uninspected);
 }
 
@@ -596,6 +596,210 @@ fn dependent_verdicts_grade_their_own_evidence_not_the_groundings() {
     assert!(
         governs_cause.contains("src/lib.rs:2-4"),
         "downstream edge must grade its own citation: {governs_cause}"
+    );
+}
+
+// ============================================================
+// 6b. re-anchoring — a move is not a rewrite
+// ============================================================
+
+/// A cited span that MOVED — same content, new coordinates — keeps its
+/// verdict. The stored stamp re-anchors to the new position and the move is
+/// journaled: line numbers are display metadata, and a routine refactor must
+/// not demand a ceremonial re-verdict.
+#[test]
+fn moved_span_reanchors_and_keeps_the_verdict() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    tmp.write(
+        "src/lib.rs",
+        "pub fn alpha() {\n    let a = 1;\n    let b = 2;\n}\npub fn beta() {}\n",
+    );
+
+    let cf = add_codefile(&store, "src/lib.rs");
+    let intent = add_intent(&store, "alpha behavior", "something");
+    let edge = ground(&store, &intent, &cf, Some("fn alpha"));
+    sync::run(&store, tmp.path()).unwrap();
+    pass(&store, &edge, "see src/lib.rs:2-3 for proof");
+
+    // Two lines inserted above: alpha's body — and the cited span with it —
+    // moves down intact.
+    tmp.write(
+        "src/lib.rs",
+        "// header\n// more\npub fn alpha() {\n    let a = 1;\n    let b = 2;\n}\npub fn beta() {}\n",
+    );
+    let report = sync::run(&store, tmp.path()).unwrap();
+
+    assert_eq!(
+        edge_status(&store, &edge),
+        InspectionStatus::Passing,
+        "a move is not a rewrite: the verdict must stand"
+    );
+    assert_eq!(report.evidence_reanchored, 1);
+
+    // The stored stamp now reads the new coordinates.
+    let fact_id =
+        loom::evidence::Fact::id_for(TargetKind::Edge, &edge, loom::model::Claim::Verdict);
+    let rows = store.evidence_for(&fact_id).unwrap();
+    let span = rows
+        .iter()
+        .find_map(|r| match &r.payload {
+            loom::evidence::Evidence::Span(s) => Some(s),
+            _ => None,
+        })
+        .expect("the span anchor survives");
+    assert_eq!(
+        (span.file.as_str(), span.start, span.end),
+        ("src/lib.rs", 4, 5)
+    );
+
+    // And the move is in the append-only journal, with both coordinates.
+    let (entries, _) = loom::journal::read_counting(tmp.path()).unwrap();
+    let reanchors: Vec<_> = entries
+        .iter()
+        .filter(|e| e.event == loom::evidence::REANCHOR_EVENT)
+        .collect();
+    assert_eq!(reanchors.len(), 1);
+    let payload = &reanchors[0].payload;
+    assert_eq!(
+        payload["from"],
+        serde_json::json!({"file": "src/lib.rs", "start": 2, "end": 3})
+    );
+    assert_eq!(
+        payload["to"],
+        serde_json::json!({"file": "src/lib.rs", "start": 4, "end": 5})
+    );
+    assert_eq!(payload["symbol"], "alpha");
+}
+
+/// A cited file that is DELETED re-anchors into the one registered codefile
+/// still holding the span's body — the graph survives a rename of its own
+/// subjects. Two candidates holding the body is a coincidence loom cannot
+/// arbitrate: the claim re-opens instead of guessing.
+#[test]
+fn deleted_file_reanchors_into_a_unique_successor() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let body = "pub fn behavior() {\n    let a = 1;\n    let b = 2;\n}\n";
+    tmp.write("src/old.rs", body);
+
+    // An observation on a finding: span-anchored, with no loom probe run —
+    // the cleanest view of the span's own fate.
+    add_codefile(&store, "src/old.rs");
+    let finding = store
+        .add_node(
+            NodeType::Finding,
+            "observed behavior",
+            "d",
+            "open",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    sync::run(&store, tmp.path()).unwrap();
+    store
+        .assert_fact(
+            loom::store::Assertion::new(
+                loom::store::Subject::Node(finding.id.clone()),
+                loom::model::Claim::Observation,
+                "confirmed",
+                "test",
+            )
+            .cited(loom::evidence::cite(tmp.path(), "saw it at src/old.rs:2-3").unwrap()),
+        )
+        .unwrap();
+
+    // The file is renamed: old.rs goes away, new.rs holds the same body.
+    std::fs::remove_file(tmp.path().join("src/old.rs")).unwrap();
+    tmp.write("src/new.rs", body);
+    add_codefile(&store, "src/new.rs");
+
+    let report = sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(report.evidence_reanchored, 1, "the span crossed the rename");
+
+    let fact_id = loom::evidence::Fact::id_for(
+        TargetKind::Node,
+        &finding.id,
+        loom::model::Claim::Observation,
+    );
+    let rows = store.evidence_for(&fact_id).unwrap();
+    let span = rows
+        .iter()
+        .find_map(|r| match &r.payload {
+            loom::evidence::Evidence::Span(s) => Some(s),
+            _ => None,
+        })
+        .expect("the span anchor survives the rename");
+    assert!(span.file == "src/new.rs", "re-anchored into the successor");
+    assert_eq!((span.start, span.end), (2, 3));
+
+    let (entries, _) = loom::journal::read_counting(tmp.path()).unwrap();
+    let reanchors: Vec<_> = entries
+        .iter()
+        .filter(|e| e.event == loom::evidence::REANCHOR_EVENT)
+        .collect();
+    assert_eq!(reanchors.len(), 1);
+    assert_eq!(reanchors[0].payload["from"]["file"], "src/old.rs");
+    assert_eq!(reanchors[0].payload["to"]["file"], "src/new.rs");
+}
+
+/// The same body in TWO registered successors is a copy, not a move: loom
+/// cannot tell which file the evidence crossed into, so the claim re-opens
+/// rather than guessing.
+#[test]
+fn ambiguous_successor_fails_closed() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let body = "pub fn behavior() {\n    let a = 1;\n    let b = 2;\n}\n";
+    tmp.write("src/old.rs", body);
+    add_codefile(&store, "src/old.rs");
+    let finding = store
+        .add_node(
+            NodeType::Finding,
+            "observed behavior",
+            "d",
+            "open",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    sync::run(&store, tmp.path()).unwrap();
+    store
+        .assert_fact(
+            loom::store::Assertion::new(
+                loom::store::Subject::Node(finding.id.clone()),
+                loom::model::Claim::Observation,
+                "confirmed",
+                "test",
+            )
+            .cited(loom::evidence::cite(tmp.path(), "saw it at src/old.rs:2-3").unwrap()),
+        )
+        .unwrap();
+
+    std::fs::remove_file(tmp.path().join("src/old.rs")).unwrap();
+    tmp.write("src/new_a.rs", body);
+    add_codefile(&store, "src/new_a.rs");
+    tmp.write("src/new_b.rs", body);
+    add_codefile(&store, "src/new_b.rs");
+
+    let report = sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        report.evidence_reanchored, 0,
+        "no re-anchor without a unique successor"
+    );
+
+    let fact_id = loom::evidence::Fact::id_for(
+        TargetKind::Node,
+        &finding.id,
+        loom::model::Claim::Observation,
+    );
+    let rows = store.evidence_for(&fact_id).unwrap();
+    let span = rows
+        .iter()
+        .find(|r| matches!(r.payload, loom::evidence::Evidence::Span(_)))
+        .expect("the span row remains, broken");
+    assert!(!span.holds);
+    assert_eq!(
+        span.expiry_reason,
+        Some(loom::model::StaleCause::SpanFileDeleted)
     );
 }
 

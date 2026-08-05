@@ -16,7 +16,6 @@
 
 use crate::evidence::RunRecord;
 use crate::model::RunProducer;
-use crate::store::Store;
 use crate::Result;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -24,10 +23,14 @@ use std::time::{Duration, Instant};
 /// Bytes of each stream kept for humans. The captured stream is already bounded
 /// to a head+tail window by `subprocess::run` before it reaches here, and the
 /// fingerprint is taken over that bounded text.
-const EXCERPT_BYTES: usize = 8192;
+pub(crate) const EXCERPT_BYTES: usize = 8192;
 
 /// Default wall-clock limit for an observed command.
 pub const DEFAULT_TIMEOUT_SECS: u64 = 300;
+
+/// Most hits one quality-rule pre-screen keeps. Surfaced by `loom limits`;
+/// a scan past the cap is a rule that needs narrower patterns, not more room.
+pub(crate) const PRESCREEN_HIT_CAP: usize = 200;
 
 /// What a run observed, before it is bound to a fact.
 pub enum Observation {
@@ -65,7 +68,7 @@ pub fn observe_command(
         // observe, and loom refuses to guess which.
         Ok(None) => {
             return Ok(Observation::Blocked {
-                reason: format!("`{command}` timed out after {timeout_secs}s"),
+                reason: format!("killed: `{command}` exceeded timeout_secs={timeout_secs}"),
             })
         }
         Err(e) => {
@@ -75,15 +78,16 @@ pub fn observe_command(
         }
     };
     // A command that failed because loom's OWN infrastructure got in the way is
-    // not a failing behavior. A child that needed the graph while its parent
-    // held the lock aborts with a reserved exit code (not a scraped stderr
-    // string, which a failing test could print verbatim), so this is exact:
-    // that ambiguity once let `observe` record a false failing verdict against a
-    // passing journey. Refuse to attribute it to the code.
-    if captured.status.code() == Some(i64::from(crate::store::LOCK_CONTENTION_EXIT_CODE)) {
+    // not a failing behavior. Classification requires both the reserved final
+    // exit status and an exact frame on this observation's private pipe. Output
+    // remains human-readable diagnostics only: neither a graph nor harness
+    // marker printed by untrusted test code can spoof this attestation.
+    if captured.status.code() == Some(i64::from(crate::LOCK_CONTENTION_EXIT_CODE))
+        && captured.is_loom_contention()
+    {
         return Ok(Observation::Blocked {
             reason: format!(
-                "`{command}` could not be observed: it needed the graph while loom held it. \
+                "`{command}` could not be observed: it encountered loom infrastructure contention. \
                  This is loom's own infrastructure failing, not the behavior."
             ),
         });
@@ -237,11 +241,12 @@ pub fn resolve_locator(
             .unwrap_or_default()
     });
     let (exit_code, detail) = match hit {
-        // The fingerprint of the symbol's BODY, not just its position. A
-        // grounding says the behavior lives in this symbol, so the symbol being
+        // The fingerprint of the symbol's BODY is the identity, and the
+        // symbol's position is deliberately NOT in the record: a grounding
+        // says the behavior lives in this symbol, so the symbol being
         // rewritten falsifies it exactly as much as the symbol disappearing —
-        // and re-checking presence alone would spare every edit that stayed
-        // inside a function, which is most of them.
+        // but a move with the body intact is display metadata, not a
+        // redefinition, and must not re-open the claim.
         Some(sym) => {
             let lines: Vec<&str> = content.lines().collect();
             let folded: String = hits
@@ -257,11 +262,10 @@ pub fn resolve_locator(
             (
                 0,
                 format!(
-                    "{} '{}' at {}:{} ({} match{}) [{}]",
+                    "{} '{}' in {} ({} match{}) [{}]",
                     sym.kind,
                     sym.name,
                     file,
-                    sym.line_start,
                     hits.len(),
                     if hits.len() == 1 { "" } else { "es" },
                     crate::artifact::fingerprint(&folded)
@@ -342,7 +346,7 @@ pub fn prescreen_probe(
     if patterns.is_empty() || files.is_empty() {
         return None;
     }
-    let hits = crate::prescan::prescreen(root, files, patterns, 200).ok()?;
+    let hits = crate::prescan::prescreen(root, files, patterns, PRESCREEN_HIT_CAP).ok()?;
     // Canonical, sorted rendering so re-scanning identical files is a
     // byte-identical no-op rather than a fresh fact.
     let mut lines: Vec<String> = hits
@@ -408,51 +412,6 @@ pub fn seam_present(src: &str, locator: &str) -> bool {
         Some(tok) if !tok.is_empty() => src.contains(tok),
         _ => false,
     }
-}
-
-/// Every file grounding this intent, whatever its role.
-///
-/// This is the EXPIRY set: a proof over the behavior must expire when the code
-/// it proves changes AND when the test that proves it changes, so both roles
-/// belong here.
-pub fn files_grounding(store: &Store, intent_id: &str) -> Result<Vec<String>> {
-    grounding_files(store, intent_id, false)
-}
-
-/// Only the files the behavior LIVES in — groundings carrying the `realizes`
-/// role (the default when no role facet is set).
-///
-/// This is the set a code-quality RULE is measured against. The distinction is
-/// not cosmetic: a `verifies` grounding is a test, and the shapes these rules
-/// forbid are idiomatic there. A test SHOULD `.unwrap()` — panicking on an
-/// unexpected `None` is how it reports failure — and a SQL-looking string in a
-/// fixture is not a query. Scanning tests for those shapes made a passing
-/// verdict unreachable for every intent whose proof is a Rust test, which is
-/// what this split fixes.
-pub fn files_realizing(store: &Store, intent_id: &str) -> Result<Vec<String>> {
-    grounding_files(store, intent_id, true)
-}
-
-fn grounding_files(store: &Store, intent_id: &str, realizing_only: bool) -> Result<Vec<String>> {
-    let mut files = Vec::new();
-    for e in store.edges_with(
-        Some(crate::model::EdgeKind::Implements),
-        Some(intent_id),
-        None,
-    )? {
-        if store.edge_superseded(&e.id)? {
-            continue;
-        }
-        if realizing_only && store.grounding_role(&e.id)? != crate::model::GroundingRole::Realizes {
-            continue;
-        }
-        if let Some(cf) = store.get_node(&e.to_id)? {
-            files.push(cf.name);
-        }
-    }
-    files.sort();
-    files.dedup();
-    Ok(files)
 }
 
 #[cfg(test)]

@@ -367,7 +367,7 @@ fn push_edge(
         let flag = format!(
             "{} edge {} is {}",
             edge.kind.as_str(),
-            &edge.id[..8.min(edge.id.len())],
+            crate::model::short(&edge.id),
             edge.status.as_str()
         );
         if !staleness_flags.contains(&flag) {
@@ -476,7 +476,7 @@ fn render(packet: ContextPacket, json: bool) -> Result<()> {
     println!(
         "{} [{}]",
         packet.target.name,
-        &packet.target.id[..8.min(packet.target.id.len())]
+        crate::model::short(&packet.target.id)
     );
     if let Some(description) = &packet.target.description {
         println!("  criterion: {description}");

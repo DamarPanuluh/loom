@@ -43,11 +43,11 @@ impl std::error::Error for ParseEnumError {}
 /// `Display`, serde (as string), and an `ALL` slice. This keeps the canonical
 /// spelling in exactly one place per variant.
 macro_rules! str_enum {
-    ($(#[$meta:meta])* $name:ident { $($variant:ident => $s:literal),+ $(,)? }) => {
+    ($(#[$meta:meta])* $name:ident { $($(#[$variant_meta:meta])* $variant:ident => $s:literal),+ $(,)? }) => {
         $(#[$meta])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum $name {
-            $($variant),+
+            $($(#[$variant_meta])* $variant),+
         }
 
         impl $name {
@@ -209,6 +209,28 @@ str_enum! {
         Consumes => "consumes",
         Configures => "configures",
         Verifies => "verifies",
+    }
+}
+
+str_enum! {
+    /// How a judgment-shaped fact was decided. Stored in fact JSON and SQLite
+    /// using these exact snake_case strings.
+    #[derive(Default)]
+    DecisionMode {
+        #[default]
+        Individual => "individual",
+        Batch => "batch",
+    }
+}
+
+impl DecisionMode {
+    /// Backwards-compatible forgiving DB parser: only the canonical batch value
+    /// opts into batch provenance; absent/legacy/unknown values remain individual.
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "batch" => Self::Batch,
+            _ => Self::Individual,
+        }
     }
 }
 
@@ -449,6 +471,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn short_ascii_uses_up_to_eight_characters() {
+        assert_eq!(short("abc"), "abc");
+        assert_eq!(short("abcdefgh"), "abcdefgh");
+        assert_eq!(short("abcdefghi"), "abcdefgh");
+    }
+
+    #[test]
+    fn short_respects_multibyte_character_boundaries() {
+        assert_eq!(short("ééééééééz"), "éééééééé");
+        assert_eq!(short("🦀rust"), "🦀rust");
+    }
+
+    #[test]
     fn enum_roundtrip_is_stable() {
         for nt in NodeType::ALL {
             assert_eq!(NodeType::from_str(nt.as_str()).unwrap(), *nt);
@@ -458,6 +493,17 @@ mod tests {
         }
         for st in InspectionStatus::ALL {
             assert_eq!(InspectionStatus::from_str(st.as_str()).unwrap(), *st);
+        }
+        for mode in DecisionMode::ALL {
+            assert_eq!(DecisionMode::from_str(mode.as_str()).unwrap(), *mode);
+            assert_eq!(
+                serde_json::to_string(mode).unwrap(),
+                format!("\"{}\"", mode.as_str())
+            );
+            assert_eq!(
+                serde_json::from_str::<DecisionMode>(&format!("\"{}\"", mode.as_str())).unwrap(),
+                *mode
+            );
         }
     }
 

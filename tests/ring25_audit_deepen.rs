@@ -605,3 +605,203 @@ fn a_burst_whose_subjects_are_not_currently_derived_is_not_reported() {
         "the adjudications are preserved, not deleted — they are parked"
     );
 }
+
+/// A seal appended after the final fact is retrospective, even inside the same
+/// minute, and therefore cannot close the burst.
+#[test]
+fn a_retrospective_batch_authorization_does_not_close_the_burst() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let mut subjects = Vec::new();
+    for n in 0..loom::audit::BURST_THRESHOLD + 2 {
+        let f = store
+            .add_node(
+                NodeType::Finding,
+                &format!("batch finding {n}"),
+                "flagged",
+                "code_audit",
+                serde_json::json!({ "kind": "code_audit" }),
+            )
+            .unwrap();
+        let cf = codefile(&store, &format!("src/b{n}.rs"));
+        store.add_derived_edge(EdgeKind::Flags, &f.id, &cf.id).ok();
+        store
+            .record_finding_verdict(
+                &f.id,
+                "rejected",
+                "environment-contaminated unstable_proof",
+                &format!("src/b{n}.rs:1"),
+            )
+            .unwrap();
+        subjects.push(f.id);
+    }
+    assert!(
+        loom::audit::run(&store)
+            .unwrap()
+            .iter()
+            .any(|f| f.kind == "judgment_burst"),
+        "precondition: unexplained burst is reported"
+    );
+
+    let digest = loom::batch_auth::subject_digest(&subjects);
+    let pre = loom::journal::append(
+        store.root(),
+        "batch_apply",
+        &digest,
+        serde_json::json!({
+            "operation": "adjudicate",
+            "subjects": subjects,
+            "routing_class": "env_contaminated_unstable_proof",
+        }),
+    )
+    .unwrap();
+    let facts = store.all_facts().unwrap();
+    let minute: String = facts
+        .iter()
+        .find(|f| f.claim == Claim::Adjudication)
+        .unwrap()
+        .asserted_at
+        .chars()
+        .take(16)
+        .collect();
+    let envelope = loom::batch_auth::BatchAuthorization::seal(
+        loom::batch_auth::BatchClaim::Adjudication,
+        "verdict",
+        subjects.clone(),
+        "llm",
+        "llm",
+        "environment-contaminated unstable_proof findings falsified by clean reruns",
+        vec![format!("journal:{}", pre.id)],
+    )
+    .unwrap()
+    .with_routing_class("env_contaminated_unstable_proof")
+    .with_time_bounds(format!("{minute}:00.000Z"), format!("{minute}:59.999Z"));
+    let entry = loom::batch_auth::append_envelope(store.root(), &envelope).unwrap();
+    store
+        .stamp_batch_ids(&subjects, Claim::Adjudication, &entry.id)
+        .unwrap();
+
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        found.iter().any(|f| f.kind == "judgment_burst"),
+        "an envelope appended after the facts must not retrospectively close the burst: {found:#?}"
+    );
+    let stamped = store
+        .all_facts()
+        .unwrap()
+        .into_iter()
+        .filter(|f| f.claim == Claim::Adjudication)
+        .collect::<Vec<_>>();
+    assert!(
+        stamped
+            .iter()
+            .all(|f| f.decision_mode == loom::batch_auth::DecisionMode::Batch
+                && f.batch_id == entry.id),
+        "stamping retains batch provenance even though retrospective authorization is not trusted"
+    );
+    // asserted_at must not have been rewritten.
+    assert!(
+        stamped.iter().all(|f| f.asserted_at.starts_with(&minute)),
+        "stamping must not rewrite asserted_at"
+    );
+}
+
+#[test]
+fn prose_only_batch_evidence_is_refused() {
+    let mut envelope = loom::batch_auth::BatchAuthorization::seal(
+        loom::batch_auth::BatchClaim::Adjudication,
+        "verdict",
+        vec!["a".to_string(), "b".to_string()],
+        "llm",
+        "llm",
+        "shared predicate",
+        vec!["journal:missing-id".to_string()],
+    )
+    .unwrap();
+    // Force prose-only after seal for validate_cover.
+    envelope.evidence = vec!["acknowledgment written later".to_string()];
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let envelope_ts = loom::journal::now_iso();
+    let subjects = ["a".to_string(), "b".to_string()];
+    let reject = loom::batch_auth::validate_cover(
+        &store,
+        &envelope,
+        loom::batch_auth::CoverContext {
+            envelope_ts: &envelope_ts,
+            envelope_origin: loom::journal::Origin::Local,
+            subjects: &subjects,
+            claim: loom::batch_auth::BatchClaim::Adjudication,
+            burst_minute: "2026-08-04T10:31",
+            latest_assertion_millis: i64::MAX,
+        },
+    )
+    .expect_err("prose acknowledgment is not contemporaneous proof");
+    assert_eq!(reject, loom::batch_auth::EnvelopeReject::ProseOnlyEvidence);
+}
+
+/// Multi-subject ratify seals a batch envelope so the writes do not open a burst.
+#[test]
+fn ratify_all_seals_a_batch_and_avoids_a_burst() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let mut ids = Vec::new();
+    for n in 0..loom::audit::BURST_THRESHOLD + 1 {
+        ids.push(intent(&store, &format!("wanted behavior {n}")));
+    }
+    let decision = loom::ratification::HumanDecision::mediated(
+        "ratify the enumerated snapshot — portfolio decision",
+    )
+    .unwrap();
+    let digest = loom::batch_auth::subject_digest(&ids);
+    let pre = loom::journal::append(
+        store.root(),
+        "batch_intent",
+        &digest,
+        serde_json::json!({
+            "operation": "ratify",
+            "subjects": ids,
+            "human_decision": decision,
+        }),
+    )
+    .unwrap();
+    let now = loom::journal::now_iso();
+    let envelope = loom::batch_auth::BatchAuthorization::seal(
+        loom::batch_auth::BatchClaim::Ratification,
+        "ratify",
+        ids.clone(),
+        "human",
+        "solo",
+        "portfolio ratification of the enumerated snapshot",
+        vec![format!("journal:{}", pre.id)],
+    )
+    .unwrap()
+    .with_time_bounds(&now, &now)
+    .with_human_decision(decision.clone());
+    let entry = loom::batch_auth::append_envelope(store.root(), &envelope).unwrap();
+    for id in &ids {
+        store
+            .ratify_intent_from_human_batch(
+                id,
+                "portfolio ratification of the enumerated snapshot",
+                &decision,
+                &entry.id,
+            )
+            .unwrap();
+    }
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        !found.iter().any(|f| f.kind == "judgment_burst"),
+        "authorized batch ratification must not open a judgment_burst: {found:#?}"
+    );
+    assert!(
+        store
+            .all_facts()
+            .unwrap()
+            .into_iter()
+            .filter(|f| f.claim == Claim::Ratification)
+            .all(|f| f.decision_mode == loom::batch_auth::DecisionMode::Batch),
+        "ratification facts retain decision_mode=batch"
+    );
+}

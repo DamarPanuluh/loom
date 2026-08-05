@@ -75,6 +75,7 @@ fn inv8_ratify_rejects_every_llm_lane() {
         OwnerRole::Fixer,
         OwnerRole::Validator,
         OwnerRole::Quality,
+        OwnerRole::Rectify,
     ] {
         store.set_agent(Agent::Lane(lane));
         let err = store
@@ -424,6 +425,11 @@ fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
         .rev()
         .find(|entry| entry.event == "ratification" && entry.target_id == intent.id)
         .expect("ratification journal event");
+    assert_eq!(
+        event.origin,
+        loom::journal::Origin::Local,
+        "a mediated decision recorded in this graph remains local authority"
+    );
     assert_eq!(event.actor, "llm:builder", "the executor remains auditable");
     assert_eq!(
         event.payload["human_decision"]["response"],
@@ -432,7 +438,84 @@ fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
 }
 
 // =========================================================================
-// 5d. A builder may assess code impact, but never silently reconfirm human
+// 5d. Exported decisions carry history, not authority. Import restores their
+// journal rows as imported provenance, so wantedness must be confirmed here.
+// =========================================================================
+#[test]
+fn imported_ratification_needs_local_reconfirmation() {
+    let _guard = CLI_LOCK.lock().unwrap();
+    let source_tmp = Tmp::new();
+    let source = Store::init(source_tmp.path(), Some("source"), false).unwrap();
+    source.set_agent(Agent::Solo);
+    let intent = source
+        .add_node(
+            NodeType::Intent,
+            "imported wantedness is quarantined",
+            "a destination must make its own human product decision",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    source
+        .ratify_intent(
+            &intent.id,
+            "the source graph's human approved this behavior",
+            "test fixture",
+        )
+        .unwrap();
+    assert_eq!(source.ratification(&intent.id).unwrap(), "ratified");
+    let export_path = loom::travel::export_to_file(&source).unwrap();
+    drop(source);
+
+    let destination_tmp = Tmp::new();
+    loom::commands::run(Cli {
+        graph: Some(destination_tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Import {
+            file: export_path,
+            repair_orphans: false,
+        }),
+    })
+    .unwrap();
+
+    let destination = Store::open(destination_tmp.path()).unwrap();
+    let imported_event = loom::journal::read(destination_tmp.path())
+        .unwrap()
+        .into_iter()
+        .find(|entry| entry.event == "ratification" && entry.target_id == intent.id)
+        .expect("import restores the cited ratification journal row");
+    assert_eq!(
+        imported_event.origin,
+        loom::journal::Origin::Imported,
+        "the import boundary must quarantine the source journal authority"
+    );
+    assert_eq!(
+        destination.ratification(&intent.id).unwrap(),
+        "needs_reconfirmation",
+        "matching imported fact, evidence, and journal history do not confer local authority"
+    );
+
+    destination.set_agent(Agent::Solo);
+    destination
+        .ratify_intent(
+            &intent.id,
+            "the destination graph's human independently approved this behavior",
+            "test fixture",
+        )
+        .unwrap();
+    assert_eq!(destination.ratification(&intent.id).unwrap(), "ratified");
+    assert!(loom::journal::read(destination_tmp.path())
+        .unwrap()
+        .iter()
+        .any(|entry| {
+            entry.event == "ratification"
+                && entry.target_id == intent.id
+                && entry.origin == loom::journal::Origin::Local
+        }));
+}
+
+// =========================================================================
+// 5e. A builder may assess code impact, but never silently reconfirm human
 // wantedness. Preserved behavior leaves ratification intact; a changed
 // criterion returns the intent to the human-only ratify queue.
 // =========================================================================

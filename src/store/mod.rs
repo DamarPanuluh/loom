@@ -131,8 +131,9 @@ impl Agent {
             "fixer" => Ok(Agent::Lane(registry::OwnerRole::Fixer)),
             "validator" => Ok(Agent::Lane(registry::OwnerRole::Validator)),
             "quality" => Ok(Agent::Lane(registry::OwnerRole::Quality)),
+            "rectify" => Ok(Agent::Lane(registry::OwnerRole::Rectify)),
             other => bail!(
-                "unrecognized LOOM_AGENT '{v}' — use llm:<builder|analyzer|fixer|validator|quality>, or leave unset for solo (got lane '{other}')"
+                "unrecognized LOOM_AGENT '{v}' — use llm:<builder|analyzer|fixer|validator|quality|rectify>, or leave unset for solo (got lane '{other}')"
             ),
         }
     }
@@ -366,7 +367,7 @@ impl Store {
     fn check_lane(&self, owner: registry::OwnerRole) -> Result<()> {
         match self.agent.get() {
             Agent::Solo => Ok(()),
-            Agent::Lane(role) if role == owner => Ok(()),
+            Agent::Lane(role) if role.satisfies(owner) => Ok(()),
             Agent::Lane(role) => bail!(
                 "lane gate: agent '{}' may not write '{}'-owned facts",
                 role.as_str(),
@@ -457,6 +458,7 @@ impl Store {
     }
 }
 
+mod adjudications;
 mod derived;
 #[allow(unused_imports)] // consumed by diagnostics_cmd via crate::store::
 pub(crate) use derived::{DebtPromotionInput, DebtPromotionResult};
@@ -465,9 +467,12 @@ mod edges;
 mod facets;
 /// The write boundary: every asserted fact enters through `assert_fact`.
 pub mod facts;
+mod judgments;
 mod nodes;
+pub use adjudications::HitAdjudication;
 pub use edges::Dependent;
 pub use facts::{edge_verdict, Assertion, FactView, Subject};
+pub use judgments::{JudgmentKind, JudgmentProposal, JudgmentState};
 
 // ---- helpers -------------------------------------------------------------
 
@@ -569,13 +574,46 @@ DELETE FROM fact
 /// verdict against a behavior that passes.
 pub const LOCK_CONTENTION_MARKER: &str = "loom-lock-contention";
 
-/// Process exit code loom uses when it aborts because another loom process holds
-/// the graph. A parent that spawned this loom keys on this code — not on a
-/// stderr substring, which a failing test could print verbatim and be
-/// misclassified — to tell "loom's own lock got in the way" (unobservable, and
-/// never a verdict about the code) from a genuine non-zero failure. 75 is
-/// `EX_TEMPFAIL` from sysexits: a temporary failure, retry invited.
-pub const LOCK_CONTENTION_EXIT_CODE: i32 = 75;
+const MIGRATION_7_BATCH_AUTH: &str = r#"
+ALTER TABLE fact ADD COLUMN decision_mode TEXT NOT NULL DEFAULT 'individual';
+ALTER TABLE fact ADD COLUMN batch_id TEXT NOT NULL DEFAULT '';
+"#;
+
+/// Migration 8 — hit-level adjudication. A suppression's key is the content
+/// hash of the matched text, so it answers the same text wherever it moves and
+/// expires by construction when the text changes.
+const MIGRATION_8_HIT_ADJUDICATION: &str = r#"
+CREATE TABLE hit_adjudication (
+    rule_name    TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    excerpt      TEXT NOT NULL,
+    reason       TEXT NOT NULL,
+    actor        TEXT NOT NULL,
+    created_at   TEXT NOT NULL,
+    PRIMARY KEY (rule_name, content_hash)
+);
+"#;
+
+/// Migration 9 — the judgment inbox. Human-only judgments (ratify, reject)
+/// and redefinitions get a staged proposal object: an LLM discovers the
+/// candidate and files it with evidence; the human reviews a digest and
+/// confirms each through the SAME typed challenge the direct command would
+/// demand. Authority is unchanged — the inbox holds recommendations, never
+/// decisions.
+const MIGRATION_9_JUDGMENT_INBOX: &str = r#"
+CREATE TABLE judgment_proposal (
+    id         TEXT PRIMARY KEY,
+    kind       TEXT NOT NULL CHECK (kind IN ('ratify','reject','redefine')),
+    intent_id  TEXT NOT NULL,
+    evidence   TEXT NOT NULL,
+    detail     TEXT NOT NULL DEFAULT '',
+    staged_by  TEXT NOT NULL,
+    staged_at  TEXT NOT NULL,
+    state      TEXT NOT NULL DEFAULT 'staged' CHECK (state IN ('staged','confirmed','withdrawn')),
+    decided_at TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX idx_judgment_state ON judgment_proposal(state, kind);
+"#;
 
 fn schema_migrations() -> Migrations<'static> {
     Migrations::new(vec![
@@ -588,15 +626,17 @@ fn schema_migrations() -> Migrations<'static> {
         M::up(MIGRATION_4_DROP_CLAIMED_PROOF_LEVEL),
         M::up(MIGRATION_5_DROP_RATIFY_POLICIES),
         M::up("SELECT 1;"),
+        M::up(MIGRATION_7_BATCH_AUTH),
+        M::up(MIGRATION_8_HIT_ADJUDICATION),
+        M::up(MIGRATION_9_JUDGMENT_INBOX),
     ])
 }
 
-/// Schema versions a retracted local bump stamped with **no** on-disk change.
-///
-/// v7 ran only `SELECT 1` and never shipped; graphs that touched the uncommitted
-/// bump are still readable and are downstamped back to [`SCHEMA_VERSION`] on the
-/// next write open. A real future schema (not listed here) still refuses.
-const PHANTOM_SCHEMA_VERSIONS: &[u32] = &[7];
+// Schema versions a retracted local bump stamped with **no** on-disk change.
+//
+// Empty now that real v7 (batch-auth columns) ships; stale phantom-7 graphs
+// without those columns are reclaimed by `reclaim_stale_phantom_v7`.
+const PHANTOM_SCHEMA_VERSIONS: &[u32] = &[];
 
 fn is_phantom_schema(user_version: u32) -> bool {
     user_version > SCHEMA_VERSION && PHANTOM_SCHEMA_VERSIONS.contains(&user_version)
@@ -612,6 +652,42 @@ fn reclaim_phantom_schema(conn: &Connection, user_version: u32) -> Result<()> {
         "UPDATE meta SET value=?1 WHERE key='schema_version'",
         params![SCHEMA_VERSION.to_string()],
     )?;
+    Ok(())
+}
+
+/// An uncommitted loom briefly stamped user_version=7 with only `SELECT 1`.
+/// Real v7 adds `decision_mode`/`batch_id`. Graphs that still claim v7 without
+/// those columns are rolled back to v6 so the real migration can apply.
+fn reclaim_stale_phantom_v7(conn: &Connection) -> Result<()> {
+    let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    if user_version != 7 {
+        return Ok(());
+    }
+    // Only a graph that HAS the evidence spine can be a phantom v7. A legacy
+    // graph adopted from its meta stamp (v1 tables claiming v7) has no fact
+    // table at all — rolling it back would point migration 7 at a table that
+    // does not exist.
+    let has_fact = conn
+        .query_row(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fact'",
+            [],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
+    if !has_fact {
+        return Ok(());
+    }
+    let has_col: bool = conn
+        .prepare("PRAGMA table_info(fact)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(|c| c.ok())
+        .any(|name| name == "decision_mode");
+    if has_col {
+        return Ok(());
+    }
+    conn.pragma_update(None, "user_version", 6u32)?;
+    let _ = conn.execute("UPDATE meta SET value='6' WHERE key='schema_version'", [])?;
     Ok(())
 }
 
@@ -634,6 +710,7 @@ fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
             );
         }
     }
+    reclaim_stale_phantom_v7(conn)?;
     schema_migrations()
         .to_latest(conn)
         .context("migrating graph schema")?;
@@ -698,7 +775,7 @@ fn adopt_legacy_schema_version(conn: &Connection) -> Result<()> {
 fn configure(conn: &Connection) -> Result<()> {
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
-    conn.pragma_update(None, "busy_timeout", 5000)?;
+    conn.pragma_update(None, "busy_timeout", SQLITE_BUSY_TIMEOUT_MS as i64)?;
     Ok(())
 }
 
@@ -707,10 +784,18 @@ fn configure(conn: &Connection) -> Result<()> {
 /// Deliberately does NOT set `journal_mode` (a write) or run migrations — a read
 /// open never mutates the file.
 fn configure_read(conn: &Connection) -> Result<()> {
-    conn.pragma_update(None, "busy_timeout", 5000)?;
+    conn.pragma_update(None, "busy_timeout", SQLITE_BUSY_TIMEOUT_MS as i64)?;
     conn.pragma_update(None, "query_only", true)?;
     Ok(())
 }
+
+/// Wall-clock budget for acquiring the graph lock before failing with a
+/// named contention error. Registered in `loom limits`.
+pub(crate) const LOCK_WAIT_BUDGET_MS: u64 = 2_000;
+
+/// Statement-level SQLite busy timeout, so brief lock overlap retries inside
+/// the store instead of surfacing SQLITE_BUSY.
+pub(crate) const SQLITE_BUSY_TIMEOUT_MS: u64 = 5_000;
 
 fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
     let lock_path = loom_dir.join("lock");
@@ -726,23 +811,32 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
     // (schema migration above all). Writers take it exclusive; a read-only open
     // takes it shared, so N readers proceed together and only wait while a writer
     // actually holds the boundary.
+    let budget = std::time::Duration::from_millis(LOCK_WAIT_BUDGET_MS);
+    let deadline = std::time::Instant::now() + budget;
     let mut wait = std::time::Duration::from_millis(5);
-    for attempt in 0..40 {
+    loop {
         let acquired = if exclusive {
             file.try_lock()
         } else {
             file.try_lock_shared()
         };
         match acquired {
-            Ok(()) => return Ok(file),
-            // A held lock may release any moment — retry with backoff.
-            Err(std::fs::TryLockError::WouldBlock) if attempt < 39 => {
+            Ok(()) => {
+                record_lock_holder(&file, exclusive);
+                return Ok(file);
+            }
+            // A held lock may release any moment — retry with backoff, but
+            // never past the budget: a hang is never an acceptable failure mode.
+            Err(std::fs::TryLockError::WouldBlock) => {
+                let now = std::time::Instant::now();
+                if now + wait >= deadline {
+                    break;
+                }
                 std::thread::sleep(wait);
                 if wait < std::time::Duration::from_millis(50) {
                     wait *= 2;
                 }
             }
-            Err(std::fs::TryLockError::WouldBlock) => break,
             // A real I/O error will not heal by waiting.
             Err(std::fs::TryLockError::Error(e)) => {
                 return Err(e).with_context(|| format!("locking {}", lock_path.display()));
@@ -750,9 +844,53 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
         }
     }
     bail!(
-        "{LOCK_CONTENTION_MARKER}: graph is locked by another loom process (waiting for {} access)",
+        "{LOCK_CONTENTION_MARKER}: graph lock exceeded lock_wait_ms={LOCK_WAIT_BUDGET_MS} — {} \
+         (waiting for {} access); retry after it exits",
+        describe_lock_holder(&lock_path),
         if exclusive { "write" } else { "read" }
     )
+}
+
+/// Stamp the holder's identity into the lock file so a contender refuses
+/// against an identity, not a mystery — the graph-lock counterpart of the
+/// harness lock's holder record. Best-effort: the flock itself is the
+/// enforcement, and it releases with the holder's process even if this
+/// write fails.
+fn record_lock_holder(file: &File, exclusive: bool) {
+    use std::io::Write;
+    let identity = serde_json::json!({
+        "pid": std::process::id(),
+        "agent": std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into()),
+        "mode": if exclusive { "write" } else { "read" },
+        "command": std::env::args().collect::<Vec<_>>().join(" "),
+        "since": crate::journal::millis_to_iso(
+            crate::journal::now_iso().parse::<i64>().unwrap_or(0),
+        ),
+    });
+    let mut f = file;
+    let _ = f.set_len(0);
+    let _ = f.write_all(identity.to_string().as_bytes());
+}
+
+/// Render the recorded holder for the contention error. The record lags the
+/// lock by microseconds (acquire → write) and outlives it (release does not
+/// truncate), so name it as the RECORDED holder: with shared read locks it
+/// is also just the most recent of possibly several concurrent readers.
+fn describe_lock_holder(lock_path: &Path) -> String {
+    let parsed = std::fs::read_to_string(lock_path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok());
+    match parsed {
+        Some(h) => format!(
+            "recorded holder is agent {} pid {} ({} access, since {})\n  command: {}",
+            h.get("agent").and_then(|v| v.as_str()).unwrap_or("?"),
+            h.get("pid").and_then(|v| v.as_u64()).unwrap_or(0),
+            h.get("mode").and_then(|v| v.as_str()).unwrap_or("?"),
+            h.get("since").and_then(|v| v.as_str()).unwrap_or("?"),
+            h.get("command").and_then(|v| v.as_str()).unwrap_or("?"),
+        ),
+        None => "held by another loom process (identity unread)".to_string(),
+    }
 }
 
 /// Sentinel timestamp for derived rows. Derived data is recomputed by sync, so
@@ -943,9 +1081,10 @@ mod tests {
         assert_eq!(store.identity().unwrap().schema_version, SCHEMA_VERSION);
     }
 
-    /// The aborted v7 no-op stamp must not brick a local graph after rollback.
+    /// The aborted v7 no-op stamp must not brick a local graph after rollback:
+    /// a write open rolls it back to v6 and the real migrations re-apply.
     #[test]
-    fn phantom_v7_is_readable_and_write_reclaims_to_current() {
+    fn phantom_v7_write_open_reclaims_to_current() {
         let tmp = TmpRoot::new("loom-store-phantom-v7");
         {
             let store = Store::init(tmp.path(), Some("phantom"), false).unwrap();
@@ -953,18 +1092,39 @@ mod tests {
         }
         let db = tmp.path().join(crate::LOOM_DIR).join(crate::GRAPH_DB);
         let conn = Connection::open(&db).unwrap();
+        // A faithful phantom v7: the v7 columns and everything v8/v9 add are
+        // absent, but the stamp claims 7.
+        conn.execute_batch(
+            "ALTER TABLE fact DROP COLUMN decision_mode;
+             ALTER TABLE fact DROP COLUMN batch_id;
+             DROP TABLE hit_adjudication;
+             DROP TABLE judgment_proposal;",
+        )
+        .unwrap();
         conn.pragma_update(None, "user_version", 7u32).unwrap();
         conn.execute("UPDATE meta SET value='7' WHERE key='schema_version'", [])
             .unwrap();
         drop(conn);
 
-        let reader = Store::open_read(tmp.path()).expect("phantom v7 must stay readable");
-        assert_eq!(sqlite_user_version(&reader.conn), 7);
-        drop(reader);
+        // Any old-schema graph — phantom or not — is migrated by a write open
+        // before reads are served.
+        assert!(Store::open_read(tmp.path()).is_err());
 
         let writer = Store::open(tmp.path()).expect("write open reclaims phantom v7");
         assert_eq!(sqlite_user_version(&writer.conn), SCHEMA_VERSION);
         assert_eq!(writer.identity().unwrap().schema_version, SCHEMA_VERSION);
+        let has_hit_table: i64 = writer
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='hit_adjudication'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            has_hit_table, 1,
+            "migration 8 re-applied on the reclaimed graph"
+        );
     }
 
     #[test]
@@ -1009,6 +1169,18 @@ mod tests {
                     "VALUES ('policy-evidence','policy-fact','{}','claim','2026-01-01T00:00:00Z',1,'')"
                 ),
                 [],
+            )
+            .unwrap();
+        // Rewind to a faithful v4 graph: the version stamp AND the columns
+        // later migrations added, or migration 7 re-adds what is already
+        // there and the simulation fails on its own bookkeeping.
+        store
+            .conn
+            .execute_batch(
+                "ALTER TABLE fact DROP COLUMN decision_mode;
+                 ALTER TABLE fact DROP COLUMN batch_id;
+                 DROP TABLE hit_adjudication;
+                 DROP TABLE judgment_proposal;",
             )
             .unwrap();
         store

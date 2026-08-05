@@ -12,7 +12,6 @@ use crate::subprocess::Captured;
 use std::path::Path;
 use std::time::Duration;
 
-const DEFAULT_VALIDATION_TIMEOUT_SECS: u64 = 300;
 const VALIDATION_OUTPUT_EXCERPT_BYTES: usize = 8192;
 
 /// The uniform result the engine records, whatever ran the proof. The recorder
@@ -121,7 +120,7 @@ impl ProofRunner for CommandProofRunner {
                 }
             }
             Ok(None) => ProofOutcome::Blocked {
-                reason: format!("`{command}` timed out after {timeout_secs}s"),
+                reason: format!("killed: `{command}` exceeded timeout_secs={timeout_secs}"),
             },
             Err(e) => ProofOutcome::Blocked {
                 reason: format!("could not run: {e}"),
@@ -191,7 +190,7 @@ fn validation_timeout_secs(v: &Node) -> u64 {
         .get("timeout_seconds")
         .and_then(|value| value.as_u64())
         .filter(|secs| *secs > 0)
-        .unwrap_or(DEFAULT_VALIDATION_TIMEOUT_SECS)
+        .unwrap_or(crate::runner::DEFAULT_TIMEOUT_SECS)
 }
 
 /// Excerpt bounded output for the JSON record. `total` is the TRUE byte count
@@ -279,6 +278,24 @@ mod tests {
             ProofOutcome::Manual { .. } => {}
             o => panic!("empty command has no runnable proof, got {o:?}"),
         }
+    }
+
+    #[test]
+    fn validation_timeout_uses_runner_default_and_accepts_positive_override() {
+        let mut validation = val("test", "true");
+        assert_eq!(
+            validation_timeout_secs(&validation),
+            crate::runner::DEFAULT_TIMEOUT_SECS
+        );
+
+        validation.body["timeout_seconds"] = serde_json::json!(42);
+        assert_eq!(validation_timeout_secs(&validation), 42);
+
+        validation.body["timeout_seconds"] = serde_json::json!(0);
+        assert_eq!(
+            validation_timeout_secs(&validation),
+            crate::runner::DEFAULT_TIMEOUT_SECS
+        );
     }
 
     #[test]

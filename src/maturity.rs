@@ -239,7 +239,7 @@ impl LadderInputs {
             // Single source of truth with the build lane: the same predicate the
             // build queue serves, so a non-zero rung always has a work item.
             ungrounded: crate::workitem::ungrounded_implemented_intents(store)?.len(),
-            unowned_codefiles: crate::commands::unowned_codefiles(store)?.len(),
+            unowned_codefiles: crate::coverage::unowned_codefiles(store)?.len(),
             failing,
             failing_exemplars,
             open_research,
@@ -267,7 +267,8 @@ impl LadderInputs {
                 .iter()
                 .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
                 .count(),
-            divergences: crate::divergence::blocking_count(store)?,
+            rectifiable_divergences: crate::divergence::rectifiable_count(store)?,
+            divergences: crate::divergence::human_blocking_count(store)?,
             audit_findings,
             risk_candidates: crate::risk::rank(store)?.len(),
             doctor_issues,

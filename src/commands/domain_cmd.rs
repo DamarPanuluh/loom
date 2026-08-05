@@ -182,7 +182,7 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
                 &format!(
                     "adopted from hypothesis '{}' [{}] — proposal: {proposal}; predicted: {predicted}; evidence: {evidence}",
                     h.name,
-                    &h.id[..8]
+                    crate::model::short(&h.id)
                 ),
             )?;
             store.add_note(
@@ -344,7 +344,12 @@ pub(crate) fn hypothesis(graph: Option<&Path>, cmd: HypothesisCmd, json: bool) -
             } else {
                 let shown = hypotheses.len();
                 for n in hypotheses {
-                    println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+                    println!(
+                        "{:<10} {} [{}]",
+                        n.status,
+                        n.name,
+                        crate::model::short(&n.id)
+                    );
                 }
                 if let Some(footer) = super::page_footer(shown, offset, total) {
                     println!("{footer}");
@@ -384,7 +389,11 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
                     "exposes_edge": exposes_edge,
                 }),
                 "loom status",
-                format!("declared surface '{}' [{}]", s.name, &s.id[..8]),
+                format!(
+                    "declared surface '{}' [{}]",
+                    s.name,
+                    crate::model::short(&s.id)
+                ),
             )?;
             Ok(())
         }
@@ -470,7 +479,7 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
             } else {
                 let shown = surfaces.len();
                 for n in surfaces {
-                    println!("{} [{}]", n.name, &n.id[..8]);
+                    println!("{} [{}]", n.name, crate::model::short(&n.id));
                 }
                 if let Some(footer) = super::page_footer(shown, offset, total) {
                     println!("{footer}");

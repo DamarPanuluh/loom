@@ -146,6 +146,13 @@ impl SkipState {
     }
 }
 
+/// The canonical matched-text form hit adjudications key on: trimmed, capped
+/// at 160 chars — identical to what a scan stores on the hit, so an
+/// operator-typed excerpt and a scanner-produced one hash alike.
+pub(crate) fn canonical_excerpt(text: &str) -> String {
+    truncate_excerpt(text.trim(), 160)
+}
+
 fn truncate_excerpt(excerpt: &str, max_chars: usize) -> String {
     let mut end = excerpt.len();
     for (count, (index, _)) in excerpt.char_indices().enumerate() {

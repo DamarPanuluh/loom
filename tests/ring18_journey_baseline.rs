@@ -14,6 +14,7 @@ fn spec(command: &str) -> JourneySpec {
             name: "print".into(),
             intent: "demo intent".into(),
             run: command.into(),
+            timeout_secs: None,
             request: Default::default(),
             expect: Expect {
                 exit_code: Some(0),

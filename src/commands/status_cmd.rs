@@ -64,6 +64,10 @@ pub(crate) fn import(
     let imported_baselines = export.baselines.clone();
     let mut snapshot = export.into_snapshot();
     let quarantined_commands = travel::quarantine_imported_execution(&mut snapshot)?;
+    // Journal collisions are part of import validation, not a post-restore
+    // sidecar failure. This pass is side-effect-free; restore_entries repeats
+    // the same plan under lock after graph restore to close the race window.
+    crate::journal::preflight_restore_entries(&root, &imported_journal)?;
     let mut store = Store::init(&root, None, false)?;
     let report = if repair_orphans {
         store.restore_repairing(&snapshot)?
@@ -190,6 +194,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: b
                 "files_changed": report.files_changed,
                 "edges_staled": report.edges_staled,
                 "edges_spared": report.edges_spared,
+                "evidence_reanchored": report.evidence_reanchored,
                 "validations_reset": report.validations_reset,
                 "findings": report.findings,
                 "contracts_reset": report.contracts_reset,
@@ -231,6 +236,12 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: b
         println!(
             "  precision: {} grounding(s) kept fresh — the change did not touch their locator symbol",
             report.edges_spared
+        );
+    }
+    if report.evidence_reanchored > 0 {
+        println!(
+            "  re-anchored: {} evidence span(s) moved with content intact — verdicts kept, moves journaled",
+            report.evidence_reanchored
         );
     }
     if reexported {
@@ -407,7 +418,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         .map(|l| format!("{}={}", l.as_str(), queues.get(*l)))
         .collect();
     println!(
-        "  queues: {}{}{}",
+        "  queues: {}{}{}{}",
         backlog.join(" "),
         if queues.get(crate::lane::Lane::Divergence) > 0 {
             format!(
@@ -421,6 +432,14 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
             format!("  ({} question(s) for the human)", pulse.open_questions)
         } else {
             String::new()
+        },
+        {
+            let staged = store.count_judgments("staged".parse()?).unwrap_or(0);
+            if staged > 0 {
+                format!("  ({staged} staged judgment proposal(s) — loom judgment digest)")
+            } else {
+                String::new()
+            }
         }
     );
     Ok(())
@@ -621,7 +640,7 @@ pub(crate) fn queue_list(graph: Option<&Path>, mode: &str, json: bool) -> Result
 pub(crate) fn require_lane(store: &Store, owner: crate::registry::OwnerRole) -> Result<()> {
     match store.agent() {
         crate::store::Agent::Solo => Ok(()),
-        crate::store::Agent::Lane(r) if r == owner => Ok(()),
+        crate::store::Agent::Lane(r) if r.satisfies(owner) => Ok(()),
         crate::store::Agent::Lane(r) => bail!(
             "lane gate: agent '{}' may not write '{}'-owned facts",
             r.as_str(),
@@ -712,7 +731,7 @@ fn render_examples(value: &serde_json::Value) -> Vec<String> {
 
 fn print_work_item(item: &workitem::WorkItem) {
     let c = &item.prompt_contract;
-    let short = &item.target.id[..8.min(item.target.id.len())];
+    let short = crate::model::short(&item.target.id);
     let hint = item
         .routing_hint
         .as_deref()
@@ -747,7 +766,7 @@ fn print_work_item(item: &workitem::WorkItem) {
     if !item.context.linked_entities.is_empty() {
         println!("  linked:");
         for entity in &item.context.linked_entities {
-            let short = &entity.id[..8.min(entity.id.len())];
+            let short = crate::model::short(&entity.id);
             let status = entity
                 .status
                 .as_ref()

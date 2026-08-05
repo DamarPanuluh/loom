@@ -371,7 +371,7 @@ fn citing_some_hits_refuses_and_names_only_the_rest() {
         "the answered hit must NOT be re-listed as outstanding: {msg}"
     );
     assert!(
-        msg.contains("1 of 2 hit(s) are already cited"),
+        msg.contains("1 hit(s) already answered (0 suppressed)"),
         "and the author should see the progress they made: {msg}"
     );
 }

@@ -51,6 +51,9 @@ pub fn symbol(member: &str) -> Option<String> {
                     | "function"
                     | "interface"
                     | "type"
+                    // JS/TS declarations commonly use a bound const as the
+                    // callable surface (`export const load = …`).
+                    | "const"
             )
         });
         let all_are_declaration_words = prefixes.iter().all(|word| {

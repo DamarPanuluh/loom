@@ -258,7 +258,12 @@ fn wiki_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> R
     } else {
         for p in &pages {
             let path = p.body.get("path").and_then(|v| v.as_str()).unwrap_or("");
-            println!("{:<8} {} [{}]  {path}", p.status, p.name, &p.id[..8]);
+            println!(
+                "{:<8} {} [{}]  {path}",
+                p.status,
+                p.name,
+                crate::model::short(&p.id)
+            );
         }
         if let Some(footer) = super::page_footer(pages.len(), offset, total) {
             println!("{footer}");

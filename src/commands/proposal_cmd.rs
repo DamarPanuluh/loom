@@ -73,7 +73,11 @@ fn add(
         });
         println!("{}", serde_json::to_string_pretty(&out)?);
     } else {
-        println!("added proposal '{}' [{}]", node.name, &node.id[..8]);
+        println!(
+            "added proposal '{}' [{}]",
+            node.name,
+            crate::model::short(&node.id)
+        );
     }
     Ok(())
 }
@@ -114,7 +118,7 @@ fn list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result
                 "{:<10} {} [{}] ({} items)",
                 n.status,
                 n.name,
-                &n.id[..8],
+                crate::model::short(&n.id),
                 count
             );
         }
@@ -437,7 +441,7 @@ fn item_adopt(
                     number,
                     node.name,
                     s["type"].as_str().unwrap_or(""),
-                    &sid[..8]
+                    crate::model::short(sid)
                 );
             }
             None => println!("adopted item #{} of '{}'", number, node.name),

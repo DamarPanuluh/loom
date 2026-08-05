@@ -18,6 +18,7 @@ use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 mod apply_cmd;
+mod audit_cmd;
 mod bootstrap_cmd;
 mod capture_cmd;
 mod codefile_cmd;
@@ -31,6 +32,8 @@ mod graph_cmd;
 mod hook_cmd;
 mod intent;
 mod journey;
+mod judgment_cmd;
+mod limits_cmd;
 mod misc_cmd;
 mod orient_cmd;
 mod pattern_cmd;
@@ -39,6 +42,8 @@ mod proposal_cmd;
 mod pulse;
 mod status_cmd;
 mod wiki;
+pub(crate) use crate::coverage::codefile_observed;
+pub use crate::coverage::{code_ownership_summary, unowned_names};
 pub use crate::grammar::looks_like_symbol;
 pub(crate) use status_cmd::require_lane;
 // The in-band surface: `crate::mcp` calls exactly these, so an MCP tool and its
@@ -83,7 +88,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 println!(
                     "initialized graph '{}' ({}) at {}",
                     id.name,
-                    &id.graph_id[..8.min(id.graph_id.len())],
+                    crate::model::short(&id.graph_id),
                     root.join(crate::LOOM_DIR).display()
                 );
                 if observed {
@@ -184,6 +189,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Surface { cmd } => domain_cmd::surface(cli.graph.as_deref(), cmd, cli.json),
         Command::Vocab { cmd } => domain_cmd::vocab(cli.graph.as_deref(), cmd, cli.json),
         Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd, cli.json),
+        Command::Limits => limits_cmd::limits_cmd(cli.json),
         Command::Smells => diagnostics_cmd::smells_cmd(cli.graph.as_deref(), cli.json),
         Command::Debt { cmd } => diagnostics_cmd::debt(cli.graph.as_deref(), cmd, cli.json),
         Command::Finding { cmd } => diagnostics_cmd::finding(cli.graph.as_deref(), cmd, cli.json),
@@ -192,6 +198,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Ignore { cmd } => diagnostics_cmd::ignore_cmd(cli.graph.as_deref(), cmd, cli.json),
         Command::Whoami => diagnostics_cmd::whoami_cmd(cli.graph.as_deref(), cli.json),
         Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Judgment { cmd } => judgment_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Drive { cmd } => drive_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Hook { cmd } => hook_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
@@ -227,9 +234,10 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Absorb { confirm } => {
             diagnostics_cmd::absorb_cmd(cli.graph.as_deref(), confirm, cli.json)
         }
-        Command::Audit { efficacy } => {
-            diagnostics_cmd::audit_cmd(cli.graph.as_deref(), efficacy, cli.json)
-        }
+        Command::Audit { cmd, efficacy } => match cmd {
+            Some(sub) => audit_cmd::dispatch(cli.graph.as_deref(), sub, cli.json),
+            None => diagnostics_cmd::audit_cmd(cli.graph.as_deref(), efficacy, cli.json),
+        },
         Command::Deepen { limit } => {
             diagnostics_cmd::deepen_cmd(cli.graph.as_deref(), limit, cli.json)
         }
@@ -365,103 +373,6 @@ pub(crate) fn node_json(n: &Node) -> serde_json::Value {
         "created_at": n.created_at,
         "updated_at": n.updated_at,
     })
-}
-
-/// Whether a CodeFile is registered as observed: monitored upstream code that
-/// stays in the sync/surface/contract plane but carries no ownership, coverage,
-/// or build obligations. The per-file counterpart of the graph-level observed
-/// mode. Asserted at registration (`codefile add --observed`), never touched by
-/// sync — derivers write facets, not the body.
-pub(crate) fn codefile_observed(n: &Node) -> bool {
-    n.body
-        .get("observed")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
-}
-
-/// Registered CodeFiles with no owning `implements` edge, not matched by a
-/// coverage-exclusion glob (`loom ignore`), and not registered as observed.
-/// This is the single definition of the coverage gap: the diagnostic, the
-/// `realized` maturity gate, and the `coverage` work queue all read it, so they
-/// can never disagree. Sorted by name for a stable next-item.
-pub fn unowned_names(store: &Store) -> Result<Vec<String>> {
-    Ok(unowned_codefiles(store)?
-        .into_iter()
-        .map(|n| n.name)
-        .collect())
-}
-
-pub(crate) fn unowned_codefiles(store: &Store) -> Result<Vec<Node>> {
-    let ignore = crate::fsglob::matcher(store.ignore_globs()?)?;
-    let mut unowned = Vec::new();
-    for cf in store.codefiles()? {
-        if ignore.is_match(&cf.name) {
-            continue; // deliberately outside the tracked surface
-        }
-        if codefile_observed(&cf) {
-            continue; // monitored upstream — no ownership obligation
-        }
-        // A TEST file is never realized by a behavior — it verifies one, and
-        // demanding a realizing owner for it would mean `tests/` could only be
-        // registered by permanently reddening coverage. That is exactly why
-        // 22.8k lines of this repo's evidence backbone stayed outside the graph
-        // while coverage reported 67/67 owned.
-        if crate::extract::Role::detect(&cf.name) == crate::extract::Role::Test {
-            let mut verified = false;
-            for e in
-                store.edges_with(Some(crate::model::EdgeKind::Implements), None, Some(&cf.id))?
-            {
-                if !store.edge_superseded(&e.id)?
-                    && store.grounding_role(&e.id)? == crate::model::GroundingRole::Verifies
-                {
-                    verified = true;
-                    break;
-                }
-            }
-            if !verified {
-                unowned.push(cf);
-            }
-            continue;
-        }
-        if store.realizing_implementers(&cf.id)?.is_empty() {
-            unowned.push(cf);
-        }
-    }
-    unowned.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(unowned)
-}
-
-/// `(registered, owned, unowned_names, observed)` after coverage exclusions.
-/// Ignored files are dropped from every bucket and observed files count only in
-/// the `observed` bucket, so `registered == owned + unowned`.
-/// `(registered, owned, unowned_names, observed)`.
-///
-/// Counts from [`unowned_codefiles`] rather than re-deriving the rule. It used
-/// to carry its own copy, which meant the "single definition of the coverage
-/// gap" was two definitions that agreed only by coincidence — and when the test
-/// -file rule landed in one of them, `loom coverage` and the `covered` rung
-/// disagreed about the same files.
-pub fn code_ownership_summary(store: &Store) -> Result<(usize, usize, Vec<String>, usize)> {
-    let ignore = crate::fsglob::matcher(store.ignore_globs()?)?;
-    let unowned: Vec<String> = unowned_codefiles(store)?
-        .into_iter()
-        .map(|n| n.name)
-        .collect();
-    let mut owned = 0usize;
-    let mut observed = 0usize;
-    for cf in store.codefiles()? {
-        if ignore.is_match(&cf.name) {
-            continue;
-        }
-        if codefile_observed(&cf) {
-            observed += 1;
-            continue;
-        }
-        if !unowned.contains(&cf.name) {
-            owned += 1;
-        }
-    }
-    Ok((owned + unowned.len(), owned, unowned, observed))
 }
 
 pub(crate) fn verdict_status(verdict: &str) -> Result<InspectionStatus> {

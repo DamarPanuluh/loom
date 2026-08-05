@@ -64,6 +64,29 @@ pub(super) fn is_journey_validation(node: &Node) -> bool {
 fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
     let store = open(graph)?;
     let (parsed, kind) = crate::journey::parse_with_kind(&spec)?;
+    // Registration validates every graph reference: a step intent that does
+    // not resolve can never be proven by any run, so the spec is refused
+    // BEFORE any write — the failure belongs at authoring time, not at
+    // execution. Diagnose and run then execute the identical step semantics
+    // (one code path; persistence is the only flag).
+    let mut step_intents: Vec<Node> = Vec::new();
+    let mut unresolved: Vec<String> = Vec::new();
+    for step in &parsed.steps {
+        match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
+            Ok(n) => step_intents.push(n),
+            Err(e) => unresolved.push(format!("step '{}': '{}' — {e}", step.name, step.intent)),
+        }
+    }
+    if !unresolved.is_empty() {
+        bail!(
+            "journey '{}' is not registrable: {} step intent(s) do not resolve, so no run \
+             could ever prove them:\n  {}\ncreate the intent (`loom intent add …`) or fix \
+             the step text, then re-add",
+            parsed.journey,
+            unresolved.len(),
+            unresolved.join("\n  ")
+        );
+    }
     let artifact = spec.display().to_string();
     // The spec's raw bytes fold into the body as spec_hash, so an edited spec at
     // the SAME path changes the body (a path-only body would miss the common
@@ -110,45 +133,28 @@ fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
     };
     // Reconcile step links: ensure the current spec's steps, then drop validates
     // edges for steps the spec no longer names (a renamed/removed step must not
-    // keep a stale proof claim).
-    let mut linked = 0usize;
-    let mut unmatched_steps = Vec::new();
+    // keep a stale proof claim). Every step intent resolved at the top of this
+    // function — registration refused the spec otherwise.
     let mut wanted: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    for step in &parsed.steps {
-        match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
-            Ok(intent) => {
-                wanted.insert(intent.id.clone());
-                store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
-                linked += 1;
-            }
-            // Soft resolution: consumer specs use human-readable intent text, not
-            // Loom ids — report the miss, don't fail.
-            Err(_) => unmatched_steps.push(json!({ "step": step.name, "intent": step.intent })),
-        }
+    for intent in &step_intents {
+        wanted.insert(intent.id.clone());
+        store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
     }
     for e in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
         if !wanted.contains(&e.to_id) {
             store.delete_edge(&e.id)?;
         }
     }
-    let unmatched_count = unmatched_steps.len();
+    let linked = step_intents.len();
     let verb = if updated { "updated" } else { "added" };
     let payload = json!({
         "added": !updated,
         "updated": updated,
         "validation": store.get_node(&val.id)?,
         "linked_steps": linked,
-        "unmatched_steps": unmatched_steps,
     });
     let next_step = format!("run `loom journey run {artifact}` to record the proof");
-    let line = if unmatched_count > 0 {
-        format!(
-            "{verb} journey '{}' ({linked} step intent(s)); warning: {unmatched_count} route/step intent(s) were not linked",
-            val.name
-        )
-    } else {
-        format!("{verb} journey '{}' ({linked} step intent(s))", val.name)
-    };
+    let line = format!("{verb} journey '{}' ({linked} step intent(s))", val.name);
     pulse::emit_line(&store, json, payload, &next_step, line)
 }
 
@@ -192,7 +198,12 @@ fn journey_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -
         );
     } else {
         for n in &journeys {
-            println!("{:<10} {} [{}]", n.status, n.name, &n.id[..8]);
+            println!(
+                "{:<10} {} [{}]",
+                n.status,
+                n.name,
+                crate::model::short(&n.id)
+            );
         }
         if let Some(footer) = crate::commands::page_footer(journeys.len(), offset, total) {
             println!("{footer}");
@@ -444,13 +455,13 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
                 "{:<10} {} [{}]",
                 j["status"].as_str().unwrap_or(""),
                 j["name"].as_str().unwrap_or(""),
-                &j["id"].as_str().unwrap_or("")[..8]
+                crate::model::short(j["id"].as_str().unwrap_or(""))
             );
             for i in j["intents"].as_array().into_iter().flatten() {
                 println!(
                     "    -> {} [{}] edge={} proof={} coverage={}",
                     i["name"].as_str().unwrap_or(""),
-                    &i["id"].as_str().unwrap_or("")[..8],
+                    crate::model::short(i["id"].as_str().unwrap_or("")),
                     i["edge_status"].as_str().unwrap_or(""),
                     i["journey_proof_status"].as_str().unwrap_or(""),
                     i["effective_coverage"].as_str().unwrap_or("")
@@ -461,7 +472,7 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
         for i in &journey_gap_intents {
             println!(
                 "{}  {}  proof={} coverage={} reason={}",
-                &i["id"].as_str().unwrap_or("")[..8],
+                crate::model::short(i["id"].as_str().unwrap_or("")),
                 i["name"].as_str().unwrap_or(""),
                 i["journey_proof_status"].as_str().unwrap_or(""),
                 i["coverage"]["status"].as_str().unwrap_or(""),
@@ -472,7 +483,7 @@ fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
         for i in &unjourneyed {
             println!(
                 "{}  {}  lifecycle={} visibility={} level={} applicability={} proof={} coverage={} reason={}",
-                &i["id"].as_str().unwrap_or("")[..8],
+                crate::model::short(i["id"].as_str().unwrap_or("")),
                 i["name"].as_str().unwrap_or(""),
                 i["lifecycle"].as_str().unwrap_or(""),
                 i["visibility"].as_str().unwrap_or("—"),
@@ -505,6 +516,9 @@ fn journey_run(
     let cwd = store.root().to_path_buf();
     drop(store);
 
+    // Serialize proof execution against every other loom runner; a nested
+    // `loom …` child inherits the held marker and proceeds.
+    let _harness = crate::harness::acquire(&cwd, "journey run")?;
     let mut outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
     let store = open(Some(&cwd))?;
     crate::journey::record_outcomes(&store, &parsed, &mut outcomes)?;
@@ -571,6 +585,7 @@ fn journey_freeze(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()>
     let parsed = crate::journey::parse(&spec)?;
     let cwd = store.root().to_path_buf();
     drop(store);
+    let _harness = crate::harness::acquire(&cwd, "journey freeze")?;
     let outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
     let path = crate::journey::write_successful_baseline(&cwd, &parsed, &outcomes)?;
     let store = open(Some(&cwd))?;
@@ -595,6 +610,10 @@ fn journey_diagnose(spec: &Path, base_url: Option<&str>, json: bool) -> Result<(
         parsed.base = base.to_string();
     }
     let hints = crate::journey::diagnose_hints(&parsed);
+    // Diagnose executes real steps against real services; it contends for the
+    // harness like any other run, scoped to the spec (the shared resource is
+    // the service the spec drives) so independent specs still parallelize.
+    let _harness = crate::harness::acquire_for_artifact(spec, "journey diagnose")?;
     let outcomes = crate::journey::execute(None, &parsed, false)?;
     let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
     let passed = outcomes.iter().filter(|o| o.passed).count();

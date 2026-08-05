@@ -114,7 +114,7 @@ impl Store {
             // blind, substring-based dedup during recovery.
             let list = exact
                 .iter()
-                .map(|n| format!("[{}] {}", &n.id[..8.min(n.id.len())], n.name))
+                .map(|n| format!("[{}] {}", crate::model::short(&n.id), n.name))
                 .collect::<Vec<_>>()
                 .join("; ");
             bail!(
@@ -143,7 +143,7 @@ impl Store {
                 let names: Vec<_> = matches
                     .iter()
                     .take(8)
-                    .map(|m| format!("[{}] {}", &m.id[..8.min(m.id.len())], m.name))
+                    .map(|m| format!("[{}] {}", crate::model::short(&m.id), m.name))
                     .collect();
                 bail!(
                     "ambiguous fragment '{key}': {n} candidates: {}",
@@ -622,7 +622,7 @@ impl Store {
     /// check, same journal — refusal is an act of the same kind as approval.
     pub fn reject_intent(&self, id: &str, reason: &str, presence: &str) -> Result<()> {
         let decision = crate::ratification::HumanDecision::direct(presence)?;
-        self.apply_human_decision(id, "rejected", reason, &decision)
+        self.apply_human_decision(id, "rejected", reason, &decision, None)
     }
 
     pub fn reject_intent_from_human(
@@ -631,12 +631,12 @@ impl Store {
         reason: &str,
         decision: &crate::ratification::HumanDecision,
     ) -> Result<()> {
-        self.apply_human_decision(id, "rejected", reason, decision)
+        self.apply_human_decision(id, "rejected", reason, decision, None)
     }
 
     pub fn ratify_intent(&self, id: &str, evidence: &str, presence: &str) -> Result<()> {
         let decision = crate::ratification::HumanDecision::direct(presence)?;
-        self.apply_human_decision(id, "ratified", evidence, &decision)
+        self.apply_human_decision(id, "ratified", evidence, &decision, None)
     }
 
     pub fn ratify_intent_from_human(
@@ -645,12 +645,22 @@ impl Store {
         evidence: &str,
         decision: &crate::ratification::HumanDecision,
     ) -> Result<()> {
-        self.apply_human_decision(id, "ratified", evidence, decision)
+        self.apply_human_decision(id, "ratified", evidence, decision, None)
+    }
+
+    pub fn ratify_intent_from_human_batch(
+        &self,
+        id: &str,
+        evidence: &str,
+        decision: &crate::ratification::HumanDecision,
+        batch_id: &str,
+    ) -> Result<()> {
+        self.apply_human_decision(id, "ratified", evidence, decision, Some(batch_id))
     }
 
     pub fn ratify_pattern(&self, id: &str, evidence: &str, presence: &str) -> Result<()> {
         let decision = crate::ratification::HumanDecision::direct(presence)?;
-        self.apply_human_decision(id, "ratified", evidence, &decision)
+        self.apply_human_decision(id, "ratified", evidence, &decision, None)
     }
 
     pub fn ratify_pattern_from_human(
@@ -659,7 +669,7 @@ impl Store {
         evidence: &str,
         decision: &crate::ratification::HumanDecision,
     ) -> Result<()> {
-        self.apply_human_decision(id, "ratified", evidence, decision)
+        self.apply_human_decision(id, "ratified", evidence, decision, None)
     }
 
     pub fn invalidate_pattern(&self, id: &str) -> Result<usize> {
@@ -693,6 +703,7 @@ impl Store {
         state: &str,
         evidence: &str,
         decision: &crate::ratification::HumanDecision,
+        batch_id: Option<&str>,
     ) -> Result<()> {
         let presence = decision.presence();
         // Fail before journaling. The assertion boundary repeats this check so
@@ -728,6 +739,10 @@ impl Store {
             "presence": presence,
             "human_decision": decision,
             });
+            if let Some(batch_id) = batch_id {
+                payload["batch_id"] = serde_json::json!(batch_id);
+                payload["decision_mode"] = serde_json::json!("batch");
+            }
             let node = self
                 .get_node(id)?
                 .ok_or_else(|| anyhow!("no node '{id}'"))?;
@@ -751,6 +766,9 @@ impl Store {
         .cited(cited);
         if decision.permits_mediated_recording() {
             assertion = assertion.mediated_human_decision();
+        }
+        if let Some(batch_id) = batch_id {
+            assertion = assertion.batch(batch_id);
         }
         self.assert_fact(assertion)?;
         // A mint-time ratification writes no note: the fact and the journal

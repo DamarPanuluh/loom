@@ -32,8 +32,10 @@ loom next [--mode <queue>] [--all] [--json]
 
 Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `--mode`, routes by compass priority. The `ratify` queue is human-decision work and is NEVER served by plain `loom next`, so an autonomous loop is not interrupted by a product question. `loom next --mode ratify` returns a structured host gate: Keep, Remove, or Revise, plus recommendation guidance and exact write-backs. The LLM presents and recommends, waits for the human, then records that answer.
 
+Closure invariant (uniform adjudicability): every served packet's `write_back` names the runnable loom command(s) that close it, and — for every lane whose closure is a graph write — that command accepts the packet's own target (id, short-id prefix, name, or edge endpoints). `fix` and `audit` packets close through state re-reads (`loom sync` / `loom audit --json`), so their closeout names the command without a target argument. An item whose closure cannot be named is a loom defect, not work: plain `loom next` skips it, `loom next --mode <m>` refuses with the defect named, and either way it is journaled as `unservable_packet` (mode, target, problem, write_back) — grep the journal for that kind to find contracts that need repair.
+
 ```text
---mode: build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate | ratify
+--mode: build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate | rectify | ratify
 --all:  closeout view — the top item of every queue at once
 --mode <m> --all:  the FULL depth of one queue — every item it would serve, in
                    priority order (entry 1 is what `loom next --mode <m>` serves),
@@ -51,6 +53,7 @@ Queue partition is deliberately disjoint:
 - `coverage`: registered codefiles with no live realizing owner. Files grounded only by `consumes`, `configures`, or `verifies` edges remain unowned. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
 - `review`: asserted `passing` or `independent` verdicts with `0 < confidence < 0.7`, lowest confidence first. The work item keeps the edge kind's registry owner as `owner_role`, but the mindset is independent re-inspection.
 - `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet tells the LLM to proactively explain that a partial idea is enough, fill technical/repository-derivable gaps, and translate a true product decision into ONE plain-language question. It records the Question, asks the user directly, waits rather than inferring consent, records the answer, then resumes. The packet also routes missing scenarios/prerequisites/proofs/journey coverage and reasoned non-question waivers.
+- `rectify`: live, re-derived structural friction before human ratify. Duplicate-intent clears are pair decisions tied to the content hash of both descriptions, so unrelated writes do not resurrect them and rewording either intent does. Discovered-behavior entries remain observations of the current graph: a structural write can create a new witness and legitimately raise the count mid-drain. Treat the queue as live work, not a fixed settle snapshot.
 
 Fixer lane safety: fix the source and run `loom sync`; sync re-opens the claim (`needs_reverification` plus any `stale_cause` facet), and the owning lane re-measures it.
 
@@ -231,7 +234,7 @@ Sections (all optional, applied in dependency order — `vocab` first, then `int
 
 ### Concurrency
 
-Read commands (`loom status`, `loom next`) open the graph under a **shared** advisory lock with SQLite `query_only`, so several agents can query one graph at the same time and never block each other. Writers still take the lock exclusive, but only for their (short) transaction. `loom scan` runs its external adapter commands with **no** lock held — reading adapter config under a shared lock, executing the subprocesses lock-free, then reopening for a brief exclusive write to reconcile findings — so one long scan no longer freezes every other agent for the duration of its subprocesses.
+Read commands (`loom status`, `loom next`) open the graph under a **shared** advisory lock with SQLite `query_only`, so several agents can query one graph at the same time and never block each other. Writers still take the lock exclusive, but only for their (short) transaction. Every lock acquisition is bounded (`lock_wait_ms`, see `loom limits`): a contender that outlasts the budget exits 75 (`EX_TEMPFAIL`) with a `loom-lock-contention` error that names the recorded holder — pid, access mode, start time, and command line — so a hang is never the failure mode and the diagnosis travels with the refusal. `loom scan` runs its external adapter commands with **no** lock held — reading adapter config under a shared lock, executing the subprocesses lock-free, then reopening for a brief exclusive write to reconcile findings — so one long scan no longer freezes every other agent for the duration of its subprocesses.
 
 ```text
 loom detect [--json]
@@ -321,10 +324,11 @@ loom intent update <intent> --reason "<why>"
   [--visibility user_visible|internal]
   [--aspect happy|sad|fallback|edge_case]
   [--lifecycle planned|implemented|needs_change]
+  [--rectify escalated|clear]
   [--json]
 ```
 
-`update` is the single mutation verb. The ripple rule lives in the fields, not in command choice: a `--description` change is a redefinition and ripples one hop (passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers are cleared so waived axes re-open, and old wording is preserved in decision notes); `--reword` is same meaning, clearer words, no ripple. `--name`, `--level`, `--visibility`, `--aspect`, and `--lifecycle` never ripple. Every update records `--reason`.
+`update` is the single mutation verb. The ripple rule lives in the fields, not in command choice: a `--description` change is a redefinition and ripples one hop (passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers are cleared so waived axes re-open, and old wording is preserved in decision notes); `--reword` is same meaning, clearer words, no ripple. `--name`, `--level`, `--visibility`, `--aspect`, and `--lifecycle` never ripple. `--rectify escalated` moves a discovered behavior to human ratify. On a live duplicate-intent item, `--rectify clear` records that pair as distinct against the content hash of both descriptions; unrelated writes do not resurrect it, while changing either description reopens the comparison. With no duplicate pair, `clear` removes the discovery escalation. Every update records `--reason`.
 
 ```text
 loom intent ratify <intent> --evidence "<why wanted>" [--human-decision "<exact human answer>"] [--json]
@@ -354,12 +358,15 @@ loom edge remove <edge-id> [--reason "<why>"] [--json]
 loom edge set-locator <edge-id> <locator> [--json]
 loom edge set-role <edge-id> realizes|consumes|configures|verifies --reason "<why>" [--json]
 loom edge rehome <edge-id> --to "<successor intent>" --reason "<why>" [--json]
+loom edge retarget <edge-id> --to "<successor node>" --reason "<why>" [--json]
 loom edge show <edge-id> [--json]
 loom edge list [--limit N] [--offset N] [--json]
 loom edge depends-on <intent> <upstream-shadow> [--json]
 ```
 
-`edge implement` defaults to `--role realizes`; only realizing groundings own coverage. Use `consumes` when a file calls behavior across a seam, `configures` when it supplies configuration, and `verifies` when it checks behavior elsewhere. `edge set-role` records a decision note and reopens a settled edge with `stale_cause=role_changed...` when the role changes. `edge rehome` supersedes the old grounding with a `superseded_by` facet, creates or reuses the successor grounding with the old locator and role, and reopens it with `stale_cause=rehomed...`. `edge show` prints edge facets; JSON includes a `facets` object. `edge remove` refuses derived edges. `edge call` records that a validation exercises an interface surface; sync resets that contract when the code behind the surface changes.
+`edge implement` defaults to `--role realizes`; only realizing groundings own coverage. Use `consumes` when a file calls behavior across a seam, `configures` when it supplies configuration, and `verifies` when it checks behavior elsewhere. An exact replay is idempotent, and an uninspected same-role grounding may be re-grounded to a corrected locator. If the `(intent, codefile)` pair already exists with a different role—or an inspected edge is given a different locator—creation refuses and names the edge; use `edge set-role`, `edge set-locator`, or remove it explicitly instead of silently rewriting a settled claim. `apply` enforces the same collision boundary atomically. `edge set-role` records a decision note and reopens a settled edge with `stale_cause=role_changed...` when the role changes. `edge rehome` supersedes the old grounding with a `superseded_by` facet, creates or reuses the successor grounding with the old locator and role, and reopens it with `stale_cause=rehomed...`. `edge show` prints edge facets; JSON includes a `facets` object. `edge remove` refuses derived edges. `edge retarget` re-points an asserted edge's target at a successor node IN PLACE — the recorded operation of correcting an edge whose endpoint was wrong — and refuses a target that would duplicate an existing edge. It preserves the edge id, verdict history, notes, facets, timestamps, role, and locator; stales the edge with `retargeted: <old> -> <new>; <reason>`; and resets validation status when retargeting a `validates` edge. `retarget` cannot change endpoint node types; use the right edge family instead.
+
+`edge implement` and `edge set-locator` lint proof-strength dead ends at write time (warnings, never refusals — JSON carries them as `lints`): a realizing locator that names a symbol the call graph cannot treat as callable (a struct, type, const, binding — anything but a function/method) caps every proof below S3, and a `--role verifies` file exposing zero indexable symbols (an unsupported language, or declarations but no callable) caps it the same way. Each lint says what WOULD be indexable: the file's callable symbols, or the indexable languages.
 
 ```text
 loom edge relate <kind> <from-intent> <to-intent> [--json]
@@ -381,7 +388,7 @@ loom edge explore <intent-a> <intent-b> <ground|issue|independent>
   [--json]
 ```
 
-Verdict commands inspect relationship/grounding claims. `independent` means measured and not related/applicable; it requires real evidence. **Evidence anchoring:** every verdict-recording command (`edge verdict`, `edge explore`, `rule verdict`, `validation verdict`, `apply` batches) parses `file:line[-line]` citations out of `--evidence`; each citation that resolves to a real file under the graph root is stamped with a fingerprint of the cited lines (asserted `evidence_spans` edge facet) so sync can later grade a re-open as "cited span intact" vs "rewritten". Citing an existing file at lines that do not exist rejects the verdict — evidence must describe bytes someone can read. More than 16 distinct resolvable citations also rejects the verdict rather than silently dropping dependency evidence. Citations that resolve to nothing (URLs, tool output, deleted paths) are ignored, never guessed at.
+Verdict commands inspect relationship/grounding claims. `independent` means measured and not related/applicable; it requires real evidence. **Evidence anchoring:** every verdict-recording command (`edge verdict`, `edge explore`, `rule verdict`, `validation verdict`, `apply` batches) parses citations out of `--evidence`; each citation that resolves to a real file under the graph root is stamped with a fingerprint of the cited lines (asserted `evidence_spans` edge facet) so sync can later grade a re-open as "cited span intact" vs "rewritten". Three citation forms: `file:line[-line]` (explicit span — an end beyond EOF rejects), `file:line-` (open range, clamped to EOF), and `file:@symbol` (the span is resolved server-side from the symbol's declaration; an unknown or ambiguous symbol rejects). Citing an existing file at lines that do not exist rejects the verdict — evidence must describe bytes someone can read. More than 16 distinct resolvable citations also rejects the verdict rather than silently dropping dependency evidence. Citations that resolve to nothing (URLs, tool output, deleted paths) are ignored, never guessed at. A stamped span anchors to its content and enclosing symbol, not its line position: a body that moves intact is re-anchored and journaled (`evidence_reanchor`) on sync, and the verdict stands.
 
 ---
 
@@ -390,10 +397,12 @@ Verdict commands inspect relationship/grounding claims. `independent` means meas
 ```text
 loom codefile add <path-or-glob> [--observed] [--json]
 loom codefile rescan [--json]
-loom codefile remove <path-or-key> [--json]
+loom codefile remove <path-or-key> [--successor <path-or-key>] [--json]
 loom codefile show <path-or-key> [--json]
 loom codefile list [--limit N] [--offset N] [--json]
 ```
+
+`codefile remove` is refactor-safe: with live asserted edges pointing at the file it REFUSES and lists every blocker with its `loom edge retarget <id> --to …` remedy (no silent orphaning, no ghost registration). With `--successor <file>` (register the successor first), a rename/split is one recorded operation: each live edge is retargeted in place — verdict history kept — then the node is removed and an `edge_retargeted`/`node_removed` journal pair records the move. Live edges originating FROM the file can never be auto-cascaded and block either way.
 
 `--observed` registers files the graph monitors but does not own (vendored or upstream code): `loom sync` scans them and surface/contract staleness still ripples, but they carry no ownership, coverage, or build obligations — the per-file counterpart of the graph-level observed mode. Re-adding an already-registered file with `--observed` marks it observed. A glob added with `--observed` is remembered, so `codefile rescan` and `loom sync` register files that appear under it later as observed too; a file matched by both an owned and an observed glob registers as owned.
 
@@ -442,6 +451,8 @@ loom validation run [<intent-or-validation>] [--all] [--json]
 
 `loom validation run` executes stored commands without holding the graph lock while the command executes. Settled verdicts are not re-run unless made pending by sync or command changes.
 
+Proof EXECUTION is serialized by an advisory harness lock (`.loom/harness.lock`), taken by `loom validation run`, `loom observe`, `loom journey run`, `loom journey freeze`, and `loom journey diagnose` — because two concurrent runs share ports, databases, and processes and would mint false failing verdicts. A second executor refuses immediately (exit 75) with the holder's agent, pid, purpose, and command rather than racing it. A loom spawned as a child of the holder (a journey CLI step invoking `loom …`) inherits an env marker and proceeds. Graph-free `journey diagnose` locks per-spec instead of per-repo, so diagnoses of independent specs parallelize.
+
 ### Finding triage commands
 
 ```text
@@ -469,7 +480,9 @@ loom journey run <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--
 loom journey diagnose <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--json]
 ```
 
-`add` creates a `Validation` whose body uses `type: "journey"`, `proof_kind: "journey"`, and command `loom journey run <artifact>`. Strength is derived when the proof runs (user-visible coverage expects an S3-or-stronger journey proof). It links resolved step intents with `validates`. It does NOT link steps with `sequence` — a spec's step order is a test script, not a domain claim; assert ordering deliberately with `loom edge relate sequence` if it is real. Unresolved step intents do not fail the add: they are reported as `unmatched_steps` (both native specs and HTTP-contract routes).
+`add` creates a `Validation` whose body uses `type: "journey"`, `proof_kind: "journey"`, and command `loom journey run <artifact>`. Strength is derived when the proof runs (user-visible coverage expects an S3-or-stronger journey proof). It links resolved step intents with `validates`. It does NOT link steps with `sequence` — a spec's step order is a test script, not a domain claim; assert ordering deliberately with `loom edge relate sequence` if it is real. Every step intent must resolve at registration (both native specs and HTTP-contract routes): a step intent that resolves to no intent could never be proven by any run, so `add` refuses the spec BEFORE any write, naming each unresolvable step and the remedy (`loom intent add …` or fix the step text).
+
+`diagnose` is the dry run and predicts the recorded run exactly: it executes the same step semantics as `journey run` — same status/body/capture/exit-code checks, same timeouts, same fail-fast on an unusable base — minus persistence and the graph (no verdicts, no journal, no registration required). The only difference is richer failure detail. If diagnose passes, run passes.
 
 Native specs accept JSON or YAML:
 
@@ -504,9 +517,9 @@ steps:
       inbox_id: "$.captured.id"
 ```
 
-CLI steps run via `sh -c` with the graph root as cwd (so repo-local binaries and fixtures resolve). `journey run` releases the exclusive graph lock while steps execute, then reopens to stamp verdicts — so a step may invoke the same repo's CLI (or any other graph writer) without deadlocking. `expect.exit_code` defaults to `0`. `body` / `exists` / `capture` on a CLI step parse stdout as JSON. HTTP contract specs use `name`, optional `base`/`auth`, and `routes`; route fields include `method`, `path`, optional `intent`/`name`, `success_status`, `query`, `example_request`, `response_fields`, and `extract`. Bearer auth injects `{{ env.LOOM_JOURNEY_AUTH_TOKEN }}`.
+CLI steps run via `sh -c` with the graph root as cwd (so repo-local binaries and fixtures resolve). `journey run` releases the exclusive graph lock while steps execute, then reopens to stamp verdicts — so a step may invoke the same repo's CLI (or any other graph writer) without deadlocking. `expect.exit_code` defaults to `0`. `body` / `exists` / `capture` on a CLI step parse stdout as JSON. A step may declare `timeout_secs: <seconds>` to override the default wall-clock limit (300s CLI / 30s HTTP, listed by `loom limits`). Every failed CLI outcome includes the resolved command, bounded stdout and stderr tails, and an exit classification: `step_exit` for an observed process exit or `runner_kill` when timeout enforcement killed the process group.
 
-`run` records graph verdicts. A failing boundary records the exact failed expectation and reopens previously-passing never-reached later steps. `diagnose` executes directly without graph writes and is useful for missing env/auth/404/template failures. Both accept `--base-url`, which overrides the spec base and `{{ env.BASE_URL }}` for HTTP steps.
+`run` records graph verdicts. A failing step exit records the exact failed expectation and reopens previously-passing never-reached later steps. A runner kill blocks the journey without writing a failing behavior verdict: it is failure to observe, not evidence that the behavior failed. `diagnose` executes directly without graph writes and uses the same failure output. Both accept `--base-url`, which overrides the spec base and `{{ env.BASE_URL }}` for HTTP steps.
 
 ### Journey coverage
 
@@ -575,9 +588,14 @@ loom rule remove <rule> [--json]
 loom rule unlink <rule> <intent> [--json]
 loom rule list [--limit N] [--offset N] [--json]
 loom rule show <rule> [--json]
+loom rule suppress <rule> --excerpt "<matched text>" --reason "<why>" [--json]
+loom rule unsuppress <rule> --key <hash-prefix-or-excerpt> [--json]
+loom rule suppressions [<rule>] [--json]
 ```
 
 Custom-rule creation is intentionally small in the current binary. Rich guidance fields are provided by seeded packs and visible through `rule show`.
+
+`rule suppress` is hit-level adjudication: it judges one pre-screen hit as not-what-the-rule-means, keyed by the content hash of the matched text — never its position. Judged once, the suppression answers the same matched text on every future scan (any rule×intent pair, any shifted line, any moved file): the passing-verdict gate counts it answered and quality packets stop re-serving it (a `suppressed` count stays visible). When the matched text itself changes, the hash no longer matches and the hit re-opens automatically — invalidation is the key, not a sweep. `rule suppressions` is the auditable ledger of these judgments; suppressions are journaled (`hit_suppressed`/`hit_unsuppressed`).
 
 ### Recording verdicts
 
@@ -698,6 +716,19 @@ Proposals are durable plan/RFC artifacts. Adoption is a one-way transition that 
 
 ---
 
+## Judgment inbox commands
+
+```text
+loom judgment propose <ratify|reject|redefine> <intent> --evidence "<why the judgment holds>" [--description "<replacement statement>"] [--json]
+loom judgment digest [--all] [--json]
+loom judgment confirm <id> [--human-decision "<exact human answer>"] [--json]
+loom judgment withdraw <id> --reason "<why>" [--json]
+```
+
+The inbox for human-only judgments (INV-8). An LLM that discovers a candidate — a junk intent that should be rejected, an intent ready to ratify, a statement that no longer matches the code — STAGES it with the evidence a human will review. Staging is ungated (recommending is not deciding) and deduplicated: one live proposal per (kind, intent). `digest` is the human's review surface, oldest first, each entry printing its exact confirm command. `confirm` executes the SAME gated write the direct command demands: ratify/reject require the human's answer (mediated via `--human-decision`, or the typed challenge at a solo terminal) and land through the identical `ratify_intent_from_human`/`reject_intent_from_human` chokepoints; redefine applies the staged statement with the normal ripple (ratification stales to `needs_reconfirmation`). If the gate refuses, the proposal stays staged and nothing else moved; a decided proposal can never be re-confirmed. `withdraw` retires a wrong candidate with a substantive reason. `loom status` notes the staged count next to the queue line.
+
+---
+
 ## InterfaceSurface commands
 
 ```text
@@ -730,8 +761,10 @@ loom smells [--json]
 loom debt [--json]
 loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>] [--json]
 loom whoami [--json]
+loom limits [--json]
 ```
 
+- `limits`: every enforced resource limit with its value, scope, and remedy. Violation errors name the same limit (e.g. `killed: exceeded timeout_secs=300`, `evidence exceeds max_spans=16`, `graph lock exceeded lock_wait_ms=2000`), so a failure message plus this list always yields the threshold and the way to change the outcome. Journey steps declare a per-step override with `timeout_secs: <seconds>` in the spec (CLI and HTTP steps both honor it); validation commands use the body key `timeout_seconds`.
 - `coverage`: vertical spine — intent tree shape, leaf grounding, file ownership by live realizing `implements` edges, unaccounted files after ignores.
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.

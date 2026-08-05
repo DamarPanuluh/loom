@@ -59,6 +59,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
             visibility,
             aspect,
             lifecycle,
+            rectify,
             reason,
             reword,
         } => intent_update(
@@ -71,6 +72,7 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
                 visibility,
                 aspect,
                 lifecycle,
+                rectify,
                 reason,
                 reword,
             },
@@ -156,7 +158,36 @@ fn intent_reject(
         ),
     };
     let intent = store.resolve_node(key, Some(NodeType::Intent))?;
-    store.reject_intent_from_human(&intent.id, reason, &decision)?;
+    let minted = reject_intent_core(&store, &intent, reason, &decision)?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "rejected": { "id": intent.id, "name": intent.name },
+            "reason": reason,
+            "removal_work": minted,
+        }),
+        "loom next --mode triage",
+        format!(
+            "rejected '{}' — {} place(s) still perform it",
+            intent.name,
+            minted.len()
+        ),
+    )?;
+    Ok(())
+}
+
+/// The consequence of a human's reject decision: record it, mint removal
+/// work for every place still performing the behavior, and retire the
+/// intent. Shared by `intent reject` and `judgment confirm` — the inbox is
+/// another door into the SAME gated write, never a second semantics.
+pub(crate) fn reject_intent_core(
+    store: &Store,
+    intent: &Node,
+    reason: &str,
+    decision: &crate::ratification::HumanDecision,
+) -> Result<Vec<serde_json::Value>> {
+    store.reject_intent_from_human(&intent.id, reason, decision)?;
 
     // Every realizing grounding becomes removal work, with the reason attached.
     let mut minted = Vec::new();
@@ -185,22 +216,7 @@ fn intent_reject(
     }
     // loom-stability-exempt: retires an intent
     store.set_node_status(&intent.id, "deprecated")?;
-    pulse::emit_line(
-        &store,
-        json,
-        serde_json::json!({
-            "rejected": { "id": intent.id, "name": intent.name },
-            "reason": reason,
-            "removal_work": minted,
-        }),
-        "loom next --mode triage",
-        format!(
-            "rejected '{}' — {} place(s) still perform it",
-            intent.name,
-            minted.len()
-        ),
-    )?;
-    Ok(())
+    Ok(minted)
 }
 
 pub(crate) fn is_ratified(store: &Store, intent_id: &str) -> Result<bool> {
@@ -434,9 +450,46 @@ fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<(
         many => format!("ratify {}", many.len()),
     };
     let decision = super::ratification_decision(&subject, args.human_decision)?;
+    let batch_id = if targets.len() > 1 {
+        let subjects: Vec<String> = targets.iter().map(|n| n.id.clone()).collect();
+        let executor = std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into());
+        // Contemporaneous set record before the per-intent writes.
+        let digest = crate::batch_auth::subject_digest(&subjects);
+        let pre = crate::journal::append(
+            store.root(),
+            "batch_intent",
+            &digest,
+            serde_json::json!({
+                "operation": "ratify",
+                "subjects": subjects,
+                "human_decision": decision,
+                "evidence": evidence,
+            }),
+        )?;
+        let now = crate::journal::now_iso();
+        let envelope = crate::batch_auth::BatchAuthorization::seal(
+            crate::batch_auth::BatchClaim::Ratification,
+            "ratify",
+            subjects,
+            "human",
+            &executor,
+            &evidence,
+            vec![format!("journal:{}", pre.id)],
+        )?
+        .with_command_id(format!("intent-ratify-all:{}", targets.len()))
+        .with_time_bounds(&now, &now)
+        .with_human_decision(decision.clone());
+        let entry = crate::batch_auth::append_envelope(store.root(), &envelope)?;
+        Some(entry.id)
+    } else {
+        None
+    };
     let mut ratified = Vec::new();
     for n in &targets {
-        store.ratify_intent_from_human(&n.id, &evidence, &decision)?;
+        match &batch_id {
+            Some(bid) => store.ratify_intent_from_human_batch(&n.id, &evidence, &decision, bid)?,
+            None => store.ratify_intent_from_human(&n.id, &evidence, &decision)?,
+        }
         ratified.push(serde_json::json!({ "id": n.id, "name": n.name }));
     }
     pulse::emit_line(
@@ -469,7 +522,11 @@ fn intent_add(graph: Option<&Path>, args: IntentAddArgs, json: bool) -> Result<(
             "allow_symbol_name": args.allow_symbol_name,
         }),
         "loom status",
-        format!("added intent '{}' [{}]", node.name, &node.id[..8]),
+        format!(
+            "added intent '{}' [{}]",
+            node.name,
+            crate::model::short(&node.id)
+        ),
     )?;
     Ok(())
 }
@@ -634,7 +691,12 @@ fn intent_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) ->
         println!("no intents");
     }
     for n in &intents {
-        println!("{:<12} {} [{}]", n.status, n.name, &n.id[..8]);
+        println!(
+            "{:<12} {} [{}]",
+            n.status,
+            n.name,
+            crate::model::short(&n.id)
+        );
     }
     if let Some(footer) = super::page_footer(intents.len(), offset, total) {
         println!("{footer}");
@@ -651,6 +713,7 @@ fn intent_update(graph: Option<&Path>, args: IntentUpdateArgs, json: bool) -> Re
         visibility,
         aspect,
         lifecycle,
+        rectify,
         reason,
         reword,
     } = args;
@@ -660,10 +723,11 @@ fn intent_update(graph: Option<&Path>, args: IntentUpdateArgs, json: bool) -> Re
         && visibility.is_none()
         && aspect.is_none()
         && lifecycle.is_none()
+        && rectify.is_none()
     {
         bail!(
             "nothing to update — pass --description, --name, --level, --visibility, \
-             --aspect and/or --lifecycle"
+             --aspect, --lifecycle and/or --rectify"
         );
     }
     if reason.trim().is_empty() {
@@ -680,6 +744,11 @@ fn intent_update(graph: Option<&Path>, args: IntentUpdateArgs, json: bool) -> Re
     }
     if let Some(lc) = &lifecycle {
         check_lifecycle(lc, false)?;
+    }
+    if let Some(r) = &rectify {
+        if r != "escalated" && r != "clear" {
+            bail!("unknown --rectify '{r}' (use escalated|clear)");
+        }
     }
     let store = open(graph)?;
     let n = store.resolve_node(&key, Some(NodeType::Intent))?;
@@ -726,6 +795,44 @@ fn intent_update(graph: Option<&Path>, args: IntentUpdateArgs, json: bool) -> Re
         store.update_node(&n.id, None, None, Some(lc))?;
         store.add_note(&n.id, "decision", &format!("lifecycle {lc}: {reason}"))?;
         parts.push(format!("lifecycle={lc}"));
+    }
+    if let Some(r) = &rectify {
+        match r.as_str() {
+            "escalated" => {
+                store.set_facet(
+                    &n.id,
+                    TargetKind::Node,
+                    crate::divergence::RECTIFY_FACET,
+                    crate::divergence::RECTIFY_ESCALATED,
+                    TruthClass::Asserted,
+                )?;
+                store.add_note(
+                    &n.id,
+                    "decision",
+                    &format!("rectify escalated to human ratify: {reason}"),
+                )?;
+                parts.push("rectify=escalated".into());
+            }
+            "clear" => {
+                let duplicate_pairs =
+                    crate::divergence::clear_duplicate_pairs(&store, &n.id, &reason)?;
+                if duplicate_pairs > 0 {
+                    parts.push(format!(
+                        "rectify=clear ({duplicate_pairs} duplicate pair decision{})",
+                        if duplicate_pairs == 1 { "" } else { "s" }
+                    ));
+                } else {
+                    store.clear_facet(&n.id, TargetKind::Node, crate::divergence::RECTIFY_FACET)?;
+                    store.add_note(
+                        &n.id,
+                        "decision",
+                        &format!("rectify escalation cleared: {reason}"),
+                    )?;
+                    parts.push("rectify=clear".into());
+                }
+            }
+            _ => unreachable!("validated above"),
+        }
     }
     // Description last: the ONLY ripple source. Redefinition re-opens settled
     // dependents; --reword keeps the concept and ripples nothing.
@@ -782,6 +889,7 @@ struct IntentUpdateArgs {
     visibility: Option<String>,
     aspect: Option<String>,
     lifecycle: Option<String>,
+    rectify: Option<String>,
     reason: String,
     reword: bool,
 }

@@ -27,7 +27,7 @@ use crate::model::{Claim, NodeType, TargetKind, Verification};
 use crate::store::Store;
 use crate::Result;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Below this many served packets, the efficacy ratio is a coincidence with a
 /// percent sign. Reported anyway — with the caveat attached, because a hidden
@@ -36,6 +36,98 @@ pub const EFFICACY_MIN_SAMPLE: usize = 20;
 
 /// Writes by one actor inside one minute that stop looking like judgment.
 pub const BURST_THRESHOLD: usize = 10;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JudgmentBurstBucket {
+    pub actor: String,
+    pub minute: String,
+    pub claim: crate::batch_auth::BatchClaim,
+    pub subjects: Vec<String>,
+    pub batch_ids: BTreeSet<String>,
+    /// Exact latest valid fact assertion in this actor/minute/claim bucket.
+    pub latest_assertion_millis: i64,
+}
+
+impl JudgmentBurstBucket {
+    pub fn id(&self) -> String {
+        format!("{}@{}", self.actor, self.minute)
+    }
+
+    pub fn for_key(
+        store: &Store,
+        actor: &str,
+        minute: &str,
+        claim: crate::batch_auth::BatchClaim,
+    ) -> Result<Option<Self>> {
+        let Some(minute) = normalized_minute(minute) else {
+            return Ok(None);
+        };
+        Ok(Self::group(store)?.into_iter().find(|bucket| {
+            bucket.actor == actor && bucket.minute == minute && bucket.claim == claim
+        }))
+    }
+
+    pub fn group(store: &Store) -> Result<Vec<Self>> {
+        group_judgment_facts(store.all_facts()?, |subject_id| {
+            Ok(store.get_node(subject_id)?.is_some())
+        })
+    }
+}
+
+type JudgmentBurstKey = (String, String, crate::batch_auth::BatchClaim);
+type JudgmentBurstState = (BTreeSet<String>, BTreeSet<String>, i64);
+
+fn group_judgment_facts<F>(
+    facts: Vec<crate::evidence::Fact>,
+    mut is_live: F,
+) -> Result<Vec<JudgmentBurstBucket>>
+where
+    F: FnMut(&str) -> Result<bool>,
+{
+    let mut buckets: BTreeMap<JudgmentBurstKey, JudgmentBurstState> = BTreeMap::new();
+    for fact in facts {
+        let Ok(claim) = crate::batch_auth::BatchClaim::try_from(fact.claim) else {
+            continue;
+        };
+        if !is_live(&fact.subject_id)? {
+            continue;
+        }
+        let Some(asserted_millis) = crate::journal::stamp_millis(&fact.asserted_at) else {
+            continue;
+        };
+        let Some(minute) = crate::journal::minute_key(&fact.asserted_at) else {
+            continue;
+        };
+        let (subjects, batch_ids, latest_assertion_millis) = buckets
+            .entry((fact.asserted_by, minute, claim))
+            .or_insert_with(|| (BTreeSet::new(), BTreeSet::new(), i64::MIN));
+        *latest_assertion_millis = (*latest_assertion_millis).max(asserted_millis);
+        subjects.insert(fact.subject_id);
+        if !fact.batch_id.is_empty() {
+            batch_ids.insert(fact.batch_id);
+        }
+    }
+    Ok(buckets
+        .into_iter()
+        .map(
+            |((actor, minute, claim), (subjects, batch_ids, latest_assertion_millis))| {
+                JudgmentBurstBucket {
+                    actor,
+                    minute,
+                    claim,
+                    subjects: subjects.into_iter().collect(),
+                    batch_ids,
+                    latest_assertion_millis,
+                }
+            },
+        )
+        .collect())
+}
+
+fn normalized_minute(stamp_or_minute: &str) -> Option<String> {
+    crate::journal::minute_key(stamp_or_minute)
+        .or_else(|| crate::journal::minute_key(&format!("{stamp_or_minute}:00.000Z")))
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(tag = "kind", content = "id", rename_all = "snake_case")]
@@ -71,6 +163,7 @@ pub fn run(store: &Store) -> Result<Vec<AuditFinding>> {
     // file per ratified Intent, and audit::run is on the `loom status` path.
     let (entries, corrupt) = crate::journal::read_counting(store.root())?;
     out.extend(unjournaled_ratifications(store, &entries)?);
+    out.extend(malformed_judgment_timestamps(store)?);
     out.extend(bursts(store)?);
     out.extend(unanchored_settled_facts(store)?);
     if corrupt > 0 {
@@ -82,8 +175,9 @@ pub fn run(store: &Store) -> Result<Vec<AuditFinding>> {
                  final record from an interrupted append. They are skipped, not read \
                  as evidence, so the intact history above them still counts."
             ),
-            remedy: "inspect the tail of .loom/journal/events.jsonl; the append-only \
-                     record above the damaged line is unaffected"
+            remedy: "inspect the tail of .loom/journal/events.jsonl and repair the damaged \
+                     final line (the append-only record above it is unaffected); verify with \
+                     loom audit --json — the finding must be absent"
                 .into(),
         });
     }
@@ -131,7 +225,7 @@ fn unjournaled_ratifications(
                     ),
                     remedy: format!(
                         "re-ratify it deliberately (`loom {command} ratify {}`)",
-                        &node.id[..8.min(node.id.len())]
+                        crate::model::short(&node.id)
                     ),
                 });
             }
@@ -140,59 +234,87 @@ fn unjournaled_ratifications(
     Ok(out)
 }
 
+/// Judgment facts with timestamps that cannot participate in time-based audit.
+///
+/// These records may predate the strict import boundary or have been written
+/// directly. They must be visible as corruption rather than merely omitted from
+/// burst grouping.
+fn malformed_judgment_timestamps(store: &Store) -> Result<Vec<AuditFinding>> {
+    Ok(malformed_judgment_timestamp_findings(store.all_facts()?))
+}
+
+fn malformed_judgment_timestamp_findings(facts: Vec<crate::evidence::Fact>) -> Vec<AuditFinding> {
+    let mut out = Vec::new();
+    for fact in facts {
+        let Ok(claim) = crate::batch_auth::BatchClaim::try_from(fact.claim) else {
+            continue;
+        };
+        if crate::journal::stamp_millis(&fact.asserted_at).is_some() {
+            continue;
+        }
+        let command = match claim {
+            crate::batch_auth::BatchClaim::Ratification => "ratify or reject",
+            crate::batch_auth::BatchClaim::Adjudication => "record its finding verdict",
+        };
+        out.push(AuditFinding {
+            kind: "malformed_judgment_timestamp",
+            subject: match fact.subject_kind {
+                TargetKind::Node => AuditSubject::Node(fact.subject_id.clone()),
+                TargetKind::Edge => AuditSubject::Edge(fact.subject_id.clone()),
+            },
+            detail: format!(
+                "stored {} fact '{}' has invalid asserted_at timestamp {:?}; it cannot be grouped or time-audited",
+                claim.as_str(),
+                fact.id,
+                fact.asserted_at
+            ),
+            remedy: format!(
+                "re-record this judgment through the typed command ({command}) so loom stamps a canonical timestamp; then remove the malformed legacy fact only after preserving a backup"
+            ),
+        });
+    }
+    out.sort_by(|a, b| a.subject.cmp(&b.subject).then(a.detail.cmp(&b.detail)));
+    out
+}
+
 /// Many asserted writes by one actor inside one minute.
 ///
-/// Statistical, and reported as such: a legitimate bulk import looks like this
-/// too. What it says is "these were not individually judged", which is exactly
-/// what the 30-at-19:20 cluster meant.
+/// Statistical, and reported as such: unexplained judgment compression looks
+/// like this. A sealed batch authorization envelope covering exactly those
+/// subjects is batch truth, not an exemption — the facts retain
+/// `decision_mode=batch` and the burst is not reported.
 fn bursts(store: &Store) -> Result<Vec<AuditFinding>> {
-    let mut buckets: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
-    for fact in store.all_facts()? {
-        if fact.claim != Claim::Ratification && fact.claim != Claim::Adjudication {
-            continue;
-        }
-        // Only judgments there is still something to re-open.
-        //
-        // A finding is a DERIVED node with a deterministic id: sync wipes and
-        // rebuilds it every run, and an adjudication on that id deliberately
-        // outlives it so the verdict re-attaches when the finding recurs
-        // (`store::derived`). So a verdict whose subject does not currently
-        // resolve is parked, not lost — and this finding's remedy, "re-open
-        // them and judge them individually", cannot be carried out on a
-        // subject that is not there.
-        //
-        // Counting them made a burst that no action could close: 44 parked
-        // verdicts held the `sound` rung open with no move available. Nothing
-        // is concealed by skipping them, because the verdicts themselves are
-        // preserved; if those findings recur, the subjects resolve again and
-        // the burst returns — correctly, since by then there IS something to
-        // re-judge.
-        if store.get_node(&fact.subject_id)?.is_none() {
-            continue;
-        }
-        // Minute precision: the timestamps are ISO-8601, so truncating at the
-        // colon before seconds is the whole grouping key.
-        let minute: String = fact.asserted_at.chars().take(16).collect();
-        buckets
-            .entry((fact.asserted_by.clone(), minute))
-            .or_default()
-            .push(fact.subject_id.clone());
-    }
     let mut out = Vec::new();
-    for ((actor, minute), subjects) in buckets {
-        if subjects.len() < BURST_THRESHOLD {
+    for bucket in JudgmentBurstBucket::group(store)? {
+        if bucket.subjects.len() < BURST_THRESHOLD {
+            continue;
+        }
+        if crate::batch_auth::covering_envelope(
+            store,
+            &bucket.subjects,
+            bucket.claim,
+            &bucket.actor,
+            &bucket.minute,
+            &bucket.batch_ids,
+            bucket.latest_assertion_millis,
+        )?
+        .is_some()
+        {
             continue;
         }
         out.push(AuditFinding {
             kind: "judgment_burst",
-            subject: AuditSubject::Graph(format!("{actor}@{minute}")),
+            subject: AuditSubject::Graph(bucket.id()),
             detail: format!(
-                "{} judgments by '{actor}' inside one minute ({minute}) — \
-                 too fast to have been made one at a time",
-                subjects.len()
+                "{} {} judgments by '{}' inside one minute ({}) — \
+                 too fast to have been made one at a time, and no sealed \
+                 batch authorization covers this exact set",
+                bucket.subjects.len(),
+                bucket.claim.as_str(),
+                bucket.actor,
+                bucket.minute,
             ),
-            remedy: "re-open them and judge them individually, or record that this was \
-                     a bulk import and what authorized it"
+            remedy: "this existing burst cannot be closed retrospectively: re-judge the subjects through ordinary typed commands if individual judgments were intended. For future bulk work, use a command that seals its local batch authorization and evidence before the first write; `loom audit attest-burst` will refuse an after-the-fact seal and never rewrite timestamps"
                 .into(),
         });
     }
@@ -252,7 +374,16 @@ fn unanchored_settled_facts(store: &Store) -> Result<Vec<AuditFinding>> {
                 fact.claim.as_str(),
                 fact.state
             ),
-            remedy: "re-establish it with evidence loom can re-check, or withdraw it".into(),
+            remedy: {
+                let id8 = crate::model::short(&fact.subject_id);
+                format!(
+                    "re-record the claim through its typed verdict command with evidence loom \
+                     can re-check (loom edge verdict {id8} <ground|issue|independent> \
+                     --evidence '…' for edges; loom finding verdict {id8} <justified|rejected|…> \
+                     --reason '…' --evidence '…' for findings), or withdraw it \
+                     (loom edge remove {id8} --reason '…')"
+                )
+            },
         });
     }
     Ok(out)
@@ -324,11 +455,115 @@ mod tests {
     /// normalize. Getting this wrong reported 100% efficacy for every graph.
     #[test]
     fn both_timestamp_formats_land_on_one_clock() {
-        let iso = epoch_millis("2026-07-25T07:10:25.553Z").expect("ISO parses");
-        let millis = epoch_millis("1784963425553").expect("epoch parses");
+        let iso = crate::journal::stamp_millis("2026-07-25T07:10:25.553Z").expect("ISO parses");
+        let millis = crate::journal::stamp_millis("1784963425553").expect("epoch parses");
         assert_eq!(iso, millis, "the same instant in both formats");
         // And ordering survives the conversion.
-        assert!(epoch_millis("2026-07-25T07:10:26.000Z") > epoch_millis("1784963425553"));
+        assert!(
+            crate::journal::stamp_millis("2026-07-25T07:10:26.000Z")
+                > crate::journal::stamp_millis("1784963425553")
+        );
+    }
+
+    #[test]
+    fn burst_grouping_normalizes_time_filters_dead_subjects_and_sorts_membership() {
+        let fact = |subject: &str, asserted_at: &str, batch_id: &str| crate::evidence::Fact {
+            id: format!("fact-{subject}"),
+            subject_kind: TargetKind::Node,
+            subject_id: subject.into(),
+            claim: Claim::Adjudication,
+            state: "justified".into(),
+            criterion: String::new(),
+            verification: Verification::Cited,
+            confidence: 1.0,
+            asserted_by: "llm:analyzer".into(),
+            asserted_at: asserted_at.into(),
+            decision_mode: crate::model::DecisionMode::Batch,
+            batch_id: batch_id.into(),
+            stale: None,
+        };
+        let buckets = group_judgment_facts(
+            vec![
+                fact("b", "1784963425553", "batch-2"),
+                fact("dead", "2026-07-25T07:10:01.000Z", "batch-dead"),
+                fact("a", "2026-07-25T07:10:59.000Z", "batch-1"),
+            ],
+            |subject| Ok(subject != "dead"),
+        )
+        .unwrap();
+        assert_eq!(buckets.len(), 1);
+        assert_eq!(buckets[0].minute, "2026-07-25T07:10");
+        assert_eq!(buckets[0].subjects, vec!["a", "b"]);
+        assert_eq!(
+            buckets[0].batch_ids.iter().cloned().collect::<Vec<_>>(),
+            vec!["batch-1", "batch-2"]
+        );
+    }
+
+    #[test]
+    fn malformed_judgment_timestamps_are_reported_without_disturbing_valid_groups() {
+        let fact = |subject: &str, claim: Claim, asserted_at: &str| crate::evidence::Fact {
+            id: format!("fact-{subject}"),
+            subject_kind: TargetKind::Node,
+            subject_id: subject.into(),
+            claim,
+            state: "justified".into(),
+            criterion: String::new(),
+            verification: Verification::Cited,
+            confidence: 1.0,
+            asserted_by: "llm:analyzer".into(),
+            asserted_at: asserted_at.into(),
+            decision_mode: crate::model::DecisionMode::Individual,
+            batch_id: String::new(),
+            stale: None,
+        };
+        let facts = vec![
+            fact("valid-b", Claim::Adjudication, "1784963425553"),
+            fact("bad-z", Claim::Ratification, "2026-07-25T07:10:25"),
+            fact("bad-day", Claim::Adjudication, "2026-02-29T07:10:25Z"),
+            fact("valid-a", Claim::Adjudication, "2026-07-25T07:10:59Z"),
+            fact("not-judgment", Claim::Verdict, "also-bad"),
+        ];
+
+        let findings = malformed_judgment_timestamp_findings(facts.clone());
+        assert_eq!(findings.len(), 2);
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.subject.id().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["bad-day", "bad-z"]
+        );
+        assert!(findings[0].detail.contains("2026-02-29T07:10:25Z"));
+        assert!(findings[1].detail.contains("2026-07-25T07:10:25"));
+        assert!(findings.iter().all(|finding| {
+            finding.kind == "malformed_judgment_timestamp"
+                && finding.remedy.contains("typed command")
+        }));
+
+        let buckets = group_judgment_facts(facts, |_| Ok(true)).unwrap();
+        assert_eq!(buckets.len(), 1);
+        assert_eq!(buckets[0].subjects, vec!["valid-a", "valid-b"]);
+        assert_eq!(buckets[0].minute, "2026-07-25T07:10");
+        assert_eq!(buckets[0].latest_assertion_millis, 1_784_963_459_000);
+    }
+
+    #[test]
+    fn burst_bucket_identity_and_membership_are_deterministic() {
+        let bucket = JudgmentBurstBucket {
+            actor: "llm:analyzer".into(),
+            minute: "2026-07-25T07:10".into(),
+            claim: crate::batch_auth::BatchClaim::Adjudication,
+            subjects: vec!["a".into(), "b".into()],
+            batch_ids: ["batch-1".to_string()].into_iter().collect(),
+            latest_assertion_millis: 1_784_963_459_000,
+        };
+        assert_eq!(bucket.id(), "llm:analyzer@2026-07-25T07:10");
+        assert_eq!(bucket.subjects, vec!["a", "b"]);
+        assert_eq!(
+            bucket.batch_ids.into_iter().collect::<Vec<_>>(),
+            vec!["batch-1"]
+        );
     }
 
     #[test]
@@ -362,50 +597,6 @@ pub struct Efficacy {
     pub ratio: f64,
     /// The same split by packet kind, so `next` and `context` can be told apart.
     pub by_kind: BTreeMap<String, (usize, usize)>,
-}
-
-/// Milliseconds since the epoch, from either stamp format loom writes.
-///
-/// A shared clock is the precondition for comparing two planes at all, and
-/// loom has two formats because the journal predates a time dependency it
-/// still does not want.
-fn epoch_millis(stamp: &str) -> Option<i64> {
-    if let Ok(millis) = stamp.parse::<i64>() {
-        return Some(millis);
-    }
-    // `YYYY-MM-DDTHH:MM:SS.sssZ` — parsed by hand for the same reason.
-    let (date, rest) = stamp.split_once('T')?;
-    let mut d = date.split('-');
-    let (y, mo, da): (i64, i64, i64) = (
-        d.next()?.parse().ok()?,
-        d.next()?.parse().ok()?,
-        d.next()?.parse().ok()?,
-    );
-    let time = rest.trim_end_matches('Z');
-    let (hms, frac) = time.split_once('.').unwrap_or((time, "0"));
-    let mut t = hms.split(':');
-    let (h, mi, sec): (i64, i64, i64) = (
-        t.next()?.parse().ok()?,
-        t.next()?.parse().ok()?,
-        t.next()?.parse().ok()?,
-    );
-    // Days since the epoch via a civil-date conversion (Howard Hinnant's), so
-    // month lengths and leap years are handled rather than approximated.
-    let y_adj = if mo <= 2 { y - 1 } else { y };
-    let era = if y_adj >= 0 { y_adj } else { y_adj - 399 } / 400;
-    let yoe = y_adj - era * 400;
-    let mp = (mo + 9) % 12;
-    let doy = (153 * mp + 2) / 5 + da - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let days = era * 146_097 + doe - 719_468;
-    let millis: i64 = frac
-        .chars()
-        .chain(std::iter::repeat('0'))
-        .take(3)
-        .collect::<String>()
-        .parse()
-        .unwrap_or(0);
-    Some(((days * 86_400 + h * 3600 + mi * 60 + sec) * 1000) + millis)
 }
 
 pub fn efficacy(store: &Store) -> Result<Efficacy> {
@@ -476,8 +667,8 @@ pub fn efficacy(store: &Store) -> Result<Efficacy> {
             // would have reported 100% efficacy forever.
             if node_settled
                 .get(target)
-                .and_then(|at| epoch_millis(at))
-                .zip(epoch_millis(&entry.ts))
+                .and_then(|at| crate::journal::stamp_millis(at))
+                .zip(crate::journal::stamp_millis(&entry.ts))
                 .map(|(settled, served)| settled > served)
                 .unwrap_or(false)
             {
