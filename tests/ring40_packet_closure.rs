@@ -372,3 +372,58 @@ fn every_lane_loom_ships_serves_a_closable_packet_on_this_graph() {
         .expect("the default walk must serve work on this graph");
     assert_closure(&default);
 }
+
+/// A validate packet for a user-visible intent whose proof is meaningful but
+/// not end-to-end: the closure is `loom journey add`/`run`, and the write_back
+/// must name the intent or the packet is refused as `unservable_packet`.
+/// Regression: the journey-gap branch once wrote back only `<spec>`
+/// placeholders, so the validate lane could not serve this gap at all.
+#[test]
+fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "users can check out",
+            "a flow a user can see",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    // A passing S2 proof (runner-reported assertions, no call witness):
+    // meaningful, but NOT end-to-end — exactly the shallow journey gap the
+    // validate lane serves when nothing else is pending.
+    loom::commands::prove_intent(
+        &store,
+        &intent.id,
+        "unit proof",
+        "echo 'test result: ok. 4 passed; 0 failed'",
+    )
+    .unwrap();
+    ratify_all(&store);
+
+    let item = workitem::next(&store, Some(Lane::Validate))
+        .unwrap()
+        .expect("an S2-only proof of a user-visible behavior is validate work");
+    assert_closure(&item);
+    // The target-bearing command must be runnable as-is: `loom journey prompt`
+    // takes exactly one intent argument, so it must end at the intent id (a
+    // name containing `;` or a newline must not split the write_back).
+    assert!(
+        item.prompt_contract
+            .write_back
+            .contains(&format!("loom journey prompt '{}';", intent.id)),
+        "the closure names the intent in a runnable command: {}",
+        item.prompt_contract.write_back
+    );
+}

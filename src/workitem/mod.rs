@@ -803,4 +803,54 @@ mod tests {
         );
         assert_eq!(closure_problem(&it), None);
     }
+
+    #[test]
+    fn a_journey_gap_validate_packet_names_the_intent_in_its_write_back() {
+        // Regression: the end-to-end journey gap branch of `unproven_contract`
+        // once wrote back only `<spec>` placeholders (`loom journey add <spec>
+        // then loom journey run <spec>`), which name no command accepting the
+        // packet's intent target. `loom next` correctly refused the packet as
+        // an `unservable_packet` — a loom defect — and the validate lane could
+        // never serve a user-visible intent whose proof stops at S2. The
+        // write_back must name the intent (via `loom journey prompt`), which
+        // is the drafting command that accepts it.
+        let intent = crate::model::Node {
+            id: "abc123def4567890".into(),
+            node_type: crate::model::NodeType::Intent,
+            name: "users can check out".into(),
+            description: "d".into(),
+            status: "implemented".into(),
+            truth_class: crate::model::TruthClass::Asserted,
+            body: serde_json::json!({}),
+            created_at: String::new(),
+            updated_at: String::new(),
+        };
+        let proof = crate::proofstrength::ProofAssessment {
+            any_registered: true,
+            any_passing: true,
+            best_passing_strength: Some(crate::proofstrength::Strength::S2),
+            meaningful_passing: true,
+        };
+        let mut it = item("validate", "intent", &intent.id, &intent.name, "");
+        it.prompt_contract = super::contracts::unproven_contract(&intent, proof);
+        it.target = node_target(&intent);
+        assert_eq!(
+            closure_problem(&it),
+            None,
+            "the journey-gap write_back must be servable: {}",
+            it.prompt_contract.write_back
+        );
+        // The target-bearing command must be syntactically runnable as-is:
+        // `loom journey prompt` takes exactly one intent argument, so the
+        // command must END at the intent id (nothing but the separator after
+        // the closing quote). It names the target by ID so a name containing
+        // `;` or a newline cannot split the write_back into unservable
+        // fragments.
+        let prompt_cmd = format!("loom journey prompt '{}';", intent.id);
+        assert!(
+            it.prompt_contract.write_back.contains(&prompt_cmd),
+            "the closure must name the intent in a runnable command: {}",
+            it.prompt_contract.write_back
+        );
+    }
 }
