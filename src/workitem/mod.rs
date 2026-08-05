@@ -852,5 +852,15 @@ mod tests {
             "the closure must name the intent in a runnable command: {}",
             it.prompt_contract.write_back
         );
+        // The write_back must ALSO bind the target into the WRITE closure
+        // (the spec registered by `loom journey add` names the intent by ID),
+        // not only name it in the read-only prompt — so the closing write is
+        // target-bound and can earn S3 from the spec it registers.
+        let write_cmd = format!("loom journey add <spec whose steps name intent '{}'>", intent.id);
+        assert!(
+            it.prompt_contract.write_back.contains(&write_cmd),
+            "the closure must include a target-bound write: {}",
+            it.prompt_contract.write_back
+        );
     }
 }

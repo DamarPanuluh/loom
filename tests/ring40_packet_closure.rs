@@ -7,6 +7,7 @@
 //! worker. These tests serve real packets across lanes on real graphs and
 //! assert the invariant holds for each.
 
+use loom::cli::{Cli, CodefileCmd, Command, EdgeCmd, JourneyCmd};
 use loom::lane::Lane;
 use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
@@ -416,6 +417,27 @@ fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
         .unwrap()
         .expect("an S2-only proof of a user-visible behavior is validate work");
     assert_closure(&item);
+    // The packet must advertise the grounding operations the closure needs,
+    // so the executed workflow below is exactly the advertised one — the S3
+    // call witness is earned by the grounding the packet itself prescribes,
+    // not by test-only steps.
+    assert!(
+        item.prompt_contract
+            .allowed_actions
+            .iter()
+            .any(|a| a.contains("loom edge implement") && a.contains("--role verifies")),
+        "the packet must advertise the grounding steps: {:?}",
+        item.prompt_contract.allowed_actions
+    );
+    // The re-grade after the run must also be advertised: `loom journey run`
+    // records the outcome but proof strength is derived by sync.
+    assert!(
+        item.prompt_contract
+            .write_back
+            .contains("loom sync to re-grade"),
+        "the write_back must advertise the sync that re-grades the proof: {}",
+        item.prompt_contract.write_back
+    );
     // The target-bearing command must be runnable as-is: `loom journey prompt`
     // takes exactly one intent argument, so it must end at the intent id (a
     // name containing `;` or a newline must not split the write_back).
@@ -426,4 +448,106 @@ fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
         "the closure names the intent in a runnable command: {}",
         item.prompt_contract.write_back
     );
+
+    // Executing the advertised closure must REMOVE this packet from the
+    // queue. The closure is target-bound: ground the behavior, give it a
+    // verifying file whose symbol calls the grounded symbol (the S3 call
+    // witness), author a journey spec whose steps name the intent, register it
+    // (`loom journey add`), and run it (`loom journey run`). Grounding is
+    // added WITHOUT sync so the fixture's S2 proof keeps its stored grade —
+    // only the journey run re-grades its own validation, isolating the
+    // closure as the cause of the packet's departure.
+    drop(store); // release the fixture's write lock so CLI commands can open the graph
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(
+        tmp.path().join("src/behavior.rs"),
+        "pub fn perform_behavior() -> &'static str {\n    \"ok\"\n}\n",
+    )
+    .unwrap();
+    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
+    std::fs::write(
+        tmp.path().join("tests/behavior_test.rs"),
+        "pub fn exercises_behavior() {\n    let _ = perform_behavior();\n}\n",
+    )
+    .unwrap();
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    let spec = tmp.path().join("journeys/checkout-flow.yaml");
+    std::fs::write(
+        &spec,
+        "journey: checkout-flow\nsteps:\n  - name: run it\n    intent: users can check out\n    \
+         run: echo checkout-ok\n    expect:\n      stdout_contains: [\"checkout-ok\"]\n",
+    )
+    .unwrap();
+    let mut cmds: Vec<Command> = vec![
+        Command::Codefile {
+            cmd: CodefileCmd::Add {
+                path: "src/behavior.rs".into(),
+                observed: false,
+            },
+        },
+        Command::Edge {
+            cmd: EdgeCmd::Implement {
+                intent: "users can check out".into(),
+                codefile: "src/behavior.rs".into(),
+                locator: Some("fn perform_behavior".into()),
+                role: Some("realizes".into()),
+            },
+        },
+        Command::Codefile {
+            cmd: CodefileCmd::Add {
+                path: "tests/behavior_test.rs".into(),
+                observed: false,
+            },
+        },
+        Command::Edge {
+            cmd: EdgeCmd::Implement {
+                intent: "users can check out".into(),
+                codefile: "tests/behavior_test.rs".into(),
+                locator: None,
+                role: Some("verifies".into()),
+            },
+        },
+        Command::Journey {
+            cmd: JourneyCmd::Add { spec: spec.clone() },
+        },
+        Command::Journey {
+            cmd: JourneyCmd::Run {
+                spec,
+                base_url: None,
+            },
+        },
+    ];
+    for cmd in cmds.drain(..) {
+        loom::commands::run(Cli {
+            graph: Some(tmp.path().to_path_buf()),
+            json: false,
+            command: Some(cmd),
+        })
+        .unwrap();
+    }
+
+    let store = Store::open(tmp.path()).unwrap();
+    // The advertised closure must have earned the bar: the registered journey
+    // validation is a passing S3-or-stronger proof of this intent (loom ran
+    // it, its spec asserts output/content, and its call closure reaches the
+    // grounded behavior). Sync derives the strength from those facts.
+    loom::sync::run(&store, tmp.path()).unwrap();
+    let journey = store
+        .resolve_node("checkout-flow", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(journey.status, "passed", "the closure's journey run must pass");
+    assert!(
+        loom::proofstrength::of(&store, &journey.id).unwrap()
+            >= loom::proofstrength::Strength::END_TO_END,
+        "the journey proof registered by the closure must reach S3"
+    );
+
+    let after = workitem::next(&store, Some(Lane::Validate)).unwrap();
+    if let Some(w) = after {
+        assert_ne!(
+            w.target.id, intent.id,
+            "executing the advertised closure must remove the journey-gap packet: {}",
+            w.prompt_contract.write_back
+        );
+    }
 }
