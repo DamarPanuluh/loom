@@ -730,10 +730,19 @@ pub(super) fn unproven_contract(
             "editing code to make a proof pass".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
-        evidence_clauses: vec![
-            EvidenceClause::CitesRun,
-            EvidenceClause::ProofStrengthAtLeast { grade: "S2".into() },
-        ],
+        evidence_clauses: {
+            // The end-to-end branch queues for S3 — its evidence floor must
+            // match its stop condition, not the S2 floor of the other branches.
+            let mut clauses = vec![EvidenceClause::CitesRun];
+            clauses.push(EvidenceClause::ProofStrengthAtLeast {
+                grade: if end_to_end_gap {
+                    "S3".into()
+                } else {
+                    "S2".into()
+                },
+            });
+            clauses
+        },
         required_evidence:
             "the command loom ran, its exit status, and the assertion that would have caught a \
              regression"

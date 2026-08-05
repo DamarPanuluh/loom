@@ -451,13 +451,19 @@ fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
 
     // Executing the advertised closure must REMOVE this packet from the
     // queue. The closure is target-bound: ground the behavior, give it a
-    // verifying file whose symbol calls the grounded symbol (the S3 call
-    // witness), author a journey spec whose steps name the intent, register it
-    // (`loom journey add`), and run it (`loom journey run`). Grounding is
-    // added WITHOUT sync so the fixture's S2 proof keeps its stored grade —
-    // only the journey run re-grades its own validation, isolating the
-    // closure as the cause of the packet's departure.
+    // verifying test that calls the grounded symbol (the S3 call witness),
+    // author a journey spec whose steps name the intent AND run the grounded
+    // verifier (`cargo test --test behavior_test`), register it (`loom
+    // journey add`), run it (`loom journey run`), and re-grade (`loom sync`).
+    // Grounding is added WITHOUT sync so the fixture's S2 proof keeps its
+    // stored grade — the journey run genuinely exercises the code the witness
+    // is claimed from, and only the journey validation re-grades to S3.
     drop(store); // release the fixture's write lock so CLI commands can open the graph
+    std::fs::write(
+        tmp.path().join("Cargo.toml"),
+        "[package]\nname = \"loom-fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\nname = \"loom_fixture\"\npath = \"src/behavior.rs\"\n",
+    )
+    .unwrap();
     std::fs::create_dir_all(tmp.path().join("src")).unwrap();
     std::fs::write(
         tmp.path().join("src/behavior.rs"),
@@ -467,15 +473,16 @@ fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
     std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
     std::fs::write(
         tmp.path().join("tests/behavior_test.rs"),
-        "pub fn exercises_behavior() {\n    let _ = perform_behavior();\n}\n",
+        "use loom_fixture::perform_behavior;\n#[test]\nfn exercises_behavior() {\n    \
+         assert_eq!(perform_behavior(), \"ok\");\n}\n",
     )
     .unwrap();
     std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
     let spec = tmp.path().join("journeys/checkout-flow.yaml");
     std::fs::write(
         &spec,
-        "journey: checkout-flow\nsteps:\n  - name: run it\n    intent: users can check out\n    \
-         run: echo checkout-ok\n    expect:\n      stdout_contains: [\"checkout-ok\"]\n",
+        "journey: checkout-flow\nsteps:\n  - name: run the verifier\n    intent: users can check out\n    \
+         run: cargo test --test behavior_test\n    expect:\n      stdout_contains: [\"test result: ok\"]\n",
     )
     .unwrap();
     let mut cmds: Vec<Command> = vec![

@@ -862,5 +862,15 @@ mod tests {
             "the closure must include a target-bound write: {}",
             it.prompt_contract.write_back
         );
+        // The end-to-end branch queues for S3 — its evidence floor must match
+        // its stop condition, not the S2 floor of the weaker branches.
+        assert!(
+            it.prompt_contract.evidence_clauses.iter().any(|c| matches!(
+                c,
+                EvidenceClause::ProofStrengthAtLeast { grade } if grade == "S3"
+            )),
+            "the journey-gap evidence floor must be S3: {:?}",
+            it.prompt_contract.evidence_clauses
+        );
     }
 }
