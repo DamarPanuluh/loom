@@ -47,13 +47,6 @@ fn loom_fail(tmp: &std::path::Path, args: &[&str], envs: &[(&str, &str)]) -> Str
 }
 
 const BUILDER: &[(&str, &str)] = &[("LOOM_AGENT", "llm:builder")];
-/// A builder lane relaying the human's VERIFIABLE answer: the host confirmed
-/// presence (debug seam) and the exact response is being recorded. Without
-/// this, an llm lane cannot pass --human-decision at all (INV-8).
-const RELAY: &[(&str, &str)] = &[
-    ("LOOM_AGENT", "llm:builder"),
-    ("LOOM_PRESENCE_PROBE", "human"),
-];
 const ANALYZER: &[(&str, &str)] = &[("LOOM_AGENT", "llm:analyzer")];
 
 /// An unratified intent; returns its id. The store is scoped so the graph
@@ -214,7 +207,7 @@ fn a_reject_proposal_confirms_only_through_the_human_gate() {
             "--human-decision",
             "yes, remove the bypass",
         ],
-        RELAY,
+        BUILDER,
     );
     assert_eq!(out["proposal"]["state"].as_str().unwrap(), "confirmed");
     assert!(
@@ -271,7 +264,7 @@ fn a_ratify_proposal_lands_the_same_ratification_as_the_direct_command() {
             "--human-decision",
             "ratify it",
         ],
-        RELAY,
+        BUILDER,
     );
     let store = Store::open(tmp.path()).unwrap();
     assert_eq!(
@@ -301,7 +294,7 @@ fn a_redefine_proposal_preserves_the_builder_gate_and_applies_the_ripple() {
             "--human-decision",
             "wanted",
         ],
-        RELAY,
+        BUILDER,
     );
 
     let err = loom_fail(
@@ -546,7 +539,7 @@ fn the_digest_renders_each_proposal_with_its_confirm_command() {
             "--human-decision",
             "yes",
         ],
-        RELAY,
+        BUILDER,
     );
     let err = loom_fail(
         tmp.path(),

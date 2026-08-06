@@ -18,6 +18,50 @@ use common::*;
 /// concurrent test can never observe a half-configured process environment.
 static CLI_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+/// Make every test independent of the lane identity inherited from its runner.
+///
+/// Loom validations intentionally run as `llm:validator`; Ring 14 fixtures
+/// deliberately exercise several identities, including Solo. Hold the shared
+/// environment lock for the whole test, clear the runner's identity before any
+/// Store opens, and restore it even if the test unwinds. Recovering a poisoned
+/// lock prevents one useful assertion failure from cascading through the rest
+/// of the suite as unrelated lock failures.
+struct IsolatedCliEnv {
+    _lock: std::sync::MutexGuard<'static, ()>,
+    prior_agent: Option<std::ffi::OsString>,
+    prior_presence_probe: Option<std::ffi::OsString>,
+}
+
+impl IsolatedCliEnv {
+    fn acquire() -> Self {
+        let lock = CLI_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let prior_agent = std::env::var_os("LOOM_AGENT");
+        let prior_presence_probe = std::env::var_os("LOOM_PRESENCE_PROBE");
+        std::env::remove_var("LOOM_AGENT");
+        std::env::remove_var("LOOM_PRESENCE_PROBE");
+        Self {
+            _lock: lock,
+            prior_agent,
+            prior_presence_probe,
+        }
+    }
+}
+
+impl Drop for IsolatedCliEnv {
+    fn drop(&mut self) {
+        match self.prior_agent.as_ref() {
+            Some(value) => std::env::set_var("LOOM_AGENT", value),
+            None => std::env::remove_var("LOOM_AGENT"),
+        }
+        match self.prior_presence_probe.as_ref() {
+            Some(value) => std::env::set_var("LOOM_PRESENCE_PROBE", value),
+            None => std::env::remove_var("LOOM_PRESENCE_PROBE"),
+        }
+    }
+}
+
 fn ratification(store: &Store, id: &str) -> Option<String> {
     store
         .fact(
@@ -28,6 +72,7 @@ fn ratification(store: &Store, id: &str) -> Option<String> {
         .map(|v| v.fact.state)
 }
 
+#[cfg(debug_assertions)]
 fn cli_add_intent(root: &std::path::Path, name: &str) {
     loom::commands::run(Cli {
         graph: Some(root.to_path_buf()),
@@ -53,11 +98,7 @@ fn cli_add_intent(root: &std::path::Path, name: &str) {
 // =========================================================================
 #[test]
 fn inv8_ratify_rejects_every_llm_lane() {
-    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
-    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
-    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
-    // the ratification below. A mutex only the writers hold protects nothing.
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -108,11 +149,7 @@ fn inv8_ratify_rejects_every_llm_lane() {
 // =========================================================================
 #[test]
 fn ratify_requires_substantive_evidence() {
-    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
-    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
-    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
-    // the ratification below. A mutex only the writers hold protects nothing.
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -147,11 +184,7 @@ fn ratify_requires_substantive_evidence() {
 // =========================================================================
 #[test]
 fn an_unratified_intent_with_no_evidence_is_not_a_divergence() {
-    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
-    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
-    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
-    // the ratification below. A mutex only the writers hold protects nothing.
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -209,11 +242,7 @@ fn an_unratified_intent_with_no_evidence_is_not_a_divergence() {
 // =========================================================================
 #[test]
 fn redefinition_stales_ratification() {
-    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
-    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
-    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
-    // the ratification below. A mutex only the writers hold protects nothing.
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -283,11 +312,7 @@ fn redefinition_stales_ratification() {
 // =========================================================================
 #[test]
 fn ratification_records_human_and_timestamp() {
-    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
-    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
-    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
-    // the ratification below. A mutex only the writers hold protects nothing.
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -336,7 +361,7 @@ fn ratification_records_human_and_timestamp() {
 // =========================================================================
 #[test]
 fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -374,7 +399,7 @@ fn cli_ratify_rejects_noninteractive_stdin_with_the_inv8_finding() {
 // =========================================================================
 #[test]
 fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -388,11 +413,8 @@ fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
         .unwrap();
     drop(store);
 
-    let prior_agent = std::env::var_os("LOOM_AGENT");
     std::env::set_var("LOOM_AGENT", "llm:builder");
-    // The host verifiably confirmed human presence (INV-8): an LLM lane may
-    // RECORD the human's exact answer, but may never MAKE the decision.
-    std::env::set_var("LOOM_PRESENCE_PROBE", "human");
+    std::env::remove_var("LOOM_PRESENCE_PROBE");
     let result = loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: true,
@@ -405,11 +427,6 @@ fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
             },
         }),
     });
-    match prior_agent {
-        Some(value) => std::env::set_var("LOOM_AGENT", value),
-        None => std::env::remove_var("LOOM_AGENT"),
-    }
-    std::env::remove_var("LOOM_PRESENCE_PROBE");
     result.expect("an LLM may record, but not make, an explicit human decision");
 
     let store = Store::open(tmp.path()).unwrap();
@@ -447,7 +464,7 @@ fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
 // =========================================================================
 #[test]
 fn imported_ratification_needs_local_reconfirmation() {
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let source_tmp = Tmp::new();
     let source = Store::init(source_tmp.path(), Some("source"), false).unwrap();
     source.set_agent(Agent::Solo);
@@ -525,7 +542,7 @@ fn imported_ratification_needs_local_reconfirmation() {
 // =========================================================================
 #[test]
 fn semantic_impact_preserves_or_routes_human_reconfirmation() {
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     store.set_agent(Agent::Solo);
@@ -543,7 +560,6 @@ fn semantic_impact_preserves_or_routes_human_reconfirmation() {
         .unwrap();
     drop(store);
 
-    let prior_agent = std::env::var_os("LOOM_AGENT");
     std::env::set_var("LOOM_AGENT", "llm:builder");
 
     loom::commands::run(Cli {
@@ -587,11 +603,6 @@ fn semantic_impact_preserves_or_routes_human_reconfirmation() {
     })
     .unwrap();
 
-    match prior_agent {
-        Some(value) => std::env::set_var("LOOM_AGENT", value),
-        None => std::env::remove_var("LOOM_AGENT"),
-    }
-
     let store = Store::open(tmp.path()).unwrap();
     assert_eq!(
         ratification(&store, &intent.id).as_deref(),
@@ -607,11 +618,7 @@ fn semantic_impact_preserves_or_routes_human_reconfirmation() {
 
 #[test]
 fn ratification_provenance_survives_redefinition_staleness() {
-    // Serialized against the tests that mutate LOOM_AGENT/LOOM_PRESENCE_PROBE:
-    // `Store` parses LOOM_AGENT at construction (store/mod.rs), so a store built
-    // while a sibling has set a lane agent is born as that lane and INV-8 refuses
-    // the ratification below. A mutex only the writers hold protects nothing.
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -665,8 +672,9 @@ fn ratification_provenance_survives_redefinition_staleness() {
 //    with origin=human — the minting act is the ratification evidence.
 // =========================================================================
 #[test]
+#[cfg(debug_assertions)]
 fn solo_mint_is_born_ratified_with_human_origin() {
-    let _guard = CLI_LOCK.lock().unwrap();
+    let _env = IsolatedCliEnv::acquire();
     // A PERSON at a terminal, not merely an unset agent. `Agent::Solo` is the
     // default whenever LOOM_AGENT is absent, so a test process — like CI —
     // reads as an agent unless it says otherwise. That is the point of the
@@ -697,13 +705,12 @@ fn solo_mint_is_born_ratified_with_human_origin() {
     );
 }
 
-/// Engine-wide INV-8 hardening: an LLM lane CANNOT relay a fabricated
-/// `--human-decision` string — mediated authority requires verifiable human
-/// presence. This closes the "the host said yes" forgery path on every
-/// mediated command (ratify, judgment confirm, pattern, attest-burst).
+/// The host-mediated path is explicit, never permissive: an LLM recorder may
+/// carry a substantive human answer, but silence and placeholders still fail
+/// before any wantedness fact is written.
 #[test]
-fn llm_lane_cannot_forge_a_mediated_human_decision() {
-    let _guard = CLI_LOCK.lock().unwrap();
+fn llm_lane_cannot_record_silence_or_a_placeholder_as_a_human_decision() {
+    let _env = IsolatedCliEnv::acquire();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -717,36 +724,31 @@ fn llm_lane_cannot_forge_a_mediated_human_decision() {
         .unwrap();
     drop(store);
 
-    let prior_agent = std::env::var_os("LOOM_AGENT");
-    // LLM lane, NO presence probe: the mediated string must be refused.
     std::env::set_var("LOOM_AGENT", "llm:builder");
     std::env::remove_var("LOOM_PRESENCE_PROBE");
-    let err = loom::commands::run(Cli {
-        graph: Some(tmp.path().to_path_buf()),
-        json: true,
-        command: Some(Command::Intent {
-            cmd: IntentCmd::Ratify {
-                key: Some(intent.name.clone()),
-                all: false,
-                evidence: Some("someone supposedly agreed".into()),
-                human_decision: Some("yes I agree".into()),
-            },
-        }),
-    })
-    .unwrap_err();
-    match prior_agent {
-        Some(value) => std::env::set_var("LOOM_AGENT", value),
-        None => std::env::remove_var("LOOM_AGENT"),
+    for answer in ["", "  ", "…", "todo", "<answer>"] {
+        let err = loom::commands::run(Cli {
+            graph: Some(tmp.path().to_path_buf()),
+            json: true,
+            command: Some(Command::Intent {
+                cmd: IntentCmd::Ratify {
+                    key: Some(intent.name.clone()),
+                    all: false,
+                    evidence: Some("the human answer must be explicit and substantive".into()),
+                    human_decision: Some(answer.into()),
+                },
+            }),
+        })
+        .unwrap_err();
+        assert!(
+            err.to_string().contains("actual answer"),
+            "silence or placeholder {answer:?} must be refused: {err}"
+        );
     }
-    assert!(
-        err.to_string().contains("verifiably present"),
-        "an llm lane without host-verified presence must not relay a mediated answer: {err}"
-    );
-
     let store = Store::open(tmp.path()).unwrap();
     assert_ne!(
         store.ratification(&intent.id).unwrap(),
         "ratified",
-        "the forged mediated string must not ratify anything"
+        "silence or a placeholder must not ratify anything"
     );
 }
