@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.29.1] - 2026-08-06
+- restore host-mediated human decisions in release builds
+
 ## [Unreleased]
 - TypeScript `export const <name>` locators resolve consistently across syncs.
 - Grounding creation refuses role collisions and locator changes on inspected edges instead of mutating settled evidence; same-role pre-verdict re-grounding remains available, while settled changes require explicit `set-role`, `set-locator`, or removal.
