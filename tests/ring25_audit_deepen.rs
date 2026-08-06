@@ -805,3 +805,174 @@ fn ratify_all_seals_a_batch_and_avoids_a_burst() {
         "ratification facts retain decision_mode=batch"
     );
 }
+
+/// Re-judging burst subjects is NOT a remedy: the fact row for (subject, claim)
+/// is an UPSERT keyed on the subject+claim, so a changed re-judgment rewrites
+/// `asserted_at` to the current minute — the burst simply relocates (and is
+/// re-detected) instead of closing. Identical re-assertions no-op. Either way
+/// the audit is never made clean by re-judging.
+#[test]
+fn re_judging_does_not_close_the_burst() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let mut subjects = Vec::new();
+    for n in 0..loom::audit::BURST_THRESHOLD + 2 {
+        let cf = store
+            .add_node(
+                NodeType::CodeFile,
+                &format!("src/rerj{n}.rs"),
+                "",
+                "registered",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let f = store
+            .add_derived_node(
+                NodeType::Finding,
+                &format!("re-judge finding {n}"),
+                &format!("finding {n}"),
+                "flagged",
+                "code_audit",
+                serde_json::json!({ "kind": "code_audit", "file": format!("src/rerj{n}.rs") }),
+            )
+            .unwrap();
+        store.add_derived_edge(EdgeKind::Flags, &f.id, &cf.id).ok();
+        store
+            .record_finding_verdict(
+                &f.id,
+                "justified",
+                "bulk reason",
+                &format!("src/rerj{n}.rs:1"),
+            )
+            .unwrap();
+        subjects.push(f.id);
+    }
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        found.iter().any(|f| f.kind == "judgment_burst"),
+        "precondition: unexplained burst is reported"
+    );
+
+    // Identical re-assertions are a byte-identical no-op — the burst persists
+    // unchanged, same minute.
+    for id in &subjects {
+        store
+            .record_finding_verdict(id, "justified", "bulk reason", "src/rerj0.rs:1")
+            .unwrap();
+    }
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        found.iter().any(|f| f.kind == "judgment_burst"),
+        "identical re-assertion must not close the burst: {found:#?}"
+    );
+
+    // Changed re-judgments rewrite asserted_at to now. Done in one pass the
+    // burst is re-detected at the current minute — audit still not clean.
+    for id in &subjects {
+        store
+            .record_finding_verdict(
+                id,
+                "justified",
+                "a fresh individual reason",
+                "src/rerj0.rs:1",
+            )
+            .unwrap();
+    }
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        found.iter().any(|f| f.kind == "judgment_burst"),
+        "changed re-judgments must relocate, not close, the burst: {found:#?}"
+    );
+}
+
+/// Option B: a burst CAN be closed retrospectively when a HUMAN vouches and
+/// the seal cites a trusted human-gated `batch_intent` record that PREDATES
+/// the burst's final fact and binds the exact subject digest — the append-only
+/// journal timestamp proves the Q&A happened before the judgments. Machine
+/// records (batch_apply), forged event names without a HumanDecision, wrong
+/// digests, and the burst actor's own later seal all still fail closed.
+#[test]
+fn a_human_seal_over_a_pre_burst_record_closes_the_burst() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    let mut subjects = Vec::new();
+    for n in 0..loom::audit::BURST_THRESHOLD + 2 {
+        let i = intent(&store, &format!("wanted behavior {n}"));
+        subjects.push(i);
+    }
+    // The Q&A record lands FIRST, before any burst fact exists — the ordering
+    // proof. It must BE the trusted human authorization act: event
+    // `batch_intent` (as `loom intent ratify --all` writes), target_id = the
+    // subject digest of the exact burst, payload carrying a HumanDecision.
+    let digest = loom::batch_auth::subject_digest(&subjects);
+    let decision = loom::ratification::HumanDecision::mediated(
+        "the human reviewed the enumerated snapshot and stands behind it",
+    )
+    .unwrap();
+    let record = loom::journal::append(
+        store.root(),
+        "batch_intent",
+        &digest,
+        serde_json::json!({
+            "operation": "ratify",
+            "subjects": subjects,
+            "human_decision": decision,
+            "evidence": "portfolio review of the enumerated snapshot",
+        }),
+    )
+    .unwrap();
+    // NOW the burst facts land, after the human record exists. Ratifications
+    // are human-gated, so route them through the direct-ratify path.
+    for id in &subjects {
+        store
+            .ratify_intent(id, "portfolio review of the enumerated snapshot", "tty")
+            .unwrap();
+    }
+    assert!(
+        loom::audit::run(&store)
+            .unwrap()
+            .iter()
+            .any(|f| f.kind == "judgment_burst"),
+        "precondition: unexplained burst is reported"
+    );
+
+    // Retrospective seal: stamped now (after the facts), authority HUMAN,
+    // citing the pre-burst batch_intent record.
+    let facts = store.all_facts().unwrap();
+    let minute: String = facts
+        .iter()
+        .find(|f| f.claim == Claim::Ratification)
+        .unwrap()
+        .asserted_at
+        .chars()
+        .take(16)
+        .collect();
+    let envelope = loom::batch_auth::BatchAuthorization::seal(
+        loom::batch_auth::BatchClaim::Ratification,
+        "ratify",
+        subjects.clone(),
+        "human",
+        "solo",
+        "the human reviewed the Q&A record and vouches for this snapshot",
+        vec![format!("journal:{}", record.id)],
+    )
+    .unwrap()
+    .with_human_decision(
+        loom::ratification::HumanDecision::mediated(
+            "the human vouches for the enumerated snapshot",
+        )
+        .unwrap(),
+    )
+    .with_time_bounds(format!("{minute}:00.000Z"), format!("{minute}:59.999Z"));
+    let entry = loom::batch_auth::append_envelope(store.root(), &envelope).unwrap();
+    store
+        .stamp_batch_ids(&subjects, Claim::Ratification, &entry.id)
+        .unwrap();
+
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        !found.iter().any(|f| f.kind == "judgment_burst"),
+        "a human seal over a pre-burst bound human authorization must close the burst: {found:#?}"
+    );
+}

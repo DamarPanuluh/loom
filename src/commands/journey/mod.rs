@@ -87,7 +87,28 @@ fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
             unresolved.join("\n  ")
         );
     }
-    let artifact = spec.display().to_string();
+    // Prefer a path relative to the graph root so grading/confinement never
+    // depends on absolute caller paths. Absolute inputs that still live under
+    // the root are stripped; paths outside the root are refused.
+    let root = store.root();
+    let root_canon = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let spec_canon = spec.canonicalize().map_err(|e| {
+        anyhow::anyhow!(
+            "journey spec '{}' is missing or unreadable: {e}",
+            spec.display()
+        )
+    })?;
+    if !spec_canon.starts_with(&root_canon) {
+        bail!(
+            "journey spec '{}' is outside the graph root {}",
+            spec.display(),
+            root.display()
+        );
+    }
+    let artifact = spec_canon
+        .strip_prefix(&root_canon)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| spec.display().to_string());
     // The spec's raw bytes fold into the body as spec_hash, so an edited spec at
     // the SAME path changes the body (a path-only body would miss the common
     // "fixed the spec, re-add" case).
@@ -512,7 +533,92 @@ fn journey_run(
     if let Some(base) = base_url {
         parsed.base = base.to_string();
     }
-    crate::journey::require(&store, &parsed.journey)?;
+    // Bind the executed file to the registered validation artifact. A YAML that
+    // only shares `journey:` name with a registered validation must not run and
+    // stamp that validation — grading reads the registered artifact, so a
+    // different path would invent credit for steps that were never the proof.
+    let validation = crate::journey::resolve_validation(&store, &parsed.journey, false)?;
+    let registered = validation
+        .body
+        .get("artifact")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "journey validation '{}' has no registered artifact — re-add with `loom journey add`",
+                parsed.journey
+            )
+        })?;
+    let root = store.root();
+    let root_canon = root
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve graph root {}: {e}", root.display()))?;
+    // Registered artifact may be relative (preferred) or absolute (legacy).
+    // Either way it must canonicalize under the graph root.
+    let reg_path = {
+        let p = Path::new(registered);
+        if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            root.join(registered)
+        }
+    };
+    let reg_canon = reg_path.canonicalize().map_err(|e| {
+        anyhow::anyhow!(
+            "registered journey artifact '{}' is missing or unreadable: {e}",
+            registered
+        )
+    })?;
+    if !reg_canon.starts_with(&root_canon) {
+        bail!(
+            "registered journey artifact '{}' resolves outside the graph root {}",
+            registered,
+            root.display()
+        );
+    }
+    let run_canon = spec.canonicalize().map_err(|e| {
+        anyhow::anyhow!(
+            "journey spec '{}' is missing or unreadable: {e}",
+            spec.display()
+        )
+    })?;
+    if !run_canon.starts_with(&root_canon) {
+        bail!(
+            "journey run path '{}' resolves outside the graph root {}",
+            spec.display(),
+            root.display()
+        );
+    }
+    if reg_canon != run_canon {
+        bail!(
+            "journey run path '{}' does not match registered artifact '{}' for journey '{}' — refuse to stamp a different YAML",
+            spec.display(),
+            registered,
+            parsed.journey
+        );
+    }
+    // Content must match the registered fingerprint. An in-place edit of the
+    // same path would otherwise re-run with steps that no longer match the
+    // validation body / Validates links until a re-add. Missing hash is fail
+    // closed — legacy hand-registered journeys must re-add.
+    let expected = validation
+        .body
+        .get("spec_hash")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "journey validation '{}' has no registered spec_hash — re-add with `loom journey add`",
+                parsed.journey
+            )
+        })?;
+    let raw = std::fs::read_to_string(&run_canon)
+        .map_err(|e| anyhow::anyhow!("reading journey spec {}: {e}", run_canon.display()))?;
+    let actual = crate::artifact::fingerprint(&raw);
+    if actual != expected {
+        bail!(
+            "journey spec '{}' has changed since registration (spec_hash mismatch) — re-add with `loom journey add` before run",
+            registered
+        );
+    }
     let cwd = store.root().to_path_buf();
     drop(store);
 

@@ -47,16 +47,22 @@ pub struct CallGraph {
     pub unresolved: usize,
     /// file → symbols it defines.
     defines: BTreeMap<String, BTreeSet<String>>,
-    /// `to_symbol` → indices into `edges`. Built once so `impact`'s backward BFS
-    /// looks up incoming edges in O(log n) rather than rescanning the whole edge
-    /// vector per visited node (it is called per grounded symbol per validation
-    /// on the sync hot path).
-    incoming: BTreeMap<String, Vec<usize>>,
+    /// file → harness-executed test functions it defines (`#[test]` / inside
+    /// `#[cfg(test)]`). Only these may serve as derived proof entry points.
+    test_defines: BTreeMap<String, BTreeSet<String>>,
+    /// `(to_file, to_symbol)` → indices into `edges`. File-qualified so a bare
+    /// name shared by two definitions cannot pull callers of one into the
+    /// impact of the other. Built once so `impact`'s backward BFS looks up
+    /// incoming edges in O(log n) rather than rescanning the whole edge vector
+    /// per visited node (it is called per grounded symbol per validation on the
+    /// sync hot path).
+    incoming: BTreeMap<(String, String), Vec<usize>>,
 }
 
 /// Build the graph from the derived plane.
 pub fn build(store: &Store) -> Result<CallGraph> {
     let mut defines: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut test_defines: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut owner: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut raw: Vec<(String, String, String)> = Vec::new();
 
@@ -68,6 +74,9 @@ pub fn build(store: &Store) -> Result<CallGraph> {
                 .insert(sym.clone());
             owner.entry(sym).or_default().push(cf.name.clone());
         }
+        for sym in test_symbols_of(store, &cf)? {
+            test_defines.entry(cf.name.clone()).or_default().insert(sym);
+        }
         for (from, callee) in calls_of(store, &cf)? {
             raw.push((cf.name.clone(), from, callee));
         }
@@ -75,6 +84,7 @@ pub fn build(store: &Store) -> Result<CallGraph> {
 
     let mut graph = CallGraph {
         defines,
+        test_defines,
         ..Default::default()
     };
     for (file, from_symbol, callee) in raw {
@@ -131,7 +141,7 @@ pub fn build(store: &Store) -> Result<CallGraph> {
     for (i, e) in graph.edges.iter().enumerate() {
         graph
             .incoming
-            .entry(e.to_symbol.clone())
+            .entry((e.to_file.clone(), e.to_symbol.clone()))
             .or_default()
             .push(i);
     }
@@ -151,6 +161,16 @@ fn symbols_of(store: &Store, cf: &crate::model::Node) -> Result<Vec<String>> {
     Ok(serde_json::from_str::<BTreeMap<String, String>>(&json)
         .map(|map| map.into_keys().collect())
         .unwrap_or_default())
+}
+
+/// The harness-executed test functions a code file defines, from the derived
+/// `test_symbols` facet.
+fn test_symbols_of(store: &Store, cf: &crate::model::Node) -> Result<Vec<String>> {
+    let Some(json) = store.get_facet(&cf.id, TargetKind::Node, crate::seed::TEST_SYMBOLS_KEY)?
+    else {
+        return Ok(Vec::new());
+    };
+    Ok(serde_json::from_str::<Vec<String>>(&json).unwrap_or_default())
 }
 
 /// The `caller > callee` pairs a file records, already split.
@@ -206,29 +226,121 @@ impl CallGraph {
             .collect()
     }
 
+    /// Symbols defined in one registered file, sorted by the graph's stable set order.
+    pub fn symbols_in_file(&self, file: &str) -> Vec<&str> {
+        self.defines
+            .get(file)
+            .map(|symbols| symbols.iter().map(String::as_str).collect())
+            .unwrap_or_default()
+    }
+
+    /// The resolved call edges (used by S3 derivation to confirm an entry
+    /// symbol is actually invoked somewhere, including from file scope).
+    pub fn edges(&self) -> &[CallEdge] {
+        &self.edges
+    }
+
+    /// Registered files that expose at least one indexed symbol.
+    pub fn files(&self) -> impl Iterator<Item = &str> {
+        self.defines.keys().map(String::as_str)
+    }
+
+    /// Whether one file defines this exact symbol.
+    pub fn file_defines(&self, file: &str, symbol: &str) -> bool {
+        self.defines
+            .get(file)
+            .is_some_and(|symbols| symbols.contains(symbol))
+    }
+
+    /// The harness-executed test functions a file defines. Only these (plus
+    /// symbols they reach) may serve as derived proof entry points.
+    pub fn file_test_symbols(&self, file: &str) -> BTreeSet<String> {
+        self.test_defines.get(file).cloned().unwrap_or_default()
+    }
+
     /// Everything that transitively reaches `symbol`, up to `depth` hops.
     ///
-    /// Breadth-first from the target BACKWARDS, so `hops` is the true shortest
-    /// call distance — which is what makes the answer rankable rather than a
-    /// pile of names.
+    /// Breadth-first from every defining file of `symbol` BACKWARDS, so `hops`
+    /// is the true shortest call distance and a shared bare name cannot
+    /// smuggle callers from one definition into another. Heuristic edges are
+    /// included for diagnostic blast-radius; grading uses [`exact_impact`].
     pub fn impact(&self, symbol: &str, depth: usize) -> Impact {
+        self.impact_with(symbol, depth, false)
+    }
+
+    /// Callers that reach `symbol` through an all-Exact resolution path.
+    ///
+    /// Grading (S3 call witness, harness reachability) must never credit a
+    /// nearest-file guess: only uniquely-resolved edges count as proof that
+    /// one symbol actually calls another.
+    pub fn exact_impact(&self, symbol: &str, depth: usize) -> Impact {
+        self.impact_with(symbol, depth, true)
+    }
+
+    /// Exact callers of one specific `(file, symbol)` definition site.
+    ///
+    /// Prefer this over [`exact_impact`] for grading: a realizing grounding
+    /// names a file, and same-named symbols in other files must not share its
+    /// witness.
+    pub fn exact_impact_at(&self, file: &str, symbol: &str, depth: usize) -> Impact {
+        self.impact_from(vec![(file.to_string(), symbol.to_string())], depth, true)
+    }
+
+    fn impact_with(&self, symbol: &str, depth: usize, exact_only: bool) -> Impact {
+        let mut starts = Vec::new();
+        let defining_files = self.definers(symbol);
+        if defining_files.is_empty() {
+            // Symbol not indexed under any file: still seed a bare lookup via
+            // every edge that targets that name, but only when not exact_only
+            // (exact proof requires a known definition site).
+            if !exact_only {
+                for (to_file, to_symbol) in self.incoming.keys() {
+                    if to_symbol == symbol {
+                        starts.push((to_file.clone(), to_symbol.clone()));
+                    }
+                }
+            }
+        } else {
+            for file in defining_files {
+                starts.push((file.to_string(), symbol.to_string()));
+            }
+        }
+        self.impact_from(starts, depth, exact_only)
+    }
+
+    fn impact_from(&self, starts: Vec<(String, String)>, depth: usize, exact_only: bool) -> Impact {
         let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
         let mut callers: Vec<Caller> = Vec::new();
-        let mut queue: VecDeque<(String, usize)> = VecDeque::new();
-        queue.push_back((symbol.to_string(), 0));
-        let mut visited_symbols: BTreeSet<String> = BTreeSet::new();
-        visited_symbols.insert(symbol.to_string());
+        // Queue file-qualified symbols so two `open` definitions never share a
+        // caller set just because their bare names collide.
+        let mut queue: VecDeque<(String, String, usize)> = VecDeque::new();
+        let mut visited: BTreeSet<(String, String)> = BTreeSet::new();
+        let target = starts
+            .first()
+            .map(|(_, symbol)| symbol.clone())
+            .unwrap_or_default();
+        for start in starts {
+            if visited.insert(start.clone()) {
+                queue.push_back((start.0, start.1, 0));
+            }
+        }
 
-        while let Some((current, hops)) = queue.pop_front() {
+        while let Some((current_file, current_symbol, hops)) = queue.pop_front() {
             if hops >= depth {
                 continue;
             }
-            let Some(indices) = self.incoming.get(&current) else {
+            let Some(indices) = self
+                .incoming
+                .get(&(current_file.clone(), current_symbol.clone()))
+            else {
                 continue;
             };
             for e in indices.iter().map(|&i| &self.edges[i]) {
+                if exact_only && e.resolution != Resolution::Exact {
+                    continue;
+                }
                 let key = (e.from_file.clone(), e.from_symbol.clone());
-                if e.from_symbol.is_empty() || !seen.insert(key) {
+                if e.from_symbol.is_empty() || !seen.insert(key.clone()) {
                     continue;
                 }
                 callers.push(Caller {
@@ -237,8 +349,8 @@ impl CallGraph {
                     hops: hops + 1,
                     resolution: e.resolution,
                 });
-                if visited_symbols.insert(e.from_symbol.clone()) {
-                    queue.push_back((e.from_symbol.clone(), hops + 1));
+                if visited.insert(key.clone()) {
+                    queue.push_back((e.from_file.clone(), e.from_symbol.clone(), hops + 1));
                 }
             }
         }
@@ -249,7 +361,7 @@ impl CallGraph {
                 .then(a.symbol.cmp(&b.symbol))
         });
         Impact {
-            target: symbol.to_string(),
+            target,
             exact: callers
                 .iter()
                 .filter(|c| c.resolution == Resolution::Exact)
@@ -292,11 +404,53 @@ mod tests {
         for (i, e) in graph.edges.iter().enumerate() {
             graph
                 .incoming
-                .entry(e.to_symbol.clone())
+                .entry((e.to_file.clone(), e.to_symbol.clone()))
                 .or_default()
                 .push(i);
         }
         graph
+    }
+
+    /// A heuristic edge to a same-named symbol in another file must never
+    /// make that other definition look reached for grading.
+    #[test]
+    fn bare_symbol_collision_does_not_cross_file_pollute_exact_impact() {
+        let mut g = CallGraph::default();
+        for (file, sym) in [
+            ("src/a.rs", "open"),
+            ("src/b.rs", "open"),
+            ("tests/a_test.rs", "tests_a"),
+        ] {
+            g.defines.entry(file.into()).or_default().insert(sym.into());
+        }
+        // Only a heuristic guess points at b::open. Under a bare-name index
+        // this would still surface as a caller of "open"; with file-qualified
+        // exact-only walk it must not.
+        g.edges.push(CallEdge {
+            from_file: "tests/a_test.rs".into(),
+            from_symbol: "tests_a".into(),
+            to_file: "src/b.rs".into(),
+            to_symbol: "open".into(),
+            resolution: Resolution::Heuristic,
+        });
+        for (i, e) in g.edges.iter().enumerate() {
+            g.incoming
+                .entry((e.to_file.clone(), e.to_symbol.clone()))
+                .or_default()
+                .push(i);
+        }
+        let exact = g.exact_impact("open", 4);
+        assert!(
+            exact.callers.is_empty(),
+            "a heuristic same-name edge must not earn exact callers: {:?}",
+            exact.callers
+        );
+        let all = g.impact("open", 4);
+        assert_eq!(all.heuristic, 1);
+        assert!(all
+            .callers
+            .iter()
+            .any(|c| c.file == "tests/a_test.rs" && c.symbol == "tests_a"));
     }
 
     /// Finding d3107a6d: a proof whose test reaches the grounded symbol at 6

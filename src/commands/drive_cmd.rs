@@ -156,14 +156,18 @@ fn freeze(graph: Option<&Path>, name: &str, json: bool) -> Result<()> {
             }))
         })
         .collect();
-    let path = store.root().join("journeys").join(format!("{name}.yaml"));
-    let parent = path
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("journey path '{}' has no parent", path.display()))?;
-    std::fs::create_dir_all(parent)?;
-    std::fs::write(
-        &path,
-        serde_norway::to_string(&serde_json::json!({ "journey": name, "steps": steps }))?,
+    if !crate::journey::safe_journey_id(name) {
+        bail!(
+            "drive name '{name}' is not a safe journey filename segment (one path segment; no '/' or '..')"
+        );
+    }
+    let rel = Path::new("journeys").join(format!("{name}.yaml"));
+    let path = store.root().join(&rel);
+    crate::journey::write_confined_under(
+        store.root(),
+        &rel,
+        serde_norway::to_string(&serde_json::json!({ "journey": name, "steps": steps }))?
+            .as_bytes(),
     )?;
     // A frozen drive is immediately replayable: compile the observed command
     // chain, then freeze its first run as the journey baseline.

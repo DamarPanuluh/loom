@@ -386,6 +386,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
             mark_validation(&store, &val.id, &outcome, &evidence, &reason, None)?;
+            regrade(&store, &val.id)?;
             pulse::emit_line(
                 &store,
                 json,
@@ -438,6 +439,23 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                         w.baseline_clean,
                         w.boundary.as_deref().unwrap_or("none"),
                     );
+                    if let Some(evidence) = &w.call_evidence {
+                        println!(
+                            "    call evidence: {} {}{}{}",
+                            evidence.source,
+                            evidence.file,
+                            evidence
+                                .entry_symbol
+                                .as_deref()
+                                .map(|symbol| format!("::{symbol}"))
+                                .unwrap_or_default(),
+                            if evidence.s3_eligible {
+                                ""
+                            } else {
+                                " (intent-wide fallback; not S3-eligible)"
+                            }
+                        );
+                    }
                     if !w.next.is_empty() {
                         println!("    next: {}", w.next);
                     }
@@ -473,22 +491,39 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 // a person adjudicates it.
                 if val.body.get("command").and_then(|v| v.as_str()) != Some(c.as_str()) {
                     store.clear_facet(&val.id, TargetKind::Node, "proof_last_outcome")?;
+                    store.reset_validation_status_for_sync(&val.id)?;
+                    for validates in
+                        store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)?
+                    {
+                        store.stale_edge(&validates.id, "validation command changed")?;
+                    }
+                }
+            }
+            if r#type.as_deref() != val.body.get("type").and_then(|v| v.as_str())
+                && r#type.is_some()
+            {
+                store.reset_validation_status_for_sync(&val.id)?;
+                for validates in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
+                    store.stale_edge(&validates.id, "validation type changed")?;
                 }
             }
             store.set_node_body(&val.id, &body)?;
+            let current = store
+                .get_node(&val.id)?
+                .ok_or_else(|| anyhow!("validation '{}' vanished mid-update", val.name))?;
             pulse::emit_line(
                 &store,
                 json,
                 serde_json::json!({
                     "validation": {
-                        "id": val.id,
-                        "name": val.name,
-                        "status": val.status,
+                        "id": current.id,
+                        "name": current.name,
+                        "status": current.status,
                         "body": body,
                     },
                 }),
                 "loom status",
-                format!("updated validation '{}'", val.name),
+                format!("updated validation '{}'", current.name),
             )?;
             Ok(())
         }
@@ -815,13 +850,7 @@ fn regrade(store: &Store, validation_id: &str) -> Result<()> {
         }
     }
     if let Some(witness) = best {
-        store.set_facet(
-            validation_id,
-            crate::model::TargetKind::Node,
-            "proof_strength",
-            &serde_json::to_string(&witness)?,
-            crate::model::TruthClass::Derived,
-        )?;
+        crate::proofstrength::store_witness(store, validation_id, &witness)?;
     }
     Ok(())
 }

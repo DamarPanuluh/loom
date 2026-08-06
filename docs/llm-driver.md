@@ -317,7 +317,9 @@ mindset:
     confirm a behavioral criterion exists in the description;
     if the intent should be a locator instead, capture the modeling concern as a finding and propose
     the right model (behavioral intent + implements locator) rather than proceeding.
-  Add a validation stub if none exists.
+  Add a validation stub if none exists. Do not attach or mutate proof evidence
+    yourself — attaching the validator's entry surface (`loom edge exercises`)
+    is validator work; hand that decision to the validator contract.
   Run sync after code changes.
   Do not mark proof passing — that is validator work.
 
@@ -402,6 +404,7 @@ Runs or marks proofs. Records what was actually observed.
 ```text
 mindset:
   Run it. Do not guess.
+  S3 belongs to this validation's own entry path: inspect `validation show` call_evidence; an intent-wide fallback is visible but not eligible.
   Record exactly what the command produced.
   Do not edit code to make the proof pass.
   A blocked proof is honest; record it with a reason.
@@ -411,11 +414,13 @@ allowed:
   loom validation verdict <validation> passed|failed|blocked
   loom journey run
   loom validation run <intent>
+  loom edge exercises <validation> <codefile> --locator <entry-symbol> (only when command derivation cannot identify the custom runner)
 
 forbidden:
   edit source code
   mark passed without observed proof
   mark failed without inspecting the failure
+  rely on an intent-wide `verifies` grounding to strengthen a sibling proof
   change validation command to suppress a real failure
 
 evidence required:

@@ -125,6 +125,7 @@ fn generic_extract(
                 symbols.push(Symbol {
                     name,
                     kind: (*sym_kind).into(),
+                    is_test: false,
                     line_start: start_row + 1,
                     line_end: node.end_position().row + 1,
                     complexity: m.complexity,
@@ -183,6 +184,7 @@ fn generic_extract(
                     symbols.push(Symbol {
                         name: name.to_string(),
                         kind: if is_fn { "function" } else { "binding" }.into(),
+                        is_test: false,
                         line_start: node.start_position().row + 1,
                         line_end: node.end_position().row + 1,
                         complexity: m.complexity,

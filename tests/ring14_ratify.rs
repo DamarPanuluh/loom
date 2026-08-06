@@ -390,6 +390,9 @@ fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
 
     let prior_agent = std::env::var_os("LOOM_AGENT");
     std::env::set_var("LOOM_AGENT", "llm:builder");
+    // The host verifiably confirmed human presence (INV-8): an LLM lane may
+    // RECORD the human's exact answer, but may never MAKE the decision.
+    std::env::set_var("LOOM_PRESENCE_PROBE", "human");
     let result = loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: true,
@@ -406,6 +409,7 @@ fn cli_ratify_records_a_mediated_human_decision_from_an_llm_lane() {
         Some(value) => std::env::set_var("LOOM_AGENT", value),
         None => std::env::remove_var("LOOM_AGENT"),
     }
+    std::env::remove_var("LOOM_PRESENCE_PROBE");
     result.expect("an LLM may record, but not make, an explicit human decision");
 
     let store = Store::open(tmp.path()).unwrap();
@@ -690,5 +694,59 @@ fn solo_mint_is_born_ratified_with_human_origin() {
             .unwrap()
             .get(Lane::Divergence),
         0
+    );
+}
+
+/// Engine-wide INV-8 hardening: an LLM lane CANNOT relay a fabricated
+/// `--human-decision` string — mediated authority requires verifiable human
+/// presence. This closes the "the host said yes" forgery path on every
+/// mediated command (ratify, judgment confirm, pattern, attest-burst).
+#[test]
+fn llm_lane_cannot_forge_a_mediated_human_decision() {
+    let _guard = CLI_LOCK.lock().unwrap();
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "no forged authority",
+            "a behavior nobody vouched for",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    drop(store);
+
+    let prior_agent = std::env::var_os("LOOM_AGENT");
+    // LLM lane, NO presence probe: the mediated string must be refused.
+    std::env::set_var("LOOM_AGENT", "llm:builder");
+    std::env::remove_var("LOOM_PRESENCE_PROBE");
+    let err = loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Intent {
+            cmd: IntentCmd::Ratify {
+                key: Some(intent.name.clone()),
+                all: false,
+                evidence: Some("someone supposedly agreed".into()),
+                human_decision: Some("yes I agree".into()),
+            },
+        }),
+    })
+    .unwrap_err();
+    match prior_agent {
+        Some(value) => std::env::set_var("LOOM_AGENT", value),
+        None => std::env::remove_var("LOOM_AGENT"),
+    }
+    assert!(
+        err.to_string().contains("verifiably present"),
+        "an llm lane without host-verified presence must not relay a mediated answer: {err}"
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert_ne!(
+        store.ratification(&intent.id).unwrap(),
+        "ratified",
+        "the forged mediated string must not ratify anything"
     );
 }

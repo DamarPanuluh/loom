@@ -4892,19 +4892,18 @@ fn a_journey_grades_from_the_spec_its_artifact_points_at() {
         )
         .unwrap();
     let val = store
-        .add_node(
-            NodeType::Validation,
-            "its journey",
-            "",
-            "not_run",
+        .add_node(NodeType::Validation, "its journey", "", "not_run", {
+            let yaml =
+                std::fs::read_to_string(tmp.path().join("journeys/short-name.yaml")).unwrap();
             serde_json::json!({
                 "type": "test",
                 "command": "echo ok",
                 "proof_kind": "journey",
                 "journey": "a behavior stated at length in prose",
                 "artifact": "journeys/short-name.yaml",
-            }),
-        )
+                "spec_hash": loom::artifact::fingerprint(&yaml),
+            })
+        })
         .unwrap();
     store
         .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
@@ -4928,4 +4927,72 @@ fn a_journey_grades_from_the_spec_its_artifact_points_at() {
         witness["grade"], "S1",
         "a journey that asserts on output is not liveness-only: {witness}"
     );
+}
+
+/// Confinement: a crafted/imported graph must not make `loom sync` read and
+/// fingerprint files outside the checkout. `body.artifact` (and runner refs)
+/// are routed through root confinement, so an escaping path is treated as
+/// absent/drifted — the outside file is never opened.
+#[test]
+fn sync_confines_artifact_reads_to_the_checkout_root() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    // A file OUTSIDE the checkout root. If sync ever read it, the proof would
+    // look stable and the escape would be silently followed.
+    let outside = std::env::temp_dir().join(format!("loom_escape_{:x}", std::process::id()));
+    std::fs::write(&outside, "outside the checkout\n").unwrap();
+    let outside_fingerprint = loom::artifact::fingerprint("outside the checkout\n");
+
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "escapes the checkout",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let val = store
+        .add_node(
+            NodeType::Validation,
+            "escaped artifact journey",
+            "",
+            "passed",
+            serde_json::json!({
+                "type": "journey",
+                "command": "loom journey run escape.yaml",
+                "proof_kind": "journey",
+                "artifact": outside.to_string_lossy().to_string(),
+            }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
+        .unwrap();
+    // A prior hash that MATCHES the outside file: if sync followed the escape
+    // and hashed the outside file, it would see no drift. Confinement must
+    // instead treat the escaping path as absent → drifted → reset.
+    store
+        .set_facet(
+            &val.id,
+            TargetKind::Node,
+            "artifact_hash",
+            &outside_fingerprint,
+            TruthClass::Derived,
+        )
+        .unwrap();
+
+    let report = loom::sync::run(&store, tmp.path()).unwrap();
+
+    let reloaded = store.get_node(&val.id).unwrap().unwrap();
+    assert_eq!(
+        reloaded.status, "not_run",
+        "escaping artifact path must be treated as drifted, not read outside the checkout"
+    );
+    assert!(
+        report.validations_reset >= 1,
+        "the escaping artifact must count as a reset"
+    );
+    std::fs::remove_file(&outside).ok();
 }

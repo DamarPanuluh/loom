@@ -15,8 +15,12 @@ pub(super) fn rust_extract(
     let mut imports = Vec::new();
     let mut panic_sites = 0usize;
 
-    let mut stack: Vec<(tree_sitter::Node, bool)> = vec![(root, false)];
-    while let Some((node, in_test)) = stack.pop() {
+    // Stack carries (node, in_test_subtree, cfg_disabled_subtree). A parent
+    // module's disabling `#[cfg(...)]` must suppress harness tests inside it.
+    // Crate-level `#![cfg(...)]` on the root source file is the outermost gate.
+    let root_cfg_disabled = crate_has_disabling_inner_cfg(&root, bytes);
+    let mut stack: Vec<(tree_sitter::Node, bool, bool)> = vec![(root, false, root_cfg_disabled)];
+    while let Some((node, in_test, cfg_disabled)) = stack.pop() {
         // Panic sites in a `#[cfg(test)]` module are test-only signal, never
         // production; count only outside a test subtree.
         if !in_test && is_panic_site(&node, bytes) {
@@ -29,6 +33,8 @@ pub(super) fn rust_extract(
         // complexity/nesting/args stay zero, so test code adds no production
         // signal — only the call-attribution anchor.
         let child_in_test = in_test || (node.kind() == "mod_item" && is_cfg_test_mod(&node, bytes));
+        let child_cfg_disabled =
+            cfg_disabled || (node.kind() == "mod_item" && module_has_disabling_cfg(&node, bytes));
         match node.kind() {
             "function_item" => {
                 if let Some(name) = child_name(&node, bytes) {
@@ -40,6 +46,9 @@ pub(super) fn rust_extract(
                     symbols.push(Symbol {
                         name,
                         kind: "function".into(),
+                        is_test: !cfg_disabled
+                            && !child_cfg_disabled
+                            && is_harness_test(&node, bytes),
                         line_start: node.start_position().row + 1,
                         line_end: node.end_position().row + 1,
                         complexity: m.complexity,
@@ -57,6 +66,7 @@ pub(super) fn rust_extract(
                     symbols.push(Symbol {
                         name,
                         kind: "function".into(),
+                        is_test: false,
                         line_start: node.start_position().row + 1,
                         line_end: node.end_position().row + 1,
                         complexity: 0,
@@ -71,6 +81,7 @@ pub(super) fn rust_extract(
                     symbols.push(Symbol {
                         name,
                         kind: node.kind().trim_end_matches("_item").into(),
+                        is_test: false,
                         line_start: node.start_position().row + 1,
                         line_end: node.end_position().row + 1,
                         complexity: 0,
@@ -101,7 +112,7 @@ pub(super) fn rust_extract(
         }
         for i in 0..node.child_count() as u32 {
             if let Some(c) = node.child(i) {
-                stack.push((c, child_in_test));
+                stack.push((c, child_in_test, child_cfg_disabled));
             }
         }
     }
@@ -202,15 +213,214 @@ fn is_panic_site(node: &tree_sitter::Node, bytes: &[u8]) -> bool {
     }
 }
 
-/// Whether a `mod_item` is gated by `#[cfg(test)]`. Attributes may be a leading
-/// child or a preceding sibling depending on grammar version, so both are
-/// checked. Test modules are skipped during extraction — their unwrap/panic and
-/// complexity are test-only, not production signal.
+/// Whether a `function_item` is marked `#[test]` (or another harness-executed
+/// attribute such as `#[tokio::test]`). The attribute is a leading child or a
+/// preceding sibling depending on grammar version, so both are checked. Only
+/// these symbols are executed directly by `cargo test`; an uncalled helper in
+/// the same file is not.
+fn is_harness_test(node: &tree_sitter::Node, bytes: &[u8]) -> bool {
+    let attr_text = |n: &tree_sitter::Node| -> Option<String> {
+        if n.kind() != "attribute_item" {
+            return None;
+        }
+        n.utf8_text(bytes)
+            .ok()
+            .map(|t| t.chars().filter(|c| !c.is_whitespace()).collect::<String>())
+    };
+    // Audited harness macros only. Arbitrary `#[noop::test]` is not evidence
+    // the cargo harness will execute the function.
+    let is_harness_macro = |path: &str| -> bool {
+        matches!(
+            path,
+            "test"
+                | "tokio::test"
+                | "async_std::test"
+                | "actix_rt::test"
+                | "actix_web::test"
+                | "rstest"
+                | "rstest::rstest"
+        )
+    };
+    let parse_attr_path = |t: &str| -> Option<String> {
+        let bare = t.trim_end_matches(']');
+        let bare = bare.strip_prefix("#[")?;
+        // Drop invocation args: `test(worker_threads = 2)` / `ignore = "msg"`.
+        let path = bare
+            .split('(')
+            .next()?
+            .split('=')
+            .next()?
+            .trim_end_matches(',');
+        Some(path.to_string())
+    };
+    let is_test_attr = |n: &tree_sitter::Node| {
+        attr_text(n)
+            .and_then(|t| parse_attr_path(&t))
+            .is_some_and(|path| is_harness_macro(&path))
+    };
+    let is_ignore_attr = |n: &tree_sitter::Node| {
+        attr_text(n).is_some_and(|t| {
+            // Direct ignore, or cfg_attr that injects ignore under any predicate
+            // we do not evaluate (fail closed: treat as potentially skipped).
+            if let Some(path) = parse_attr_path(&t) {
+                if path == "ignore" {
+                    return true;
+                }
+            }
+            let bare = t.trim_end_matches(']');
+            bare.starts_with("#[cfg_attr(") && bare.contains(",ignore")
+        })
+    };
+    // `#[cfg(...)]` / `#[cfg_attr(...)]` that is not pure enablement for test
+    // may disable default-run execution under ordinary `cargo test`.
+    let is_disabling_cfg = |n: &tree_sitter::Node| {
+        attr_text(n).is_some_and(|t| {
+            let bare = t.trim_end_matches(']');
+            if bare.starts_with("#[cfg_attr(") {
+                // Unevaluated cfg_attr may inject ignore or disable the item.
+                return true;
+            }
+            if !bare.starts_with("#[cfg") {
+                return false;
+            }
+            bare != "#[cfg(test)"
+        })
+    };
+    let mut has_test = false;
+    let mut has_ignore = false;
+    let mut has_disabling_cfg = false;
+    let mut consider = |n: &tree_sitter::Node| {
+        if is_test_attr(n) {
+            has_test = true;
+        }
+        if is_ignore_attr(n) {
+            has_ignore = true;
+        }
+        if is_disabling_cfg(n) {
+            has_disabling_cfg = true;
+        }
+    };
+    consider(node);
+    for i in 0..node.child_count() as u32 {
+        if let Some(c) = node.child(i) {
+            if c.kind() == "function_item" || c.kind() == "function_definition" {
+                break;
+            }
+            consider(&c);
+        }
+    }
+    let mut prev = node.prev_sibling();
+    while let Some(sib) = prev {
+        if matches!(
+            sib.kind(),
+            "function_item"
+                | "function_signature_item"
+                | "struct_item"
+                | "enum_item"
+                | "impl_item"
+                | "mod_item"
+                | "const_item"
+                | "static_item"
+                | "type_item"
+                | "trait_item"
+                | "macro_definition"
+        ) {
+            break;
+        }
+        consider(&sib);
+        prev = sib.prev_sibling();
+    }
+    has_test && !has_ignore && !has_disabling_cfg
+}
+
+fn crate_has_disabling_inner_cfg(root: &tree_sitter::Node, bytes: &[u8]) -> bool {
+    for i in 0..root.child_count() as u32 {
+        if let Some(c) = root.child(i) {
+            if c.kind() == "inner_attribute_item" || c.kind() == "attribute_item" {
+                if let Ok(text) = c.utf8_text(bytes) {
+                    let t = text
+                        .chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect::<String>();
+                    if t.starts_with("#![cfg") {
+                        let bare = t.trim_end_matches(']');
+                        if bare != "#![cfg(test)" {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// True when a module item carries a `#[cfg(...)]` other than pure `#[cfg(test)]`.
+/// Tests nested under such a module are not default-run by ordinary `cargo test`.
+fn module_has_disabling_cfg(node: &tree_sitter::Node, bytes: &[u8]) -> bool {
+    let mut prev = node.prev_sibling();
+    while let Some(sib) = prev {
+        if sib.kind() == "attribute_item" {
+            if let Ok(text) = sib.utf8_text(bytes) {
+                let t = text
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect::<String>();
+                if t.starts_with("#[cfg") {
+                    let bare = t.trim_end_matches(']');
+                    if bare != "#[cfg(test)" {
+                        return true;
+                    }
+                }
+            }
+        } else if matches!(
+            sib.kind(),
+            "function_item"
+                | "mod_item"
+                | "struct_item"
+                | "enum_item"
+                | "impl_item"
+                | "const_item"
+                | "static_item"
+                | "type_item"
+                | "trait_item"
+                | "macro_definition"
+        ) {
+            break;
+        }
+        prev = sib.prev_sibling();
+    }
+    for i in 0..node.child_count() as u32 {
+        if let Some(c) = node.child(i) {
+            if c.kind() == "attribute_item" {
+                if let Ok(text) = c.utf8_text(bytes) {
+                    let t = text
+                        .chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect::<String>();
+                    if t.starts_with("#[cfg") {
+                        let bare = t.trim_end_matches(']');
+                        if bare != "#[cfg(test)" {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 fn is_cfg_test_mod(node: &tree_sitter::Node, bytes: &[u8]) -> bool {
     let has_cfg_test = |n: &tree_sitter::Node| {
         n.kind() == "attribute_item"
             && n.utf8_text(bytes)
-                .map(|t| t.replace(' ', "").contains("cfg(test)"))
+                .map(|t| {
+                    t.chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect::<String>()
+                        .contains("cfg(test)")
+                })
                 .unwrap_or(false)
     };
     let mut sib = node.prev_sibling();

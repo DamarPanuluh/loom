@@ -155,19 +155,17 @@ impl LadderInputs {
                 .iter()
                 .filter(|e| e.kind == EdgeKind::Validates)
                 .count();
-            // `depends_on` is a federation ripple link, not a claim the analyze
-            // lane verifies. Counting it as a relationship inflated the rung
-            // above the queue depth — the exact drift the shared predicate
-            // (`not_measured_lane`) exists to prevent.
-            let depends = edges
+            // `depends_on` is a federation ripple link and `exercises` is
+            // validation-specific evidence provenance; neither is a claim the
+            // analyze lane verifies. Counting them as relationships inflated
+            // the rung above the queue depth — the exact drift the shared
+            // predicate (`crate::workitem::not_measured_lane`) exists to
+            // prevent.
+            let unmeasured = edges
                 .iter()
-                .filter(|e| e.kind == EdgeKind::DependsOn)
+                .filter(|e| !crate::workitem::not_measured_lane(e))
                 .count();
-            (
-                edges.len() - governs - validates - depends,
-                governs,
-                validates,
-            )
+            (edges.len() - unmeasured, governs, validates)
         };
         let (stale_relationships, stale_governs, stale_validates) = split(&stale);
         let (uninspected_relationships, uninspected_governs, uninspected_validates) =

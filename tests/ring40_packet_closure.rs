@@ -542,7 +542,10 @@ fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
     let journey = store
         .resolve_node("checkout-flow", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(journey.status, "passed", "the closure's journey run must pass");
+    assert_eq!(
+        journey.status, "passed",
+        "the closure's journey run must pass"
+    );
     assert!(
         loom::proofstrength::of(&store, &journey.id).unwrap()
             >= loom::proofstrength::Strength::END_TO_END,

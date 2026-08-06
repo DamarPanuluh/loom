@@ -1,20 +1,29 @@
-//! Ring 36 — one command cannot prove many behaviors.
+//! Ring 36 — one command cannot prove many behaviors, and one verifier cannot
+//! strengthen every sibling proof.
 //!
 //! If a single command is registered as the proof of seven behaviors, it is at
 //! most exercising one of them. The others inherit its green from whatever it
 //! really tests, and each stays "proven" for exactly as long as that unrelated
 //! suite keeps passing.
 //!
+//! The same ownership rule now applies inside one intent's strength ladder. A
+//! genuine verifying test may earn S3 for the validation that runs or explicitly
+//! exercises it; a sibling journey that only runs `echo` remains S2. The old
+//! intent-wide call witness let every sibling borrow that one verifier's reach,
+//! reproducing the shared-command failure shape after registration.
+//!
 //! This is not hypothetical. An intent claiming "a locator that cannot resolve
 //! falls back to file-scope reopening" carried TWO passing validations, both
 //! running `cargo test --test ring6 -q`, while thirteen groundings with
 //! unresolvable locators sat green underneath it — the behavior did not exist.
-//! Nothing caught it: `proof_too_shallow_for_intent` gates user-visible intents
-//! only, and the strength machinery already grades these S2 for want of a call
-//! witness without any rung consuming that below user_visible.
+//! The shared-command smell reports that structural risk, while validation-
+//! specific S3 now prevents an unrelated verifier elsewhere on the intent from
+//! making those proofs look stronger than their own execution.
 //!
 //! Reported, never gated. A ring genuinely covering several behaviors is a
-//! legitimate shape, so this earns a verdict with a reason rather than a wall.
+//! legitimate shape, so this earns a verdict with a reason rather than a wall;
+//! strength likewise remains a report, now sourced to the validation that earned
+//! it.
 
 use loom::model::{EdgeKind, NodeType, TruthClass};
 use loom::store::Store;

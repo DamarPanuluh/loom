@@ -147,6 +147,11 @@ pub struct Symbol {
     pub kind: String,
     pub line_start: usize,
     pub line_end: usize,
+    /// Harness-executed test function (`#[test]`, or inside a `#[cfg(test)]`
+    /// module). Only these symbols (plus symbols they reach) may serve as
+    /// derived proof entry points — an uncalled helper must never look like an
+    /// executed entry.
+    pub is_test: bool,
     /// Complexity proxy (branch/loop points; a match counts once, not per arm).
     /// 0 for non-callable symbols.
     pub complexity: u32,

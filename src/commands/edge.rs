@@ -123,6 +123,11 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
             locator,
             role,
         } => edge_implement(&store, intent, codefile, locator, role, json),
+        EdgeCmd::Exercises {
+            validation,
+            codefile,
+            locator,
+        } => edge_exercises(&store, validation, codefile, locator, json),
         EdgeCmd::Call {
             validation,
             surface,
@@ -424,6 +429,82 @@ fn edge_retarget(
 
 /// Bind a validation to an interface surface it exercises (a `calls` edge).
 /// Idempotent: re-calling the same pair returns the existing edge.
+fn invalidate_exercises_validation(store: &Store, validation_id: &str, reason: &str) -> Result<()> {
+    store.reset_validation_status_for_sync(validation_id)?;
+    for validates in store.edges_with(Some(EdgeKind::Validates), Some(validation_id), None)? {
+        store.stale_edge(&validates.id, reason)?;
+    }
+    Ok(())
+}
+
+fn edge_exercises(
+    store: &Store,
+    validation: String,
+    codefile: String,
+    locator: Option<String>,
+    json: bool,
+) -> Result<()> {
+    let validation = store.resolve_node(&validation, Some(NodeType::Validation))?;
+    let codefile = store.resolve_node(&codefile, Some(NodeType::CodeFile))?;
+    if let Some(locator) = &locator {
+        require_resolvable_locator(store, &codefile.name, locator)?;
+    }
+    let existing = store
+        .edges_with(
+            Some(EdgeKind::Exercises),
+            Some(&validation.id),
+            Some(&codefile.id),
+        )?
+        .into_iter()
+        .next();
+    let is_new = existing.is_none();
+    let edge = match existing {
+        Some(edge) => edge,
+        None => store.add_edge(
+            EdgeKind::Exercises,
+            &validation.id,
+            &codefile.id,
+            TruthClass::Asserted,
+        )?,
+    };
+    let previous_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+    if previous_locator != locator || is_new {
+        invalidate_exercises_validation(
+            store,
+            &validation.id,
+            "validation-specific S3 evidence changed",
+        )?;
+    }
+    if let Some(locator) = &locator {
+        store.set_facet(
+            &edge.id,
+            TargetKind::Edge,
+            "locator",
+            locator,
+            TruthClass::Asserted,
+        )?;
+    } else if previous_locator.is_some() {
+        store.clear_facet(&edge.id, TargetKind::Edge, "locator")?;
+    }
+    pulse::emit_line(
+        store,
+        json,
+        serde_json::json!({
+            "edge": edge,
+            "validation": { "id": validation.id, "name": validation.name },
+            "codefile": { "id": codefile.id, "path": codefile.name },
+            "locator": locator,
+        }),
+        "loom sync",
+        format!(
+            "validation '{}' exercises '{}' [{}]",
+            validation.name,
+            codefile.name,
+            crate::model::short(&edge.id)
+        ),
+    )
+}
+
 fn edge_call(store: &Store, validation: String, surface: String, json: bool) -> Result<()> {
     let v = store.resolve_node(&validation, Some(NodeType::Validation))?;
     let s = store.resolve_node(&surface, Some(NodeType::InterfaceSurface))?;
@@ -485,6 +566,13 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: boo
             &e.from_id,
             "decision",
             &format!("removed {} edge: {r}", e.kind),
+        )?;
+    }
+    if e.kind == EdgeKind::Exercises {
+        invalidate_exercises_validation(
+            store,
+            &e.from_id,
+            "validation-specific S3 evidence removed",
         )?;
     }
     store.delete_edge(&e.id)?;
@@ -552,6 +640,22 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
         lints = grounding_lints(store.root(), &file.name, Some(&locator), role);
         for l in &lints {
             eprintln!("lint: {l}");
+        }
+    } else if e.kind == EdgeKind::Exercises {
+        let file = store.get_node(&e.to_id)?.ok_or_else(|| {
+            anyhow!(
+                "exercises edge [{}] has no codefile",
+                crate::model::short(&e.id)
+            )
+        })?;
+        require_resolvable_locator(store, &file.name, &locator)?;
+        let previous = store.get_facet(&e.id, TargetKind::Edge, "locator")?;
+        if previous.as_deref() != Some(locator.as_str()) {
+            invalidate_exercises_validation(
+                store,
+                &e.from_id,
+                "validation-specific S3 locator changed",
+            )?;
         }
     }
     store.set_facet(

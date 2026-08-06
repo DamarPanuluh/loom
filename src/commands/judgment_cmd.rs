@@ -237,7 +237,7 @@ fn confirm(
         }
         "reject" => {
             let decision = match human_decision {
-                Some(response) => crate::ratification::HumanDecision::mediated(response)?,
+                Some(response) => super::mediated_decision(response)?,
                 None if super::human_present() => {
                     crate::ratification::HumanDecision::direct("tty")?
                 }

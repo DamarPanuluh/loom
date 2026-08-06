@@ -151,7 +151,7 @@ fn intent_reject(
         bail!("--reason must say why this is not wanted, substantively");
     }
     let decision = match human_decision {
-        Some(response) => crate::ratification::HumanDecision::mediated(response)?,
+        Some(response) => super::mediated_decision(response)?,
         None if super::human_present() => crate::ratification::HumanDecision::direct("tty")?,
         None => bail!(
             "INV-8: only a human may judge whether a behavior is wanted — ask the human, then pass their exact answer with --human-decision"

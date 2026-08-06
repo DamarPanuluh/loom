@@ -96,6 +96,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     report.edges_spared += pass.spared;
     report.validations_reset += pass.validations_reset;
     report.evidence_reanchored += pass.reanchored;
+    ripple_validation_evidence_drift(store, &changed_paths, &mut report)?;
     // AFTER the pass, deliberately. The anchor machinery is more precise —
     // it distinguishes a redefined symbol from a missing one and spares
     // untouched groundings — so it gets first say, and this is the backstop
@@ -114,6 +115,50 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     crate::ratification::recompute(store)?;
     rebuild_smell_findings(store, &mut report)?;
     Ok(report)
+}
+
+/// Reset validations whose explicit Validation→CodeFile S3 entry surface
+/// changed. `exercises` is evidence provenance, not a verdict-bearing claim, so
+/// the validation itself is the state that expires.
+fn ripple_validation_evidence_drift(
+    store: &Store,
+    changed_paths: &BTreeSet<String>,
+    report: &mut SyncReport,
+) -> Result<()> {
+    let mut reset = BTreeSet::new();
+    let files_by_path: std::collections::BTreeMap<String, String> = store
+        .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
+        .into_iter()
+        .map(|node| (node.name, node.id))
+        .collect();
+    for path in changed_paths {
+        let Some(file_id) = files_by_path.get(path) else {
+            continue;
+        };
+        for edge in store.edges_with(Some(EdgeKind::Exercises), None, Some(file_id))? {
+            if !reset.insert(edge.from_id.clone()) {
+                continue;
+            }
+            let was_run = store
+                .get_node(&edge.from_id)?
+                .is_some_and(|validation| validation.status != "not_run");
+            if was_run {
+                store.reset_validation_status_for_sync(&edge.from_id)?;
+                for validates in
+                    store.edges_with(Some(EdgeKind::Validates), Some(&edge.from_id), None)?
+                {
+                    if store.stale_edge(
+                        &validates.id,
+                        &format!("validation evidence file '{}' changed", path),
+                    )? {
+                        report.edges_staled += 1;
+                    }
+                }
+                report.validations_reset += 1;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Reset the contracts that exercise an interface surface this file backs.
@@ -183,11 +228,15 @@ fn ripple_artifact_drift(store: &Store, root: &Path, report: &mut SyncReport) ->
         let Some(artifact) = val.body.get("artifact").and_then(|v| v.as_str()) else {
             continue;
         };
-        let path = root.join(artifact);
         let prior = store.get_facet(&val.id, TargetKind::Node, "artifact_hash")?;
-        let current = match std::fs::read_to_string(&path) {
-            Ok(c) => Some(crate::artifact::fingerprint(&c)),
-            Err(_) => None,
+        // Route reads through root confinement: an absolute path, a `..`, or a
+        // symlink escape is treated as absent/drifted, never opened outside
+        // the checkout (a crafted/imported graph must not fingerprint the host).
+        let current = match crate::proofstrength::confined_journey_path(root, artifact) {
+            Some(path) => std::fs::read_to_string(&path)
+                .ok()
+                .map(|c| crate::artifact::fingerprint(&c)),
+            None => None,
         };
         // No prior hash and no current file: never-hashed + absent → nothing to
         // ripple (first observation of a not-yet-present artifact).
@@ -257,9 +306,14 @@ fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> R
             }
             let facet_key = format!("{field}_hash");
             let prior = store.get_facet(&cov.id, TargetKind::Node, &facet_key)?;
-            let current = match std::fs::read_to_string(root.join(rel_path)) {
-                Ok(c) => Some(crate::artifact::fingerprint(&c)),
-                Err(_) => None,
+            // Confined under root, like `ripple_artifact_drift` — an escaping
+            // or absolute path is treated as absent/drifted, never read outside
+            // the checkout.
+            let current = match crate::proofstrength::confined_journey_path(root, rel_path) {
+                Some(path) => std::fs::read_to_string(&path)
+                    .ok()
+                    .map(|c| crate::artifact::fingerprint(&c)),
+                None => None,
             };
             // Seed on first observation (no prior hash) — never stale on it.
             let this_drifted = match (prior.as_deref(), current.as_deref()) {

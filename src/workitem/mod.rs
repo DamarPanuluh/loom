@@ -13,6 +13,7 @@ use crate::lane::Lane;
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
+pub(crate) use queues::not_measured_lane;
 pub(crate) use queues::ungrounded_implemented_intents;
 pub(crate) use queues::unmeasured_quality_pairs;
 pub(crate) use queues::unproven_implemented_intents;
@@ -856,7 +857,10 @@ mod tests {
         // (the spec registered by `loom journey add` names the intent by ID),
         // not only name it in the read-only prompt — so the closing write is
         // target-bound and can earn S3 from the spec it registers.
-        let write_cmd = format!("loom journey add <spec whose steps name intent '{}'>", intent.id);
+        let write_cmd = format!(
+            "loom journey add <spec whose steps name intent '{}'>",
+            intent.id
+        );
         assert!(
             it.prompt_contract.write_back.contains(&write_cmd),
             "the closure must include a target-bound write: {}",

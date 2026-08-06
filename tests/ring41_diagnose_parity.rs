@@ -130,20 +130,6 @@ fn run_fails_fast_on_an_unusable_base_like_diagnose() {
             serde_json::json!({}),
         )
         .unwrap();
-    let journey = store
-        .add_node(
-            loom::model::NodeType::Validation,
-            "no-base",
-            "",
-            "not_run",
-            serde_json::json!({"type":"journey","journey_id":"no-base"}),
-        )
-        .unwrap();
-    store
-        .ensure_edge(loom::model::EdgeKind::Validates, &journey.id, &intent.id)
-        .unwrap();
-    drop(store);
-
     let spec_path = tmp.path().join("nobase.yaml");
     std::fs::write(
         &spec_path,
@@ -158,6 +144,29 @@ steps:
 "#,
     )
     .unwrap();
+    // Registered artifact must match the path that will be executed — run refuses
+    // to stamp a journey from a different YAML that only shares the name.
+    let journey = store
+        .add_node(
+            loom::model::NodeType::Validation,
+            "no-base",
+            "",
+            "not_run",
+            {
+                let yaml = std::fs::read_to_string(&spec_path).unwrap();
+                serde_json::json!({
+                    "type": "journey",
+                    "journey_id": "no-base",
+                    "artifact": "nobase.yaml",
+                    "spec_hash": loom::artifact::fingerprint(&yaml),
+                })
+            },
+        )
+        .unwrap();
+    store
+        .ensure_edge(loom::model::EdgeKind::Validates, &journey.id, &intent.id)
+        .unwrap();
+    drop(store);
 
     let out = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")))
         .arg("--graph")

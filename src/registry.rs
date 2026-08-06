@@ -200,6 +200,14 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
         description: "proof exercises a surface",
     },
     EdgeKindSpec {
+        kind: EdgeKind::Exercises,
+        from: Validation,
+        to: CodeFile,
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Validator,
+        description: "validation-specific code entry surface used by proof strength",
+    },
+    EdgeKindSpec {
         kind: EdgeKind::Relates,
         from: Intent,
         to: Intent,

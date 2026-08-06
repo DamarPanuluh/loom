@@ -325,6 +325,14 @@ pub enum EdgeCmd {
         #[arg(long)]
         role: Option<String>,
     },
+    /// Attach validation-specific code evidence used to derive the S3 call witness.
+    Exercises {
+        validation: String,
+        codefile: String,
+        /// Optional entry-point symbol in the exercised file.
+        #[arg(long)]
+        locator: Option<String>,
+    },
     /// Put an interface surface under contract: a validation that exercises it
     /// (creates a `calls` edge). When the code behind the surface changes, sync
     /// resets this contract — the integration-monitoring signal.
@@ -1419,6 +1427,12 @@ pub enum AuditCmd {
     /// records, validation runs, import tickets). A prose note written
     /// afterward is acknowledgment, not sufficient proof. Does not rewrite
     /// fact timestamps.
+    ///
+    /// A seal written AFTER the burst's final fact is accepted only when the
+    /// authority is human and the evidence is a trusted digest-bound
+    /// `batch_intent` record — the human-gated batch path's recorded
+    /// HumanDecision for this exact subject set, predating the burst.
+    /// The burst actor's own later seal is never accepted.
     AttestBurst {
         /// Burst key as reported by audit: `{actor}@{YYYY-MM-DDTHH:MM}`.
         subject: String,
@@ -1437,6 +1451,11 @@ pub enum AuditCmd {
         /// Who executed the writes (often the LOOM_AGENT / llm).
         #[arg(long)]
         executor: String,
+        /// The human's answer, when the seal is mediated by a host answer
+        /// (same gate as `loom intent ratify --human-decision`). Without it,
+        /// a retrospective seal demands the interactive typed challenge.
+        #[arg(long)]
+        human_decision: Option<String>,
         /// Required when the batch claims mechanical routing safety.
         #[arg(long)]
         routing_class: Option<String>,

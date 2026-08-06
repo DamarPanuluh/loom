@@ -1,6 +1,9 @@
 //! `loom audit attest-burst` — seal a typed batch authorization before or
 //! during a judgment burst without rewriting fact timestamps. Retrospective
-//! closure is refused before any envelope append or fact stamp.
+//! closure is accepted ONLY for a human authority vouching over a trusted,
+//! digest-bound `batch_intent` record that predates the burst's final fact and
+//! carries a recorded HumanDecision for the exact subject set; anything else
+//! is refused before any envelope append or fact stamp.
 
 use super::{open, pulse};
 use crate::cli::AuditCmd;
@@ -20,6 +23,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: AuditCmd, json: bool) -> Resul
             executor,
             routing_class,
             operation,
+            human_decision,
         } => attest_burst(
             graph,
             BurstAttest {
@@ -31,6 +35,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: AuditCmd, json: bool) -> Resul
                 executor: &executor,
                 routing_class: routing_class.as_deref(),
                 operation: operation.as_deref(),
+                human_decision: human_decision.as_deref(),
             },
             json,
         ),
@@ -48,6 +53,7 @@ struct BurstAttest<'a> {
     executor: &'a str,
     routing_class: Option<&'a str>,
     operation: Option<&'a str>,
+    human_decision: Option<&'a str>,
 }
 
 fn attest_burst(graph: Option<&Path>, p: BurstAttest<'_>, json: bool) -> Result<()> {
@@ -78,6 +84,13 @@ fn attest_burst(graph: Option<&Path>, p: BurstAttest<'_>, json: bool) -> Result<
         crate::batch_auth::BatchClaim::Ratification => "ratify",
         crate::batch_auth::BatchClaim::Adjudication => "verdict",
     });
+    // The seal itself is a human authority act — the same gate as ratification.
+    // A machine cannot pass it: with a host answer it is mediated recording;
+    // without one the interactive typed challenge demands a real person at the
+    // terminal. This is what makes a forged `batch_intent` journal record
+    // useless: the seal is the human-gated act that vouches for the burst.
+    let decision =
+        super::ratification_decision("attest-burst", p.human_decision.map(String::from))?;
     let mut envelope = crate::batch_auth::BatchAuthorization::seal(
         batch_claim,
         op,
@@ -86,7 +99,8 @@ fn attest_burst(graph: Option<&Path>, p: BurstAttest<'_>, json: bool) -> Result<
         p.executor,
         p.criterion,
         p.evidence.to_vec(),
-    )?;
+    )?
+    .with_human_decision(decision);
     if let Some(class) = p.routing_class {
         envelope = envelope.with_routing_class(class);
     }
@@ -109,7 +123,7 @@ fn attest_burst(graph: Option<&Path>, p: BurstAttest<'_>, json: bool) -> Result<
     )
     .map_err(|e| {
         anyhow::anyhow!(
-            "batch authorization refused: {}. attest-burst must run before or during the batch; it cannot retrospectively close an existing burst",
+            "batch authorization refused: {}. A seal written after the final fact is accepted only when a human vouches and the evidence is a trusted digest-bound `batch_intent` record — written by the human-gated batch path with a recorded HumanDecision for this exact subject set, predating the burst (`loom intent ratify --all`); a self-asserted human authority citing an unrelated, machine-written, or forged record is never accepted",
             e.as_str()
         )
     })?;

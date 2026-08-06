@@ -236,6 +236,9 @@ fn ensure_builtin_rules(store: &Store) -> Result<std::collections::HashMap<&'sta
 /// file-scoped. Deterministic (BTreeMap → sorted JSON keys), so the derived
 /// plane stays byte-rebuildable (INV-2).
 pub const SYMBOL_FINGERPRINTS_KEY: &str = "symbol_fingerprints";
+/// Facet key holding the JSON array of harness-executed test functions of a
+/// code file (derived plane, INV-2).
+pub const TEST_SYMBOLS_KEY: &str = "test_symbols";
 
 /// Derived facet holding this file's outgoing calls as `caller>callee`.
 pub const CALLS_KEY: &str = "calls";
@@ -320,6 +323,23 @@ fn write_facets(
         TargetKind::Node,
         SYMBOL_FINGERPRINTS_KEY,
         &fingerprints_json(regions),
+        d,
+    )?;
+    // Harness-executed test functions (`#[test]` / `#[cfg(test)]`), as a JSON
+    // array of symbol names. Derived from the same content as the fingerprints,
+    // so it rebuilds identically and stales with an edit (INV-2). Only these
+    // symbols may serve as derived proof entry points.
+    let tests: Vec<String> = ex
+        .symbols
+        .iter()
+        .filter(|s| s.is_test)
+        .map(|s| s.name.clone())
+        .collect();
+    store.set_facet(
+        cf_id,
+        TargetKind::Node,
+        TEST_SYMBOLS_KEY,
+        &serde_json::to_string(&tests).unwrap_or_else(|_| "[]".into()),
         d,
     )?;
     // The call sites this file makes, as `caller>callee` pairs. Sorted and

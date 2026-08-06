@@ -184,6 +184,7 @@ str_enum! {
         Assesses => "assesses",
         Exposes => "exposes",
         Calls => "calls",
+        Exercises => "exercises",
         Relates => "relates",
         Covers => "covers",
         Asserts => "asserts",

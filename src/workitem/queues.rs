@@ -1577,13 +1577,15 @@ fn audit_subjects(store: &Store) -> Result<Vec<crate::audit::AuditFinding>> {
 
 /// Edges the ANALYZE lane owns: everything except the two that have their own
 /// measuring lanes (`governs` → quality, `validates` → validate).
-fn not_measured_lane(e: &Edge) -> bool {
-    // `governs`/`validates` have their own measuring lanes. `depends_on` is a
-    // federation link — it ripples staleness across packs but is never a claim
-    // an analyst verifies, so it must never surface as analyze work.
+/// Whether this edge kind has no measuring lane of its own and is therefore
+/// not a claim the ANALYZE lane verifies: `governs`/`validates` have their own
+/// lanes, `depends_on` is a federation ripple link, and `exercises` is
+/// validation-specific evidence provenance rather than a relationship claim.
+/// Maturity and the analyze queue must both agree on this set.
+pub(crate) fn not_measured_lane(e: &Edge) -> bool {
     !matches!(
         e.kind,
-        EdgeKind::Governs | EdgeKind::Validates | EdgeKind::DependsOn
+        EdgeKind::Governs | EdgeKind::Validates | EdgeKind::DependsOn | EdgeKind::Exercises
     )
 }
 

@@ -65,6 +65,7 @@ false*.
 - **Cold-start assist:** `loom bootstrap suggest` drafts a Proposal of planned pillar intents from codefiles/tests/README (never auto-verdicts).
 - **Find + explain:** `loom find --tag` / `--where` and `loom explain <intent>` for facet search and neighborhood briefs.
 - **Calibrated structural detectors:** sync's built-in findings (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) run on configurable thresholds; `loom calibrate [--write]` fits gates to the repo's own distribution. Calibration only ever RELAXES: the default says "this is bad in any codebase", the repo's distribution says "our normal runs looser than that", and a gate fitted *below* the default would flag code that is fine by any absolute standard for sitting above its neighbours — which is how a percentile-based detector manufactures a debt wall in proportion to repo size.
+- **Validation-specific proof strength:** the S3 call witness is earned by a validation's own evidence — an explicit `loom edge exercises <validation> <codefile> --locator <entry-symbol>` entry (the locator is required for S3; a bare file claim is diagnostic only), or an entry point derived from its journey/command (`cargo test --test …`, `cargo run --bin …`, scripts, binaries). A sibling validation on the same intent never inherits another proof's reach, and the legacy intent-wide surface is recorded visibly as non-eligible fallback. `loom validation show` explains the grade with the exact source, file, entry symbol, and reached symbol.
 - **Call graph:** extraction records call sites per file (Rust, Python, Go, JS, TS); `loom impact` resolves them on demand and reports `exact` and `heuristic` matches separately.
 - **Advisory debt + promotion:** `loom debt` ranks statistical clusters (`size_outlier` LOC outliers and git-history `co_change`) with stable `cluster_id`s; `loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>]` mints exactly one asserted Finding (`source: debt_promotion`) for ordinary finding triage while the raw feed stays advisory.
 - **Portable configuration:** `loom.graph.json` carries the `config` map (`layer_order`, `ignores`, `codefile_globs`, `scan_adapters`, `thresholds`, `evidence_policy`) so imports keep the graph's routing, scan, detector, and policy setup.
@@ -215,6 +216,37 @@ impact      What a change here could reach (callers, intents at risk)
 bootstrap   Cold-start assist: draft a Proposal of planned pillar intents
 mcp         Serve loom in-band over MCP (stdio JSON-RPC)
 ```
+
+## Driving loom as an agent (no skill required)
+
+`loom` is operated through its binary and its docs — it does not depend on any
+installed skill or plugin. An agent that has never seen a loom graph can orient
+in three commands:
+
+```bash
+loom --help            # the implemented surface; treat this as the source of truth
+loom welcome           # plain-language state: where this repo's graph is and what is next
+loom guide             # role/lane guidance: which commands a lane may and may not run
+```
+
+Then the standing agent loop:
+
+```bash
+loom sync
+loom --json status     # compass, rung ladder, queue depths
+loom --json next       # the next routed work packet with its prompt contract
+```
+
+`loom next --all` returns a compact roster of every lane's next item;
+`--full` additionally expands each into its full prompt contract.
+
+Every served packet is self-contained: it names its `allowed_actions`,
+`forbidden_actions`, the `required_evidence`, a `write_back` command, and a
+`stop_condition`. Follow the packet, run the write-back, `loom sync`, and return
+to `loom status`. Deeper reference material lives in `docs/README.md`,
+`docs/llm-driver.md` (how loom and an LLM cooperate), and `docs/commands.md`
+(the shipped CLI surface). An optional `loom-driver` skill may exist in a global
+skill root for batch orchestration, but it is never required to operate loom.
 
 ## In-band delivery
 

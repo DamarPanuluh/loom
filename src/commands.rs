@@ -292,6 +292,13 @@ pub(crate) fn open(graph: Option<&Path>) -> Result<Store> {
 /// This is what makes `loom intent add` at a terminal an utterance rather than
 /// a form to fill in: a person typing the behavior IS the ratification, so
 /// there is nothing more to ask them. An agent gets no such path.
+///
+/// ACCEPTED RESIDUAL (documented decision, 2026-08-06): TTY and environment
+/// are caller-controlled, so a determined agent driving loom as a subprocess
+/// can allocate a PTY, set LOOM_AGENT=solo, and omit LOOM_NON_INTERACTIVE.
+/// Cryptographic host attestation was evaluated and declined for loom's
+/// single-user local trust model; this is the strongest gate that
+/// architecture supports.
 pub(crate) fn human_present() -> bool {
     // A test seam, and only in a debug build. Integration tests spawn the CLI
     // as a separate process, so a thread-local cannot reach it and an
@@ -331,14 +338,56 @@ pub(crate) fn require_challenge(subject: &str) -> Result<&'static str> {
 /// Resolve the two legitimate ways a human decision reaches a ratification
 /// write. With a host answer, the current process is only the recorder and no
 /// With no mediated answer, retain the direct typed challenge.
+///
+/// A mediated answer (`--human-decision`) is ONLY accepted when a human is
+/// verifiably present at this process: an LLM lane subprocess (LOOM_AGENT=llm:*)
+/// or a non-interactive caller can never satisfy `human_present()`, so a
+/// fabricated "the host said yes" string cannot acquire authority. The bulk
+/// "ask → stamp" flow routes through the judgment inbox, where the human
+/// confirms through the typed challenge at their own terminal.
+///
+/// ACCEPTED RESIDUAL (documented decision, 2026-08-06): this gate is
+/// environment/TTY-based and therefore forgeable by a determined agent that
+/// controls the subprocess environment (allocating a PTY, setting
+/// LOOM_AGENT=solo, omitting LOOM_NON_INTERACTIVE). Cryptographic host
+/// attestation (signed, operation-bound approvals) was evaluated and declined
+/// as out of scope for loom's single-user local trust model; the gate is the
+/// strongest that architecture supports. See `human_present`.
 pub(crate) fn ratification_decision(
     subject: &str,
     response: Option<String>,
 ) -> Result<crate::ratification::HumanDecision> {
     match response {
-        Some(response) => crate::ratification::HumanDecision::mediated(response),
+        Some(response) => {
+            if !human_present() {
+                bail!(
+                    "INV-8: a mediated --human-decision is only accepted when a human is \
+                     verifiably present at this terminal. An agent lane cannot relay a human \
+                     answer — use `loom judgment` so the human confirms through the typed \
+                     challenge, or run the command interactively"
+                );
+            }
+            crate::ratification::HumanDecision::mediated(response)
+        }
         None => crate::ratification::HumanDecision::direct(require_challenge(subject)?),
     }
+}
+
+/// The mediated branch of a human decision, shared by every write path that
+/// accepts `--human-decision`. A mediated answer is authority ONLY when a
+/// human is verifiably present at this process (INV-8): an LLM lane subprocess
+/// or a non-interactive caller is refused, so a fabricated "the host said yes"
+/// cannot acquire authority.
+pub(crate) fn mediated_decision(response: String) -> Result<crate::ratification::HumanDecision> {
+    if !human_present() {
+        bail!(
+            "INV-8: a mediated --human-decision is only accepted when a human is \
+             verifiably present at this terminal. An agent lane cannot relay a human \
+             answer — use `loom judgment` so the human confirms through the typed \
+             challenge, or run the command interactively"
+        );
+    }
+    crate::ratification::HumanDecision::mediated(response)
 }
 
 /// Open the target graph read-only (shared lock, `query_only`). Read commands

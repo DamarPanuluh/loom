@@ -219,10 +219,205 @@ impl Baseline {
     }
 }
 
+/// Write `bytes` to `path` only when the parent directory is not a symlink and
+/// the final path component does not already exist as a symlink. This blocks
+/// the classic "replace target with symlink then write" escape for baselines
+/// and frozen journeys under `.loom/` / `journeys/`.
+/// Write `bytes` to `root.join(rel)` with agent-local path confinement.
+///
+/// Requirements:
+/// - `rel` is relative and contains no `..` segments
+/// - after creating parents, the parent directory's canonical path stays under
+///   the canonical `root` (so a symlinked ancestor *outside* the checkout
+///   cannot redirect the write)
+/// - the immediate parent and final path are not symlinks
+/// - write via sibling temp + rename
+///
+/// This is best-effort confinement for a single-user local graph, not a
+/// multi-tenant sandbox with `openat2(RESOLVE_BENEATH)`. Residual TOCTOU
+/// against a concurrent attacker on the same machine remains.
+pub fn write_confined_file(path: &Path, bytes: &[u8]) -> Result<()> {
+    // Legacy entry: confine relative to the path's own parent checks only.
+    write_confined_file_inner(None, path, bytes)
+}
+
+/// Root-anchored variant used for baselines and drive freezes.
+pub fn write_confined_under(root: &Path, rel: &Path, bytes: &[u8]) -> Result<()> {
+    if rel.is_absolute() {
+        return Err(anyhow::anyhow!(
+            "refusing absolute write path {}",
+            rel.display()
+        ));
+    }
+    if rel
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err(anyhow::anyhow!(
+            "refusing path with '..': {}",
+            rel.display()
+        ));
+    }
+    let path = root.join(rel);
+    write_confined_file_inner(Some(root), &path, bytes)
+}
+
+/// Create `dir` and missing parents, refusing to follow a symlink that leaves
+/// `root`. Existing components under root may be normal directories only
+/// (immediate symlink components are rejected). Platform temp roots that are
+/// themselves symlinks (macOS `/var` → `/private/var`) are outside this check
+/// because we only walk from `root` downward.
+fn create_dirs_under_root(root: &Path, dir: &Path) -> Result<()> {
+    let root_canon = root
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve root {}: {e}", root.display()))?;
+    // `dir` must be under root (lexical first).
+    let rel = if dir.starts_with(root) {
+        dir.strip_prefix(root).unwrap()
+    } else if dir.starts_with(&root_canon) {
+        dir.strip_prefix(&root_canon).unwrap()
+    } else {
+        // Fall back: join as root-relative if `dir` is already absolute under root after create.
+        return Err(anyhow::anyhow!(
+            "directory {} is not under root {}",
+            dir.display(),
+            root.display()
+        ));
+    };
+    let mut cur = root_canon.clone();
+    for comp in rel.components() {
+        use std::path::Component;
+        match comp {
+            Component::Normal(name) => {
+                cur.push(name);
+                if cur.exists() {
+                    let meta = std::fs::symlink_metadata(&cur)?;
+                    if meta.file_type().is_symlink() {
+                        // After canonicalize of root, a symlink component under
+                        // root is only accepted if its target stays under root.
+                        let target = cur.canonicalize().map_err(|e| {
+                            anyhow::anyhow!("cannot resolve {}: {e}", cur.display())
+                        })?;
+                        if !target.starts_with(&root_canon) {
+                            return Err(anyhow::anyhow!(
+                                "refusing symlink {} escaping root {}",
+                                cur.display(),
+                                root_canon.display()
+                            ));
+                        }
+                        cur = target;
+                    } else if !meta.is_dir() {
+                        return Err(anyhow::anyhow!(
+                            "path component {} is not a directory",
+                            cur.display()
+                        ));
+                    }
+                } else {
+                    std::fs::create_dir(&cur)?;
+                }
+            }
+            Component::CurDir => {}
+            other => {
+                return Err(anyhow::anyhow!(
+                    "refusing path component {:?} under {}",
+                    other,
+                    root.display()
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn write_confined_file_inner(root: Option<&Path>, path: &Path, bytes: &[u8]) -> Result<()> {
+    use std::io::Write;
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("path '{}' has no parent", path.display()))?;
+    if let Some(root) = root {
+        create_dirs_under_root(root, parent)?;
+    } else {
+        std::fs::create_dir_all(parent)?;
+    }
+    let parent_meta = std::fs::symlink_metadata(parent)?;
+    if parent_meta.file_type().is_symlink() {
+        return Err(anyhow::anyhow!(
+            "refusing to write through symlinked directory {}",
+            parent.display()
+        ));
+    }
+    if let Some(root) = root {
+        let root_canon = root
+            .canonicalize()
+            .map_err(|e| anyhow::anyhow!("cannot resolve root {}: {e}", root.display()))?;
+        let parent_canon = parent
+            .canonicalize()
+            .map_err(|e| anyhow::anyhow!("cannot resolve parent {}: {e}", parent.display()))?;
+        if !parent_canon.starts_with(&root_canon) {
+            return Err(anyhow::anyhow!(
+                "write parent {} escapes root {}",
+                parent_canon.display(),
+                root_canon.display()
+            ));
+        }
+    }
+    if path.exists() {
+        let meta = std::fs::symlink_metadata(path)?;
+        if meta.file_type().is_symlink() {
+            return Err(anyhow::anyhow!(
+                "refusing to overwrite symlink {}",
+                path.display()
+            ));
+        }
+    }
+    let tmp = parent.join(format!(
+        ".{}.tmp-{}",
+        path.file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("loom-write"),
+        std::process::id()
+    ));
+    {
+        let mut f = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+    }
+    std::fs::rename(&tmp, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })?;
+    Ok(())
+}
+
+/// True when `journey` is a single safe filename segment (no path separators,
+/// no `..`, no absolute form). Baseline files are keyed only by this name.
+pub fn safe_journey_id(journey: &str) -> bool {
+    // One filename segment: prose names with spaces are allowed ("checkout happy
+    // path"). Path separators and a `..` segment are not — those escape baselines/.
+    !journey.is_empty()
+        && journey != "."
+        && journey != ".."
+        && !journey.contains('/')
+        && !journey.contains('\\')
+        && journey
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.'))
+}
+
 pub fn baseline_path(root: &Path, journey: &str) -> PathBuf {
+    // Callers must pass a safe id; path construction never interpolates raw
+    // user text that could escape `.loom/baselines/`.
+    let segment = if safe_journey_id(journey) {
+        journey
+    } else {
+        // Fail closed to a non-usable relative name that cannot escape.
+        "_"
+    };
     root.join(crate::LOOM_DIR)
         .join("baselines")
-        .join(format!("{journey}.json"))
+        .join(format!("{segment}.json"))
 }
 
 /// Every frozen baseline, sorted by journey name so they travel
@@ -268,14 +463,19 @@ pub fn restore_baselines(root: &Path, baselines: &[Baseline]) -> Result<usize> {
 }
 
 pub fn write_baseline(root: &Path, journey: &str, outcomes: &[StepOutcome]) -> Result<PathBuf> {
+    if !safe_journey_id(journey) {
+        return Err(anyhow::anyhow!(
+            "journey id '{journey}' is not a safe baseline filename segment"
+        ));
+    }
     let path = baseline_path(root, journey);
-    let parent = path
-        .parent()
-        .ok_or_else(|| anyhow!("baseline path '{}' has no parent", path.display()))?;
-    std::fs::create_dir_all(parent)?;
-    std::fs::write(
-        &path,
-        serde_json::to_vec_pretty(&Baseline {
+    let rel = path
+        .strip_prefix(root)
+        .map_err(|_| anyhow::anyhow!("baseline path escapes root"))?;
+    write_confined_under(
+        root,
+        rel,
+        &serde_json::to_vec_pretty(&Baseline {
             journey: journey.into(),
             outcomes: outcomes.to_vec(),
         })?,
@@ -314,6 +514,9 @@ pub fn write_successful_baseline(
 }
 
 pub fn read_baseline(root: &Path, journey: &str) -> Result<Option<Baseline>> {
+    if !safe_journey_id(journey) {
+        return Ok(None);
+    }
     let path = baseline_path(root, journey);
     match std::fs::read(&path) {
         Ok(bytes) => {

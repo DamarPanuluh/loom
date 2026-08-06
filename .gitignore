@@ -1,5 +1,6 @@
 /target
 .loom/
+.reasonix/
 .qoder/
 
 # insta writes pending snapshots next to the source under test; they are

@@ -16,12 +16,40 @@
 //! recorded in the [`StrengthWitness`] so `loom validation show` can explain the
 //! grade instead of asserting it, and so `deepen` knows which conjunct to go
 //! after next.
+//!
+//! ## S3 evidence model: validation-specific, fail closed
+//!
+//! S3 is a runtime-shaped claim: *this validation's run* reached code that
+//! realizes the intent. Runtime coverage would be the strongest answer, but loom
+//! does not capture it yet. Until it does, this module layers two deterministic
+//! static sources that can be recomputed from the graph and working tree:
+//!
+//! 1. an explicit `exercises` edge from the Validation to the CodeFile that is
+//!    its entry surface (optionally narrowed by a locator); then
+//! 2. entry points derived from the validation's own journey/command (`cargo
+//!    test --test …`, test filters, `cargo run --bin …`, direct repo binaries,
+//!    and script paths).
+//!
+//! Only those validation-specific sources may earn the call witness. The old
+//! intent-level `implements(role=verifies)` surface remains as a *visible
+//! diagnostic fallback* for legacy graphs: the witness records that source and
+//! its files, but it is deliberately ineligible for S3. Letting that fallback
+//! earn the rung would recreate the original bug — an `echo` journey would
+//! inherit a sibling test file's reach merely because both validate one intent.
+//!
+//! The witness carries a model id and the exact source/file/symbol used. Model
+//! changes are compared while the derived facet is rewritten; demotions are
+//! journaled so a driver can distinguish a grading-model migration from code
+//! drift. The entire derivation stays pure over Store + working tree + call
+//! graph, preserving sync convergence (INV-2). Runtime trace/coverage can later
+//! become a stronger first source without weakening these fail-closed rules.
 
 use crate::journey::{Expect, JourneySpec};
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
 use serde::{Deserialize, Serialize};
+
 use std::path::Path;
 
 /// The derived grade. Ordered — comparisons are meaningful.
@@ -128,9 +156,41 @@ pub fn assess(store: &Store, intent_id: &str) -> Result<ProofAssessment> {
     })
 }
 
+/// The current interpretation of S3 call evidence. Persisted in every witness
+/// so sync can explain model-only grade changes.
+pub const STRENGTH_WITNESS_MODEL: &str = "validation-specific-v2";
+const LEGACY_STRENGTH_WITNESS_MODEL: &str = "intent-wide-v1";
+
+fn legacy_witness_model() -> String {
+    LEGACY_STRENGTH_WITNESS_MODEL.into()
+}
+
+/// The validation-owned entry evidence inspected for the S3 call witness.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CallEvidenceWitness {
+    /// `validation_grounding`, `journey_command`, `validation_command`, or the
+    /// legacy diagnostic-only `intent_wide_fallback`.
+    pub source: String,
+    /// Registered CodeFile used as an entry surface.
+    pub file: String,
+    /// Entry symbol when the command/locator narrows the file; absent means all
+    /// indexed symbols in the file are possible entry points.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entry_symbol: Option<String>,
+    /// The realizing symbol reached from this entry, when a path exists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grounded_symbol: Option<String>,
+    /// False for the visible legacy fallback: useful diagnosis, never S3 credit.
+    pub s3_eligible: bool,
+}
+
 /// Every conjunct, recorded. The point is that a grade can be argued with.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrengthWitness {
+    /// Witness interpretation. Old facets deserialize as intent-wide-v1 so a
+    /// sync can identify and journal their migration.
+    #[serde(default = "legacy_witness_model")]
+    pub witness_model: String,
     pub grade: String,
     /// loom ran it and it exited as expected.
     pub ran_and_passed: bool,
@@ -144,12 +204,34 @@ pub struct StrengthWitness {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub observed_assertions: Option<String>,
     /// The grounded symbol the proof's call closure reaches, if any.
+    #[serde(default)]
     pub call_witness: Option<String>,
+    /// Which validation-specific source/file/entry earned the witness, or which
+    /// intent-wide fallback would have earned it under the legacy model.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_evidence: Option<CallEvidenceWitness>,
     pub baseline_clean: bool,
     /// What boundary it crosses, if any.
     pub boundary: Option<String>,
     /// Why it stopped where it did — the next conjunct to go after.
     pub next: String,
+}
+
+impl Default for StrengthWitness {
+    fn default() -> Self {
+        Self {
+            witness_model: STRENGTH_WITNESS_MODEL.into(),
+            grade: String::new(),
+            ran_and_passed: false,
+            content_assertions: 0,
+            observed_assertions: None,
+            call_witness: None,
+            call_evidence: None,
+            baseline_clean: false,
+            boundary: None,
+            next: String::new(),
+        }
+    }
 }
 
 /// Count the assertions in an `Expect` that say something about CONTENT.
@@ -289,9 +371,10 @@ fn crossed_binary(run: &str) -> Option<String> {
         .next()
 }
 
-/// The symbols an intent is grounded in, via its realizing locators.
-fn grounded_symbols(store: &Store, intent_id: &str) -> Result<Vec<String>> {
-    crate::locator::realizing_symbols(store, intent_id)
+/// File-qualified realizing targets. Grading uses these so a same-named
+/// symbol in another file cannot share a call witness.
+fn grounded_targets(store: &Store, intent_id: &str) -> Result<Vec<(String, String)>> {
+    crate::locator::realizing_targets(store, intent_id)
 }
 
 /// How far [`call_witness`] walks the call graph.
@@ -303,53 +386,917 @@ fn grounded_symbols(store: &Store, intent_id: &str) -> Result<Vec<String>> {
 /// for a layer or two of helpers.
 pub const CALL_WITNESS_DEPTH: usize = 8;
 
-/// Does anything this proof reaches call into a symbol the intent is grounded
-/// in? Answered from the real call graph, not from token overlap.
-///
-/// The proof's own entry points are the symbols defined in the files it is
-/// grounded in — for a test file, its test functions. `impact` walks callers
-/// backwards, so the question is asked in the direction the graph answers
-/// cheaply: does the grounded symbol have, among its transitive callers, a
-/// symbol living in a file this proof covers?
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EntryEvidence {
+    pub source: &'static str,
+    pub file: String,
+    pub entry_symbol: Option<String>,
+    pub s3_eligible: bool,
+}
+
+/// Does this validation-specific entry reach a symbol the intent is grounded
+/// in? `impact` walks callers backwards; narrowing by `entry_symbol` prevents a
+/// broad file match from crediting a different test in the same file.
 fn call_witness(
     store: &Store,
     graph: &crate::callgraph::CallGraph,
     intent_id: &str,
-    proof_files: &[String],
-) -> Result<Option<String>> {
-    if proof_files.is_empty() {
-        return Ok(None);
-    }
-    for symbol in grounded_symbols(store, intent_id)? {
-        let reach = graph.impact(&symbol, CALL_WITNESS_DEPTH);
-        if reach.callers.iter().any(|c| proof_files.contains(&c.file)) {
-            return Ok(Some(symbol));
+    entries: &[EntryEvidence],
+) -> Result<Option<CallEvidenceWitness>> {
+    for (file, symbol) in grounded_targets(store, intent_id)? {
+        // Exact path from this realizing definition site only — never every
+        // same-named symbol in the repo.
+        let reach = graph.exact_impact_at(&file, &symbol, CALL_WITNESS_DEPTH);
+        for entry in entries {
+            if !entry.s3_eligible {
+                continue;
+            }
+            let reaches = reach.callers.iter().any(|caller| {
+                caller.file == entry.file
+                    && entry
+                        .entry_symbol
+                        .as_deref()
+                        .is_none_or(|expected| caller.symbol == expected)
+            });
+            if reaches {
+                return Ok(Some(CallEvidenceWitness {
+                    source: entry.source.into(),
+                    file: entry.file.clone(),
+                    entry_symbol: entry.entry_symbol.clone(),
+                    grounded_symbol: Some(symbol),
+                    s3_eligible: entry.s3_eligible,
+                }));
+            }
         }
     }
     Ok(None)
 }
 
-/// The files that VERIFY this behavior — the intent's groundings carrying the
-/// `verifies` role. That is how a test file attaches to a behavior in the
-/// graph; a Validation node is not itself grounded (an `implements` edge must
-/// start at an intent), so the proof's reach is read from the intent's own
-/// verifying surface.
-fn proof_files(store: &Store, intent_id: &str) -> Result<Vec<String>> {
+/// Explicit Validation→CodeFile entry evidence. This is the schema-level form
+/// of a per-validation grounding: unlike `implements`, it owns no behavior/code
+/// coverage and exists only to say which code surface this proof exercises.
+fn validation_entries(store: &Store, validation_id: &str) -> Result<Vec<EntryEvidence>> {
     let mut out = Vec::new();
-    for e in store.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
-        if store.edge_superseded(&e.id)? {
+    for edge in store.edges_with(Some(EdgeKind::Exercises), Some(validation_id), None)? {
+        let Some(file) = store.get_node(&edge.to_id)? else {
             continue;
-        }
-        if store.grounding_role(&e.id)? != crate::model::GroundingRole::Verifies {
-            continue;
-        }
-        if let Some(cf) = store.get_node(&e.to_id)? {
-            out.push(cf.name);
+        };
+        let locators = store
+            .get_facet(&edge.id, TargetKind::Edge, "locator")?
+            .map(|locator| crate::locator::symbols(&locator))
+            .unwrap_or_default();
+        // Bare file claim: diagnostic only. Locator-bound exercises is the
+        // product's validation-specific entry declaration (see module docs):
+        // the operator names the entry surface this validation exercises.
+        // Command-derived entries are the other S3 path. Both require a call
+        // witness to the realizing symbol — the locator alone is not enough
+        // without that reachability check in `call_witness`.
+        if locators.is_empty() {
+            out.push(EntryEvidence {
+                source: "validation_grounding",
+                file: file.name,
+                entry_symbol: None,
+                s3_eligible: false,
+            });
+        } else {
+            out.extend(locators.into_iter().map(|symbol| EntryEvidence {
+                source: "validation_grounding",
+                file: file.name.clone(),
+                entry_symbol: Some(symbol),
+                s3_eligible: true,
+            }));
         }
     }
-    out.sort();
-    out.dedup();
     Ok(out)
+}
+
+/// Legacy intent-level verifying files. Kept visible so migrated graphs explain
+/// what the old grader used, but never eligible for S3 under this model.
+fn intent_wide_entries(store: &Store, intent_id: &str) -> Result<Vec<EntryEvidence>> {
+    let mut out = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
+        if store.edge_superseded(&edge.id)?
+            || store.grounding_role(&edge.id)? != crate::model::GroundingRole::Verifies
+        {
+            continue;
+        }
+        if let Some(file) = store.get_node(&edge.to_id)? {
+            out.push(EntryEvidence {
+                source: "intent_wide_fallback",
+                file: file.name,
+                entry_symbol: None,
+                s3_eligible: false,
+            });
+        }
+    }
+    Ok(out)
+}
+
+/// Split one command segment into argv-like words with quote awareness.
+///
+/// Fail closed on shell syntax we do not model (`$`, backticks, redirects,
+/// globs, braces). Whitespace-split with quote-stripping previously turned
+/// `cargo test -- --test "foo bar"` into three tokens and credited a filter
+/// that never ran.
+fn argv_has_help_or_version(words: &[String]) -> bool {
+    words
+        .iter()
+        .any(|word| matches!(word.as_str(), "--help" | "-h" | "--version" | "-V"))
+}
+
+fn shell_words(segment: &str) -> Vec<String> {
+    shell_words_strict(segment).unwrap_or_default()
+}
+
+fn shell_words_strict(segment: &str) -> Option<Vec<String>> {
+    // Reject operators and expansions we do not interpret. Callers that need
+    // compound commands already fail closed at `command_entries`.
+    if segment
+        .chars()
+        .any(|c| matches!(c, '`' | '$' | '>' | '<' | '*' | '?' | '{' | '}' | '~'))
+    {
+        return None;
+    }
+    let mut words = Vec::new();
+    let mut current = String::new();
+    let mut chars = segment.chars().peekable();
+    let mut in_single = false;
+    let mut in_double = false;
+    // True once the current token has seen a quote pair (possibly empty).
+    let mut quoted_token = false;
+    while let Some(c) = chars.next() {
+        match c {
+            '\'' if !in_double => {
+                in_single = !in_single;
+                quoted_token = true;
+            }
+            '"' if !in_single => {
+                in_double = !in_double;
+                quoted_token = true;
+            }
+            '\\' if in_double => {
+                // Only shell-escapable characters consume the backslash inside
+                // double quotes. `\_` must remain `\_`, or a filter that never
+                // ran can be rewritten into a live symbol name.
+                let next = chars.next()?;
+                if matches!(next, '"' | '\\' | '`' | '$' | '\n') {
+                    current.push(next);
+                } else {
+                    current.push('\\');
+                    current.push(next);
+                }
+            }
+            '\\' if !in_single && !in_double => return None,
+            c if c.is_whitespace() && !in_single && !in_double => {
+                if !current.is_empty() || quoted_token {
+                    words.push(std::mem::take(&mut current));
+                    quoted_token = false;
+                }
+            }
+            _ => current.push(c),
+        }
+    }
+    if in_single || in_double {
+        return None;
+    }
+    if !current.is_empty() || quoted_token {
+        words.push(current);
+    }
+    // Fail closed on empty argv elements. `cargo test --test ""` cannot select
+    // a real surface; inventing a broader match would be false credit.
+    if words.iter().any(|word| word.is_empty()) {
+        return None;
+    }
+    // Drop leading env assignments the same way the old splitter did, so
+    // `FOO=1 cargo test` still resolves as `cargo test`.
+    let mut command_seen = false;
+    let filtered: Vec<String> = words
+        .into_iter()
+        .filter(|word| {
+            if command_seen {
+                return true;
+            }
+            // Shell-valid names only: must start with a letter or underscore.
+            // `1=x cargo test` is not an env assignment and must not be stripped.
+            let is_env_assignment = word.split_once('=').is_some_and(|(name, _)| {
+                let mut chars = name.chars();
+                matches!(chars.next(), Some(c) if c == '_' || c.is_ascii_alphabetic())
+                    && chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
+            }) && !word.starts_with('-');
+            if is_env_assignment {
+                false
+            } else {
+                command_seen = true;
+                true
+            }
+        })
+        .collect();
+    Some(filtered)
+}
+
+fn file_stem(path: &str) -> &str {
+    Path::new(path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+}
+
+/// Entry evidence for a fixed, exact entry symbol (e.g. a binary's `main`).
+/// Substring matching would credit `main_helper` for a `main` requirement and
+/// manufacture a false witness, so the file must define the exact symbol.
+fn exact_entry(
+    graph: &crate::callgraph::CallGraph,
+    source: &'static str,
+    file: &str,
+    symbol: &str,
+) -> Vec<EntryEvidence> {
+    if graph.file_defines(file, symbol) {
+        vec![EntryEvidence {
+            source,
+            file: file.into(),
+            entry_symbol: Some(symbol.into()),
+            s3_eligible: true,
+        }]
+    } else {
+        Vec::new()
+    }
+}
+
+fn entries_in_file(
+    graph: &crate::callgraph::CallGraph,
+    source: &'static str,
+    file: &str,
+    symbol_filter: Option<&str>,
+) -> Vec<EntryEvidence> {
+    // Only harness-executed test functions are entry candidates: `cargo test`
+    // runs the `#[test]` functions (and anything they transitively call),
+    // never an uncalled helper sitting in the same file. Emitting every
+    // matching symbol would let a dead helper that happens to reach grounded
+    // code look like an executed entry.
+    let test_symbols = graph.file_test_symbols(file);
+    // Cargo's filter selects harness test names, not every helper those tests
+    // can reach. Matching a helper name would claim an entry the harness never
+    // selected (and may run zero tests for).
+    let narrowed: Vec<&str> = match symbol_filter.filter(|filter| !filter.is_empty()) {
+        Some(filter) => test_symbols
+            .iter()
+            .map(String::as_str)
+            .filter(|symbol| symbol.contains(filter))
+            .collect(),
+        None => test_symbols.iter().map(String::as_str).collect(),
+    };
+    if narrowed.is_empty() {
+        return Vec::new();
+    }
+    narrowed
+        .into_iter()
+        .map(|symbol| EntryEvidence {
+            source,
+            file: file.into(),
+            entry_symbol: Some(symbol.into()),
+            s3_eligible: true,
+        })
+        .collect()
+}
+
+fn cargo_test_entries(
+    words: &[String],
+    graph: &crate::callgraph::CallGraph,
+    source: &'static str,
+) -> Vec<EntryEvidence> {
+    if words.iter().any(|word| {
+        word == "--no-run"
+            || word == "--list"
+            || word == "--doc"
+            || word == "--manifest-path"
+            || word.starts_with("--manifest-path=")
+            || word == "--target"
+            || word.starts_with("--target=")
+            || word == "--skip"
+            || word.starts_with("--skip=")
+            || word == "--exact"
+            || word == "--ignored"
+            || word == "--include-ignored"
+            || word == "-p"
+            || word == "--package"
+            || word.starts_with("--package=")
+            || word == "--lib"
+            || word == "--bins"
+            || word == "--examples"
+            || word == "--benches"
+            || word == "--all-targets"
+            || word == "--workspace"
+            || word == "--all"
+            || word == "--exclude"
+            || word.starts_with("--exclude=")
+            || word == "--bin"
+            || word.starts_with("--bin=")
+            || word == "--example"
+            || word.starts_with("--example=")
+            || word == "--bench"
+            || word.starts_with("--bench=")
+    }) || words
+        .windows(2)
+        .any(|pair| pair[0] == "--" && pair[1] == "--list")
+    {
+        return Vec::new();
+    }
+    let test_name = words
+        .iter()
+        .find_map(|word| {
+            word.strip_prefix("--test=")
+                .or_else(|| word.strip_prefix("--bench="))
+        })
+        .or_else(|| {
+            words
+                .windows(2)
+                .find(|pair| pair[0] == "--test")
+                .map(|pair| pair[1].as_str())
+        });
+    let mut positional = Vec::new();
+    let mut index = 2;
+    while index < words.len() {
+        let word = words[index].as_str();
+        if word == "--" {
+            positional.extend(words[index + 1..].iter().map(String::as_str));
+            break;
+        }
+        if let Some(value) = word
+            .strip_prefix("--package=")
+            .or_else(|| word.strip_prefix("--features="))
+            .or_else(|| word.strip_prefix("--target="))
+            .or_else(|| word.strip_prefix("--target-dir="))
+            .or_else(|| word.strip_prefix("--manifest-path="))
+            .or_else(|| word.strip_prefix("--profile="))
+            .or_else(|| word.strip_prefix("--config="))
+            .or_else(|| word.strip_prefix("--test="))
+            .or_else(|| word.strip_prefix("--bin="))
+            .or_else(|| word.strip_prefix("--example="))
+            .or_else(|| word.strip_prefix("--bench="))
+        {
+            if value.is_empty() {
+                return Vec::new();
+            }
+            index += 1;
+            continue;
+        }
+        if let Some(value) = word.strip_prefix("--color=") {
+            if !matches!(value, "auto" | "always" | "never") {
+                return Vec::new();
+            }
+            index += 1;
+            continue;
+        }
+        let takes_value = matches!(
+            word,
+            "-p" | "--package"
+                | "-j"
+                | "--jobs"
+                | "--features"
+                | "--target"
+                | "--target-dir"
+                | "--manifest-path"
+                | "--profile"
+                | "--color"
+                | "--config"
+                | "--test"
+                | "--bin"
+                | "--example"
+                | "--bench"
+        );
+        if takes_value {
+            let Some(value) = words.get(index + 1).map(String::as_str) else {
+                return Vec::new();
+            };
+            if value.starts_with('-') || value.is_empty() {
+                return Vec::new();
+            }
+            if word == "--color" && !matches!(value, "auto" | "always" | "never") {
+                return Vec::new();
+            }
+            if matches!(word, "-j" | "--jobs") && !value.chars().all(|c| c.is_ascii_digit()) {
+                return Vec::new();
+            }
+            index += 2;
+            continue;
+        }
+        // Any other dash-prefixed option is not modeled. Ignoring it would
+        // broaden the command into "all harness tests" and invent S3 credit.
+        if word.starts_with('-') {
+            return Vec::new();
+        }
+        positional.push(word);
+        index += 1;
+    }
+    // Cargo accepts at most one free filter after options. Extra positionals
+    // are not a modeled shape and must not silently use only the first.
+    if positional.len() > 1 {
+        return Vec::new();
+    }
+    let filter = positional.first().copied();
+    // Without an explicit --test/--bin/--example/--bench target, cargo may run
+    // any combination of unit/integration targets (and can disable autotests).
+    // Guessing `tests/*.rs` would invent entries that never ran.
+    let Some(name) = test_name else {
+        return Vec::new();
+    };
+    // Default cargo integration targets are exactly `tests/<name>.rs` under
+    // Cargo's auto-discovery. Custom `[[test]] path = ...`, disabled autotests,
+    // and workspace-foreign targets are not modeled — without metadata we only
+    // credit a single exact auto-discovered file when the name is a plain
+    // identifier.
+    if name.is_empty()
+        || name.contains('/')
+        || name.contains('\\')
+        || !name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return Vec::new();
+    }
+    let stem = name.replace('-', "_");
+    // Prefer the underscored form Cargo uses for hyphenated names; if both
+    // spellings exist as distinct files, fail closed (ambiguous).
+    let a = format!("tests/{stem}.rs");
+    let b = format!("tests/{name}.rs");
+    let mut hits = Vec::new();
+    if graph.files().any(|f| f == a.as_str()) {
+        hits.push(a.clone());
+    }
+    if a != b && graph.files().any(|f| f == b.as_str()) {
+        hits.push(b);
+    }
+    if hits.len() != 1 {
+        return Vec::new();
+    }
+    entries_in_file(graph, source, &hits[0], filter)
+}
+
+fn cargo_run_entries(
+    words: &[String],
+    graph: &crate::callgraph::CallGraph,
+    source: &'static str,
+) -> Vec<EntryEvidence> {
+    // Strict known-option parse up to `--`. Unknown/malformed options fail
+    // closed so `cargo run --bin svc --bogus` cannot credit svc::main.
+    let mut binary: Option<String> = None;
+    let mut index = 2;
+    while index < words.len() {
+        let word = words[index].as_str();
+        if word == "--" {
+            // Program argv after `--` is unmodeled; help,
+            // subcommands, and filters can all change what executes.
+            if index + 1 < words.len() {
+                return Vec::new();
+            }
+            break;
+        }
+        if let Some(value) = word.strip_prefix("--bin=") {
+            if value.is_empty() || binary.is_some() {
+                return Vec::new();
+            }
+            // Keep the Cargo target name as written. Do not rewrite '-' to
+            // '_' — that would credit `src/bin/svc_api.rs` for `--bin svc-api`.
+            binary = Some(value.to_string());
+            index += 1;
+            continue;
+        }
+        if word == "--bin" {
+            let Some(value) = words.get(index + 1).map(String::as_str) else {
+                return Vec::new();
+            };
+            if value.starts_with('-') || value.is_empty() || binary.is_some() {
+                return Vec::new();
+            }
+            binary = Some(value.to_string());
+            index += 2;
+            continue;
+        }
+        if let Some(value) = word.strip_prefix("--color=") {
+            if !matches!(value, "auto" | "always" | "never") {
+                return Vec::new();
+            }
+            index += 1;
+            continue;
+        }
+        if word == "--color" {
+            let Some(value) = words.get(index + 1).map(String::as_str) else {
+                return Vec::new();
+            };
+            if !matches!(value, "auto" | "always" | "never") {
+                return Vec::new();
+            }
+            index += 2;
+            continue;
+        }
+        // Package/target/manifest selection is not modeled for binary mapping.
+        if word == "-p"
+            || word == "--package"
+            || word.starts_with("--package=")
+            || word == "--manifest-path"
+            || word.starts_with("--manifest-path=")
+            || word == "--target"
+            || word.starts_with("--target=")
+            || word.starts_with('-')
+        {
+            return Vec::new();
+        }
+        // Unexpected positional before `--` is not a known cargo-run shape.
+        return Vec::new();
+    }
+    // Exactly one candidate file. Multiple workspace packages with the same
+    // binary name would otherwise let one package's run credit another's main.
+    let mut candidates: Vec<&str> = graph
+        .files()
+        .filter(|file| match &binary {
+            Some(binary) => {
+                (file.starts_with("src/bin/") || file.contains("/src/bin/"))
+                    && file_stem(file) == binary
+            }
+            None => *file == "src/main.rs" || file.ends_with("/src/main.rs"),
+        })
+        .collect();
+    candidates.sort();
+    candidates.dedup();
+    if candidates.len() != 1 {
+        return Vec::new();
+    }
+    exact_entry(graph, source, candidates[0], "main")
+}
+
+/// Map supported command shapes to indexed entry symbols. Unknown commands
+/// yield no evidence rather than guessing. The mapping is intentionally small
+/// and deterministic; runtime trace/coverage is the future general solution.
+pub fn command_entries(
+    command: &str,
+    graph: &crate::callgraph::CallGraph,
+    source: &'static str,
+) -> Vec<EntryEvidence> {
+    if command.contains("||")
+        || command.contains("&&")
+        || command.contains('|')
+        || command.contains(';')
+    {
+        return Vec::new();
+    }
+    let words = shell_words(command);
+    let Some(first) = words.first().map(String::as_str) else {
+        return Vec::new();
+    };
+    // Help/version never execute the claimed surface. Fail closed for every
+    // derived command shape (cargo, loom, scripts, binaries).
+    if argv_has_help_or_version(&words) {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    if first == "cargo" && words.get(1).map(String::as_str) == Some("test") {
+        out.extend(cargo_test_entries(&words, graph, source));
+    } else if first == "cargo" && words.get(1).map(String::as_str) == Some("run") {
+        out.extend(cargo_run_entries(&words, graph, source));
+    } else {
+        let _binary = first.rsplit('/').next().unwrap_or(first);
+        // Only a checkout-bound loom binary. Bare `loom` resolves through PATH
+        // and may be a different install; absolute paths outside the checkout
+        // are likewise untrusted. Accept `./loom` and `target/**/loom` only.
+        // Exact checkout-bound binaries only. Lexical `target/**/loom` would
+        // accept `target/../../tmp/loom` and credit an external binary.
+        let is_checkout_loom = matches!(
+            first,
+            "./loom" | "target/debug/loom" | "target/release/loom"
+        );
+        if is_checkout_loom {
+            // Argument-sensitive, never `main`-broad: `loom --help` does not
+            // execute the code a validation is claiming to run. The subcommand
+            // maps to its real handler symbol, and only when the call graph
+            // actually defines that symbol. Top-level help/version flags
+            // anywhere before the subcommand, unknown subcommands, and
+            // flag-only invocations all fail closed with no evidence.
+            if words
+                .iter()
+                .any(|word| matches!(word.as_str(), "--help" | "-h" | "--version" | "-V"))
+            {
+                return Vec::new();
+            }
+            // Reject unknown/misplaced flags. `loom --bogus sync` and
+            // `loom sync --bogus` are not executions of sync_cmd — clap would
+            // refuse them. Without a full CLI parse here, any unexpected `-`
+            // token (outside known global option shapes) fails closed.
+            if loom_argv_has_unknown_flag(&words) {
+                return Vec::new();
+            }
+            let subcommand = loom_subcommand_token(&words);
+            if let Some(handler) = subcommand.and_then(loom_subcommand_handler) {
+                // Mapping only credits leaf handlers with no extra positionals.
+                // `loom sync extra` is not an execution of sync_cmd under this
+                // lightweight mapper.
+                if loom_has_extra_positionals(&words) {
+                    return Vec::new();
+                }
+                // Unique defining file only. `.find()` would credit the first
+                // match when a helper of the same name exists elsewhere, and
+                // that is not proof of which surface the CLI enters.
+                let defining: Vec<&str> = graph
+                    .files()
+                    .filter(|file| {
+                        (file.starts_with("src/") || file.starts_with("tests/"))
+                            && graph.file_defines(file, handler)
+                    })
+                    .collect();
+                if defining.len() == 1 {
+                    out.push(EntryEvidence {
+                        source,
+                        file: defining[0].into(),
+                        entry_symbol: Some(handler.into()),
+                        s3_eligible: true,
+                    });
+                }
+            }
+        } else if first.contains('/')
+            || first.ends_with(".py")
+            || first.ends_with(".js")
+            || first.ends_with(".ts")
+            || first.ends_with(".rs")
+            || matches!(first, "python" | "python3" | "node" | "bash" | "sh" | "zsh")
+                && words.get(1).is_some_and(|arg| {
+                    arg.ends_with(".py") || arg.ends_with(".js") || arg.ends_with(".ts")
+                })
+        {
+            // Direct script paths map only when the file has a single obvious
+            // entry symbol named exactly `main`/`run`/`handler`; a script with
+            // many possible entry points cannot prove which one executes, and
+            // substring look-alikes must not manufacture evidence. The file
+            // itself must also be unambiguous: a bare `check.py` must not
+            // credit an unrelated program the shell resolves from PATH, so only
+            // a single registered file with that name (or an explicit
+            // repo-relative path with a single canonical match) qualifies.
+            // An interpreter prefix (`python3 script.py`) is consumed; the
+            // script argument is the entry surface.
+            let script = if matches!(first, "python" | "python3" | "node" | "bash" | "sh" | "zsh") {
+                words.get(1).map(String::as_str).unwrap_or(first)
+            } else {
+                first
+            };
+            // Unmodeled trailing argv (including --help already handled) can
+            // select a different path than bare script entry. Fail closed if
+            // anything follows the script token.
+            let script_index =
+                if matches!(first, "python" | "python3" | "node" | "bash" | "sh" | "zsh") {
+                    1
+                } else {
+                    0
+                };
+            if words.len() > script_index + 1 {
+                return Vec::new();
+            }
+            let candidate = script.trim_start_matches("./");
+            // Bare basenames resolve through PATH/cwd at runtime; only an
+            // explicit repo-relative path can be matched against registered
+            // files without inventing the wrong surface.
+            if !candidate.contains('/') {
+                return Vec::new();
+            }
+            // Exact registered path only. Suffix matching would credit
+            // `pkg/tools/check.py` for command `tools/check.py`.
+            let matches: Vec<&str> = graph.files().filter(|file| file == &candidate).collect();
+            if matches.len() == 1 {
+                let file = matches[0];
+                for entry in ["main", "run", "handler"] {
+                    if graph.file_defines(file, entry)
+                        // A definition alone proves nothing: the script must
+                        // actually invoke the entry at top level. Only a
+                        // file-scope call in the script itself qualifies (e.g.
+                        // `if __name__ == "__main__": main()` — its caller has
+                        // no enclosing symbol). A call from another dead
+                        // function is not execution and must fail closed.
+                        && graph.edges().iter().any(|edge| {
+                            edge.to_file == file
+                                && edge.to_symbol == entry
+                                && edge.from_file == file
+                                && edge.from_symbol.is_empty()
+                        })
+                    {
+                        out.push(EntryEvidence {
+                            source,
+                            file: file.into(),
+                            entry_symbol: Some(entry.into()),
+                            s3_eligible: true,
+                        });
+                        break;
+                    }
+                }
+            }
+        } else {
+            // A bare command name resolves through PATH at runtime. Mapping it
+            // to `src/bin/<name>.rs` invents a repo surface the shell may never
+            // execute. Require `cargo run --bin` (or an explicit path script).
+        }
+    }
+    out
+}
+
+/// Global loom options that take a following value. Shared by subcommand
+/// discovery and unknown-flag rejection so the two cannot drift.
+/// Global loom options that take a following value for *handler mapping*.
+/// Mirrors `Cli` globals in `src/cli.rs`: only `--graph <path>`.
+const LOOM_VALUE_TAKERS: &[&str] = &["--graph"];
+
+/// Known bare global flags (no value) for handler mapping. Mirrors `Cli`:
+/// only `--json`. Boolean `=value` forms are rejected below.
+const LOOM_BARE_FLAGS: &[&str] = &["--json"];
+
+/// True when argv contains a flag the lightweight mapper cannot vouch for.
+/// Full clap parse is the ideal; until then, unknown/misplaced flags must not
+/// earn handler evidence (`loom --bogus sync`, `loom sync --bogus`).
+fn loom_argv_has_unknown_flag(words: &[String]) -> bool {
+    let mut index = 1;
+    while index < words.len() {
+        let word = words[index].as_str();
+        if !word.starts_with('-') {
+            // Subcommand token and everything after: still reject unknown flags.
+            index += 1;
+            continue;
+        }
+        if LOOM_VALUE_TAKERS.contains(&word) {
+            // Missing value is not a valid invocation.
+            if index + 1 >= words.len() || words[index + 1].starts_with('-') {
+                return true;
+            }
+            index += 2;
+            continue;
+        }
+        if word.contains('=') {
+            let (name, value) = word.split_once('=').unwrap_or((word, ""));
+            // Booleans cannot take `=value`. Value-takers need a non-empty value.
+            if LOOM_BARE_FLAGS.contains(&name) {
+                return true;
+            }
+            if LOOM_VALUE_TAKERS.contains(&name) {
+                if value.is_empty() {
+                    return true;
+                }
+                index += 1;
+                continue;
+            }
+            return true;
+        }
+        if LOOM_BARE_FLAGS.contains(&word) {
+            index += 1;
+            continue;
+        }
+        return true;
+    }
+    false
+}
+
+/// The first non-flag token after consuming global options that take a value.
+/// `loom --graph <path> status` executes `status`, not `graph`'s value — a
+/// value-bearing option must never be mistaken for the subcommand.
+fn loom_subcommand_token(words: &[String]) -> Option<&str> {
+    let mut index = 1;
+    while index < words.len() {
+        let word = words[index].as_str();
+        if !word.starts_with('-') {
+            return Some(word);
+        }
+        if LOOM_VALUE_TAKERS.contains(&word) {
+            index += 2;
+            continue;
+        }
+        index += 1;
+    }
+    None
+}
+
+/// The handler symbol a `loom <subcommand>` invocation actually enters, if the
+/// call graph knows it. Only subcommands with a unique, verified CLI handler
+/// symbol belong here; dispatcher-level commands (`edge`, `intent`, `journey`,
+/// …) map to a shared `dispatch` symbol that is neither unique nor proof of
+/// which sub-handler executes, and `debt` collides with the advisory module,
+/// so they fail closed and must rely on an explicit `exercises` edge or
+/// `validation_command` evidence instead.
+/// True when argv has more than one non-flag token after global options.
+/// Mapping only supports bare `loom <leaf>` (plus known global flags).
+fn loom_has_extra_positionals(words: &[String]) -> bool {
+    let mut index = 1;
+    let mut positionals = 0;
+    while index < words.len() {
+        let word = words[index].as_str();
+        if word.starts_with('-') {
+            if LOOM_VALUE_TAKERS.contains(&word) {
+                index += 2;
+                continue;
+            }
+            index += 1;
+            continue;
+        }
+        positionals += 1;
+        index += 1;
+    }
+    positionals != 1
+}
+
+fn loom_subcommand_handler(subcommand: &str) -> Option<&'static str> {
+    // Only leaf commands with no required nested subcommand and no required
+    // positionals. Dispatchers (`validation`, `finding`, `inbox`, …) fail closed
+    // because `loom validation` is not an execution of any one handler.
+    Some(match subcommand {
+        "sync" => "sync_cmd",
+        "status" => "status",
+        "next" => "next_output",
+        "welcome" => "welcome",
+        "guide" => "guide",
+        "coverage" => "coverage_cmd",
+        "impact" => "impact_cmd",
+        "explain" => "explain_cmd",
+        "audit" => "audit_cmd",
+        "deepen" => "deepen_cmd",
+        "export" => "export",
+        "whoami" => "whoami_cmd",
+        "smells" => "smells_cmd",
+        "doctor" => "doctor_cmd",
+        "observe" => "observe_cmd",
+        "decide" => "decide_cmd",
+        _ => return None,
+    })
+}
+
+fn derived_entries(
+    store: &Store,
+    validation: &Node,
+    intent_id: &str,
+    spec: Option<&JourneySpec>,
+    graph: &crate::callgraph::CallGraph,
+) -> Vec<EntryEvidence> {
+    let mut out = Vec::new();
+    let recorded = validation
+        .body
+        .get("command")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|c| !c.is_empty());
+    // Journey validations registered by `loom journey add` store
+    // `command: loom journey run <artifact>` — the outer runner — not each
+    // step's `run`. In that shape the YAML steps are what actually executed
+    // (record_outcomes stamps them). A free-form body.command that is *not*
+    // that outer form must still match a step's `run` exactly, so a printf
+    // no-op cannot borrow credit from an unrelated cargo test step.
+    let body_artifact = validation
+        .body
+        .get("artifact")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|a| !a.is_empty());
+    let outer_journey_run = recorded.is_some_and(|cmd| {
+        // Exact argv shape only: `<loom> journey run <artifact>`.
+        // Extra args, shell operators (already fail shell_words), or help
+        // flags must not unlock journey step credit.
+        let words = shell_words(cmd);
+        if words.len() != 4 {
+            return false;
+        }
+        let binary = words[0].as_str();
+        let is_loom = matches!(
+            binary,
+            "loom" | "./loom" | "target/debug/loom" | "target/release/loom"
+        );
+        if !(is_loom && words[1] == "journey" && words[2] == "run") {
+            return false;
+        }
+        let Some(body_art) = body_artifact else {
+            return false;
+        };
+        Path::new(words[3].as_str()) == Path::new(body_art)
+    });
+    if let Some(spec) = spec {
+        for step in &spec.steps {
+            if !step.is_cli() {
+                continue;
+            }
+            let belongs_to_intent = store
+                .resolve_node(&step.intent, Some(NodeType::Intent))
+                .map(|intent| intent.id == intent_id)
+                .unwrap_or(false);
+            if !belongs_to_intent {
+                continue;
+            }
+            if let Some(cmd) = recorded {
+                if !outer_journey_run && step.run.trim() != cmd {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            out.extend(command_entries(&step.run, graph, "journey_command"));
+        }
+    } else if let Some(command) = recorded {
+        out.extend(command_entries(command, graph, "validation_command"));
+    }
+    out
+}
+
+fn dedup_entries(entries: &mut Vec<EntryEvidence>) {
+    entries.sort();
+    entries.dedup();
 }
 
 /// Grade one validation. `intent_id` is the behavior it claims to prove.
@@ -411,13 +1358,46 @@ pub fn grade(
         return Ok(w);
     }
 
-    // S3 — call witness.
-    w.call_witness = call_witness(store, graph, intent_id, &proof_files(store, intent_id)?)?;
+    // S3 — validation-specific call witness. Explicit exercises edges and
+    // journey/command-derived entry points can earn the rung. Intent-wide
+    // verifies files are diagnostic-only legacy fallback.
+    let mut entries = validation_entries(store, &validation.id)?;
+    entries.extend(derived_entries(
+        store,
+        validation,
+        intent_id,
+        spec.as_ref(),
+        graph,
+    ));
+    dedup_entries(&mut entries);
+    if let Some(evidence) = call_witness(store, graph, intent_id, &entries)? {
+        w.call_witness = evidence.grounded_symbol.clone();
+        w.call_evidence = Some(evidence);
+    } else if entries.is_empty() {
+        let mut fallback = intent_wide_entries(store, intent_id)?;
+        dedup_entries(&mut fallback);
+        w.call_evidence = match call_witness(store, graph, intent_id, &fallback)? {
+            Some(evidence) => Some(evidence),
+            None => fallback.first().map(|entry| CallEvidenceWitness {
+                source: entry.source.into(),
+                file: entry.file.clone(),
+                entry_symbol: entry.entry_symbol.clone(),
+                grounded_symbol: None,
+                s3_eligible: false,
+            }),
+        };
+    }
     if w.call_witness.is_none() {
         w.grade = Strength::S2.as_str().into();
-        w.next = "nothing this proof runs reaches the symbol the behavior is \
+        w.next = match &w.call_evidence {
+            Some(evidence) if evidence.source == "intent_wide_fallback" => format!(
+                "nothing this proof runs reaches the symbol the behavior is grounded in — legacy intent-wide evidence '{}' is visible but cannot earn S3; attach it to this validation with `loom edge exercises` or run it through the journey",
+                evidence.file
+            ),
+            _ => "nothing this proof runs reaches the symbol the behavior is \
                   grounded in — exercise the real code path"
-            .into();
+                .into(),
+        };
         return Ok(w);
     }
 
@@ -466,19 +1446,141 @@ fn journey_spec(root: &Path, validation: &Node) -> Option<JourneySpec> {
     // graded S1 with "content assertions: 0" no matter how much it asserted:
     // the spec was never found, so its assertions were never counted.
     if let Some(artifact) = validation.body.get("artifact").and_then(|v| v.as_str()) {
-        if let Ok(spec) = crate::journey::parse(&root.join(artifact)) {
+        // A declared artifact that cannot be confined/read is fail-closed —
+        // never invent credit from a different basename path.
+        let path = confined_journey_path(root, artifact)?;
+        if let Some(expected) = validation.body.get("spec_hash").and_then(|v| v.as_str()) {
+            let Ok(raw) = std::fs::read_to_string(&path) else {
+                return None;
+            };
+            // Hash is of the registered artifact bytes. When that artifact is
+            // the journey YAML, it must match before we parse. When it is a
+            // non-YAML contract file, the hash is still the contract's hash
+            // from registration — a drift of the contract fails closed here
+            // and we do not silently grade from journeys/<id>.yaml instead.
+            if crate::artifact::fingerprint(&raw) != expected {
+                return None;
+            }
+        }
+        if let Ok(spec) = crate::journey::parse(&path) {
             return Some(spec);
         }
+        // Artifact under root but not a journey YAML (e.g. HTTP contract).
+        // Basename fallthrough is allowed only when the declared artifact
+        // resolved cleanly (and matched hash if present).
     }
     // Fall back to the id-as-basename form, which is what a hand-registered
-    // `--journey-id` usually means.
+    // `--journey-id` usually means. The id is treated as a single path segment
+    // under `journeys/` — never as a relative path. If a hash is registered,
+    // the fallback must match it too.
     let journey = validation
         .body
         .get("journey")
         .or_else(|| validation.body.get("journey_id"))
         .and_then(|v| v.as_str())?;
+    if journey.is_empty()
+        || journey.contains('/')
+        || journey.contains('\\')
+        || journey.contains("..")
+    {
+        return None;
+    }
     let path = root.join("journeys").join(format!("{journey}.yaml"));
+    let path = confined_journey_path(
+        root,
+        path.strip_prefix(root).ok()?.to_string_lossy().as_ref(),
+    )?;
+    if let Some(expected) = validation.body.get("spec_hash").and_then(|v| v.as_str()) {
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            return None;
+        };
+        if crate::artifact::fingerprint(&raw) != expected {
+            return None;
+        }
+    }
     crate::journey::parse(&path).ok()
+}
+
+/// Resolve a journey artifact only when it stays under `<root>/journeys/`.
+/// Absolute paths, `..`, and symlink escapes outside that directory fail closed.
+pub(crate) fn confined_journey_path(root: &Path, artifact: &str) -> Option<std::path::PathBuf> {
+    if artifact.is_empty() {
+        return None;
+    }
+    let art = Path::new(artifact);
+    // Relative: reject `..`. Absolute: only accepted after canonicalize proves
+    // the file sits under the checkout root (common when `journey add` stored
+    // `spec.display()` of an absolute PathBuf).
+    if !art.is_absolute()
+        && art
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return None;
+    }
+    let joined = if art.is_absolute() {
+        art.to_path_buf()
+    } else {
+        root.join(artifact)
+    };
+    let root_canon = root.canonicalize().ok()?;
+    let path_canon = joined.canonicalize().ok()?;
+    if path_canon.starts_with(&root_canon) && path_canon.is_file() {
+        Some(path_canon)
+    } else {
+        None
+    }
+}
+
+/// Persist one derived witness and record model-driven demotions in the
+/// append-only journal. The facet remains deterministic; the journal entry is
+/// emitted only on the transition, never on an unchanged sync.
+pub fn store_witness(store: &Store, validation_id: &str, witness: &StrengthWitness) -> Result<()> {
+    let previous = store
+        .get_facet(validation_id, TargetKind::Node, "proof_strength")?
+        .and_then(|raw| serde_json::from_str::<StrengthWitness>(&raw).ok());
+    let migration = previous.as_ref().and_then(|previous| {
+        let old = Strength::parse(&previous.grade).unwrap_or(Strength::S0);
+        let new = Strength::parse(&witness.grade).unwrap_or(Strength::S0);
+        (old > new
+            && previous.witness_model == LEGACY_STRENGTH_WITNESS_MODEL
+            && previous.witness_model != witness.witness_model)
+            .then(|| {
+                serde_json::json!({
+                    "from": previous.grade,
+                    "to": witness.grade,
+                    "reason": "witness_model_change: intent-wide → validation-specific",
+                    "previous_witness_model": previous.witness_model,
+                    "witness_model": witness.witness_model,
+                    "previous_call_witness": previous.call_witness,
+                    "call_evidence": witness.call_evidence,
+                })
+            })
+    });
+    if let Some(payload) = migration {
+        let model = payload["witness_model"].clone();
+        let previous_model = payload["previous_witness_model"].clone();
+        crate::journal::append_once(
+            store.root(),
+            "proof_strength_changed",
+            validation_id,
+            payload,
+            |entry| {
+                entry.event == "proof_strength_changed"
+                    && entry.target_id == validation_id
+                    && entry.payload["witness_model"] == model
+                    && entry.payload["previous_witness_model"] == previous_model
+            },
+        )?;
+    }
+    store.set_facet(
+        validation_id,
+        TargetKind::Node,
+        "proof_strength",
+        &serde_json::to_string(witness)?,
+        crate::model::TruthClass::Derived,
+    )?;
+    Ok(())
 }
 
 /// Recompute every validation's grade. Called by sync; the result is a derived
@@ -503,13 +1605,7 @@ pub fn recompute(store: &Store, root: &Path) -> Result<usize> {
             next: "this proof is not attached to any behavior".into(),
             ..Default::default()
         });
-        store.set_facet(
-            &validation.id,
-            TargetKind::Node,
-            "proof_strength",
-            &serde_json::to_string(&witness)?,
-            crate::model::TruthClass::Derived,
-        )?;
+        store_witness(store, &validation.id, &witness)?;
         graded += 1;
     }
     Ok(graded)
@@ -639,27 +1735,34 @@ mod tests {
             .unwrap();
 
         let proof = node(&store, NodeType::CodeFile, "tests/recovery.rs");
-        let verifies = store
+        let validation = node(&store, NodeType::Validation, "release recovery proof");
+        let exercises = store
             .add_edge(
-                EdgeKind::Implements,
-                &intent.id,
+                EdgeKind::Exercises,
+                &validation.id,
                 &proof.id,
                 crate::model::TruthClass::Asserted,
             )
             .unwrap();
         store
-            .set_grounding_role(&verifies.id, crate::model::GroundingRole::Verifies)
+            .set_facet(
+                &exercises.id,
+                TargetKind::Edge,
+                "locator",
+                "exercise_isolated_writer_rotation",
+                crate::model::TruthClass::Asserted,
+            )
             .unwrap();
 
         crate::sync::run(&store, &root).unwrap();
         let graph = crate::callgraph::build(&store).unwrap();
-        let files = proof_files(&store, &intent.id).unwrap();
-        assert_eq!(
-            call_witness(&store, &graph, &intent.id, &files)
-                .unwrap()
-                .as_deref(),
-            Some("get_subject_case")
-        );
+        let entries = validation_entries(&store, &validation.id).unwrap();
+        let witness = call_witness(&store, &graph, &intent.id, &entries)
+            .unwrap()
+            .expect("validation-specific entry should reach the first grounded symbol");
+        assert_eq!(witness.grounded_symbol.as_deref(), Some("get_subject_case"));
+        assert_eq!(witness.source, "validation_grounding");
+        assert!(witness.s3_eligible);
 
         drop(store);
         std::fs::remove_dir_all(root).unwrap();

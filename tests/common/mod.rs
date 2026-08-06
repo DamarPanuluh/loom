@@ -226,7 +226,7 @@ pub fn s3_journey_proof(
         root.join(format!("journeys/{name}.yaml")),
         format!(
             "journey: {name}\nsteps:\n  - name: run it\n    intent: checkout\n    \
-             run: echo checkout-ok\n    expect:\n      stdout_contains: [\"checkout-ok\"]\n"
+             run: cargo test --test checkout_test\n    expect:\n      stdout_contains: [\"checkout-ok\"]\n"
         ),
     )
     .unwrap();
@@ -260,9 +260,26 @@ pub fn s3_journey_proof(
             serde_json::json!({
                 "proof_kind": "journey",
                 "type": "test",
-                "command": "echo checkout-ok",
+                "command": "printf 'test result: ok. 1 passed; 0 failed\\ncheckout-ok\\n'",
                 "journey": name,
             }),
+        )
+        .unwrap();
+    let exercises = store
+        .add_edge(
+            EdgeKind::Exercises,
+            &validation.id,
+            &test_cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &exercises.id,
+            TargetKind::Edge,
+            "locator",
+            "exercises_checkout",
+            TruthClass::Asserted,
         )
         .unwrap();
     store
@@ -291,7 +308,7 @@ pub fn earn_call_witness(store: &loom::store::Store, root: &std::path::Path, int
     std::fs::create_dir_all(root.join("tests")).unwrap();
     std::fs::write(
         root.join("tests/behavior_test.rs"),
-        "pub fn exercises_behavior() {\n    let _ = perform_behavior();\n}\n",
+        "#[test]\npub fn exercises_behavior() {\n    let _ = perform_behavior();\n}\n",
     )
     .unwrap();
     let cf = store
@@ -329,23 +346,26 @@ pub fn earn_call_witness(store: &loom::store::Store, root: &std::path::Path, int
             serde_json::json!({}),
         )
         .unwrap();
-    let v = store
-        .add_edge(
-            EdgeKind::Implements,
-            intent_id,
-            &test_cf.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    store
-        .set_facet(
-            &v.id,
-            TargetKind::Edge,
-            "role",
-            "verifies",
-            TruthClass::Asserted,
-        )
-        .unwrap();
+    // Attach this proof entry to each validation already registered for the
+    // intent. The old helper attached the file intent-wide, which is precisely
+    // the witness leak the production model now rejects.
+    for validates in store
+        .edges_with(Some(EdgeKind::Validates), None, Some(intent_id))
+        .unwrap()
+    {
+        let exercises = store
+            .ensure_edge(EdgeKind::Exercises, &validates.from_id, &test_cf.id)
+            .unwrap();
+        store
+            .set_facet(
+                &exercises.id,
+                TargetKind::Edge,
+                "locator",
+                "exercises_behavior",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
     loom::sync::run(store, root).unwrap();
 }
 

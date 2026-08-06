@@ -229,7 +229,7 @@ impl<'a> Assertion<'a> {
     // Wired up as each anchoring floor is raised to `verified` — the proof lane
     // first, then the locator and pre-screen probes.
     #[allow(dead_code)]
-    pub(crate) fn observed(mut self, run: RunRecord) -> Self {
+    pub fn observed(mut self, run: RunRecord) -> Self {
         self.run = Some(Box::new(run));
         self
     }

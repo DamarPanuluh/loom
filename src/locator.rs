@@ -113,6 +113,20 @@ fn is_symbol_name(candidate: &str) -> bool {
 /// proofs, not the behavior's home — counting them as blast-radius / proof
 /// symbols lets a test helper inflate urgency and manufacture witnesses.
 pub fn realizing_symbols(store: &Store, intent_id: &str) -> Result<Vec<String>> {
+    let mut out: Vec<String> = realizing_targets(store, intent_id)?
+        .into_iter()
+        .map(|(_, symbol)| symbol)
+        .collect();
+    out.sort();
+    out.dedup();
+    Ok(out)
+}
+
+/// Realizing groundings as `(codefile path, symbol)` pairs.
+///
+/// Grading must keep the file: a bare symbol shared by two definitions can
+/// otherwise pull callers of the wrong definition into the call witness.
+pub fn realizing_targets(store: &Store, intent_id: &str) -> Result<Vec<(String, String)>> {
     let mut out = Vec::new();
     for e in store.edges_with(Some(EdgeKind::Implements), Some(intent_id), None)? {
         if store.edge_superseded(&e.id)? {
@@ -121,8 +135,13 @@ pub fn realizing_symbols(store: &Store, intent_id: &str) -> Result<Vec<String>> 
         if store.grounding_role(&e.id)? != GroundingRole::Realizes {
             continue;
         }
+        let Some(file) = store.get_node(&e.to_id)? else {
+            continue;
+        };
         if let Some(loc) = store.get_facet(&e.id, TargetKind::Edge, "locator")? {
-            out.extend(symbols(&loc));
+            for symbol in symbols(&loc) {
+                out.push((file.name.clone(), symbol));
+            }
         }
     }
     out.sort();

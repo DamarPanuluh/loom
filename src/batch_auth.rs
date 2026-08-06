@@ -331,7 +331,20 @@ pub fn validate_cover(
     let Some(envelope_millis) = journal::stamp_millis(envelope_ts) else {
         return Err(EnvelopeReject::RetrospectiveEnvelope);
     };
-    if envelope_millis > latest_assertion_millis {
+    // Retrospective closure is ONLY ever valid as a human vouching over
+    // pre-burst journal records: the Q&A happened before the judgments, and
+    // the append-only journal timestamp proves the ordering. The burst
+    // actor's own later seal — an LLM sealing the burst it made — is never
+    // authority, so it stays rejected exactly as before.
+    let retrospective = envelope_millis > latest_assertion_millis;
+    if retrospective && !authority_is_human(&envelope.authority) {
+        return Err(EnvelopeReject::RetrospectiveEnvelope);
+    }
+    // A retrospective seal is ONLY valid when the envelope itself is a
+    // human-gated act: it must carry a recorded HumanDecision, which only
+    // `attest-burst` produces through the ratification gate. A machine that
+    // forges a journal record still cannot seal — the seal is the human act.
+    if retrospective && envelope.human_decision.is_none() {
         return Err(EnvelopeReject::RetrospectiveEnvelope);
     }
     if envelope.evidence.is_empty() {
@@ -369,12 +382,29 @@ pub fn validate_cover(
                 if evidence_entry.origin != Origin::Local {
                     return Err(EnvelopeReject::ImportedEvidence(raw.clone()));
                 }
-                if is_contemporaneous(
-                    &evidence_entry.ts,
-                    envelope_ts,
-                    burst_minute,
-                    latest_assertion_millis,
-                ) {
+                // Retrospective (human-vouched) closure: the cited Q&A record
+                // must PREDATE the burst's final fact — that is the ordering
+                // proof — AND be a trusted, digest-bound human authorization
+                // record (event `batch_intent`, written only by the human-gated
+                // batch path, carrying a HumanDecision for this exact subject
+                // digest). A self-asserted `--authority human` citing arbitrary
+                // or machine-written JSON is never authority. Contemporaneous
+                // seals keep the strict envelope-bound check.
+                let contemporaneous = if retrospective {
+                    record_predates_burst(&evidence_entry.ts, burst_minute, latest_assertion_millis)
+                        && evidence_is_human_authorization(
+                            &evidence_entry,
+                            &envelope.subject_digest,
+                        )
+                } else {
+                    is_contemporaneous(
+                        &evidence_entry.ts,
+                        envelope_ts,
+                        burst_minute,
+                        latest_assertion_millis,
+                    )
+                };
+                if contemporaneous {
                     any_contemporaneous = true;
                 } else {
                     return Err(EnvelopeReject::EvidenceNotContemporaneous(raw.clone()));
@@ -470,6 +500,56 @@ fn is_contemporaneous(
         return false;
     };
     evidence_millis <= envelope_millis && evidence_minute <= burst_minute
+}
+
+/// Ordering proof for a retrospective (human-vouched) seal: the cited local
+/// journal record — the Q&A that happened — must predate the burst's final
+/// fact. The envelope itself may be later; what must not be later is the
+/// authorization record it cites.
+fn record_predates_burst(
+    evidence_ts: &str,
+    burst_minute: &str,
+    latest_assertion_millis: i64,
+) -> bool {
+    let Some(evidence_millis) = journal::stamp_millis(evidence_ts) else {
+        return false;
+    };
+    let Some(evidence_minute) = journal::minute_key(evidence_ts) else {
+        return false;
+    };
+    // STRICT ordering: the authorization record must be before the burst's
+    // final fact, never at the same millisecond — the Q&A happened, then the
+    // judgments landed.
+    evidence_millis < latest_assertion_millis && evidence_minute.as_str() <= burst_minute
+}
+
+/// The cited record must BE the trusted human authorization act, not any
+/// journal record: its event is `batch_intent` — written only by the
+/// human-gated batch path (`loom intent ratify --all`, which routes every
+/// decision through `ratification_decision`) — its payload carries a
+/// parseable [`HumanDecision`], and its `target_id` is the subject digest of
+/// the exact burst being sealed. Arbitrary JSON that merely contains a
+/// `human_decision` field is not accepted: the event + schema identify the
+/// trusted producer.
+fn evidence_is_human_authorization(entry: &journal::Entry, subject_digest: &str) -> bool {
+    if entry.event != "batch_intent" {
+        return false;
+    }
+    if entry.target_id != subject_digest {
+        return false;
+    }
+    let payload = &entry.payload;
+    let operation = payload.get("operation").and_then(|v| v.as_str());
+    let has_human = payload
+        .get("human_decision")
+        .and_then(|d| serde_json::from_value::<crate::ratification::HumanDecision>(d.clone()).ok())
+        .is_some();
+    let has_evidence = payload
+        .get("evidence")
+        .and_then(|v| v.as_str())
+        .map(|e| !e.trim().is_empty())
+        .unwrap_or(false);
+    operation == Some("ratify") && has_human && has_evidence
 }
 
 fn normalized_minute(stamp_or_minute: &str) -> Option<String> {
@@ -867,6 +947,251 @@ mod tests {
                 1_784_963_425_553,
             ),
             "an envelope written in a later minute must fail closed"
+        );
+    }
+
+    #[test]
+    fn record_predates_burst_is_an_ordering_proof_not_an_envelope_bound() {
+        // Evidence strictly BEFORE the final fact → ordering holds, even
+        // though the envelope itself (not passed here) would be later.
+        assert!(record_predates_burst(
+            "1784963424553",
+            "2026-07-25T07:10",
+            1_784_963_425_553,
+        ));
+        // Evidence at the exact final fact → too late: the authorization must
+        // be strictly before the last judgment, never simultaneous.
+        assert!(!record_predates_burst(
+            "1784963425553",
+            "2026-07-25T07:10",
+            1_784_963_425_553,
+        ));
+        // Evidence AFTER the final fact → ordering is broken, fail closed.
+        assert!(!record_predates_burst(
+            "1784963430000",
+            "2026-07-25T07:10",
+            1_784_963_425_553,
+        ));
+        // Evidence in a LATER minute → fail closed regardless of millis.
+        assert!(!record_predates_burst(
+            "1784963480000",
+            "2026-07-25T07:10",
+            1_784_963_425_553,
+        ));
+    }
+
+    #[test]
+    fn a_retrospective_human_seal_over_a_pre_burst_record_is_accepted() {
+        let tmp = TmpRoot::new();
+        let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
+
+        // The Q&A record: appended FIRST (before the burst facts would be).
+        // It must BE the trusted human authorization act: event `batch_intent`
+        // (the human-gated batch path), target_id = the subject digest of the
+        // exact burst, payload carrying a HumanDecision + evidence.
+        let digest = subject_digest(&envelope().subjects);
+        let record = journal::append(
+            store.root(),
+            "batch_intent",
+            &digest,
+            serde_json::json!({
+                "operation": "ratify",
+                "subjects": envelope().subjects,
+                "human_decision": crate::ratification::HumanDecision::mediated(
+                    "the human reviewed the enumerated snapshot and stands behind it",
+                )
+                .unwrap(),
+                "evidence": "portfolio review of the enumerated snapshot",
+            }),
+        )
+        .unwrap();
+
+        // The seal is deliberately retrospective: its own timestamp is AFTER
+        // the burst's latest fact. It is accepted only because the cited
+        // record predates the burst, IS a trusted human-gated authorization,
+        // and binds the exact subject digest.
+        let mut envelope = envelope();
+        envelope.claim = BatchClaim::Ratification;
+        envelope.authority = "human".into();
+        envelope.evidence = vec![journal::reference(&record)];
+        envelope.human_decision = Some(
+            crate::ratification::HumanDecision::mediated(
+                "the human vouches for the enumerated snapshot",
+            )
+            .unwrap(),
+        );
+        let minute = journal::minute_key(&record.ts).unwrap();
+        // The burst's latest fact lands AFTER the record (strict ordering).
+        let latest = journal::stamp_millis(&record.ts).unwrap() + 1;
+        // Envelope stamped one minute AFTER the record → retrospective.
+        let envelope_ts = format!("{}000", journal::stamp_millis(&record.ts).unwrap() + 60_000);
+
+        assert_eq!(
+            validate_cover(
+                &store,
+                &envelope,
+                CoverContext {
+                    envelope_ts: &envelope_ts,
+                    envelope_origin: Origin::Local,
+                    subjects: &envelope.subjects,
+                    claim: BatchClaim::Ratification,
+                    burst_minute: &minute,
+                    latest_assertion_millis: latest,
+                },
+            ),
+            Ok(()),
+            "a human-vouched seal citing a pre-burst bound human authorization must close the burst"
+        );
+
+        // Same retrospective envelope but NOT human authority → still refused.
+        let mut llm_seal = envelope.clone();
+        llm_seal.authority = "llm:analyzer".into();
+        assert_eq!(
+            validate_cover(
+                &store,
+                &llm_seal,
+                CoverContext {
+                    envelope_ts: &envelope_ts,
+                    envelope_origin: Origin::Local,
+                    subjects: &llm_seal.subjects,
+                    claim: BatchClaim::Ratification,
+                    burst_minute: &minute,
+                    latest_assertion_millis: latest,
+                },
+            ),
+            Err(EnvelopeReject::RetrospectiveEnvelope),
+            "the burst actor's own later seal must never close the burst"
+        );
+
+        // A machine-written `batch_apply` record (the mechanical apply path,
+        // no HumanDecision) must not close the burst even with --authority
+        // human — the event identifies the trusted producer, and this one is
+        // not it.
+        let machine_record = journal::append(
+            store.root(),
+            "batch_apply",
+            &digest,
+            serde_json::json!({ "operation": "adjudicate", "routing_class": "mechanical_apply" }),
+        )
+        .unwrap();
+        let mut machine_seal = envelope.clone();
+        machine_seal.authority = "human".into();
+        machine_seal.evidence = vec![journal::reference(&machine_record)];
+        assert_eq!(
+            validate_cover(
+                &store,
+                &machine_seal,
+                CoverContext {
+                    envelope_ts: &envelope_ts,
+                    envelope_origin: Origin::Local,
+                    subjects: &machine_seal.subjects,
+                    claim: BatchClaim::Ratification,
+                    burst_minute: &minute,
+                    latest_assertion_millis: latest,
+                },
+            ),
+            Err(EnvelopeReject::EvidenceNotContemporaneous(format!(
+                "journal:{}",
+                machine_record.id
+            ))),
+            "a machine-written record must not close a burst under a self-asserted human authority"
+        );
+
+        // An arbitrary record with the right event name but forged by the
+        // caller is still refused: `journal::append` is not the trusted path,
+        // and the record here lacks the HumanDecision schema the gate needs.
+        let forged = journal::append(
+            store.root(),
+            "batch_intent",
+            &digest,
+            serde_json::json!({ "operation": "ratify", "evidence": "looks plausible" }),
+        )
+        .unwrap();
+        let mut forged_seal = envelope.clone();
+        forged_seal.authority = "human".into();
+        forged_seal.evidence = vec![journal::reference(&forged)];
+        assert_eq!(
+            validate_cover(
+                &store,
+                &forged_seal,
+                CoverContext {
+                    envelope_ts: &envelope_ts,
+                    envelope_origin: Origin::Local,
+                    subjects: &forged_seal.subjects,
+                    claim: BatchClaim::Ratification,
+                    burst_minute: &minute,
+                    latest_assertion_millis: latest,
+                },
+            ),
+            Err(EnvelopeReject::EvidenceNotContemporaneous(format!(
+                "journal:{}",
+                forged.id
+            ))),
+            "a forged event name without a real HumanDecision must not close the burst"
+        );
+
+        // A bound human-decision record but an envelope WITHOUT a human
+        // decision on the seal itself → refused: the seal must be the
+        // human-gated act, not just the cited record.
+        let mut no_decision_seal = envelope.clone();
+        no_decision_seal.authority = "human".into();
+        no_decision_seal.human_decision = None;
+        no_decision_seal.evidence = vec![journal::reference(&record)];
+        assert_eq!(
+            validate_cover(
+                &store,
+                &no_decision_seal,
+                CoverContext {
+                    envelope_ts: &envelope_ts,
+                    envelope_origin: Origin::Local,
+                    subjects: &no_decision_seal.subjects,
+                    claim: BatchClaim::Ratification,
+                    burst_minute: &minute,
+                    latest_assertion_millis: latest,
+                },
+            ),
+            Err(EnvelopeReject::RetrospectiveEnvelope),
+            "a retrospective seal without its own human decision must be refused"
+        );
+
+        // A bound human-decision record for the WRONG subject set must fail.
+        let other_digest = subject_digest(&["finding-other".to_string()]);
+        let wrong_record = journal::append(
+            store.root(),
+            "batch_intent",
+            &other_digest,
+            serde_json::json!({
+                "operation": "ratify",
+                "subjects": ["finding-other"],
+                "human_decision": crate::ratification::HumanDecision::mediated(
+                    "the human reviewed the OTHER snapshot",
+                )
+                .unwrap(),
+                "evidence": "other portfolio",
+            }),
+        )
+        .unwrap();
+        let mut wrong_seal = envelope.clone();
+        wrong_seal.authority = "human".into();
+        wrong_seal.evidence = vec![journal::reference(&wrong_record)];
+        assert_eq!(
+            validate_cover(
+                &store,
+                &wrong_seal,
+                CoverContext {
+                    envelope_ts: &envelope_ts,
+                    envelope_origin: Origin::Local,
+                    subjects: &wrong_seal.subjects,
+                    claim: BatchClaim::Ratification,
+                    burst_minute: &minute,
+                    latest_assertion_millis: latest,
+                },
+            ),
+            Err(EnvelopeReject::EvidenceNotContemporaneous(format!(
+                "journal:{}",
+                wrong_record.id
+            ))),
+            "a human decision for a different subject set must not close this burst"
         );
     }
 }

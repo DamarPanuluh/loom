@@ -74,13 +74,11 @@ fn operator_prose_never_teaches_rejected_inbox_sources() {
             scanned.extend(collect_markdown(&path));
         }
     }
-
-    assert!(
-        scanned
-            .iter()
-            .any(|p| p.ends_with("skills/loom-driver/SKILL.md")),
-        "vendored skills/loom-driver/SKILL.md must exist"
-    );
+    // The loom-driver skill is authoritative at the global skill root since the
+    // repo copy was removed (ecbea8b); the repo's own docs remain the
+    // deterministic instruction surface this test guards. The global skill is
+    // deliberately NOT scanned: a test must never depend on mutable state
+    // outside the checkout.
 
     let mut violations = Vec::new();
     for path in &scanned {

@@ -69,19 +69,45 @@ pub fn path(root: &Path) -> PathBuf {
     root.join(LOOM_DIR).join(JOURNAL_DIR).join(EVENTS_FILE)
 }
 
-/// Append exactly one immutable event and return its evidence reference.
-pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Result<Entry> {
+pub fn append_once(
+    root: &Path,
+    event: &str,
+    target_id: &str,
+    payload: Value,
+    same_transition: impl Fn(&Entry) -> bool,
+) -> Result<Option<Entry>> {
+    let _lock = journal_lock(root)?;
+    let entries = read_untracked(root)?;
+    // Only local rows count as evidence of this transition: imported history
+    // is another graph's record and must never suppress a fresh local entry.
+    if entries
+        .iter()
+        .filter(|entry| entry.origin == Origin::Local)
+        .any(same_transition)
+    {
+        return Ok(None);
+    }
+    let entry = new_entry(event, target_id, payload);
+    let mut line = serde_json::to_vec(&entry)?;
+    line.push(b'\n');
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path(root))?;
+    file.write_all(&line)?;
+    file.sync_data()?;
+    Ok(Some(entry))
+}
+
+fn new_entry(event: &str, target_id: &str, payload: Value) -> Entry {
     let ts = timestamp();
-    // Process id disambiguates concurrent writers: SEQUENCE is process-local and
-    // starts at 0, so two processes appending in the same millisecond would mint
-    // the same id without it. Sequence still disambiguates within a process.
     let id = format!(
         "{}-{}-{}",
         ts.replace([':', '-', 'T', 'Z', '.'], ""),
         std::process::id(),
         SEQUENCE.fetch_add(1, Ordering::Relaxed)
     );
-    let entry = Entry {
+    Entry {
         id,
         ts,
         actor: std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into()),
@@ -89,7 +115,12 @@ pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Resu
         target_id: target_id.into(),
         payload,
         origin: Origin::Local,
-    };
+    }
+}
+
+/// Append exactly one immutable event and return its evidence reference.
+pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Result<Entry> {
+    let entry = new_entry(event, target_id, payload);
     // Serialize the full JSONL record first, then append under a dedicated
     // journal lock. Shared graph readers may append from many processes at
     // once; split `to_writer` + newline writes interleave into corrupt lines.
@@ -144,6 +175,21 @@ fn write_record(root: &Path, line: &[u8]) -> Result<()> {
     out.write_all(line)?;
     out.sync_data()?;
     Ok(())
+}
+
+fn read_untracked(root: &Path) -> Result<Vec<Entry>> {
+    let file = path(root);
+    let Ok(file) = OpenOptions::new().read(true).open(&file) else {
+        return Ok(Vec::new());
+    };
+    let mut entries = Vec::new();
+    for line in BufReader::new(file).lines() {
+        let line = line?;
+        if let Ok(entry) = serde_json::from_str::<Entry>(&line) {
+            entries.push(entry);
+        }
+    }
+    Ok(entries)
 }
 
 /// Well-formed entries plus a count of lines that could not be parsed.
@@ -505,6 +551,116 @@ fn timestamp() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn append_once_is_concurrent_idempotent() {
+        let dir = std::env::temp_dir().join(format!(
+            "loom-append-once-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        let mut threads = Vec::new();
+        for _ in 0..8 {
+            let dir = dir.clone();
+            threads.push(std::thread::spawn(move || {
+                append_once(
+                    &dir,
+                    "proof_strength_changed",
+                    "validation-1",
+                    serde_json::json!({"witness_model":"v2"}),
+                    |entry| {
+                        entry.event == "proof_strength_changed"
+                            && entry.target_id == "validation-1"
+                            && entry.payload["witness_model"] == "v2"
+                    },
+                )
+                .unwrap();
+            }));
+        }
+        for thread in threads {
+            thread.join().unwrap();
+        }
+        let entries = read(&dir).unwrap();
+        assert_eq!(
+            entries.len(),
+            1,
+            "concurrent append_once with one transition must write exactly one record"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn append_once_ignores_imported_rows_when_deduping() {
+        let dir = std::env::temp_dir().join(format!(
+            "loom-append-once-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        // An imported row for the same transition must not suppress a fresh
+        // local entry: imported history is another graph's record.
+        let imported = super::Entry {
+            id: "imported-1".into(),
+            ts: "0".into(),
+            actor: "solo".into(),
+            event: "proof_strength_changed".into(),
+            target_id: "validation-1".into(),
+            payload: serde_json::json!({"witness_model":"v2"}),
+            origin: Origin::Imported,
+        };
+        let mut line = serde_json::to_vec(&imported).unwrap();
+        line.push(b'\n');
+        fs::create_dir_all(path(&dir).parent().unwrap()).unwrap();
+        fs::write(path(&dir), line).unwrap();
+
+        let written = append_once(
+            &dir,
+            "proof_strength_changed",
+            "validation-1",
+            serde_json::json!({"witness_model":"v2"}),
+            |entry| {
+                entry.event == "proof_strength_changed"
+                    && entry.target_id == "validation-1"
+                    && entry.payload["witness_model"] == "v2"
+            },
+        )
+        .unwrap();
+        assert!(
+            written.is_some(),
+            "an imported row must not suppress the local entry"
+        );
+        assert_eq!(read(&dir).unwrap().len(), 2);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn append_once_distinct_transitions_both_land() {
+        let dir = std::env::temp_dir().join(format!(
+            "loom-append-once-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        append_once(
+            &dir,
+            "proof_strength_changed",
+            "validation-1",
+            serde_json::json!({"witness_model":"v2"}),
+            |_| false,
+        )
+        .unwrap();
+        append_once(
+            &dir,
+            "proof_strength_changed",
+            "validation-2",
+            serde_json::json!({"witness_model":"v2"}),
+            |_| false,
+        )
+        .unwrap();
+        assert_eq!(read(&dir).unwrap().len(), 2);
+        let _ = fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn entry_origin_defaults_local_and_append_is_local() {

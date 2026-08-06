@@ -270,6 +270,8 @@ fn append_file(
     for edge in touching_edges(store, &file.id)? {
         let edge_role = if edge.kind == EdgeKind::Implements {
             "grounding"
+        } else if edge.kind == EdgeKind::Exercises {
+            "validation_evidence"
         } else {
             "related"
         };
@@ -296,6 +298,8 @@ fn append_file(
                     seen_edges,
                     staleness_flags,
                 )?;
+            } else if other.node_type == NodeType::Validation {
+                push_entity(context, node_entity("validation", &other));
             }
         }
     }
