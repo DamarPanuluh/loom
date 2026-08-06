@@ -96,8 +96,15 @@ pub fn all() -> Vec<Limit> {
             name: "lock_wait_ms",
             value: crate::store::LOCK_WAIT_BUDGET_MS,
             unit: "milliseconds",
-            scope: "graph lock acquisition before a named contention error",
+            scope: "exclusive graph lock acquisition before a named contention error",
             remedy: "retry after the holder exits; the error names read vs write",
+        },
+        Limit {
+            name: "read_lock_wait_ms",
+            value: crate::store::READ_LOCK_WAIT_BUDGET_MS,
+            unit: "milliseconds",
+            scope: "shared graph lock acquisition by read-only commands before a named contention error",
+            remedy: "wait for the writer to finish; the error names its pid and command",
         },
         Limit {
             name: "sqlite_busy_timeout_ms",

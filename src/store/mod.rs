@@ -789,9 +789,16 @@ fn configure_read(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Wall-clock budget for acquiring the graph lock before failing with a
-/// named contention error. Registered in `loom limits`.
+/// Wall-clock budget for acquiring an exclusive graph lock before failing with
+/// a named contention error. Writers stay fail-fast so competing mutations do
+/// not silently queue behind one another. Registered in `loom limits`.
 pub(crate) const LOCK_WAIT_BUDGET_MS: u64 = 2_000;
+
+/// Read-only diagnostics are commonly issued immediately after a graph write.
+/// Give those commands a longer, still-bounded grace period so a routine
+/// `status`/`next` observation does not turn a healthy in-flight write into an
+/// EX_TEMPFAIL. Registered in `loom limits`.
+pub(crate) const READ_LOCK_WAIT_BUDGET_MS: u64 = 10_000;
 
 /// Statement-level SQLite busy timeout, so brief lock overlap retries inside
 /// the store instead of surfacing SQLITE_BUSY.
@@ -811,7 +818,12 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
     // (schema migration above all). Writers take it exclusive; a read-only open
     // takes it shared, so N readers proceed together and only wait while a writer
     // actually holds the boundary.
-    let budget = std::time::Duration::from_millis(LOCK_WAIT_BUDGET_MS);
+    let (limit_name, budget_ms) = if exclusive {
+        ("lock_wait_ms", LOCK_WAIT_BUDGET_MS)
+    } else {
+        ("read_lock_wait_ms", READ_LOCK_WAIT_BUDGET_MS)
+    };
+    let budget = std::time::Duration::from_millis(budget_ms);
     let deadline = std::time::Instant::now() + budget;
     let mut wait = std::time::Duration::from_millis(5);
     loop {
@@ -844,7 +856,7 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
         }
     }
     bail!(
-        "{LOCK_CONTENTION_MARKER}: graph lock exceeded lock_wait_ms={LOCK_WAIT_BUDGET_MS} — {} \
+        "{LOCK_CONTENTION_MARKER}: graph lock exceeded {limit_name}={budget_ms} — {} \
          (waiting for {} access); retry after it exits",
         describe_lock_holder(&lock_path),
         if exclusive { "write" } else { "read" }

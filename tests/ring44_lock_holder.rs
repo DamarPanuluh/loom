@@ -48,7 +48,7 @@ fn contention_is_bounded_and_names_the_recorded_holder() {
         "marked as infrastructure, not a verdict: {stderr}"
     );
     assert!(
-        stderr.contains("lock_wait_ms=2000"),
+        stderr.contains("read_lock_wait_ms=10000"),
         "the limit names itself with its threshold: {stderr}"
     );
     assert!(
@@ -66,6 +66,41 @@ fn contention_is_bounded_and_names_the_recorded_holder() {
         ok.status.success(),
         "the lock releases with the holder: {}",
         String::from_utf8_lossy(&ok.stderr)
+    );
+}
+
+/// A normal write that outlives the fail-fast writer budget is not a failure
+/// for a read-only observer. The shared open waits for the bounded read grace
+/// period and returns after the writer exits. `status` uses this exact path;
+/// testing the store boundary avoids charging its unrelated debug-build graph
+/// projection time to the lock-wait assertion.
+#[test]
+fn a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail() {
+    let tmp = Tmp::new();
+    Store::init(tmp.path(), Some("t"), false).unwrap();
+    let store = Store::open(tmp.path()).unwrap();
+    let release = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(2_500));
+        drop(store);
+    });
+
+    let started = std::time::Instant::now();
+    let reader = Store::open_read(tmp.path());
+    let elapsed = started.elapsed();
+    release.join().unwrap();
+    let error = reader.as_ref().err().map(|e| format!("{e:#}"));
+
+    assert!(
+        reader.is_ok(),
+        "a brief writer must not make a read-only command fail: {error:?}"
+    );
+    assert!(
+        elapsed >= std::time::Duration::from_millis(2_000),
+        "status did not actually overlap the held writer: {elapsed:?}"
+    );
+    assert!(
+        elapsed < std::time::Duration::from_secs(5),
+        "the read should proceed as soon as the writer exits: {elapsed:?}"
     );
 }
 
@@ -93,6 +128,10 @@ fn a_writer_contending_with_a_reader_is_named_and_bounded() {
     assert!(elapsed < std::time::Duration::from_secs(15), "never a hang");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("loom-lock-contention"), "marked: {stderr}");
+    assert!(
+        stderr.contains("lock_wait_ms=2000"),
+        "write contention keeps the fail-fast limit: {stderr}"
+    );
     assert!(
         stderr.contains(&std::process::id().to_string()),
         "the reading holder's pid is named: {stderr}"

@@ -4791,6 +4791,20 @@
       "updated_at": "2026-07-25T06:59:22.366Z"
     },
     {
+      "id": "0c720bcb229677387bef6b3ad5a8643d",
+      "type": "validation",
+      "name": "read-only lock grace remains bounded",
+      "description": "",
+      "status": "not_run",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring44_lock_holder -- --test-threads=1",
+        "type": "test"
+      },
+      "created_at": "2026-08-06T20:47:58.860Z",
+      "updated_at": "2026-08-06T20:47:58.860Z"
+    },
+    {
       "id": "0cdd86fa728275d10799852c28ec8256",
       "type": "intent",
       "name": "an intent with a stale proof outranks a better-proven one",
@@ -5195,6 +5209,19 @@
       },
       "created_at": "2026-08-01T19:10:24.762Z",
       "updated_at": "2026-08-01T19:18:33.762Z"
+    },
+    {
+      "id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "type": "intent",
+      "name": "read-only commands tolerate a brief in-flight graph write",
+      "description": "Read-only graph commands wait up to 10000 ms for an in-flight writer before returning exit 75; exclusive writers still stop after 2000 ms, and loom limits exposes both named bounds.",
+      "status": "implemented",
+      "truth_class": "asserted",
+      "body": {
+        "level": "feature"
+      },
+      "created_at": "2026-08-06T20:47:58.534Z",
+      "updated_at": "2026-08-06T20:47:58.534Z"
     },
     {
       "id": "18071873aaef010187ca085c9cba6b24",
@@ -29656,6 +29683,21 @@
       "updated_at": ""
     },
     {
+      "id": "d07cc148d64e5681d",
+      "type": "finding",
+      "name": "src/store/mod.rs is realized by 3 intents with no recorded relationship connecting them",
+      "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
+      "status": "tangled_file",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "tangled_file:ceecf7f5604e1cd4934245e61efe399d",
+        "kind": "tangled_file"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d0901af9673c1516f",
       "type": "finding",
       "name": "src/commands/discover_cmd.rs::resolve_find_filters nests deeply",
@@ -31660,21 +31702,6 @@
       "updated_at": ""
     },
     {
-      "id": "d848646b057145355",
-      "type": "finding",
-      "name": "user-visible intent 'an operator records a human decision on an intent as wanted' has validations but no passing S3-or-stronger journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:0950a847d7afcc73ed56c8e21a6607af",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d852caf2158ed6626",
       "type": "finding",
       "name": "proof 'a duplicate-intent pair is served to the proof' reported failed then passed over unchanged code for 'a duplicate-intent pair is served to the human, never auto-merged' — its outcome does not depend only on the code it covers",
@@ -32435,6 +32462,20 @@
       },
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "db320620770b3dd245bd74348e0f08bf",
+      "type": "validation",
+      "name": "read-only graph commands tolerate a brief writer",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring44_lock_holder -- --test-threads=1",
+        "type": "test"
+      },
+      "created_at": "2026-08-06T20:49:44.755Z",
+      "updated_at": "2026-08-06T20:50:01.192Z"
     },
     {
       "id": "db3ea15fad84588b8",
@@ -35766,12 +35807,12 @@
       "id": "dfe03799171524433",
       "type": "finding",
       "name": "src/store/mod.rs is oversized",
-      "description": "1447 lines (> 1110)",
+      "description": "1459 lines (> 1110)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
-        "metric": 1447,
+        "metric": 1459,
         "symbol": ""
       },
       "created_at": "",
@@ -41713,6 +41754,20 @@
       "updated_at": "2026-08-04T12:41:45.166Z"
     },
     {
+      "id": "26424be29d40849259b1785bd910f15f",
+      "from_id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "to_id": "ceecf7f5604e1cd4934245e61efe399d",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-06T20:47:58.645Z",
+      "updated_at": "2026-08-06T20:47:58.645Z"
+    },
+    {
       "id": "2699a09dff920f47c34da4a2d6fa6a3e",
       "from_id": "3742c17468561db0dcfe07397f037237",
       "to_id": "fb748912bce790861349e71f0a7421e9",
@@ -42067,6 +42122,20 @@
       "updated_at": "2026-08-01T18:59:42.560Z"
     },
     {
+      "id": "2f16eaef71c0f6e101e696e2f08b8c1c",
+      "from_id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "to_id": "3c3b0dae142d8f4fb7d6d347f8a93d77",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-06T20:47:58.730Z",
+      "updated_at": "2026-08-06T20:47:58.730Z"
+    },
+    {
       "id": "2f30008de78dc3ec6e9e2294248bf282",
       "from_id": "d2e01de8af8327d1b",
       "to_id": "b90a37b6b4afa1035a2ef2ef8630f2a6",
@@ -42079,6 +42148,20 @@
       "inspected_by": "llm",
       "created_at": "2026-08-01T19:00:30.593Z",
       "updated_at": "2026-08-01T19:00:30.594Z"
+    },
+    {
+      "id": "2f41545c6174aa8abc8343967937b345",
+      "from_id": "db320620770b3dd245bd74348e0f08bf",
+      "to_id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-06T20:49:44.757Z",
+      "updated_at": "2026-08-06T20:50:01.189Z"
     },
     {
       "id": "2f6d826d4139b41aed51aa6a1c48b0d6",
@@ -57591,6 +57674,20 @@
       "updated_at": "2026-08-04T11:17:22.078Z"
     },
     {
+      "id": "f305fa4d1b62db8d7e6ae799c5c7a1ae",
+      "from_id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "to_id": "163b4315e452f51f086b759794da5cc1",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-06T20:47:58.795Z",
+      "updated_at": "2026-08-06T20:47:58.795Z"
+    },
+    {
       "id": "f368de4895929ff79a5fb46a977398c7",
       "from_id": "8de0686b8a40a014cb5f82b0d7854c52",
       "to_id": "b56d433c98a18554691b97911c8f898f",
@@ -67092,6 +67189,19 @@
       "confidence": 0.75,
       "asserted_by": "llm",
       "asserted_at": "2026-08-03T09:28:44.482Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f8717ca6684ad3a74",
+      "subject_kind": "edge",
+      "subject_id": "2f41545c6174aa8abc8343967937b345",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "proof",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-06T20:50:01.187Z",
       "decision_mode": "individual"
     },
     {
@@ -93196,6 +93306,40 @@
       "recorded_at": "2026-08-03T09:28:44.482Z"
     },
     {
+      "id": "e260342f26c0b26ab",
+      "fact_id": "f8717ca6684ad3a74",
+      "payload": {
+        "kind": "run",
+        "producer": "command",
+        "command": "cargo test --test ring44_lock_holder -- --test-threads=1",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "d2e5ad50e66e5d9f",
+        "stderr_hash": "05001c0219e633c0",
+        "stdout_excerpt": "\nrunning 3 tests\ntest a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail ... ok\ntest a_writer_contending_with_a_reader_is_named_and_bounded ... ok\ntest contention_is_bounded_and_names_the_recorded_holder ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.82s\n\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.42s\n     Running tests/ring44_lock_holder.rs (target/debug/deps/ring44_lock_holder-c5902a9899a509ea)\n",
+        "covered": {
+          "src/limits.rs": "3d366da823aea563",
+          "src/store/mod.rs": "059d2d93263945d5",
+          "tests/ring44_lock_holder.rs": "27640d016b973d70"
+        },
+        "assertions": 0,
+        "duration_ms": 16313,
+        "ran_at": "1786049401177",
+        "loom_version": "0.29.1"
+      },
+      "recorded_at": "2026-08-06T20:50:01.187Z"
+    },
+    {
+      "id": "eb1f7a4de92a6c98d",
+      "fact_id": "f8717ca6684ad3a74",
+      "payload": {
+        "kind": "claim",
+        "text": "`cargo test --test ring44_lock_holder -- --test-threads=1` exit 0"
+      },
+      "recorded_at": "2026-08-06T20:50:01.187Z"
+    },
+    {
       "id": "e064e21837a3dc09c",
       "fact_id": "f871acefca581ed95",
       "payload": {
@@ -93395,6 +93539,18 @@
       "recorded_at": "2026-08-02T09:06:41.449Z"
     },
     {
+      "id": "e8a4683e7ccb9a74b",
+      "fact_id": "f8a18c4507c1ce8d9",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/mod.rs",
+        "start": 998,
+        "end": 998,
+        "hash": "159195449485fdea"
+      },
+      "recorded_at": "2026-08-04T10:17:49.692Z"
+    },
+    {
       "id": "ea3f63c104083d9fd",
       "fact_id": "f8a18c4507c1ce8d9",
       "payload": {
@@ -93414,18 +93570,6 @@
         "duration_ms": 0,
         "ran_at": "1785838669697",
         "loom_version": "0.29.0"
-      },
-      "recorded_at": "2026-08-04T10:17:49.692Z"
-    },
-    {
-      "id": "ea88f7ba6ed36555b",
-      "fact_id": "f8a18c4507c1ce8d9",
-      "payload": {
-        "kind": "span",
-        "file": "src/store/mod.rs",
-        "start": 986,
-        "end": 986,
-        "hash": "159195449485fdea"
       },
       "recorded_at": "2026-08-04T10:17:49.692Z"
     },
@@ -110479,7 +110623,7 @@
       "target_id": "0950a847d7afcc73ed56c8e21a6607af",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"the human ratification boundary refuses automation\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/intent.rs\",\"proven_by\":\"ring14 ratify suite proves INV-8 and the wanted gate\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -110928,6 +111072,13 @@
       "target_kind": "edge",
       "key": "stale_cause",
       "value": "resolve 'fn recheck' in src/store/facts.rs no longer holds (subject_redefined)",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0c720bcb229677387bef6b3ad5a8643d",
+      "target_kind": "node",
+      "key": "proof_strength",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"this proof is not attached to any behavior\"}",
       "truth_class": "derived"
     },
     {
@@ -111809,14 +111960,14 @@
       "target_id": "163b4315e452f51f086b759794da5cc1",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"a_writer_contending_with_a_reader_is_named_and_bounded>Instant::now\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Some\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Some\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Store::init\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Store::open_read\",\"a_writer_contending_with_a_reader_is_named_and_bounded>String::from_utf8_lossy\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Tmp::new\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert_eq\",\"a_writer_contending_with_a_reader_is_named_and_bounded>code\",\"a_writer_contending_with_a_reader_is_named_and_bounded>contains\",\"a_writer_contending_with_a_reader_is_named_and_bounded>contains\",\"a_writer_contending_with_a_reader_is_named_and_bounded>contains\",\"a_writer_contending_with_a_reader_is_named_and_bounded>drop\",\"a_writer_contending_with_a_reader_is_named_and_bounded>from_secs\",\"a_writer_contending_with_a_reader_is_named_and_bounded>from_utf8_lossy\",\"a_writer_contending_with_a_reader_is_named_and_bounded>id\",\"a_writer_contending_with_a_reader_is_named_and_bounded>init::unwrap\",\"a_writer_contending_with_a_reader_is_named_and_bounded>loom_raw\",\"a_writer_contending_with_a_reader_is_named_and_bounded>loom_raw\",\"a_writer_contending_with_a_reader_is_named_and_bounded>open_read::unwrap\",\"a_writer_contending_with_a_reader_is_named_and_bounded>started::elapsed\",\"a_writer_contending_with_a_reader_is_named_and_bounded>success\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>to_string\",\"contention_is_bounded_and_names_the_recorded_holder>Instant::now\",\"contention_is_bounded_and_names_the_recorded_holder>Some\",\"contention_is_bounded_and_names_the_recorded_holder>Some\",\"contention_is_bounded_and_names_the_recorded_holder>Store::init\",\"contention_is_bounded_and_names_the_recorded_holder>Store::open\",\"contention_is_bounded_and_names_the_recorded_holder>String::from_utf8_lossy\",\"contention_is_bounded_and_names_the_recorded_holder>Tmp::new\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert_eq\",\"contention_is_bounded_and_names_the_recorded_holder>code\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>drop\",\"contention_is_bounded_and_names_the_recorded_holder>from_secs\",\"contention_is_bounded_and_names_the_recorded_holder>from_utf8_lossy\",\"contention_is_bounded_and_names_the_recorded_holder>id\",\"contention_is_bounded_and_names_the_recorded_holder>init::unwrap\",\"contention_is_bounded_and_names_the_recorded_holder>loom_raw\",\"contention_is_bounded_and_names_the_recorded_holder>loom_raw\",\"contention_is_bounded_and_names_the_recorded_holder>open::unwrap\",\"contention_is_bounded_and_names_the_recorded_holder>started::elapsed\",\"contention_is_bounded_and_names_the_recorded_holder>success\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>to_string\",\"loom_raw>Command::new\",\"loom_raw>PathBuf::from\",\"loom_raw>arg::arg\",\"loom_raw>arg::args\",\"loom_raw>args::output\",\"loom_raw>env\",\"loom_raw>new::arg\",\"loom_raw>output::unwrap_or_else\",\"loom_raw>panic\"]",
+      "value": "[\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>Duration::from_millis\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>Instant::now\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>Some\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>Store::init\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>Store::open\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>Store::open_read\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>Tmp::new\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>as_ref::err\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>assert\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>assert\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>assert\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>drop\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>err::map\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>format\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>from_millis\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>from_secs\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>init::unwrap\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>is_ok\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>join::unwrap\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>open::unwrap\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>reader::as_ref\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>release::join\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>started::elapsed\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>thread::sleep\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>thread::spawn\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>tmp::path\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>tmp::path\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Instant::now\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Some\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Some\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Store::init\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Store::open_read\",\"a_writer_contending_with_a_reader_is_named_and_bounded>String::from_utf8_lossy\",\"a_writer_contending_with_a_reader_is_named_and_bounded>Tmp::new\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert\",\"a_writer_contending_with_a_reader_is_named_and_bounded>assert_eq\",\"a_writer_contending_with_a_reader_is_named_and_bounded>code\",\"a_writer_contending_with_a_reader_is_named_and_bounded>contains\",\"a_writer_contending_with_a_reader_is_named_and_bounded>contains\",\"a_writer_contending_with_a_reader_is_named_and_bounded>contains\",\"a_writer_contending_with_a_reader_is_named_and_bounded>contains\",\"a_writer_contending_with_a_reader_is_named_and_bounded>drop\",\"a_writer_contending_with_a_reader_is_named_and_bounded>from_secs\",\"a_writer_contending_with_a_reader_is_named_and_bounded>from_utf8_lossy\",\"a_writer_contending_with_a_reader_is_named_and_bounded>id\",\"a_writer_contending_with_a_reader_is_named_and_bounded>init::unwrap\",\"a_writer_contending_with_a_reader_is_named_and_bounded>loom_raw\",\"a_writer_contending_with_a_reader_is_named_and_bounded>loom_raw\",\"a_writer_contending_with_a_reader_is_named_and_bounded>open_read::unwrap\",\"a_writer_contending_with_a_reader_is_named_and_bounded>started::elapsed\",\"a_writer_contending_with_a_reader_is_named_and_bounded>success\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>tmp::path\",\"a_writer_contending_with_a_reader_is_named_and_bounded>to_string\",\"contention_is_bounded_and_names_the_recorded_holder>Instant::now\",\"contention_is_bounded_and_names_the_recorded_holder>Some\",\"contention_is_bounded_and_names_the_recorded_holder>Some\",\"contention_is_bounded_and_names_the_recorded_holder>Store::init\",\"contention_is_bounded_and_names_the_recorded_holder>Store::open\",\"contention_is_bounded_and_names_the_recorded_holder>String::from_utf8_lossy\",\"contention_is_bounded_and_names_the_recorded_holder>Tmp::new\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert\",\"contention_is_bounded_and_names_the_recorded_holder>assert_eq\",\"contention_is_bounded_and_names_the_recorded_holder>code\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>contains\",\"contention_is_bounded_and_names_the_recorded_holder>drop\",\"contention_is_bounded_and_names_the_recorded_holder>from_secs\",\"contention_is_bounded_and_names_the_recorded_holder>from_utf8_lossy\",\"contention_is_bounded_and_names_the_recorded_holder>id\",\"contention_is_bounded_and_names_the_recorded_holder>init::unwrap\",\"contention_is_bounded_and_names_the_recorded_holder>loom_raw\",\"contention_is_bounded_and_names_the_recorded_holder>loom_raw\",\"contention_is_bounded_and_names_the_recorded_holder>open::unwrap\",\"contention_is_bounded_and_names_the_recorded_holder>started::elapsed\",\"contention_is_bounded_and_names_the_recorded_holder>success\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>tmp::path\",\"contention_is_bounded_and_names_the_recorded_holder>to_string\",\"loom_raw>Command::new\",\"loom_raw>PathBuf::from\",\"loom_raw>arg::arg\",\"loom_raw>arg::args\",\"loom_raw>args::output\",\"loom_raw>env\",\"loom_raw>new::arg\",\"loom_raw>output::unwrap_or_else\",\"loom_raw>panic\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "163b4315e452f51f086b759794da5cc1",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "5983ff6a356c044b",
+      "value": "27640d016b973d70",
       "truth_class": "derived"
     },
     {
@@ -111837,7 +111988,7 @@
       "target_id": "163b4315e452f51f086b759794da5cc1",
       "target_kind": "node",
       "key": "loc",
-      "value": "105",
+      "value": "144",
       "truth_class": "derived"
     },
     {
@@ -111851,14 +112002,21 @@
       "target_id": "163b4315e452f51f086b759794da5cc1",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "3",
+      "value": "4",
       "truth_class": "derived"
     },
     {
       "target_id": "163b4315e452f51f086b759794da5cc1",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"a_writer_contending_with_a_reader_is_named_and_bounded\":\"504e5ae5158cdd70\",\"contention_is_bounded_and_names_the_recorded_holder\":\"a7684f79a9e47ce7\",\"loom_raw\":\"84ab888ab9e2655e\"}",
+      "value": "{\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail\":\"064fe0c8664921b9\",\"a_writer_contending_with_a_reader_is_named_and_bounded\":\"c8d8ad1084a57c69\",\"contention_is_bounded_and_names_the_recorded_holder\":\"ba55b97324553915\",\"loom_raw\":\"84ab888ab9e2655e\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "163b4315e452f51f086b759794da5cc1",
+      "target_kind": "node",
+      "key": "test_symbols",
+      "value": "[\"contention_is_bounded_and_names_the_recorded_holder\",\"a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail\",\"a_writer_contending_with_a_reader_is_named_and_bounded\"]",
       "truth_class": "derived"
     },
     {
@@ -112129,6 +112287,34 @@
     },
     {
       "target_id": "1792c0b4d460561558bab99367bfc392",
+      "target_kind": "node",
+      "key": "visibility",
+      "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "target_kind": "node",
+      "key": "de_facto",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "target_kind": "node",
+      "key": "level",
+      "value": "feature",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "17e7e51f7540fe14ec6ff41ec4e963df",
+      "target_kind": "node",
+      "key": "origin",
+      "value": "llm",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "17e7e51f7540fe14ec6ff41ec4e963df",
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
@@ -113808,6 +113994,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "26424be29d40849259b1785bd910f15f",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn acquire_lock",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "26867e32a47b467222ab2b7c3ba3239d",
       "target_kind": "node",
       "key": "calls",
@@ -114499,6 +114692,13 @@
       "key": "symbol_fingerprints",
       "value": "{\"ResearchBody\":\"512d69bfd76d4674\",\"ResearchSource\":\"23cd6d89b7fe9d6a\",\"SourceKind\":\"11e273b1ee64e37b\",\"is_governed\":\"feb772edf5b0f499\",\"is_open_research\":\"0984e64c5d492967\",\"parse\":\"82b438b97099e6a0\",\"quote_fingerprint\":\"3bbdc97ae049dcba\",\"stamp_conclusion_freshness\":\"8fbc640e80d3eb4b\",\"substantive\":\"c70b3ce73cd02db5\",\"timestamp\":\"5db63ee508f3d603\",\"validate\":\"e383dbbcd830f1b1\",\"validate_close\":\"ec5e2bfe37db99aa\",\"validate_completion\":\"14f1ddb79188e00c\",\"validate_dates\":\"aef13eb2932baa62\",\"validate_fingerprint\":\"44e6bb17696eb55c\",\"validate_mutation\":\"84f1bcb5b79f8788\",\"validate_record\":\"c6a5690c6ba714ee\",\"validate_status\":\"1e8a8133ff1fd96f\",\"validate_task_body\":\"e92744fcdb0cc78b\",\"validate_url\":\"63bd00a6ae520229\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "2f16eaef71c0f6e101e696e2f08b8c1c",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn all",
+      "truth_class": "asserted"
     },
     {
       "target_id": "2f6d826d4139b41aed51aa6a1c48b0d6",
@@ -116142,7 +116342,7 @@
       "target_id": "3c3b0dae142d8f4fb7d6d347f8a93d77",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "ac1950938820e1c4",
+      "value": "3d366da823aea563",
       "truth_class": "derived"
     },
     {
@@ -116163,7 +116363,7 @@
       "target_id": "3c3b0dae142d8f4fb7d6d347f8a93d77",
       "target_kind": "node",
       "key": "loc",
-      "value": "150",
+      "value": "157",
       "truth_class": "derived"
     },
     {
@@ -116184,7 +116384,14 @@
       "target_id": "3c3b0dae142d8f4fb7d6d347f8a93d77",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Limit\":\"d3e38e7188e786f5\",\"all\":\"d3cd079ccb63cd25\",\"names_are_unique_and_values_nonzero\":\"8a3438aa7baf9a17\"}",
+      "value": "{\"Limit\":\"d3e38e7188e786f5\",\"all\":\"7b4f38b8ac9d5a06\",\"names_are_unique_and_values_nonzero\":\"8a3438aa7baf9a17\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3c3b0dae142d8f4fb7d6d347f8a93d77",
+      "target_kind": "node",
+      "key": "test_symbols",
+      "value": "[\"names_are_unique_and_values_nonzero\"]",
       "truth_class": "derived"
     },
     {
@@ -131367,7 +131574,7 @@
       "target_id": "ceecf7f5604e1cd4934245e61efe399d",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "198a97ad08864c89",
+      "value": "059d2d93263945d5",
       "truth_class": "derived"
     },
     {
@@ -131388,7 +131595,7 @@
       "target_id": "ceecf7f5604e1cd4934245e61efe399d",
       "target_kind": "node",
       "key": "loc",
-      "value": "1447",
+      "value": "1459",
       "truth_class": "derived"
     },
     {
@@ -131402,14 +131609,21 @@
       "target_id": "ceecf7f5604e1cd4934245e61efe399d",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "73",
+      "value": "74",
       "truth_class": "derived"
     },
     {
       "target_id": "ceecf7f5604e1cd4934245e61efe399d",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Agent\":\"dd509ca5159c1f48\",\"COUNTER\":\"fb8a213de2b9f856\",\"DERIVED_TS\":\"d555bc86e7049bde\",\"EDGE_COLS\":\"8126d22fd79c5b40\",\"Identity\":\"887a6258277f40e6\",\"LOCK_CONTENTION_MARKER\":\"551ec098a8d4866f\",\"LOCK_WAIT_BUDGET_MS\":\"323aed24880f8583\",\"MIGRATION_3_EVIDENCE_SPINE\":\"5b606d1a7bfedb6a\",\"MIGRATION_4_DROP_CLAIMED_PROOF_LEVEL\":\"6b08564775cd477b\",\"MIGRATION_5_DROP_RATIFY_POLICIES\":\"2885c9061bd27473\",\"MIGRATION_7_BATCH_AUTH\":\"f49b31e416753c48\",\"MIGRATION_8_HIT_ADJUDICATION\":\"1e042da1b1c6a737\",\"MIGRATION_9_JUDGMENT_INBOX\":\"2af7f0366be5705e\",\"NODE_COLS\":\"ad9e0dcd3624c475\",\"PHANTOM_SCHEMA_VERSIONS\":\"f5e57e39cf13cb33\",\"PORTABLE_META_KEYS\":\"8ab094785bd149c3\",\"RestoreReport\":\"92a3a05bb9725078\",\"SCHEMA\":\"747ada0a9736d736\",\"SQLITE_BUSY_TIMEOUT_MS\":\"d8b54ae68fd81e9f\",\"Snapshot\":\"a41d1018ee1ec5a5\",\"Store\":\"21e461ef69c40b07\",\"TmpRoot\":\"dba90d69590b3559\",\"acquire_lock\":\"e083fcb2925ebef5\",\"adopt_legacy_schema_version\":\"440689d1143e5dff\",\"agent\":\"cfea727201b13656\",\"apply_schema_migrations\":\"40cbc22c69ad1837\",\"begin\":\"187351503bef04cb\",\"check_lane\":\"b23f78309a9c5ca6\",\"configure\":\"7007e4dd71f99174\",\"configure_read\":\"1a3f5c000881bedc\",\"delete_node_cascades_body_linked_notes_and_their_annotations\":\"6930fc827e1645c8\",\"derived_id\":\"94391f60391fd465\",\"derived_ids_require_lowercase_hex\":\"36ca9df3f0dad57d\",\"describe_lock_holder\":\"91a98f7ace59f085\",\"drop\":\"5f4b017f95f6545e\",\"facet_and_tag_writes_reject_missing_typed_targets\":\"75eef0e41702211c\",\"find_root\":\"9b0f6586ec703cd9\",\"fnv_hex_digest\":\"a7a23fa86bf781f8\",\"fresh_init_sets_sqlite_user_version\":\"391ccbf0a8e51760\",\"from_env\":\"1ddc40f01ad8b1ba\",\"graph_schema_migrations_are_valid\":\"53e172990e71f75a\",\"grounding_roles_reject_non_implements_edges\":\"32d24982c922035f\",\"id_and_now\":\"7e0c842011dcfb57\",\"identity\":\"c913edfaad734820\",\"identity_defaults_only_missing_observed_and_rejects_malformed_values\":\"058ca7b90b096281\",\"init\":\"17665c66630b79a8\",\"is_derived_node_id\":\"81bfe4bd70375b10\",\"is_phantom_schema\":\"96005ff3eb9a8046\",\"malformed_legacy_schema_version_is_reported\":\"d32dddaf8e1a74e6\",\"maybe_tx\":\"164ad63c3c97a2fe\",\"migration_removes_policy_ratification_and_evidence_but_keeps_journal\":\"c9f57323be074143\",\"new\":\"e40c249dd71bf8be\",\"now\":\"eee868f05fae4e8f\",\"old_style_schema_is_adopted_without_rerunning_create_table\":\"9dd698fb52f7c825\",\"open\":\"ab80d9d2b347c078\",\"open_read\":\"f0658444a77911f2\",\"parse\":\"3a481d5e3eef217a\",\"parse_col\":\"ed07ce54ed11ea1c\",\"parse_named\":\"74f06a6f3737f31d\",\"path\":\"c929cca4904a2257\",\"phantom_v7_write_open_reclaims_to_current\":\"1786d4f24c13ee1e\",\"reclaim_phantom_schema\":\"c6f00fcac5fb594a\",\"reclaim_stale_phantom_v7\":\"27117d1862ba8e84\",\"record_lock_holder\":\"84499de50c764fef\",\"repeated_node_status_preserves_updated_at\":\"6a9180471c23193b\",\"require_research_owner\":\"4517986a3d8acf0f\",\"root\":\"d54a6afdf2221887\",\"row_to_edge\":\"e12ffcfd51bf2828\",\"row_to_node\":\"2516b5504252b96a\",\"schema_migrations\":\"0bb38f614e1dc84d\",\"set_agent\":\"bed3953b96797fb5\",\"set_observed\":\"0d9d08bc7307baf4\",\"sqlite_user_version\":\"4362b15dc5cec803\"}",
+      "value": "{\"Agent\":\"dd509ca5159c1f48\",\"COUNTER\":\"fb8a213de2b9f856\",\"DERIVED_TS\":\"d555bc86e7049bde\",\"EDGE_COLS\":\"8126d22fd79c5b40\",\"Identity\":\"887a6258277f40e6\",\"LOCK_CONTENTION_MARKER\":\"551ec098a8d4866f\",\"LOCK_WAIT_BUDGET_MS\":\"323aed24880f8583\",\"MIGRATION_3_EVIDENCE_SPINE\":\"5b606d1a7bfedb6a\",\"MIGRATION_4_DROP_CLAIMED_PROOF_LEVEL\":\"6b08564775cd477b\",\"MIGRATION_5_DROP_RATIFY_POLICIES\":\"2885c9061bd27473\",\"MIGRATION_7_BATCH_AUTH\":\"f49b31e416753c48\",\"MIGRATION_8_HIT_ADJUDICATION\":\"1e042da1b1c6a737\",\"MIGRATION_9_JUDGMENT_INBOX\":\"2af7f0366be5705e\",\"NODE_COLS\":\"ad9e0dcd3624c475\",\"PHANTOM_SCHEMA_VERSIONS\":\"f5e57e39cf13cb33\",\"PORTABLE_META_KEYS\":\"8ab094785bd149c3\",\"READ_LOCK_WAIT_BUDGET_MS\":\"70021fcbfce70b93\",\"RestoreReport\":\"92a3a05bb9725078\",\"SCHEMA\":\"747ada0a9736d736\",\"SQLITE_BUSY_TIMEOUT_MS\":\"d8b54ae68fd81e9f\",\"Snapshot\":\"a41d1018ee1ec5a5\",\"Store\":\"21e461ef69c40b07\",\"TmpRoot\":\"dba90d69590b3559\",\"acquire_lock\":\"e3748dc0e4a667f9\",\"adopt_legacy_schema_version\":\"440689d1143e5dff\",\"agent\":\"cfea727201b13656\",\"apply_schema_migrations\":\"40cbc22c69ad1837\",\"begin\":\"187351503bef04cb\",\"check_lane\":\"b23f78309a9c5ca6\",\"configure\":\"7007e4dd71f99174\",\"configure_read\":\"1a3f5c000881bedc\",\"delete_node_cascades_body_linked_notes_and_their_annotations\":\"6930fc827e1645c8\",\"derived_id\":\"94391f60391fd465\",\"derived_ids_require_lowercase_hex\":\"36ca9df3f0dad57d\",\"describe_lock_holder\":\"91a98f7ace59f085\",\"drop\":\"5f4b017f95f6545e\",\"facet_and_tag_writes_reject_missing_typed_targets\":\"75eef0e41702211c\",\"find_root\":\"9b0f6586ec703cd9\",\"fnv_hex_digest\":\"a7a23fa86bf781f8\",\"fresh_init_sets_sqlite_user_version\":\"391ccbf0a8e51760\",\"from_env\":\"1ddc40f01ad8b1ba\",\"graph_schema_migrations_are_valid\":\"53e172990e71f75a\",\"grounding_roles_reject_non_implements_edges\":\"32d24982c922035f\",\"id_and_now\":\"7e0c842011dcfb57\",\"identity\":\"c913edfaad734820\",\"identity_defaults_only_missing_observed_and_rejects_malformed_values\":\"058ca7b90b096281\",\"init\":\"17665c66630b79a8\",\"is_derived_node_id\":\"81bfe4bd70375b10\",\"is_phantom_schema\":\"96005ff3eb9a8046\",\"malformed_legacy_schema_version_is_reported\":\"d32dddaf8e1a74e6\",\"maybe_tx\":\"164ad63c3c97a2fe\",\"migration_removes_policy_ratification_and_evidence_but_keeps_journal\":\"c9f57323be074143\",\"new\":\"e40c249dd71bf8be\",\"now\":\"eee868f05fae4e8f\",\"old_style_schema_is_adopted_without_rerunning_create_table\":\"9dd698fb52f7c825\",\"open\":\"ab80d9d2b347c078\",\"open_read\":\"f0658444a77911f2\",\"parse\":\"3a481d5e3eef217a\",\"parse_col\":\"ed07ce54ed11ea1c\",\"parse_named\":\"74f06a6f3737f31d\",\"path\":\"c929cca4904a2257\",\"phantom_v7_write_open_reclaims_to_current\":\"1786d4f24c13ee1e\",\"reclaim_phantom_schema\":\"c6f00fcac5fb594a\",\"reclaim_stale_phantom_v7\":\"27117d1862ba8e84\",\"record_lock_holder\":\"84499de50c764fef\",\"repeated_node_status_preserves_updated_at\":\"6a9180471c23193b\",\"require_research_owner\":\"4517986a3d8acf0f\",\"root\":\"d54a6afdf2221887\",\"row_to_edge\":\"e12ffcfd51bf2828\",\"row_to_node\":\"2516b5504252b96a\",\"schema_migrations\":\"0bb38f614e1dc84d\",\"set_agent\":\"bed3953b96797fb5\",\"set_observed\":\"0d9d08bc7307baf4\",\"sqlite_user_version\":\"4362b15dc5cec803\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ceecf7f5604e1cd4934245e61efe399d",
+      "target_kind": "node",
+      "key": "test_symbols",
+      "value": "[\"graph_schema_migrations_are_valid\",\"fresh_init_sets_sqlite_user_version\",\"phantom_v7_write_open_reclaims_to_current\",\"migration_removes_policy_ratification_and_evidence_but_keeps_journal\",\"derived_ids_require_lowercase_hex\",\"old_style_schema_is_adopted_without_rerunning_create_table\",\"malformed_legacy_schema_version_is_reported\",\"facet_and_tag_writes_reject_missing_typed_targets\",\"identity_defaults_only_missing_observed_and_rejects_malformed_values\",\"grounding_roles_reject_non_implements_edges\",\"repeated_node_status_preserves_updated_at\",\"delete_node_cascades_body_linked_notes_and_their_annotations\"]",
       "truth_class": "derived"
     },
     {
@@ -132327,6 +132541,27 @@
       "target_kind": "edge",
       "key": "stale_cause",
       "value": "resolve 'fn restore' in src/store/facets.rs no longer holds (subject_redefined)",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "db320620770b3dd245bd74348e0f08bf",
+      "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"17e7e51f7540fe14ec6ff41ec4e963df\":\"src/limits.rs=3d366da823aea563,src/store/mod.rs=059d2d93263945d5\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "db320620770b3dd245bd74348e0f08bf",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "db320620770b3dd245bd74348e0f08bf",
+      "target_kind": "node",
+      "key": "proof_strength",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"3 test(s) reported passing by the runner\",\"call_witness\":null,\"call_evidence\":{\"source\":\"intent_wide_fallback\",\"file\":\"tests/ring44_lock_holder.rs\",\"s3_eligible\":false},\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — legacy intent-wide evidence 'tests/ring44_lock_holder.rs' is visible but cannot earn S3; attach it to this validation with `loom edge exercises` or run it through the journey\"}",
       "truth_class": "derived"
     },
     {
@@ -135016,6 +135251,20 @@
       "key": "stale_cause",
       "value": "cargo test --test ring5 -q no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "f305fa4d1b62db8d7e6ae799c5c7a1ae",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fn a_read_open_waits_for_a_brief_writer_instead_of_exiting_tempfail",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f305fa4d1b62db8d7e6ae799c5c7a1ae",
+      "target_kind": "edge",
+      "key": "role",
+      "value": "verifies",
+      "truth_class": "asserted"
     },
     {
       "target_id": "f368de4895929ff79a5fb46a977398c7",

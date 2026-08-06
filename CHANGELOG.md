@@ -12,6 +12,7 @@ version.
 - restore host-mediated human decisions in release builds
 
 ## [Unreleased]
+- Read-only graph commands wait up to ten seconds for an in-flight writer while competing writers remain fail-fast at two seconds, preventing routine `loom status --json` calls from surfacing transient lock-contention failures.
 - TypeScript `export const <name>` locators resolve consistently across syncs.
 - Grounding creation refuses role collisions and locator changes on inspected edges instead of mutating settled evidence; same-role pre-verdict re-grounding remains available, while settled changes require explicit `set-role`, `set-locator`, or removal.
 - Duplicate-intent rectify clears persist for the exact pair of intent descriptions and reopen only when either description changes.
