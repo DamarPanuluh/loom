@@ -40896,13 +40896,13 @@
       "to_id": "bcfca1ac56612642e6d9e20c114a7b62",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "scanned the realizing file for query or command construction; the readiness gate reads edges through the store's typed accessors and builds no statement",
-      "confidence": 0.9,
+      "status": "passing",
+      "criterion": "fails if intent ids, names, statuses, or relationship values are concatenated into SQL, shell, HTML, or executable query text; query values must be bound and display-only strings must never be executed",
+      "confidence": 0.99,
       "depends_on": [],
-      "inspected_by": "llm",
+      "inspected_by": "llm:quality",
       "created_at": "2026-08-02T16:56:49.023Z",
-      "updated_at": "2026-08-04T12:41:47.610Z"
+      "updated_at": "2026-08-08T20:02:31.698Z"
     },
     {
       "id": "0175bb711dfb8b8d407c398687085bb1",
@@ -41010,13 +41010,13 @@
       "to_id": "2b97cdb0e31d415ce94a304a29ef3f15",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "every fallible IO/parse path propagates or handles errors; remaining expect/let-_ sites are invariants or pack prose",
-      "confidence": 0.82,
+      "status": "passing",
+      "criterion": "every fallible store, journal, parse, and JSON serialization operation in the find/filter path propagates or returns an explicit error; remaining expect/unwrap_or_default sites are structural or absence invariants and discard no Result failure",
+      "confidence": 0.96,
       "depends_on": [],
-      "inspected_by": "llm",
+      "inspected_by": "llm:quality",
       "created_at": "2026-07-18T19:15:09.965Z",
-      "updated_at": "2026-08-05T04:43:20.936Z"
+      "updated_at": "2026-08-08T20:03:06.822Z"
     },
     {
       "id": "02e75d63747a3a1d8de57d95bd990604",
@@ -66114,11 +66114,12 @@
       "subject_id": "02aafe863bff30a11aaa54d1a7adabeb",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "every fallible IO/parse path propagates or handles errors; remaining expect/let-_ sites are invariants or pack prose",
-      "verification": "expired",
-      "confidence": 0.82,
-      "asserted_by": "llm",
-      "asserted_at": "2026-08-04T08:31:32.391Z",
+      "criterion": "every fallible store, journal, parse, and JSON serialization operation in the find/filter path propagates or returns an explicit error; remaining expect/unwrap_or_default sites are structural or absence invariants and discard no Result failure",
+      "verification": "verified",
+      "confidence": 0.96,
+      "asserted_by": "llm:quality",
+      "asserted_profile": "loom-maintainer",
+      "asserted_at": "2026-08-08T20:03:06.812Z",
       "decision_mode": "individual"
     },
     {
@@ -68953,11 +68954,12 @@
       "subject_id": "00cfd22a4894dd214a3db2afe760f046",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "scanned the realizing file for query or command construction; the readiness gate reads edges through the store's typed accessors and builds no statement",
-      "verification": "expired",
-      "confidence": 0.9,
-      "asserted_by": "llm",
-      "asserted_at": "2026-08-04T10:16:04.496Z",
+      "criterion": "fails if intent ids, names, statuses, or relationship values are concatenated into SQL, shell, HTML, or executable query text; query values must be bound and display-only strings must never be executed",
+      "verification": "verified",
+      "confidence": 0.99,
+      "asserted_by": "llm:quality",
+      "asserted_profile": "loom-maintainer",
+      "asserted_at": "2026-08-08T20:02:31.685Z",
       "decision_mode": "individual"
     },
     {
@@ -89417,40 +89419,72 @@
       "recorded_at": "2026-08-08T17:46:56.135Z"
     },
     {
-      "id": "e35b4e1b5a104d43f",
+      "id": "e358ba73f74029e66",
+      "fact_id": "f57057d4716bfcbd3",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/discover_cmd.rs",
+        "start": 185,
+        "end": 219,
+        "hash": "b3840a7e6b38013d"
+      },
+      "recorded_at": "2026-08-08T20:03:06.812Z"
+    },
+    {
+      "id": "e5d22f345e287b634",
+      "fact_id": "f57057d4716bfcbd3",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/discover_cmd.rs",
+        "start": 118,
+        "end": 152,
+        "hash": "a5bce3c6560ab300",
+        "symbol": "resolve_find_filters",
+        "symbol_hash": "50a51b007219c447",
+        "symbol_offset": 10
+      },
+      "recorded_at": "2026-08-08T20:03:06.812Z"
+    },
+    {
+      "id": "e9056a375357470e6",
+      "fact_id": "f57057d4716bfcbd3",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/discover_cmd.rs",
+        "start": 55,
+        "end": 57,
+        "hash": "4893f109d8413f0e",
+        "symbol": "find_cmd",
+        "symbol_hash": "20fc6e6891f60dbf",
+        "symbol_offset": 9
+      },
+      "recorded_at": "2026-08-08T20:03:06.812Z"
+    },
+    {
+      "id": "e9410eefc6c356fe6",
       "fact_id": "f57057d4716bfcbd3",
       "payload": {
         "kind": "claim",
-        "text": "src/commands/discover_cmd.rs:212 — candidate matches rule grammar but is not an unhandled fallible call under the inspection guide; src/commands/discover_cmd.rs:215 — candidate matches rule grammar but is not an unhandled fallible call under the inspection guide"
+        "text": "src/commands/discover_cmd.rs:55-57,86,97 — graph open, filter resolution, node lookup, and keyword scans propagate errors; src/commands/discover_cmd.rs:118-152 — tag/facet SQL, intent listing, shared unratified predicate, and per-intent journal-backed ratification all use ?; src/commands/discover_cmd.rs:164-173 — malformed or empty KEY=VALUE is explicitly rejected; src/commands/discover_cmd.rs:185-219,301-340 — list/projection/serialization/grounding reads propagate errors; lines 212/215 are Vec<FindHit>→array and FindHit→object type invariants, while lines 157/334/337 handle legitimate empty/absent values rather than swallowing failures"
       },
-      "recorded_at": "2026-08-04T08:31:32.391Z"
+      "recorded_at": "2026-08-08T20:03:06.812Z"
     },
     {
-      "id": "e3fab3e2fe0a44616",
+      "id": "e9a8d972930c52ed6",
       "fact_id": "f57057d4716bfcbd3",
       "payload": {
         "kind": "span",
         "file": "src/commands/discover_cmd.rs",
-        "start": 215,
-        "end": 215,
-        "hash": "3cc1e1328e8627bc"
+        "start": 164,
+        "end": 173,
+        "hash": "3f2acb41a2a47335",
+        "symbol": "parse_where_spec",
+        "symbol_hash": "86418303c505fa50"
       },
-      "recorded_at": "2026-08-04T08:31:32.391Z"
+      "recorded_at": "2026-08-08T20:03:06.812Z"
     },
     {
-      "id": "e73abc75b1f2bdc6a",
-      "fact_id": "f57057d4716bfcbd3",
-      "payload": {
-        "kind": "span",
-        "file": "src/commands/discover_cmd.rs",
-        "start": 212,
-        "end": 212,
-        "hash": "6cfde7318c924922"
-      },
-      "recorded_at": "2026-08-04T08:31:32.391Z"
-    },
-    {
-      "id": "ece7e024b72baa35c",
+      "id": "ed6c8ba75130e8f9b",
       "fact_id": "f57057d4716bfcbd3",
       "payload": {
         "kind": "run",
@@ -89462,14 +89496,14 @@
         "stderr_hash": "cbf29ce484222325",
         "stdout_excerpt": "src/commands/discover_cmd.rs:212 \\bexpect\\s*\\(\nsrc/commands/discover_cmd.rs:215 \\bexpect\\s*\\(",
         "covered": {
-          "src/commands/discover_cmd.rs": "819e7f3c3198639d"
+          "src/commands/discover_cmd.rs": "808946a76c5e359a"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785832292395",
-        "loom_version": "0.29.0"
+        "ran_at": "1786219386817",
+        "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-04T08:31:32.391Z"
+      "recorded_at": "2026-08-08T20:03:06.812Z"
     },
     {
       "id": "e7c425e54441ece33",
@@ -94936,7 +94970,70 @@
       "recorded_at": "2026-08-04T08:33:47.940Z"
     },
     {
-      "id": "e52e08244e161b3e7",
+      "id": "e09e542f8a79bfc12",
+      "fact_id": "f82564f2c7c1cdcf4",
+      "payload": {
+        "kind": "span",
+        "file": "src/workitem/queues.rs",
+        "start": 40,
+        "end": 54,
+        "hash": "dbafe43a861f6c69",
+        "symbol": "unmet_prerequisites",
+        "symbol_hash": "b958fb8c30ea378c"
+      },
+      "recorded_at": "2026-08-08T20:02:31.685Z"
+    },
+    {
+      "id": "e122b6addbfdabbca",
+      "fact_id": "f82564f2c7c1cdcf4",
+      "payload": {
+        "kind": "claim",
+        "text": "src/workitem/queues.rs:40-54,93-145,1773-1801 — readiness and ordering use typed Store calls plus in-memory sorting/filtering; target name/status enter only inert WorkItem reason strings. src/store/derived.rs:143-168; src/store/nodes.rs:82-91,178-212; src/store/edges.rs:633-639 — directly invoked storage paths bind ids, kinds, types, limits, and offsets through rusqlite parameters; dynamic SQL interpolation is limited to numeric placeholder ordinals derived from args.len(), not untrusted values"
+      },
+      "recorded_at": "2026-08-08T20:02:31.685Z"
+    },
+    {
+      "id": "e2b76e9df86d7064a",
+      "fact_id": "f82564f2c7c1cdcf4",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/derived.rs",
+        "start": 143,
+        "end": 168,
+        "hash": "a21a695a233da833",
+        "symbol": "edges_with",
+        "symbol_hash": "54f3fe98b8c7b5c2"
+      },
+      "recorded_at": "2026-08-08T20:02:31.685Z"
+    },
+    {
+      "id": "e8351cafc636e56b2",
+      "fact_id": "f82564f2c7c1cdcf4",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/edges.rs",
+        "start": 633,
+        "end": 639,
+        "hash": "6f5cb4a964820551"
+      },
+      "recorded_at": "2026-08-08T20:02:31.685Z"
+    },
+    {
+      "id": "ea759b4608e64830f",
+      "fact_id": "f82564f2c7c1cdcf4",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/nodes.rs",
+        "start": 82,
+        "end": 91,
+        "hash": "4d12a2a9149d1bc0",
+        "symbol": "get_node",
+        "symbol_hash": "d8286c51385ab8f9"
+      },
+      "recorded_at": "2026-08-08T20:02:31.685Z"
+    },
+    {
+      "id": "ec179f77b0b23bf88",
       "fact_id": "f82564f2c7c1cdcf4",
       "payload": {
         "kind": "run",
@@ -94947,23 +95044,14 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/workitem/queues.rs": "e1b45662794a3b66"
+          "src/workitem/queues.rs": "b536a5e51e284d64"
         },
         "assertions": 3,
         "duration_ms": 0,
-        "ran_at": "1785838564498",
-        "loom_version": "0.29.0"
+        "ran_at": "1786219351696",
+        "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-04T10:16:04.496Z"
-    },
-    {
-      "id": "e9d6f471f05d2f120",
-      "fact_id": "f82564f2c7c1cdcf4",
-      "payload": {
-        "kind": "claim",
-        "text": "loom pre_screen: loom scanned 3 pattern(s) over 1 grounded file(s) and found NOTHING. That absence IS the evidence for this rule — cite it rather than re-grepping."
-      },
-      "recorded_at": "2026-08-04T10:16:04.496Z"
+      "recorded_at": "2026-08-08T20:02:31.685Z"
     },
     {
       "id": "e8f62e5e686b3bde1",
@@ -112246,9 +112334,9 @@
     {
       "target_id": "00cfd22a4894dd214a3db2afe760f046",
       "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-injection' (3 pattern(s)) over 1 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/workitem/queues.rs\",\"start\":40,\"end\":54,\"hash\":\"dbafe43a861f6c69\",\"symbol\":\"unmet_prerequisites\",\"symbol_hash\":\"b958fb8c30ea378c\"},{\"file\":\"src/store/derived.rs\",\"start\":143,\"end\":168,\"hash\":\"a21a695a233da833\",\"symbol\":\"edges_with\",\"symbol_hash\":\"54f3fe98b8c7b5c2\"},{\"file\":\"src/store/nodes.rs\",\"start\":82,\"end\":91,\"hash\":\"4d12a2a9149d1bc0\",\"symbol\":\"get_node\",\"symbol_hash\":\"d8286c51385ab8f9\"},{\"file\":\"src/store/edges.rs\",\"start\":633,\"end\":639,\"hash\":\"6f5cb4a964820551\"}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "0105af8e455d578fa3d9a6e1e51d3d7b",
@@ -112555,15 +112643,8 @@
       "target_id": "02aafe863bff30a11aaa54d1a7adabeb",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/discover_cmd.rs\",\"start\":212,\"end\":212,\"hash\":\"6cfde7318c924922\"},{\"file\":\"src/commands/discover_cmd.rs\",\"start\":215,\"end\":215,\"hash\":\"3cc1e1328e8627bc\"}]",
+      "value": "[{\"file\":\"src/commands/discover_cmd.rs\",\"start\":55,\"end\":57,\"hash\":\"4893f109d8413f0e\",\"symbol\":\"find_cmd\",\"symbol_hash\":\"20fc6e6891f60dbf\",\"symbol_offset\":9},{\"file\":\"src/commands/discover_cmd.rs\",\"start\":118,\"end\":152,\"hash\":\"a5bce3c6560ab300\",\"symbol\":\"resolve_find_filters\",\"symbol_hash\":\"50a51b007219c447\",\"symbol_offset\":10},{\"file\":\"src/commands/discover_cmd.rs\",\"start\":164,\"end\":173,\"hash\":\"3f2acb41a2a47335\",\"symbol\":\"parse_where_spec\",\"symbol_hash\":\"86418303c505fa50\"},{\"file\":\"src/commands/discover_cmd.rs\",\"start\":185,\"end\":219,\"hash\":\"b3840a7e6b38013d\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "02aafe863bff30a11aaa54d1a7adabeb",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-rel-no-unchecked-failure' (3 pattern(s)) over 1 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
     },
     {
       "target_id": "02b732ecedb5256f98ab5c5c471ab41d",
