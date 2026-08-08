@@ -273,6 +273,8 @@ impl Store {
         let mut node = self
             .get_node(id)?
             .ok_or_else(|| anyhow!("no node '{id}'"))?;
+        let quality_description_changed = node.node_type == NodeType::QualityRule
+            && description.is_some_and(|value| value != node.description);
         if let Some(n) = name {
             node.name = n.to_string();
         }
@@ -293,6 +295,12 @@ impl Store {
             "UPDATE node SET name=?2,description=?3,status=?4,updated_at=?5 WHERE id=?1",
             params![id, node.name, node.description, node.status, now],
         )?;
+        if quality_description_changed {
+            let cause = format!("quality rule '{}' description updated", node.name);
+            for edge in self.edges_with(Some(EdgeKind::Governs), Some(id), None)? {
+                self.stale_edge(&edge.id, &cause)?;
+            }
+        }
         node.updated_at = now;
         Ok(node)
     }
@@ -315,6 +323,7 @@ impl Store {
         if node.node_type == NodeType::Pattern && node.body != *body {
             self.invalidate_pattern(id)?;
         }
+        let body_changed = node.body != *body;
         let now = now(&self.conn)?;
         let n = self.conn.execute(
             "UPDATE node SET body=?2, updated_at=?3 WHERE id=?1",
@@ -322,6 +331,16 @@ impl Store {
         )?;
         if n == 0 {
             bail!("no node '{id}'");
+        }
+        // A quality verdict measures the rule body that existed when it was
+        // recorded. Rewriting patterns or guidance changes that criterion, so
+        // every settled governs edge must fail closed instead of borrowing the
+        // old verdict. The next quality packet remeasures it under the new rule.
+        if body_changed && node.node_type == NodeType::QualityRule {
+            let cause = format!("quality rule '{}' body updated", node.name);
+            for edge in self.edges_with(Some(EdgeKind::Governs), Some(id), None)? {
+                self.stale_edge(&edge.id, &cause)?;
+            }
         }
         Ok(())
     }

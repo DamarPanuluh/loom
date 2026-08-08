@@ -304,6 +304,65 @@ fn scannable(tmp: &Tmp) -> (Store, String, String) {
     (store, gov.id, intent.id)
 }
 
+/// A passing absence-shaped quality verdict whose detector initially finds no
+/// hits. This is the only quality shape sync may preserve mechanically after a
+/// covered-file edit: Loom can rerun the complete detector and observe the same
+/// clean result without inventing a human judgment.
+fn clean_scannable(tmp: &Tmp) -> (Store, String, String) {
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(
+        tmp.path().join("src/thing.rs"),
+        "pub fn a() -> Result<u8, String> {\n    Ok(1)\n}\n",
+    )
+    .unwrap();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "a clean behavior under a rule",
+            "d",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = codefile(&store, "src/thing.rs");
+    let grounding = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &grounding.id,
+            TargetKind::Edge,
+            "locator",
+            "fn a",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let rule = store
+        .add_node(
+            NodeType::QualityRule,
+            "no-unchecked-failure",
+            "every fallible operation's failure path is handled",
+            "",
+            serde_json::json!({"category":"reliability","patterns":[r#"\bexpect\s*\("#]}),
+        )
+        .unwrap();
+    let governs = store
+        .add_edge(
+            EdgeKind::Governs,
+            &rule.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    (store, governs.id, rule.id)
+}
+
 fn verdict(store: &Store, edge: &str, state: &str, evidence: &str) -> loom::Result<()> {
     store
         .assert_fact(
@@ -412,4 +471,114 @@ fn a_failing_verdict_over_hits_is_never_gated() {
         "src/thing.rs:2 — expect() discards its failure path",
     )
     .expect("a failing verdict agrees with the hits and needs no exemption");
+}
+
+#[test]
+fn an_unchanged_clean_prescreen_refreshes_without_reopening_the_verdict() {
+    let tmp = Tmp::new();
+    let (store, governs, _) = clean_scannable(&tmp);
+    verdict(
+        &store,
+        &governs,
+        "passing",
+        "the complete configured scan found no unchecked failure",
+    )
+    .unwrap();
+
+    // Change the covered symbol without introducing a pattern hit. The old
+    // whole-file hash is stale, but rerunning the complete detector earns a
+    // fresh clean observation over the new file content.
+    std::fs::write(
+        tmp.path().join("src/thing.rs"),
+        "pub fn a() -> Result<u8, String> {\n    let value = 1;\n    Ok(value)\n}\n",
+    )
+    .unwrap();
+    let changed = std::collections::BTreeSet::from(["src/thing.rs".to_string()]);
+    let report = store.reverify_all(&changed).unwrap();
+    assert_eq!(report.demoted, 0, "the equivalent detector result stands");
+    assert_eq!(
+        report.spared, 1,
+        "the refreshed verdict is reported as spared"
+    );
+    assert_eq!(
+        store.get_edge(&governs).unwrap().unwrap().status,
+        loom::model::InspectionStatus::Passing
+    );
+
+    // The fresh run replaces the stale hashes. A second pass is byte-stable,
+    // rather than rescanning the same historical drift forever.
+    let before = store
+        .fact(&Subject::Edge(governs.clone()), Claim::Verdict)
+        .unwrap()
+        .unwrap();
+    store.reverify_all(&changed).unwrap();
+    let after = store
+        .fact(&Subject::Edge(governs.clone()), Claim::Verdict)
+        .unwrap()
+        .unwrap();
+    assert_eq!(before.evidence, after.evidence);
+
+    // A newly introduced hit changes the detector result and fails closed.
+    std::fs::write(
+        tmp.path().join("src/thing.rs"),
+        "pub fn a() -> Result<u8, String> {\n    Ok(Some(1).expect(\"present\"))\n}\n",
+    )
+    .unwrap();
+    let report = store.reverify_all(&changed).unwrap();
+    assert_eq!(report.demoted, 1);
+    assert_eq!(
+        store.get_edge(&governs).unwrap().unwrap().status,
+        loom::model::InspectionStatus::NeedsReverification
+    );
+}
+
+#[test]
+fn changing_a_quality_rule_body_reopens_its_existing_verdicts() {
+    let tmp = Tmp::new();
+    let (store, governs, rule_id) = clean_scannable(&tmp);
+    verdict(
+        &store,
+        &governs,
+        "passing",
+        "the complete configured scan found no unchecked failure",
+    )
+    .unwrap();
+
+    let mut body = store.get_node(&rule_id).unwrap().unwrap().body;
+    body["patterns"] = serde_json::json!([r#"\bexpect\s*\("#, r#"\bunwrap\("#]);
+    store.set_node_body(&rule_id, &body).unwrap();
+
+    assert_eq!(
+        store.get_edge(&governs).unwrap().unwrap().status,
+        loom::model::InspectionStatus::NeedsReverification,
+        "a verdict cannot borrow standing from the previous detector definition"
+    );
+}
+
+#[test]
+fn changing_a_quality_rule_description_reopens_its_existing_verdicts() {
+    let tmp = Tmp::new();
+    let (store, governs, rule_id) = clean_scannable(&tmp);
+    verdict(
+        &store,
+        &governs,
+        "passing",
+        "the complete configured scan found no unchecked failure",
+    )
+    .unwrap();
+
+    store
+        .update_node(
+            &rule_id,
+            None,
+            Some("the rule now makes a materially different quality claim"),
+            None,
+        )
+        .unwrap();
+
+    assert_eq!(
+        store.get_edge(&governs).unwrap().unwrap().status,
+        loom::model::InspectionStatus::NeedsReverification,
+        "a verdict cannot borrow standing from the previous rule description"
+    );
 }

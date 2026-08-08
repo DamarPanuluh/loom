@@ -355,11 +355,21 @@ pub fn prescreen_probe(
         .collect();
     lines.sort();
     let detail = lines.join("\n");
+    // The pattern count alone is not the detector's identity: replacing one
+    // regex with another while keeping the same cardinality must not let a
+    // later clean scan refresh evidence earned by the old rule. Pattern order
+    // is immaterial to `prescreen`, so canonicalize it before fingerprinting.
+    let mut canonical_patterns = patterns.to_vec();
+    canonical_patterns.sort();
+    let pattern_hash = crate::artifact::fingerprint(
+        &serde_json::to_string(&canonical_patterns).unwrap_or_default(),
+    );
     let run = record(
         root,
         RunProducer::Prescreen,
         &format!(
-            "scan '{rule_name}' ({} pattern(s)) over {} realizing file(s)",
+            "scan '{rule_name}' [{}] ({} pattern(s)) over {} realizing file(s)",
+            pattern_hash,
             patterns.len(),
             files.len()
         ),

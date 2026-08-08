@@ -48,7 +48,7 @@ pub struct Reverified {
 }
 
 /// How one anchor fared against the working tree.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 enum AnchorFate {
     /// Still says what it said, where it said it.
     Holds,
@@ -61,6 +61,10 @@ enum AnchorFate {
         start: usize,
         end: usize,
     },
+    /// A deterministic machine probe was rerun over the same scope and
+    /// produced the same settling result. Keep the verdict and replace the old
+    /// covered-file hashes so later syncs do not repeat the work.
+    Refreshed(Box<Evidence>),
     Broken(StaleCause),
 }
 
@@ -1004,7 +1008,7 @@ impl Store {
             let rows = self.evidence_for(&fact.id)?;
             let mut checked = Vec::with_capacity(rows.len());
             for mut row in rows {
-                match self.recheck(&fact.subject_id, &row.payload, &mut successors) {
+                match self.recheck(&fact.subject_id, &fact.state, &row.payload, &mut successors) {
                     AnchorFate::Holds => {
                         row.holds = true;
                         row.expiry_reason = None;
@@ -1065,6 +1069,34 @@ impl Store {
                         row.id = new_id;
                         row.payload = payload;
                         out.reanchored += 1;
+                    }
+                    AnchorFate::Refreshed(payload) => {
+                        let payload = *payload;
+                        row.holds = true;
+                        row.expiry_reason = None;
+                        let new_id = EvidenceRow::id_for(&fact.id, &payload);
+                        let collision = new_id != row.id
+                            && self
+                                .conn
+                                .query_row(
+                                    "SELECT 1 FROM evidence WHERE id = ?1",
+                                    [&new_id],
+                                    |_| Ok(()),
+                                )
+                                .optional()?
+                                .is_some();
+                        if collision {
+                            self.conn
+                                .execute("DELETE FROM evidence WHERE id = ?1", [&row.id])?;
+                            continue;
+                        }
+                        self.conn.execute(
+                            "UPDATE evidence SET id = ?1, payload = ?2, holds = 1, expiry_reason = '' \
+                             WHERE id = ?3",
+                            rusqlite::params![new_id, serde_json::to_string(&payload)?, row.id],
+                        )?;
+                        row.id = new_id;
+                        row.payload = payload;
                     }
                     AnchorFate::Broken(cause) => {
                         row.holds = false;
@@ -1255,6 +1287,47 @@ impl Store {
             .map(str::to_string)
     }
 
+    /// Rerun an absence-shaped quality detector after one of its covered files
+    /// changed. Only the exact same rule identity, realizing-file set, and
+    /// clean result can refresh the machine evidence; every uncertainty returns
+    /// `None` and lets the caller fail closed.
+    fn refresh_clean_prescreen(
+        &self,
+        subject_id: &str,
+        fact_state: &str,
+        recorded: &RunRecord,
+    ) -> Option<Evidence> {
+        if fact_state != "passing" || recorded.exit_code != 0 {
+            return None;
+        }
+        let edge = self
+            .get_edge(subject_id)
+            .ok()
+            .flatten()
+            .filter(|edge| edge.kind == crate::model::EdgeKind::Governs)?;
+        let rule = self.get_node(&edge.from_id).ok().flatten()?;
+        let patterns: Vec<String> = rule
+            .body
+            .get("patterns")?
+            .as_array()?
+            .iter()
+            .filter_map(|value| value.as_str().map(String::from))
+            .collect();
+        let files = self.files_realizing(&edge.to_id).ok()?;
+        let same_files = files.len() == recorded.covered.len()
+            && files.iter().all(|file| recorded.covered.contains_key(file));
+        if !same_files {
+            return None;
+        }
+        let (fresh, _) = crate::runner::prescreen_probe(&self.root, &rule.name, &patterns, &files)?;
+        (fresh.exit_code == 0
+            && fresh.command == recorded.command
+            && fresh.stdout_hash == recorded.stdout_hash
+            && fresh.stderr_hash == recorded.stderr_hash
+            && fresh.assertions == recorded.assertions)
+            .then_some(Evidence::Run(fresh))
+    }
+
     /// Does this anchor still hold? `subject_id` is the fact's subject, used
     /// only to resolve a validation Run's current command so a rewritten
     /// command re-opens its proof. `successors` feeds the deleted-file search:
@@ -1263,6 +1336,7 @@ impl Store {
     fn recheck(
         &self,
         subject_id: &str,
+        fact_state: &str,
         payload: &Evidence,
         successors: &mut SuccessorCache,
     ) -> AnchorFate {
@@ -1352,6 +1426,21 @@ impl Store {
                     }
                     Some(_) => AnchorFate::Broken(StaleCause::AnchorMissing),
                     None => AnchorFate::Broken(StaleCause::SpanFileDeleted),
+                }
+            }
+            // A clean pattern scan is a deterministic proof of the same
+            // absence-shaped passing verdict Loom accepted originally. When a
+            // covered file changes, rerun the COMPLETE detector over the exact
+            // same realizing-file set. Preserve only an unchanged clean result;
+            // hits, rule changes, scope changes, and non-passing human verdicts
+            // all fall through to conservative remeasurement.
+            Evidence::Run(run) if run.producer == crate::model::RunProducer::Prescreen => {
+                if crate::runner::covered_intact(&self.root, run).is_none() {
+                    return AnchorFate::Holds;
+                }
+                match self.refresh_clean_prescreen(subject_id, fact_state, run) {
+                    Some(evidence) => AnchorFate::Refreshed(Box::new(evidence)),
+                    _ => AnchorFate::Broken(StaleCause::RunCoveredFileChanged),
                 }
             }
             Evidence::Run(run) => {
