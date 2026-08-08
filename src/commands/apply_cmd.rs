@@ -444,6 +444,7 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
         report.verdicts += 1;
     }
     let adj_batch_id = if spec.adjudications.len() > 1 {
+        let actor = store.execution_identity().actor();
         let mut subjects = Vec::new();
         for a in &spec.adjudications {
             let finding = store
@@ -456,8 +457,7 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
             "apply batch adjudications ({}) — shared sealed set",
             subjects.len()
         );
-        let pre = crate::journal::append(
-            store.root(),
+        let pre = store.append_journal(
             "batch_apply",
             &digest,
             serde_json::json!({
@@ -471,15 +471,15 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
             crate::batch_auth::BatchClaim::Adjudication,
             "verdict",
             subjects,
-            "llm",
-            "llm",
+            &actor,
+            &actor,
             criterion,
             vec![format!("journal:{}", pre.id)],
         )?
         .with_command_id(format!("apply-adjudications:{}", spec.adjudications.len()))
         .with_time_bounds(&now, &now)
         .with_routing_class("mechanical_apply");
-        let entry = crate::batch_auth::append_envelope(store.root(), &envelope)?;
+        let entry = crate::batch_auth::append_envelope(store, &envelope)?;
         Some(entry.id)
     } else {
         None
@@ -532,10 +532,11 @@ fn record_parts(
     confidence: f64,
 ) -> Result<()> {
     let status = verdict_status(verdict)?;
+    let actor = store.execution_identity().actor();
     // `record_verdict` is the single gate + idempotence point: it validates
     // evidence/confidence, then no-ops if the edge already holds this exact
     // verdict (so a re-applied batch never churns exported timestamps).
-    store.record_verdict(edge_id, status, criterion, evidence, confidence, "llm")?;
+    store.record_verdict(edge_id, status, criterion, evidence, confidence, &actor)?;
     Ok(())
 }
 

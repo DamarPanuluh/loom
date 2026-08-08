@@ -22,17 +22,17 @@ fn drive_rejects_noninteractive_stdin() {
 fn drive_freeze_compiles_a_synthetic_journaled_chain() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    loom::journal::append(
-        tmp.path(),
-        "drive_exchange",
-        "demo",
-        serde_json::json!({
-            "utterance": "show status",
-            "intent": "status can be shown",
-            "command": "printf driven",
-        }),
-    )
-    .unwrap();
+    store
+        .append_journal(
+            "drive_exchange",
+            "demo",
+            serde_json::json!({
+                "utterance": "show status",
+                "intent": "status can be shown",
+                "command": "printf driven",
+            }),
+        )
+        .unwrap();
     drop(store);
     loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
@@ -53,17 +53,17 @@ fn drive_freeze_compiles_a_synthetic_journaled_chain() {
 fn drive_freeze_rejects_a_failed_chain_without_baseline_or_freeze_event() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    loom::journal::append(
-        tmp.path(),
-        "drive_exchange",
-        "failed-drive",
-        serde_json::json!({
-            "utterance": "run a failing check",
-            "intent": "check succeeds",
-            "command": "false",
-        }),
-    )
-    .unwrap();
+    store
+        .append_journal(
+            "drive_exchange",
+            "failed-drive",
+            serde_json::json!({
+                "utterance": "run a failing check",
+                "intent": "check succeeds",
+                "command": "false",
+            }),
+        )
+        .unwrap();
     drop(store);
 
     let err = loom::commands::run(Cli {

@@ -213,8 +213,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                         n.name, s.name
                     );
                     store.retarget_edge(&e.id, &s.id, &reason)?;
-                    crate::journal::append(
-                        store.root(),
+                    store.append_journal(
                         "edge_retargeted",
                         &e.id,
                         serde_json::json!({
@@ -230,8 +229,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
                 }
             }
             store.delete_node(&n.id)?;
-            crate::journal::append(
-                store.root(),
+            store.append_journal(
                 "node_removed",
                 &n.id,
                 serde_json::json!({

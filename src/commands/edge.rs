@@ -394,8 +394,7 @@ fn edge_retarget(
         .map(|n| n.name)
         .unwrap_or_else(|| old_to.clone());
     let updated = store.retarget_edge(&e.id, &successor.id, &reason)?;
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "edge_retargeted",
         &e.id,
         serde_json::json!({
@@ -727,7 +726,10 @@ fn edge_verdict(
 ) -> Result<()> {
     let status = verdict_status(&verdict)?;
     let target = store.resolve_edge(&edge_id)?;
-    let e = store.record_verdict(&target.id, status, &criterion, &evidence, confidence, "llm")?;
+    let actor = store.execution_identity().actor();
+    let e = store.record_verdict(
+        &target.id, status, &criterion, &evidence, confidence, &actor,
+    )?;
     pulse::emit_line(
         store,
         json,
@@ -767,8 +769,9 @@ fn edge_explore(
         None => store.add_edge(EdgeKind::Relates, &ia.id, &ib.id, TruthClass::Asserted)?,
     };
     let status = verdict_status(&verdict)?;
+    let actor = store.execution_identity().actor();
     let verdict_edge =
-        store.record_verdict(&edge.id, status, &criterion, &evidence, confidence, "llm")?;
+        store.record_verdict(&edge.id, status, &criterion, &evidence, confidence, &actor)?;
     pulse::emit_line(
         store,
         json,

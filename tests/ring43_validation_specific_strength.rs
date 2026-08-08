@@ -136,6 +136,12 @@ fn add_journey_validation(
         .store
         .ensure_edge(EdgeKind::Validates, &validation.id, &fixture.intent_id)
         .unwrap();
+    mark_validation_passing(fixture, &validation.id, step_command);
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+    validation.id
+}
+
+fn mark_validation_passing(fixture: &Fixture, validation_id: &str, command: &str) {
     // Record a passing run for the SAME command the body declares. We do not
     // re-exec cargo in the temp fixture (no package layout); the grade path
     // only needs ran_and_passed + command↔entry binding. Production still
@@ -143,7 +149,7 @@ fn add_journey_validation(
     let run = loom::runner::record(
         fixture.tmp.path(),
         loom::model::RunProducer::Command,
-        step_command,
+        command,
         &[],
         1,
         0,
@@ -153,7 +159,7 @@ fn add_journey_validation(
     );
     for e in fixture
         .store
-        .edges_with(Some(EdgeKind::Validates), Some(&validation.id), None)
+        .edges_with(Some(EdgeKind::Validates), Some(validation_id), None)
         .unwrap()
     {
         let mut run = run.clone();
@@ -191,12 +197,47 @@ fn add_journey_validation(
     }
     fixture
         .store
-        .record_proof_stability(&validation.id, "passed")
+        .record_proof_stability(validation_id, "passed")
         .unwrap();
     fixture
         .store
-        .set_node_status(&validation.id, "passed")
+        .set_node_status(validation_id, "passed")
         .unwrap();
+}
+
+fn add_outer_journey_validation(
+    fixture: &Fixture,
+    name: &str,
+    artifact: &str,
+    step_command: &str,
+) -> String {
+    let yaml = format!(
+        "journey: {name}\nsteps:\n  - name: prove it\n    intent: the behavior works\n    run: {step_command}\n    expect:\n      exit_code: 0\n      stdout_contains: [\"proof-ok\"]\n"
+    );
+    std::fs::write(fixture.tmp.path().join(artifact), &yaml).unwrap();
+    let outer = format!("loom journey run {artifact}");
+    let validation = fixture
+        .store
+        .add_node(
+            NodeType::Validation,
+            name,
+            "",
+            "not_run",
+            serde_json::json!({
+                "type": "journey",
+                "proof_kind": "journey",
+                "journey_id": name,
+                "artifact": artifact,
+                "command": outer,
+                "spec_hash": loom::artifact::fingerprint(&yaml),
+            }),
+        )
+        .unwrap();
+    fixture
+        .store
+        .ensure_edge(EdgeKind::Validates, &validation.id, &fixture.intent_id)
+        .unwrap();
+    mark_validation_passing(fixture, &validation.id, &outer);
     loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
     validation.id
 }
@@ -344,6 +385,227 @@ fn journey_that_runs_the_verifier_earns_s3_but_echo_sibling_stays_s2() {
 }
 
 #[test]
+fn bare_loom_earns_credit_only_from_an_exact_checkout_bound_journey() {
+    let fixture = fixture();
+    // A tiny stand-in for Loom's real status route: the typed mapper must enter
+    // this exact file+symbol, whose call closure reaches the grounded behavior.
+    std::fs::create_dir_all(fixture.tmp.path().join("src/commands")).unwrap();
+    std::fs::write(
+        fixture.tmp.path().join("src/commands/status_cmd.rs"),
+        "pub fn status() { perform_behavior(); }\n",
+    )
+    .unwrap();
+    fixture
+        .store
+        .add_node(
+            NodeType::CodeFile,
+            "src/commands/status_cmd.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+
+    let graph = loom::callgraph::build(&fixture.store).unwrap();
+    assert!(
+        loom::proofstrength::command_entries("loom status --json", &graph, "validation_command")
+            .is_empty(),
+        "a generic validation cannot assume which PATH binary bare loom names"
+    );
+    assert!(
+        loom::proofstrength::command_entries("./loom status --json", &graph, "validation_command")
+            .iter()
+            .any(|entry| {
+                entry.file == "src/commands/status_cmd.rs"
+                    && entry.entry_symbol.as_deref() == Some("status")
+            }),
+        "an explicit checkout path remains trusted"
+    );
+
+    let trusted = add_outer_journey_validation(
+        &fixture,
+        "checkout-bound bare loom",
+        "journeys/checkout-bound.yaml",
+        "loom status --json",
+    );
+    let untrusted = add_journey_validation(
+        &fixture,
+        "free-form bare loom",
+        "journeys/free-form.yaml",
+        "loom status --json",
+    );
+    let compound = add_outer_journey_validation(
+        &fixture,
+        "compound bare loom",
+        "journeys/compound.yaml",
+        "loom status --json || loom status --json",
+    );
+
+    let trusted_witness = witness(&fixture.store, &trusted);
+    assert_eq!(trusted_witness.grade, "S3");
+    let evidence = trusted_witness
+        .call_evidence
+        .expect("checkout-bound journey evidence");
+    assert_eq!(evidence.source, "journey_command");
+    assert_eq!(evidence.file, "src/commands/status_cmd.rs");
+    assert_eq!(evidence.entry_symbol.as_deref(), Some("status"));
+    assert_eq!(
+        witness(&fixture.store, &untrusted).grade,
+        "S2",
+        "a free-form command that merely names the same bare loom stays untrusted"
+    );
+    assert_eq!(
+        witness(&fixture.store, &compound).grade,
+        "S2",
+        "checkout binding must not weaken compound-shell rejection"
+    );
+}
+
+#[test]
+fn exact_typed_handler_grounding_earns_a_zero_hop_s3_witness() {
+    let fixture = fixture();
+    let handler_path = "src/commands/capture_cmd.rs";
+    std::fs::create_dir_all(fixture.tmp.path().join("src/commands")).unwrap();
+    std::fs::write(fixture.tmp.path().join(handler_path), "pub fn door() {}\n").unwrap();
+    let handler_file = fixture
+        .store
+        .add_node(
+            NodeType::CodeFile,
+            handler_path,
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let realizing = fixture
+        .store
+        .add_edge(
+            EdgeKind::Implements,
+            &fixture.intent_id,
+            &handler_file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    fixture
+        .store
+        .set_facet(
+            &realizing.id,
+            TargetKind::Edge,
+            "locator",
+            "fn door",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+
+    let validation = add_outer_journey_validation(
+        &fixture,
+        "door handler proof",
+        "journeys/door-handler.yaml",
+        "loom door 'ship the exact handler' --json",
+    );
+    let w = witness(&fixture.store, &validation);
+    assert_eq!(
+        w.grade, "S3",
+        "the exact typed entry is the realizing handler itself: {w:?}"
+    );
+    assert_eq!(w.call_witness.as_deref(), Some("door"));
+    let evidence = w.call_evidence.expect("zero-hop call evidence");
+    assert_eq!(evidence.source, "journey_command");
+    assert_eq!(evidence.file, handler_path);
+    assert_eq!(evidence.entry_symbol.as_deref(), Some("door"));
+    assert!(evidence.s3_eligible);
+}
+
+#[test]
+fn zero_hop_symbol_name_in_another_file_does_not_earn_s3() {
+    let fixture = fixture();
+    let grounded_path = "src/commands/capture_cmd.rs";
+    let lookalike_path = "tests/lookalike_handler.rs";
+    std::fs::create_dir_all(fixture.tmp.path().join("src/commands")).unwrap();
+    std::fs::write(fixture.tmp.path().join(grounded_path), "pub fn door() {}\n").unwrap();
+    std::fs::write(
+        fixture.tmp.path().join(lookalike_path),
+        "pub fn door() {}\n",
+    )
+    .unwrap();
+    let grounded_file = fixture
+        .store
+        .add_node(
+            NodeType::CodeFile,
+            grounded_path,
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let lookalike_file = fixture
+        .store
+        .add_node(
+            NodeType::CodeFile,
+            lookalike_path,
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let realizing = fixture
+        .store
+        .add_edge(
+            EdgeKind::Implements,
+            &fixture.intent_id,
+            &grounded_file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    fixture
+        .store
+        .set_facet(
+            &realizing.id,
+            TargetKind::Edge,
+            "locator",
+            "fn door",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let validation = add_journey_validation(
+        &fixture,
+        "lookalike handler proof",
+        "journeys/lookalike-handler.yaml",
+        "echo proof-ok",
+    );
+    let exercises = fixture
+        .store
+        .add_edge(
+            EdgeKind::Exercises,
+            &validation,
+            &lookalike_file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    fixture
+        .store
+        .set_facet(
+            &exercises.id,
+            TargetKind::Edge,
+            "locator",
+            "fn door",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+
+    let w = witness(&fixture.store, &validation);
+    assert_eq!(
+        w.grade, "S2",
+        "symbol-name equality across files is not a zero-hop path: {w:?}"
+    );
+    assert_eq!(w.call_witness, None);
+}
+
+#[test]
 fn explicit_validation_evidence_is_specific_and_stales_when_edited() {
     let fixture = fixture();
     let validation_id = add_journey_validation(
@@ -488,7 +750,7 @@ fn loom_cli_subcommands_are_argument_sensitive_and_flag_only_invocations_fail_cl
         .store
         .add_node(
             NodeType::CodeFile,
-            "src/commands/sync_cmd.rs",
+            "src/commands/status_cmd.rs",
             "",
             "",
             serde_json::json!({}),
@@ -496,7 +758,7 @@ fn loom_cli_subcommands_are_argument_sensitive_and_flag_only_invocations_fail_cl
         .unwrap();
     std::fs::create_dir_all(fixture.tmp.path().join("src/commands")).unwrap();
     std::fs::write(
-        fixture.tmp.path().join("src/commands/sync_cmd.rs"),
+        fixture.tmp.path().join("src/commands/status_cmd.rs"),
         "pub(crate) fn sync_cmd() {}\n",
     )
     .unwrap();
@@ -504,7 +766,7 @@ fn loom_cli_subcommands_are_argument_sensitive_and_flag_only_invocations_fail_cl
     let graph = loom::callgraph::build(&fixture.store).unwrap();
     let file = graph
         .files()
-        .find(|file| file.ends_with("sync_cmd.rs"))
+        .find(|file| file.ends_with("status_cmd.rs"))
         .expect("sync_cmd file indexed");
 
     let mapped =
@@ -808,49 +1070,122 @@ fn every_loom_subcommand_handler_maps_to_a_real_unique_cli_symbol() {
     }
     loom::sync::run(&store, tmp.path()).unwrap();
     let graph = loom::callgraph::build(&store).unwrap();
-    // Every mapped handler must be a symbol the loom call graph defines in
-    // exactly one registered file — a stale, invented, or ambiguous handler
-    // name must never be creditworthy.
-    for (subcommand, handler) in [
-        ("sync", "sync_cmd"),
-        ("status", "status"),
-        ("next", "next_output"),
-        ("welcome", "welcome"),
-        ("guide", "guide"),
-        ("coverage", "coverage_cmd"),
-        ("impact", "impact_cmd"),
-        ("explain", "explain_cmd"),
-        ("audit", "audit_cmd"),
-        ("deepen", "deepen_cmd"),
-        ("export", "export"),
-        ("whoami", "whoami_cmd"),
-        ("smells", "smells_cmd"),
-        ("doctor", "doctor_cmd"),
-        ("observe", "observe_cmd"),
-        ("decide", "decide_cmd"),
+    // Every mapped argv must land on the exact file+symbol selected by the
+    // typed CLI and commands::run. This includes parameterized and nested
+    // journey steps; a shared symbol name in some other module is not enough.
+    for (command, file, handler) in [
+        ("./loom sync", "src/commands/status_cmd.rs", "sync_cmd"),
+        ("./loom status", "src/commands/status_cmd.rs", "status"),
+        ("./loom next", "src/commands/status_cmd.rs", "next_cmd"),
+        (
+            "./loom next --mode ratify --json",
+            "src/commands/status_cmd.rs",
+            "next_cmd",
+        ),
+        (
+            "./loom next --mode ratify --all",
+            "src/commands/status_cmd.rs",
+            "queue_list",
+        ),
+        (
+            "./loom next --all --full --json",
+            "src/commands/status_cmd.rs",
+            "next_all",
+        ),
+        ("./loom welcome", "src/commands/orient_cmd.rs", "welcome"),
+        ("./loom guide", "src/commands/orient_cmd.rs", "guide"),
+        (
+            "./loom coverage",
+            "src/commands/diagnostics_cmd.rs",
+            "coverage_cmd",
+        ),
+        (
+            "./loom impact door --depth 2 --json",
+            "src/commands/diagnostics_cmd.rs",
+            "impact_cmd",
+        ),
+        (
+            "./loom explain behavior",
+            "src/commands/discover_cmd.rs",
+            "explain_cmd",
+        ),
+        (
+            "./loom find 'falsifiable graph' --limit 5 --exact --json",
+            "src/commands/discover_cmd.rs",
+            "find_cmd",
+        ),
+        (
+            "./loom audit",
+            "src/commands/diagnostics_cmd.rs",
+            "audit_cmd",
+        ),
+        (
+            "./loom deepen --limit 3",
+            "src/commands/diagnostics_cmd.rs",
+            "deepen_cmd",
+        ),
+        ("./loom export", "src/commands/status_cmd.rs", "export"),
+        (
+            "./loom whoami",
+            "src/commands/diagnostics_cmd.rs",
+            "whoami_cmd",
+        ),
+        (
+            "./loom smells",
+            "src/commands/diagnostics_cmd.rs",
+            "smells_cmd",
+        ),
+        (
+            "./loom doctor",
+            "src/commands/diagnostics_cmd.rs",
+            "doctor_cmd",
+        ),
+        (
+            "./loom observe -- true",
+            "src/commands/proof_cmd.rs",
+            "observe_cmd",
+        ),
+        (
+            "./loom decide chosen --instead-of rejected --because reason",
+            "src/commands/capture_cmd.rs",
+            "decide_cmd",
+        ),
+        (
+            "./loom door 'ship a faster flow' --json",
+            "src/commands/capture_cmd.rs",
+            "door",
+        ),
+        (
+            "./loom codefile list --limit 5 --offset 2 --json",
+            "src/commands/codefile_cmd.rs",
+            "dispatch",
+        ),
+        (
+            "./loom inbox mark abc routed --reason checked",
+            "src/commands/capture_cmd.rs",
+            "inbox",
+        ),
+        (
+            "./loom inbox remove abc",
+            "src/commands/capture_cmd.rs",
+            "inbox",
+        ),
     ] {
-        let defining_files: Vec<&str> = graph
-            .files()
-            .filter(|file| file.starts_with("src/") && graph.file_defines(file, handler))
-            .collect();
-        assert_eq!(
-            defining_files.len(),
-            1,
-            "handler {handler} for loom {subcommand} must be defined by exactly one file, got {defining_files:?}"
+        assert!(
+            graph.file_defines(file, handler),
+            "mapped destination {file}:{handler} must exist"
         );
-        let entries = loom::proofstrength::command_entries(
-            &format!("./loom {subcommand}"),
-            &graph,
-            "journey_command",
-        );
+        let entries = loom::proofstrength::command_entries(command, &graph, "journey_command");
         assert!(
             entries.iter().any(|entry| {
-                entry.entry_symbol.as_deref() == Some(handler) && entry.file == defining_files[0]
+                entry.entry_symbol.as_deref() == Some(handler) && entry.file == file
             }),
-            "loom {subcommand} must map to real handler {handler}"
+            "{command} must map to real handler {file}:{handler}; got {entries:?}"
         );
     }
-    // Non-unique or dispatcher-level names fail closed.
+    // Unsupported families and every invalid typed/semantic invocation fail
+    // closed. In particular, Clap-valid `next --full` is rejected by
+    // commands::run and therefore cannot earn entry credit here.
     for closed in [
         "./loom edge",
         "./loom debt",
@@ -868,6 +1203,20 @@ fn every_loom_subcommand_handler_maps_to_a_real_unique_cli_symbol() {
         "./loom ignore",
         "./loom apply",
         "./loom door",
+        "./loom observe",
+        "./loom decide",
+        "./loom next --mode definitely-not-a-mode",
+        "./loom next --full",
+        "./loom next --all --full",
+        "./loom impact",
+        "./loom impact door extra",
+        "./loom deepen --limit nope",
+        "./loom codefile list --limit nope",
+        "./loom codefile list extra",
+        "./loom inbox mark abc",
+        "./loom inbox remove",
+        "./loom find query extra",
+        "./loom status --help",
         "./loom sync extra",
         "cargo run --bin svc -- --help",
     ] {

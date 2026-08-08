@@ -26,7 +26,7 @@
 use crate::model::{Claim, NodeType, TargetKind, Verification};
 use crate::store::Store;
 use crate::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Below this many served packets, the efficacy ratio is a coincidence with a
@@ -37,9 +37,152 @@ pub const EFFICACY_MIN_SAMPLE: usize = 20;
 /// Writes by one actor inside one minute that stop looking like judgment.
 pub const BURST_THRESHOLD: usize = 10;
 
+/// Append-only journal event for a human's disposition of a historical audit
+/// incident. This is deliberately not a batch authorization event: accepting
+/// history does not authorize, ratify, or relabel the underlying judgments.
+pub const INCIDENT_EVENT: &str = "audit_incident_disposition";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuditIncidentDisposition {
+    AcceptedHistoricalIncident,
+}
+
+/// Exact, human-gated disclosure of one historical judgment burst.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditIncident {
+    pub schema_version: u32,
+    pub kind: String,
+    pub subject: String,
+    pub actor: String,
+    pub minute: String,
+    pub claim: crate::batch_auth::BatchClaim,
+    pub subjects: Vec<String>,
+    pub subject_digest: String,
+    pub incident_digest: String,
+    pub disposition: AuditIncidentDisposition,
+    pub reason: String,
+    pub human_decision: crate::ratification::HumanDecision,
+}
+
+impl AuditIncident {
+    pub fn accept(
+        bucket: &JudgmentBurstBucket,
+        reason: impl Into<String>,
+        human_decision: crate::ratification::HumanDecision,
+    ) -> Result<Self> {
+        let reason = reason.into();
+        if crate::model::is_placeholder(&reason) {
+            anyhow::bail!("incident acceptance requires a substantive --reason");
+        }
+        let mut subjects = bucket.subjects.clone();
+        subjects.sort();
+        subjects.dedup();
+        let subject_digest = crate::batch_auth::subject_digest(&subjects);
+        let incident_digest = judgment_burst_incident_digest(
+            &bucket.actor,
+            &bucket.minute,
+            bucket.claim,
+            &subject_digest,
+        );
+        Ok(Self {
+            schema_version: 1,
+            kind: "judgment_burst".into(),
+            subject: bucket.id(),
+            actor: bucket.actor.clone(),
+            minute: bucket.minute.clone(),
+            claim: bucket.claim,
+            subjects,
+            subject_digest,
+            incident_digest,
+            disposition: AuditIncidentDisposition::AcceptedHistoricalIncident,
+            reason,
+            human_decision,
+        })
+    }
+
+    pub fn digest_holds(&self) -> bool {
+        self.schema_version == 1
+            && self.kind == "judgment_burst"
+            && self.subject == format!("{}@{}", self.actor, self.minute)
+            && crate::batch_auth::subject_digest(&self.subjects) == self.subject_digest
+            && judgment_burst_incident_digest(
+                &self.actor,
+                &self.minute,
+                self.claim,
+                &self.subject_digest,
+            ) == self.incident_digest
+    }
+
+    pub fn matches(&self, bucket: &JudgmentBurstBucket) -> bool {
+        let mut subjects = bucket.subjects.clone();
+        subjects.sort();
+        subjects.dedup();
+        self.digest_holds()
+            && self.actor == bucket.actor
+            && self.minute == bucket.minute
+            && self.claim == bucket.claim
+            && self.subjects == subjects
+    }
+}
+
+fn judgment_burst_incident_digest(
+    actor: &str,
+    minute: &str,
+    claim: crate::batch_auth::BatchClaim,
+    subject_digest: &str,
+) -> String {
+    format!(
+        "i{}",
+        crate::store::fnv_hex_digest(&[
+            "judgment_burst",
+            actor,
+            minute,
+            claim.as_str(),
+            subject_digest,
+        ])
+    )
+}
+
+pub fn parse_incident_entry(entry: &crate::journal::Entry) -> Result<Option<AuditIncident>> {
+    if entry.event != INCIDENT_EVENT {
+        return Ok(None);
+    }
+    let incident: AuditIncident = serde_json::from_value(entry.payload.clone())?;
+    if entry.target_id != incident.incident_digest || !incident.digest_holds() {
+        anyhow::bail!("audit incident {} has a corrupt digest binding", entry.id);
+    }
+    Ok(Some(incident))
+}
+
+/// Every well-formed disclosure, including imported history. Callers decide
+/// whether local authority is required for a particular use.
+pub fn incident_entries(store: &Store) -> Result<Vec<(crate::journal::Entry, AuditIncident)>> {
+    let mut out = Vec::new();
+    for entry in crate::journal::read(store.root())? {
+        if let Some(incident) = parse_incident_entry(&entry)? {
+            out.push((entry, incident));
+        }
+    }
+    Ok(out)
+}
+
+fn locally_accepted(bucket: &JudgmentBurstBucket, entries: &[crate::journal::Entry]) -> bool {
+    entries.iter().any(|entry| {
+        entry.origin == crate::journal::Origin::Local
+            && parse_incident_entry(entry)
+                .ok()
+                .flatten()
+                .is_some_and(|incident| incident.matches(bucket))
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JudgmentBurstBucket {
     pub actor: String,
+    /// Worker profiles observed under this authorization identity. Empty means
+    /// the facts predate profile capture or the executor did not declare one.
+    pub profiles: BTreeSet<String>,
     pub minute: String,
     pub claim: crate::batch_auth::BatchClaim,
     pub subjects: Vec<String>,
@@ -75,7 +218,7 @@ impl JudgmentBurstBucket {
 }
 
 type JudgmentBurstKey = (String, String, crate::batch_auth::BatchClaim);
-type JudgmentBurstState = (BTreeSet<String>, BTreeSet<String>, i64);
+type JudgmentBurstState = (BTreeSet<String>, BTreeSet<String>, BTreeSet<String>, i64);
 
 fn group_judgment_facts<F>(
     facts: Vec<crate::evidence::Fact>,
@@ -98,11 +241,14 @@ where
         let Some(minute) = crate::journal::minute_key(&fact.asserted_at) else {
             continue;
         };
-        let (subjects, batch_ids, latest_assertion_millis) = buckets
+        let (subjects, profiles, batch_ids, latest_assertion_millis) = buckets
             .entry((fact.asserted_by, minute, claim))
-            .or_insert_with(|| (BTreeSet::new(), BTreeSet::new(), i64::MIN));
+            .or_insert_with(|| (BTreeSet::new(), BTreeSet::new(), BTreeSet::new(), i64::MIN));
         *latest_assertion_millis = (*latest_assertion_millis).max(asserted_millis);
         subjects.insert(fact.subject_id);
+        if let Some(profile) = fact.asserted_profile {
+            profiles.insert(profile);
+        }
         if !fact.batch_id.is_empty() {
             batch_ids.insert(fact.batch_id);
         }
@@ -110,9 +256,10 @@ where
     Ok(buckets
         .into_iter()
         .map(
-            |((actor, minute, claim), (subjects, batch_ids, latest_assertion_millis))| {
+            |((actor, minute, claim), (subjects, profiles, batch_ids, latest_assertion_millis))| {
                 JudgmentBurstBucket {
                     actor,
+                    profiles,
                     minute,
                     claim,
                     subjects: subjects.into_iter().collect(),
@@ -164,7 +311,7 @@ pub fn run(store: &Store) -> Result<Vec<AuditFinding>> {
     let (entries, corrupt) = crate::journal::read_counting(store.root())?;
     out.extend(unjournaled_ratifications(store, &entries)?);
     out.extend(malformed_judgment_timestamps(store)?);
-    out.extend(bursts(store)?);
+    out.extend(bursts(store, &entries)?);
     out.extend(unanchored_settled_facts(store)?);
     if corrupt > 0 {
         out.push(AuditFinding {
@@ -283,7 +430,7 @@ fn malformed_judgment_timestamp_findings(facts: Vec<crate::evidence::Fact>) -> V
 /// like this. A sealed batch authorization envelope covering exactly those
 /// subjects is batch truth, not an exemption — the facts retain
 /// `decision_mode=batch` and the burst is not reported.
-fn bursts(store: &Store) -> Result<Vec<AuditFinding>> {
+fn bursts(store: &Store, entries: &[crate::journal::Entry]) -> Result<Vec<AuditFinding>> {
     let mut out = Vec::new();
     for bucket in JudgmentBurstBucket::group(store)? {
         if bucket.subjects.len() < BURST_THRESHOLD {
@@ -302,16 +449,28 @@ fn bursts(store: &Store) -> Result<Vec<AuditFinding>> {
         {
             continue;
         }
+        if locally_accepted(&bucket, entries) {
+            continue;
+        }
         out.push(AuditFinding {
             kind: "judgment_burst",
             subject: AuditSubject::Graph(bucket.id()),
             detail: format!(
-                "{} {} judgments by '{}' inside one minute ({}) — \
+                "{} {} judgments by '{}'{} inside one minute ({}) — \
                  too fast to have been made one at a time, and no sealed \
                  batch authorization covers this exact set",
                 bucket.subjects.len(),
                 bucket.claim.as_str(),
                 bucket.actor,
+                if bucket.profiles.is_empty() {
+                    " (executor profile unreported)".to_string()
+                } else {
+                    format!(
+                        " (executor profile{}) {}",
+                        if bucket.profiles.len() == 1 { "" } else { "s" },
+                        bucket.profiles.iter().cloned().collect::<Vec<_>>().join(", ")
+                    )
+                },
                 bucket.minute,
             ),
             remedy: "this burst can only be closed retrospectively by a HUMAN vouching over a trusted, digest-bound authorization record that predates the burst's final fact — a `batch_intent` journal record written by the human-gated batch path (`loom intent ratify --all`), carrying a recorded HumanDecision for this exact subject set (`loom audit attest-burst --authority human:<name> --evidence journal:<id>`). A self-asserted human authority citing an unrelated, machine-written, or forged record is never accepted, and adjudication bursts have no trusted human-gated batch record today. Re-judging the subjects is NOT a remedy: re-asserting the same judgment is a no-op, while changed re-judgments simply move the facts to the current minute (re-detecting the same burst when done in one pass) or — spread across separate minutes — would overwrite the original asserted_at/criterion/evidence, laundering exactly what this audit exists to surface. If no trusted bound record exists, accept it as a documented incident. For future bulk work, seal the batch authorization BEFORE the first write — `loom apply` adjudications and `loom intent ratify --all` do this automatically; the burst actor's own after-the-fact seal is never accepted"
@@ -477,6 +636,7 @@ mod tests {
             verification: Verification::Cited,
             confidence: 1.0,
             asserted_by: "llm:analyzer".into(),
+            asserted_profile: Some("loom-auditor".into()),
             asserted_at: asserted_at.into(),
             decision_mode: crate::model::DecisionMode::Batch,
             batch_id: batch_id.into(),
@@ -493,6 +653,10 @@ mod tests {
         .unwrap();
         assert_eq!(buckets.len(), 1);
         assert_eq!(buckets[0].minute, "2026-07-25T07:10");
+        assert_eq!(
+            buckets[0].profiles.iter().cloned().collect::<Vec<_>>(),
+            vec!["loom-auditor"]
+        );
         assert_eq!(buckets[0].subjects, vec!["a", "b"]);
         assert_eq!(
             buckets[0].batch_ids.iter().cloned().collect::<Vec<_>>(),
@@ -512,6 +676,7 @@ mod tests {
             verification: Verification::Cited,
             confidence: 1.0,
             asserted_by: "llm:analyzer".into(),
+            asserted_profile: None,
             asserted_at: asserted_at.into(),
             decision_mode: crate::model::DecisionMode::Individual,
             batch_id: String::new(),
@@ -552,6 +717,7 @@ mod tests {
     fn burst_bucket_identity_and_membership_are_deterministic() {
         let bucket = JudgmentBurstBucket {
             actor: "llm:analyzer".into(),
+            profiles: ["loom-auditor".to_string()].into_iter().collect(),
             minute: "2026-07-25T07:10".into(),
             claim: crate::batch_auth::BatchClaim::Adjudication,
             subjects: vec!["a".into(), "b".into()],

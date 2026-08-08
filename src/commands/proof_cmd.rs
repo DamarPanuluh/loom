@@ -37,8 +37,9 @@ pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()>
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
             let edge = store.ensure_edge(EdgeKind::Governs, &r.id, &i.id)?;
             let st = verdict_status_quality(&outcome)?;
+            let actor = store.execution_identity().actor();
             let verdict_edge =
-                store.record_verdict(&edge.id, st, &criterion, &evidence, confidence, "llm")?;
+                store.record_verdict(&edge.id, st, &criterion, &evidence, confidence, &actor)?;
             pulse::emit_line(
                 &store,
                 json,
@@ -756,8 +757,7 @@ fn mark_validation(
     }
     store.record_proof_stability(val_id, node_status)?;
     store.set_node_status(val_id, node_status)?;
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "validation_verdict",
         val_id,
         serde_json::json!({ "outcome": result, "evidence": ev, "reason": reason }),
@@ -908,14 +908,23 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
         );
     }
     let root = store.root().to_path_buf();
+    let execution = store.execution_identity();
     drop(store);
 
     // Serialize proof EXECUTION (not graph writes): a second runner would
     // share ports/processes with this one and mint false failing verdicts.
-    let _harness = crate::harness::acquire(&root, "validation run")?;
+    let _harness = crate::harness::acquire(&root, "validation run", &execution)?;
 
     let mut results = Vec::new();
     let mut human_lines = Vec::new();
+    // Cache observations, not assessments. Several Validation nodes may name
+    // one exact execution plan; the subprocess runs once, while every node
+    // below still earns its own verdict, covered hashes, stability record,
+    // grade, and journal entry.
+    let mut observations: std::collections::HashMap<
+        crate::proof::CommandExecutionPlan,
+        crate::proof::ProofOutcome,
+    > = std::collections::HashMap::new();
     for v in &vals {
         let command = v
             .body
@@ -931,9 +940,22 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
             .unwrap_or(crate::model::ValidationType::Test);
         // The engine records every outcome uniformly; the runner keyed by the
         // validation type owns how the proof is actually attempted.
-        match crate::proof::runner_for(ty).run(&root, v) {
+        let prepared = crate::proof::runner_for(ty).prepare(&root, v);
+        let execution_plan = prepared.execution_plan().cloned();
+        let outcome = match execution_plan {
+            Some(plan) => match observations.get(&plan) {
+                Some(observed) => observed.clone(),
+                None => {
+                    let observed = prepared.run();
+                    observations.insert(plan, observed.clone());
+                    observed
+                }
+            },
+            None => prepared.run(),
+        };
+        match outcome {
             crate::proof::ProofOutcome::Passed { evidence, run } => {
-                let store = open(Some(&root))?;
+                let store = crate::store::Store::open_with_identity(&root, execution.clone())?;
                 mark_validation(&store, &v.id, "passed", &evidence, "", Some(*run))?;
                 regrade(&store, &v.id)?;
                 drop(store);
@@ -951,7 +973,7 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
                 output,
                 run,
             } => {
-                let store = open(Some(&root))?;
+                let store = crate::store::Store::open_with_identity(&root, execution.clone())?;
                 mark_validation(&store, &v.id, "failed", &evidence, "", Some(*run))?;
                 regrade(&store, &v.id)?;
                 drop(store);
@@ -967,7 +989,7 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
                 human_lines.push(format!("FAIL {} (exit {exit_code})", v.name));
             }
             crate::proof::ProofOutcome::Blocked { reason } => {
-                let store = open(Some(&root))?;
+                let store = crate::store::Store::open_with_identity(&root, execution.clone())?;
                 mark_validation(&store, &v.id, "blocked", "", &reason, None)?;
                 regrade(&store, &v.id)?;
                 drop(store);
@@ -1116,9 +1138,10 @@ pub(crate) fn observe_run(
     // child blocked on the lock its parent holds exits non-zero. That does not
     // merely fail — it records a FALSE FAILING verdict against a behavior that
     // passes, which is the one outcome this whole spine exists to prevent.
-    let (intent, covered, root) = {
+    let (intent, covered, root, execution) = {
         let store = open(graph)?;
         let root = store.root().to_path_buf();
+        let execution = store.execution_identity();
         // What this run covers: the files the target behavior is grounded in,
         // so an edit to any of them expires it. With no target, the run covers
         // nothing and stands only as a journal record — honest about being
@@ -1127,13 +1150,13 @@ pub(crate) fn observe_run(
             Some(key) => {
                 let node = store.resolve_node(key, Some(NodeType::Intent))?;
                 let files = store.files_grounding(&node.id)?;
-                (Some(node), files, root)
+                (Some(node), files, root, execution)
             }
-            None => (None, Vec::new(), root),
+            None => (None, Vec::new(), root, execution),
         }
     };
 
-    let _harness = crate::harness::acquire(&root, "observe")?;
+    let _harness = crate::harness::acquire(&root, "observe", &execution)?;
     let observation = crate::runner::observe_command(
         &root,
         crate::model::RunProducer::Command,
@@ -1148,11 +1171,10 @@ pub(crate) fn observe_run(
             // Keep the store open through the journal append so the graph lock
             // is held while the blocked proof is recorded; the binding is
             // intentionally unused beyond its drop.
-            let _store = open(graph)?;
+            let store = crate::store::Store::open_with_identity(&root, execution.clone())?;
             // A command loom could not run is not a failing proof. Recorded as
             // blocked, visible, never green.
-            crate::journal::append(
-                &root,
+            store.append_journal(
                 "observe",
                 intent.as_ref().map(|n| n.id.as_str()).unwrap_or(""),
                 serde_json::json!({ "command": command, "blocked": reason }),
@@ -1162,9 +1184,8 @@ pub(crate) fn observe_run(
     };
 
     // The child is done; take the lock back to record what happened.
-    let store = open(graph)?;
-    let entry = crate::journal::append(
-        &root,
+    let store = crate::store::Store::open_with_identity(&root, execution.clone())?;
+    let entry = store.append_journal(
         "observe",
         intent.as_ref().map(|n| n.id.as_str()).unwrap_or(""),
         serde_json::json!({

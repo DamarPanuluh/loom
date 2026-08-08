@@ -30,6 +30,7 @@ pub mod federation;
 pub mod fsglob;
 pub mod grammar;
 pub mod harness;
+pub mod identity;
 pub mod journal;
 pub mod journey;
 pub mod lane;
@@ -69,7 +70,7 @@ pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 /// The on-disk schema version stamped into every graph. Bumped when the SQLite
 /// schema changes in a way that requires migration.
-pub const SCHEMA_VERSION: u32 = 9;
+pub const SCHEMA_VERSION: u32 = 11;
 
 /// Directory holding the local graph store, relative to a project root.
 pub const LOOM_DIR: &str = ".loom";

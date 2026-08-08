@@ -21,17 +21,15 @@
 //!      the line proof grading reads. Keeping both ends preserves it.
 
 use std::collections::VecDeque;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 
 #[cfg(unix)]
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-
-use process_control::{ChildExt, Control};
 
 /// Bytes kept from EACH END of EACH stream. Anything between the first and last
 /// `KEEP_BYTES` is dropped (and counted), so peak buffered memory per stream is
@@ -41,6 +39,11 @@ pub const KEEP_BYTES: usize = 512 * 1024;
 /// Per-observation channel inherited by child loom processes. The descriptor is
 /// passed with [`Command::env`], never by mutating this process's environment.
 const CONTENTION_FD_ENV: &str = "LOOM_CONTENTION_FD";
+
+/// Absolute executable bound into shell observations. A shell function named
+/// `loom` dispatches here so pipelines and compound journey steps exercise the
+/// same binary as their recorder instead of an arbitrary older PATH install.
+const CURRENT_LOOM_ENV: &str = "LOOM_CURRENT_EXE";
 
 /// Exact, versioned frame written out-of-band when a child loom exits because
 /// its graph or proof harness is contended. Keep this comfortably below
@@ -55,7 +58,7 @@ static INHERITED_CONTENTION_FD: AtomicI32 = AtomicI32::new(-1);
 
 /// What a bounded, group-reaped run observed.
 pub struct Captured {
-    pub status: process_control::ExitStatus,
+    pub status: ExitStatus,
     /// stdout bounded to head+tail of [`KEEP_BYTES`], with an omission marker
     /// spliced in when bytes were dropped.
     pub stdout: Vec<u8>,
@@ -86,6 +89,16 @@ pub enum Observed {
         stdout_total: usize,
         stderr_total: usize,
     },
+}
+
+/// Child identity policy selected by the subsystem that owns the execution.
+/// Generic observation inherits. Validation may explicitly create a hermetic
+/// fixture world for repository-native Cargo tests while retaining validator
+/// authority for the outer verdict write.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ChildEnvironment {
+    Inherit,
+    SoloTestFixture,
 }
 
 #[cfg(unix)]
@@ -335,26 +348,51 @@ struct DirectCurrentExe {
     args: Vec<String>,
 }
 
-/// Return a direct-spawn plan only for the exact simple form loom generates:
-/// this executable, `--graph`, one graph path, then `sync`. Narrowing the
-/// accepted command shape keeps future shell-facing arguments from silently
-/// expanding the capability boundary. Candidate argv0 is evidence used only
-/// for validation; execution always uses the trusted `current_exe` captured
-/// here, closing replacement races on aliases and symlinks.
+/// Return a direct-spawn plan for a simple invocation of this Loom executable.
+/// A stored proof may name bare `loom`; resolving that through PATH can execute
+/// an older installed schema, so a production Loom process binds it to its own
+/// executable. Shell syntax still fails closed into ordinary shell mode.
+/// Candidate argv0 is evidence used only for validation; execution always uses
+/// the trusted `current_exe` captured here, closing alias replacement races.
 fn direct_current_exe_tokens(command: &str) -> Option<DirectCurrentExe> {
     let current_exe = std::env::current_exe().ok()?;
     let tokens = simple_shell_tokens(command)?;
-    if tokens.len() != 4 || tokens[1] != "--graph" || tokens[2].is_empty() || tokens[3] != "sync" {
+    let argv0 = tokens.first()?;
+    if !names_current_loom(argv0, &current_exe) {
         return None;
     }
-    let candidate = Path::new(&tokens[0]);
-    let is_current = candidate == current_exe
-        || (candidate.is_absolute()
-            && candidate.canonicalize().ok().as_deref() == Some(current_exe.as_path()));
-    is_current.then(|| DirectCurrentExe {
+    Some(DirectCurrentExe {
         executable: current_exe,
         args: tokens.into_iter().skip(1).collect(),
     })
+}
+
+fn names_current_loom(argv0: &str, current_exe: &Path) -> bool {
+    let current_is_loom = is_loom_executable(current_exe);
+    let is_bare_loom = argv0 == "loom" && current_is_loom;
+    let candidate = Path::new(argv0);
+    let is_current_path = candidate == current_exe
+        || (candidate.is_absolute()
+            && candidate.canonicalize().ok().as_deref() == Some(current_exe));
+    is_bare_loom || is_current_path
+}
+
+fn is_loom_executable(current_exe: &Path) -> bool {
+    current_exe
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == "loom")
+}
+
+fn shell_script(command: &str, current_exe: Option<&Path>) -> String {
+    if current_exe.is_some_and(is_loom_executable) {
+        // POSIX shell functions participate in pipelines and compound command
+        // lists without changing PATH for unrelated tools. The absolute target
+        // arrives through Command::env below, never through command text.
+        format!("loom() {{ \"${CURRENT_LOOM_ENV}\" \"$@\"; }}\n{command}")
+    } else {
+        command.to_owned()
+    }
 }
 
 #[cfg(test)]
@@ -479,15 +517,68 @@ impl Window {
     }
 }
 
+fn capture_stream<R>(mut stream: R) -> thread::JoinHandle<io::Result<Window>>
+where
+    R: Read + Send + 'static,
+{
+    thread::spawn(move || {
+        let mut window = Window::default();
+        let mut buffer = [0_u8; 16 * 1024];
+        loop {
+            match stream.read(&mut buffer) {
+                Ok(0) => return Ok(window),
+                Ok(n) => window.push(&buffer[..n]),
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(error),
+            }
+        }
+    })
+}
+
+fn join_capture(handle: thread::JoinHandle<io::Result<Window>>) -> io::Result<Window> {
+    handle
+        .join()
+        .map_err(|_| io::Error::other("subprocess capture thread panicked"))?
+}
+
+#[cfg(unix)]
+fn terminate_process_group(child: &mut Child, pgid: libc::pid_t) -> io::Result<()> {
+    // SIGTERM gives well-behaved children the same termination signal the old
+    // runner used. SIGKILL immediately follows as a bounded sweep: descendants
+    // may otherwise keep the capture pipes open forever after the leader exits.
+    unsafe {
+        libc::killpg(pgid, libc::SIGTERM);
+        libc::killpg(pgid, libc::SIGKILL);
+    }
+    child.wait().map(|_| ())
+}
+
+#[cfg(not(unix))]
+fn terminate_process_group(child: &mut Child, _pgid: i32) -> io::Result<()> {
+    child.kill()?;
+    child.wait().map(|_| ())
+}
+
 /// Run `command` at `cwd`, directly for the strict current-executable form and
 /// otherwise through `sh -c`, bounding captured output and killing the whole
 /// process group on timeout. Compatibility wrapper for callers that only need
 /// to distinguish completion from timeout.
 pub fn run(command: &str, cwd: &Path, timeout: Duration) -> io::Result<Option<Captured>> {
-    Ok(match run_observed(command, cwd, timeout)? {
-        Observed::Exited(captured) => Some(captured),
-        Observed::Killed { .. } => None,
-    })
+    run_with_environment(command, cwd, timeout, ChildEnvironment::Inherit)
+}
+
+pub(crate) fn run_with_environment(
+    command: &str,
+    cwd: &Path,
+    timeout: Duration,
+    environment: ChildEnvironment,
+) -> io::Result<Option<Captured>> {
+    Ok(
+        match run_observed_with_environment(command, cwd, timeout, environment)? {
+            Observed::Exited(captured) => Some(captured),
+            Observed::Killed { .. } => None,
+        },
+    )
 }
 
 /// Run a bounded command while retaining stdout/stderr even when timeout
@@ -495,6 +586,16 @@ pub fn run(command: &str, cwd: &Path, timeout: Duration) -> io::Result<Option<Ca
 /// current executable is spawned from parsed argv without a shell; every other
 /// command retains the historical `sh -c` behavior.
 pub fn run_observed(command: &str, cwd: &Path, timeout: Duration) -> io::Result<Observed> {
+    run_observed_with_environment(command, cwd, timeout, ChildEnvironment::Inherit)
+}
+
+pub(crate) fn run_observed_with_environment(
+    command: &str,
+    cwd: &Path,
+    timeout: Duration,
+    environment: ChildEnvironment,
+) -> io::Result<Observed> {
+    let current_exe = std::env::current_exe().ok();
     let direct_plan = direct_current_exe_tokens(command);
     let direct_mode = direct_plan.is_some();
     let mut cmd = if let Some(plan) = direct_plan {
@@ -503,10 +604,27 @@ pub fn run_observed(command: &str, cwd: &Path, timeout: Duration) -> io::Result<
         cmd
     } else {
         let mut cmd = Command::new("sh");
-        cmd.arg("-c").arg(command);
+        cmd.arg("-c")
+            .arg(shell_script(command, current_exe.as_deref()));
         cmd
     };
+    if current_exe.as_deref().is_some_and(is_loom_executable) {
+        cmd.env(CURRENT_LOOM_ENV, current_exe.as_ref().unwrap());
+    } else {
+        cmd.env_remove(CURRENT_LOOM_ENV);
+    }
+    if environment == ChildEnvironment::SoloTestFixture {
+        cmd.env(crate::identity::AGENT_ENV, "solo");
+        cmd.env_remove(crate::identity::PROFILE_ENV);
+    }
     cmd.current_dir(cwd)
+        // Observations are deliberately non-interactive. Once the child leads
+        // its own process group it is a background group relative to Loom's
+        // terminal; inheriting stdin lets an accidental read stop it with
+        // SIGTTIN. process_control reported that stop as an exit race and
+        // panicked, while a plain poller correctly waited forever. EOF makes
+        // the boundary explicit and lets callers classify the refusal.
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     // The child leads its own process group (pgid == its pid), so a timeout can
@@ -519,65 +637,68 @@ pub fn run_observed(command: &str, cwd: &Path, timeout: Duration) -> io::Result<
     }
 
     let mut attestation = configure_attestation(&mut cmd, direct_mode)?;
-    let child = cmd.spawn()?;
+    let mut child = cmd.spawn()?;
     // Only the child side may attest. Keeping a parent writer would also make
     // EOF unavailable, though reads are nonblocking as defence in depth.
     drop(attestation.writer.take());
     #[cfg(unix)]
     let pgid = child.id() as libc::pid_t;
+    #[cfg(not(unix))]
+    let pgid = 0;
 
-    let out_win = Arc::new(Mutex::new(Window::default()));
-    let err_win = Arc::new(Mutex::new(Window::default()));
-    let ow = Arc::clone(&out_win);
-    let ew = Arc::clone(&err_win);
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| io::Error::other("subprocess stdout was not piped"))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| io::Error::other("subprocess stderr was not piped"))?;
+    let stdout_handle = capture_stream(stdout);
+    let stderr_handle = capture_stream(stderr);
 
-    // Return `false` from the filters so process_control keeps nothing itself;
-    // the bounded window is the only buffer, which is what caps memory.
-    let result = child
-        .controlled_with_output()
-        .time_limit(timeout)
-        .terminate_for_timeout()
-        .stdout_filter(move |chunk: &[u8]| {
-            ow.lock().expect("stdout window").push(chunk);
-            io::Result::Ok(false)
-        })
-        .stderr_filter(move |chunk: &[u8]| {
-            ew.lock().expect("stderr window").push(chunk);
-            io::Result::Ok(false)
-        })
-        .wait()?;
-
-    match result {
-        Some(o) => {
-            let contention_attested = read_attestation(attestation.reader.as_ref());
-            let out = out_win.lock().expect("stdout window");
-            let err = err_win.lock().expect("stderr window");
-            Ok(Observed::Exited(Captured {
-                status: o.status,
-                stdout: out.render(),
-                stderr: err.render(),
-                stdout_total: out.total,
-                stderr_total: err.total,
-                contention_attested,
-            }))
+    // `process_control` used a second platform wait handle and then expected
+    // `std::process::Child` to report the same exit synchronously. On macOS a
+    // fast child can be visible to the first waiter before `try_wait`, causing
+    // the dependency to panic with "missing exit status". One Child owns both
+    // polling and reaping here, so an exit-by-code or exit-by-signal is always
+    // represented by the real std ExitStatus.
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break Some(status);
         }
-        None => {
-            // process_control has already terminated the group leader; sweep
-            // the group so no descendant behind the capture pipes can outlive
-            // the timeout as an orphan.
-            #[cfg(unix)]
-            unsafe {
-                libc::killpg(pgid, libc::SIGKILL);
-            }
-            let out = out_win.lock().expect("stdout window");
-            let err = err_win.lock().expect("stderr window");
-            Ok(Observed::Killed {
-                stdout: out.render(),
-                stderr: err.render(),
-                stdout_total: out.total,
-                stderr_total: err.total,
-            })
+        let elapsed = started.elapsed();
+        if elapsed >= timeout {
+            terminate_process_group(&mut child, pgid)?;
+            break None;
         }
+        thread::sleep(
+            timeout
+                .saturating_sub(elapsed)
+                .min(Duration::from_millis(10)),
+        );
+    };
+
+    let out = join_capture(stdout_handle)?;
+    let err = join_capture(stderr_handle)?;
+    if let Some(status) = status {
+        let contention_attested = read_attestation(attestation.reader.as_ref());
+        Ok(Observed::Exited(Captured {
+            status,
+            stdout: out.render(),
+            stderr: err.render(),
+            stdout_total: out.total,
+            stderr_total: err.total,
+            contention_attested,
+        }))
+    } else {
+        Ok(Observed::Killed {
+            stdout: out.render(),
+            stderr: err.render(),
+            stdout_total: out.total,
+            stderr_total: err.total,
+        })
     }
 }
 
@@ -599,6 +720,35 @@ mod tests {
         assert_eq!(cap.stderr, b"oops\n");
         assert_eq!(cap.stdout_total, 6);
         assert_eq!(cap.status.code(), Some(0));
+    }
+
+    /// A command may terminate by signal instead of returning a numeric exit
+    /// code. The observer must preserve that real outcome rather than panic
+    /// while trying to manufacture an exit status.
+    #[cfg(unix)]
+    #[test]
+    fn a_signaled_command_is_observed_without_panicking() {
+        use std::os::unix::process::ExitStatusExt;
+
+        let dir = std::env::temp_dir();
+        let cap = run("kill -TERM $$", &dir, Duration::from_secs(5))
+            .expect("io")
+            .expect("command completed before the timeout");
+        assert!(!cap.status.success());
+        assert_eq!(cap.status.code(), None);
+        assert_eq!(cap.status.signal(), Some(libc::SIGTERM));
+    }
+
+    #[test]
+    fn observed_commands_receive_eof_instead_of_inheriting_the_terminal() {
+        let dir = std::env::temp_dir();
+        let cap = run("read value; test $? -ne 0", &dir, Duration::from_secs(5))
+            .expect("io")
+            .expect("stdin EOF must not wait for the timeout");
+        assert!(
+            cap.status.success(),
+            "stdin should be closed for observations"
+        );
     }
 
     /// The verdict a runner prints LAST must survive an overrun: keep the tail,
@@ -639,7 +789,7 @@ mod tests {
     }
 
     #[test]
-    fn only_literal_direct_current_exe_commands_are_attestable() {
+    fn simple_current_exe_commands_are_direct_and_shell_forms_are_not() {
         let exe = std::env::current_exe().expect("current exe");
         let plain = format!("{} --graph /tmp/graph sync", exe.display());
         let quoted = format!("'{}' --graph '/tmp/a graph' sync", exe.display());
@@ -647,6 +797,14 @@ mod tests {
         assert!(is_direct_current_exe_invocation(&plain));
         assert!(is_direct_current_exe_invocation(&quoted));
         assert!(is_direct_current_exe_invocation(&double_quoted));
+        assert!(is_direct_current_exe_invocation(&format!(
+            "{} --graph /tmp/g status",
+            exe.display()
+        )));
+        assert!(is_direct_current_exe_invocation(&format!(
+            "{} --graph /tmp/g sync --json",
+            exe.display()
+        )));
         let plan = direct_current_exe_tokens(&quoted).unwrap();
         assert_eq!(plan.executable, exe);
         assert_eq!(
@@ -664,8 +822,6 @@ mod tests {
             format!("{} --graph /tmp/g sync > /tmp/out", exe.display()),
             format!("X=1 {} --graph /tmp/g sync", exe.display()),
             format!("{} --graph $(printf /tmp/g) sync", exe.display()),
-            format!("{} --graph /tmp/g status", exe.display()),
-            format!("{} --graph /tmp/g sync --json", exe.display()),
             format!("{} --graph /tmp/g sync\nexit 75", exe.display()),
         ] {
             assert!(
@@ -673,6 +829,30 @@ mod tests {
                 "shell syntax must disable attestation: {rejected}"
             );
         }
+    }
+
+    #[test]
+    fn bare_loom_binds_only_to_a_running_loom_binary() {
+        assert!(names_current_loom("loom", Path::new("/tmp/loom")));
+        assert!(!names_current_loom(
+            "loom",
+            Path::new("/tmp/loom-unit-test-hash")
+        ));
+        assert!(!names_current_loom("other", Path::new("/tmp/loom")));
+    }
+
+    #[test]
+    fn shell_contained_loom_is_bound_without_rewriting_other_commands() {
+        let command = "printf x | loom mcp serve && cargo test";
+        assert_eq!(
+            shell_script(command, Some(Path::new("/tmp/loom"))),
+            format!("loom() {{ \"${CURRENT_LOOM_ENV}\" \"$@\"; }}\n{command}")
+        );
+        assert_eq!(
+            shell_script(command, Some(Path::new("/tmp/loom-test-hash"))),
+            command
+        );
+        assert_eq!(shell_script(command, None), command);
     }
 
     #[cfg(unix)]

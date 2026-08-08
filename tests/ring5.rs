@@ -389,6 +389,84 @@ fn validate_timed_out_command_records_blocked() {
     assert_eq!(proof.status, "blocked");
 }
 
+/// A batch assesses Validation nodes, but executes unique proof plans. Two
+/// nodes naming the exact same command share one subprocess observation while
+/// retaining separate statuses, edge verdicts, and journal records.
+#[test]
+fn validation_batch_executes_one_plan_once_and_assesses_each_validation() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "shared observation behavior",
+            "one observation may assess multiple registered proofs",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let command = "printf x >> .proof-executions";
+    let mut validation_ids = Vec::new();
+    for name in ["shared proof one", "shared proof two"] {
+        let validation = store
+            .add_node(
+                NodeType::Validation,
+                name,
+                "",
+                "not_run",
+                serde_json::json!({ "type": "test", "command": command }),
+            )
+            .unwrap();
+        store
+            .add_edge(
+                EdgeKind::Validates,
+                &validation.id,
+                &intent.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        validation_ids.push(validation.id);
+    }
+    drop(store);
+
+    let output = loom_json_out(tmp.path(), &["validation", "run", "--all", "--json"]);
+    assert_eq!(output["ran"].as_array().unwrap().len(), 2, "{output}");
+    assert_eq!(output["summary"]["passed"], 2, "{output}");
+    assert_eq!(
+        std::fs::read_to_string(tmp.path().join(".proof-executions")).unwrap(),
+        "x",
+        "the identical command plan must be observed once"
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    for validation_id in &validation_ids {
+        let validation = store.get_node(validation_id).unwrap().unwrap();
+        assert_eq!(validation.status, "passed", "{} assessed", validation.name);
+        let edges = store
+            .edges_with(Some(EdgeKind::Validates), Some(validation_id), None)
+            .unwrap();
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].status, InspectionStatus::Passing);
+    }
+    let journal = loom::journal::read(tmp.path()).unwrap();
+    let verdict_targets: std::collections::BTreeSet<_> = journal
+        .iter()
+        .filter(|entry| entry.event == "validation_verdict")
+        .map(|entry| entry.target_id.as_str())
+        .collect();
+    assert_eq!(
+        verdict_targets.len(),
+        2,
+        "one journal verdict per validation"
+    );
+    assert!(
+        validation_ids
+            .iter()
+            .all(|id| verdict_targets.contains(id.as_str())),
+        "both validation ids are journaled: {verdict_targets:?}"
+    );
+}
+
 // ---- hypothesis: invisible to maturity until adopted -----------------------
 
 #[test]

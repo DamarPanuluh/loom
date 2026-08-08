@@ -6,7 +6,7 @@
 //! is refused before any envelope append or fact stamp.
 
 use super::{open, pulse};
-use crate::cli::AuditCmd;
+use crate::cli::{AuditCmd, AuditIncidentCmd};
 use crate::model::Claim;
 use crate::Result;
 use anyhow::{bail, Context};
@@ -14,6 +14,7 @@ use std::path::Path;
 
 pub(crate) fn dispatch(graph: Option<&Path>, cmd: AuditCmd, json: bool) -> Result<()> {
     match cmd {
+        AuditCmd::Incident { cmd } => incident(graph, cmd, json),
         AuditCmd::AttestBurst {
             subject,
             claim,
@@ -40,6 +41,196 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: AuditCmd, json: bool) -> Resul
             json,
         ),
     }
+}
+
+fn incident(graph: Option<&Path>, cmd: AuditIncidentCmd, json: bool) -> Result<()> {
+    match cmd {
+        AuditIncidentCmd::Accept {
+            subject,
+            claim,
+            reason,
+            human_decision,
+        } => accept_incident(graph, &subject, &claim, &reason, human_decision, json),
+        AuditIncidentCmd::List => list_incidents(graph, None, None, json),
+        AuditIncidentCmd::Show { subject, claim } => {
+            list_incidents(graph, Some(&subject), Some(&claim), json)
+        }
+    }
+}
+
+fn accept_incident(
+    graph: Option<&Path>,
+    subject: &str,
+    claim: &str,
+    reason: &str,
+    human_decision: Option<String>,
+    json: bool,
+) -> Result<()> {
+    let store = open(graph)?;
+    let (actor, minute) = parse_burst_subject(subject)?;
+    let claim = crate::batch_auth::BatchClaim::parse(claim)?;
+    let Some(bucket) = crate::audit::JudgmentBurstBucket::for_key(&store, &actor, &minute, claim)?
+    else {
+        bail!(
+            "no live judgment burst of ≥{} {} facts for '{}' (found 0)",
+            crate::audit::BURST_THRESHOLD,
+            claim.as_str(),
+            subject
+        );
+    };
+    if bucket.subjects.len() < crate::audit::BURST_THRESHOLD {
+        bail!(
+            "no live judgment burst of ≥{} {} facts for '{}' (found {})",
+            crate::audit::BURST_THRESHOLD,
+            claim.as_str(),
+            subject,
+            bucket.subjects.len()
+        );
+    }
+
+    // Exact repeats are a read of the existing human disposition, not a new
+    // decision. Imported records remain disclosure only and never satisfy it.
+    if let Some((entry, accepted)) =
+        crate::audit::incident_entries(&store)?
+            .into_iter()
+            .find(|(entry, incident)| {
+                entry.origin == crate::journal::Origin::Local && incident.matches(&bucket)
+            })
+    {
+        return print_incident_acceptance(&entry, &accepted, true, json);
+    }
+
+    if let Some(batch_id) = crate::batch_auth::covering_envelope(
+        &store,
+        &bucket.subjects,
+        bucket.claim,
+        &bucket.actor,
+        &bucket.minute,
+        &bucket.batch_ids,
+        bucket.latest_assertion_millis,
+    )? {
+        bail!(
+            "burst '{}' is already covered by batch authorization {}; historical-incident acceptance would misstate it",
+            subject,
+            batch_id
+        );
+    }
+
+    let decision =
+        super::ratification_decision(&format!("accept audit incident {subject}"), human_decision)?;
+    let accepted = crate::audit::AuditIncident::accept(&bucket, reason, decision)?;
+    let entry = store.append_journal(
+        crate::audit::INCIDENT_EVENT,
+        &accepted.incident_digest,
+        serde_json::to_value(&accepted)?,
+    )?;
+    print_incident_acceptance(&entry, &accepted, false, json)
+}
+
+fn print_incident_acceptance(
+    entry: &crate::journal::Entry,
+    accepted: &crate::audit::AuditIncident,
+    idempotent: bool,
+    json: bool,
+) -> Result<()> {
+    let value = serde_json::json!({
+        "journal_id": entry.id,
+        "subject": accepted.subject,
+        "claim": accepted.claim,
+        "subjects": accepted.subjects.len(),
+        "subject_digest": accepted.subject_digest,
+        "incident_digest": accepted.incident_digest,
+        "disposition": accepted.disposition,
+        "reason": accepted.reason,
+        "human_decision": accepted.human_decision,
+        "idempotent": idempotent,
+        "authorization_granted": false,
+        "warning": "accepted as documented history; the underlying judgments remain retrospectively unauthorized",
+    });
+    if json {
+        println!("{}", serde_json::to_string_pretty(&value)?);
+    } else {
+        println!(
+            "accepted historical incident {} ({}, {} judgments){}",
+            accepted.subject,
+            accepted.claim.as_str(),
+            accepted.subjects.len(),
+            if idempotent {
+                " — already recorded"
+            } else {
+                ""
+            }
+        );
+        println!("  journal: {}", entry.id);
+        println!("  incident digest: {}", accepted.incident_digest);
+        println!("  authorization granted: no");
+    }
+    Ok(())
+}
+
+fn list_incidents(
+    graph: Option<&Path>,
+    subject: Option<&str>,
+    claim: Option<&str>,
+    json: bool,
+) -> Result<()> {
+    let store = super::open_read(graph)?;
+    let claim = claim
+        .map(crate::batch_auth::BatchClaim::parse)
+        .transpose()?;
+    let mut rows = Vec::new();
+    for (entry, incident) in crate::audit::incident_entries(&store)? {
+        if subject.is_some_and(|wanted| wanted != incident.subject)
+            || claim.is_some_and(|wanted| wanted != incident.claim)
+        {
+            continue;
+        }
+        let active = crate::audit::JudgmentBurstBucket::for_key(
+            &store,
+            &incident.actor,
+            &incident.minute,
+            incident.claim,
+        )?
+        .is_some_and(|bucket| incident.matches(&bucket));
+        rows.push(serde_json::json!({
+            "journal_id": entry.id,
+            "recorded_at": entry.ts,
+            "executor": entry.actor,
+            "executor_profile": entry.profile,
+            "origin": entry.origin,
+            "subject": incident.subject,
+            "claim": incident.claim,
+            "subjects": incident.subjects,
+            "subject_digest": incident.subject_digest,
+            "incident_digest": incident.incident_digest,
+            "disposition": incident.disposition,
+            "reason": incident.reason,
+            "human_decision": incident.human_decision,
+            "active": active,
+            "suppresses_blocking_audit": active && entry.origin == crate::journal::Origin::Local,
+            "authorization_granted": false,
+        }));
+    }
+    if subject.is_some() && rows.is_empty() {
+        bail!("no disclosed audit incident matches the requested subject and claim");
+    }
+    if json {
+        println!("{}", serde_json::to_string_pretty(&rows)?);
+    } else if rows.is_empty() {
+        println!("no disclosed historical audit incidents");
+    } else {
+        for row in &rows {
+            println!(
+                "{} [{}] — {} (authorization: none)",
+                row["subject"].as_str().unwrap_or(""),
+                row["claim"].as_str().unwrap_or(""),
+                row["disposition"].as_str().unwrap_or("")
+            );
+            println!("  reason: {}", row["reason"].as_str().unwrap_or(""));
+            println!("  journal: {}", row["journal_id"].as_str().unwrap_or(""));
+        }
+    }
+    Ok(())
 }
 
 /// The parsed CLI inputs of one burst attestation, bundled so the handler's
@@ -127,7 +318,7 @@ fn attest_burst(graph: Option<&Path>, p: BurstAttest<'_>, json: bool) -> Result<
             e.as_str()
         )
     })?;
-    let entry = crate::batch_auth::append_envelope(store.root(), &envelope)?;
+    let entry = crate::batch_auth::append_envelope(&store, &envelope)?;
     let stamped = store.stamp_batch_ids(&subjects, fact_claim, &entry.id)?;
     // Confirm the burst is closed.
     let still = crate::audit::run(&store)?

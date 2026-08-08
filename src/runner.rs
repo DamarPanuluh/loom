@@ -82,7 +82,7 @@ pub fn observe_command(
     // exit status and an exact frame on this observation's private pipe. Output
     // remains human-readable diagnostics only: neither a graph nor harness
     // marker printed by untrusted test code can spoof this attestation.
-    if captured.status.code() == Some(i64::from(crate::LOCK_CONTENTION_EXIT_CODE))
+    if captured.status.code() == Some(i32::from(crate::LOCK_CONTENTION_EXIT_CODE))
         && captured.is_loom_contention()
     {
         return Ok(Observation::Blocked {
@@ -98,7 +98,7 @@ pub fn observe_command(
         command,
         covered,
         assertions,
-        captured.status.code().unwrap_or(-1),
+        i64::from(captured.status.code().unwrap_or(-1)),
         &captured.stdout,
         &captured.stderr,
         started.elapsed().as_millis() as u64,

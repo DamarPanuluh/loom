@@ -103,6 +103,135 @@ fn a_judgment_burst_is_caught() {
     assert_eq!(packet.target.kind, "graph");
 }
 
+#[test]
+fn a_human_can_accept_exact_history_without_authorizing_or_rewriting_it() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    for n in 0..loom::audit::BURST_THRESHOLD + 2 {
+        let f = store
+            .add_node(
+                NodeType::Finding,
+                &format!("historical finding {n}"),
+                "flagged",
+                "code_audit",
+                serde_json::json!({ "kind": "code_audit" }),
+            )
+            .unwrap();
+        let cf = codefile(&store, &format!("src/historical{n}.rs"));
+        store.add_derived_edge(EdgeKind::Flags, &f.id, &cf.id).ok();
+        store
+            .record_finding_verdict(
+                &f.id,
+                "justified",
+                "historical bulk judgment",
+                &format!("src/historical{n}.rs:1"),
+            )
+            .unwrap();
+    }
+
+    let facts_before = store
+        .all_facts()
+        .unwrap()
+        .into_iter()
+        .filter(|fact| fact.claim == Claim::Adjudication)
+        .collect::<Vec<_>>();
+    let first = facts_before.first().unwrap();
+    let minute: String = first.asserted_at.chars().take(16).collect();
+    let bucket = loom::audit::JudgmentBurstBucket::for_key(
+        &store,
+        &first.asserted_by,
+        &minute,
+        loom::batch_auth::BatchClaim::Adjudication,
+    )
+    .unwrap()
+    .unwrap();
+    let decision = loom::ratification::HumanDecision::mediated(
+        "Approved as a disclosed historical incident, not an authorization",
+    )
+    .unwrap();
+    let incident = loom::audit::AuditIncident::accept(
+        &bucket,
+        "the burst lacked contemporaneous batch authorization and remains disclosed",
+        decision,
+    )
+    .unwrap();
+
+    // Imported history is visible but cannot satisfy this graph's local human
+    // disposition requirement.
+    loom::journal::restore_entries(
+        tmp.path(),
+        &[loom::journal::Entry {
+            id: "imported-incident".into(),
+            ts: loom::journal::now_iso(),
+            actor: "llm:analyzer".into(),
+            profile: Some("loom-auditor".into()),
+            event: loom::audit::INCIDENT_EVENT.into(),
+            target_id: incident.incident_digest.clone(),
+            payload: serde_json::to_value(&incident).unwrap(),
+            origin: loom::journal::Origin::Local,
+        }],
+    )
+    .unwrap();
+    assert!(loom::audit::run(&store)
+        .unwrap()
+        .iter()
+        .any(|finding| finding.kind == "judgment_burst"));
+
+    let entry = store
+        .append_journal(
+            loom::audit::INCIDENT_EVENT,
+            &incident.incident_digest,
+            serde_json::to_value(&incident).unwrap(),
+        )
+        .unwrap();
+    assert!(loom::audit::run(&store)
+        .unwrap()
+        .iter()
+        .all(|finding| finding.kind != "judgment_burst"));
+    assert_eq!(
+        loom::batch_auth::covering_envelope(
+            &store,
+            &bucket.subjects,
+            bucket.claim,
+            &bucket.actor,
+            &bucket.minute,
+            &bucket.batch_ids,
+            bucket.latest_assertion_millis,
+        )
+        .unwrap(),
+        None,
+        "accepted history must never become batch authorization"
+    );
+    let facts_after = store
+        .all_facts()
+        .unwrap()
+        .into_iter()
+        .filter(|fact| fact.claim == Claim::Adjudication)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        facts_before, facts_after,
+        "acceptance must not rewrite facts"
+    );
+    assert!(facts_after.iter().all(|fact| {
+        fact.decision_mode == loom::model::DecisionMode::Individual && fact.batch_id.is_empty()
+    }));
+    assert_eq!(entry.target_id, incident.incident_digest);
+    let disclosures = loom::audit::incident_entries(&store).unwrap();
+    assert_eq!(
+        disclosures.len(),
+        2,
+        "local and imported history stay visible"
+    );
+    assert_eq!(
+        disclosures
+            .iter()
+            .filter(|(entry, _)| entry.origin == loom::journal::Origin::Local)
+            .count(),
+        1
+    );
+}
+
 /// A settled claim standing on nothing re-checkable. The spine refuses these at
 /// write time, so a hit means the fact arrived by import or carry-forward.
 #[test]
@@ -363,7 +492,7 @@ fn efficacy_counts_only_work_that_came_after_the_packet() {
         )
         .unwrap();
     loom::packet::serve(
-        tmp.path(),
+        &store,
         &[loom::packet::Served {
             id: "pkt-test-1".into(),
             kind: "context".into(),
@@ -392,7 +521,7 @@ fn the_efficacy_ratio_distinguishes_helped_from_ignored() {
 
     for target in [&helped, &ignored] {
         loom::packet::serve(
-            tmp.path(),
+            &store,
             &[loom::packet::Served {
                 id: format!("pkt-{target}"),
                 kind: "context".into(),
@@ -450,7 +579,7 @@ fn efficacy_credits_reverification_after_an_earlier_fact() {
         .unwrap();
 
     loom::packet::serve(
-        tmp.path(),
+        &store,
         &[loom::packet::Served {
             id: "pkt-revisit".into(),
             kind: "analyze".into(),
@@ -645,17 +774,17 @@ fn a_retrospective_batch_authorization_does_not_close_the_burst() {
     );
 
     let digest = loom::batch_auth::subject_digest(&subjects);
-    let pre = loom::journal::append(
-        store.root(),
-        "batch_apply",
-        &digest,
-        serde_json::json!({
-            "operation": "adjudicate",
-            "subjects": subjects,
-            "routing_class": "env_contaminated_unstable_proof",
-        }),
-    )
-    .unwrap();
+    let pre = store
+        .append_journal(
+            "batch_apply",
+            &digest,
+            serde_json::json!({
+                "operation": "adjudicate",
+                "subjects": subjects,
+                "routing_class": "env_contaminated_unstable_proof",
+            }),
+        )
+        .unwrap();
     let facts = store.all_facts().unwrap();
     let minute: String = facts
         .iter()
@@ -677,7 +806,7 @@ fn a_retrospective_batch_authorization_does_not_close_the_burst() {
     .unwrap()
     .with_routing_class("env_contaminated_unstable_proof")
     .with_time_bounds(format!("{minute}:00.000Z"), format!("{minute}:59.999Z"));
-    let entry = loom::batch_auth::append_envelope(store.root(), &envelope).unwrap();
+    let entry = loom::batch_auth::append_envelope(&store, &envelope).unwrap();
     store
         .stamp_batch_ids(&subjects, Claim::Adjudication, &entry.id)
         .unwrap();
@@ -755,17 +884,17 @@ fn ratify_all_seals_a_batch_and_avoids_a_burst() {
     )
     .unwrap();
     let digest = loom::batch_auth::subject_digest(&ids);
-    let pre = loom::journal::append(
-        store.root(),
-        "batch_intent",
-        &digest,
-        serde_json::json!({
-            "operation": "ratify",
-            "subjects": ids,
-            "human_decision": decision,
-        }),
-    )
-    .unwrap();
+    let pre = store
+        .append_journal(
+            "batch_intent",
+            &digest,
+            serde_json::json!({
+                "operation": "ratify",
+                "subjects": ids,
+                "human_decision": decision,
+            }),
+        )
+        .unwrap();
     let now = loom::journal::now_iso();
     let envelope = loom::batch_auth::BatchAuthorization::seal(
         loom::batch_auth::BatchClaim::Ratification,
@@ -779,7 +908,7 @@ fn ratify_all_seals_a_batch_and_avoids_a_burst() {
     .unwrap()
     .with_time_bounds(&now, &now)
     .with_human_decision(decision.clone());
-    let entry = loom::batch_auth::append_envelope(store.root(), &envelope).unwrap();
+    let entry = loom::batch_auth::append_envelope(&store, &envelope).unwrap();
     for id in &ids {
         store
             .ratify_intent_from_human_batch(
@@ -910,18 +1039,18 @@ fn a_human_seal_over_a_pre_burst_record_closes_the_burst() {
         "the human reviewed the enumerated snapshot and stands behind it",
     )
     .unwrap();
-    let record = loom::journal::append(
-        store.root(),
-        "batch_intent",
-        &digest,
-        serde_json::json!({
-            "operation": "ratify",
-            "subjects": subjects,
-            "human_decision": decision,
-            "evidence": "portfolio review of the enumerated snapshot",
-        }),
-    )
-    .unwrap();
+    let record = store
+        .append_journal(
+            "batch_intent",
+            &digest,
+            serde_json::json!({
+                "operation": "ratify",
+                "subjects": subjects,
+                "human_decision": decision,
+                "evidence": "portfolio review of the enumerated snapshot",
+            }),
+        )
+        .unwrap();
     // NOW the burst facts land, after the human record exists. Ratifications
     // are human-gated, so route them through the direct-ratify path.
     for id in &subjects {
@@ -965,7 +1094,7 @@ fn a_human_seal_over_a_pre_burst_record_closes_the_burst() {
         .unwrap(),
     )
     .with_time_bounds(format!("{minute}:00.000Z"), format!("{minute}:59.999Z"));
-    let entry = loom::batch_auth::append_envelope(store.root(), &envelope).unwrap();
+    let entry = loom::batch_auth::append_envelope(&store, &envelope).unwrap();
     store
         .stamp_batch_ids(&subjects, Claim::Ratification, &entry.id)
         .unwrap();

@@ -128,13 +128,16 @@ fn inv1_no_grid_materialization() {
 
 #[test]
 fn agent_parses_loom_agent_values() {
-    assert_eq!(Agent::parse("llm").unwrap(), Agent::Solo);
+    assert!(Agent::parse("llm").is_err());
+    assert!(Agent::parse("").is_err());
+    assert_eq!(Agent::parse("solo").unwrap(), Agent::Solo);
     assert_eq!(
         Agent::parse("llm:builder").unwrap(),
         Agent::Lane(OwnerRole::Builder)
     );
+    assert!(Agent::parse("quality").is_err());
     assert_eq!(
-        Agent::parse("quality").unwrap(),
+        Agent::parse("llm:quality").unwrap(),
         Agent::Lane(OwnerRole::Quality)
     );
     // H-4: an unrecognized lane fails closed (was silently Agent::Solo).

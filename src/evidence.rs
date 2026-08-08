@@ -262,6 +262,10 @@ pub struct Fact {
     #[serde(default)]
     pub confidence: f64,
     pub asserted_by: String,
+    /// Executor profile (for example `loom-auditor`) kept separate from the
+    /// authorization identity in `asserted_by`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asserted_profile: Option<String>,
     pub asserted_at: String,
     /// Whether this fact claims an independent judgment or a batch decision.
     #[serde(default)]

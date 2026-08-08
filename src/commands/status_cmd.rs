@@ -169,8 +169,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: b
     // that already exists (the repo tracks it) and has drifted is rewritten:
     // never creates an untracked file, and preserves byte-determinism.
     let reexported = crate::travel::refresh_export_if_tracked(&store)?;
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "sync",
         "graph",
         serde_json::json!({ "quiet": quiet, "files_changed": report.files_changed }),
@@ -481,7 +480,7 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<(
             })
             .collect();
         let served = crate::packet::mint_batch(&pairs);
-        crate::packet::serve(store.root(), &served)?;
+        crate::packet::serve(&store, &served)?;
         let mut ids = served.into_iter().map(|s| s.id);
         for (_, _, item) in rows.iter_mut() {
             if let Some(w) = item.as_mut() {
@@ -657,11 +656,7 @@ pub(crate) fn next_output(store: &Store, mode: Option<&str>) -> Result<workitem:
     };
     let mut item = workitem::next(store, parsed)?;
     if let Some(w) = item.as_mut() {
-        w.packet_id = Some(crate::packet::serve_one(
-            store.root(),
-            &w.mode,
-            &w.target.id,
-        )?);
+        w.packet_id = Some(crate::packet::serve_one(store, &w.mode, &w.target.id)?);
     }
     Ok(workitem::NextOutput {
         work_item: item,

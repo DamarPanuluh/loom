@@ -49,7 +49,7 @@ pub(crate) fn context_cmd(graph: Option<&std::path::Path>, input: &str, json: bo
 pub(crate) fn served_context(store: &Store, input: &str) -> Result<ContextPacket> {
     let mut packet = context_packet(store, input)?;
     packet.packet_id = Some(crate::packet::serve_one(
-        store.root(),
+        store,
         "context",
         packet.target_id(),
     )?);

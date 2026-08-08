@@ -73,10 +73,9 @@ fn propose(
             target.name
         );
     }
-    let agent = std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into());
+    let agent = store.execution_identity().actor();
     let p = store.stage_judgment(kind, &target.id, evidence, &detail, &agent)?;
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "judgment_proposed",
         &p.id,
         serde_json::json!({
@@ -270,8 +269,7 @@ fn confirm(
         other => unreachable!("validated judgment kind '{other}'"),
     };
     store.decide_judgment(&p.id, "confirmed".parse()?)?;
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "judgment_confirmed",
         &p.id,
         serde_json::json!({
@@ -318,8 +316,7 @@ fn withdraw(graph: Option<&Path>, key: &str, reason: &str, json: bool) -> Result
         );
     }
     store.decide_judgment(&p.id, "withdrawn".parse()?)?;
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "judgment_withdrawn",
         &p.id,
         serde_json::json!({ "kind": p.kind, "intent_id": p.intent_id, "reason": reason }),

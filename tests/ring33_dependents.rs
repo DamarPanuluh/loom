@@ -13,7 +13,7 @@
 //! with no passing proof is reported as such.
 
 use loom::model::{EdgeKind, NodeType, TruthClass};
-use loom::store::Store;
+use loom::store::{Agent, Store};
 mod common;
 use common::Tmp;
 
@@ -121,6 +121,7 @@ fn every_standing_on_edge_kind_traverses_uniformly() {
 fn a_requires_cycle_terminates_under_the_depth_bound() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store.set_agent(Agent::Solo);
     let a = intent(&store, "A");
     let b = intent(&store, "B");
     link(&store, EdgeKind::Requires, &a.id, &b.id);

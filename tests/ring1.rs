@@ -313,6 +313,7 @@ fn journal_collision_fails_before_graph_restore_and_corrected_import_can_retry()
         id: "colliding-export-journal-id".into(),
         ts: "1000".into(),
         actor: "exporter".into(),
+        profile: None,
         event: "ratification".into(),
         target_id: imported_id.clone(),
         payload: serde_json::json!({"decision": "accepted"}),
@@ -325,6 +326,7 @@ fn journal_collision_fails_before_graph_restore_and_corrected_import_can_retry()
     let destination = Tmp::new();
     journal::append(
         destination.path(),
+        &loom::identity::ExecutionIdentity::solo(),
         "local authority",
         "local-target",
         serde_json::json!({}),

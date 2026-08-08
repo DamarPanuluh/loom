@@ -1,14 +1,64 @@
 //! Ring 6 tests — smells (structural), debt (statistical, never stored),
 //! doctor (integrity), and a live journey run against a mock HTTP server.
 
+use loom::identity::Agent;
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
-use loom::store::Store;
+use loom::store::Store as LoomStore;
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
 mod common;
 use common::*;
+
+/// Ring 6 builds fixture graphs in-process. Keep those fixtures hermetic when
+/// the suite itself is launched by a lane-scoped proof runner: the runner's
+/// authority must not become the authority used to construct the fixture.
+struct Store(LoomStore);
+
+impl Store {
+    fn init(root: &Path, name: Option<&str>, observed: bool) -> loom::Result<Self> {
+        let store = LoomStore::init(root, name, observed)?;
+        store.set_agent(Agent::Solo);
+        Ok(Self(store))
+    }
+
+    fn open(root: &Path) -> loom::Result<Self> {
+        let store = LoomStore::open(root)?;
+        store.set_agent(Agent::Solo);
+        Ok(Self(store))
+    }
+
+    fn derived_node_id(node_type: NodeType, det_key: &str) -> String {
+        LoomStore::derived_node_id(node_type, det_key)
+    }
+}
+
+impl Deref for Store {
+    type Target = LoomStore;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Store {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// Spawn the compiled CLI as an independent solo fixture operator. Executor
+/// attribution belongs to the outer proof runner and must not leak into the
+/// graph mutations performed by these subprocess fixtures.
+fn loom_command() -> std::process::Command {
+    let mut command =
+        std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    command.env(loom::identity::AGENT_ENV, "solo");
+    command.env_remove(loom::identity::PROFILE_ENV);
+    command
+}
 
 fn intent(store: &Store, name: &str, lifecycle: &str) -> String {
     store
@@ -1234,7 +1284,7 @@ fn mock_server_handling(
 /// startup, stdout/stderr, and Cargo's `CARGO_BIN_EXE_loom` wiring.
 /// Assert it exits zero (the journey add/run wiring under test).
 fn run_cli(tmp: &Path, args: &[&str]) {
-    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    let mut cmd = loom_command();
     cmd.arg("--graph").arg(tmp).args(args);
     let out = cmd
         .output()
@@ -1251,7 +1301,7 @@ fn run_cli(tmp: &Path, args: &[&str]) {
 /// Run `loom --graph <tmp> <args> --json` and return stdout parsed as JSON,
 /// panicking with stdout/stderr on failure so a regression is diagnosed.
 fn run_cli_json(tmp: &Path, args: &[&str]) -> serde_json::Value {
-    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    let mut cmd = loom_command();
     cmd.arg("--graph").arg(tmp).args(args).arg("--json");
     let out = cmd
         .output()
@@ -1855,7 +1905,7 @@ fn journey_run_failing_exits_nonzero_while_recording_failure() {
 /// Run the compiled `loom` binary with arbitrary args (no --graph); returns
 /// stdout parsed as JSON. Panics on non-zero exit or non-JSON output.
 fn run_loom_json(args: &[&str]) -> serde_json::Value {
-    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    let mut cmd = loom_command();
     cmd.args(args).arg("--json");
     let out = cmd
         .output()
@@ -1979,7 +2029,7 @@ fn journey_add_refuses_unresolvable_step_intents_before_any_write() {
     )
     .unwrap();
 
-    let out = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")))
+    let out = loom_command()
         .arg("--graph")
         .arg(tmp.path())
         .args(["journey", "add", spec_path.to_str().unwrap()])
@@ -2295,7 +2345,7 @@ fn journey_diagnose_reports_clear_error_when_base_unresolved() {
     )
     .unwrap();
 
-    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    let mut cmd = loom_command();
     cmd.args(["journey", "diagnose", spec_path.to_str().unwrap()]);
     // Ensure BASE_URL is not inherited from the test environment.
     cmd.env_remove("BASE_URL");
@@ -2330,7 +2380,7 @@ fn journey_diagnose_rejects_invalid_http_method() {
     )
     .unwrap();
 
-    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    let mut cmd = loom_command();
     cmd.args(["journey", "diagnose", spec_path.to_str().unwrap()]);
     let out = cmd.output().unwrap();
     assert!(
@@ -2619,7 +2669,7 @@ fn journey_diagnose_detail_stays_plain_when_no_body_expectations() {
 /// asserting on exit code — used for error-path assertions where a non-zero
 /// exit is the contract under test.
 fn run_cli_raw(tmp: &Path, args: &[&str]) -> (std::process::ExitStatus, String, String) {
-    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    let mut cmd = loom_command();
     cmd.arg("--graph").arg(tmp).args(args);
     let out = cmd
         .output()
@@ -3448,7 +3498,7 @@ fn layering_resolves_extern_in_nested_workspace() {
 /// Run `loom` with arbitrary args (no --graph) and return (status, stdout,
 /// stderr) without asserting on exit code — for `init` and error-path cases.
 fn run_loom_raw(args: &[&str]) -> (std::process::ExitStatus, String, String) {
-    let mut cmd = std::process::Command::new(std::path::PathBuf::from(env!("CARGO_BIN_EXE_loom")));
+    let mut cmd = loom_command();
     cmd.args(args);
     let out = cmd
         .output()

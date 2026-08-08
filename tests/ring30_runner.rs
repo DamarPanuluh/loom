@@ -20,6 +20,7 @@
 //!   2. A failure loom's own infrastructure caused is never attributed to the
 //!      code under test.
 
+use loom::identity::Agent;
 use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 mod common;
@@ -55,6 +56,7 @@ fn shell_token(value: &std::path::Path) -> String {
 
 fn seeded(root: &std::path::Path) -> String {
     let store = Store::init(root, Some("t"), false).unwrap();
+    store.set_agent(Agent::Solo);
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/thing.rs"), "pub fn thing() -> u8 { 1 }\n").unwrap();
     let intent = store
@@ -209,6 +211,53 @@ fn a_failure_loom_caused_is_blocked_not_failed() {
             .is_some_and(|reason| reason.contains("infrastructure contention")),
         "{value}"
     );
+}
+
+#[test]
+fn a_command_that_cannot_start_is_blocked_not_failed() {
+    let tmp = Tmp::new();
+    let missing_cwd = tmp.path().join("missing-working-directory");
+    let observation = loom::runner::observe_command(
+        &missing_cwd,
+        loom::model::RunProducer::Command,
+        "true",
+        &[],
+        0,
+        60,
+    )
+    .expect("a start failure is an observed block, not an I/O error");
+
+    match observation {
+        loom::runner::Observation::Blocked { reason } => {
+            assert!(reason.contains("could not start"), "{reason}");
+        }
+        loom::runner::Observation::Ran(run) => {
+            panic!("an unstarted command cannot produce a run: {run:?}");
+        }
+    }
+}
+
+#[test]
+fn a_timed_out_command_is_blocked_not_failed() {
+    let tmp = Tmp::new();
+    let observation = loom::runner::observe_command(
+        tmp.path(),
+        loom::model::RunProducer::Command,
+        "sleep 1",
+        &[],
+        0,
+        0,
+    )
+    .expect("a timeout is an observed block, not an I/O error");
+
+    match observation {
+        loom::runner::Observation::Blocked { reason } => {
+            assert!(reason.contains("exceeded timeout_secs=0"), "{reason}");
+        }
+        loom::runner::Observation::Ran(run) => {
+            panic!("a timed-out command cannot produce a run: {run:?}");
+        }
+    }
 }
 
 /// Exit 75 is only loom contention when an exact out-of-band attestation
@@ -516,6 +565,7 @@ fn a_rule_is_measured_against_realizing_files_not_verifying_ones() {
     let tmp = Tmp::new();
     let intent = seeded(tmp.path());
     let store = Store::open(tmp.path()).unwrap();
+    store.set_agent(Agent::Solo);
 
     // Attach a test file to the same behavior, in the `verifies` role.
     std::fs::create_dir_all(tmp.path().join("tests")).unwrap();

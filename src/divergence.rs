@@ -756,13 +756,13 @@ mod tests {
             }
         }
         for i in 0..40 {
-            crate::journal::append(
-                tmp.path(),
-                "note",
-                &format!("target-{i}"),
-                serde_json::json!({ "i": i }),
-            )
-            .unwrap();
+            store
+                .append_journal(
+                    "note",
+                    &format!("target-{i}"),
+                    serde_json::json!({ "i": i }),
+                )
+                .unwrap();
         }
 
         crate::journal::reset_full_read_count();

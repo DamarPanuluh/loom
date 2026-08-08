@@ -20,7 +20,7 @@ impl Store {
     /// A mediated human decision takes a separate typed path; this method is
     /// intentionally unaware of it.
     pub fn require_human_authority(&self) -> Result<()> {
-        if let Agent::Lane(r) = self.agent.get() {
+        if let Agent::Lane(r) = self.agent() {
             bail!(
                 "INV-8: ratification authority is human-only — agent 'llm:{}' may not decide; ask the human and record their exact answer with --human-decision",
                 r.as_str()
@@ -732,7 +732,7 @@ impl Store {
         // "every ratified intent has a journal entry behind it" a checkable
         // invariant — the predicate that identifies the 39 facet-only
         // ratifications this graph carried from before the spine.
-        let entry = crate::journal::append(self.root(), event, id, {
+        let entry = self.append_journal(event, id, {
             let mut payload = serde_json::json!({
             "evidence": evidence,
             "ratified_by": "human",

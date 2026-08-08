@@ -602,7 +602,7 @@ fn run_adapter_command(
     };
     Ok((
         String::from_utf8_lossy(&captured.stdout).into_owned(),
-        captured.status.code(),
+        captured.status.code().map(i64::from),
     ))
 }
 

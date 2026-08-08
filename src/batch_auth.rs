@@ -208,12 +208,15 @@ fn authority_is_human(authority: &str) -> bool {
 }
 
 /// Append a sealed envelope to the journal. `target_id` is the subject digest.
-pub fn append_envelope(root: &Path, envelope: &BatchAuthorization) -> Result<Entry> {
+pub fn append_envelope(
+    store: &crate::store::Store,
+    envelope: &BatchAuthorization,
+) -> Result<Entry> {
     if !envelope.digest_holds() {
         bail!("batch subject digest does not match the sealed subject list");
     }
     let payload = serde_json::to_value(envelope)?;
-    journal::append(root, EVENT, &envelope.subject_digest, payload)
+    store.append_journal(EVENT, &envelope.subject_digest, payload)
 }
 
 /// Parse a journal entry as a batch authorization envelope.
@@ -727,6 +730,7 @@ mod tests {
             id: "invalid-stamp".into(),
             ts: "not-a-timestamp".into(),
             actor: "test".into(),
+            profile: None,
             event: "test_evidence".into(),
             target_id: "finding-1".into(),
             payload: serde_json::json!({}),
@@ -747,13 +751,13 @@ mod tests {
     fn real_journal_reference_passes_only_contemporaneously() {
         let tmp = TmpRoot::new();
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
-        let evidence = journal::append(
-            store.root(),
-            "test_evidence",
-            "finding-1",
-            serde_json::json!({ "result": "reviewed" }),
-        )
-        .unwrap();
+        let evidence = store
+            .append_journal(
+                "test_evidence",
+                "finding-1",
+                serde_json::json!({ "result": "reviewed" }),
+            )
+            .unwrap();
         let mut envelope = envelope();
         envelope.evidence = vec![journal::reference(&evidence)];
         let minute = journal::minute_key(&evidence.ts).unwrap();
@@ -807,13 +811,13 @@ mod tests {
     fn imported_envelope_and_evidence_are_not_authority() {
         let tmp = TmpRoot::new();
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
-        let evidence = journal::append(
-            store.root(),
-            "test_evidence",
-            "finding-1",
-            serde_json::json!({ "result": "reviewed" }),
-        )
-        .unwrap();
+        let evidence = store
+            .append_journal(
+                "test_evidence",
+                "finding-1",
+                serde_json::json!({ "result": "reviewed" }),
+            )
+            .unwrap();
         let mut envelope = envelope();
         envelope.evidence = vec![journal::reference(&evidence)];
         let minute = journal::minute_key(&evidence.ts).unwrap();
@@ -868,6 +872,7 @@ mod tests {
             id: "imported-proof".into(),
             ts: "1784963425000".into(),
             actor: "llm:analyzer".into(),
+            profile: None,
             event: "test_evidence".into(),
             target_id: "finding-1".into(),
             payload: serde_json::json!({}),
@@ -879,6 +884,7 @@ mod tests {
             id: "imported-envelope".into(),
             ts: "1784963426000".into(),
             actor: "llm:analyzer".into(),
+            profile: None,
             event: EVENT.into(),
             target_id: imported_envelope.subject_digest.clone(),
             payload: serde_json::to_value(&imported_envelope).unwrap(),
@@ -904,16 +910,12 @@ mod tests {
             None
         );
 
-        let local_evidence = journal::append(
-            store.root(),
-            "test_evidence",
-            "finding-1",
-            serde_json::json!({}),
-        )
-        .unwrap();
+        let local_evidence = store
+            .append_journal("test_evidence", "finding-1", serde_json::json!({}))
+            .unwrap();
         let mut local_envelope = envelope();
         local_envelope.evidence = vec![journal::reference(&local_evidence)];
-        let local_entry = append_envelope(store.root(), &local_envelope).unwrap();
+        let local_entry = append_envelope(&store, &local_envelope).unwrap();
         let latest = journal::stamp_millis(&local_entry.ts).unwrap();
         let minute = journal::minute_key(&local_entry.ts).unwrap();
         assert_eq!(
@@ -990,21 +992,21 @@ mod tests {
         // (the human-gated batch path), target_id = the subject digest of the
         // exact burst, payload carrying a HumanDecision + evidence.
         let digest = subject_digest(&envelope().subjects);
-        let record = journal::append(
-            store.root(),
-            "batch_intent",
-            &digest,
-            serde_json::json!({
-                "operation": "ratify",
-                "subjects": envelope().subjects,
-                "human_decision": crate::ratification::HumanDecision::mediated(
-                    "the human reviewed the enumerated snapshot and stands behind it",
-                )
-                .unwrap(),
-                "evidence": "portfolio review of the enumerated snapshot",
-            }),
-        )
-        .unwrap();
+        let record = store
+            .append_journal(
+                "batch_intent",
+                &digest,
+                serde_json::json!({
+                    "operation": "ratify",
+                    "subjects": envelope().subjects,
+                    "human_decision": crate::ratification::HumanDecision::mediated(
+                        "the human reviewed the enumerated snapshot and stands behind it",
+                    )
+                    .unwrap(),
+                    "evidence": "portfolio review of the enumerated snapshot",
+                }),
+            )
+            .unwrap();
 
         // The seal is deliberately retrospective: its own timestamp is AFTER
         // the burst's latest fact. It is accepted only because the cited
@@ -1067,8 +1069,7 @@ mod tests {
         // no HumanDecision) must not close the burst even with --authority
         // human — the event identifies the trusted producer, and this one is
         // not it.
-        let machine_record = journal::append(
-            store.root(),
+        let machine_record = store.append_journal(
             "batch_apply",
             &digest,
             serde_json::json!({ "operation": "adjudicate", "routing_class": "mechanical_apply" }),
@@ -1100,13 +1101,13 @@ mod tests {
         // An arbitrary record with the right event name but forged by the
         // caller is still refused: `journal::append` is not the trusted path,
         // and the record here lacks the HumanDecision schema the gate needs.
-        let forged = journal::append(
-            store.root(),
-            "batch_intent",
-            &digest,
-            serde_json::json!({ "operation": "ratify", "evidence": "looks plausible" }),
-        )
-        .unwrap();
+        let forged = store
+            .append_journal(
+                "batch_intent",
+                &digest,
+                serde_json::json!({ "operation": "ratify", "evidence": "looks plausible" }),
+            )
+            .unwrap();
         let mut forged_seal = envelope.clone();
         forged_seal.authority = "human".into();
         forged_seal.evidence = vec![journal::reference(&forged)];
@@ -1156,21 +1157,21 @@ mod tests {
 
         // A bound human-decision record for the WRONG subject set must fail.
         let other_digest = subject_digest(&["finding-other".to_string()]);
-        let wrong_record = journal::append(
-            store.root(),
-            "batch_intent",
-            &other_digest,
-            serde_json::json!({
-                "operation": "ratify",
-                "subjects": ["finding-other"],
-                "human_decision": crate::ratification::HumanDecision::mediated(
-                    "the human reviewed the OTHER snapshot",
-                )
-                .unwrap(),
-                "evidence": "other portfolio",
-            }),
-        )
-        .unwrap();
+        let wrong_record = store
+            .append_journal(
+                "batch_intent",
+                &other_digest,
+                serde_json::json!({
+                    "operation": "ratify",
+                    "subjects": ["finding-other"],
+                    "human_decision": crate::ratification::HumanDecision::mediated(
+                        "the human reviewed the OTHER snapshot",
+                    )
+                    .unwrap(),
+                    "evidence": "other portfolio",
+                }),
+            )
+            .unwrap();
         let mut wrong_seal = envelope.clone();
         wrong_seal.authority = "human".into();
         wrong_seal.evidence = vec![journal::reference(&wrong_record)];

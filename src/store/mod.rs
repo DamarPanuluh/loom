@@ -20,6 +20,8 @@ use rusqlite_migration::{Migrations, M};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 
+pub use crate::identity::Agent;
+
 /// Identity of a graph — what other graphs reference in a federation. Travels
 /// in the export.
 #[derive(Debug, Clone, PartialEq)]
@@ -94,49 +96,8 @@ pub const PORTABLE_META_KEYS: &[&str] = &[
 pub struct Store {
     conn: Connection,
     root: PathBuf,
-    agent: std::cell::Cell<Agent>,
+    identity: std::cell::RefCell<crate::identity::ExecutionIdentity>,
     _lock: File,
-}
-
-/// The acting agent. Solo (default) may drive every lane; a declared lane is
-/// enforced at the write boundary (a quality agent cannot write a builder edge).
-/// Evidence/integrity gates apply regardless of agent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Agent {
-    Solo,
-    Lane(registry::OwnerRole),
-}
-
-impl Agent {
-    /// Parse `LOOM_AGENT` from the environment. Unset (or the bare `llm`/`solo`
-    /// sentinel) is Solo; a declared lane is that lane; anything else is an
-    /// error. A typo like `llm:qualtiy` MUST fail closed — never silently
-    /// disable the lane gate by falling through to Solo.
-    pub fn from_env() -> Result<Agent> {
-        match std::env::var("LOOM_AGENT") {
-            Ok(v) => Agent::parse(&v),
-            Err(_) => Ok(Agent::Solo),
-        }
-    }
-
-    pub fn parse(v: &str) -> Result<Agent> {
-        let v = v.trim();
-        if v.is_empty() || v == "llm" || v == "solo" {
-            return Ok(Agent::Solo);
-        }
-        let lane = v.strip_prefix("llm:").unwrap_or(v);
-        match lane {
-            "builder" => Ok(Agent::Lane(registry::OwnerRole::Builder)),
-            "analyzer" => Ok(Agent::Lane(registry::OwnerRole::Analyzer)),
-            "fixer" => Ok(Agent::Lane(registry::OwnerRole::Fixer)),
-            "validator" => Ok(Agent::Lane(registry::OwnerRole::Validator)),
-            "quality" => Ok(Agent::Lane(registry::OwnerRole::Quality)),
-            "rectify" => Ok(Agent::Lane(registry::OwnerRole::Rectify)),
-            other => bail!(
-                "unrecognized LOOM_AGENT '{v}' — use llm:<builder|analyzer|fixer|validator|quality|rectify>, or leave unset for solo (got lane '{other}')"
-            ),
-        }
-    }
 }
 
 const SCHEMA: &str = r#"
@@ -211,7 +172,8 @@ impl Store {
         std::fs::create_dir_all(&loom_dir)
             .with_context(|| format!("creating {}", loom_dir.display()))?;
         let db_path = loom_dir.join(GRAPH_DB);
-        let lock = acquire_lock(&loom_dir, true)?;
+        let identity = crate::identity::ExecutionIdentity::resolve_env()?;
+        let lock = acquire_lock(&loom_dir, true, &identity)?;
         let fresh = !db_path.exists();
         let mut conn =
             Connection::open(&db_path).with_context(|| format!("opening {}", db_path.display()))?;
@@ -261,13 +223,24 @@ impl Store {
         Ok(Store {
             conn,
             root: root.to_path_buf(),
-            agent: std::cell::Cell::new(Agent::from_env()?),
+            identity: std::cell::RefCell::new(identity),
             _lock: lock,
         })
     }
 
     /// Open an existing graph at `root/.loom/graph.sqlite`.
     pub fn open(root: &Path) -> Result<Store> {
+        let identity = crate::identity::ExecutionIdentity::resolve_env()?;
+        Self::open_with_identity(root, identity)
+    }
+
+    /// Open using an identity already resolved by the enclosing command. Long
+    /// running commands use this when they must release and reacquire the graph
+    /// lock around child execution without reinterpreting process identity.
+    pub fn open_with_identity(
+        root: &Path,
+        identity: crate::identity::ExecutionIdentity,
+    ) -> Result<Store> {
         let loom_dir = root.join(LOOM_DIR);
         let db_path = loom_dir.join(GRAPH_DB);
         if !db_path.exists() {
@@ -276,14 +249,14 @@ impl Store {
                 db_path.display()
             );
         }
-        let lock = acquire_lock(&loom_dir, true)?;
+        let lock = acquire_lock(&loom_dir, true, &identity)?;
         let mut conn = Connection::open(&db_path)?;
         configure(&conn)?;
         apply_schema_migrations(&mut conn)?;
         Ok(Store {
             conn,
             root: root.to_path_buf(),
-            agent: std::cell::Cell::new(Agent::from_env()?),
+            identity: std::cell::RefCell::new(identity),
             _lock: lock,
         })
     }
@@ -302,7 +275,8 @@ impl Store {
                 db_path.display()
             );
         }
-        let lock = acquire_lock(&loom_dir, false)?;
+        let identity = crate::identity::ExecutionIdentity::resolve_env()?;
+        let lock = acquire_lock(&loom_dir, false, &identity)?;
         let conn = Connection::open(&db_path)?;
         configure_read(&conn)?;
         // `user_version` is the migration stamp maintained by the write path
@@ -334,7 +308,7 @@ impl Store {
         Ok(Store {
             conn,
             root: root.to_path_buf(),
-            agent: std::cell::Cell::new(Agent::from_env()?),
+            identity: std::cell::RefCell::new(identity),
             _lock: lock,
         })
     }
@@ -353,19 +327,60 @@ impl Store {
 
     /// The acting agent.
     pub fn agent(&self) -> Agent {
-        self.agent.get()
+        self.identity.borrow().authority()
+    }
+
+    /// Runtime provenance at the store seam. Authorization is derived from
+    /// the already-validated Agent; profile remains independent attribution.
+    pub fn execution_identity(&self) -> crate::identity::ExecutionIdentity {
+        self.identity.borrow().clone()
+    }
+
+    /// Append provenance using the identity resolved when this Store opened.
+    /// Callers never read process configuration or assemble audit identity.
+    pub fn append_journal(
+        &self,
+        event: &str,
+        target_id: &str,
+        payload: serde_json::Value,
+    ) -> Result<crate::journal::Entry> {
+        crate::journal::append(
+            self.root(),
+            &self.execution_identity(),
+            event,
+            target_id,
+            payload,
+        )
+    }
+
+    pub fn append_journal_once(
+        &self,
+        event: &str,
+        target_id: &str,
+        payload: serde_json::Value,
+        same_transition: impl Fn(&crate::journal::Entry) -> bool,
+    ) -> Result<Option<crate::journal::Entry>> {
+        crate::journal::append_once(
+            self.root(),
+            &self.execution_identity(),
+            event,
+            target_id,
+            payload,
+            same_transition,
+        )
     }
 
     /// Override the acting agent (CLI sets this from `LOOM_AGENT`; tests set it
     /// explicitly to exercise lane gates without env races).
     pub fn set_agent(&self, agent: Agent) {
-        self.agent.set(agent);
+        let identity = self.identity.borrow().with_authority(agent);
+        *self.identity.borrow_mut() = identity;
     }
 
     /// Lane gate: a declared lane may only write edges/verdicts it owns. Solo
     /// drives every lane. `sync` is implicit (derived paths never call this).
     fn check_lane(&self, owner: registry::OwnerRole) -> Result<()> {
-        match self.agent.get() {
+        match self.agent() {
             Agent::Solo => Ok(()),
             Agent::Lane(role) if role.satisfies(owner) => Ok(()),
             Agent::Lane(role) => bail!(
@@ -615,6 +630,22 @@ CREATE TABLE judgment_proposal (
 CREATE INDEX idx_judgment_state ON judgment_proposal(state, kind);
 "#;
 
+/// Preserve the executor profile independently from write authority. Existing
+/// facts predate profile capture and correctly remain empty rather than being
+/// backfilled with an invented worker identity.
+const MIGRATION_10_EXECUTOR_PROFILE: &str = r#"
+ALTER TABLE fact ADD COLUMN asserted_profile TEXT NOT NULL DEFAULT '';
+"#;
+
+/// Normalize absent executor attribution to SQL NULL. V10 used an empty-string
+/// sentinel; preserve real values while removing that representational split.
+const MIGRATION_11_NULLABLE_EXECUTOR_PROFILE: &str = r#"
+ALTER TABLE fact ADD COLUMN asserted_profile_nullable TEXT;
+UPDATE "fact" SET asserted_profile_nullable = NULLIF(asserted_profile, '');
+ALTER TABLE fact DROP COLUMN asserted_profile;
+ALTER TABLE fact RENAME COLUMN asserted_profile_nullable TO asserted_profile;
+"#;
+
 fn schema_migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(SCHEMA),
@@ -629,6 +660,8 @@ fn schema_migrations() -> Migrations<'static> {
         M::up(MIGRATION_7_BATCH_AUTH),
         M::up(MIGRATION_8_HIT_ADJUDICATION),
         M::up(MIGRATION_9_JUDGMENT_INBOX),
+        M::up(MIGRATION_10_EXECUTOR_PROFILE),
+        M::up(MIGRATION_11_NULLABLE_EXECUTOR_PROFILE),
     ])
 }
 
@@ -804,7 +837,11 @@ pub(crate) const READ_LOCK_WAIT_BUDGET_MS: u64 = 10_000;
 /// the store instead of surfacing SQLITE_BUSY.
 pub(crate) const SQLITE_BUSY_TIMEOUT_MS: u64 = 5_000;
 
-fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
+fn acquire_lock(
+    loom_dir: &Path,
+    exclusive: bool,
+    identity: &crate::identity::ExecutionIdentity,
+) -> Result<File> {
     let lock_path = loom_dir.join("lock");
     let file = OpenOptions::new()
         .create(true)
@@ -834,7 +871,7 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
         };
         match acquired {
             Ok(()) => {
-                record_lock_holder(&file, exclusive);
+                record_lock_holder(&file, exclusive, identity);
                 return Ok(file);
             }
             // A held lock may release any moment — retry with backoff, but
@@ -868,11 +905,16 @@ fn acquire_lock(loom_dir: &Path, exclusive: bool) -> Result<File> {
 /// harness lock's holder record. Best-effort: the flock itself is the
 /// enforcement, and it releases with the holder's process even if this
 /// write fails.
-fn record_lock_holder(file: &File, exclusive: bool) {
+fn record_lock_holder(
+    file: &File,
+    exclusive: bool,
+    execution: &crate::identity::ExecutionIdentity,
+) {
     use std::io::Write;
     let identity = serde_json::json!({
         "pid": std::process::id(),
-        "agent": std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into()),
+        "agent": execution.actor(),
+        "profile": execution.profile(),
         "mode": if exclusive { "write" } else { "read" },
         "command": std::env::args().collect::<Vec<_>>().join(" "),
         "since": crate::journal::millis_to_iso(
@@ -893,14 +935,22 @@ fn describe_lock_holder(lock_path: &Path) -> String {
         .ok()
         .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok());
     match parsed {
-        Some(h) => format!(
-            "recorded holder is agent {} pid {} ({} access, since {})\n  command: {}",
-            h.get("agent").and_then(|v| v.as_str()).unwrap_or("?"),
-            h.get("pid").and_then(|v| v.as_u64()).unwrap_or(0),
-            h.get("mode").and_then(|v| v.as_str()).unwrap_or("?"),
-            h.get("since").and_then(|v| v.as_str()).unwrap_or("?"),
-            h.get("command").and_then(|v| v.as_str()).unwrap_or("?"),
-        ),
+        Some(h) => {
+            let profile = h
+                .get("profile")
+                .and_then(|v| v.as_str())
+                .map(|p| format!(" / profile {p}"))
+                .unwrap_or_default();
+            format!(
+                "recorded holder is agent {}{} pid {} ({} access, since {})\n  command: {}",
+                h.get("agent").and_then(|v| v.as_str()).unwrap_or("?"),
+                profile,
+                h.get("pid").and_then(|v| v.as_u64()).unwrap_or(0),
+                h.get("mode").and_then(|v| v.as_str()).unwrap_or("?"),
+                h.get("since").and_then(|v| v.as_str()).unwrap_or("?"),
+                h.get("command").and_then(|v| v.as_str()).unwrap_or("?"),
+            )
+        }
         None => "held by another loom process (identity unread)".to_string(),
     }
 }
@@ -1091,6 +1141,18 @@ mod tests {
         let store = Store::init(tmp.path(), Some("fresh"), false).unwrap();
         assert_eq!(sqlite_user_version(&store.conn), SCHEMA_VERSION);
         assert_eq!(store.identity().unwrap().schema_version, SCHEMA_VERSION);
+        let asserted_profile_not_null: i64 = store
+            .conn
+            .query_row(
+                "SELECT \"notnull\" FROM pragma_table_info('fact') WHERE name = 'asserted_profile'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            asserted_profile_not_null, 0,
+            "absent executor attribution must be represented as SQL NULL"
+        );
     }
 
     /// The aborted v7 no-op stamp must not brick a local graph after rollback:
@@ -1107,7 +1169,8 @@ mod tests {
         // A faithful phantom v7: the v7 columns and everything v8/v9 add are
         // absent, but the stamp claims 7.
         conn.execute_batch(
-            "ALTER TABLE fact DROP COLUMN decision_mode;
+            "ALTER TABLE fact DROP COLUMN asserted_profile;
+             ALTER TABLE fact DROP COLUMN decision_mode;
              ALTER TABLE fact DROP COLUMN batch_id;
              DROP TABLE hit_adjudication;
              DROP TABLE judgment_proposal;",
@@ -1152,13 +1215,13 @@ mod tests {
                 serde_json::json!({}),
             )
             .unwrap();
-        let journal = crate::journal::append(
-            tmp.path(),
-            "ratification",
-            &intent.id,
-            serde_json::json!({ "ratified_by": "policy:legacy" }),
-        )
-        .unwrap();
+        let journal = store
+            .append_journal(
+                "ratification",
+                &intent.id,
+                serde_json::json!({ "ratified_by": "policy:legacy" }),
+            )
+            .unwrap();
         store
             .conn
             .execute(
@@ -1189,7 +1252,8 @@ mod tests {
         store
             .conn
             .execute_batch(
-                "ALTER TABLE fact DROP COLUMN decision_mode;
+                "ALTER TABLE fact DROP COLUMN asserted_profile;
+                 ALTER TABLE fact DROP COLUMN decision_mode;
                  ALTER TABLE fact DROP COLUMN batch_id;
                  DROP TABLE hit_adjudication;
                  DROP TABLE judgment_proposal;",

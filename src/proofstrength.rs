@@ -48,6 +48,7 @@ use crate::journey::{Expect, JourneySpec};
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
+use clap::Parser;
 use serde::{Deserialize, Serialize};
 
 use std::path::Path;
@@ -411,13 +412,24 @@ fn call_witness(
             if !entry.s3_eligible {
                 continue;
             }
-            let reaches = reach.callers.iter().any(|caller| {
-                caller.file == entry.file
-                    && entry
-                        .entry_symbol
-                        .as_deref()
-                        .is_none_or(|expected| caller.symbol == expected)
-            });
+            // The entry may itself be the grounded handler. `exact_impact_at`
+            // returns callers, so that valid zero-hop path is not present in
+            // `reach.callers`; recognize it only by the same exact file+symbol
+            // qualification used for multi-hop witnesses. Requiring a symbol
+            // keeps bare-file evidence out, while `s3_eligible` above keeps the
+            // intent-wide diagnostic fallback out.
+            let zero_hop = entry
+                .entry_symbol
+                .as_deref()
+                .is_some_and(|expected| entry.file == file && expected == symbol);
+            let reaches = zero_hop
+                || reach.callers.iter().any(|caller| {
+                    caller.file == entry.file
+                        && entry
+                            .entry_symbol
+                            .as_deref()
+                            .is_none_or(|expected| caller.symbol == expected)
+                });
             if reaches {
                 return Ok(Some(CallEvidenceWitness {
                     source: entry.source.into(),
@@ -932,6 +944,30 @@ pub fn command_entries(
     graph: &crate::callgraph::CallGraph,
     source: &'static str,
 ) -> Vec<EntryEvidence> {
+    command_entries_from(command, graph, source, CommandOrigin::Untrusted)
+}
+
+/// Where a command string came from determines whether bare `loom` is a
+/// trustworthy name for this checkout's binary.
+///
+/// Generic validation commands may resolve `loom` through an arbitrary PATH,
+/// so the public mapper remains fail-closed. Recorded journey steps are
+/// different: the journey runner executes them through `subprocess`, which
+/// binds both direct and compound bare `loom` invocations to `current_exe`.
+/// Only `derived_entries` can confer that narrowly proven origin, after it has
+/// matched the validation's exact outer journey runner and artifact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CommandOrigin {
+    Untrusted,
+    CheckoutBoundJourneyStep,
+}
+
+fn command_entries_from(
+    command: &str,
+    graph: &crate::callgraph::CallGraph,
+    source: &'static str,
+    origin: CommandOrigin,
+) -> Vec<EntryEvidence> {
     if command.contains("||")
         || command.contains("&&")
         || command.contains('|')
@@ -955,61 +991,25 @@ pub fn command_entries(
         out.extend(cargo_run_entries(&words, graph, source));
     } else {
         let _binary = first.rsplit('/').next().unwrap_or(first);
-        // Only a checkout-bound loom binary. Bare `loom` resolves through PATH
-        // and may be a different install; absolute paths outside the checkout
-        // are likewise untrusted. Accept `./loom` and `target/**/loom` only.
+        // Only a checkout-bound loom binary. Bare `loom` normally resolves
+        // through PATH and may be a different install; it is accepted only
+        // when the caller proved this is a recorded journey step, whose runner
+        // binds bare loom to current_exe. Absolute paths outside the checkout
+        // remain untrusted. Accept `./loom` and exact target paths everywhere.
         // Exact checkout-bound binaries only. Lexical `target/**/loom` would
         // accept `target/../../tmp/loom` and credit an external binary.
         let is_checkout_loom = matches!(
             first,
             "./loom" | "target/debug/loom" | "target/release/loom"
-        );
+        ) || (first == "loom"
+            && origin == CommandOrigin::CheckoutBoundJourneyStep);
         if is_checkout_loom {
-            // Argument-sensitive, never `main`-broad: `loom --help` does not
-            // execute the code a validation is claiming to run. The subcommand
-            // maps to its real handler symbol, and only when the call graph
-            // actually defines that symbol. Top-level help/version flags
-            // anywhere before the subcommand, unknown subcommands, and
-            // flag-only invocations all fail closed with no evidence.
-            if words
-                .iter()
-                .any(|word| matches!(word.as_str(), "--help" | "-h" | "--version" | "-V"))
-            {
-                return Vec::new();
-            }
-            // Reject unknown/misplaced flags. `loom --bogus sync` and
-            // `loom sync --bogus` are not executions of sync_cmd — clap would
-            // refuse them. Without a full CLI parse here, any unexpected `-`
-            // token (outside known global option shapes) fails closed.
-            if loom_argv_has_unknown_flag(&words) {
-                return Vec::new();
-            }
-            let subcommand = loom_subcommand_token(&words);
-            if let Some(handler) = subcommand.and_then(loom_subcommand_handler) {
-                // Mapping only credits leaf handlers with no extra positionals.
-                // `loom sync extra` is not an execution of sync_cmd under this
-                // lightweight mapper.
-                if loom_has_extra_positionals(&words) {
-                    return Vec::new();
-                }
-                // Unique defining file only. `.find()` would credit the first
-                // match when a helper of the same name exists elsewhere, and
-                // that is not proof of which surface the CLI enters.
-                let defining: Vec<&str> = graph
-                    .files()
-                    .filter(|file| {
-                        (file.starts_with("src/") || file.starts_with("tests/"))
-                            && graph.file_defines(file, handler)
-                    })
-                    .collect();
-                if defining.len() == 1 {
-                    out.push(EntryEvidence {
-                        source,
-                        file: defining[0].into(),
-                        entry_symbol: Some(handler.into()),
-                        s3_eligible: true,
-                    });
-                }
+            // Parse the real typed CLI rather than approximating Clap's flag,
+            // enum, positional, help, and nested-subcommand grammar. The
+            // explicit route table below then names the exact dispatcher or
+            // leaf handler entered by `commands::run`.
+            if let Some(handler) = loom_cli_handler(&words) {
+                out.extend(exact_entry(graph, source, handler.file, handler.symbol));
             }
         } else if first.contains('/')
             || first.ends_with(".py")
@@ -1094,130 +1094,72 @@ pub fn command_entries(
     out
 }
 
-/// Global loom options that take a following value. Shared by subcommand
-/// discovery and unknown-flag rejection so the two cannot drift.
-/// Global loom options that take a following value for *handler mapping*.
-/// Mirrors `Cli` globals in `src/cli.rs`: only `--graph <path>`.
-const LOOM_VALUE_TAKERS: &[&str] = &["--graph"];
-
-/// Known bare global flags (no value) for handler mapping. Mirrors `Cli`:
-/// only `--json`. Boolean `=value` forms are rejected below.
-const LOOM_BARE_FLAGS: &[&str] = &["--json"];
-
-/// True when argv contains a flag the lightweight mapper cannot vouch for.
-/// Full clap parse is the ideal; until then, unknown/misplaced flags must not
-/// earn handler evidence (`loom --bogus sync`, `loom sync --bogus`).
-fn loom_argv_has_unknown_flag(words: &[String]) -> bool {
-    let mut index = 1;
-    while index < words.len() {
-        let word = words[index].as_str();
-        if !word.starts_with('-') {
-            // Subcommand token and everything after: still reject unknown flags.
-            index += 1;
-            continue;
-        }
-        if LOOM_VALUE_TAKERS.contains(&word) {
-            // Missing value is not a valid invocation.
-            if index + 1 >= words.len() || words[index + 1].starts_with('-') {
-                return true;
-            }
-            index += 2;
-            continue;
-        }
-        if word.contains('=') {
-            let (name, value) = word.split_once('=').unwrap_or((word, ""));
-            // Booleans cannot take `=value`. Value-takers need a non-empty value.
-            if LOOM_BARE_FLAGS.contains(&name) {
-                return true;
-            }
-            if LOOM_VALUE_TAKERS.contains(&name) {
-                if value.is_empty() {
-                    return true;
-                }
-                index += 1;
-                continue;
-            }
-            return true;
-        }
-        if LOOM_BARE_FLAGS.contains(&word) {
-            index += 1;
-            continue;
-        }
-        return true;
-    }
-    false
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LoomCliHandler {
+    file: &'static str,
+    symbol: &'static str,
 }
 
-/// The first non-flag token after consuming global options that take a value.
-/// `loom --graph <path> status` executes `status`, not `graph`'s value — a
-/// value-bearing option must never be mistaken for the subcommand.
-fn loom_subcommand_token(words: &[String]) -> Option<&str> {
-    let mut index = 1;
-    while index < words.len() {
-        let word = words[index].as_str();
-        if !word.starts_with('-') {
-            return Some(word);
-        }
-        if LOOM_VALUE_TAKERS.contains(&word) {
-            index += 2;
-            continue;
-        }
-        index += 1;
-    }
-    None
+fn cli_handler(file: &'static str, symbol: &'static str) -> Option<LoomCliHandler> {
+    Some(LoomCliHandler { file, symbol })
 }
 
-/// The handler symbol a `loom <subcommand>` invocation actually enters, if the
-/// call graph knows it. Only subcommands with a unique, verified CLI handler
-/// symbol belong here; dispatcher-level commands (`edge`, `intent`, `journey`,
-/// …) map to a shared `dispatch` symbol that is neither unique nor proof of
-/// which sub-handler executes, and `debt` collides with the advisory module,
-/// so they fail closed and must rely on an explicit `exercises` edge or
-/// `validation_command` evidence instead.
-/// True when argv has more than one non-flag token after global options.
-/// Mapping only supports bare `loom <leaf>` (plus known global flags).
-fn loom_has_extra_positionals(words: &[String]) -> bool {
-    let mut index = 1;
-    let mut positionals = 0;
-    while index < words.len() {
-        let word = words[index].as_str();
-        if word.starts_with('-') {
-            if LOOM_VALUE_TAKERS.contains(&word) {
-                index += 2;
-                continue;
-            }
-            index += 1;
-            continue;
+/// Resolve a syntactically and semantically valid Loom argv to the exact entry
+/// selected by `commands::run`. Unsupported command families return no credit;
+/// extending this table requires pointing at a real, uniquely identified
+/// dispatcher or leaf handler.
+fn loom_cli_handler(words: &[String]) -> Option<LoomCliHandler> {
+    let cli = crate::cli::Cli::try_parse_from(words).ok()?;
+    let json = cli.json;
+    match cli.command? {
+        crate::cli::Command::Welcome => cli_handler("src/commands/orient_cmd.rs", "welcome"),
+        crate::cli::Command::Sync { .. } => cli_handler("src/commands/status_cmd.rs", "sync_cmd"),
+        crate::cli::Command::Status => cli_handler("src/commands/status_cmd.rs", "status"),
+        crate::cli::Command::Next { mode, all, full } => match (mode, all, full) {
+            // These are the same semantic branches and refusals as
+            // `commands::run`; Clap alone cannot express the --full coupling.
+            (Some(_), true, false) => cli_handler("src/commands/status_cmd.rs", "queue_list"),
+            (None, true, false) => cli_handler("src/commands/status_cmd.rs", "next_all"),
+            (None, true, true) if json => cli_handler("src/commands/status_cmd.rs", "next_all"),
+            (_, false, false) => cli_handler("src/commands/status_cmd.rs", "next_cmd"),
+            _ => None,
+        },
+        crate::cli::Command::Guide { .. } => cli_handler("src/commands/orient_cmd.rs", "guide"),
+        crate::cli::Command::Find { .. } => cli_handler("src/commands/discover_cmd.rs", "find_cmd"),
+        crate::cli::Command::Explain { .. } => {
+            cli_handler("src/commands/discover_cmd.rs", "explain_cmd")
         }
-        positionals += 1;
-        index += 1;
+        crate::cli::Command::Coverage => {
+            cli_handler("src/commands/diagnostics_cmd.rs", "coverage_cmd")
+        }
+        crate::cli::Command::Impact { .. } => {
+            cli_handler("src/commands/diagnostics_cmd.rs", "impact_cmd")
+        }
+        crate::cli::Command::Audit { cmd: None, .. } => {
+            cli_handler("src/commands/diagnostics_cmd.rs", "audit_cmd")
+        }
+        crate::cli::Command::Deepen { .. } => {
+            cli_handler("src/commands/diagnostics_cmd.rs", "deepen_cmd")
+        }
+        crate::cli::Command::Smells => cli_handler("src/commands/diagnostics_cmd.rs", "smells_cmd"),
+        crate::cli::Command::Doctor => cli_handler("src/commands/diagnostics_cmd.rs", "doctor_cmd"),
+        crate::cli::Command::Whoami => cli_handler("src/commands/diagnostics_cmd.rs", "whoami_cmd"),
+        crate::cli::Command::Export { .. } => cli_handler("src/commands/status_cmd.rs", "export"),
+        crate::cli::Command::Observe { .. } => {
+            cli_handler("src/commands/proof_cmd.rs", "observe_cmd")
+        }
+        crate::cli::Command::Decide { .. } => {
+            cli_handler("src/commands/capture_cmd.rs", "decide_cmd")
+        }
+        crate::cli::Command::Door { .. } => cli_handler("src/commands/capture_cmd.rs", "door"),
+        crate::cli::Command::Codefile {
+            cmd: crate::cli::CodefileCmd::List { .. },
+        } => cli_handler("src/commands/codefile_cmd.rs", "dispatch"),
+        crate::cli::Command::Inbox {
+            cmd: crate::cli::InboxCmd::Mark { .. } | crate::cli::InboxCmd::Remove { .. },
+        } => cli_handler("src/commands/capture_cmd.rs", "inbox"),
+        _ => None,
     }
-    positionals != 1
-}
-
-fn loom_subcommand_handler(subcommand: &str) -> Option<&'static str> {
-    // Only leaf commands with no required nested subcommand and no required
-    // positionals. Dispatchers (`validation`, `finding`, `inbox`, …) fail closed
-    // because `loom validation` is not an execution of any one handler.
-    Some(match subcommand {
-        "sync" => "sync_cmd",
-        "status" => "status",
-        "next" => "next_output",
-        "welcome" => "welcome",
-        "guide" => "guide",
-        "coverage" => "coverage_cmd",
-        "impact" => "impact_cmd",
-        "explain" => "explain_cmd",
-        "audit" => "audit_cmd",
-        "deepen" => "deepen_cmd",
-        "export" => "export",
-        "whoami" => "whoami_cmd",
-        "smells" => "smells_cmd",
-        "doctor" => "doctor_cmd",
-        "observe" => "observe_cmd",
-        "decide" => "decide_cmd",
-        _ => return None,
-    })
 }
 
 fn derived_entries(
@@ -1286,7 +1228,17 @@ fn derived_entries(
             } else {
                 continue;
             }
-            out.extend(command_entries(&step.run, graph, "journey_command"));
+            let origin = if outer_journey_run {
+                CommandOrigin::CheckoutBoundJourneyStep
+            } else {
+                CommandOrigin::Untrusted
+            };
+            out.extend(command_entries_from(
+                &step.run,
+                graph,
+                "journey_command",
+                origin,
+            ));
         }
     } else if let Some(command) = recorded {
         out.extend(command_entries(command, graph, "validation_command"));
@@ -1560,18 +1512,12 @@ pub fn store_witness(store: &Store, validation_id: &str, witness: &StrengthWitne
     if let Some(payload) = migration {
         let model = payload["witness_model"].clone();
         let previous_model = payload["previous_witness_model"].clone();
-        crate::journal::append_once(
-            store.root(),
-            "proof_strength_changed",
-            validation_id,
-            payload,
-            |entry| {
-                entry.event == "proof_strength_changed"
-                    && entry.target_id == validation_id
-                    && entry.payload["witness_model"] == model
-                    && entry.payload["previous_witness_model"] == previous_model
-            },
-        )?;
+        store.append_journal_once("proof_strength_changed", validation_id, payload, |entry| {
+            entry.event == "proof_strength_changed"
+                && entry.target_id == validation_id
+                && entry.payload["witness_model"] == model
+                && entry.payload["previous_witness_model"] == previous_model
+        })?;
     }
     store.set_facet(
         validation_id,

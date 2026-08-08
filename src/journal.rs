@@ -8,33 +8,35 @@
 use crate::{Result, LOOM_DIR};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+#[cfg(test)]
+use std::cell::Cell;
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-#[cfg(test)]
-use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 const JOURNAL_DIR: &str = "journal";
 const EVENTS_FILE: &str = "events.jsonl";
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-/// Process-local count of full journal parses (`read` / `read_counting`).
-///
-/// Permanent regression probe for the N×reread bug in hot paths — compiled
-/// only into test builds (`cfg(test)`), not release instrumentation.
+// Per-thread count of full journal parses (`read` / `read_counting`). This is a
+// permanent regression probe for the N×reread bug in hot paths, compiled only
+// into test builds. Thread locality keeps parallel tests from contaminating the
+// measurement while preserving exact call-path counts.
 #[cfg(test)]
-static FULL_READS: AtomicUsize = AtomicUsize::new(0);
+thread_local! {
+    static FULL_READS: Cell<usize> = const { Cell::new(0) };
+}
 
 /// How many times this process has fully parsed the journal (test builds only).
 #[cfg(test)]
 pub fn full_read_count() -> usize {
-    FULL_READS.load(Ordering::Relaxed)
+    FULL_READS.with(Cell::get)
 }
 
 /// Reset the full-read counter before a regression assertion (test builds only).
 #[cfg(test)]
 pub fn reset_full_read_count() {
-    FULL_READS.store(0, Ordering::Relaxed);
+    FULL_READS.with(|count| count.set(0));
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -55,7 +57,12 @@ impl Origin {
 pub struct Entry {
     pub id: String,
     pub ts: String,
+    /// Authorization identity (`solo` or `llm:<lane>`).
     pub actor: String,
+    /// Executor profile (for example `loom-auditor`), independent from actor
+    /// authority. Legacy entries deserialize with no profile.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
     pub event: String,
     pub target_id: String,
     pub payload: Value,
@@ -71,6 +78,7 @@ pub fn path(root: &Path) -> PathBuf {
 
 pub fn append_once(
     root: &Path,
+    identity: &crate::identity::ExecutionIdentity,
     event: &str,
     target_id: &str,
     payload: Value,
@@ -87,7 +95,7 @@ pub fn append_once(
     {
         return Ok(None);
     }
-    let entry = new_entry(event, target_id, payload);
+    let entry = new_entry(identity, event, target_id, payload);
     let mut line = serde_json::to_vec(&entry)?;
     line.push(b'\n');
     let mut file = OpenOptions::new()
@@ -99,7 +107,12 @@ pub fn append_once(
     Ok(Some(entry))
 }
 
-fn new_entry(event: &str, target_id: &str, payload: Value) -> Entry {
+fn new_entry(
+    identity: &crate::identity::ExecutionIdentity,
+    event: &str,
+    target_id: &str,
+    payload: Value,
+) -> Entry {
     let ts = timestamp();
     let id = format!(
         "{}-{}-{}",
@@ -110,7 +123,8 @@ fn new_entry(event: &str, target_id: &str, payload: Value) -> Entry {
     Entry {
         id,
         ts,
-        actor: std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into()),
+        actor: identity.actor(),
+        profile: identity.profile().map(str::to_owned),
         event: event.into(),
         target_id: target_id.into(),
         payload,
@@ -119,8 +133,14 @@ fn new_entry(event: &str, target_id: &str, payload: Value) -> Entry {
 }
 
 /// Append exactly one immutable event and return its evidence reference.
-pub fn append(root: &Path, event: &str, target_id: &str, payload: Value) -> Result<Entry> {
-    let entry = new_entry(event, target_id, payload);
+pub fn append(
+    root: &Path,
+    identity: &crate::identity::ExecutionIdentity,
+    event: &str,
+    target_id: &str,
+    payload: Value,
+) -> Result<Entry> {
+    let entry = new_entry(identity, event, target_id, payload);
     // Serialize the full JSONL record first, then append under a dedicated
     // journal lock. Shared graph readers may append from many processes at
     // once; split `to_writer` + newline writes interleave into corrupt lines.
@@ -199,7 +219,7 @@ fn read_untracked(root: &Path) -> Result<Vec<Entry>> {
 /// journal whose tail was damaged. Only genuine IO errors propagate.
 pub fn read_counting(root: &Path) -> Result<(Vec<Entry>, usize)> {
     #[cfg(test)]
-    FULL_READS.fetch_add(1, Ordering::Relaxed);
+    FULL_READS.with(|count| count.set(count.get() + 1));
     let file = path(root);
     let Ok(file) = OpenOptions::new().read(true).open(&file) else {
         return Ok((Vec::new(), 0));
@@ -553,6 +573,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn full_read_counter_is_isolated_from_parallel_test_threads() {
+        let dir = std::env::temp_dir().join(format!(
+            "loom-read-counter-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&dir);
+
+        reset_full_read_count();
+        let child_dir = dir.clone();
+        std::thread::spawn(move || {
+            reset_full_read_count();
+            read(&child_dir).unwrap();
+            assert_eq!(full_read_count(), 1);
+        })
+        .join()
+        .unwrap();
+
+        assert_eq!(
+            full_read_count(),
+            0,
+            "a journal read in another test thread must not contaminate this probe"
+        );
+        read(&dir).unwrap();
+        assert_eq!(full_read_count(), 1);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn append_once_is_concurrent_idempotent() {
         let dir = std::env::temp_dir().join(format!(
             "loom-append-once-{}-{}",
@@ -566,6 +615,7 @@ mod tests {
             threads.push(std::thread::spawn(move || {
                 append_once(
                     &dir,
+                    &crate::identity::ExecutionIdentity::solo(),
                     "proof_strength_changed",
                     "validation-1",
                     serde_json::json!({"witness_model":"v2"}),
@@ -604,6 +654,7 @@ mod tests {
             id: "imported-1".into(),
             ts: "0".into(),
             actor: "solo".into(),
+            profile: None,
             event: "proof_strength_changed".into(),
             target_id: "validation-1".into(),
             payload: serde_json::json!({"witness_model":"v2"}),
@@ -616,6 +667,7 @@ mod tests {
 
         let written = append_once(
             &dir,
+            &crate::identity::ExecutionIdentity::solo(),
             "proof_strength_changed",
             "validation-1",
             serde_json::json!({"witness_model":"v2"}),
@@ -644,6 +696,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         append_once(
             &dir,
+            &crate::identity::ExecutionIdentity::solo(),
             "proof_strength_changed",
             "validation-1",
             serde_json::json!({"witness_model":"v2"}),
@@ -652,6 +705,7 @@ mod tests {
         .unwrap();
         append_once(
             &dir,
+            &crate::identity::ExecutionIdentity::solo(),
             "proof_strength_changed",
             "validation-2",
             serde_json::json!({"witness_model":"v2"}),
@@ -677,7 +731,14 @@ mod tests {
 
         let dir = std::env::temp_dir().join(format!("loom-origin-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
-        let appended = append(&dir, "local", "graph", serde_json::json!({})).unwrap();
+        let appended = append(
+            &dir,
+            &crate::identity::ExecutionIdentity::solo(),
+            "local",
+            "graph",
+            serde_json::json!({}),
+        )
+        .unwrap();
         assert_eq!(appended.origin, Origin::Local);
         assert_eq!(read(&dir).unwrap()[0].origin, Origin::Local);
         let _ = fs::remove_dir_all(&dir);
@@ -691,6 +752,7 @@ mod tests {
             id: "crafted-local".into(),
             ts: "0".into(),
             actor: "caller".into(),
+            profile: None,
             event: "batch_authorization".into(),
             target_id: "digest".into(),
             payload: serde_json::json!({}),
@@ -706,6 +768,7 @@ mod tests {
             id: id.into(),
             ts: "1000".into(),
             actor: "exporter".into(),
+            profile: None,
             event: "ratification".into(),
             target_id: "intent-1".into(),
             payload: serde_json::json!({"decision": "accepted"}),
@@ -969,8 +1032,23 @@ mod tests {
     fn a_truncated_tail_line_is_skipped_and_counted_not_fatal() {
         let dir = std::env::temp_dir().join(format!("loom-journal-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
-        let a = append(&dir, "ratification", "intent-1", serde_json::json!({})).unwrap();
-        let b = append(&dir, "rejection", "intent-2", serde_json::json!({})).unwrap();
+        let identity = crate::identity::ExecutionIdentity::solo();
+        let a = append(
+            &dir,
+            &identity,
+            "ratification",
+            "intent-1",
+            serde_json::json!({}),
+        )
+        .unwrap();
+        let b = append(
+            &dir,
+            &identity,
+            "rejection",
+            "intent-2",
+            serde_json::json!({}),
+        )
+        .unwrap();
 
         // Simulate a crash mid-append: a partial, unparseable JSON line.
         let mut f = OpenOptions::new().append(true).open(path(&dir)).unwrap();

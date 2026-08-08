@@ -47,8 +47,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: HookCmd, json: bool) -> Result
                     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))?;
                 }
             }
-            crate::journal::append(
-                store.root(),
+            store.append_journal(
                 "hook_install",
                 "graph",
                 serde_json::json!({ "hooks": HOOKS }),
@@ -72,8 +71,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: HookCmd, json: bool) -> Result
                     std::fs::remove_file(path)?;
                 }
             }
-            crate::journal::append(
-                store.root(),
+            store.append_journal(
                 "hook_remove",
                 "graph",
                 serde_json::json!({ "hooks": HOOKS }),

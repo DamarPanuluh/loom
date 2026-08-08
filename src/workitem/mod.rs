@@ -455,8 +455,7 @@ fn named_commands(write_back: &str) -> Vec<&str> {
 /// Record the defect that made a packet unservable. Propagates: a defect we
 /// cannot journal is a defect we must not hide.
 fn journal_unservable(store: &Store, item: &WorkItem, problem: &str) -> Result<()> {
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "unservable_packet",
         &item.target.id,
         serde_json::json!({

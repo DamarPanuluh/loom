@@ -656,6 +656,8 @@ pub(crate) fn ignore_cmd(graph: Option<&Path>, cmd: IgnoreCmd, json: bool) -> Re
 pub(crate) fn whoami_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     let agent = store.agent();
+    let execution = store.execution_identity();
+    let executor = execution.executor();
     let identity = store.identity()?;
     if json {
         let (mode, lane) = match agent {
@@ -666,10 +668,21 @@ pub(crate) fn whoami_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "agent": {
+                    "actor": execution.actor(),
+                    "profile": execution.profile(),
                     "mode": mode,
                     "lane": lane,
                     "lane_gate": lane.is_some(),
                 },
+                "authority": {
+                    "actor": execution.actor(),
+                    "lane": lane,
+                },
+                "executor": executor.map(|executor| serde_json::json!({
+                    "profile": executor.profile(),
+                    "source": executor.source().as_str(),
+                    "verified": executor.verified(),
+                })),
                 "graph": {
                     "observed": identity.observed,
                     "mode": if identity.observed { "observed" } else { "owned" },
@@ -680,7 +693,7 @@ pub(crate) fn whoami_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     match agent {
         crate::store::Agent::Solo => {
-            println!("agent: solo (LOOM_AGENT unset/llm) — drives every lane; lane gate OFF");
+            println!("agent: solo (LOOM_AGENT unset/solo) — drives every lane; lane gate OFF");
         }
         crate::store::Agent::Lane(r) => {
             println!(
@@ -689,6 +702,14 @@ pub(crate) fn whoami_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                 r.as_str()
             );
         }
+    }
+    if let Some(executor) = executor {
+        println!(
+            "executor profile: {} (source: {}; verified: {}; attribution only)",
+            executor.profile(),
+            executor.source().as_str(),
+            executor.verified()
+        );
     }
     if identity.observed {
         println!(

@@ -1421,6 +1421,11 @@ pub enum GraphCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum AuditCmd {
+    /// Inspect or accept a historical integrity incident.
+    Incident {
+        #[command(subcommand)]
+        cmd: AuditIncidentCmd,
+    },
     /// Seal a typed batch authorization over a legacy judgment burst.
     ///
     /// Requires contemporaneous evidence (journal events, apply/command
@@ -1462,6 +1467,35 @@ pub enum AuditCmd {
         /// Permitted operation (default: ratify / verdict by claim).
         #[arg(long)]
         operation: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AuditIncidentCmd {
+    /// Accept an exact live burst as disclosed history, never as authorization.
+    Accept {
+        /// Burst key as reported by audit: `{actor}@{YYYY-MM-DDTHH:MM}`.
+        subject: String,
+        /// ratification | adjudication
+        #[arg(long)]
+        claim: String,
+        /// Why this historical integrity exception is consciously accepted.
+        #[arg(long)]
+        reason: String,
+        /// The human's exact answer from the host conversation. Without it,
+        /// a direct terminal invocation demands the typed human challenge.
+        #[arg(long)]
+        human_decision: Option<String>,
+    },
+    /// List every disclosed incident, including imported history.
+    List,
+    /// Show the disclosure for one burst and claim.
+    Show {
+        /// Burst key as reported by audit: `{actor}@{YYYY-MM-DDTHH:MM}`.
+        subject: String,
+        /// ratification | adjudication
+        #[arg(long)]
+        claim: String,
     },
 }
 

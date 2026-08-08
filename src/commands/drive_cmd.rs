@@ -88,8 +88,7 @@ fn drive(graph: Option<&Path>, json: bool) -> Result<()> {
                 String::from_utf8_lossy(&output.stderr).into_owned(),
             )
         };
-        let entry = crate::journal::append(
-            store.root(),
+        let entry = store.append_journal(
             "drive_exchange",
             "drive",
             serde_json::json!({
@@ -174,8 +173,7 @@ fn freeze(graph: Option<&Path>, name: &str, json: bool) -> Result<()> {
     let spec = crate::journey::parse(&path)?;
     let outcomes = crate::journey::execute_steps(&spec, Some(store.root()), false)?;
     let baseline = crate::journey::write_successful_baseline(store.root(), &spec, &outcomes)?;
-    let entry = crate::journal::append(
-        store.root(),
+    let entry = store.append_journal(
         "drive_freeze",
         name,
         serde_json::json!({ "journey": path, "baseline": baseline, "exchanges": entries.len() }),

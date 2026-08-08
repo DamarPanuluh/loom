@@ -13,7 +13,7 @@
 
 use loom::lane::Lane;
 use loom::model::{EdgeKind, NodeType, TruthClass};
-use loom::store::Store;
+use loom::store::{Agent, Store};
 mod common;
 use common::Tmp;
 
@@ -43,6 +43,7 @@ fn build_roster(store: &Store) -> Vec<(String, String)> {
 fn a_follower_is_blocked_until_its_predecessor_is_built() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store.set_agent(Agent::Solo);
     let cart = intent(&store, "add to cart", "planned");
     let checkout = intent(&store, "checkout", "planned");
     // checkout follows cart: the FROM side stands on the TO side.

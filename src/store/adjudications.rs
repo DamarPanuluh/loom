@@ -52,7 +52,7 @@ impl Store {
                  re-judge it"
             );
         }
-        let actor = std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into());
+        let actor = self.execution_identity().actor();
         let created_at: String =
             self.conn
                 .query_row("SELECT strftime('%Y-%m-%dT%H:%M:%fZ','now')", [], |r| {
@@ -71,8 +71,7 @@ impl Store {
             actor,
             created_at,
         };
-        crate::journal::append(
-            &self.root,
+        self.append_journal(
             "hit_suppressed",
             rule_name,
             serde_json::json!({
@@ -92,8 +91,7 @@ impl Store {
             "DELETE FROM hit_adjudication WHERE rule_name=?1 AND content_hash=?2",
             params![rule_name, row.content_hash],
         )?;
-        crate::journal::append(
-            &self.root,
+        self.append_journal(
             "hit_unsuppressed",
             rule_name,
             serde_json::json!({

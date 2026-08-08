@@ -12,7 +12,7 @@
 //! is exactly what the evidence spine exists to refuse.
 
 use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
-use loom::store::Store;
+use loom::store::{Agent, Store};
 mod common;
 use common::Tmp;
 
@@ -198,6 +198,7 @@ fn a_missing_file_is_left_to_its_own_ripple() {
 fn a_consumes_seam_locator_is_not_judged_as_a_symbol() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    store.set_agent(Agent::Solo);
     std::fs::write(
         tmp.path().join("page.svelte"),
         "<script>loadProfile();</script>\n",

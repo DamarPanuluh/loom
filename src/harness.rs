@@ -39,16 +39,24 @@ impl std::fmt::Debug for HarnessGuard {
 /// Take the proof-harness lock for `root`, or refuse with the holder's
 /// identity. Immediate refusal: proof runs are long, so waiting would just
 /// delay the same answer — rerun after the holder exits.
-pub fn acquire(root: &Path, purpose: &str) -> Result<HarnessGuard> {
+pub fn acquire(
+    root: &Path,
+    purpose: &str,
+    identity: &crate::identity::ExecutionIdentity,
+) -> Result<HarnessGuard> {
     let path = lock_path(root);
-    acquire_at(path, root, purpose)
+    acquire_at(path, root, purpose, identity)
 }
 
 /// Spec-scoped variant for graph-free `journey diagnose`: the shared resource
 /// is the service the spec drives, so runs of the SAME spec contend while
 /// independent specs proceed in parallel. Lives in the temp dir — a foreign
 /// cwd must not gain a `.loom` for a diagnosis that records nothing.
-pub fn acquire_for_artifact(spec: &Path, purpose: &str) -> Result<HarnessGuard> {
+pub fn acquire_for_artifact(
+    spec: &Path,
+    purpose: &str,
+    identity: &crate::identity::ExecutionIdentity,
+) -> Result<HarnessGuard> {
     let canonical = spec
         .canonicalize()
         .unwrap_or_else(|_| spec.to_path_buf())
@@ -58,10 +66,15 @@ pub fn acquire_for_artifact(spec: &Path, purpose: &str) -> Result<HarnessGuard> 
         "loom-harness-spec-{}.lock",
         crate::artifact::fingerprint(&canonical)
     ));
-    acquire_at(path, spec, purpose)
+    acquire_at(path, spec, purpose, identity)
 }
 
-fn acquire_at(path: PathBuf, root: &Path, purpose: &str) -> Result<HarnessGuard> {
+fn acquire_at(
+    path: PathBuf,
+    root: &Path,
+    purpose: &str,
+    identity: &crate::identity::ExecutionIdentity,
+) -> Result<HarnessGuard> {
     let key = path.to_string_lossy().to_string();
     if std::env::var(HELD_ENV).ok().as_deref() == Some(key.as_str()) {
         // Already serialized by an ancestor loom process.
@@ -84,9 +97,15 @@ fn acquire_at(path: PathBuf, root: &Path, purpose: &str) -> Result<HarnessGuard>
                     .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok());
                 let holder_desc = holder
                     .map(|h| {
+                        let profile = h
+                            .get("profile")
+                            .and_then(|v| v.as_str())
+                            .map(|p| format!(" / profile {p}"))
+                            .unwrap_or_default();
                         format!(
-                            "agent {} (pid {}, since {}, {})\n  command: {}",
+                            "agent {}{} (pid {}, since {}, {})\n  command: {}",
                             h.get("agent").and_then(|v| v.as_str()).unwrap_or("?"),
+                            profile,
                             h.get("pid").and_then(|v| v.as_u64()).unwrap_or(0),
                             h.get("started_at").and_then(|v| v.as_str()).unwrap_or("?"),
                             h.get("purpose").and_then(|v| v.as_str()).unwrap_or("?"),
@@ -107,9 +126,10 @@ fn acquire_at(path: PathBuf, root: &Path, purpose: &str) -> Result<HarnessGuard>
     }
     // Record who holds it, so the next contender refuses against an identity,
     // not a mystery. Best-effort: the lock itself is the enforcement.
-    let identity = serde_json::json!({
+    let holder = serde_json::json!({
         "pid": std::process::id(),
-        "agent": std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into()),
+        "agent": identity.actor(),
+        "profile": identity.profile(),
         "purpose": purpose,
         "command": std::env::args().collect::<Vec<_>>().join(" "),
         "root": root.to_string_lossy(),
@@ -120,7 +140,7 @@ fn acquire_at(path: PathBuf, root: &Path, purpose: &str) -> Result<HarnessGuard>
     let mut f = &file;
     use std::io::Write;
     let _ = f.set_len(0);
-    let _ = f.write_all(identity.to_string().as_bytes());
+    let _ = f.write_all(holder.to_string().as_bytes());
     std::env::set_var(HELD_ENV, key);
     Ok(HarnessGuard { _file: Some(file) })
 }
@@ -163,16 +183,17 @@ mod tests {
         let _serialize = ENV_LOCK.lock().unwrap();
         std::env::remove_var(HELD_ENV);
         let root = temp_root("contention");
-        let guard = acquire(&root, "test one").unwrap();
+        let identity = crate::identity::ExecutionIdentity::solo();
+        let guard = acquire(&root, "test one", &identity).unwrap();
         std::env::remove_var(HELD_ENV); // act as a peer process, not a child
 
-        let err = acquire(&root, "test two").unwrap_err();
+        let err = acquire(&root, "test two", &identity).unwrap_err();
         let msg = format!("{err:#}");
         assert!(msg.contains(HARNESS_CONTENTION_MARKER), "unmarked: {msg}");
         assert!(msg.contains("test one"), "holder purpose missing: {msg}");
 
         drop(guard);
-        acquire(&root, "test three").expect("released lock must be re-acquirable");
+        acquire(&root, "test three", &identity).expect("released lock must be re-acquirable");
         std::env::remove_var(HELD_ENV);
         let _ = std::fs::remove_dir_all(&root);
     }
@@ -182,9 +203,10 @@ mod tests {
         let _serialize = ENV_LOCK.lock().unwrap();
         std::env::remove_var(HELD_ENV);
         let root = temp_root("nested");
-        let guard = acquire(&root, "outer").unwrap();
+        let identity = crate::identity::ExecutionIdentity::solo();
+        let guard = acquire(&root, "outer", &identity).unwrap();
         // acquire exported HELD_ENV naming this path; a spawned loom inherits it.
-        acquire(&root, "nested step").expect("nested executor must proceed");
+        acquire(&root, "nested step", &identity).expect("nested executor must proceed");
         drop(guard);
         std::env::remove_var(HELD_ENV);
         let _ = std::fs::remove_dir_all(&root);

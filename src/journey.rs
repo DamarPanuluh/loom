@@ -60,6 +60,12 @@ pub struct Step {
     pub expect: Expect,
     #[serde(default)]
     pub capture: BTreeMap<String, String>,
+    /// Run this CLI step in a hermetic Solo fixture identity rather than
+    /// inheriting the journey recorder's lane. This is explicit in the
+    /// authored journey because only the author knows whether a command is
+    /// constructing an isolated test graph or exercising identity itself.
+    #[serde(default)]
+    pub fixture: bool,
     /// Per-step wall-clock limit in seconds. A step that needs longer than
     /// the default declares it here rather than failing opaquely at 300s
     /// (CLI) or 30s (HTTP); a killed step always names timeout_secs at
@@ -624,6 +630,7 @@ fn http_contract_to_journey(contract: HttpContract) -> JourneySpec {
                 name,
                 intent,
                 run: String::new(),
+                fixture: false,
                 timeout_secs: None,
                 request: Request {
                     method,
@@ -1115,8 +1122,18 @@ fn execute_cli_command(
     timeout_secs: u64,
 ) -> Result<crate::subprocess::Observed> {
     let dir = cwd.unwrap_or_else(|| Path::new("."));
-    crate::subprocess::run_observed(command, dir, Duration::from_secs(timeout_secs))
-        .with_context(|| format!("step '{}': running `{command}`", step.name))
+    let environment = if step.fixture {
+        crate::subprocess::ChildEnvironment::SoloTestFixture
+    } else {
+        crate::subprocess::ChildEnvironment::Inherit
+    };
+    crate::subprocess::run_observed_with_environment(
+        command,
+        dir,
+        Duration::from_secs(timeout_secs),
+        environment,
+    )
+    .with_context(|| format!("step '{}': running `{command}`", step.name))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1639,6 +1656,7 @@ mod tests {
             name: "use captured id".into(),
             intent: "captured values remain ephemeral".into(),
             run: "true # {{ item_id }}".into(),
+            fixture: false,
             timeout_secs: None,
             request: Request::default(),
             expect: Expect::default(),
@@ -1651,6 +1669,22 @@ mod tests {
         assert!(outcome.passed);
         assert_eq!(outcome.detail, "`true # {{ item_id }}` exit 0");
         assert!(!outcome.detail.contains("random-runtime-id"));
+    }
+
+    #[test]
+    fn fixture_cli_steps_receive_solo_identity_and_no_profile() {
+        let step = Step {
+            name: "isolated graph fixture".into(),
+            intent: "journey fixtures do not inherit recorder authority".into(),
+            run: "test \"$LOOM_AGENT\" = solo && test -z \"${LOOM_AGENT_PROFILE+x}\"".into(),
+            fixture: true,
+            ..Step::default()
+        };
+        let mut vars = BTreeMap::new();
+
+        let outcome = run_cli_step(&step, &mut vars, None, false).unwrap();
+
+        assert!(outcome.passed, "{}", outcome.detail);
     }
 
     #[test]

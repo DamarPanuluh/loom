@@ -620,19 +620,19 @@ fn journey_run(
         );
     }
     let cwd = store.root().to_path_buf();
+    let execution = store.execution_identity();
     drop(store);
 
     // Serialize proof execution against every other loom runner; a nested
     // `loom …` child inherits the held marker and proceeds.
-    let _harness = crate::harness::acquire(&cwd, "journey run")?;
+    let _harness = crate::harness::acquire(&cwd, "journey run", &execution)?;
     let mut outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
-    let store = open(Some(&cwd))?;
+    let store = crate::store::Store::open_with_identity(&cwd, execution.clone())?;
     crate::journey::record_outcomes(&store, &parsed, &mut outcomes)?;
     let deviations = crate::journey::read_baseline(&cwd, &parsed.journey)?
         .map(|baseline| crate::journey::deviations(&baseline, &outcomes))
         .unwrap_or_default();
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "journey_run",
         &parsed.journey,
         json!({ "outcomes": outcomes, "deviations": deviations }),
@@ -690,13 +690,13 @@ fn journey_freeze(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()>
     let store = open(graph)?;
     let parsed = crate::journey::parse(&spec)?;
     let cwd = store.root().to_path_buf();
+    let execution = store.execution_identity();
     drop(store);
-    let _harness = crate::harness::acquire(&cwd, "journey freeze")?;
+    let _harness = crate::harness::acquire(&cwd, "journey freeze", &execution)?;
     let outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
     let path = crate::journey::write_successful_baseline(&cwd, &parsed, &outcomes)?;
-    let store = open(Some(&cwd))?;
-    let entry = crate::journal::append(
-        store.root(),
+    let store = crate::store::Store::open_with_identity(&cwd, execution.clone())?;
+    let entry = store.append_journal(
         "journey_freeze",
         &parsed.journey,
         json!({ "spec": spec, "baseline": path, "outcomes": outcomes }),
@@ -719,7 +719,8 @@ fn journey_diagnose(spec: &Path, base_url: Option<&str>, json: bool) -> Result<(
     // Diagnose executes real steps against real services; it contends for the
     // harness like any other run, scoped to the spec (the shared resource is
     // the service the spec drives) so independent specs still parallelize.
-    let _harness = crate::harness::acquire_for_artifact(spec, "journey diagnose")?;
+    let execution = crate::identity::ExecutionIdentity::resolve_env()?;
+    let _harness = crate::harness::acquire_for_artifact(spec, "journey diagnose", &execution)?;
     let outcomes = crate::journey::execute(None, &parsed, false)?;
     let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
     let passed = outcomes.iter().filter(|o| o.passed).count();

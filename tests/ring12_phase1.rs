@@ -1502,7 +1502,8 @@ fn migration_drops_the_claimed_proof_level() {
     // also lacks the columns later migrations added, or migration 7 re-adds
     // what is already there and the simulation fails on its own bookkeeping.
     conn.execute_batch(
-        "ALTER TABLE fact DROP COLUMN decision_mode;
+        "ALTER TABLE fact DROP COLUMN asserted_profile;
+         ALTER TABLE fact DROP COLUMN decision_mode;
          ALTER TABLE fact DROP COLUMN batch_id;
          DROP TABLE hit_adjudication;
          DROP TABLE judgment_proposal;",
@@ -1565,7 +1566,8 @@ fn migration_preserves_legitimate_double_space_validation_names() {
     // Rewind faithfully: a v6 graph does not yet carry the v7 columns or the
     // v8/v9 tables.
     conn.execute_batch(
-        "ALTER TABLE fact DROP COLUMN decision_mode;
+        "ALTER TABLE fact DROP COLUMN asserted_profile;
+         ALTER TABLE fact DROP COLUMN decision_mode;
          ALTER TABLE fact DROP COLUMN batch_id;
          DROP TABLE hit_adjudication;
          DROP TABLE judgment_proposal;",

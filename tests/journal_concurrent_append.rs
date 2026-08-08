@@ -22,6 +22,7 @@ fn journal_append_once_child() {
     let tag = std::env::var("LOOM_JOURNAL_APPEND_TAG").unwrap_or_else(|_| "0".into());
     journal::append(
         std::path::Path::new(&root),
+        &loom::identity::ExecutionIdentity::solo(),
         "stress",
         &format!("target-{tag}"),
         serde_json::json!({ "tag": tag, "pad": "x".repeat(256) }),
@@ -83,6 +84,7 @@ fn concurrent_thread_appends_do_not_corrupt_the_journal() {
             barrier.wait();
             journal::append(
                 &root,
+                &loom::identity::ExecutionIdentity::solo(),
                 "stress",
                 &format!("target-{i}"),
                 serde_json::json!({ "i": i, "pad": "x".repeat(512) }),

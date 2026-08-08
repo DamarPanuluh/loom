@@ -6,25 +6,29 @@
 //! rebuilds identically and never becomes a fact that can rot.
 //!
 //! Contract — **resolution is honest about its own confidence.** A written name
-//! is not a target. `Store::open` resolving to the one file defining `open`
-//! inside a type called `Store` is near-certain; a bare `run` in a repo with
-//! nine of them is a guess. Those are reported as different things
-//! ([`Resolution`]) and never blended into one number, because a blast-radius
-//! figure that mixes them tells you nothing you can act on.
+//! is not a target. `sync::run` can identify `src/sync.rs` among several `run`
+//! definitions; a bare generic `run`, `Store::open`, or two distinct `sync.rs`
+//! modules are still guesses. A globally unique, specific bare symbol remains
+//! exact. Those cases are reported as different things ([`Resolution`]) and
+//! never blended into one number, because a blast-radius figure that mixes them
+//! tells you nothing you can act on.
 
 use crate::model::{NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::path::Path;
 
 /// How much to trust one resolved edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Resolution {
-    /// Exactly one symbol in the repo carries this name.
+    /// A written module qualifier matches exactly one defining module/file, or
+    /// a specific bare symbol has exactly one owner in the graph.
     Exact,
-    /// Several do; the nearest by module/file proximity was chosen.
+    /// The call is bare/type-qualified, or several plausible definitions
+    /// remain; the nearest by module/file proximity was chosen.
     Heuristic,
 }
 
@@ -88,33 +92,14 @@ pub fn build(store: &Store) -> Result<CallGraph> {
         ..Default::default()
     };
     for (file, from_symbol, callee) in raw {
-        // A qualified `Type::method` tries the bare method name — the qualifier
-        // is a disambiguation hint, not part of the definition's name.
         let bare = callee.rsplit("::").next().unwrap_or(&callee).to_string();
         let Some(candidates) = owner.get(&bare) else {
             graph.unresolved += 1;
             continue;
         };
-        let (to_file, resolution) = match candidates.len() {
-            1 => (candidates[0].clone(), Resolution::Exact),
-            _ => {
-                // Prefer a definition in the calling file, then the nearest
-                // shared directory. Stated as a guess, and labelled as one.
-                let same_file = candidates.iter().find(|c| **c == file).cloned();
-                let nearest = same_file.or_else(|| {
-                    candidates
-                        .iter()
-                        .max_by_key(|c| shared_prefix(c, &file))
-                        .cloned()
-                });
-                match nearest {
-                    Some(f) => (f, Resolution::Heuristic),
-                    None => {
-                        graph.unresolved += 1;
-                        continue;
-                    }
-                }
-            }
+        let Some((to_file, resolution)) = resolve_target(&file, &callee, candidates) else {
+            graph.unresolved += 1;
+            continue;
         };
         graph.edges.push(CallEdge {
             from_file: file,
@@ -146,6 +131,106 @@ pub fn build(store: &Store) -> Result<CallGraph> {
             .push(i);
     }
     Ok(graph)
+}
+
+/// Resolve one written callee without overstating what its syntax establishes.
+///
+/// Extraction preserves Rust paths (`sync::run`, `crate::sync::run`). The
+/// segment immediately before the bare symbol can identify a module file, but
+/// only an exact, unique module/file-stem match earns Exact. The generic bare
+/// `run`, `Self`/`self`, type-looking qualifiers, and ambiguous module matches
+/// retain a nearest-file diagnostic edge marked Heuristic, so exact-only
+/// consumers fail closed. Other globally unique bare symbols retain their
+/// established exactness.
+fn resolve_target(
+    calling_file: &str,
+    callee: &str,
+    candidates: &[String],
+) -> Option<(String, Resolution)> {
+    let qualified: Vec<String> = module_qualifier(callee)
+        .map(|qualifier| {
+            candidates
+                .iter()
+                .filter(|candidate| file_is_module(candidate, qualifier))
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if qualified.len() == 1 {
+        return Some((qualified[0].clone(), Resolution::Exact));
+    }
+
+    // A specific bare name with one graph-wide owner is unambiguous. Preserve
+    // that established behavior for call paths such as `perform_behavior()`.
+    // `run` is deliberately excluded: it is a ubiquitous entrypoint name, and
+    // without the extracted module qualifier it cannot certify a module edge.
+    if !callee.contains("::") && callee != "run" && candidates.len() == 1 {
+        return Some((candidates[0].clone(), Resolution::Exact));
+    }
+
+    // An ambiguous qualifier is still useful for diagnostic proximity, but it
+    // cannot certify one definition. If it matched nothing (or the call is
+    // bare/type/self-qualified), fall back to every bare-symbol owner.
+    let pool = if qualified.is_empty() {
+        candidates
+    } else {
+        qualified.as_slice()
+    };
+    nearest_candidate(calling_file, pool).map(|file| (file, Resolution::Heuristic))
+}
+
+/// The module segment immediately before the called symbol, when that segment
+/// is safe to interpret as a Rust module name rather than `self`/`Self`, a
+/// root traversal marker, or a conventional UpperCamel type.
+fn module_qualifier(callee: &str) -> Option<&str> {
+    let (prefix, _) = callee.rsplit_once("::")?;
+    let qualifier = prefix.rsplit("::").next()?;
+    if matches!(qualifier, "self" | "Self" | "super" | "crate") {
+        return None;
+    }
+    let mut chars = qualifier.chars();
+    let first = chars.next()?;
+    if !first.is_ascii_lowercase()
+        || !chars.all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+    {
+        return None;
+    }
+    Some(qualifier)
+}
+
+/// Rust module `foo` may live at `foo.rs` or `foo/mod.rs`. Match the exact
+/// segment only; suffix/proximity matching would turn a qualifier back into a
+/// guess while labelling it Exact.
+fn file_is_module(file: &str, qualifier: &str) -> bool {
+    let path = Path::new(file);
+    match path.file_stem().and_then(|stem| stem.to_str()) {
+        Some(stem) if stem == qualifier => true,
+        Some("mod") => {
+            path.parent()
+                .and_then(Path::file_name)
+                .and_then(|name| name.to_str())
+                == Some(qualifier)
+        }
+        _ => false,
+    }
+}
+
+fn nearest_candidate(calling_file: &str, candidates: &[String]) -> Option<String> {
+    // Prefer a definition in the calling file, then the nearest shared
+    // directory. This remains explicitly heuristic even if the pool contains
+    // only one owner when the caller reached this fallback: the syntax did not
+    // establish an exact module edge.
+    candidates
+        .iter()
+        .find(|candidate| candidate.as_str() == calling_file)
+        .cloned()
+        .or_else(|| {
+            candidates
+                .iter()
+                .max_by_key(|candidate| shared_prefix(candidate, calling_file))
+                .cloned()
+        })
 }
 
 /// The symbols a file defines, from the derived fingerprint map.
@@ -409,6 +494,85 @@ mod tests {
                 .push(i);
         }
         graph
+    }
+
+    fn candidates(files: &[&str]) -> Vec<String> {
+        files.iter().map(|file| (*file).to_string()).collect()
+    }
+
+    #[test]
+    fn qualified_module_calls_resolve_exactly_by_file_stem() {
+        let run = candidates(&["src/sync.rs", "src/absorb.rs", "tests/support.rs"]);
+        assert_eq!(
+            resolve_target("src/commands/status_cmd.rs", "sync::run", &run),
+            Some(("src/sync.rs".into(), Resolution::Exact))
+        );
+        assert_eq!(
+            resolve_target("src/commands/status_cmd.rs", "crate::sync::run", &run),
+            Some(("src/sync.rs".into(), Resolution::Exact)),
+            "root path segments must not erase the immediate module qualifier"
+        );
+
+        let observe = candidates(&["src/absorb.rs", "src/commands/proof_cmd.rs"]);
+        assert_eq!(
+            resolve_target(
+                "src/commands/diagnostics_cmd.rs",
+                "absorb::observe",
+                &observe
+            ),
+            Some(("src/absorb.rs".into(), Resolution::Exact))
+        );
+    }
+
+    #[test]
+    fn directory_module_qualifier_resolves_foo_mod_rs_exactly() {
+        let run = candidates(&["src/foo/mod.rs", "src/other.rs"]);
+        assert_eq!(
+            resolve_target("src/main.rs", "foo::run", &run),
+            Some(("src/foo/mod.rs".into(), Resolution::Exact))
+        );
+    }
+
+    #[test]
+    fn ambiguous_module_qualifiers_remain_heuristic() {
+        let run = candidates(&["crates/a/src/sync.rs", "crates/b/src/sync.rs"]);
+        let (file, resolution) = resolve_target("crates/a/src/main.rs", "sync::run", &run).unwrap();
+        assert_eq!(file, "crates/a/src/sync.rs");
+        assert_eq!(resolution, Resolution::Heuristic);
+    }
+
+    #[test]
+    fn bare_type_self_and_unmatched_qualifiers_remain_heuristic() {
+        let run = candidates(&["src/sync.rs"]);
+        for callee in ["run", "Self::run", "self::run", "Store::run", "other::run"] {
+            assert_eq!(
+                resolve_target("src/main.rs", callee, &run),
+                Some(("src/sync.rs".into(), Resolution::Heuristic)),
+                "{callee} must not earn exact resolution"
+            );
+        }
+
+        let open = candidates(&["src/store.rs"]);
+        assert_eq!(
+            resolve_target("src/main.rs", "Store::open", &open),
+            Some(("src/store.rs".into(), Resolution::Heuristic))
+        );
+
+        let behavior = candidates(&["src/behavior.rs"]);
+        assert_eq!(
+            resolve_target("tests/behavior.rs", "perform_behavior", &behavior),
+            Some(("src/behavior.rs".into(), Resolution::Exact)),
+            "a globally unique, specific bare symbol remains unambiguous"
+        );
+    }
+
+    #[test]
+    fn multiple_bare_definitions_use_proximity_but_remain_heuristic() {
+        let run = candidates(&["src/sync.rs", "tests/support.rs"]);
+        assert_eq!(
+            resolve_target("tests/proof.rs", "run", &run),
+            Some(("tests/support.rs".into(), Resolution::Heuristic))
+        );
     }
 
     /// A heuristic edge to a same-named symbol in another file must never

@@ -899,8 +899,7 @@ pub(crate) fn decide_cmd(
             "evidence": evidence,
         }),
     )?;
-    crate::journal::append(
-        store.root(),
+    store.append_journal(
         "decision",
         target.as_ref().map(|n| n.id.as_str()).unwrap_or(""),
         serde_json::json!({

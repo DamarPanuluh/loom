@@ -7,8 +7,10 @@ use common::*;
 #[test]
 fn journal_appends_and_reads_entries_without_a_mutation_surface() {
     let tmp = Tmp::new();
+    let identity = loom::identity::ExecutionIdentity::solo();
     let first = journal::append(
         tmp.path(),
+        &identity,
         "validation_verdict",
         "validation-1",
         serde_json::json!({ "outcome": "passed" }),
@@ -16,6 +18,7 @@ fn journal_appends_and_reads_entries_without_a_mutation_surface() {
     .unwrap();
     let second = journal::append(
         tmp.path(),
+        &identity,
         "ratification",
         "intent-1",
         serde_json::json!({ "presence": "tty+challenge" }),
@@ -32,8 +35,10 @@ fn journal_appends_and_reads_entries_without_a_mutation_surface() {
 #[test]
 fn journal_evidence_references_resolve_or_fail_closed() {
     let tmp = Tmp::new();
+    let identity = loom::identity::ExecutionIdentity::solo();
     let entry = journal::append(
         tmp.path(),
+        &identity,
         "proof_run",
         "validation-1",
         serde_json::json!({}),

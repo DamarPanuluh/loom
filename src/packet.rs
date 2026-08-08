@@ -13,9 +13,9 @@
 //! from the append-only record rather than self-reported. That ratio is
 //! STATISTICAL: it is reported, never gated (INV-3).
 
+use crate::store::Store;
 use crate::Result;
 use serde::Serialize;
-use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Process-local monotonic suffix, so two packets minted inside the same
@@ -48,12 +48,11 @@ fn mint(kind: &str, target: &str) -> Served {
 /// Record a batch of packets served by one invocation as a single journal
 /// entry. One entry per invocation, not per packet: `loom next --all` serves a
 /// packet per lane and should read as one act of serving.
-pub fn serve(root: &Path, packets: &[Served]) -> Result<()> {
+pub fn serve(store: &Store, packets: &[Served]) -> Result<()> {
     if packets.is_empty() {
         return Ok(());
     }
-    crate::journal::append(
-        root,
+    store.append_journal(
         "packet_served",
         "packets",
         serde_json::json!({ "packets": packets }),
@@ -62,10 +61,10 @@ pub fn serve(root: &Path, packets: &[Served]) -> Result<()> {
 }
 
 /// Mint and journal a single packet, returning its id.
-pub fn serve_one(root: &Path, kind: &str, target: &str) -> Result<String> {
+pub fn serve_one(store: &Store, kind: &str, target: &str) -> Result<String> {
     let served = mint(kind, target);
     let id = served.id.clone();
-    serve(root, std::slice::from_ref(&served))?;
+    serve(store, std::slice::from_ref(&served))?;
     Ok(id)
 }
 

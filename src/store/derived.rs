@@ -530,11 +530,12 @@ impl Store {
             evidence
         };
         let cited = crate::evidence::cite(self.root(), anchor)?;
+        let actor = self.execution_identity().actor();
         let mut assertion = crate::store::Assertion::new(
             crate::store::Subject::Node(finding_id.to_string()),
             crate::model::Claim::Adjudication,
             verdict,
-            "llm",
+            &actor,
         )
         .criterion(reason)
         .confidence(1.0)

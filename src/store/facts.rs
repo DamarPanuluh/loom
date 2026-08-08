@@ -360,6 +360,7 @@ impl Store {
             verification: strength,
             confidence: a.confidence,
             asserted_by,
+            asserted_profile: self.execution_identity().profile().map(str::to_owned),
             asserted_at,
             decision_mode: a.decision_mode,
             batch_id: a.batch_id.to_string(),
@@ -395,12 +396,13 @@ impl Store {
         let tx = self.maybe_tx()?;
         self.conn.execute(
             "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,verification,\
-                               confidence,asserted_by,asserted_at,stale,decision_mode,batch_id)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
+                               confidence,asserted_by,asserted_profile,asserted_at,stale,decision_mode,batch_id)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)
              ON CONFLICT(id) DO UPDATE SET
                 state=excluded.state, criterion=excluded.criterion,
                 verification=excluded.verification, confidence=excluded.confidence,
-                asserted_by=excluded.asserted_by, asserted_at=excluded.asserted_at,
+                asserted_by=excluded.asserted_by, asserted_profile=excluded.asserted_profile,
+                asserted_at=excluded.asserted_at,
                 stale=excluded.stale, decision_mode=excluded.decision_mode,
                 batch_id=excluded.batch_id",
             rusqlite::params![
@@ -413,6 +415,7 @@ impl Store {
                 fact.verification.as_str(),
                 fact.confidence,
                 fact.asserted_by,
+                fact.asserted_profile,
                 fact.asserted_at,
                 stale,
                 fact.decision_mode.as_str(),
@@ -824,6 +827,7 @@ impl Store {
                 && existing.fact.criterion == fact.criterion
                 && existing.fact.confidence.to_bits() == fact.confidence.to_bits()
                 && existing.fact.asserted_by == fact.asserted_by
+                && existing.fact.asserted_profile == fact.asserted_profile
                 && existing.fact.verification == fact.verification
                 && existing.fact.decision_mode == fact.decision_mode
                 && existing.fact.batch_id == fact.batch_id
@@ -884,7 +888,7 @@ impl Store {
     pub fn fact_by_id(&self, id: &str) -> Result<Option<FactView>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,subject_kind,subject_id,claim,state,criterion,verification,\
-                    confidence,asserted_by,asserted_at,stale,decision_mode,batch_id \
+                    confidence,asserted_by,asserted_profile,asserted_at,stale,decision_mode,batch_id \
              FROM fact WHERE id = ?1",
         )?;
         let fact = stmt
@@ -932,7 +936,7 @@ impl Store {
     pub fn all_facts(&self) -> Result<Vec<Fact>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,subject_kind,subject_id,claim,state,criterion,verification,\
-                    confidence,asserted_by,asserted_at,stale,decision_mode,batch_id \
+                    confidence,asserted_by,asserted_profile,asserted_at,stale,decision_mode,batch_id \
              FROM fact ORDER BY id",
         )?;
         let rows = stmt.query_map([], |r| Ok(row_to_fact(r)))?;
@@ -1165,8 +1169,7 @@ impl Store {
         // audit trail that lets a reviewer tell a content-identical move from
         // a silent rewrite.
         for (fact_id, evidence_id, r) in reanchors {
-            crate::journal::append(
-                &self.root,
+            self.append_journal(
                 crate::evidence::REANCHOR_EVENT,
                 if evidence_id.is_empty() {
                     &fact_id
@@ -1444,6 +1447,7 @@ fn row_to_fact(r: &rusqlite::Row) -> Result<Fact> {
         verification: Verification::from_str(&r.get::<_, String>("verification")?)?,
         confidence: r.get("confidence")?,
         asserted_by: r.get("asserted_by")?,
+        asserted_profile: r.get("asserted_profile")?,
         asserted_at: r.get("asserted_at")?,
         decision_mode: crate::model::DecisionMode::parse(&r.get::<_, String>("decision_mode")?),
         batch_id: r.get("batch_id")?,
@@ -1682,9 +1686,9 @@ pub(super) fn insert_imported(
         fact_id_remap.insert(fact.id.clone(), canonical.clone());
         tx.execute(
             "INSERT INTO fact (id,subject_kind,subject_id,claim,state,criterion,\
-                               verification,confidence,asserted_by,asserted_at,stale,\
+                               verification,confidence,asserted_by,asserted_profile,asserted_at,stale,\
                                decision_mode,batch_id)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
             rusqlite::params![
                 canonical,
                 fact.subject_kind.as_str(),
@@ -1695,6 +1699,7 @@ pub(super) fn insert_imported(
                 Verification::Claimed.as_str(),
                 fact.confidence,
                 fact.asserted_by,
+                fact.asserted_profile,
                 fact.asserted_at,
                 "",
                 fact.decision_mode.as_str(),
@@ -1789,6 +1794,7 @@ mod imported_tests {
             verification: Verification::Cited,
             confidence: 1.0,
             asserted_by: "human".into(),
+            asserted_profile: None,
             asserted_at: asserted_at.into(),
             decision_mode: crate::model::DecisionMode::Individual,
             batch_id: String::new(),

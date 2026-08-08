@@ -745,12 +745,172 @@ fn h4_agent_parse_fail_closed_on_unknown_lane() {
         Agent::parse("nonsense").is_err(),
         "bare nonsense must be Err"
     );
-    assert_eq!(Agent::parse("llm").unwrap(), Agent::Solo);
-    assert_eq!(Agent::parse("").unwrap(), Agent::Solo);
+    assert!(
+        Agent::parse("llm").is_err(),
+        "bare llm must not disable lane gating"
+    );
+    assert!(
+        Agent::parse("").is_err(),
+        "an explicitly empty actor is ambiguous"
+    );
+    assert_eq!(Agent::parse("solo").unwrap(), Agent::Solo);
     assert_eq!(
         Agent::parse("llm:builder").unwrap(),
         Agent::Lane(OwnerRole::Builder)
     );
+}
+
+#[test]
+fn auditor_profile_is_exposed_without_becoming_write_authority() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("identity"));
+
+    let whoami = loom_with_identity(
+        tmp.path(),
+        &["whoami", "--json"],
+        "llm:analyzer",
+        Some("loom-auditor"),
+    );
+    assert!(
+        whoami.status.success(),
+        "whoami failed: {}",
+        String::from_utf8_lossy(&whoami.stderr)
+    );
+    let whoami: serde_json::Value = serde_json::from_slice(&whoami.stdout).unwrap();
+    assert_eq!(whoami["agent"]["actor"], "llm:analyzer");
+    assert_eq!(whoami["agent"]["lane"], "analyzer");
+    assert_eq!(whoami["agent"]["profile"], "loom-auditor");
+    assert_eq!(whoami["agent"]["lane_gate"], true);
+    assert_eq!(whoami["authority"]["actor"], "llm:analyzer");
+    assert_eq!(whoami["authority"]["lane"], "analyzer");
+    assert_eq!(whoami["executor"]["profile"], "loom-auditor");
+    assert_eq!(whoami["executor"]["source"], "environment");
+    assert_eq!(whoami["executor"]["verified"], false);
+
+    let bare = loom_with_identity(tmp.path(), &["whoami"], "llm", Some("loom-auditor"));
+    assert!(
+        !bare.status.success(),
+        "bare llm unexpectedly disabled the lane gate"
+    );
+    assert!(
+        String::from_utf8_lossy(&bare.stderr).contains("unrecognized LOOM_AGENT 'llm'"),
+        "wrong bare-llm error: {}",
+        String::from_utf8_lossy(&bare.stderr)
+    );
+
+    let bare_role = loom_with_identity(tmp.path(), &["whoami"], "analyzer", Some("loom-auditor"));
+    assert!(!bare_role.status.success(), "bare role unexpectedly passed");
+
+    let invalid_profile = loom_with_identity(
+        tmp.path(),
+        &["whoami"],
+        "llm:analyzer",
+        Some("loom auditor"),
+    );
+    assert!(
+        !invalid_profile.status.success(),
+        "invalid profile unexpectedly passed"
+    );
+    assert!(
+        String::from_utf8_lossy(&invalid_profile.stderr).contains("invalid LOOM_AGENT_PROFILE"),
+        "wrong profile error: {}",
+        String::from_utf8_lossy(&invalid_profile.stderr)
+    );
+}
+
+#[test]
+fn facts_and_journal_preserve_auditor_profile_beside_analyzer_authority() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("identity"));
+    write_file(tmp.path(), "fixture.rs", "pub fn evidence() {}\n");
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "left behavior",
+            "--description",
+            "left is true",
+        ],
+    );
+    loom_ok(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "right behavior",
+            "--description",
+            "right is true",
+        ],
+    );
+
+    let verdict = loom_with_identity(
+        tmp.path(),
+        &[
+            "edge",
+            "explore",
+            "left behavior",
+            "right behavior",
+            "ground",
+            "--criterion",
+            "the two behaviors share one runtime seam",
+            "--evidence",
+            "fixture.rs:1",
+            "--confidence",
+            "0.9",
+        ],
+        "llm:analyzer",
+        Some("loom-auditor"),
+    );
+    assert!(
+        verdict.status.success(),
+        "auditor verdict failed: {}",
+        String::from_utf8_lossy(&verdict.stderr)
+    );
+
+    let decided = loom_with_identity(
+        tmp.path(),
+        &[
+            "decide",
+            "preserve auditor provenance",
+            "--instead-of",
+            "collapse every executor to llm",
+            "--because",
+            "independent audit attribution must remain visible",
+            "--about",
+            "left behavior",
+            "--evidence",
+            "fixture.rs:1",
+        ],
+        "llm:analyzer",
+        Some("loom-auditor"),
+    );
+    assert!(
+        decided.status.success(),
+        "auditor journal write failed: {}",
+        String::from_utf8_lossy(&decided.stderr)
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let fact = store
+        .all_facts()
+        .unwrap()
+        .into_iter()
+        .find(|fact| fact.claim == loom::model::Claim::Verdict)
+        .expect("explore verdict fact");
+    assert_eq!(fact.asserted_by, "llm:analyzer");
+    assert_eq!(fact.asserted_profile.as_deref(), Some("loom-auditor"));
+    drop(store);
+
+    let entry = loom::journal::read(tmp.path())
+        .unwrap()
+        .into_iter()
+        .find(|entry| entry.event == "decision")
+        .expect("decision journal entry");
+    assert_eq!(entry.actor, "llm:analyzer");
+    assert_eq!(entry.profile.as_deref(), Some("loom-auditor"));
 }
 
 // 11. M-12: add_edge rejects Derived truth class.
@@ -1192,6 +1352,26 @@ fn loom_json(tmp: &std::path::Path, args: &[&str]) -> serde_json::Value {
             String::from_utf8_lossy(&out.stdout)
         )
     })
+}
+
+fn loom_with_identity(
+    tmp: &std::path::Path,
+    args: &[&str],
+    actor: &str,
+    profile: Option<&str>,
+) -> std::process::Output {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph")
+        .arg(tmp)
+        .args(args)
+        .env_remove(loom::identity::AGENT_ENV)
+        .env_remove(loom::identity::PROFILE_ENV)
+        .env(loom::identity::AGENT_ENV, actor);
+    if let Some(profile) = profile {
+        cmd.env(loom::identity::PROFILE_ENV, profile);
+    }
+    cmd.output()
+        .unwrap_or_else(|e| panic!("spawn loom {args:?}: {e}"))
 }
 
 // =========================================================================

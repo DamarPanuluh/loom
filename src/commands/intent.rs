@@ -452,11 +452,10 @@ fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<(
     let decision = super::ratification_decision(&subject, args.human_decision)?;
     let batch_id = if targets.len() > 1 {
         let subjects: Vec<String> = targets.iter().map(|n| n.id.clone()).collect();
-        let executor = std::env::var("LOOM_AGENT").unwrap_or_else(|_| "solo".into());
+        let executor = store.execution_identity().actor();
         // Contemporaneous set record before the per-intent writes.
         let digest = crate::batch_auth::subject_digest(&subjects);
-        let pre = crate::journal::append(
-            store.root(),
+        let pre = store.append_journal(
             "batch_intent",
             &digest,
             serde_json::json!({
@@ -479,7 +478,7 @@ fn intent_ratify(graph: Option<&Path>, args: RatifyArgs, json: bool) -> Result<(
         .with_command_id(format!("intent-ratify-all:{}", targets.len()))
         .with_time_bounds(&now, &now)
         .with_human_decision(decision.clone());
-        let entry = crate::batch_auth::append_envelope(store.root(), &envelope)?;
+        let entry = crate::batch_auth::append_envelope(&store, &envelope)?;
         Some(entry.id)
     } else {
         None
