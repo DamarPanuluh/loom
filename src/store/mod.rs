@@ -391,6 +391,15 @@ impl Store {
         }
     }
 
+    /// Preflight authorization for a command that will create an asserted
+    /// edge after performing other writes. The edge write still enforces the
+    /// same gate itself; this check lets a multi-step command fail before its
+    /// first mutation, while the surrounding transaction remains the final
+    /// atomicity boundary for every later error.
+    pub fn require_edge_kind_owner(&self, kind: EdgeKind) -> Result<()> {
+        self.check_lane(registry::spec(kind).owner)
+    }
+
     /// Governed research is analysis work; solo remains an unrestricted driver.
     pub fn require_research_owner(&self) -> Result<()> {
         self.check_lane(registry::OwnerRole::Analyzer)

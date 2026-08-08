@@ -351,6 +351,12 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                     "--journey-id, --repo-native-kind, and --artifact require --proof-kind journey"
                 );
             }
+            // Registration is one fact: a Validation without its Validates
+            // edge proves nothing and becomes an orphan that blocks a clean
+            // retry. Fail the lane gate before the first mutation, then keep
+            // node + edge in one transaction so any later edge error rolls the
+            // node back as well.
+            store.require_edge_kind_owner(EdgeKind::Validates)?;
             let mut body = serde_json::json!({ "type": vtype.as_str(), "command": command });
             if let Some(v) = proof_kind {
                 body["proof_kind"] = serde_json::json!(v);
@@ -364,8 +370,10 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             if let Some(v) = artifact {
                 body["artifact"] = serde_json::json!(v);
             }
+            let tx = store.begin()?;
             let val = store.add_node(NodeType::Validation, &name, "", "not_run", body)?;
             let edge = store.ensure_edge(EdgeKind::Validates, &val.id, &i.id)?;
+            tx.commit()?;
             pulse::emit_line(
                 &store,
                 json,

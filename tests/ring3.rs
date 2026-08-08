@@ -87,6 +87,57 @@ fn inv7_verdict_lane_enforced() {
         .is_ok());
 }
 
+#[test]
+fn denied_validation_registration_leaves_no_orphan_node_or_edge() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let target = intent(&store, "a behavior with an authorized proof");
+    drop(store);
+
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+        .args([
+            "--graph",
+            tmp.path().to_str().unwrap(),
+            "validation",
+            "add",
+            "--name",
+            "denied proof",
+            "--intent",
+            &target,
+            "--type",
+            "test",
+            "--command",
+            "true",
+        ])
+        .env("LOOM_AGENT", "llm:builder")
+        .output()
+        .unwrap();
+    assert!(
+        !out.status.success(),
+        "builder must not own validates edges"
+    );
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("lane gate"),
+        "the refusal must name the authority boundary: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert!(
+        store
+            .resolve_node("denied proof", Some(NodeType::Validation))
+            .is_err(),
+        "a rejected registration must roll back its validation node"
+    );
+    assert!(
+        store
+            .edges_with(Some(EdgeKind::Validates), None, Some(&target))
+            .unwrap()
+            .is_empty(),
+        "a rejected registration must leave no validates edge"
+    );
+}
+
 // ---- INV-1 : no grid materialization ---------------------------------------
 
 #[test]
