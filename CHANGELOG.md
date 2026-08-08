@@ -12,6 +12,7 @@ version.
 - restore host-mediated human decisions in release builds
 
 ## [Unreleased]
+- Runtime provenance now separates write authority (`LOOM_AGENT=llm:<lane>`) from self-declared executor attribution (`LOOM_AGENT_PROFILE=loom-auditor`, etc.). One typed identity is resolved before locking and propagated to facts, journals, graph/proof lock holders, and `whoami`; profiles never grant authority, and `whoami` reports their source and verification status. Adjudications and verdicts retain the canonical lane instead of collapsing to `llm`; bare, empty, noncanonical, and unknown authority values fail closed. Schema v11 stores absent `fact.asserted_profile` values as SQL `NULL`, leaving legacy rows honestly unprofiled.
 - Read-only graph commands wait up to ten seconds for an in-flight writer while competing writers remain fail-fast at two seconds, preventing routine `loom status --json` calls from surfacing transient lock-contention failures.
 - TypeScript `export const <name>` locators resolve consistently across syncs.
 - Grounding creation refuses role collisions and locator changes on inspected edges instead of mutating settled evidence; same-role pre-verdict re-grounding remains available, while settled changes require explicit `set-role`, `set-locator`, or removal.

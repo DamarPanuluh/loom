@@ -200,7 +200,7 @@ finding     Evidence-backed capture and asserted adjudication
 doctor      Integrity audit
 coverage    Vertical-spine coverage report
 ignore      Coverage exclusion commands
-whoami      Acting-agent/lane report
+whoami      Write authority + self-declared executor provenance report
 proposal    Proposal capture and item adoption
 journey     Journey proof, coverage, and invariant commands
 drive       Interactive, journaled human drive session (or freeze one)

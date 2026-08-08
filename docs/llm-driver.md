@@ -128,8 +128,15 @@ There is no top-level `id`, `target_facts`, `allowed_commands`, or `read_set`. T
 
 ## Operator loops
 
-Loom's current enforcement model is role-based (`LOOM_AGENT=llm:<role>`), but
-operators also need a session strategy. The user or orchestrator chooses the
+Loom's enforcement model is role-based (`LOOM_AGENT=llm:<role>`), while worker
+attribution is independent (`LOOM_AGENT_PROFILE=<profile>`, for example
+`loom-auditor`). Loom validates both once before locking and passes that typed
+identity through facts, journals, locks, `whoami`, and self-audit. The profile
+explains who claimed to execute; the role alone decides what may be written.
+Environment profiles are explicitly reported as self-declared
+(`source=environment`, `verified=false`). Bare, empty, or noncanonical
+`LOOM_AGENT` values fail closed rather than masquerading as solo.
+Operators also need a session strategy. The user or orchestrator chooses the
 model and loop; the model does not self-certify capability.
 
 **Seeding mode** spends high-capability reasoning to turn ambiguous product/code

@@ -1,8 +1,9 @@
 journey: divergences reach the human, not the machine
 steps:
-  - name: the ratify lane serves a divergence
+  - name: meaning drift reaches the human ratify lane
+    fixture: true
     intent: the human is asked only where judgment and evidence disagree
-    run: "loom next --mode ratify --json"
+    run: "cargo test --test ring14_ratify redefinition_stales_ratification"
     expect:
       exit_code: 0
-      stdout_contains: ["work_item"]
+      stdout_contains: ["redefinition_stales_ratification", "1 passed", "0 failed"]

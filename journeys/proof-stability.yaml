@@ -1,6 +1,7 @@
 journey: a proof that flips over unchanged code is reported
 steps:
   - name: a flip over unchanged anchors is visible in smells after sync
+    fixture: true
     intent: a proof that flips over unchanged code is reported as unstable
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

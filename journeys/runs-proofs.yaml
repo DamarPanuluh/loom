@@ -1,6 +1,7 @@
 journey: loom runs a proof and reports the outcome
 steps:
   - name: a true command records passed
+    fixture: true
     intent: loom runs proofs and reports what it observed
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

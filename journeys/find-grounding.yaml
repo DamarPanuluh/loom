@@ -1,8 +1,17 @@
 journey: find surfaces grounding
 steps:
-  - name: find next router
+  - name: find the grounded find behavior
     intent: find surfaces each matched intent's grounding
-    run: "loom find 'next router' --json"
+    run: "loom find \"find surfaces each matched intent's grounding\" --exact --json"
     expect:
       exit_code: 0
-      stdout_contains: ["groundings", "path"]
+      stdout_contains:
+        - "groundings"
+        - "path"
+        - "src/commands/discover_cmd.rs"
+        - "locator"
+        - "fn find_cmd"
+        - "role"
+        - "realizes"
+        - "status"
+        - "evidence"

@@ -6,3 +6,11 @@ steps:
     expect:
       exit_code: 0
       stdout_contains: ["files_scanned"]
+
+  - name: content hashes ripple only after a real file change
+    fixture: true
+    intent: changing a file re-opens the asserted edges grounded in it
+    run: "cargo test --test ring2 sync_ripples_only_on_real_change -- --exact"
+    expect:
+      exit_code: 0
+      stdout_contains: ["test result: ok. 1 passed; 0 failed"]

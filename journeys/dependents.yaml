@@ -1,6 +1,7 @@
 journey: loom answers what stands on a behavior
 steps:
   - name: a transitive dependent is reported with its distance and proof state
+    fixture: true
     intent: loom answers what other behaviors stand on this one
     # Seed a chain in a throwaway graph — A requires B, B requires C — then ask
     # what stands on C. A is two hops away and nothing proves it, which is
@@ -26,6 +27,7 @@ steps:
         - "would not be caught there"
 
   - name: a behavior nothing points at says so plainly
+    fixture: true
     intent: loom answers what other behaviors stand on this one
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

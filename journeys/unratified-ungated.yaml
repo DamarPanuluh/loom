@@ -1,6 +1,7 @@
 journey: absent ratification does not gate the ladder
 steps:
   - name: an unratified intent leaves the ladder ungated
+    fixture: true
     intent: absent ratification reads as unratified without gating the ladder
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

@@ -760,6 +760,12 @@ loom coverage [--json]
 loom completeness [<intent>] [--json]
 loom scan run [<name>] [--json]   (adapters are registered in "Graph init and travel")
 loom doctor [--json]
+loom audit [--json]
+loom audit incident accept <actor@YYYY-MM-DDTHH:MM> --claim ratification|adjudication \
+  --reason "<why this historical integrity exception is accepted>" \
+  [--human-decision "<the human's exact answer>"] [--json]
+loom audit incident list [--json]
+loom audit incident show <actor@YYYY-MM-DDTHH:MM> --claim ratification|adjudication [--json]
 loom smells [--json]
 loom debt [--json]
 loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>] [--json]
@@ -772,9 +778,24 @@ loom limits [--json]
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.
 - `doctor`: schema conformance, provenance, evidence vacuity, role-gate audit; exits non-zero on any issue. Includes `consumes_without_seam` when a settled `consumes` grounding has neither a locator nor a criterion naming a seam.
+- `audit`: the self-fabrication detector. A historical judgment burst with no
+  contemporaneous authorization may be accepted only through the human-gated
+  `audit incident accept` command. The disposition binds the exact live burst
+  digest and remains permanently visible through `list`/`show`; it does not
+  stamp batch IDs, rewrite timestamps, or retrospectively authorize the
+  judgments. Imported disposition records are disclosed as history but never
+  suppress the local audit finding; the local human must accept independently.
 - `smells`: structural signals from graph shape, each with a remedy. Sync materializes every smell as a derived Finding (content-addressed by its subject ids), so smells are served by the triage queue and adjudicated with `loom finding verdict <id> <needed|justified|rejected|deferred|blocked|duplicate|resolved> --reason "…"`; the adjudication is durable across syncs and shown by `loom smells`. Includes `pack_drift` when a seeded/builtin rule body differs from the shipped pack definition (remedy: `loom rule seed <pack>` to re-baseline, or adjudicate the customization `justified` or `deferred`) and `consumer_owned_file` when a file's sole realizing owner is an intent whose other realizing files live in a different top-level directory cluster; the remedy names the edge. Includes `vague_intent` when an active intent's description leans on a hedge term (`handles`, `properly`, `correctly`, `robustly`, …) and names no observable outcome (no action verb, digits, literals, paths, or "by <doing>") — a falsifiability lint on the intent plane: every verdict against a mushy description is judgment theater, so either reword it with `loom intent update --description --reword` or adjudicate the finding `justified` for a deliberate summary-level intent.
 - `debt`: advisory statistical cluster feed (`size_outlier` LOC outliers + git-history `co_change` when available) with stable `cluster_id`, deterministic order (impact desc, kind asc, id asc), and git-less degradation to size outliers only; never required work. Explicit `loom debt promote <cluster-id> --evidence <TEXT> [--confidence <0..1>]` creates exactly one asserted Finding (`source: debt_promotion`) that enters ordinary finding triage; identical evidence/confidence is idempotent, conflicting re-promotes error.
-- `whoami`: acting agent identity and lane enforcement.
+- `whoami`: acting authorization identity, executor profile, and lane enforcement. Set
+  `LOOM_AGENT=llm:<role>` for write authority and, independently,
+  `LOOM_AGENT_PROFILE=<worker-profile>` (for example `loom-auditor`) for
+  attribution. Profiles use 1–128 ASCII identifier characters and grant no lane
+  permissions. JSON reports their source and verification status; environment
+  profiles are self-declared and therefore `verified: false`. Unset or explicit
+  `LOOM_AGENT=solo` is solo; bare/empty `llm`, bare role names, and unknown values
+  are rejected. Identity is resolved once before locking and reused by every
+  provenance write in the invocation.
 
 ---
 

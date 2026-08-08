@@ -584,6 +584,16 @@ The point where the LLM must stop acting and return to loom status/next instead 
 
 A state requiring human decision or input. The LLM may frame choices, but must not silently decide product authority.
 
+### accepted historical incident
+
+A human-gated, append-only disposition acknowledging an exact past integrity
+failure that cannot honestly be repaired after the fact. It removes that exact
+incident from the blocking audit queue while preserving its digest, subject
+set, reason, human answer, recorder identity, and timestamp for disclosure.
+Acceptance is not authorization: it never changes the underlying facts,
+decision mode, batch id, or historical timestamps. Imported acceptances remain
+history and do not confer local authority.
+
 ### effort
 
 A model-neutral difficulty tier for the work: low, mid, high. The harness maps effort to available model/tooling; loom does not name vendors. Sync's `cheap re-confirm` grading forces `low`.

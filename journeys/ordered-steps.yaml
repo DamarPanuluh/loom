@@ -1,6 +1,7 @@
 journey: loom serves ordered steps in order
 steps:
   - name: the earlier step is served and the later one is blocked by name
+    fixture: true
     intent: ordered steps are served in order, one readiness gate not a task list
     # A three-step flow in a throwaway graph, nothing built. The lane must hand
     # back step one, not whichever intent sorts first.
@@ -15,6 +16,7 @@ steps:
       stdout_contains: ["[build] add to cart"]
 
   - name: building the earlier step releases the later one
+    fixture: true
     intent: ordered steps are served in order, one readiness gate not a task list
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

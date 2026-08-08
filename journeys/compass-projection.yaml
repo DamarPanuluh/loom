@@ -1,6 +1,7 @@
 journey: the compass is a projection of the ladder, not a second decision
 steps:
   - name: status reports a compass pointing at the unmet rung
+    fixture: true
     intent: the compass points at divergence only when judgment and evidence disagree
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

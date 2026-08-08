@@ -1,6 +1,7 @@
 journey: wantedness is not presumed
 steps:
   - name: an intent with no evidence reports unratified
+    fixture: true
     intent: wantedness is earned from evidence, not demanded up front
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

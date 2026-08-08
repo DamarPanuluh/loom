@@ -378,8 +378,11 @@ Two more joined the contract during the build (the "7 invariants" of `build-plan
 
 - **INV-6 — Evidence gate.** A `passing`/`failing`/`independent` verdict with an empty criterion
   or evidence is rejected at the write boundary.
-- **INV-7 — Role gate.** A write from the wrong lane (per `LOOM_AGENT`) is rejected; unknown
-  agent strings fail closed.
+- **INV-7 — Role gate.** A write from the wrong lane (per `LOOM_AGENT`) is rejected; unknown,
+  noncanonical (for example bare `builder`), bare `llm`, and explicitly empty agent strings fail
+  closed. Loom resolves one typed execution identity before acquiring locks and passes it through
+  every write surface. `LOOM_AGENT_PROFILE` is validated, self-declared executor attribution;
+  it is exposed with `source=environment`, `verified=false`, and never grants authority.
 - **INV-8 — Ratification authority is human-only.** Every direct `llm:*` ratify/reject write is
   rejected. A lane may record a mediated decision only when it supplies the human's explicit host
   answer through the typed `--human-decision` path; the fact remains asserted by `human` and the

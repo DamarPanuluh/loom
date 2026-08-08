@@ -1,6 +1,7 @@
 journey: loom reports behaviors that share one proof command
 steps:
   - name: two behaviors proved by one command are reported with the count and the command
+    fixture: true
     intent: behaviors sharing one proof command are reported as borrowing its green
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&
@@ -17,6 +18,7 @@ steps:
         - "narrow each proof to the behavior it proves"
 
   - name: a behavior with its own command is not reported
+    fixture: true
     intent: behaviors sharing one proof command are reported as borrowing its green
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

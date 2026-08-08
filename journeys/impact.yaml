@@ -5,4 +5,10 @@ steps:
     run: "loom impact door --json"
     expect:
       exit_code: 0
-      stdout_contains: ["callers", "intents_at_risk"]
+      stdout_contains:
+        - "callers"
+        - "intents_at_risk"
+        - "resolution"
+        - "exact"
+        - "heuristic"
+        - "unresolved_calls"

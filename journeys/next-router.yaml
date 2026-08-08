@@ -1,8 +1,16 @@
 journey: next router serves residue
 steps:
-  - name: status exposes router inputs
+  - name: next serves an actionable prompt contract
     intent: the next router serves the highest-priority asserted residue with a prompt contract
-    run: "loom status --json"
+    run: "target/debug/loom next --json"
     expect:
       exit_code: 0
-      stdout_contains: ["graph_state", "maturity"]
+      stdout_contains: ["work_item", "prompt_contract", "allowed_actions", "forbidden_actions"]
+      exists:
+        - "$.work_item.mode"
+        - "$.work_item.owner_role"
+        - "$.work_item.target.id"
+        - "$.work_item.prompt_contract.allowed_actions"
+        - "$.work_item.prompt_contract.forbidden_actions"
+        - "$.work_item.prompt_contract.required_evidence"
+        - "$.work_item.prompt_contract.evidence_clauses"

@@ -1,6 +1,7 @@
 journey: proof strength is derived from the proof's shape
 steps:
   - name: a bare command grades S1 after sync
+    fixture: true
     intent: proof strength is derived from the proof's shape
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

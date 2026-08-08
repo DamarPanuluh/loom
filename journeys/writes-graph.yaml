@@ -1,6 +1,7 @@
 journey: loom writes the graph from what it observed
 steps:
   - name: absorb proposes mutations from the tree
+    fixture: true
     intent: loom writes the graph from the work rather than asking for it twice
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

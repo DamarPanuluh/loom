@@ -1,6 +1,7 @@
 journey: registering a shared proof command warns at once
 steps:
   - name: adding a second behavior on the same command warns and still succeeds
+    fixture: true
     intent: registering a proof command another behavior already uses says so at once
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

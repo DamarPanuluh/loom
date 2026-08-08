@@ -13,6 +13,7 @@ steps:
       stdout_contains: ["[]"]
 
   - name: a seeded defect is detected, named, and exits non-zero
+    fixture: true
     intent: loom can fail its own falsifiability check
     # Seed the very signature the audit exists to catch — a judgment burst —
     # in a throwaway graph, then require the audit to find it. Detection is

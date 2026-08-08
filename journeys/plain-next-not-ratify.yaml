@@ -1,6 +1,7 @@
 journey: plain next never serves a human-only ratify packet
 steps:
   - name: default next serves builder work, not the ratify lane
+    fixture: true
     intent: plain loom next never interrupts autonomous work with a human decision
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&

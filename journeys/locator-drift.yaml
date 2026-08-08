@@ -1,6 +1,7 @@
 journey: loom re-opens a grounding whose locator names nothing
 steps:
   - name: a grounding settled on a cited span re-opens once its symbol is gone
+    fixture: true
     intent: a grounding whose locator names nothing re-opens instead of standing
     # The span is the point: it satisfies the anchor floor without anyone ever
     # probing the locator, which is how 13 claims in this repo stayed green over
@@ -22,6 +23,7 @@ steps:
       stdout_contains: ["needs_reverification"]
 
   - name: a locator that still resolves is left settled
+    fixture: true
     intent: a grounding whose locator names nothing re-opens instead of standing
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&
@@ -36,3 +38,11 @@ steps:
     expect:
       exit_code: 0
       stdout_contains: ["passing"]
+
+  - name: the locator regression reopens a grounding whose symbol vanished
+    fixture: true
+    intent: a grounding whose locator names nothing re-opens instead of standing
+    run: "cargo test --test ring35_locator_drift a_locator_that_names_nothing_reopens -- --exact"
+    expect:
+      exit_code: 0
+      stdout_contains: ["test result: ok. 1 passed; 0 failed"]

@@ -1,6 +1,7 @@
 journey: door capture happy path
 steps:
   - name: capture utterance
+    fixture: true
     intent: an operator captures a topic through door and routes it from the landing menu
     run: "loom door 'ship a faster checkout flow' --json"
     expect:
@@ -9,11 +10,20 @@ steps:
     capture:
       inbox_id: "$.captured.id"
   - name: mark routed
+    fixture: true
     intent: an operator captures a topic through door and routes it from the landing menu
     run: "loom inbox mark {{ inbox_id }} routed --reason 'landed as new_intent for dogfood journey'"
     expect:
       exit_code: 0
+  - name: verify routed state persisted
+    fixture: true
+    intent: an operator captures a topic through door and routes it from the landing menu
+    run: "loom inbox show {{ inbox_id }} --json"
+    expect:
+      exit_code: 0
+      stdout_contains: ['"status": "routed"']
   - name: remove journey fixture
+    fixture: true
     intent: an operator captures a topic through door and routes it from the landing menu
     run: "loom inbox remove {{ inbox_id }}"
     expect:

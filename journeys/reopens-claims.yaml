@@ -1,6 +1,7 @@
 journey: a settled claim re-opens when its anchor moves
 steps:
   - name: editing the grounded symbol stales the verdict
+    fixture: true
     intent: a change re-opens exactly the claims that pointed at what changed
     run: >-
       tmp=$(mktemp -d) && loom init "$tmp" --name t &&
@@ -17,3 +18,11 @@ steps:
     expect:
       exit_code: 0
       stdout_contains: ['"edges_staled": 1', '"files_changed": 1']
+
+  - name: the precision regression reopens only the changed grounding
+    fixture: true
+    intent: a change re-opens exactly the claims that pointed at what changed
+    run: "cargo test --test ring13_precision symbol_scoped_spare -- --exact"
+    expect:
+      exit_code: 0
+      stdout_contains: ["test result: ok. 1 passed; 0 failed"]
