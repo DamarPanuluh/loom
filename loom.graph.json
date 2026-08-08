@@ -30866,21 +30866,6 @@
       "updated_at": ""
     },
     {
-      "id": "d2a9094c4df00f4f0",
-      "type": "finding",
-      "name": "user-visible intent 'loom runs proofs and reports what it observed' has validations but no passing S3-or-stronger journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:be6570d7348fa6fe2f64b70f8b6d3d60",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d2b82b3d308dcdff0",
       "type": "finding",
       "name": "proof 'cargo test suite' reported failed then passed over unchanged code for 'the verdict write boundary enforces the evidence, truth-class and lane gates' — its outcome does not depend only on the code it covers",
@@ -36385,21 +36370,6 @@
       "updated_at": ""
     },
     {
-      "id": "dd911932d4572efb3",
-      "type": "finding",
-      "name": "user-visible intent 'wantedness is earned from evidence, not demanded up front' has validations but no passing S3-or-stronger journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:483fd508eaa6a27648a6ce86b54fe6f2",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "dd9600792a5bb2795",
       "type": "finding",
       "name": "src/subprocess.rs::simple_shell_tokens is complex",
@@ -36966,21 +36936,6 @@
       "body": {},
       "created_at": "2026-07-25T06:59:22.367Z",
       "updated_at": "2026-07-25T06:59:22.367Z"
-    },
-    {
-      "id": "df399da26e46375f1",
-      "type": "finding",
-      "name": "user-visible intent 'registering a proof command another behavior already uses says so at once' has validations but no passing S3-or-stronger journey proof",
-      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:c0eb59b888acef81e7244ed417485b26",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
     },
     {
       "id": "df3fe78ce4a695531",
@@ -115760,7 +115715,7 @@
       "target_id": "17e7e51f7540fe14ec6ff41ec4e963df",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"read-only graph commands tolerate a brief writer\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -120814,7 +120769,7 @@
       "target_id": "418b5ebb5624aafa8df49c4f826c1d20",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"loom system purpose\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -121017,7 +120972,7 @@
       "target_id": "42adb892c44d1c4996d4c22a66f54a5b",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"validation registration is atomic across node and proof edge proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -121157,7 +121112,7 @@
       "target_id": "432809892abf4b165aa268323ea15ae3",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"shared command add still succeeds\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -121444,7 +121399,7 @@
       "target_id": "454c366eb2413f3cb300c351937d7b52",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"runtime authority and executor provenance contract\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -121570,7 +121525,7 @@
       "target_id": "463cb9eb2780ebb0a7944fb0d0697123",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"json keeps warning on stderr\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -121738,7 +121693,7 @@
       "target_id": "483fd508eaa6a27648a6ce86b54fe6f2",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ratification ring\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"wantedness is not presumed\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -122984,7 +122939,7 @@
       "target_id": "532576fe14cb8bc3d398797ca58f08c0",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/store/mod.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/store/mod.rs\",\"proven_by\":\"store corruption surfaces\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -123726,7 +123681,7 @@
       "target_id": "59f3d2be0ec4c6138631c3fc2f034376",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/apply_cmd.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/apply_cmd.rs\",\"proven_by\":\"typed CLI dispatch contracts\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -134359,7 +134314,7 @@
       "target_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/subprocess.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/subprocess.rs\",\"proven_by\":\"loom runs a proof and reports the outcome\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -134688,7 +134643,7 @@
       "target_id": "c0eb59b888acef81e7244ed417485b26",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/proof_cmd.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/proof_cmd.rs\",\"proven_by\":\"a duplicate proof command warns at write time\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -135402,7 +135357,7 @@
       "target_id": "c65e0e46f5d62c18e45e8e9b40c63330",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"fix queue partition\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -135829,7 +135784,7 @@
       "target_id": "c9ed49297310b82aec31e1c1c3de15e2",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring17 journal\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -141030,7 +140985,7 @@
       "target_id": "faa5f1a49d27f2c7bad5cbe7176fc1c1",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"update path warns on shared command\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {

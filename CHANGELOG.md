@@ -8,6 +8,9 @@ schema, not the crate.)
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.29.2] - 2026-08-09
+- make validation registration atomic and preserve unchanged clean quality scans
+
 ## [0.29.1] - 2026-08-06
 - restore host-mediated human decisions in release builds
 
