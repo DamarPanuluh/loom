@@ -4763,7 +4763,7 @@
         "type": "journey"
       },
       "created_at": "2026-08-01T19:12:48.964Z",
-      "updated_at": "2026-08-08T17:48:46.564Z"
+      "updated_at": "2026-08-08T20:01:12.590Z"
     },
     {
       "id": "0be510af938ce44dfe1928216908706c",
@@ -5514,7 +5514,7 @@
         "type": "test"
       },
       "created_at": "2026-08-01T19:22:44.336Z",
-      "updated_at": "2026-08-08T14:37:57.322Z"
+      "updated_at": "2026-08-08T20:01:11.802Z"
     },
     {
       "id": "1bdfde2369c8bedb14fb147d09fa3885",
@@ -6198,7 +6198,7 @@
         "type": "test"
       },
       "created_at": "2026-08-01T19:22:16.347Z",
-      "updated_at": "2026-08-08T14:38:15.020Z"
+      "updated_at": "2026-08-08T20:01:12.337Z"
     },
     {
       "id": "25b69d1c890230de4defece741d73002",
@@ -17645,7 +17645,7 @@
         "type": "test"
       },
       "created_at": "2026-07-09T05:20:44.145Z",
-      "updated_at": "2026-08-08T15:46:42.984Z"
+      "updated_at": "2026-08-08T20:01:15.307Z"
     },
     {
       "id": "68ab64d54db4d8d82d50143ff8a32229",
@@ -17869,7 +17869,7 @@
         "type": "test"
       },
       "created_at": "2026-07-25T10:09:43.270Z",
-      "updated_at": "2026-08-08T15:53:09.549Z"
+      "updated_at": "2026-08-08T20:01:14.689Z"
     },
     {
       "id": "6af29cbfde06f3e4f4d01a6bdd28b25a",
@@ -18221,7 +18221,7 @@
         "type": "test"
       },
       "created_at": "2026-08-01T19:21:57.691Z",
-      "updated_at": "2026-08-08T14:38:05.399Z"
+      "updated_at": "2026-08-08T20:01:12.069Z"
     },
     {
       "id": "71cff8ccfb0f70ce14274d74bb060e8e",
@@ -18580,7 +18580,7 @@
         "type": "test"
       },
       "created_at": "2026-08-01T19:21:25.201Z",
-      "updated_at": "2026-08-08T14:37:53.386Z"
+      "updated_at": "2026-08-08T20:01:11.654Z"
     },
     {
       "id": "7ac9e30ee0329371ac235dbe3f8538ae",
@@ -25480,7 +25480,7 @@
         "type": "test"
       },
       "created_at": "2026-08-01T19:20:38.732Z",
-      "updated_at": "2026-08-08T14:38:01.559Z"
+      "updated_at": "2026-08-08T20:01:11.935Z"
     },
     {
       "id": "a2219b5f92581ccadbb2eba939a5141d",
@@ -29524,7 +29524,7 @@
         "type": "test"
       },
       "created_at": "2026-08-01T19:20:57.293Z",
-      "updated_at": "2026-08-08T14:38:11.156Z"
+      "updated_at": "2026-08-08T20:01:12.202Z"
     },
     {
       "id": "c92806a070a05fdef71047afb762a1d3",
@@ -30761,6 +30761,21 @@
         "category": "smell",
         "identity": "unstable_proof:cb51defa75c6ac8681462594f13e64d1",
         "kind": "unstable_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d2a9094c4df00f4f0",
+      "type": "finding",
+      "name": "user-visible intent 'loom runs proofs and reports what it observed' has validations but no passing S3-or-stronger journey proof",
+      "description": "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — loom runs it, it asserts something about the output, and its call closure reaches the symbol this behavior is grounded in",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:be6570d7348fa6fe2f64b70f8b6d3d60",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -40839,13 +40854,13 @@
       "to_id": "4947a81ef452e14866e14050e9f2654b",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "re-scanned 1 realizing file(s) with all 2 rule pattern(s) after this session's edits, skipping whole-line comments and #[cfg(test)] regions as the prescan does — no hit",
-      "confidence": 0.9,
+      "status": "passing",
+      "criterion": "No literal credential, authentication token, private key, or secret-bearing constant appears in the production code realizing proof-stability tracking; status names, facet keys, SQL text, and diagnostic strings are non-secret operational literals.",
+      "confidence": 0.99,
       "depends_on": [],
-      "inspected_by": "llm",
+      "inspected_by": "llm:quality",
       "created_at": "2026-08-03T06:18:25.491Z",
-      "updated_at": "2026-08-04T11:17:20.982Z"
+      "updated_at": "2026-08-08T20:01:51.082Z"
     },
     {
       "id": "007646429c5a8550904bc4a8a7d12ef6",
@@ -42714,7 +42729,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:22:44.337Z",
-      "updated_at": "2026-08-08T14:37:57.319Z"
+      "updated_at": "2026-08-08T20:01:37.536Z"
     },
     {
       "id": "1e792510b82dc0394cffd97d234c907b",
@@ -43064,7 +43079,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:21:57.692Z",
-      "updated_at": "2026-08-08T14:38:05.397Z"
+      "updated_at": "2026-08-08T20:01:12.068Z"
     },
     {
       "id": "258aba6828c246d7bc82b8076cc6dfc6",
@@ -45448,7 +45463,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:21:25.202Z",
-      "updated_at": "2026-08-08T14:37:53.382Z"
+      "updated_at": "2026-08-08T20:01:37.685Z"
     },
     {
       "id": "4fe3656529380a08d3af9a676438a947",
@@ -45562,7 +45577,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:22:16.348Z",
-      "updated_at": "2026-08-08T14:38:15.018Z"
+      "updated_at": "2026-08-08T20:01:12.336Z"
     },
     {
       "id": "51ba9d211f786ca1b767bbdba5b2c22f",
@@ -46770,7 +46785,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:20:38.732Z",
-      "updated_at": "2026-08-08T14:38:01.557Z"
+      "updated_at": "2026-08-08T20:01:11.933Z"
     },
     {
       "id": "63aec554fdb5c11986b8ede85c81b62e",
@@ -49956,7 +49971,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:12:48.964Z",
-      "updated_at": "2026-08-08T17:48:46.589Z"
+      "updated_at": "2026-08-08T20:01:12.605Z"
     },
     {
       "id": "998a7532da7c98ca2a977854af99dfc1",
@@ -50511,7 +50526,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-07-25T10:09:43.271Z",
-      "updated_at": "2026-08-08T15:53:09.547Z"
+      "updated_at": "2026-08-08T20:01:14.687Z"
     },
     {
       "id": "a274a41d798046d3424cbe1ce62b6059",
@@ -51008,13 +51023,13 @@
       "to_id": "72384918a564c4f97f758f885469ece0",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "generic command observation executes, classifies, and records the bounded outcome",
       "confidence": 0.99,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-07-25T07:31:50.540Z",
-      "updated_at": "2026-08-08T17:46:56.149Z"
+      "updated_at": "2026-08-08T19:59:31.647Z"
     },
     {
       "id": "aa2baa73d0f723187a6b434e312caebf",
@@ -55860,7 +55875,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-01T19:20:57.294Z",
-      "updated_at": "2026-08-08T14:38:11.155Z"
+      "updated_at": "2026-08-08T20:01:12.201Z"
     },
     {
       "id": "d8ce268685dd7fb65",
@@ -59500,7 +59515,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-07-09T05:20:44.146Z",
-      "updated_at": "2026-08-08T15:46:42.982Z"
+      "updated_at": "2026-08-08T20:01:15.306Z"
     },
     {
       "id": "f22ee64afc8319d5a3a5a7b60f7995be",
@@ -61269,7 +61284,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T14:38:01.556Z",
+      "asserted_at": "2026-08-08T20:01:11.933Z",
       "decision_mode": "individual"
     },
     {
@@ -61924,11 +61939,12 @@
       "subject_id": "0073be537ae22d6893efc1dd2eec20f9",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "re-scanned 1 realizing file(s) with all 2 rule pattern(s) after this session's edits, skipping whole-line comments and #[cfg(test)] regions as the prescan does — no hit",
-      "verification": "expired",
-      "confidence": 0.9,
-      "asserted_by": "llm",
-      "asserted_at": "2026-08-04T08:31:05.558Z",
+      "criterion": "No literal credential, authentication token, private key, or secret-bearing constant appears in the production code realizing proof-stability tracking; status names, facet keys, SQL text, and diagnostic strings are non-secret operational literals.",
+      "verification": "verified",
+      "confidence": 0.99,
+      "asserted_by": "llm:quality",
+      "asserted_profile": "loom-maintainer",
+      "asserted_at": "2026-08-08T20:01:51.076Z",
       "decision_mode": "individual"
     },
     {
@@ -63978,8 +63994,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T14:37:53.378Z",
+      "asserted_at": "2026-08-08T20:01:37.685Z",
       "decision_mode": "individual"
     },
     {
@@ -66086,7 +66101,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "generic command observation executes, classifies, and records the bounded outcome",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 0.99,
       "asserted_by": "llm:builder",
       "asserted_profile": "loom-coder",
@@ -67550,7 +67565,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T15:53:09.546Z",
+      "asserted_at": "2026-08-08T20:01:14.686Z",
       "decision_mode": "individual"
     },
     {
@@ -69784,7 +69799,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T14:38:15.017Z",
+      "asserted_at": "2026-08-08T20:01:12.335Z",
       "decision_mode": "individual"
     },
     {
@@ -73382,7 +73397,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T14:38:05.396Z",
+      "asserted_at": "2026-08-08T20:01:12.068Z",
       "decision_mode": "individual"
     },
     {
@@ -73937,7 +73952,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T17:48:46.589Z",
+      "asserted_at": "2026-08-08T20:01:12.605Z",
       "decision_mode": "individual"
     },
     {
@@ -74342,7 +74357,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T14:38:11.154Z",
+      "asserted_at": "2026-08-08T20:01:12.200Z",
       "decision_mode": "individual"
     },
     {
@@ -75304,7 +75319,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T15:46:42.981Z",
+      "asserted_at": "2026-08-08T20:01:15.305Z",
       "decision_mode": "individual"
     },
     {
@@ -77196,8 +77211,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_profile": "loom-maintainer",
-      "asserted_at": "2026-08-08T14:37:57.317Z",
+      "asserted_at": "2026-08-08T20:01:37.535Z",
       "decision_mode": "individual"
     },
     {
@@ -79665,7 +79679,7 @@
       "recorded_at": "2026-08-04T08:31:05.636Z"
     },
     {
-      "id": "e03ef592d07f2e700",
+      "id": "e866cca87ed9cf12e",
       "fact_id": "f10187bf7a46551bd",
       "payload": {
         "kind": "run",
@@ -79673,18 +79687,18 @@
         "command": "cargo test --test ring30_runner -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "e223726f84d59ff1",
+        "stdout_hash": "a19c3292b4abf725",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.90s\n\n",
+        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.94s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db"
+          "src/runner.rs": "cba237160d7ca840"
         },
         "assertions": 0,
-        "duration_ms": 4082,
-        "ran_at": "1786199881554",
+        "duration_ms": 4463,
+        "ran_at": "1786219271637",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T14:38:01.556Z"
+      "recorded_at": "2026-08-08T20:01:11.933Z"
     },
     {
       "id": "ea316dbba0a474b03",
@@ -79693,7 +79707,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring30_runner -q` exit 0"
       },
-      "recorded_at": "2026-08-08T14:38:01.556Z"
+      "recorded_at": "2026-08-08T20:01:11.933Z"
     },
     {
       "id": "e6840d5ab39c441a9",
@@ -81030,28 +81044,56 @@
       "recorded_at": "2026-08-04T08:31:05.674Z"
     },
     {
-      "id": "e30cfcd2bd3913133",
+      "id": "e1add3cc060700496",
+      "fact_id": "f1aba583b9f8007d2",
+      "payload": {
+        "kind": "claim",
+        "text": "src/store/derived.rs:1-1077; especially src/store/derived.rs:951-1045 and src/store/derived.rs:1061-1074; verifier context tests/ring37_proof_stability.rs:22-111"
+      },
+      "recorded_at": "2026-08-08T20:01:51.076Z"
+    },
+    {
+      "id": "e343ff7debd569d14",
       "fact_id": "f1aba583b9f8007d2",
       "payload": {
         "kind": "span",
         "file": "src/store/derived.rs",
-        "start": 1,
-        "end": 1,
-        "hash": "e3d82acdef93f4fc"
+        "start": 951,
+        "end": 1045,
+        "hash": "4bb063c36a9f893a",
+        "symbol": "record_proof_stability",
+        "symbol_hash": "8dca5be6c5d262b7"
       },
-      "recorded_at": "2026-08-04T08:31:05.558Z"
+      "recorded_at": "2026-08-08T20:01:51.076Z"
     },
     {
-      "id": "e685c17e560936970",
+      "id": "ea93f51150e03cdff",
       "fact_id": "f1aba583b9f8007d2",
       "payload": {
-        "kind": "claim",
-        "text": "src/store/derived.rs:1 — loom re-scanned 1 realizing file(s) with 2 rule pattern(s); no hit"
+        "kind": "span",
+        "file": "src/store/derived.rs",
+        "start": 1061,
+        "end": 1074,
+        "hash": "2bd7396b43118d87",
+        "symbol": "realizing_anchor_digest",
+        "symbol_hash": "91bb04e0c289c82d"
       },
-      "recorded_at": "2026-08-04T08:31:05.558Z"
+      "recorded_at": "2026-08-08T20:01:51.076Z"
     },
     {
-      "id": "e8ee6716e54a2cadf",
+      "id": "ebc3069a22e5cb9a7",
+      "fact_id": "f1aba583b9f8007d2",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring37_proof_stability.rs",
+        "start": 22,
+        "end": 111,
+        "hash": "a66a9809ca43a7a6"
+      },
+      "recorded_at": "2026-08-08T20:01:51.076Z"
+    },
+    {
+      "id": "ec7dab603cb616232",
       "fact_id": "f1aba583b9f8007d2",
       "payload": {
         "kind": "run",
@@ -81062,14 +81104,26 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/store/derived.rs": "f0ea489834b5b611"
+          "src/store/derived.rs": "c4ff07869874486d"
         },
         "assertions": 2,
         "duration_ms": 0,
-        "ran_at": "1785832265560",
-        "loom_version": "0.29.0"
+        "ran_at": "1786219311081",
+        "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-04T08:31:05.558Z"
+      "recorded_at": "2026-08-08T20:01:51.076Z"
+    },
+    {
+      "id": "ed00876f7a68e4347",
+      "fact_id": "f1aba583b9f8007d2",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/derived.rs",
+        "start": 1,
+        "end": 1077,
+        "hash": "9f7c9eb209c43d55"
+      },
+      "recorded_at": "2026-08-08T20:01:51.076Z"
     },
     {
       "id": "e82f5daf21ea7fb8c",
@@ -85278,7 +85332,7 @@
       "recorded_at": "2026-08-08T14:39:06.761Z"
     },
     {
-      "id": "e3fc7e663a716548a",
+      "id": "e0ce8502048f441e3",
       "fact_id": "f36e0c3477c4d0036",
       "payload": {
         "kind": "run",
@@ -85286,18 +85340,18 @@
         "command": "cargo test --test ring30_runner -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "5da818aca7967564",
+        "stdout_hash": "bd5302459457e193",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.46s\n\n",
+        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.63s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db"
+          "src/runner.rs": "cba237160d7ca840"
         },
         "assertions": 0,
-        "duration_ms": 3652,
-        "ran_at": "1786199873373",
+        "duration_ms": 3989,
+        "ran_at": "1786219297528",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T14:37:53.378Z"
+      "recorded_at": "2026-08-08T20:01:37.685Z"
     },
     {
       "id": "e5d2a721dd7818929",
@@ -85306,7 +85360,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring30_runner -q` exit 0"
       },
-      "recorded_at": "2026-08-08T14:37:53.378Z"
+      "recorded_at": "2026-08-08T20:01:37.685Z"
     },
     {
       "id": "e7594f4c66657ec54",
@@ -92143,16 +92197,7 @@
       "recorded_at": "2026-08-05T12:36:44.482Z"
     },
     {
-      "id": "ec801a9cc279852a3",
-      "fact_id": "f6da40592394f7fbd",
-      "payload": {
-        "kind": "claim",
-        "text": "`cargo test --test ring27_observe -q` exit 0"
-      },
-      "recorded_at": "2026-08-08T15:53:09.546Z"
-    },
-    {
-      "id": "ed1e39c3314f471d2",
+      "id": "e87f88658ddd37e2c",
       "fact_id": "f6da40592394f7fbd",
       "payload": {
         "kind": "run",
@@ -92160,22 +92205,32 @@
         "command": "cargo test --test ring27_observe -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "23cb26adf6b892eb",
+        "stdout_hash": "ae3a6828dc3d65b0",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 7 tests\n.......\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.87s\n\n",
+        "stdout_excerpt": "\nrunning 7 tests\n.......\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.71s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db",
+          "src/commands/proof_cmd.rs": "d8bb8df23e0f337e",
+          "src/runner.rs": "cba237160d7ca840",
           "src/subprocess.rs": "467476ecfdc31aac",
           "tests/ring27_observe.rs": "e812f31241ad2d98",
           "tests/ring30_runner.rs": "0bb81892b58ab9af",
           "tests/ring41_diagnose_parity.rs": "e652539effbbd965"
         },
         "assertions": 0,
-        "duration_ms": 2407,
-        "ran_at": "1786204389537",
+        "duration_ms": 1939,
+        "ran_at": "1786219274683",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T15:53:09.546Z"
+      "recorded_at": "2026-08-08T20:01:14.686Z"
+    },
+    {
+      "id": "ec801a9cc279852a3",
+      "fact_id": "f6da40592394f7fbd",
+      "payload": {
+        "kind": "claim",
+        "text": "`cargo test --test ring27_observe -q` exit 0"
+      },
+      "recorded_at": "2026-08-08T20:01:14.686Z"
     },
     {
       "id": "e083bf912391e73d9",
@@ -96650,7 +96705,7 @@
       "recorded_at": "2026-08-01T18:49:53.630Z"
     },
     {
-      "id": "e5fdc3917b5ae8a82",
+      "id": "e4688aefeef00c989",
       "fact_id": "f8ea72d24e4c6b0f2",
       "payload": {
         "kind": "run",
@@ -96658,18 +96713,18 @@
         "command": "cargo test --test ring30_runner -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "440216af9a786ba1",
+        "stdout_hash": "a19c3292b4abf725",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.54s\n\n",
+        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.94s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db"
+          "src/runner.rs": "cba237160d7ca840"
         },
         "assertions": 0,
-        "duration_ms": 3721,
-        "ran_at": "1786199895014",
+        "duration_ms": 4463,
+        "ran_at": "1786219271637",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T14:38:15.017Z"
+      "recorded_at": "2026-08-08T20:01:12.335Z"
     },
     {
       "id": "ee338f4857e2b5944",
@@ -96678,7 +96733,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring30_runner -q` exit 0"
       },
-      "recorded_at": "2026-08-08T14:38:15.017Z"
+      "recorded_at": "2026-08-08T20:01:12.335Z"
     },
     {
       "id": "e19dc2e983f6f2cd6",
@@ -103952,7 +104007,7 @@
       "recorded_at": "2026-08-03T07:08:21.656Z"
     },
     {
-      "id": "e9a3cae1441cb98fa",
+      "id": "e74cfc7c045e8a361",
       "fact_id": "fc2d35fd82ecc9f15",
       "payload": {
         "kind": "run",
@@ -103960,18 +104015,18 @@
         "command": "cargo test --test ring30_runner -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "440216af9a786ba1",
+        "stdout_hash": "a19c3292b4abf725",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.54s\n\n",
+        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.94s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db"
+          "src/runner.rs": "cba237160d7ca840"
         },
         "assertions": 0,
-        "duration_ms": 3713,
-        "ran_at": "1786199885393",
+        "duration_ms": 4463,
+        "ran_at": "1786219271637",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T14:38:05.396Z"
+      "recorded_at": "2026-08-08T20:01:12.068Z"
     },
     {
       "id": "eadeaa46e9a439c4c",
@@ -103980,7 +104035,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring30_runner -q` exit 0"
       },
-      "recorded_at": "2026-08-08T14:38:05.396Z"
+      "recorded_at": "2026-08-08T20:01:12.068Z"
     },
     {
       "id": "e973301a49656f060",
@@ -105029,7 +105084,7 @@
       "recorded_at": "2026-08-01T18:49:53.629Z"
     },
     {
-      "id": "e7dbc88e04aca8189",
+      "id": "e32cd066c3be538a6",
       "fact_id": "fcb764a9e4703ece6",
       "payload": {
         "kind": "run",
@@ -105042,18 +105097,18 @@
         "stdout_excerpt": "PASS a true command records passed — `tmp=$(mktemp -d) && loom init \"$tmp\" --name t && loom intent add --graph \"$tmp\" --name 'demo behavior' --description 'does something' --level feature && loom validation add --graph \"$tmp\" --name 'true proof' --type test --command 'true' --intent 'demo behavior' && loom validation run --graph \"$tmp\" --all && rm -rf \"$tmp\"` exit 0\njourney 'loom runs a proof and reports the outcome': 1/1 step(s) passed\nnext: run `loom journey list` to review journey validations\n",
         "covered": {
           "src/commands/proof_cmd.rs": "d8bb8df23e0f337e",
-          "src/runner.rs": "52c66e517d4de8db",
+          "src/runner.rs": "cba237160d7ca840",
           "src/subprocess.rs": "467476ecfdc31aac",
           "tests/ring27_observe.rs": "e812f31241ad2d98",
           "tests/ring30_runner.rs": "0bb81892b58ab9af",
           "tests/ring41_diagnose_parity.rs": "e652539effbbd965"
         },
         "assertions": 0,
-        "duration_ms": 147,
-        "ran_at": "1786211326583",
+        "duration_ms": 133,
+        "ran_at": "1786219272602",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T17:48:46.589Z"
+      "recorded_at": "2026-08-08T20:01:12.605Z"
     },
     {
       "id": "ec5a54a05066305a6",
@@ -105062,7 +105117,7 @@
         "kind": "claim",
         "text": "`loom journey run journeys/runs-proofs.yaml` exit 0"
       },
-      "recorded_at": "2026-08-08T17:48:46.589Z"
+      "recorded_at": "2026-08-08T20:01:12.605Z"
     },
     {
       "id": "e9550896687369fff",
@@ -105680,16 +105735,7 @@
       "recorded_at": "2026-08-01T18:59:42.872Z"
     },
     {
-      "id": "eb663ef9840829f09",
-      "fact_id": "fcfe3a0c1ba6c2956",
-      "payload": {
-        "kind": "claim",
-        "text": "`cargo test --test ring30_runner -q` exit 0"
-      },
-      "recorded_at": "2026-08-08T14:38:11.154Z"
-    },
-    {
-      "id": "efaa3494a9d20c0a2",
+      "id": "e8341ab636c384540",
       "fact_id": "fcfe3a0c1ba6c2956",
       "payload": {
         "kind": "run",
@@ -105697,18 +105743,27 @@
         "command": "cargo test --test ring30_runner -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "009258dce96dd57e",
+        "stdout_hash": "a19c3292b4abf725",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.40s\n\n",
+        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.94s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db"
+          "src/runner.rs": "cba237160d7ca840"
         },
         "assertions": 0,
-        "duration_ms": 3605,
-        "ran_at": "1786199891152",
+        "duration_ms": 4463,
+        "ran_at": "1786219271637",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T14:38:11.154Z"
+      "recorded_at": "2026-08-08T20:01:12.200Z"
+    },
+    {
+      "id": "eb663ef9840829f09",
+      "fact_id": "fcfe3a0c1ba6c2956",
+      "payload": {
+        "kind": "claim",
+        "text": "`cargo test --test ring30_runner -q` exit 0"
+      },
+      "recorded_at": "2026-08-08T20:01:12.200Z"
     },
     {
       "id": "e2f2f79820aa83070",
@@ -107676,7 +107731,16 @@
       "recorded_at": "2026-08-02T14:08:14.925Z"
     },
     {
-      "id": "eac82715da1924d68",
+      "id": "ef163979a0330c547",
+      "fact_id": "fde262c2466d32f2a",
+      "payload": {
+        "kind": "claim",
+        "text": "`cargo test --test ring2 -q` exit 0"
+      },
+      "recorded_at": "2026-08-08T20:01:15.305Z"
+    },
+    {
+      "id": "ef92fa5571755510d",
       "fact_id": "fde262c2466d32f2a",
       "payload": {
         "kind": "run",
@@ -107688,23 +107752,14 @@
         "stderr_hash": "cbf29ce484222325",
         "stdout_excerpt": "\nrunning 12 tests\n............\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db"
+          "src/runner.rs": "cba237160d7ca840"
         },
         "assertions": 0,
-        "duration_ms": 622,
-        "ran_at": "1786204002975",
+        "duration_ms": 482,
+        "ran_at": "1786219275304",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T15:46:42.981Z"
-    },
-    {
-      "id": "ef163979a0330c547",
-      "fact_id": "fde262c2466d32f2a",
-      "payload": {
-        "kind": "claim",
-        "text": "`cargo test --test ring2 -q` exit 0"
-      },
-      "recorded_at": "2026-08-08T15:46:42.981Z"
+      "recorded_at": "2026-08-08T20:01:15.305Z"
     },
     {
       "id": "e8b748924254fb1c8",
@@ -111563,7 +111618,7 @@
       "recorded_at": "2026-08-03T06:19:51.425Z"
     },
     {
-      "id": "e4f61131db5298ad5",
+      "id": "e492f2573e71b12c6",
       "fact_id": "ffc34314f21ec387b",
       "payload": {
         "kind": "run",
@@ -111571,18 +111626,18 @@
         "command": "cargo test --test ring30_runner -q",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "8aab82345e6a09cd",
+        "stdout_hash": "bd5302459457e193",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.61s\n\n",
+        "stdout_excerpt": "\nrunning 14 tests\n..............\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.63s\n\n",
         "covered": {
-          "src/runner.rs": "52c66e517d4de8db"
+          "src/runner.rs": "cba237160d7ca840"
         },
         "assertions": 0,
-        "duration_ms": 3796,
-        "ran_at": "1786199877314",
+        "duration_ms": 3989,
+        "ran_at": "1786219297528",
         "loom_version": "0.29.1"
       },
-      "recorded_at": "2026-08-08T14:37:57.317Z"
+      "recorded_at": "2026-08-08T20:01:37.535Z"
     },
     {
       "id": "e6b9a64a18659f120",
@@ -111591,7 +111646,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring30_runner -q` exit 0"
       },
-      "recorded_at": "2026-08-08T14:37:57.317Z"
+      "recorded_at": "2026-08-08T20:01:37.535Z"
     },
     {
       "id": "e5d8c4f3cd3ff96d7",
@@ -112178,15 +112233,8 @@
       "target_id": "0073be537ae22d6893efc1dd2eec20f9",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/store/derived.rs\",\"start\":1,\"end\":1,\"hash\":\"e3d82acdef93f4fc\"}]",
+      "value": "[{\"file\":\"src/store/derived.rs\",\"start\":1,\"end\":1077,\"hash\":\"9f7c9eb209c43d55\"},{\"file\":\"src/store/derived.rs\",\"start\":951,\"end\":1045,\"hash\":\"4bb063c36a9f893a\",\"symbol\":\"record_proof_stability\",\"symbol_hash\":\"8dca5be6c5d262b7\"},{\"file\":\"src/store/derived.rs\",\"start\":1061,\"end\":1074,\"hash\":\"2bd7396b43118d87\",\"symbol\":\"realizing_anchor_digest\",\"symbol_hash\":\"91bb04e0c289c82d\"},{\"file\":\"tests/ring37_proof_stability.rs\",\"start\":22,\"end\":111,\"hash\":\"a66a9809ca43a7a6\"}]",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "0073be537ae22d6893efc1dd2eec20f9",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "scan 'iso5055-sec-no-hardcoded-secrets' (2 pattern(s)) over 1 realizing file(s) no longer holds (run_covered_file_changed)",
-      "truth_class": "derived"
     },
     {
       "target_id": "0094ad433f4126bf7b47095942c343f9",
@@ -113438,7 +113486,7 @@
       "target_id": "0bb4c799baf181e81c59857244d3b003",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"be6570d7348fa6fe2f64b70f8b6d3d60\":\"src/commands/proof_cmd.rs=d8bb8df23e0f337e,src/runner.rs=52c66e517d4de8db,src/subprocess.rs=467476ecfdc31aac\"}",
+      "value": "{\"be6570d7348fa6fe2f64b70f8b6d3d60\":\"src/commands/proof_cmd.rs=d8bb8df23e0f337e,src/runner.rs=cba237160d7ca840,src/subprocess.rs=467476ecfdc31aac\"}",
       "truth_class": "derived"
     },
     {
@@ -115272,7 +115320,7 @@
       "target_id": "1bde4e3ac406b137b366c9f42f2bf690",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"bb2ac4678a762e48c795f0d93c979859\":\"src/runner.rs=52c66e517d4de8db\"}",
+      "value": "{\"bb2ac4678a762e48c795f0d93c979859\":\"src/runner.rs=cba237160d7ca840\"}",
       "truth_class": "derived"
     },
     {
@@ -115867,7 +115915,7 @@
       "target_id": "1e95ef5f1b0fce1987c6a745b408c5f9",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"a command that times out records blocked, not failed proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -116546,7 +116594,7 @@
       "target_id": "256b638a9275d2ecc9e53d771ed21023",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"6162363a31aa12a28a5926a79842049c\":\"src/runner.rs=52c66e517d4de8db\"}",
+      "value": "{\"6162363a31aa12a28a5926a79842049c\":\"src/runner.rs=cba237160d7ca840\"}",
       "truth_class": "derived"
     },
     {
@@ -120452,7 +120500,7 @@
       "target_id": "454c366eb2413f3cb300c351937d7b52",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"runtime authority and executor provenance contract\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -123560,7 +123608,7 @@
       "target_id": "6162363a31aa12a28a5926a79842049c",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"a failing command records its exit code and output, never a green verdict proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -124414,7 +124462,7 @@
       "target_id": "68a6f630ce2e5c2e39b7ed15e38ce1b8",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"bb3737b706f96354edac292ffb232e03\":\"src/runner.rs=52c66e517d4de8db\"}",
+      "value": "{\"bb3737b706f96354edac292ffb232e03\":\"src/runner.rs=cba237160d7ca840\"}",
       "truth_class": "derived"
     },
     {
@@ -124757,7 +124805,7 @@
       "target_id": "6aabaef8d37d491a6cfa53efa249b7e8",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"be6570d7348fa6fe2f64b70f8b6d3d60\":\"src/runner.rs=52c66e517d4de8db,src/subprocess.rs=467476ecfdc31aac\"}",
+      "value": "{\"be6570d7348fa6fe2f64b70f8b6d3d60\":\"src/commands/proof_cmd.rs=d8bb8df23e0f337e,src/runner.rs=cba237160d7ca840,src/subprocess.rs=467476ecfdc31aac\"}",
       "truth_class": "derived"
     },
     {
@@ -125352,7 +125400,7 @@
       "target_id": "71ad2794112032193e17b4ac00f8041d",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"1e95ef5f1b0fce1987c6a745b408c5f9\":\"src/runner.rs=52c66e517d4de8db\"}",
+      "value": "{\"1e95ef5f1b0fce1987c6a745b408c5f9\":\"src/runner.rs=cba237160d7ca840\"}",
       "truth_class": "derived"
     },
     {
@@ -125415,14 +125463,14 @@
       "target_id": "72384918a564c4f97f758f885469ece0",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"a_run_records_the_hashes_of_what_it_covered>Some\",\"a_run_records_the_hashes_of_what_it_covered>as_deref\",\"a_run_records_the_hashes_of_what_it_covered>assert\",\"a_run_records_the_hashes_of_what_it_covered>assert_eq\",\"a_run_records_the_hashes_of_what_it_covered>assert_eq\",\"a_run_records_the_hashes_of_what_it_covered>assert_eq\",\"a_run_records_the_hashes_of_what_it_covered>covered_intact\",\"a_run_records_the_hashes_of_what_it_covered>covered_intact\",\"a_run_records_the_hashes_of_what_it_covered>dir::join\",\"a_run_records_the_hashes_of_what_it_covered>dir::join\",\"a_run_records_the_hashes_of_what_it_covered>fs::write\",\"a_run_records_the_hashes_of_what_it_covered>fs::write\",\"a_run_records_the_hashes_of_what_it_covered>into\",\"a_run_records_the_hashes_of_what_it_covered>is_none\",\"a_run_records_the_hashes_of_what_it_covered>len\",\"a_run_records_the_hashes_of_what_it_covered>observe_command\",\"a_run_records_the_hashes_of_what_it_covered>observe_command::expect\",\"a_run_records_the_hashes_of_what_it_covered>panic\",\"a_run_records_the_hashes_of_what_it_covered>tempdir\",\"a_run_records_the_hashes_of_what_it_covered>write::unwrap\",\"a_run_records_the_hashes_of_what_it_covered>write::unwrap\",\"an_empty_command_is_blocked_not_passed>assert\",\"an_empty_command_is_blocked_not_passed>contains\",\"an_empty_command_is_blocked_not_passed>env::temp_dir\",\"an_empty_command_is_blocked_not_passed>observe_command\",\"an_empty_command_is_blocked_not_passed>observe_command::expect\",\"an_empty_command_is_blocked_not_passed>panic\",\"covered_hashes>artifact::fingerprint\",\"covered_hashes>f::clone\",\"covered_hashes>files::iter\",\"covered_hashes>fs::read_to_string\",\"covered_hashes>iter::map\",\"covered_hashes>map::collect\",\"covered_hashes>map::unwrap_or_default\",\"covered_hashes>read_to_string::map\",\"covered_hashes>root::join\",\"covered_intact>Some\",\"covered_intact>artifact::fingerprint\",\"covered_intact>file::clone\",\"covered_intact>fs::read_to_string\",\"covered_intact>map::unwrap_or_default\",\"covered_intact>read_to_string::map\",\"covered_intact>root::join\",\"excerpt>String::from_utf8_lossy\",\"excerpt>String::from_utf8_lossy\",\"excerpt>String::from_utf8_lossy\",\"excerpt>bytes::len\",\"excerpt>bytes::len\",\"excerpt>bytes::len\",\"excerpt>format\",\"excerpt>from_utf8_lossy::to_string\",\"grounding_locator_resolves>Some\",\"grounding_locator_resolves>locator::is_empty\",\"grounding_locator_resolves>locator::is_module_scope\",\"grounding_locator_resolves>locator::trim\",\"grounding_locator_resolves>map::unwrap_or\",\"grounding_locator_resolves>resolve_locator\",\"grounding_locator_resolves>resolve_locator::map\",\"locator_probe>resolve_locator\",\"locator_probe>resolve_locator::map\",\"observe_command>Box::new\",\"observe_command>Duration::from_secs\",\"observe_command>Instant::now\",\"observe_command>Observation::Ran\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Some\",\"observe_command>captured::is_loom_contention\",\"observe_command>code::unwrap_or\",\"observe_command>command::trim\",\"observe_command>elapsed::as_millis\",\"observe_command>format\",\"observe_command>format\",\"observe_command>format\",\"observe_command>i32::from\",\"observe_command>i64::from\",\"observe_command>into\",\"observe_command>record\",\"observe_command>started::elapsed\",\"observe_command>status::code\",\"observe_command>status::code\",\"observe_command>subprocess::run\",\"observe_command>trim::is_empty\",\"prescreen_probe>Some\",\"prescreen_probe>detail::as_bytes\",\"prescreen_probe>files::is_empty\",\"prescreen_probe>format\",\"prescreen_probe>format\",\"prescreen_probe>hits::is_empty\",\"prescreen_probe>hits::iter\",\"prescreen_probe>i64::from\",\"prescreen_probe>iter::map\",\"prescreen_probe>len\",\"prescreen_probe>lines::join\",\"prescreen_probe>lines::sort\",\"prescreen_probe>map::collect\",\"prescreen_probe>patterns::is_empty\",\"prescreen_probe>patterns::len\",\"prescreen_probe>prescan::prescreen\",\"prescreen_probe>prescreen::ok\",\"prescreen_probe>record\",\"record>String::from_utf8_lossy\",\"record>String::from_utf8_lossy\",\"record>String::new\",\"record>artifact::fingerprint\",\"record>artifact::fingerprint\",\"record>command::to_string\",\"record>covered_hashes\",\"record>env\",\"record>excerpt\",\"record>excerpt\",\"record>journal::now_iso\",\"record>to_string\",\"resolve_locator>Some\",\"resolve_locator>candidates::iter\",\"resolve_locator>collect::join\",\"resolve_locator>content::lines\",\"resolve_locator>content::lines\",\"resolve_locator>detail::as_bytes\",\"resolve_locator>excerpt\",\"resolve_locator>extract::extract\",\"resolve_locator>file::to_string\",\"resolve_locator>filter::collect\",\"resolve_locator>fingerprint\",\"resolve_locator>first::copied\",\"resolve_locator>format\",\"resolve_locator>format\",\"resolve_locator>format\",\"resolve_locator>fs::read_to_string\",\"resolve_locator>get::map\",\"resolve_locator>get::map\",\"resolve_locator>hits::first\",\"resolve_locator>hits::iter\",\"resolve_locator>hits::len\",\"resolve_locator>hits::len\",\"resolve_locator>iter::any\",\"resolve_locator>iter::filter\",\"resolve_locator>iter::map\",\"resolve_locator>join::as_bytes\",\"resolve_locator>l::is_empty\",\"resolve_locator>len\",\"resolve_locator>line_end::min\",\"resolve_locator>line_end::min\",\"resolve_locator>line_start::saturating_sub\",\"resolve_locator>line_start::saturating_sub\",\"resolve_locator>lines::collect\",\"resolve_locator>lines::collect\",\"resolve_locator>lines::get\",\"resolve_locator>lines::get\",\"resolve_locator>lines::len\",\"resolve_locator>lines::len\",\"resolve_locator>locator::map\",\"resolve_locator>locator::symbols\",\"resolve_locator>map::collect\",\"resolve_locator>map::filter\",\"resolve_locator>map::unwrap_or_default\",\"resolve_locator>map::unwrap_or_default\",\"resolve_locator>read_to_string::ok\",\"resolve_locator>record\",\"resolve_locator>root::join\",\"resolve_locator>slice::from_ref\",\"resolve_locator>symbols::iter\",\"resolve_locator>then\",\"resolve_locator>w::join\",\"resolve_locator>window::join\",\"seam_present>loc::is_empty\",\"seam_present>loc::split_whitespace\",\"seam_present>locator::trim\",\"seam_present>split_whitespace::next_back\",\"seam_present>src::contains\",\"seam_present>src::contains\",\"seam_present>tok::is_empty\",\"seam_probe>Some\",\"seam_probe>as_bytes\",\"seam_probe>format\",\"seam_probe>format\",\"seam_probe>format\",\"seam_probe>fs::read_to_string\",\"seam_probe>i64::from\",\"seam_probe>l::is_empty\",\"seam_probe>locator::map\",\"seam_probe>map::filter\",\"seam_probe>read_to_string::ok\",\"seam_probe>record\",\"seam_probe>root::join\",\"seam_probe>seam_present\",\"tempdir>create_dir_all::unwrap\",\"tempdir>env::temp_dir\",\"tempdir>format\",\"tempdir>fs::create_dir_all\",\"tempdir>id\",\"tempdir>now_iso\",\"tempdir>replace\",\"tempdir>temp_dir::join\",\"the_excerpt_keeps_a_trailing_runner_verdict>assert\",\"the_excerpt_keeps_a_trailing_runner_verdict>assert\",\"the_excerpt_keeps_a_trailing_runner_verdict>assert\",\"the_excerpt_keeps_a_trailing_runner_verdict>contains\",\"the_excerpt_keeps_a_trailing_runner_verdict>excerpt\",\"the_excerpt_keeps_a_trailing_runner_verdict>is_some\",\"the_excerpt_keeps_a_trailing_runner_verdict>len\",\"the_excerpt_keeps_a_trailing_runner_verdict>out::extend_from_slice\",\"the_excerpt_keeps_a_trailing_runner_verdict>parse_runner_summary\",\"the_excerpt_keeps_a_trailing_runner_verdict>repeat\",\"the_excerpt_keeps_a_trailing_runner_verdict>repeat::into_bytes\",\"the_excerpt_keeps_a_trailing_runner_verdict>verdict::as_bytes\",\"unique_locator_probe>Some\",\"unique_locator_probe>resolve_locator\",\"unique_locator_probe>then_some\"]",
+      "value": "[\"a_run_records_the_hashes_of_what_it_covered>Some\",\"a_run_records_the_hashes_of_what_it_covered>as_deref\",\"a_run_records_the_hashes_of_what_it_covered>assert\",\"a_run_records_the_hashes_of_what_it_covered>assert_eq\",\"a_run_records_the_hashes_of_what_it_covered>assert_eq\",\"a_run_records_the_hashes_of_what_it_covered>assert_eq\",\"a_run_records_the_hashes_of_what_it_covered>covered_intact\",\"a_run_records_the_hashes_of_what_it_covered>covered_intact\",\"a_run_records_the_hashes_of_what_it_covered>dir::join\",\"a_run_records_the_hashes_of_what_it_covered>dir::join\",\"a_run_records_the_hashes_of_what_it_covered>fs::write\",\"a_run_records_the_hashes_of_what_it_covered>fs::write\",\"a_run_records_the_hashes_of_what_it_covered>into\",\"a_run_records_the_hashes_of_what_it_covered>is_none\",\"a_run_records_the_hashes_of_what_it_covered>len\",\"a_run_records_the_hashes_of_what_it_covered>observe_command\",\"a_run_records_the_hashes_of_what_it_covered>observe_command::expect\",\"a_run_records_the_hashes_of_what_it_covered>panic\",\"a_run_records_the_hashes_of_what_it_covered>tempdir\",\"a_run_records_the_hashes_of_what_it_covered>write::unwrap\",\"a_run_records_the_hashes_of_what_it_covered>write::unwrap\",\"an_empty_command_is_blocked_not_passed>assert\",\"an_empty_command_is_blocked_not_passed>contains\",\"an_empty_command_is_blocked_not_passed>env::temp_dir\",\"an_empty_command_is_blocked_not_passed>observe_command\",\"an_empty_command_is_blocked_not_passed>observe_command::expect\",\"an_empty_command_is_blocked_not_passed>panic\",\"covered_hashes>artifact::fingerprint\",\"covered_hashes>f::clone\",\"covered_hashes>files::iter\",\"covered_hashes>fs::read_to_string\",\"covered_hashes>iter::map\",\"covered_hashes>map::collect\",\"covered_hashes>map::unwrap_or_default\",\"covered_hashes>read_to_string::map\",\"covered_hashes>root::join\",\"covered_intact>Some\",\"covered_intact>artifact::fingerprint\",\"covered_intact>file::clone\",\"covered_intact>fs::read_to_string\",\"covered_intact>map::unwrap_or_default\",\"covered_intact>read_to_string::map\",\"covered_intact>root::join\",\"excerpt>String::from_utf8_lossy\",\"excerpt>String::from_utf8_lossy\",\"excerpt>String::from_utf8_lossy\",\"excerpt>bytes::len\",\"excerpt>bytes::len\",\"excerpt>bytes::len\",\"excerpt>format\",\"excerpt>from_utf8_lossy::to_string\",\"grounding_locator_resolves>Some\",\"grounding_locator_resolves>locator::is_empty\",\"grounding_locator_resolves>locator::is_module_scope\",\"grounding_locator_resolves>locator::trim\",\"grounding_locator_resolves>map::unwrap_or\",\"grounding_locator_resolves>resolve_locator\",\"grounding_locator_resolves>resolve_locator::map\",\"locator_probe>resolve_locator\",\"locator_probe>resolve_locator::map\",\"observe_command>Box::new\",\"observe_command>Duration::from_secs\",\"observe_command>Instant::now\",\"observe_command>Observation::Ran\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Ok\",\"observe_command>Some\",\"observe_command>captured::is_loom_contention\",\"observe_command>code::unwrap_or\",\"observe_command>command::trim\",\"observe_command>elapsed::as_millis\",\"observe_command>format\",\"observe_command>format\",\"observe_command>format\",\"observe_command>i64::from\",\"observe_command>into\",\"observe_command>record\",\"observe_command>started::elapsed\",\"observe_command>status::code\",\"observe_command>status::code\",\"observe_command>subprocess::run\",\"observe_command>trim::is_empty\",\"prescreen_probe>Some\",\"prescreen_probe>detail::as_bytes\",\"prescreen_probe>files::is_empty\",\"prescreen_probe>format\",\"prescreen_probe>format\",\"prescreen_probe>hits::is_empty\",\"prescreen_probe>hits::iter\",\"prescreen_probe>i64::from\",\"prescreen_probe>iter::map\",\"prescreen_probe>len\",\"prescreen_probe>lines::join\",\"prescreen_probe>lines::sort\",\"prescreen_probe>map::collect\",\"prescreen_probe>patterns::is_empty\",\"prescreen_probe>patterns::len\",\"prescreen_probe>prescan::prescreen\",\"prescreen_probe>prescreen::ok\",\"prescreen_probe>record\",\"record>String::from_utf8_lossy\",\"record>String::from_utf8_lossy\",\"record>String::new\",\"record>artifact::fingerprint\",\"record>artifact::fingerprint\",\"record>command::to_string\",\"record>covered_hashes\",\"record>env\",\"record>excerpt\",\"record>excerpt\",\"record>journal::now_iso\",\"record>to_string\",\"resolve_locator>Some\",\"resolve_locator>candidates::iter\",\"resolve_locator>collect::join\",\"resolve_locator>content::lines\",\"resolve_locator>content::lines\",\"resolve_locator>detail::as_bytes\",\"resolve_locator>excerpt\",\"resolve_locator>extract::extract\",\"resolve_locator>file::to_string\",\"resolve_locator>filter::collect\",\"resolve_locator>fingerprint\",\"resolve_locator>first::copied\",\"resolve_locator>format\",\"resolve_locator>format\",\"resolve_locator>format\",\"resolve_locator>fs::read_to_string\",\"resolve_locator>get::map\",\"resolve_locator>get::map\",\"resolve_locator>hits::first\",\"resolve_locator>hits::iter\",\"resolve_locator>hits::len\",\"resolve_locator>hits::len\",\"resolve_locator>iter::any\",\"resolve_locator>iter::filter\",\"resolve_locator>iter::map\",\"resolve_locator>join::as_bytes\",\"resolve_locator>l::is_empty\",\"resolve_locator>len\",\"resolve_locator>line_end::min\",\"resolve_locator>line_end::min\",\"resolve_locator>line_start::saturating_sub\",\"resolve_locator>line_start::saturating_sub\",\"resolve_locator>lines::collect\",\"resolve_locator>lines::collect\",\"resolve_locator>lines::get\",\"resolve_locator>lines::get\",\"resolve_locator>lines::len\",\"resolve_locator>lines::len\",\"resolve_locator>locator::map\",\"resolve_locator>locator::symbols\",\"resolve_locator>map::collect\",\"resolve_locator>map::filter\",\"resolve_locator>map::unwrap_or_default\",\"resolve_locator>map::unwrap_or_default\",\"resolve_locator>read_to_string::ok\",\"resolve_locator>record\",\"resolve_locator>root::join\",\"resolve_locator>slice::from_ref\",\"resolve_locator>symbols::iter\",\"resolve_locator>then\",\"resolve_locator>w::join\",\"resolve_locator>window::join\",\"seam_present>loc::is_empty\",\"seam_present>loc::split_whitespace\",\"seam_present>locator::trim\",\"seam_present>split_whitespace::next_back\",\"seam_present>src::contains\",\"seam_present>src::contains\",\"seam_present>tok::is_empty\",\"seam_probe>Some\",\"seam_probe>as_bytes\",\"seam_probe>format\",\"seam_probe>format\",\"seam_probe>format\",\"seam_probe>fs::read_to_string\",\"seam_probe>i64::from\",\"seam_probe>l::is_empty\",\"seam_probe>locator::map\",\"seam_probe>map::filter\",\"seam_probe>read_to_string::ok\",\"seam_probe>record\",\"seam_probe>root::join\",\"seam_probe>seam_present\",\"tempdir>create_dir_all::unwrap\",\"tempdir>env::temp_dir\",\"tempdir>format\",\"tempdir>fs::create_dir_all\",\"tempdir>id\",\"tempdir>now_iso\",\"tempdir>replace\",\"tempdir>temp_dir::join\",\"the_excerpt_keeps_a_trailing_runner_verdict>assert\",\"the_excerpt_keeps_a_trailing_runner_verdict>assert\",\"the_excerpt_keeps_a_trailing_runner_verdict>assert\",\"the_excerpt_keeps_a_trailing_runner_verdict>contains\",\"the_excerpt_keeps_a_trailing_runner_verdict>excerpt\",\"the_excerpt_keeps_a_trailing_runner_verdict>is_some\",\"the_excerpt_keeps_a_trailing_runner_verdict>len\",\"the_excerpt_keeps_a_trailing_runner_verdict>out::extend_from_slice\",\"the_excerpt_keeps_a_trailing_runner_verdict>parse_runner_summary\",\"the_excerpt_keeps_a_trailing_runner_verdict>repeat\",\"the_excerpt_keeps_a_trailing_runner_verdict>repeat::into_bytes\",\"the_excerpt_keeps_a_trailing_runner_verdict>verdict::as_bytes\",\"unique_locator_probe>Some\",\"unique_locator_probe>resolve_locator\",\"unique_locator_probe>then_some\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "72384918a564c4f97f758f885469ece0",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "52c66e517d4de8db",
+      "value": "cba237160d7ca840",
       "truth_class": "derived"
     },
     {
@@ -125464,7 +125512,7 @@
       "target_id": "72384918a564c4f97f758f885469ece0",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"DEFAULT_TIMEOUT_SECS\":\"1750ee66a77ac0ef\",\"EXCERPT_BYTES\":\"d1a06b07a6b8d262\",\"LocatorResolution\":\"4f1468d88d6e5459\",\"Observation\":\"f1e399adb2d6072e\",\"PRESCREEN_HIT_CAP\":\"a620cf3824c5297b\",\"a_run_records_the_hashes_of_what_it_covered\":\"d92dc4efc784d4b1\",\"an_empty_command_is_blocked_not_passed\":\"9a13aba442ded1ca\",\"covered_hashes\":\"e7ab7e4d6b551544\",\"covered_intact\":\"69f07b47191a6d89\",\"excerpt\":\"e3c91012644e3bdc\",\"grounding_locator_resolves\":\"73e146d01f20f2a6\",\"locator_probe\":\"170b7027e7ff69c8\",\"observe_command\":\"0e850a913be36b47\",\"prescreen_probe\":\"b31454958057198d\",\"record\":\"1cd72a168221007c\",\"resolve_locator\":\"4806c4f9db4d6cd8\",\"seam_present\":\"a75913cb80e50cbb\",\"seam_probe\":\"028adbd64367274f\",\"tempdir\":\"9da3e3b58eb48580\",\"the_excerpt_keeps_a_trailing_runner_verdict\":\"a83f907ae4a13ce0\",\"unique_locator_probe\":\"66877aa68c697872\"}",
+      "value": "{\"DEFAULT_TIMEOUT_SECS\":\"1750ee66a77ac0ef\",\"EXCERPT_BYTES\":\"d1a06b07a6b8d262\",\"LocatorResolution\":\"4f1468d88d6e5459\",\"Observation\":\"f1e399adb2d6072e\",\"PRESCREEN_HIT_CAP\":\"a620cf3824c5297b\",\"a_run_records_the_hashes_of_what_it_covered\":\"d92dc4efc784d4b1\",\"an_empty_command_is_blocked_not_passed\":\"9a13aba442ded1ca\",\"covered_hashes\":\"e7ab7e4d6b551544\",\"covered_intact\":\"69f07b47191a6d89\",\"excerpt\":\"e3c91012644e3bdc\",\"grounding_locator_resolves\":\"73e146d01f20f2a6\",\"locator_probe\":\"170b7027e7ff69c8\",\"observe_command\":\"1d7a9c53da83dbd8\",\"prescreen_probe\":\"b31454958057198d\",\"record\":\"1cd72a168221007c\",\"resolve_locator\":\"4806c4f9db4d6cd8\",\"seam_present\":\"a75913cb80e50cbb\",\"seam_probe\":\"028adbd64367274f\",\"tempdir\":\"9da3e3b58eb48580\",\"the_excerpt_keeps_a_trailing_runner_verdict\":\"a83f907ae4a13ce0\",\"unique_locator_probe\":\"66877aa68c697872\"}",
       "truth_class": "derived"
     },
     {
@@ -126094,7 +126142,7 @@
       "target_id": "7aa581c716635ebd8ad538f4cb5a4e22",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"bb2ac4678a762e48c795f0d93c979859\":\"src/runner.rs=52c66e517d4de8db\"}",
+      "value": "{\"bb2ac4678a762e48c795f0d93c979859\":\"src/runner.rs=cba237160d7ca840\"}",
       "truth_class": "derived"
     },
     {
@@ -129216,7 +129264,7 @@
       "target_id": "995d2a15e1778c326af5a0f415a07fd8",
       "target_kind": "edge",
       "key": "stale_cause",
-      "value": "validation-specific S3 evidence changed",
+      "value": "loom journey run journeys/runs-proofs.yaml no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -130105,7 +130153,7 @@
       "target_id": "a16cb78624a8946e42888f543a25ac5a",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"1e95ef5f1b0fce1987c6a745b408c5f9\":\"src/runner.rs=52c66e517d4de8db\"}",
+      "value": "{\"1e95ef5f1b0fce1987c6a745b408c5f9\":\"src/runner.rs=cba237160d7ca840\"}",
       "truth_class": "derived"
     },
     {
@@ -131248,6 +131296,13 @@
       "key": "locator",
       "value": "observe_command",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "a9f07b6baee318aea964786be9bd2e47",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "resolve 'observe_command' in src/runner.rs no longer holds (subject_redefined)",
+      "truth_class": "derived"
     },
     {
       "target_id": "aa2baa73d0f723187a6b434e312caebf",
@@ -132919,7 +132974,7 @@
       "target_id": "bb2ac4678a762e48c795f0d93c979859",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"a command that cannot start records blocked with the reason proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -132954,7 +133009,7 @@
       "target_id": "bb3737b706f96354edac292ffb232e03",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"sync symbol scope\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -133297,7 +133352,7 @@
       "target_id": "be6570d7348fa6fe2f64b70f8b6d3d60",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/subprocess.rs\",\"proven_by\":\"loom runs a proof and reports the outcome\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/subprocess.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -134613,7 +134668,7 @@
       "target_id": "c9063e60d07cd55fff845e6316027448",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"6162363a31aa12a28a5926a79842049c\":\"src/runner.rs=52c66e517d4de8db\"}",
+      "value": "{\"6162363a31aa12a28a5926a79842049c\":\"src/runner.rs=cba237160d7ca840\"}",
       "truth_class": "derived"
     },
     {
@@ -134767,7 +134822,7 @@
       "target_id": "c9ed49297310b82aec31e1c1c3de15e2",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"ring17 journal\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
