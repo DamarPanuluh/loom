@@ -1121,8 +1121,24 @@ impl SurfaceFileAction {
             );
         }
         match (&self.content, &self.template) {
-            (Some(_), None) => Ok(()),
-            (None, Some(template)) => template_references(template).map(|_| ()),
+            (Some(content), None) => {
+                if content.contains("${{") {
+                    bail!(
+                        "surface setup temporal path '{}' content must not contain '${{{{' syntax",
+                        self.path
+                    );
+                }
+                Ok(())
+            }
+            (None, Some(template)) => {
+                if template.contains("${{") {
+                    bail!(
+                        "surface setup temporal path '{}' template must not contain '${{{{' syntax",
+                        self.path
+                    );
+                }
+                template_references(template).map(|_| ())
+            }
             (Some(_), Some(_)) => bail!(
                 "surface setup temporal path '{}' must declare exactly one of content or template",
                 self.path
@@ -2457,5 +2473,36 @@ mod tests {
         let mut spec = example();
         spec.profiles.get_mut("proof").unwrap().workspace.files[0].path = "../escape".into();
         assert!(spec.validate().unwrap_err().to_string().contains("escapes"));
+    }
+
+    #[test]
+    fn surface_file_actions_reject_dollar_template_syntax_without_changing_valid_semantics() {
+        let action = |content: Option<&str>, template: Option<&str>| SurfaceFileAction {
+            path: "src/example.rs".into(),
+            expected_hash: "0123456789abcdef".into(),
+            content: content.map(str::to_owned),
+            template: template.map(str::to_owned),
+        };
+
+        let content_error = action(Some("literal ${{ inputs.topic }}"), None)
+            .validate()
+            .unwrap_err();
+        assert!(content_error
+            .to_string()
+            .contains("content must not contain"));
+
+        let template_error = action(None, Some("${{ inputs.topic }}"))
+            .validate()
+            .unwrap_err();
+        assert!(template_error
+            .to_string()
+            .contains("template must not contain"));
+
+        action(Some("literal {{ inputs.topic }}"), None)
+            .validate()
+            .unwrap();
+        action(None, Some("runtime {{ inputs.topic }}"))
+            .validate()
+            .unwrap();
     }
 }

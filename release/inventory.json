@@ -1002,10 +1002,6 @@
       "mode": "regular"
     },
     {
-      "path": "tests/ring51_source_anchors.rs",
-      "mode": "absent"
-    },
-    {
       "path": "tests/ring52_journey_manual_gate.rs",
       "mode": "regular"
     },

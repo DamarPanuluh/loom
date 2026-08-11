@@ -11,7 +11,9 @@ use loom::journey_gate::{
     AUTHORITY_RECEIPT_SCHEMA, CONTINUATION_CAPSULE_SCHEMA, PENDING_HUMAN_SCHEMA,
 };
 use loom::ratification::HumanDecision;
+use std::fs::FileTimes;
 use std::sync::{Arc, Barrier};
+use std::time::{Duration, SystemTime};
 
 fn prompt() -> HumanPrompt {
     HumanPrompt::new(
@@ -125,6 +127,114 @@ fn pending_gate_is_opaque_normalized_and_contains_no_canned_answer() {
     );
     assert!(capsule.contains(r#""workspace":"workspace""#));
     assert!(capsule.contains(r#""runtime_state":"runtime-state.json""#));
+}
+
+#[test]
+fn issuance_collects_old_continuations_but_retains_fresh_ones() {
+    let tmp = Tmp::new();
+    let store = CapsuleStore::new(tmp.path().join("runtime-temp")).unwrap();
+    let prompt = prompt();
+    let old = store.issue(binding(&prompt), prompt.clone()).unwrap();
+    let fresh = store.issue(binding(&prompt), prompt.clone()).unwrap();
+    let old_time = SystemTime::now() - Duration::from_secs(31 * 24 * 60 * 60);
+    std::fs::File::open(&old.paths.directory)
+        .unwrap()
+        .set_times(FileTimes::new().set_modified(old_time))
+        .unwrap();
+
+    store.issue(binding(&prompt), prompt).unwrap();
+
+    assert!(!old.paths.directory.exists());
+    assert!(fresh.paths.directory.is_dir());
+}
+
+#[cfg(unix)]
+#[test]
+fn continuation_collection_does_not_traverse_symlinks_or_unsafe_entries() {
+    use std::os::unix::fs::symlink;
+
+    let tmp = Tmp::new();
+    let store = CapsuleStore::new(tmp.path().join("runtime-temp")).unwrap();
+    let outside = tmp.path().join("outside");
+    std::fs::create_dir(&outside).unwrap();
+    std::fs::write(outside.join("sentinel"), "untouched").unwrap();
+    let linked = store.root().join("pending").join("a".repeat(64));
+    symlink(&outside, &linked).unwrap();
+    let unsafe_entry = store.root().join("pending").join("not-a-token");
+    std::fs::create_dir(&unsafe_entry).unwrap();
+
+    let prompt = prompt();
+    store.issue(binding(&prompt), prompt).unwrap();
+
+    assert!(std::fs::symlink_metadata(linked)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert!(unsafe_entry.is_dir());
+    assert_eq!(
+        std::fs::read_to_string(outside.join("sentinel")).unwrap(),
+        "untouched"
+    );
+}
+
+#[test]
+fn damaged_store_root_blocks_issuance_of_an_unclaimable_token() {
+    let tmp = Tmp::new();
+    let store = CapsuleStore::new(tmp.path().join("runtime-temp")).unwrap();
+    let claimed = store.root().join("claimed");
+    std::fs::remove_dir(&claimed).unwrap();
+    std::fs::write(&claimed, "not a directory").unwrap();
+
+    let prompt = prompt();
+    let error = store.issue(binding(&prompt), prompt).unwrap_err();
+
+    assert!(error.to_string().contains("claimed path"));
+}
+
+#[cfg(unix)]
+#[test]
+fn stale_child_cleanup_error_does_not_block_a_claimable_issuance() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = Tmp::new();
+    let store = CapsuleStore::new(tmp.path().join("runtime-temp")).unwrap();
+    let prompt = prompt();
+    let old = store.issue(binding(&prompt), prompt.clone()).unwrap();
+    let claimed = store
+        .claim(
+            &old.pending.resume_token,
+            &binding(&prompt),
+            keep_answer(),
+            "llm:builder",
+        )
+        .unwrap();
+    let old_time = SystemTime::now() - Duration::from_secs(31 * 24 * 60 * 60);
+    std::fs::File::open(&claimed.paths.directory)
+        .unwrap()
+        .set_times(FileTimes::new().set_modified(old_time))
+        .unwrap();
+
+    let claimed_root = store.root().join("claimed");
+    let original_mode = std::fs::metadata(&claimed_root)
+        .unwrap()
+        .permissions()
+        .mode();
+    std::fs::set_permissions(&claimed_root, std::fs::Permissions::from_mode(0o500)).unwrap();
+    let issued = store.issue(binding(&prompt), prompt.clone()).unwrap();
+    std::fs::set_permissions(
+        &claimed_root,
+        std::fs::Permissions::from_mode(original_mode),
+    )
+    .unwrap();
+
+    store
+        .claim(
+            &issued.pending.resume_token,
+            &binding(&prompt),
+            keep_answer(),
+            "llm:builder",
+        )
+        .unwrap();
 }
 
 #[test]

@@ -449,15 +449,30 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
             )?;
             Ok(())
         }
-        SurfaceCmd::Remove { key } => {
+        SurfaceCmd::Remove { key, reason } => {
+            if crate::model::is_placeholder(&reason) {
+                bail!("surface remove needs substantive --reason");
+            }
             let n = store.resolve_node(&key, Some(NodeType::InterfaceSurface))?;
+            let tx = store.begin()?;
             store.delete_node(&n.id)?;
+            store.append_journal(
+                "node_removed",
+                &n.id,
+                serde_json::json!({
+                    "kind": "interface_surface",
+                    "name": n.name,
+                    "reason": reason,
+                }),
+            )?;
+            tx.commit()?;
             pulse::emit_line(
                 &store,
                 json,
                 serde_json::json!({
                     "removed": true,
                     "surface": node_json(&n),
+                    "reason": reason,
                 }),
                 "loom status",
                 format!("removed surface '{}'", n.name),

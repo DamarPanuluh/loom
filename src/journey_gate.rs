@@ -14,6 +14,7 @@ use std::collections::BTreeSet;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 pub const PENDING_HUMAN_SCHEMA: &str = "loom.journey.pending-human/v1";
 pub const CONTINUATION_CAPSULE_SCHEMA: &str = "loom.journey-continuation/v1";
@@ -27,6 +28,9 @@ const CLAIMED_DIR: &str = "claimed";
 const CAPSULE_FILE: &str = "capsule.json";
 const WORKSPACE_DIR: &str = "workspace";
 const RUNTIME_STATE_FILE: &str = "runtime-state.json";
+// Continuations have no shorter protocol expiry. Keep a generous window for a
+// human response while bounding abandoned runtime snapshots.
+const CONTINUATION_RETENTION: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
 /// The current subject whose meaning the human is deciding.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -307,6 +311,12 @@ impl CapsuleStore {
             );
         }
 
+        self.validate_store_roots()?;
+        // Collection is opportunistic: a stale damaged child or concurrently
+        // changing entry must never prevent issuance of a new continuation.
+        let _ = self.collect_stale(SystemTime::now());
+        self.validate_store_roots()?;
+
         for _ in 0..16 {
             let token = generate_token()?;
             let token_digest = digest_token(&token)?;
@@ -347,6 +357,51 @@ impl CapsuleStore {
             });
         }
         bail!("could not allocate a unique Journey gate continuation")
+    }
+
+    fn collect_stale(&self, now: SystemTime) -> Result<()> {
+        for parent in [&self.pending, &self.claimed] {
+            for entry in fs::read_dir(parent)? {
+                let entry = entry?;
+                let name = entry.file_name();
+                let Some(name) = name.to_str() else { continue };
+                if name.len() != 64 || !name.bytes().all(is_lower_hex) {
+                    continue;
+                }
+                let metadata = fs::symlink_metadata(entry.path())?;
+                if metadata.file_type().is_symlink() || !metadata.is_dir() {
+                    continue;
+                }
+                let Ok(age) = now.duration_since(metadata.modified()?) else {
+                    continue;
+                };
+                if age > CONTINUATION_RETENTION {
+                    fs::remove_dir_all(entry.path())?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_store_roots(&self) -> Result<()> {
+        for (label, path) in [
+            ("root", &self.root),
+            ("pending", &self.pending),
+            ("claimed", &self.claimed),
+        ] {
+            let metadata = fs::symlink_metadata(path)
+                .with_context(|| format!("reading Journey gate {label} directory"))?;
+            if metadata.file_type().is_symlink() || !metadata.is_dir() {
+                bail!("Journey gate {label} path is not a confined directory");
+            }
+            let canonical = path
+                .canonicalize()
+                .with_context(|| format!("canonicalizing Journey gate {label} directory"))?;
+            if canonical != *path || !canonical.starts_with(&self.root) {
+                bail!("Journey gate {label} directory escapes its confined root");
+            }
+        }
+        Ok(())
     }
 
     /// Validate and atomically claim a pending continuation. Invalid answers

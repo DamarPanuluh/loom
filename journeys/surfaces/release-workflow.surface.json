@@ -63,7 +63,7 @@
               "id": "isolated_dogfood-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string",
-              "equals": "6bdb4e0aa87780d0"
+              "equals": "44080bdd47fe5ea5"
             },
             {
               "id": "isolated_dogfood-inventory-provenance",
@@ -81,7 +81,7 @@
               "id": "isolated_dogfood-inventory-entries",
               "pointer": "/source_inventory/entry_count",
               "type": "integer",
-              "equals": 259
+              "equals": 258
             },
             {
               "id": "isolated_dogfood-inventory-files",
@@ -93,7 +93,7 @@
               "id": "isolated_dogfood-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
               "type": "integer",
-              "equals": 1
+              "equals": 0
             },
             {
               "id": "isolated_dogfood-inventory-content-hash",
@@ -483,7 +483,7 @@
               "id": "fresh_fixpoint-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string",
-              "equals": "6bdb4e0aa87780d0"
+              "equals": "44080bdd47fe5ea5"
             },
             {
               "id": "fresh_fixpoint-inventory-provenance",
@@ -501,7 +501,7 @@
               "id": "fresh_fixpoint-inventory-entries",
               "pointer": "/source_inventory/entry_count",
               "type": "integer",
-              "equals": 259
+              "equals": 258
             },
             {
               "id": "fresh_fixpoint-inventory-files",
@@ -513,7 +513,7 @@
               "id": "fresh_fixpoint-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
               "type": "integer",
-              "equals": 1
+              "equals": 0
             },
             {
               "id": "fresh_fixpoint-inventory-content-hash",
@@ -939,7 +939,7 @@
               "id": "gated_preparation-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string",
-              "equals": "6bdb4e0aa87780d0"
+              "equals": "44080bdd47fe5ea5"
             },
             {
               "id": "gated_preparation-inventory-provenance",
@@ -957,7 +957,7 @@
               "id": "gated_preparation-inventory-entries",
               "pointer": "/source_inventory/entry_count",
               "type": "integer",
-              "equals": 259
+              "equals": 258
             },
             {
               "id": "gated_preparation-inventory-files",
@@ -969,7 +969,7 @@
               "id": "gated_preparation-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
               "type": "integer",
-              "equals": 1
+              "equals": 0
             },
             {
               "id": "gated_preparation-inventory-content-hash",

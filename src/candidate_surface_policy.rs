@@ -749,7 +749,7 @@ fn classify_cli(
             cmd: FindingCmd::Add { .. },
         }
         | Command::Codefile {
-            cmd: CodefileCmd::Remove { .. },
+            cmd: CodefileCmd::Add { .. } | CodefileCmd::Remove { .. },
         }
         | Command::Edge {
             cmd: EdgeCmd::Implement { .. } | EdgeCmd::SetLocator { .. },
@@ -1030,13 +1030,13 @@ fn is_exact_outer(journey_id: &str, surface_id: &str, cli: &Cli, mode: PolicyMod
 
 fn validate_codefile_path(raw: &str) -> Result<()> {
     let path = Path::new(raw);
-    if path.is_absolute()
-        || path.components().any(|component| {
-            matches!(
-                component,
-                Component::ParentDir | Component::RootDir | Component::Prefix(_)
-            )
-        })
+    if raw.is_empty()
+        || raw.trim() != raw
+        || raw.contains('\\')
+        || path.is_absolute()
+        || path
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
     {
         bail!("candidate surface CodeFile path is not repository-confined");
     }

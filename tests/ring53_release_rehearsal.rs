@@ -20,10 +20,10 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "6bdb4e0aa87780d0";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 259;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "44080bdd47fe5ea5";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 258;
 const RELEASE_INVENTORY_FILE_COUNT: usize = 258;
-const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 1;
+const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
 
 #[test]
 fn release_cli_has_only_three_typed_rehearsal_phases_and_no_skip() {
@@ -1363,6 +1363,72 @@ fn absorb_is_always_a_confined_mutation_despite_authored_read_only() {
 }
 
 #[test]
+fn codefile_add_is_a_confined_mutation_despite_authored_read_only() {
+    let spec = loom::journey::parse(Path::new("journeys/release-workflow.yaml")).unwrap();
+    let mut manifest: loom::journey::SurfaceManifest =
+        serde_json::from_value(release_surface_manifest(&spec.semantic_hash().unwrap())).unwrap();
+    let operation = &mut manifest.surface.operations[0];
+    operation.argv = vec![
+        "loom".into(),
+        "codefile".into(),
+        "add".into(),
+        "src/release.rs".into(),
+        "--json".into(),
+    ];
+    operation.environment.clear();
+    operation.read_only = false;
+    let operation_id = operation.id.clone();
+
+    let plan = loom::candidate_surface_policy::inspect_manifest(
+        &spec,
+        &manifest,
+        loom::candidate_surface_policy::PolicyMode::DetachedReleaseInspection {
+            outer_journey_id: "release-workflow",
+            outer_surface_id: "loom-release-rehearsal",
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        plan.inspections()
+            .iter()
+            .find(|inspection| inspection.operation_id == operation_id)
+            .unwrap()
+            .capability,
+        loom::candidate_surface_policy::DerivedCapability::ConfinedMutation
+    );
+
+    manifest.surface.operations[0].read_only = true;
+    let error = loom::candidate_surface_policy::inspect_manifest(
+        &spec,
+        &manifest,
+        loom::candidate_surface_policy::PolicyMode::DetachedReleaseInspection {
+            outer_journey_id: "release-workflow",
+            outer_surface_id: "loom-release-rehearsal",
+        },
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("marked read_only"));
+
+    manifest.surface.operations[0].read_only = false;
+    for invalid in ["../release.rs", "./.loom/graph.db", ".git\\config"] {
+        manifest.surface.operations[0].argv[3] = invalid.into();
+        let error = loom::candidate_surface_policy::inspect_manifest(
+            &spec,
+            &manifest,
+            loom::candidate_surface_policy::PolicyMode::DetachedReleaseInspection {
+                outer_journey_id: "release-workflow",
+                outer_surface_id: "loom-release-rehearsal",
+            },
+        )
+        .unwrap_err();
+        assert!(
+            error.to_string().contains("not repository-confined"),
+            "{invalid}: {error:#}"
+        );
+    }
+}
+
+#[test]
 fn fresh_fixpoint_runs_both_workspace_rejection_probes() {
     let fixture = RuntimeFixture::new("probe-success");
     let _environment = fixture.activate();
@@ -1558,7 +1624,7 @@ fn source_inventory_manifest_binds_exact_tombstones_and_counts() {
         .filter(|entry| entry["mode"] == "absent")
         .map(|entry| entry["path"].as_str().unwrap())
         .collect();
-    assert_eq!(tombstones, ["tests/ring51_source_anchors.rs"]);
+    assert!(tombstones.is_empty());
 }
 
 #[test]

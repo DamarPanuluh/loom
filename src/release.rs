@@ -172,6 +172,8 @@ pub struct DerivationAuthorizationGrant {
     pub schema: String,
     pub status: String,
     pub token: String,
+    /// Literal, runnable handoff into the typed outer Journey runtime.
+    pub next_command: String,
     pub batch_hash: String,
     pub authority: String,
     pub executor: String,
@@ -1000,10 +1002,12 @@ pub fn authorize_derivations(
         derivations: derivations.clone(),
     };
     let token = issue_derivation_authority(&root, &pending)?;
+    let next_command = derivation_authority_next_command(&token, &root)?;
     Ok(DerivationAuthorizationGrant {
         schema: DERIVATION_AUTHORITY_SCHEMA.into(),
         status: "authorized_pending_outer_runtime".into(),
         token,
+        next_command,
         batch_hash,
         authority: "human".into(),
         executor: executor.to_string(),
@@ -1018,6 +1022,16 @@ pub fn authorize_derivations(
             .collect(),
         continuation_environment: DERIVATION_AUTHORITY_TOKEN_ENV.into(),
     })
+}
+
+fn derivation_authority_next_command(token: &str, root: &Path) -> Result<String> {
+    let root = root
+        .to_str()
+        .ok_or_else(|| anyhow!("release graph path is not valid UTF-8"))?;
+    Ok(format!(
+        "{DERIVATION_AUTHORITY_TOKEN_ENV}={token} loom journey run {RELEASE_JOURNEY_ID} --profile {RELEASE_PROFILE} --graph {}",
+        crate::workitem::q(root)
+    ))
 }
 
 fn derivation_batch_hash(
@@ -3888,6 +3902,21 @@ fn canonical_json(value: serde_json::Value) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn derivation_authority_handoff_contains_sealed_token_and_resolved_root() {
+        let root = Path::new("/tmp/resolved-loom-root");
+        let token = "rda1_actual-sealed-token";
+        assert_eq!(
+            derivation_authority_next_command(token, root).unwrap(),
+            "LOOM_RELEASE_DERIVATION_AUTHORITY=rda1_actual-sealed-token loom journey run release-workflow --profile proof --graph '/tmp/resolved-loom-root'"
+        );
+        assert_eq!(
+            derivation_authority_next_command(token, Path::new("/tmp/release candidate's graph"))
+                .unwrap(),
+            "LOOM_RELEASE_DERIVATION_AUTHORITY=rda1_actual-sealed-token loom journey run release-workflow --profile proof --graph '/tmp/release candidate'\\''s graph'"
+        );
+    }
 
     fn isolated_live_root(label: &str) -> DetachedCandidate {
         let parent = std::env::temp_dir().canonicalize().unwrap();

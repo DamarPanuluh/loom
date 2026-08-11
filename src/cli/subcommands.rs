@@ -938,7 +938,11 @@ pub enum SurfaceCmd {
         codefile: Option<String>,
     },
     /// Remove an interface surface. Cascades its exposes/calls edges.
-    Remove { key: String },
+    Remove {
+        key: String,
+        #[arg(long)]
+        reason: String,
+    },
     /// List surfaces.
     List {
         #[arg(long, default_value_t = 50)]
