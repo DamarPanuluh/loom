@@ -26,7 +26,7 @@
           "assertions": [
             {
               "id": "fixture-grounding-created",
-              "not_equals": "",
+              "matches": "^[0-9a-f]{32}$",
               "pointer": "/edge/id",
               "type": "string"
             },
@@ -85,7 +85,7 @@
           "assertions": [
             {
               "id": "context-packet-served",
-              "not_equals": "",
+              "matches": "^pkt-[0-9]+-[0-9]+$",
               "pointer": "/packet_id",
               "type": "string"
             },
@@ -205,7 +205,7 @@
           "assertions": [
             {
               "id": "fixture-intent-created",
-              "not_equals": "",
+              "matches": "^[0-9a-f]{32}$",
               "pointer": "/intent/id",
               "type": "string"
             },

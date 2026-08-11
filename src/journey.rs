@@ -19,6 +19,56 @@ pub const INTERFACE_SURFACE_SCHEMA: &str = "loom.interface-surface/v1";
 pub const COMPILED_PROOF_SCHEMA: &str = "loom.journey.proof/v1";
 pub const BASELINE_SCHEMA: &str = "loom.journey.baseline/v1";
 pub const JOURNEY_COMPILER_VERSION: &str = "2";
+pub const JOURNEY_LINT_REPORT_SCHEMA: &str = "loom.journey-lint/v1";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum JourneyLintSeverity {
+    Blocking,
+    Advisory,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct JourneyLintFinding {
+    pub rule: String,
+    pub severity: JourneyLintSeverity,
+    pub journey_id: String,
+    pub manifest_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub operation: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assertion: Option<String>,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JourneyLintReport {
+    pub schema: String,
+    pub status: String,
+    pub scanned: usize,
+    pub blocking: usize,
+    pub advisory: usize,
+    pub findings: Vec<JourneyLintFinding>,
+}
+
+impl JourneyLintReport {
+    pub fn new(scanned: usize, mut findings: Vec<JourneyLintFinding>) -> Self {
+        findings.sort();
+        let blocking = findings
+            .iter()
+            .filter(|f| f.severity == JourneyLintSeverity::Blocking)
+            .count();
+        let advisory = findings.len() - blocking;
+        Self {
+            schema: JOURNEY_LINT_REPORT_SCHEMA.into(),
+            status: if blocking == 0 { "passed" } else { "blocked" }.into(),
+            scanned,
+            blocking,
+            advisory,
+            findings,
+        }
+    }
+}
 
 fn default_true() -> bool {
     true
@@ -1803,7 +1853,163 @@ impl InterfaceSurfaceDefinition {
     }
 }
 
+fn is_exact_graph_identity(text: &str) -> bool {
+    text.len() == 32 && text.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn is_undeclared_graph_identity(store: &crate::store::Store, text: &str) -> Result<bool> {
+    if !is_exact_graph_identity(text) {
+        return Ok(false);
+    }
+    Ok(store.get_node(text)?.is_none() && store.get_edge(text)?.is_none())
+}
+
+fn value_contains_undeclared_graph_identity(
+    store: &crate::store::Store,
+    value: &Value,
+) -> Result<bool> {
+    match value {
+        Value::String(text) => is_undeclared_graph_identity(store, text),
+        Value::Array(values) => {
+            for value in values {
+                if value_contains_undeclared_graph_identity(store, value)? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        Value::Object(values) => {
+            for value in values.values() {
+                if value_contains_undeclared_graph_identity(store, value)? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn exact_census_pin(assertion: &OutputAssertion) -> bool {
+    let Some(value) = &assertion.equals else {
+        return false;
+    };
+    let census_name = assertion
+        .pointer
+        .split('/')
+        .next_back()
+        .is_some_and(|segment| {
+            let segment = segment.to_ascii_lowercase();
+            matches!(
+                segment.as_str(),
+                "count" | "counts" | "total" | "totals" | "census"
+            ) || segment.ends_with("_count")
+                || segment.ends_with("_total")
+        });
+    census_name && (value.is_number() || value.is_array() || value.is_object())
+}
+
+fn positional_census_pointer(pointer: &str) -> bool {
+    pointer
+        .split('/')
+        .skip(1)
+        .any(|segment| !segment.is_empty() && segment.bytes().all(|byte| byte.is_ascii_digit()))
+}
+
+fn relies_on_real_clock_minute_bucket(operation: &CliOperation) -> bool {
+    // The known self-audit fixture creates many adjudications and audits the
+    // resulting judgment burst in one MCP transcript. Audit groups that burst
+    // by the host clock's current minute, so crossing a minute is correctness-
+    // affecting. Requiring both structural signals avoids matching prose.
+    let joined = operation.argv.join(" ");
+    joined.contains("\"adjudications\"")
+        && (joined.contains("[\"loom\",\"audit\",\"--json\"]")
+            || operation
+                .argv
+                .windows(2)
+                .any(|parts| parts == ["loom", "audit"]))
+}
+
 impl SurfaceManifest {
+    /// Static portability and durability policy shared by lint and acceptance.
+    /// Call only after schema validation and setup confinement validation.
+    pub fn lint(
+        &self,
+        store: &crate::store::Store,
+        journey: &JourneySpec,
+        manifest_path: &str,
+    ) -> Result<JourneyLintReport> {
+        let mut findings = Vec::new();
+        let mut add = |rule: &str,
+                       severity,
+                       operation: Option<&str>,
+                       assertion: Option<&str>,
+                       message: String| {
+            findings.push(JourneyLintFinding {
+                rule: rule.into(),
+                severity,
+                journey_id: self.journey_id.clone(),
+                manifest_path: manifest_path.into(),
+                operation: operation.map(str::to_owned),
+                assertion: assertion.map(str::to_owned),
+                message,
+            });
+        };
+        for operation in &self.surface.operations {
+            for arg in &operation.argv {
+                if is_undeclared_graph_identity(store, arg)? {
+                    add("graph-local-identity", JourneyLintSeverity::Blocking, Some(&operation.id), None, "replace the undeclared 32-hex identity in argv with a repository-declared identity, stable name, or captured value".into());
+                }
+            }
+            if relies_on_real_clock_minute_bucket(operation) {
+                add("real-clock-minute-bucket", JourneyLintSeverity::Advisory, Some(&operation.id), None, "replace the real-clock judgment-burst/minute-bucket fixture with deterministic clock-controlled evidence".into());
+            }
+            for assertion in &operation.output.assertions {
+                let undeclared_equals = match &assertion.equals {
+                    Some(value) => value_contains_undeclared_graph_identity(store, value)?,
+                    None => false,
+                };
+                let mut undeclared_pointer = false;
+                for segment in assertion.pointer.split('/') {
+                    if is_undeclared_graph_identity(store, segment)? {
+                        undeclared_pointer = true;
+                        break;
+                    }
+                }
+                if undeclared_equals || undeclared_pointer {
+                    add("graph-local-identity", JourneyLintSeverity::Blocking, Some(&operation.id), Some(&assertion.id), "replace the undeclared 32-hex identity with a repository-declared identity, stable name, or captured value".into());
+                }
+                if exact_census_pin(assertion) {
+                    add("exact-census-pin", JourneyLintSeverity::Advisory, Some(&operation.id), Some(&assertion.id), "assert an invariant or bounded relationship instead of an exact whole-graph count or total".into());
+                }
+                if positional_census_pointer(&assertion.pointer) {
+                    add("positional-census-pointer", JourneyLintSeverity::Advisory, Some(&operation.id), Some(&assertion.id), "select census data by stable identity instead of a numeric JSON-pointer position".into());
+                }
+                if assertion.not_equals_value() == Some(Value::String(String::new())) {
+                    add("not-equals-empty", JourneyLintSeverity::Advisory, Some(&operation.id), Some(&assertion.id), "use an explicit existence, type, or semantic assertion instead of not_equals empty string".into());
+                }
+            }
+        }
+        if let Some(setup) = &self.setup {
+            let mut transitioned_paths = BTreeSet::new();
+            for step in &journey.steps {
+                let Some(actions) = setup.before_steps.get(&step.id) else {
+                    continue;
+                };
+                for action in actions {
+                    if !transitioned_paths.insert(action.path.clone()) {
+                        continue;
+                    }
+                    let content = std::fs::read_to_string(action.resolve_for_store(store)?)?;
+                    if crate::artifact::fingerprint(&content) != action.expected_hash {
+                        add("stale-temporal-expected-hash", JourneyLintSeverity::Blocking, None, None, format!("update setup path '{}' expected_hash to the current repository content fingerprint", action.path));
+                    }
+                }
+            }
+        }
+        Ok(JourneyLintReport::new(1, findings))
+    }
+
     pub fn parse_json(path: &Path) -> Result<Self> {
         let text = std::fs::read_to_string(path)
             .with_context(|| format!("reading surface manifest {}", path.display()))?;
@@ -2504,5 +2710,201 @@ mod tests {
         action(None, Some("runtime {{ inputs.topic }}"))
             .validate()
             .unwrap();
+    }
+
+    #[test]
+    fn journey_lint_static_predicates_are_narrow() {
+        assert!(is_exact_graph_identity("0123456789abcdef0123456789ABCDEF"));
+        assert!(!is_exact_graph_identity(
+            "id=0123456789abcdef0123456789abcdef"
+        ));
+
+        let assertion =
+            |pointer: &str, equals: Option<Value>, source: Option<String>| OutputAssertion {
+                id: "check".into(),
+                pointer: pointer.into(),
+                value_type: None,
+                equals,
+                source,
+            };
+        assert!(exact_census_pin(&assertion(
+            "/request_count",
+            Some(json!(16)),
+            None
+        )));
+        for pointer in [
+            "/entry_count",
+            "/file_count",
+            "/tombstone_count",
+            "/operation_count",
+            "/byte_total",
+        ] {
+            assert!(exact_census_pin(&assertion(pointer, Some(json!(1)), None)));
+        }
+        assert!(!exact_census_pin(&assertion(
+            "/exit_code",
+            Some(json!(0)),
+            None
+        )));
+        assert!(positional_census_pointer("/findings/0/kind"));
+        assert!(!positional_census_pointer("/finding/by-id/kind"));
+        assert_eq!(
+            assertion("/name", None, Some(format!("{ASSERTION_NOT_EQUALS}\"\"")))
+                .not_equals_value(),
+            Some(json!(""))
+        );
+
+        let operation = CliOperation {
+            id: "audit-burst".into(),
+            summary: String::new(),
+            argv: vec![
+                "loom".into(),
+                "mcp".into(),
+                "{\"adjudications\":[],\"command\":[\"loom\",\"audit\",\"--json\"]}".into(),
+            ],
+            environment: Vec::new(),
+            read_only: false,
+            arguments: Vec::new(),
+            output: OperationOutput {
+                format: OutputFormat::Json,
+                captures: Vec::new(),
+                assertions: Vec::new(),
+                redact: Vec::new(),
+            },
+        };
+        assert!(relies_on_real_clock_minute_bucket(&operation));
+        let mut merely_mentions_audit = operation;
+        merely_mentions_audit.argv[2] = "audit prose without adjudications".into();
+        assert!(!relies_on_real_clock_minute_bucket(&merely_mentions_audit));
+    }
+
+    #[test]
+    fn journey_lint_reports_every_source_and_stable_contract() {
+        let root =
+            std::env::temp_dir().join(format!("loom-journey-lint-unit-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("current.rs"), "current\n").unwrap();
+        std::fs::write(root.join("stale.rs"), "changed\n").unwrap();
+        let store = crate::store::Store::init(&root, Some("lint-unit"), false).unwrap();
+        for path in ["current.rs", "stale.rs"] {
+            store
+                .add_node(
+                    crate::model::NodeType::CodeFile,
+                    path,
+                    "lint fixture",
+                    "active",
+                    json!({}),
+                )
+                .unwrap();
+        }
+        let current_hash = crate::artifact::fingerprint("current\n");
+        let graph_id = "0123456789abcdef0123456789abcdef";
+        let manifest: SurfaceManifest = serde_json::from_value(json!({
+            "schema": SURFACE_SCHEMA,
+            "journey_id": "lint.fixture",
+            "journey_hash": "hash",
+            "surface": {
+                "id": "lint-cli", "title": "Lint CLI", "identity": "lint",
+                "codefile": "src/main.rs", "locator": "main",
+                "operations": [{
+                    "id": "inspect", "summary": "inspect",
+                    "argv": ["tool", graph_id], "arguments": [],
+                    "output": {"format": "json", "assertions": [
+                        {"id":"equals-id", "pointer":"/id", "equals":{"nested":graph_id}},
+                        {"id":"pointer-id", "pointer":format!("/nodes/{graph_id}/name"), "equals":"ok"},
+                        {"id":"count", "pointer":"/entry_count", "equals":2},
+                        {"id":"position", "pointer":"/entries/0/name", "equals":"first"},
+                        {"id":"non-empty", "pointer":"/name", "not_equals":""},
+                        {"id":"exit", "pointer":"/exit_code", "equals":0}
+                    ]}
+                }]
+            },
+            "setup": {
+                "graph":"local_snapshot", "operations":[],
+                "before_steps": {"step": [
+                    {"path":"current.rs", "expected_hash":current_hash, "content":"next"},
+                    {"path":"stale.rs", "expected_hash":"0000000000000000", "content":"next"}
+                ]}
+            },
+            "bindings": []
+        })).unwrap();
+        let journey = JourneySpec {
+            schema: JOURNEY_SCHEMA.into(),
+            id: "lint.fixture".into(),
+            name: "Lint fixture".into(),
+            actor: "tester".into(),
+            goal: "Exercise lint".into(),
+            description: None,
+            inputs: BTreeMap::new(),
+            preconditions: Vec::new(),
+            steps: vec![JourneyStep {
+                id: "step".into(),
+                name: "Step".into(),
+                action: "Inspect".into(),
+                expects: Vec::new(),
+                produces: BTreeMap::new(),
+            }],
+            profiles: BTreeMap::new(),
+        };
+        let report = manifest
+            .lint(&store, &journey, "surfaces/lint.fixture.surface.json")
+            .unwrap();
+        let rules: Vec<_> = report
+            .findings
+            .iter()
+            .map(|finding| finding.rule.as_str())
+            .collect();
+        assert_eq!(
+            rules
+                .iter()
+                .filter(|rule| **rule == "graph-local-identity")
+                .count(),
+            3
+        );
+        for rule in [
+            "exact-census-pin",
+            "positional-census-pointer",
+            "not-equals-empty",
+        ] {
+            assert!(rules.contains(&rule), "missing {rule}: {rules:?}");
+        }
+        assert_eq!(
+            rules
+                .iter()
+                .filter(|rule| **rule == "stale-temporal-expected-hash")
+                .count(),
+            1
+        );
+        assert!(report.findings.windows(2).all(|pair| pair[0] <= pair[1]));
+        assert_eq!(
+            serde_json::to_value(&report).unwrap(),
+            json!({
+                "schema":"loom.journey-lint/v1", "status":"blocked", "scanned":1,
+                "blocking":4, "advisory":3, "findings": report.findings
+            })
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn self_audit_real_clock_rule_matches_only_authorized_batch() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let path = root.join("journeys/surfaces/self-audit.surface.json");
+        let manifest = SurfaceManifest::parse_json(&path).unwrap();
+        for operation in &manifest.surface.operations {
+            let expected = operation.id == "audit-authorized-batch";
+            if matches!(
+                operation.id.as_str(),
+                "audit-authorized-batch" | "audit-clean-graph" | "audit-defective-graph"
+            ) {
+                assert_eq!(
+                    relies_on_real_clock_minute_bucket(operation),
+                    expected,
+                    "{}",
+                    operation.id
+                );
+            }
+        }
     }
 }

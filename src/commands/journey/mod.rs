@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 
 pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()> {
     match cmd {
+        JourneyCmd::Lint { journey } => journey_lint(graph, journey.as_deref(), json),
         JourneyCmd::Add { spec } => journey_add(graph, spec, json),
         JourneyCmd::Show { journey } => journey_show(graph, &journey, json),
         JourneyCmd::Remove { journey } => journey_remove(graph, &journey, json),
@@ -59,6 +60,70 @@ pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()>
         JourneyCmd::Freeze { journey, profile } => journey_freeze(graph, &journey, &profile, json),
         JourneyCmd::Drift { journey } => journey_drift(graph, journey.as_deref(), json),
     }
+}
+
+fn journey_lint(graph: Option<&Path>, journey_key: Option<&str>, json_output: bool) -> Result<()> {
+    let store = open_read(graph)?;
+    let journeys = if let Some(key) = journey_key {
+        vec![resolve_journey(&store, key)?]
+    } else {
+        let mut nodes = store.list_nodes(Some(NodeType::Journey), usize::MAX)?;
+        nodes.sort_by(|a, b| a.name.cmp(&b.name));
+        nodes
+    };
+    let mut findings = Vec::new();
+    let mut scanned = 0;
+    for journey in journeys {
+        let (_, spec, hash) = load_registered_journey(&store, &journey.id)?;
+        let artifact = journey
+            .body
+            .get("artifact")
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow!("Journey '{}' has no artifact", journey.name))?;
+        let surface = Path::new(artifact)
+            .parent()
+            .unwrap_or(Path::new(""))
+            .join("surfaces")
+            .join(format!("{}.surface.json", journey.name));
+        let absolute = store.root().join(&surface);
+        if !absolute.is_file() {
+            bail!(
+                "Journey '{}' has no surface manifest at '{}'",
+                journey.name,
+                surface.display()
+            );
+        }
+        let manifest = crate::journey::SurfaceManifest::parse_json(&absolute)?;
+        manifest.validate_for(&spec, &hash)?;
+        manifest.validate_setup_for_store(&store)?;
+        let report = manifest.lint(&store, &spec, &surface.to_string_lossy())?;
+        scanned += report.scanned;
+        findings.extend(report.findings);
+    }
+    let report = crate::journey::JourneyLintReport::new(scanned, findings);
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        for finding in &report.findings {
+            let location = finding
+                .operation
+                .as_deref()
+                .map(|op| format!(" operation={op}"))
+                .unwrap_or_default();
+            println!(
+                "{:?} {} {}{}: {}",
+                finding.severity, finding.rule, finding.journey_id, location, finding.message
+            );
+        }
+        println!(
+            "{}: scanned={}, blocking={}, advisory={}",
+            report.status, report.scanned, report.blocking, report.advisory
+        );
+    }
+    if report.blocking > 0 {
+        bail!("Journey lint found {} blocking finding(s)", report.blocking);
+    }
+    Ok(())
 }
 
 fn journey_resume(
@@ -1518,6 +1583,24 @@ pub(crate) fn journey_surface_accept(
     let (journey, spec, semantic_hash) = load_registered_journey(&store, journey_key)?;
     manifest.validate_for(&spec, &semantic_hash)?;
     manifest.validate_setup_for_store(&store)?;
+    let lint = manifest.lint(&store, &spec, &manifest_path.to_string_lossy())?;
+    if let Some(finding) = lint
+        .findings
+        .iter()
+        .find(|finding| finding.severity == crate::journey::JourneyLintSeverity::Blocking)
+    {
+        let location = finding
+            .operation
+            .as_deref()
+            .map(|operation| format!(" operation '{operation}'"))
+            .unwrap_or_default();
+        bail!(
+            "surface lint blocked acceptance: {}{}: {}",
+            finding.rule,
+            location,
+            finding.message
+        );
+    }
 
     let (surface, exposes, created, removed_edges) = {
         let tx = store.begin()?;

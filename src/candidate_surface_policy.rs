@@ -728,6 +728,7 @@ fn classify_cli(
         Command::Journey {
             cmd:
                 JourneyCmd::Show { .. }
+                | JourneyCmd::Lint { .. }
                 | JourneyCmd::List { .. }
                 | JourneyCmd::Map
                 | JourneyCmd::Derive { .. }

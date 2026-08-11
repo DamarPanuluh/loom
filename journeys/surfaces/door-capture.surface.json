@@ -68,7 +68,7 @@
           "assertions": [
             {
               "id": "captured-item-nonempty",
-              "not_equals": "",
+              "matches": "^[0-9a-f]{32}$",
               "pointer": "/id",
               "type": "string"
             },
@@ -185,7 +185,7 @@
             },
             {
               "id": "landing-rationale",
-              "not_equals": "",
+              "matches": "\\S",
               "pointer": "/landing_menu/0/why",
               "type": "string"
             },

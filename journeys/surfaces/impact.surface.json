@@ -82,7 +82,7 @@
             },
             {
               "id": "behavior-risk-names-an-intent",
-              "not_equals": "",
+              "matches": "\\S",
               "pointer": "/intents_at_risk/0/intent",
               "type": "string"
             },

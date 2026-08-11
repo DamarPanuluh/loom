@@ -9,6 +9,7 @@ use loom::release::{
     OUTER_JOURNEY_ID_ENV, OUTER_JOURNEY_PROFILE_ENV, OUTER_JOURNEY_RUN_ID_ENV,
     OUTER_PROOF_HASH_ENV, OUTER_SURFACE_HASH_ENV, RELEASE_REHEARSAL_SCHEMA,
 };
+use loom::store::Store;
 use loom::travel::{Export, FORMAT};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -20,10 +21,18 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "44080bdd47fe5ea5";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 258;
-const RELEASE_INVENTORY_FILE_COUNT: usize = 258;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "d858c9829fafcf36";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 259;
+const RELEASE_INVENTORY_FILE_COUNT: usize = 259;
 const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
+
+fn imported_repository_store() -> (Tmp, Store) {
+    let tmp = Tmp::new();
+    let mut store = Store::init(tmp.path(), Some("journey-lint"), false).unwrap();
+    let export = Export::from_json(&std::fs::read_to_string("loom.graph.json").unwrap()).unwrap();
+    store.restore(&export.into_snapshot()).unwrap();
+    (tmp, store)
+}
 
 #[test]
 fn release_cli_has_only_three_typed_rehearsal_phases_and_no_skip() {
@@ -386,10 +395,21 @@ fn compass_fixture_targets_a_portable_derivation_identity_not_a_graph_local_uuid
         assertion.equals,
         Some(json!("rung, lane, and queue state remain one invariant"))
     );
-    assert!(!operation
-        .argv
+    let (_tmp, store) = imported_repository_store();
+    let lint = manifest
+        .lint(
+            &store,
+            &serde_norway::from_str(
+                &std::fs::read_to_string("journeys/compass-projection.yaml").unwrap(),
+            )
+            .unwrap(),
+            "journeys/surfaces/compass-projection.surface.json",
+        )
+        .unwrap();
+    assert!(!lint
+        .findings
         .iter()
-        .any(|part| { part.len() == 32 && part.bytes().all(|byte| byte.is_ascii_hexdigit()) }));
+        .any(|finding| finding.rule == "graph-local-identity"));
 }
 
 #[test]
@@ -464,34 +484,22 @@ fn divergence_queue_fixture_verifies_then_drifts_a_named_ratified_intent() {
             && assertion["contains"]
                 == json!("redefined after ratification — the words changed under the yes")));
 
-    // The fixture must travel by stable Intent NAME. A 32-hex token in argv or
-    // an equal assertion is staging-graph residue: the fresh candidate mints
-    // different UUIDs, so any such identity silently matches nothing.
-    let is_graph_local_uuid =
-        |part: &str| part.len() == 32 && part.bytes().all(|byte| byte.is_ascii_hexdigit());
-    for operation in &manifest.surface.operations {
-        assert!(
-            !operation.argv.iter().any(|part| is_graph_local_uuid(part)),
-            "operation '{}' addresses a graph-local UUID instead of a stable name",
-            operation.id
-        );
-        for assertion in &operation.output.assertions {
-            if let Some(equals) = &assertion.equals {
-                if let Some(text) = equals.as_str() {
-                    assert!(
-                        !is_graph_local_uuid(text),
-                        "assertion '{}' compares a graph-local UUID",
-                        assertion.id
-                    );
-                }
-            }
-            assert!(
-                !assertion.pointer.split('/').any(is_graph_local_uuid),
-                "assertion '{}' indexes a graph-local UUID",
-                assertion.id
-            );
-        }
-    }
+    // Use the same production policy as CLI lint and surface acceptance.
+    let (_tmp, store) = imported_repository_store();
+    let lint = manifest
+        .lint(
+            &store,
+            &serde_norway::from_str(
+                &std::fs::read_to_string("journeys/divergence-queue.yaml").unwrap(),
+            )
+            .unwrap(),
+            "journeys/surfaces/divergence-queue.surface.json",
+        )
+        .unwrap();
+    assert!(!lint.findings.iter().any(|finding| {
+        finding.rule == "graph-local-identity"
+            && finding.severity == loom::journey::JourneyLintSeverity::Blocking
+    }));
 }
 
 #[test]

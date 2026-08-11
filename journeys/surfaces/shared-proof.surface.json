@@ -20,58 +20,24 @@
         "output": {
           "assertions": [
             {
-              "equals": "tangled_file",
-              "id": "ownership-smell-precedes-shared-risk",
-              "pointer": "/12/kind",
-              "type": "string"
-            },
-            {
-              "equals": "shared_proof_command",
-              "id": "shared-risk-kind",
-              "pointer": "/13/kind",
-              "type": "string"
-            },
-            {
-              "equals": "2 behaviors are proved by the same command `loom-fixture shared-proof c06ab8b7ac30ec50 shared` — it can be exercising at most one of them",
-              "id": "shared-risk-message",
-              "pointer": "/13/message",
-              "type": "string"
-            },
-            {
-              "equals": "narrow each proof to the behavior it proves (a single test, or a journey step asserting that behavior's output), or record why one suite legitimately proves them all",
-              "id": "shared-risk-remedy",
-              "pointer": "/13/remedy",
-              "type": "string"
-            },
-            {
-              "equals": "untriaged",
-              "id": "shared-risk-state",
-              "pointer": "/13/state",
-              "type": "string"
-            },
-            {
-              "equals": "",
-              "id": "shared-risk-reason-empty",
-              "pointer": "/13/reason",
-              "type": "string"
-            },
-            {
-              "equals": "loom sync   (materializes this smell as a finding first)",
-              "id": "shared-risk-materialization-guidance",
-              "pointer": "/13/adjudicate",
-              "type": "string"
-            },
-            {
-              "equals": "consumer_owned_file",
-              "id": "unique-mechanism-not-reported",
-              "pointer": "/14/kind",
-              "type": "string"
+              "contains": {
+                "adjudicate": "loom sync   (materializes this smell as a finding first)",
+                "finding_id": null,
+                "kind": "shared_proof_command",
+                "message": "2 behaviors are proved by the same command `loom-fixture shared-proof c06ab8b7ac30ec50 shared` — it can be exercising at most one of them",
+                "reason": "",
+                "remedy": "narrow each proof to the behavior it proves (a single test, or a journey step asserting that behavior's output), or record why one suite legitimately proves them all",
+                "state": "untriaged"
+              },
+              "id": "shared-risk-is-reported",
+              "pointer": "",
+              "type": "json"
             }
           ],
           "format": "json"
         },
         "read_only": true,
-        "summary": "Report the shared mechanism with a narrowing remedy while the adjacent unique mechanism remains excluded."
+        "summary": "Report the shared mechanism with a narrowing remedy independent of census position."
       },
       {
         "arguments": [],
@@ -159,9 +125,10 @@
               "type": "integer"
             },
             {
-              "exists": false,
+              "equals": [],
               "id": "first-shared-prior-list-empty",
-              "pointer": "/collision/prior_behaviors/0"
+              "pointer": "/collision/prior_behaviors",
+              "type": "json"
             }
           ],
           "format": "json"
@@ -255,21 +222,13 @@
               "type": "integer"
             },
             {
-              "equals": "7d61e23f99627cee331dd38d055e99c2",
-              "id": "second-shared-prior-id",
-              "pointer": "/collision/prior_behaviors/0/id",
-              "type": "string"
-            },
-            {
-              "equals": "Loom preserves independent claim truth with a shared subprocess",
-              "id": "second-shared-prior-name",
-              "pointer": "/collision/prior_behaviors/0/name",
-              "type": "string"
-            },
-            {
-              "exists": false,
-              "id": "second-shared-no-extra-prior",
-              "pointer": "/collision/prior_behaviors/1"
+              "contains": {
+                "id": "7d61e23f99627cee331dd38d055e99c2",
+                "name": "Loom preserves independent claim truth with a shared subprocess"
+              },
+              "id": "second-shared-prior-is-identified",
+              "pointer": "/collision/prior_behaviors",
+              "type": "json"
             }
           ],
           "format": "json"
@@ -363,9 +322,10 @@
               "type": "integer"
             },
             {
-              "exists": false,
+              "equals": [],
               "id": "unique-prior-list-empty",
-              "pointer": "/collision/prior_behaviors/0"
+              "pointer": "/collision/prior_behaviors",
+              "type": "json"
             }
           ],
           "format": "json"

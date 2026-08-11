@@ -126,6 +126,143 @@ fn builder_json(tmp: &Tmp, args: &[&str]) -> Value {
     })
 }
 
+fn lint_surface(journey_id: &str, journey_hash: Value, assertion: Value) -> Value {
+    json!({
+        "schema":"loom.journey.surface/v1", "journey_id":journey_id,
+        "journey_hash":journey_hash,
+        "surface":{
+            "id":format!("{journey_id}-cli"), "title":"Lint CLI", "identity":journey_id,
+            "codefile":"src/shop_cli.rs", "locator":"run_shop_cli",
+            "operations":[
+                {"id":"cart-add", "summary":"Add", "argv":["shop","add"], "arguments":[],
+                 "output":{"format":"json", "captures":[{"id":"cart-id","pointer":"/cart_id","type":"string"}], "assertions":[assertion]}},
+                {"id":"order-submit", "summary":"Submit", "argv":["shop","submit"], "arguments":[],
+                 "output":{"format":"json", "captures":[{"id":"order-id","pointer":"/order_id","type":"string"}]}}
+            ]
+        },
+        "bindings":[
+            {"step_id":"add-item", "operation_id":"cart-add"},
+            {"step_id":"submit-order", "operation_id":"order-submit"}
+        ]
+    })
+}
+
+#[test]
+fn journey_lint_command_contract_and_surface_accept_policy_are_end_to_end() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("journey-lint"));
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(
+        tmp.path().join("src/shop_cli.rs"),
+        "pub fn run_shop_cli() {}\n",
+    )
+    .unwrap();
+    builder_json(&tmp, &["codefile", "add", "src/shop_cli.rs", "--json"]);
+    std::fs::create_dir_all(tmp.path().join("surfaces")).unwrap();
+
+    let mut manifests = Vec::new();
+    for (id, assertion) in [
+        (
+            "alpha.flow",
+            json!({"id":"position", "pointer":"/rows/0/name", "equals":"a"}),
+        ),
+        (
+            "beta.flow",
+            json!({"id":"count", "pointer":"/entry_count", "equals":2}),
+        ),
+    ] {
+        let path = write_journey(&tmp, id, id);
+        builder_json(&tmp, &["journey", "add", path.to_str().unwrap(), "--json"]);
+        let packet = builder_json(&tmp, &["journey", "surface", id, "--json"]);
+        let manifest = lint_surface(id, packet["semantic_hash"].clone(), assertion);
+        let path = tmp
+            .path()
+            .join("surfaces")
+            .join(format!("{id}.surface.json"));
+        std::fs::write(&path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+        manifests.push((id, path, manifest));
+    }
+
+    let report = builder_json(&tmp, &["journey", "lint", "--json"]);
+    assert_eq!(
+        report,
+        json!({
+            "schema":"loom.journey-lint/v1", "status":"passed", "scanned":2,
+            "blocking":0, "advisory":2,
+            "findings":[
+                {"rule":"exact-census-pin", "severity":"advisory", "journey_id":"beta.flow",
+                 "manifest_path":"surfaces/beta.flow.surface.json", "operation":"cart-add",
+                 "assertion":"count", "message":"assert an invariant or bounded relationship instead of an exact whole-graph count or total"},
+                {"rule":"positional-census-pointer", "severity":"advisory", "journey_id":"alpha.flow",
+                 "manifest_path":"surfaces/alpha.flow.surface.json", "operation":"cart-add",
+                 "assertion":"position", "message":"select census data by stable identity instead of a numeric JSON-pointer position"}
+            ]
+        })
+    );
+    let targeted = builder_json(&tmp, &["journey", "lint", "alpha.flow", "--json"]);
+    assert_eq!(targeted["scanned"], 1);
+    assert_eq!(targeted["advisory"], 1);
+
+    let advisory_accept = builder_json(
+        &tmp,
+        &[
+            "journey",
+            "surface-accept",
+            manifests[0].0,
+            "--manifest",
+            manifests[0].1.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert_eq!(advisory_accept["surface_created"], true);
+    let before = Store::open(tmp.path())
+        .unwrap()
+        .list_nodes(Some(NodeType::InterfaceSurface), usize::MAX)
+        .unwrap()
+        .len();
+
+    let mut blocked = manifests[1].2.clone();
+    blocked["surface"]["operations"][0]["argv"] =
+        json!(["shop", "0123456789abcdef0123456789abcdef"]);
+    let blocked_path = tmp.path().join("blocked.surface.json");
+    std::fs::write(&blocked_path, serde_json::to_vec_pretty(&blocked).unwrap()).unwrap();
+    let output = builder_command(
+        &tmp,
+        &[
+            "journey",
+            "surface-accept",
+            "beta.flow",
+            "--manifest",
+            blocked_path.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("surface lint blocked acceptance"));
+    let after = Store::open(tmp.path())
+        .unwrap()
+        .list_nodes(Some(NodeType::InterfaceSurface), usize::MAX)
+        .unwrap()
+        .len();
+    assert_eq!(
+        after, before,
+        "blocked acceptance must not mutate the graph"
+    );
+
+    let missing = write_journey(&tmp, "missing.flow", "Missing");
+    builder_json(
+        &tmp,
+        &["journey", "add", missing.to_str().unwrap(), "--json"],
+    );
+    let output = builder_command(&tmp, &["journey", "lint", "missing.flow", "--json"]);
+    assert!(!output.status.success());
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        error.contains("missing.flow") && error.contains("surfaces/missing.flow.surface.json"),
+        "{error}"
+    );
+}
+
 #[test]
 fn every_dogfood_journey_uses_the_strict_profile_map_and_parses() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("journeys");

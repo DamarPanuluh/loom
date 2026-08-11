@@ -62,6 +62,10 @@
       "mode": "regular"
     },
     {
+      "path": "docs/journey-authoring.md",
+      "mode": "regular"
+    },
+    {
       "path": "docs/llm-driver.md",
       "mode": "regular"
     },

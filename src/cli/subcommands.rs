@@ -1120,6 +1120,8 @@ pub enum ProposalItemCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum JourneyCmd {
+    /// Lint authored Journey surface manifests for portable, durable proofs.
+    Lint { journey: Option<String> },
     /// Register an authored semantic Journey root from a JSON or YAML artifact.
     Add { spec: PathBuf },
     /// Show one Journey by stable id, node id, or unique fragment.

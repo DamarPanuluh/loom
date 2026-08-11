@@ -143,6 +143,19 @@ The human-authored semantic root of delivery. A `loom.journey/v1` artifact says 
 
 Technical Intents, the real repository CLI surface, and the compiler-owned proof are hash-bound projections of the Journey. If authored meaning changes, those projections become stale rather than being silently reinterpreted.
 
+### Journey surface lint
+
+The deterministic, read-only portability and durability check applied to an
+authored Journey's `loom.journey.surface/v1` manifest. A lint **blocker** is a
+finding that prevents surface acceptance under the current policy. A lint
+**advisory** identifies a brittle authoring practice but does not prevent
+acceptance. A report with advisories and no blockers has status `passed`.
+
+`loom journey lint` and `loom journey surface-accept` apply the same blocker
+policy; acceptance runs it before graph mutation. See
+[`journey-authoring.md`](journey-authoring.md) for the versioned rules and JSON
+contract.
+
 ### Intent
 
 A falsifiable statement of what the codebase should do. It can be user-visible or internal. It may be broad or atomic, but it should have a criterion that can eventually be grounded and proven.

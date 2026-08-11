@@ -61,6 +61,8 @@ fn assert_success(output: &std::process::Output) {
 #[test]
 fn journey_parser_exposes_only_the_v12_contract() {
     for argv in [
+        vec!["loom", "journey", "lint"],
+        vec!["loom", "journey", "lint", "checkout"],
         vec!["loom", "journey", "add", "journeys/checkout.yaml"],
         vec!["loom", "journey", "show", "checkout"],
         vec!["loom", "journey", "list"],
@@ -103,6 +105,24 @@ fn journey_parser_exposes_only_the_v12_contract() {
         vec!["loom", "journey", "drift", "checkout"],
     ] {
         assert!(Cli::try_parse_from(&argv).is_ok(), "must parse: {argv:?}");
+    }
+
+    for (argv, expected) in [
+        (vec!["loom", "journey", "lint"], None),
+        (
+            vec!["loom", "journey", "lint", "checkout"],
+            Some("checkout"),
+        ),
+    ] {
+        let cli = Cli::try_parse_from(argv).unwrap();
+        match cli.command.unwrap() {
+            Command::Journey {
+                cmd: JourneyCmd::Lint { journey },
+            } => {
+                assert_eq!(journey.as_deref(), expected);
+            }
+            other => panic!("unexpected command: {other:?}"),
+        }
     }
 
     for argv in [
@@ -519,6 +539,7 @@ fn public_help_contains_new_modes_and_no_retired_journey_families() {
         .map(|command| command.get_name().to_string())
         .collect();
     for required in [
+        "lint",
         "add",
         "show",
         "list",
