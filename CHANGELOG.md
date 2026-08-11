@@ -8,7 +8,8 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
-## [0.30.0] - 2026-08-09
+## [0.30.0] - 2026-08-12
+- ship Journey authoring lint, portable release trust seams, and proven 30-Journey rehearsal closure
 
 **Breaking pre-1.0 release.** Schema v12 replaces executable Journey proof specs
 with authored Journey roots. Loom refuses every older SQLite graph and
