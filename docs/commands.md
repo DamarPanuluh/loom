@@ -514,6 +514,7 @@ Resolving adjudications (`justified` | `rejected` | `deferred` | `duplicate` | `
 An authored Journey is the root of delivery, not an executable proof specification. Its strict `loom.journey/v1` artifact contains stable IDs, typed inputs and outputs, declarative preconditions, ordered actor/action steps, expectations attached to steps, and optional profiles. It contains no implementation Intent references, endpoints, or executable operations.
 
 ```text
+loom journey lint [<journey>] --json
 loom journey add <spec.json|spec.yaml> [--json]
 loom journey show <journey> [--json]
 loom journey list [--limit N] [--offset N] [--json]
@@ -526,10 +527,37 @@ loom journey surface <journey> [--json]
 loom journey surface-accept <journey> --manifest <surface.json> [--json]
 loom journey compile <journey> [--profile <profile>] [--json]
 loom journey run <journey> [--profile <profile>] [--json]
+loom journey resume <token> --choice <option-id>
+  --human-decision "<exact human answer>" [--free-form "<revision>"] [--json]
 loom journey diagnose <journey> [--profile <profile>] [--input <key=json>]... [--json]
+loom journey rehearse-cold <journey> --json
 loom journey freeze <journey> [--profile <profile>] [--json]
 loom journey drift [<journey>] [--json]
 ```
+
+`lint` is the read-only authored-surface check. With a Journey it scans one
+registered current manifest; without one it scans every registered Journey in
+name order. `--json` emits `loom.journey-lint/v1`, including deterministic
+findings and counts. A blocker report is still printed and then exits non-zero;
+advisory-only reports pass. The canonical authoring rules and examples live in
+[`journey-authoring.md`](journey-authoring.md).
+
+`resume` consumes the opaque token returned by a pending host-mediated run.
+The `--choice` must be an offered stable option ID, `--human-decision` must be
+the human's exact substantive answer, and `--free-form` is used only when that
+option requires a revision. Continuations are one-shot and bound to the same
+canonical graph root, authored semantics, exact compiled proof/profile and
+surface, gate step, and (when present) current subject. Root, projection, or
+subject drift rejects the resume; a claimed continuation is destroyed after
+the attempt and cannot be replayed.
+
+`rehearse-cold` requires `--json`. It runs exactly one registered non-release
+Journey's `proof` profile in a detached, freshly initialized/imported candidate
+made from the release source inventory. The Journey must have a current
+confined artifact and accepted surface and may not contain a human-decision,
+release, or nested cold-rehearsal operation. It does not settle live proof and
+reports candidate, source-inventory, cache, runtime, and caller-change
+attestations.
 
 `add` registers only the authored `Journey` node and its semantic hash. Re-adding the same semantics is idempotent. A semantic change invalidates hash-bound `Derives` and `Surfaces` projections; it never silently carries old technical meaning onto the new Journey. `show` reads one root and `map` shows rooted and unrooted non-exempt Intents.
 
@@ -581,6 +609,71 @@ Every authored step must be covered by at least one Intent entry. `operation:cre
 Before acceptance, present the human one conversational hash-table batch containing the proposal ID, Journey hash, manifest hash, each create/reuse row, criteria, rationales, covered step IDs, and relationships. On acceptance Loom creates or updates the adopted Proposal and reconciles its `Derives`, `requires`, and `hierarchy` projection. Replaying byte-identical accepted content is idempotent; using an already-adopted `proposal_id` with a different manifest is rejected rather than silently changing the authorized decision.
 
 `surface` is also read-only. Once every current derivation is accepted, implemented, and realizing-grounded, it emits the contract for a real CLI in the target repository. The builder writes that source in the repository's language and idiom. A `loom.journey.surface/v1` manifest binds every Journey step to a reusable operation on a `loom.interface-surface/v1`; operations use structured argv, typed arguments, and JSON output. `surface-accept` records the hash-bound surface, its operation bindings, and the exposed registered CodeFile. Loom does not template-generate application source.
+
+Machine-operation timeouts resolve from an optional positive surface-operation
+`timeout_seconds` override, otherwise from the selected profile's positive
+`timeout_seconds` (default 2700 seconds). Human-decision steps deliberately
+have no execution timeout. A timeout kills the operation's process group and
+blocks the run with `<label> exceeded the execution timeout`. Profile timeout
+is execution policy and is excluded from the authored Journey semantic hash;
+the resolved operation timeout remains part of the compiled proof.
+
+### Release trust boundary
+
+```text
+loom release authorize-derivations --manifest-dir <review-manifests-dir>
+  --human-decision "<exact human answer>" --json
+loom release rehearse --phase isolated-dogfood --json
+loom release rehearse --phase fresh-fixpoint --json
+loom release rehearse --phase gated-preparation --json
+```
+
+`authorize-derivations` reads the reviewed `loom.journey-derivation/v1` files
+in the supplied directory, requires exactly one current, adopted, canonical
+manifest for every registered Journey, and seals the exact sorted batch after
+host-mediated human approval. It does not mutate the graph. Its JSON grant
+contains a one-shot `rda1_…` token and the exact next command, which hands the
+token through `LOOM_RELEASE_DERIVATION_AUTHORITY` to one outer
+`journey run release-workflow --profile proof`. Claiming atomically consumes
+the token and binds its reviewed manifests to that outer run/proof and to the
+phase's candidate permits. Replays and detached/unbound permits fail closed.
+The release flow copies those reviewed manifests through the reserved
+`review-manifests` path and reauthorizes only the bound projections in each
+candidate.
+
+The source-controlled `loom.release-inventory/v3` is the exact cut line. It
+declares these ordered argv gates—no generic ecosystem detection or extra gate
+inference:
+
+```text
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --quiet
+cargo build --quiet
+```
+
+It also declares exactly `CARGO_HOME`, then `RUSTUP_HOME`, as cache-root
+environment names. Each must resolve to an existing absolute non-symlink
+directory outside and non-overlapping with the repository and the other root.
+Loom hashes their declared artifact trees before and after offline rehearsal
+and blocks if they change; it does not infer other package-manager caches.
+
+The rehearsal phases are:
+
+- `isolated-dogfood`: verify once in one detached fresh-v12 candidate.
+- `fresh-fixpoint`: verify in two independent empty candidates and require
+  equal candidate and semantic result hashes, not equal build-directory bytes.
+- `gated-preparation`: run both readiness gates, require equal attestations,
+  and record `mutation: skipped_rehearsal`; it never releases, installs,
+  commits, or pushes.
+
+Each phase emits `loom.release-rehearsal/v1`; policy/readiness failures use
+`status: blocked`, print the report, and exit non-zero. The semantic result hash
+includes the candidate tree, canonical reviewed-manifest attestations, outer
+Journey/profile, schema version, and sorted deterministic summaries for each
+executed Journey (`journey_id`, profile, Journey hash, surface hash, verdict).
+Thus independent runs compare behavior-bearing summaries rather than mutable
+runtime details or cache/build bytes.
 
 The authored format is semantic:
 

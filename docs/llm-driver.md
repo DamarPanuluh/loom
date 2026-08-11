@@ -479,6 +479,49 @@ Authored Journey steps contain actors, actions, and expected outcomes. Implement
 
 `surface-accept` is not a product decision, but it requires cited live source and complete step bindings. `compile` and `run` belong to Validate. `diagnose` may override typed inputs for investigation but does not settle the proof. A compiled Journey reaches S3 only through its own accepted surface and code entry path.
 
+### Host-mediated resume and release rehearsal
+
+When `journey run` returns a pending human gate, the LLM presents the prompt and
+stable options without choosing. After the human answers, it may relay that
+exact answer with `journey resume <token> --choice <id>
+--human-decision '<answer>'` (and `--free-form` only for an option that requests
+revision). The token is one-shot and candidate-bound: do not move it between
+graphs, rebuild or edit the subject and then resume, or retry it after claim.
+Loom checks graph root, current semantic/compiled projection, gate binding, and
+current subject before continuing. Human authority belongs to the answer; the
+LLM is only its attributed executor.
+
+Release preparation adds a second authority seam:
+
+```text
+derive each current Journey mapping
+  → human reviews the exact canonical manifest batch
+  → place only those reviewed manifests in the review-manifests directory
+  → loom release authorize-derivations --manifest-dir <dir>
+       --human-decision '<exact answer>' --json
+  → execute the returned next_command exactly once
+  → the outer release-workflow runs the requested detached rehearsal phases
+  → inspect the structured candidate/result/fixpoint/effect attestations
+```
+
+Do not manufacture, persist in project files, edit, split, or replay the
+`LOOM_RELEASE_DERIVATION_AUTHORITY` token. Authorization is read-only with
+respect to the graph but creates a sealed temporary one-shot capsule. The
+outer run atomically claims it and receives only candidate permits bound to the
+approved batch and outer proof. Candidate runs may reauthorize the copied
+reviewed manifests; they may not broaden the batch or acquire new human
+authority. `release rehearse` is readiness evidence only: even
+`gated-preparation` stops before release, install, commit, push, or other caller
+mutation.
+
+The operator must preserve the inventory boundary rather than “helpfully”
+detecting language ecosystems. For Loom 0.30, candidates run only the exact
+ordered Cargo gates and use only the declared `CARGO_HOME` and `RUSTUP_HOME`
+cache roots documented in [`commands.md`](commands.md). Confirm structured
+`status`, caller effects, cache before/after attestation, candidate hash, and
+semantic result hash. Fixpoint equality compares deterministic Journey
+summaries and semantic inputs, not target-directory or cache bytes.
+
 ### Semantic local checkpoints
 
 After one Intent or cohesive accepted bundle is implemented, relevant tests

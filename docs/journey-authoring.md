@@ -73,14 +73,33 @@ acceptance when no blocker is present:
 
 | Rule | Brittle form | Recommended durable form |
 |---|---|---|
-| `exact-census-pin` | `equals` pins a number, array, or object at a whole-graph count/total pointer (for example `/entry_count`). | Assert an invariant, a bounded relationship, or the presence/shape of the behavior under test instead of the repository's exact census. |
+| `exact-census-pin` | `equals` pins a number, array, or object where the pointer's final segment is `count`, `counts`, `total`, `totals`, `census`, or ends in `_count`/`_total` (for example `/entry_count`). | Assert an invariant, a bounded relationship, or the presence/shape of the behavior under test instead of the repository's exact census. |
 | `positional-census-pointer` | A JSON pointer contains a numeric segment such as `/findings/0/kind`. | Select by stable identity or expose a keyed result rather than depending on collection order. |
 | `not-equals-empty` | An assertion uses `not_equals: ""`. | Use an explicit `exists`, `type`, or semantic value assertion. |
-| `real-clock-minute-bucket` | A judgment-burst/audit operation depends on the host clock keeping evidence in one current-minute bucket. | Inject or control time and assert against deterministic clock-controlled evidence. |
+| `real-clock-minute-bucket` | One operation contains both an `adjudications` batch and an adjacent structured `loom audit --json` invocation, matching the known judgment-burst fixture whose audit grouping depends on the host clock's current minute. Prose or either signal alone is not matched. | Inject or control time and assert against deterministic clock-controlled evidence. |
 
 Treat advisories as migration guidance, not as failed acceptance. Authors should
 prefer the alternatives now so manifests remain durable when policy tightens in
 0.31.
+
+Current findings use these exact messages (consume `rule` and `severity` for
+automation; messages remain explanatory):
+
+- `graph-local-identity`: `replace the undeclared 32-hex identity in argv with
+  a repository-declared identity, stable name, or captured value` for argv, or
+  `replace the undeclared 32-hex identity with a repository-declared identity,
+  stable name, or captured value` for an assertion.
+- `stale-temporal-expected-hash`: `update setup path '<path>' expected_hash to
+  the current repository content fingerprint`.
+- `exact-census-pin`: `assert an invariant or bounded relationship instead of
+  an exact whole-graph count or total`.
+- `positional-census-pointer`: `select census data by stable identity instead
+  of a numeric JSON-pointer position`.
+- `not-equals-empty`: `use an explicit existence, type, or semantic assertion
+  instead of not_equals empty string`.
+- `real-clock-minute-bucket`: `replace the real-clock
+  judgment-burst/minute-bucket fixture with deterministic clock-controlled
+  evidence`.
 
 ## JSON report contract
 

@@ -156,6 +156,28 @@ policy; acceptance runs it before graph mutation. See
 [`journey-authoring.md`](journey-authoring.md) for the versioned rules and JSON
 contract.
 
+### release source inventory
+
+The source-controlled `loom.release-inventory/v3` manifest that defines the
+only files, exact ordered code-gate argv arrays, dependency-cache roots, and
+reserved/secret paths admitted to a release candidate. It is an explicit
+release boundary, not generic toolchain or ecosystem auto-detection.
+
+### derivation authority
+
+A sealed, one-shot human authority over one exact current batch of reviewed
+Journey derivation manifests. Loom binds the authority to the derivation
+subjects and, when claimed, to one outer `release-workflow` run and its
+candidate permits. The opaque token conveys authority; possession does not
+permit changing the reviewed batch or replaying the token.
+
+### semantic release attestation
+
+The deterministic release result compared across independent candidates. Its
+result hash covers candidate source identity, canonical manifests, outer
+Journey/profile identity, and deterministic Journey result summaries. It does
+not claim bitwise equality of build-directory or dependency-cache bytes.
+
 ### Intent
 
 A falsifiable statement of what the codebase should do. It can be user-visible or internal. It may be broad or atomic, but it should have a criterion that can eventually be grounded and proven.
