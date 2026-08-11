@@ -8,10 +8,11 @@
 
 use super::context::{edge_context, node_context};
 use super::contracts::{
-    analyzer_contract, builder_contract, coverage_contract, elaborator_contract, exemplar_contract,
-    fixer_contract, inbox_triage_contract, prove_contract, quality_contract, quality_contract_body,
-    ratify_contract, rectify_contract, research_contract, reviewer_contract,
-    structural_finding_triage_contract, triage_contract, unproven_contract, validator_contract,
+    analyzer_contract, builder_contract, coverage_contract, derive_contract, elaborator_contract,
+    exemplar_contract, fixer_contract, inbox_triage_contract, journey_proof_contract,
+    prove_contract, quality_contract, quality_contract_body, ratify_contract, rectify_contract,
+    research_contract, reviewer_contract, structural_finding_triage_contract, surface_contract,
+    triage_contract, unproven_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -36,17 +37,28 @@ use crate::Result;
 ///   ordering is not incompleteness.
 ///
 /// Both read the same direction as everywhere else in the graph: the FROM side
-/// stands on the TO side. A target counts as met only at `implemented`.
+/// stands on the TO side. A `requires` target must be realized; a `sequence`
+/// predecessor remains the deliberately separate lifecycle-only routing rule.
 fn unmet_prerequisites(store: &Store, intent_id: &str) -> Result<Vec<String>> {
     let mut unmet = Vec::new();
-    for (kind, relation) in [
-        (EdgeKind::Requires, "requires"),
-        (EdgeKind::Sequence, "follows"),
+    for (kind, relation, requires_realization) in [
+        (EdgeKind::Requires, "requires", true),
+        (EdgeKind::Sequence, "follows", false),
     ] {
         for e in store.edges_with(Some(kind), Some(intent_id), None)? {
             if let Some(target) = store.get_node(&e.to_id)? {
-                if target.status != "implemented" {
-                    unmet.push(format!("{relation} '{}' ({})", target.name, target.status));
+                let met = if requires_realization {
+                    crate::completeness::prerequisite_is_realized(store, &target)?
+                } else {
+                    target.status == "implemented"
+                };
+                if !met {
+                    let state = if requires_realization && target.status == "implemented" {
+                        "implemented but ungrounded"
+                    } else {
+                        target.status.as_str()
+                    };
+                    unmet.push(format!("{relation} '{}' ({state})", target.name));
                 }
             }
         }
@@ -172,6 +184,91 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Implementation.gap(),
         next_step: "after grounding + sync, run `loom status`".into(),
+    }))
+}
+
+pub(super) fn derive_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(gap) = crate::completeness::journey_derive_gaps(store)?
+        .into_iter()
+        .next()
+    else {
+        return Ok(None);
+    };
+    let Some(journey) = store.get_node(&gap.journey_id)? else {
+        return Ok(None);
+    };
+    let readiness = crate::completeness::journey_readiness(store, &journey)?;
+    let mut context = node_context(
+        store,
+        &journey,
+        "Read the authored Journey, its accepted projections, and the exact gap before proposing a hash-bound derivation manifest.",
+    )?;
+    if gap.subject_id != journey.id {
+        if let Some(subject) = store.get_node(&gap.subject_id)? {
+            context.linked_entities.push(LinkedEntity {
+                role: gap.kind.clone(),
+                kind: subject.node_type.as_str().into(),
+                id: subject.id,
+                name: subject.name,
+                description: Some(subject.description).filter(|d| !d.is_empty()),
+                status: Some(subject.status),
+                edge_kind: None,
+                edge_status: None,
+                locator: None,
+                facets: None,
+            });
+        }
+    }
+    Ok(Some(WorkItem {
+        packet_id: None,
+        pattern_guidance: None,
+        mode: "derive".into(),
+        owner_role: "builder".into(),
+        effort: "high".into(),
+        routing_hint: super::hint_judgment(),
+        reason: gap.detail,
+        target: node_target(&journey),
+        stale_causes: Vec::new(),
+        prompt_contract: derive_contract(&journey, &readiness),
+        context,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Intent.gap(),
+        next_step:
+            "after the human accepts the current hash-bound derivation manifest, run `loom status`"
+                .into(),
+    }))
+}
+
+pub(super) fn surface_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(gap) = crate::completeness::journey_surface_gaps(store)?
+        .into_iter()
+        .next()
+    else {
+        return Ok(None);
+    };
+    let Some(journey) = store.get_node(&gap.journey_id)? else {
+        return Ok(None);
+    };
+    let readiness = crate::completeness::journey_readiness(store, &journey)?;
+    Ok(Some(WorkItem {
+        packet_id: None,
+        pattern_guidance: None,
+        mode: "surface".into(),
+        owner_role: "builder".into(),
+        effort: "high".into(),
+        routing_hint: super::hint_judgment(),
+        reason: gap.detail,
+        target: node_target(&journey),
+        stale_causes: Vec::new(),
+        prompt_contract: surface_contract(&journey, &readiness),
+        context: node_context(
+            store,
+            &journey,
+            "Read the accepted derivations and their realizing code before implementing the structured CLI contract in the target repository.",
+        )?,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Implementation.gap(),
+        next_step: "after accepting the current hash-bound surface manifest + sync, run `loom status`; Validate owns proof".into(),
     }))
 }
 
@@ -618,24 +715,12 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             "proof went stale — a dependency changed; re-run it",
         )?));
     }
-    // A user-visible behavior whose proof does not reach end-to-end counts
-    // toward `proven` too, and this branch is why the rung could read "14" while
-    // the queue answered "no work" — the exact disagreement the comment below
-    // says the lane table exists to make impossible, left uncovered for the one
-    // input that produces it.
-    if let Some((intent, shallow)) = journey_gap(store)? {
-        let reason = if shallow {
-            format!(
-                "'{}' is user-visible and its proof does not reach the code it proves — \
-                 exercise the real path end to end",
-                intent.name
-            )
-        } else {
-            format!(
-                "'{}' is user-visible with no journey proof — a unit proof does not \
-                 establish a behavior a user can see",
-                intent.name
-            )
+    // Once Surface has compiled a real target-repository entry point, Validate
+    // owns the proof profile. Journey compile creates the validation-specific
+    // closure; Journey run records the observed verdict.
+    if let Some(readiness) = journey_proof_gaps(store)?.into_iter().next() {
+        let Some(journey) = store.get_node(&readiness.journey_id)? else {
+            return Ok(None);
         };
         return Ok(Some(WorkItem {
             packet_id: None,
@@ -644,24 +729,21 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             owner_role: "validator".into(),
             effort: "high".into(),
             routing_hint: super::hint_judgment(),
-            reason,
-            target: node_target(&intent),
-            stale_causes: Vec::new(),
-            prompt_contract: unproven_contract(
-                &intent,
-                crate::proofstrength::assess(store, &intent.id)?,
+            reason: format!(
+                "compiled Journey '{}' lacks a current passing S3 proof through its surfaced CLI",
+                journey.name
             ),
+            target: node_target(&journey),
+            stale_causes: Vec::new(),
+            prompt_contract: journey_proof_contract(&journey),
             context: node_context(
                 store,
-                &intent,
-                "Read the behavior and its grounded code, then add a journey whose steps \
-                 assert on the OUTPUT and whose call closure reaches that code.",
+                &journey,
+                "Inspect the compiled proof profile and its surfaced CLI call witness before running it.",
             )?,
             scorecard: None,
             truth_gap: crate::truth::TruthAxis::Proof.gap(),
-            next_step: "after `loom journey add <spec>` and `loom journey run <spec>`, run \
-                        `loom status`"
-                .into(),
+            next_step: "after `loom journey compile <journey> --profile proof` and `loom journey run <journey> --profile proof`, run `loom status`".into(),
         }));
     }
 
@@ -873,9 +955,9 @@ fn is_structural_size_finding(node: &crate::model::Node) -> bool {
 }
 
 /// Active intents whose wantedness is unestablished: ratification claim
-/// absent, `unratified`, or staled to `needs_reconfirmation`. Shared predicate —
-/// the ladder's `wanted` rung, the queue count, and the served ratify work all
-/// read this one function so they can never disagree.
+/// absent, `unratified`, or staled to `needs_reconfirmation`. This projects
+/// missing authority; it is not itself a human queue. [`ratify_item`] separately
+/// requires a concrete evidence/judgment conflict from `next_human_blocking`.
 pub fn unratified_intents(store: &Store) -> Result<Vec<Node>> {
     let mut out = Vec::new();
     for n in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
@@ -1317,7 +1399,7 @@ fn edge_entry(store: &Store, edge: &Edge, mode: &str, reason: &str) -> Result<Qu
 
 fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEntry {
     let routing_hint = match mode {
-        "elaborate" | "prove" | "build" => Some("judgment".into()),
+        "elaborate" | "prove" | "derive" | "build" | "surface" => Some("judgment".into()),
         "coverage" => Some("mechanical".into()),
         // Structural size/complexity findings need cohesion judgment; inbox and
         // generic findings stay mechanical.
@@ -1327,7 +1409,9 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
     };
     // Node rows: the mode's serving lane (mirrors each *_item's owner_role).
     let owner_role = match mode {
-        "build" | "coverage" | "prove" | "elaborate" => Some("builder".into()),
+        "derive" | "build" | "surface" | "coverage" | "prove" | "elaborate" => {
+            Some("builder".into())
+        }
         "triage" => Some("analyzer".into()),
         "rectify" => Some("rectify".into()),
         "ratify" => Some("human".into()),
@@ -1358,10 +1442,12 @@ pub fn queue_items(store: &Store, lane: crate::lane::Lane) -> Result<Vec<QueueEn
     let mut out = Vec::new();
     match lane {
         Lane::Fix => roster_fix(store, &mut out)?,
+        Lane::Derive => roster_derive(store, &mut out)?,
         Lane::Analyze => roster_analyze(store, &mut out)?,
         Lane::Validate => roster_validate(store, &mut out)?,
         Lane::Quality => roster_quality(store, &mut out)?,
         Lane::Build => roster_build(store, &mut out)?,
+        Lane::Surface => roster_surface(store, &mut out)?,
         Lane::Coverage => roster_coverage(store, &mut out)?,
         Lane::Prove => roster_prove(store, &mut out)?,
         Lane::Triage => roster_triage(store, &mut out)?,
@@ -1523,44 +1609,13 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
     }))
 }
 
-/// The first user-visible behavior whose journey proof is missing or too
-/// shallow, and which of the two it is.
-///
-/// Reads the same smells the `proven` rung counts, so the queue and the rung
-/// cannot disagree about how much work there is.
-fn journey_gap(store: &Store) -> Result<Option<(Node, bool)>> {
-    Ok(journey_gaps(store)?.into_iter().next())
-}
-
-/// Every user-visible behavior whose journey proof is missing or too shallow.
-///
-/// One list, so the rung's count, the served packet and the roster are the same
-/// three views of it rather than three derivations.
-fn journey_gaps(store: &Store) -> Result<Vec<(Node, bool)>> {
-    let mut out = Vec::new();
-    for s in crate::signal::smells(store)? {
-        let shallow = s.kind == "proof_too_shallow_for_intent";
-        if !shallow && s.kind != "missing_journey_proof" {
-            continue;
-        }
-        let Some((_, intent_id)) = s.identity.rsplit_once(':') else {
-            continue;
-        };
-        // A deliberately waived journey axis is not work. A waiver needs a
-        // real reason (empty never counts), matching completeness and maturity
-        // so an intent is never both blocked from `proven` and starved of the
-        // work item that would clear it.
-        if store
-            .get_facet(intent_id, crate::model::TargetKind::Node, "waiver:journey")?
-            .is_some_and(|r| !r.is_empty())
-        {
-            continue;
-        }
-        if let Some(node) = store.get_node(intent_id)? {
-            out.push((node, shallow));
-        }
-    }
-    Ok(out)
+pub(crate) fn journey_proof_gaps(
+    store: &Store,
+) -> Result<Vec<crate::completeness::JourneyReadiness>> {
+    Ok(crate::completeness::all_journey_readiness(store)?
+        .into_iter()
+        .filter(|journey| journey.surfaced && (!journey.compiled || !journey.proven))
+        .collect())
 }
 
 /// The first thing the `sound` rung is counting, whatever kind it is.
@@ -1715,13 +1770,16 @@ fn roster_validate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
         };
         out.push(node_entry("validate", "mid", &intent, reason));
     }
-    for (intent, shallow) in journey_gaps(store)? {
-        let why = if shallow {
-            "user-visible; its proof does not reach the code it proves"
-        } else {
-            "user-visible with no journey proof"
+    for readiness in journey_proof_gaps(store)? {
+        let Some(journey) = store.get_node(&readiness.journey_id)? else {
+            continue;
         };
-        out.push(node_entry("validate", "high", &intent, why.into()));
+        out.push(node_entry(
+            "validate",
+            "high",
+            &journey,
+            "compiled Journey lacks a current passing S3 proof through its surfaced CLI".into(),
+        ));
     }
     Ok(())
 }
@@ -1798,6 +1856,26 @@ fn roster_build(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
         }
     }
     out.extend(blocked);
+    Ok(())
+}
+
+fn roster_derive(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for gap in crate::completeness::journey_derive_gaps(store)? {
+        let Some(journey) = store.get_node(&gap.journey_id)? else {
+            continue;
+        };
+        out.push(node_entry("derive", "high", &journey, gap.detail));
+    }
+    Ok(())
+}
+
+fn roster_surface(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
+    for gap in crate::completeness::journey_surface_gaps(store)? {
+        let Some(journey) = store.get_node(&gap.journey_id)? else {
+            continue;
+        };
+        out.push(node_entry("surface", "high", &journey, gap.detail));
+    }
     Ok(())
 }
 

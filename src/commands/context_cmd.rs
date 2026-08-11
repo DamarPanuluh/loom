@@ -1,4 +1,4 @@
-//! Context command — read-only, one-screen packets for code and intent work.
+//! Context command — read-only, one-screen packets for Journey, code, and Intent work.
 //!
 //! Plane: CLI read assembly. Resolves a target and composes facts already in
 //! the graph into `TraversalContext`; it never writes, infers, or certifies
@@ -35,9 +35,10 @@ impl ContextPacket {
     }
 }
 
-/// Resolve an intent first, then an exact registered codefile path, then the
-/// same keyword score used by `loom door`. A query has no fabricated target:
-/// its closest intent candidates are the packet's targets.
+/// Resolve an Intent first, then a Journey, then an exact registered codefile
+/// path, then the same keyword score used by `loom door`. A query has no
+/// fabricated target: its closest Journey/Intent candidates are the packet's
+/// targets.
 pub(crate) fn context_cmd(graph: Option<&std::path::Path>, input: &str, json: bool) -> Result<()> {
     let store = open_read(graph)?;
     render(served_context(&store, input)?, json)
@@ -62,11 +63,14 @@ pub(crate) fn served_context(store: &Store, input: &str) -> Result<ContextPacket
 pub(crate) fn context_packet(store: &Store, input: &str) -> Result<ContextPacket> {
     let input = input.trim();
     if input.is_empty() {
-        bail!("context needs an intent, registered codefile path, or query");
+        bail!("context needs a Journey, Intent, registered codefile path, or query");
     }
 
     if let Ok(intent) = store.resolve_node(input, Some(NodeType::Intent)) {
         return node_packet(store, intent, "intent");
+    }
+    if let Ok(journey) = store.resolve_node(input, Some(NodeType::Journey)) {
+        return node_packet(store, journey, "Journey");
     }
     if let Some(file) = store
         .codefiles()?
@@ -76,27 +80,41 @@ pub(crate) fn context_packet(store: &Store, input: &str) -> Result<ContextPacket
         return node_packet(store, file, "codefile");
     }
 
-    let hits = super::discover_cmd::keyword_hits(store, input, &[NodeType::Intent], 5)?;
+    let hits =
+        super::discover_cmd::keyword_hits(store, input, &[NodeType::Journey, NodeType::Intent], 5)?;
     if hits.is_empty() {
         bail!(
-            "could not resolve '{input}' as an intent, registered codefile path, or related intent query"
+            "could not resolve '{input}' as a Journey, Intent, registered codefile path, or related query"
         );
     }
-    let mut context = empty_context(format!("Closest intent context for query '{input}'"));
+    let mut context = empty_context(format!(
+        "Closest Journey/Intent context for query '{input}'"
+    ));
     let mut seen_edges = BTreeSet::new();
     let mut staleness_flags = Vec::new();
     for (_, _, _, id) in hits {
-        let Some(intent) = store.get_node(&id)? else {
+        let Some(node) = store.get_node(&id)? else {
             continue;
         };
-        append_intent(
-            store,
-            &intent,
-            "query_match",
-            &mut context,
-            &mut seen_edges,
-            &mut staleness_flags,
-        )?;
+        match node.node_type {
+            NodeType::Journey => append_journey(
+                store,
+                &node,
+                "query_match",
+                &mut context,
+                &mut seen_edges,
+                &mut staleness_flags,
+            )?,
+            NodeType::Intent => append_intent(
+                store,
+                &node,
+                "query_match",
+                &mut context,
+                &mut seen_edges,
+                &mut staleness_flags,
+            )?,
+            _ => unreachable!("query is restricted to Journey and Intent nodes"),
+        }
     }
     let target = LinkedEntity {
         role: "query".into(),
@@ -138,6 +156,17 @@ fn node_packet(store: &Store, node: Node, target_kind: &str) -> Result<ContextPa
             )?;
             intent_entity(store, "target", &node)?
         }
+        NodeType::Journey => {
+            append_journey(
+                store,
+                &node,
+                "target",
+                &mut context,
+                &mut seen_edges,
+                &mut staleness_flags,
+            )?;
+            node_entity("target", &node)
+        }
         NodeType::CodeFile => {
             append_file(
                 store,
@@ -149,7 +178,7 @@ fn node_packet(store: &Store, node: Node, target_kind: &str) -> Result<ContextPa
             )?;
             node_entity("target", &node)
         }
-        _ => unreachable!("context resolves only intent/codefile nodes"),
+        _ => unreachable!("context resolves only Journey/Intent/codefile nodes"),
     };
     let completeness = (node.node_type == NodeType::Intent)
         .then(|| crate::completeness::scorecard(store, &node))
@@ -161,6 +190,56 @@ fn node_packet(store: &Store, node: Node, target_kind: &str) -> Result<ContextPa
         completeness,
         staleness_flags,
     })
+}
+
+fn append_journey(
+    store: &Store,
+    journey: &Node,
+    role: &str,
+    context: &mut TraversalContext,
+    seen_edges: &mut BTreeSet<String>,
+    staleness_flags: &mut Vec<String>,
+) -> Result<()> {
+    push_entity(context, node_entity(role, journey));
+    push_suggested_read(
+        context,
+        "inspect authored Journey root",
+        format!("loom journey show {}", journey.id),
+    );
+    for edge in touching_edges(store, &journey.id)? {
+        let edge_role = match edge.kind {
+            EdgeKind::Derives if edge.from_id == journey.id => "derived_intent",
+            EdgeKind::Surfaces if edge.from_id == journey.id => "surface",
+            EdgeKind::Proves if edge.to_id == journey.id => "proof",
+            EdgeKind::Questions if edge.to_id == journey.id => "open_question",
+            _ => "related",
+        };
+        push_edge(
+            store,
+            context,
+            edge_role,
+            &edge,
+            seen_edges,
+            staleness_flags,
+        )?;
+        let other_id = if edge.from_id == journey.id {
+            &edge.to_id
+        } else {
+            &edge.from_id
+        };
+        if let Some(other) = store.get_node(other_id)? {
+            let role = match other.node_type {
+                NodeType::Intent => "derived_intent",
+                NodeType::InterfaceSurface => "surface",
+                NodeType::Validation => "validation",
+                NodeType::Question if other.status == "open" => "open_question",
+                _ => "related",
+            };
+            push_entity(context, node_entity(role, &other));
+        }
+    }
+    append_notes(store, &journey.id, context)?;
+    Ok(())
 }
 
 fn empty_context(purpose: String) -> TraversalContext {

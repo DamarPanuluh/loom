@@ -389,3 +389,65 @@ fn edge_implement_cli_refuses_and_module_scope_is_accepted() {
         String::from_utf8_lossy(&module_ok.stderr)
     );
 }
+
+#[test]
+fn a_valid_source_anchor_survives_an_ordinary_symbol_rename() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let edge = grounded(
+        &store,
+        &tmp,
+        "anchored.rs",
+        "// loom:anchor checkout.payment\npub fn old_name() {}\n",
+        "anchor:checkout.payment",
+    );
+    std::fs::write(
+        tmp.path().join("anchored.rs"),
+        "// loom:anchor checkout.payment\npub fn new_name() {}\n",
+    )
+    .unwrap();
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        status(&store, &edge),
+        "passing",
+        "the unchanged marker keeps navigation identity while the cited marker remains live"
+    );
+    let resolved = loom::locator::resolve_anchor(&store, "anchor:checkout.payment").unwrap();
+    assert_eq!(resolved.entry_name, "new_name");
+}
+
+#[test]
+fn a_duplicate_source_anchor_reopens_the_grounding() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let edge = grounded(
+        &store,
+        &tmp,
+        "first.rs",
+        "// loom:anchor checkout.payment\npub fn first() {}\n",
+        "anchor:checkout.payment",
+    );
+    std::fs::write(
+        tmp.path().join("second.rs"),
+        "// loom:anchor checkout.payment\npub fn second() {}\n",
+    )
+    .unwrap();
+    store
+        .add_node(
+            NodeType::CodeFile,
+            "second.rs",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(status(&store, &edge), "needs_reverification");
+    let cause = store
+        .get_facet(&edge, TargetKind::Edge, "stale_cause")
+        .unwrap()
+        .unwrap();
+    assert!(cause.contains("duplicated"), "{cause}");
+}

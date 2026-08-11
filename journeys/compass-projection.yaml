@@ -1,13 +1,20 @@
-journey: the compass is a projection of the ladder, not a second decision
+schema: loom.journey/v1
+id: compass-projection
+name: The compass projects the next unmet rung
+actor: operator
+goal: An operator sees one work direction derived from the maturity ladder rather
+  than a competing decision system.
+inputs: {}
+preconditions:
+- The graph contains a named behavior that has not yet been realized.
 steps:
-  - name: status reports a compass pointing at the unmet rung
-    fixture: true
-    intent: the compass points at divergence only when judgment and evidence disagree
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature &&
-      loom status --graph "$tmp" --json &&
-      rm -rf "$tmp"
-    expect:
-      exit_code: 0
-      stdout_contains: ['"compass"', '"phase": "build"']
+- id: inspect-work-direction
+  name: Inspect Work Direction
+  action: Inspect the graph's current work direction.
+  expects:
+  - The reported compass points to build because grounding is the lowest unmet rung.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

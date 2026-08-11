@@ -12,15 +12,13 @@ use crate::Result;
 use anyhow::{anyhow, bail};
 use std::path::Path;
 
-/// Refuse a realizing locator that names no live symbol in its file.
-fn require_resolvable_locator(store: &Store, file: &str, locator: &str) -> Result<()> {
-    if crate::runner::grounding_locator_resolves(store.root(), file, locator) {
-        return Ok(());
-    }
-    bail!(
-        "locator must resolve to a live symbol in '{file}' (no match for '{locator}'); \
-         use a symbol name, or 'module …' for whole-file scope"
-    );
+/// Refuse a locator that does not resolve under the shared symbol/anchor rules.
+fn require_resolvable_locator(
+    store: &Store,
+    file: &crate::model::Node,
+    locator: &str,
+) -> Result<()> {
+    crate::locator::validate_for_codefile(store, file, locator)
 }
 
 /// Symbol kinds the call graph can treat as callable — the only symbols a
@@ -49,6 +47,13 @@ fn grounding_lints(
         .map(|s| s.name.as_str())
         .collect();
     let mut out = Vec::new();
+    if locator.is_some_and(crate::locator::is_anchor_locator) {
+        out.push(format!(
+            "locator '{}' is navigation-only — it can stabilize tracing and blast radius, but cannot itself earn S3 or prove behavior",
+            locator.unwrap_or_default()
+        ));
+        return out;
+    }
     match role {
         GroundingRole::Realizes => {
             let Some(loc) = locator else { return out };
@@ -246,12 +251,12 @@ fn edge_implement(
         // Once inspected, locator changes cross the explicit set-locator gate.
         update_existing_locator = locator_changed;
     }
-    // A realizing locator must name something live — the same probe pattern
-    // exemplar add already enforces. Module-scope and non-realizing roles are
-    // exempt (see `runner::grounding_locator_resolves` / ripple_locator_drift).
-    if role == GroundingRole::Realizes {
-        if let Some(loc) = &locator {
-            require_resolvable_locator(store, &cf.name, loc)?;
+    // Ordinary symbol resolution is required only for realizing groundings.
+    // Anchor cardinality/attachment is strict for every role because a graph
+    // write may never persist an ambiguous navigation identity.
+    if let Some(loc) = &locator {
+        if role == GroundingRole::Realizes || crate::locator::is_anchor_locator(loc) {
+            require_resolvable_locator(store, &cf, loc)?;
         }
     }
     let created = existing.is_none();
@@ -446,7 +451,7 @@ fn edge_exercises(
     let validation = store.resolve_node(&validation, Some(NodeType::Validation))?;
     let codefile = store.resolve_node(&codefile, Some(NodeType::CodeFile))?;
     if let Some(locator) = &locator {
-        require_resolvable_locator(store, &codefile.name, locator)?;
+        require_resolvable_locator(store, &codefile, locator)?;
     }
     let existing = store
         .edges_with(
@@ -633,8 +638,8 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
                 crate::model::short(&e.id)
             )
         })?;
-        if role == GroundingRole::Realizes {
-            require_resolvable_locator(store, &file.name, &locator)?;
+        if role == GroundingRole::Realizes || crate::locator::is_anchor_locator(&locator) {
+            require_resolvable_locator(store, &file, &locator)?;
         }
         lints = grounding_lints(store.root(), &file.name, Some(&locator), role);
         for l in &lints {
@@ -647,7 +652,7 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
                 crate::model::short(&e.id)
             )
         })?;
-        require_resolvable_locator(store, &file.name, &locator)?;
+        require_resolvable_locator(store, &file, &locator)?;
         let previous = store.get_facet(&e.id, TargetKind::Edge, "locator")?;
         if previous.as_deref() != Some(locator.as_str()) {
             invalidate_exercises_validation(

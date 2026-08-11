@@ -1,30 +1,37 @@
-journey: door capture happy path
+schema: loom.journey/v1
+id: door-capture
+name: Capture and route a new topic
+actor: operator
+goal: An operator captures free-form input, chooses its destination, and can inspect
+  the persisted disposition.
+inputs:
+  topic:
+    type: string
+    description: The free-form topic entering Loom.
+    default: ship a faster checkout flow
+preconditions: []
 steps:
-  - name: capture utterance
-    fixture: true
-    intent: an operator captures a topic through door and routes it from the landing menu
-    run: "loom door 'ship a faster checkout flow' --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["landing_menu", "captured"]
-    capture:
-      inbox_id: "$.captured.id"
-  - name: mark routed
-    fixture: true
-    intent: an operator captures a topic through door and routes it from the landing menu
-    run: "loom inbox mark {{ inbox_id }} routed --reason 'landed as new_intent for dogfood journey'"
-    expect:
-      exit_code: 0
-  - name: verify routed state persisted
-    fixture: true
-    intent: an operator captures a topic through door and routes it from the landing menu
-    run: "loom inbox show {{ inbox_id }} --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ['"status": "routed"']
-  - name: remove journey fixture
-    fixture: true
-    intent: an operator captures a topic through door and routes it from the landing menu
-    run: "loom inbox remove {{ inbox_id }}"
-    expect:
-      exit_code: 0
+- id: submit-topic
+  name: Submit Topic
+  action: Submit the topic through Loom's intake door.
+  expects:
+  - Loom preserves the topic and offers typed destinations for it.
+  produces: {}
+- id: choose-destination
+  name: Choose Destination
+  action: Route the captured item from the offered landing menu.
+  expects: []
+  produces: {}
+- id: inspect-disposition
+  name: Inspect Disposition
+  action: Inspect the captured item after routing.
+  expects:
+  - The item remains recorded with a routed disposition and its chosen destination.
+  produces:
+    captured-item:
+      type: string
+      description: The stable identifier of the captured intake item.
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

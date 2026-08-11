@@ -923,18 +923,9 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
         .unwrap();
     }
 
-    // `proven` requires S2: a proof that asserts something about its OUTPUT,
-    // not merely that a command exited zero. Proof depth is deliberately not
-    // waivable, so this ordering fixture has to earn it — each intent gets a
-    // spec with a real assertion, which is what draining validate honestly
-    // looks like.
-    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    // `proven` requires S2: use a real test-runner summary rather than the
+    // retired executable-Journey metadata path.
     for (intent, slug) in [(&a, "flow-a"), (&b, "flow-b")] {
-        let spec = format!(
-            "journey: {slug}\nsteps:\n  - name: run it\n    intent: {}\n    run: echo ordering-ok\n    expect:\n      stdout_contains: [\"ordering-ok\"]\n",
-            intent.name
-        );
-        std::fs::write(tmp.path().join(format!("journeys/{slug}.yaml")), spec).unwrap();
         let val = store
             .add_node(
                 NodeType::Validation,
@@ -943,9 +934,7 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
                 "not_run",
                 serde_json::json!({
                     "type": "test",
-                    "command": "echo ordering-ok",
-                    "proof_kind": "journey",
-                    "artifact": format!("journeys/{slug}.yaml"),
+                    "command": "printf 'test result: ok. 1 passed; 0 failed\\n'",
                 }),
             )
             .unwrap();
@@ -954,14 +943,16 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
             .unwrap();
         let fresh = store.get_node(&val.id).unwrap().unwrap();
         loom::commands::observe_validation(&store, &fresh).unwrap();
-        // The journey axis is a separate question from proof depth; this test
-        // is about ordering, so waive that one explicitly.
+        // The Journey axis is a separate question from proof depth. This
+        // ordering fixture is deliberately rootless infrastructure, expressed
+        // through the dedicated canonical exemption rather than a legacy
+        // generic waiver.
         store
             .set_facet(
                 &intent.id,
                 TargetKind::Node,
-                "waiver:journey",
-                "ordering fixture: exercises queue precedence, not end-to-end depth",
+                "journey_exemption",
+                r#"{"human_decision_digest":"sha256:ring10","kind":"test_fixture","reason":"exercises queue precedence, not end-to-end depth"}"#,
                 TruthClass::Asserted,
             )
             .unwrap();

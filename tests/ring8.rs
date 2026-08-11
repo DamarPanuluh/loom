@@ -64,7 +64,10 @@ fn mature_graph_with_codefile(store: &Store, root: &std::path::Path) -> loom::mo
             "llm",
         )
         .unwrap();
-    prove_s2(store, root, &intent.id, "ring8-proof");
+    // Keep the fixture genuinely mature under the Journey-root ladder so
+    // finding tests reach triage instead of an earlier seed/derive/surface
+    // prerequisite.
+    s3_journey_proof(store, root, &intent.id, "ring8-proof");
     codefile
 }
 
@@ -517,7 +520,7 @@ fn graph_state_splits_findings_into_open_and_resolved() {
     // resolved, preserving open + resolved == total.
     let tmp2 = Tmp::new();
     let store = Store::init(tmp2.path(), Some("t"), false).unwrap();
-    let codefile = mature_graph_with_codefile(&store, tmp.path());
+    let codefile = mature_graph_with_codefile(&store, tmp2.path());
     store
         .set_facet(
             &codefile.id,

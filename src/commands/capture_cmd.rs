@@ -6,13 +6,12 @@
 
 use super::*;
 
-const DOOR_CAPABILITY: &str = "Your idea does not need to be a complete specification. Loom can help the LLM round it out, fill technical and repository-derivable gaps, and ask you one plain-language product question at a time when your judgment is needed.";
+const DOOR_CAPABILITY: &str = "Your idea does not need to be a complete specification. Loom helps shape it into an authored Journey root, then derives technical Intents and a real CLI surface while asking one plain-language product question at a time when your judgment is needed.";
 
 pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<()> {
     // A name hit is worth two points and a description hit one. Requiring four
-    // points prevents one generic verb in an intent name ("fix", "record",
-    // "validate") from displacing the safer new-intent landing while still
-    // promoting a match with two terms in its name.
+    // points prevents one generic verb from displacing the safer new-Journey
+    // landing while still promoting a match with two terms in its name.
     const STRONG_MATCH_SCORE: usize = 4;
 
     let store = open(graph)?;
@@ -24,14 +23,23 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         serde_json::json!({ "source": "human" }),
     )?;
     let short = crate::model::short(&item.id);
-    // Routing context: the closest existing intents, the compass, and a landing
+    // Routing context: the closest Journey roots/derived Intents, the compass, and a landing
     // menu of prefilled commands. The caller (usually the PM-side model) picks
     // ONE landing, runs it, then marks the capture routed — nothing is decided
     // here, but nothing requires a second lookup either.
-    let matches = super::discover_cmd::keyword_hits(&store, utterance, &[NodeType::Intent], 5)?;
+    let matches = super::discover_cmd::keyword_hits(
+        &store,
+        utterance,
+        &[NodeType::Journey, NodeType::Intent],
+        5,
+    )?;
     let ladder = crate::maturity::ladder(&store)?;
     let q = crate::workitem::q;
-    let mark_routed = format!("loom inbox mark {short} routed --reason '<destination>'");
+    let mark_routed =
+        format!("loom inbox mark {short} routed --reason '<destination-type>:<stable-node-id>'");
+    let route_command = |destination_type: &str, reference: &str| {
+        format!("loom inbox mark {short} routed --reason '{destination_type}:{reference}'")
+    };
     let mut menu: Vec<serde_json::Value> = Vec::new();
     let strong_matches: Vec<_> = matches
         .iter()
@@ -41,45 +49,74 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
         .iter()
         .filter(|(score, _, _, _)| *score < STRONG_MATCH_SCORE)
         .collect();
-    for (score, _, name, id) in &strong_matches {
+    for (score, kind, name, id) in &strong_matches {
+        let (landing, why, command) = if kind == "journey" {
+            (
+                "existing_journey",
+                format!("closest authored Journey root (score {score}) — the utterance may refine or extend it"),
+                format!("loom journey show {}", q(name)),
+            )
+        } else {
+            (
+                "existing_intent",
+                format!("closest derived technical Intent (score {score}) — inspect its Journey ancestry before changing meaning"),
+                format!("loom intent show {}", q(name)),
+            )
+        };
         menu.push(serde_json::json!({
-            "landing": "existing_intent",
+            "landing": landing,
             "confidence": "strong",
-            "why": format!("closest existing intent (score {score}) — the utterance may refine, extend, or contradict it"),
-            "intent": name,
+            "why": why,
+            "target": name,
+            "target_kind": kind,
             "id": id,
-            "command": format!("loom intent show {}", q(name)),
+            "command": command,
+            "route_command": route_command(landing, id),
         }));
     }
     menu.push(serde_json::json!({
-        "landing": "new_intent",
-        "why": "the utterance names a behavior no intent covers",
-        "command": "loom intent add --name '<one falsifiable behavior>' --description '<what makes it true>' --level feature --visibility user_visible --aspect happy",
-        "after": "loom next --mode elaborate grows the forgotten surroundings; the LLM should explain this capability, fill inferable gaps, and ask the user one plain-language product question at a time",
+        "landing": "new_journey",
+        "why": "the utterance names user-visible behavior no authored Journey covers",
+        "command": "author <path> as loom.journey/v1, then loom journey add <path>",
+        "route_command": route_command("new_journey", "<stable-node-id>"),
+        "after": "loom next --mode derive projects the smallest falsifiable technical Intents; build and surface follow only after the exact derivation is human-authorized",
     }));
     menu.push(serde_json::json!({
         "landing": "hypothesis",
         "why": "the utterance is a redesign idea — prove it before it becomes work",
         "command": "loom hypothesis add --name '<idea>' --claim '<what is wrong now>' --proposal '<the change>' --predicted-outcome '<measurable result>' --target '<intent>'",
+        "route_command": route_command("hypothesis", "<stable-node-id>"),
     }));
     menu.push(serde_json::json!({
         "landing": "spike",
         "why": "the utterance needs investigation before it can land anywhere",
         "command": "loom task add '<question>' --kind investigation --target '<intent>'   # --target lands the outcome as a note on the intent; omit it for a diary-only record",
+        "route_command": route_command("spike", "<stable-node-id>"),
     }));
     menu.push(serde_json::json!({
         "landing": "external_research",
         "why": "a current external fact is missing; this is not for discovering or replacing user preference",
         "command": "loom task add '<bounded external question>' --kind research --why-external '<why repository knowledge is insufficient or freshness matters>' --preferred-source '<primary authoritative source guidance>' --target '<intent>'",
+        "route_command": route_command("external_research", "<stable-node-id>"),
     }));
-    for (score, _, name, id) in &weak_matches {
+    for (score, kind, name, id) in &weak_matches {
+        let command = if kind == "journey" {
+            format!("loom journey show {}", q(name))
+        } else {
+            format!("loom intent show {}", q(name))
+        };
         menu.push(serde_json::json!({
-            "landing": "existing_intent",
+            "landing": if kind == "journey" { "existing_journey" } else { "existing_intent" },
             "confidence": "weak",
-            "why": format!("weak lexical overlap only (score {score}); prefer new_intent unless this truly refines the existing intent"),
-            "intent": name,
+            "why": format!("weak lexical overlap only (score {score}); prefer new_journey unless this truly refines the existing target"),
+            "target": name,
+            "target_kind": kind,
             "id": id,
-            "command": format!("loom intent show {}", q(name)),
+            "command": command,
+            "route_command": route_command(
+                if kind == "journey" { "existing_journey" } else { "existing_intent" },
+                id,
+            ),
         }));
     }
     menu.push(serde_json::json!({
@@ -114,8 +151,8 @@ fn print_door_text(
     println!("captured inbox item [{}]", crate::model::short(&item.id));
     println!("  {DOOR_CAPABILITY}");
     for (label, matches) in [
-        ("closest intents", strong_matches),
-        ("weak intent matches", weak_matches),
+        ("closest Journey/Intent targets", strong_matches),
+        ("weak Journey/Intent matches", weak_matches),
     ] {
         if matches.is_empty() {
             continue;
@@ -125,7 +162,7 @@ fn print_door_text(
             let qualifier = if label == "closest intents" {
                 format!("strong score {score}")
             } else {
-                format!("weak score {score}; prefer new_intent unless this truly refines it")
+                format!("weak score {score}; prefer new_journey unless this truly refines it")
             };
             println!("    - {} [{}] ({qualifier})", name, crate::model::short(id));
         }
@@ -140,8 +177,34 @@ fn print_door_text(
         if let Some(after) = entry.get("after").and_then(|v| v.as_str()) {
             println!("      then: {after}");
         }
+        if let Some(route) = entry.get("route_command").and_then(|v| v.as_str()) {
+            println!("      route: {route}");
+        }
     }
     println!("  then: {mark_routed}");
+}
+
+fn parse_intake_destination(raw: &str) -> Result<crate::model::IntakeDestination> {
+    let Some((kind, reference)) = raw.split_once(':') else {
+        bail!("routed inbox items require --reason '<destination-type>:<stable-node-id>'");
+    };
+    if reference.is_empty() || reference.trim() != reference {
+        bail!("routed inbox destination requires an exact stable node id");
+    }
+    let destination_type = kind.parse().map_err(|_| {
+        anyhow!(
+            "unknown intake destination type '{kind}' (use {})",
+            crate::model::IntakeDestinationKind::ALL
+                .iter()
+                .map(|value| value.as_str())
+                .collect::<Vec<_>>()
+                .join("|")
+        )
+    })?;
+    Ok(crate::model::IntakeDestination {
+        destination_type,
+        reference: reference.into(),
+    })
 }
 
 pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<()> {
@@ -246,14 +309,31 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
                 );
             }
             let n = store.resolve_node(&key, Some(NodeType::InboxItem))?;
-            store.update_node(&n.id, None, None, Some(&status))?;
+            let destination = if status == "routed" {
+                let encoded = reason.as_deref().ok_or_else(|| {
+                    anyhow!(
+                        "routed inbox items require --reason '<destination-type>:<stable-node-id>'"
+                    )
+                })?;
+                let destination = parse_intake_destination(encoded)?;
+                store.route_inbox_item(&n.id, &destination)?;
+                Some(destination)
+            } else {
+                store.update_node(&n.id, None, None, Some(&status))?;
+                None
+            };
             if let Some(r) = &reason {
                 store.add_note(&n.id, "decision", &format!("{status}: {r}"))?;
             }
             pulse::emit_line(
                 &store,
                 json,
-                serde_json::json!({ "id": n.id, "status": status, "reason": reason }),
+                serde_json::json!({
+                    "id": n.id,
+                    "status": status,
+                    "reason": reason,
+                    "destination": destination,
+                }),
                 "loom status",
                 format!("inbox item '{}' → {status}", crate::model::short(&n.id)),
             )
@@ -290,25 +370,42 @@ fn inbox_json(n: &crate::model::Node) -> serde_json::Value {
 pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {
-        QuestionCmd::Add { text, intent } => {
+        QuestionCmd::Add {
+            text,
+            intent,
+            journey,
+        } => {
             if crate::model::is_placeholder(&text) {
                 bail!("question add requires substantive text");
             }
-            let intent = store.resolve_node(&intent, Some(NodeType::Intent))?;
+            let target = match (intent, journey) {
+                (Some(key), None) => store.resolve_node(&key, Some(NodeType::Intent))?,
+                (None, Some(key)) => store.resolve_node(&key, Some(NodeType::Journey))?,
+                (Some(_), Some(_)) => bail!("question add accepts --intent or --journey, not both"),
+                (None, None) => bail!("question add requires exactly one of --intent or --journey"),
+            };
             require_lane(&store, crate::registry::OwnerRole::Builder)?;
+            store.require_edge_kind_owner(EdgeKind::Questions)?;
+            let mut body = serde_json::json!({
+                "target": target.id,
+                "target_type": target.node_type.as_str(),
+            });
+            body[target.node_type.as_str()] = serde_json::json!(target.id);
+            let tx = store.begin()?;
             let question = store.add_node(
                 NodeType::Question,
                 &truncate(&text, 60),
                 &text,
                 "open",
-                serde_json::json!({ "intent": intent.id }),
+                body,
             )?;
             store.add_edge(
                 EdgeKind::Questions,
                 &question.id,
-                &intent.id,
+                &target.id,
                 TruthClass::Asserted,
             )?;
+            tx.commit()?;
             let next_step = format!(
                 "ask the human, then loom question answer {} --answer '…'",
                 crate::model::short(&question.id)
@@ -318,13 +415,14 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                 json,
                 serde_json::json!({
                     "question": node_json(&question),
-                    "intent": node_json(&intent),
+                    "target": node_json(&target),
+                    "target_kind": target.node_type.as_str(),
                 }),
                 &next_step,
                 format!(
                     "question [{}] opened for '{}'",
                     crate::model::short(&question.id),
-                    intent.name
+                    target.name
                 ),
             )
         }
@@ -353,11 +451,17 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                     println!("questions empty");
                 }
                 for n in &items {
+                    let target = question_target(&store, n)?;
+                    let target_label = target
+                        .as_ref()
+                        .map(|target| format!("{} '{}'", target.node_type.as_str(), target.name))
+                        .unwrap_or_else(|| "missing target".into());
                     println!(
-                        "{:<10} {} [{}]",
+                        "{:<10} {} [{}] — {}",
                         n.status,
                         n.name,
-                        crate::model::short(&n.id)
+                        crate::model::short(&n.id),
+                        target_label,
                     );
                 }
                 if let Some(footer) = super::page_footer(items.len(), offset, total) {
@@ -374,6 +478,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                     serde_json::to_string_pretty(&question_json(&store, &n)?)?
                 );
             } else {
+                let target = question_target(&store, &n)?;
                 println!(
                     "{:<10} {} [{}]",
                     n.status,
@@ -381,6 +486,14 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
                     crate::model::short(&n.id)
                 );
                 println!("{}", n.description);
+                if let Some(target) = target {
+                    println!(
+                        "target: {} '{}' [{}]",
+                        target.node_type.as_str(),
+                        target.name,
+                        target.id
+                    );
+                }
             }
             Ok(())
         }
@@ -441,14 +554,13 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
 }
 
 fn question_json(store: &crate::store::Store, n: &crate::model::Node) -> Result<serde_json::Value> {
-    let edge = store
-        .edges_with(Some(EdgeKind::Questions), Some(&n.id), None)?
-        .into_iter()
-        .next();
-    let intent = match edge {
-        Some(e) => store.get_node(&e.to_id)?,
-        None => None,
-    };
+    let target = question_target(store, n)?;
+    let intent = target
+        .as_ref()
+        .filter(|target| target.node_type == NodeType::Intent);
+    let journey = target
+        .as_ref()
+        .filter(|target| target.node_type == NodeType::Journey);
     Ok(serde_json::json!({
         "id": n.id,
         "status": n.status,
@@ -457,8 +569,23 @@ fn question_json(store: &crate::store::Store, n: &crate::model::Node) -> Result<
         "body": n.body,
         "created_at": n.created_at,
         "updated_at": n.updated_at,
-        "intent": intent.as_ref().map(node_json),
+        "target_kind": target.as_ref().map(|target| target.node_type.as_str()),
+        "target": target.as_ref().map(node_json),
+        // Preserve the established Intent projection while adding Journey.
+        "intent": intent.map(node_json),
+        "journey": journey.map(node_json),
     }))
+}
+
+fn question_target(store: &crate::store::Store, n: &crate::model::Node) -> Result<Option<Node>> {
+    let edge = store
+        .edges_with(Some(EdgeKind::Questions), Some(&n.id), None)?
+        .into_iter()
+        .next();
+    Ok(match edge {
+        Some(e) => store.get_node(&e.to_id)?,
+        None => None,
+    })
 }
 /// Resolve a note target: any node (name/id/fragment) or, failing that, any
 /// edge (id/prefix) — adjudications attach to claims, and claims live on

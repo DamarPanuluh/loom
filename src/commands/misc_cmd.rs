@@ -1,4 +1,4 @@
-//! Compatibility re-exports for capture / orientation / discovery handlers.
+//! Compatibility re-exports for Journey-root intake, orientation, and discovery handlers.
 //!
 //! Prefer the concern-specific modules; this facade keeps `commands::run`
 //! and older references stable while the oversized bag is split.

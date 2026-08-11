@@ -1,4 +1,4 @@
-//! Command handlers (ring 1 subset).
+//! Command handlers for the Journey-root public surface.
 //!
 //! Plane: orchestration. Resolves the target graph, calls the store, renders
 //! output. No SQL here — that lives in `crate::store`.
@@ -21,6 +21,7 @@ mod apply_cmd;
 mod audit_cmd;
 mod bootstrap_cmd;
 mod capture_cmd;
+mod checkpoint_cmd;
 mod codefile_cmd;
 mod context_cmd;
 mod diagnostics_cmd;
@@ -40,6 +41,7 @@ mod pattern_cmd;
 mod proof_cmd;
 mod proposal_cmd;
 mod pulse;
+mod release_cmd;
 mod status_cmd;
 mod wiki;
 pub(crate) use crate::coverage::codefile_observed;
@@ -70,7 +72,9 @@ pub fn run(cli: Cli) -> Result<()> {
             name,
             observed,
         } => {
-            let root = path.unwrap_or_else(|| PathBuf::from("."));
+            let root = path
+                .or_else(|| cli.graph.clone())
+                .unwrap_or_else(|| PathBuf::from("."));
             let store = Store::init(&root, name.as_deref(), observed)?;
             let id = store.identity()?;
             if cli.json {
@@ -102,6 +106,10 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Intent { cmd } => intent::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Pattern { cmd } => pattern_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Codefile { cmd } => codefile_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Checkpoint { cmd } => {
+            checkpoint_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json)
+        }
+        Command::Release { cmd } => release_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Export { check } => status_cmd::export(cli.graph.as_deref(), check, cli.json),
         Command::Import {
             file,
@@ -243,6 +251,14 @@ pub fn run(cli: Cli) -> Result<()> {
         }
         Command::Mcp { cmd } => match cmd {
             crate::cli::McpCmd::Serve => crate::mcp::serve_stdio(cli.graph.as_deref()),
+            crate::cli::McpCmd::Transcript { requests_json } => {
+                if !cli.json {
+                    bail!("`loom mcp transcript` requires --json");
+                }
+                let report = crate::mcp::transcript(cli.graph.as_deref(), &requests_json)?;
+                println!("{}", serde_json::to_string_pretty(&report)?);
+                Ok(())
+            }
         },
         Command::Wiki { cmd } => wiki::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Scan { cmd } => diagnostics_cmd::scan_cmd(cli.graph.as_deref(), cmd, cli.json),

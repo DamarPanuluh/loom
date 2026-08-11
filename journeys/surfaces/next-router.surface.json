@@ -1,0 +1,150 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "next-router",
+  "journey_hash": "0c591151e34597ea",
+  "surface": {
+    "id": "loom-next-router",
+    "title": "Loom next-work router",
+    "identity": "loom next",
+    "codefile": "src/commands/status_cmd.rs",
+    "locator": "next_cmd",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "intent",
+          "update",
+          "3b3152077b47abedb59eedb59f6b67e0",
+          "--lifecycle",
+          "planned",
+          "--reason",
+          "Journey proof fixture creates one higher-priority Build residue only in the isolated local snapshot",
+          "--json"
+        ],
+        "id": "make-role-packet-target-planned",
+        "output": {
+          "assertions": [
+            {
+              "equals": "3b3152077b47abedb59eedb59f6b67e0",
+              "id": "fixture-target-is-exact",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "planned",
+              "id": "fixture-target-is-planned",
+              "pointer": "/intent/status",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Create one higher-priority Build residue in the isolated proof graph"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "next",
+          "--mode",
+          "build",
+          "--json"
+        ],
+        "id": "request-next-work",
+        "output": {
+          "assertions": [
+            {
+              "id": "packet-id-is-minted",
+              "matches": "^pkt-[0-9]+-[0-9]+$",
+              "pointer": "/work_item/packet_id",
+              "type": "string"
+            },
+            {
+              "equals": "build",
+              "id": "requested-lane-is-build",
+              "pointer": "/work_item/mode",
+              "type": "string"
+            },
+            {
+              "equals": "builder",
+              "id": "owner-is-builder",
+              "pointer": "/work_item/owner_role",
+              "type": "string"
+            },
+            {
+              "equals": "intent",
+              "id": "target-kind-is-intent",
+              "pointer": "/work_item/target/kind",
+              "type": "string"
+            },
+            {
+              "equals": "3b3152077b47abedb59eedb59f6b67e0",
+              "id": "target-is-fixture-residue",
+              "pointer": "/work_item/target/id",
+              "type": "string"
+            },
+            {
+              "equals": "builder",
+              "id": "contract-role-matches-owner",
+              "pointer": "/work_item/prompt_contract/role",
+              "type": "string"
+            },
+            {
+              "contains": "edit code",
+              "id": "allowed-actions-are-populated",
+              "pointer": "/work_item/prompt_contract/allowed_actions",
+              "type": "json"
+            },
+            {
+              "contains": "loom rule verdict passing (quality lane)",
+              "id": "forbidden-actions-are-populated",
+              "pointer": "/work_item/prompt_contract/forbidden_actions",
+              "type": "json"
+            },
+            {
+              "contains": "relevant code inspected",
+              "id": "required-evidence-is-substantive",
+              "pointer": "/work_item/prompt_contract/required_evidence",
+              "type": "string"
+            },
+            {
+              "contains": "loom edge implement",
+              "id": "write-back-is-runnable",
+              "pointer": "/work_item/prompt_contract/write_back",
+              "type": "string"
+            },
+            {
+              "contains": "a role-scoped work packet is constructed",
+              "id": "write-back-is-target-bound",
+              "pointer": "/work_item/prompt_contract/write_back",
+              "type": "string"
+            },
+            {
+              "contains": "loom status",
+              "id": "stop-condition-is-explicit",
+              "pointer": "/work_item/prompt_contract/stop_condition",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Request the highest-priority autonomous work packet"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "make-role-packet-target-planned"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "request-next-work",
+      "step_id": "request-next-work"
+    }
+  ]
+}

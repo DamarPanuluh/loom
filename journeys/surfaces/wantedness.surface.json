@@ -1,0 +1,263 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "wantedness",
+  "journey_hash": "fc692fa0bdcac876",
+  "surface": {
+    "id": "wantedness-context-cli",
+    "title": "Inspect technical evidence without inferring wantedness",
+    "identity": "loom context <intent>",
+    "codefile": "src/commands/context_cmd.rs",
+    "locator": "context_cmd",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "edge",
+          "implement",
+          "surface fixture technical evidence remains unratified",
+          "src/ratification.rs",
+          "--locator",
+          "effective"
+        ],
+        "id": "ground-unratified-implemented-intent",
+        "output": {
+          "assertions": [
+            {
+              "id": "fixture-grounding-created",
+              "not_equals": "",
+              "pointer": "/edge/id",
+              "type": "string"
+            },
+            {
+              "equals": "implements",
+              "id": "fixture-grounding-kind",
+              "pointer": "/edge/kind",
+              "type": "string"
+            },
+            {
+              "equals": "uninspected",
+              "id": "fixture-grounding-state",
+              "pointer": "/edge/status",
+              "type": "string"
+            },
+            {
+              "equals": "surface fixture technical evidence remains unratified",
+              "id": "fixture-grounding-intent",
+              "pointer": "/intent/name",
+              "type": "string"
+            },
+            {
+              "equals": "src/ratification.rs",
+              "id": "fixture-grounding-codefile",
+              "pointer": "/codefile/path",
+              "type": "string"
+            },
+            {
+              "equals": "effective",
+              "id": "fixture-grounding-locator",
+              "pointer": "/locator",
+              "type": "string"
+            },
+            {
+              "equals": "realizes",
+              "id": "fixture-grounding-role",
+              "pointer": "/role",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Attach concrete implementation evidence without ratifying the fixture Intent"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "context",
+          "surface fixture technical evidence remains unratified"
+        ],
+        "id": "inspect-unratified-evidence",
+        "output": {
+          "assertions": [
+            {
+              "id": "context-packet-served",
+              "not_equals": "",
+              "pointer": "/packet_id",
+              "type": "string"
+            },
+            {
+              "equals": "surface fixture technical evidence remains unratified",
+              "id": "context-target-name",
+              "pointer": "/target/name",
+              "type": "string"
+            },
+            {
+              "equals": "intent",
+              "id": "context-target-kind",
+              "pointer": "/target/kind",
+              "type": "string"
+            },
+            {
+              "equals": "implemented",
+              "id": "technical-lifecycle-preserved",
+              "pointer": "/target/status",
+              "type": "string"
+            },
+            {
+              "equals": "llm",
+              "id": "fixture-origin-is-agent",
+              "pointer": "/target/facets/origin",
+              "type": "string"
+            },
+            {
+              "equals": "unratified",
+              "id": "wantedness-remains-unratified",
+              "pointer": "/target/facets/ratification",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "no-ratifying-actor",
+              "pointer": "/target/facets/ratified_by"
+            },
+            {
+              "exists": false,
+              "id": "no-ratification-time",
+              "pointer": "/target/facets/ratified_at"
+            },
+            {
+              "equals": "grounding",
+              "id": "technical-grounding-is-separate",
+              "pointer": "/context/linked_entities/1/role",
+              "type": "string"
+            },
+            {
+              "equals": "implements",
+              "id": "technical-grounding-kind",
+              "pointer": "/context/linked_entities/1/edge_kind",
+              "type": "string"
+            },
+            {
+              "equals": "effective",
+              "id": "technical-grounding-locator",
+              "pointer": "/context/linked_entities/1/locator",
+              "type": "string"
+            },
+            {
+              "equals": "grounding_file",
+              "id": "technical-grounding-file-role",
+              "pointer": "/context/linked_entities/2/role",
+              "type": "string"
+            },
+            {
+              "equals": "src/ratification.rs",
+              "id": "technical-grounding-file",
+              "pointer": "/context/linked_entities/2/name",
+              "type": "string"
+            },
+            {
+              "equals": "src/ratification.rs",
+              "id": "technical-read-set-path",
+              "pointer": "/context/read_set/0/path",
+              "type": "string"
+            },
+            {
+              "equals": "effective",
+              "id": "technical-read-set-locator",
+              "pointer": "/context/read_set/0/locator",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "no-stale-technical-claim",
+              "pointer": "/staleness_flags"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect technical evidence and wantedness as separate claims"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "intent",
+          "add",
+          "--name",
+          "surface fixture technical evidence remains unratified",
+          "--description",
+          "Implementation evidence exists without a human wantedness decision.",
+          "--level",
+          "feature",
+          "--lifecycle",
+          "implemented",
+          "--visibility",
+          "internal"
+        ],
+        "id": "seed-unratified-implemented-intent",
+        "output": {
+          "assertions": [
+            {
+              "id": "fixture-intent-created",
+              "not_equals": "",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "surface fixture technical evidence remains unratified",
+              "id": "fixture-intent-name",
+              "pointer": "/intent/name",
+              "type": "string"
+            },
+            {
+              "equals": "implemented",
+              "id": "fixture-intent-lifecycle",
+              "pointer": "/intent/status",
+              "type": "string"
+            },
+            {
+              "equals": "intent",
+              "id": "fixture-intent-kind",
+              "pointer": "/intent/type",
+              "type": "string"
+            },
+            {
+              "equals": "feature",
+              "id": "fixture-intent-level",
+              "pointer": "/level",
+              "type": "string"
+            },
+            {
+              "equals": "internal",
+              "id": "fixture-intent-visibility",
+              "pointer": "/visibility",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Create an implemented fixture Intent without human authority"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "seed-unratified-implemented-intent",
+      "ground-unratified-implemented-intent"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-unratified-evidence",
+      "step_id": "inspect-behavior-wantedness"
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "green-graph",
+  "journey_hash": "cf45988e6a690560",
+  "surface": {
+    "id": "green-graph-deepening-cli",
+    "title": "Green graph deepening opportunity",
+    "identity": "loom next --all --full --json",
+    "codefile": "src/workitem/queues.rs",
+    "locator": "deepen_item",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "next",
+          "--all",
+          "--full",
+          "--json"
+        ],
+        "id": "inspect-deepening-opportunity",
+        "output": {
+          "assertions": [
+            {
+              "equals": 0,
+              "id": "deepening-never-accrues-depth",
+              "pointer": "/queue_depths/deepen",
+              "type": "number"
+            },
+            {
+              "equals": "full",
+              "id": "full-packet",
+              "pointer": "/packets",
+              "type": "string"
+            },
+            {
+              "exists": true,
+              "id": "deepening-packet-exists",
+              "pointer": "/queues/deepen"
+            },
+            {
+              "equals": "deepen",
+              "id": "deepening-mode",
+              "pointer": "/queues/deepen/mode",
+              "type": "string"
+            },
+            {
+              "equals": "validator",
+              "id": "validator-owner",
+              "pointer": "/queues/deepen/owner_role",
+              "type": "string"
+            },
+            {
+              "id": "claim-id",
+              "matches": "^[0-9a-f]{32}$",
+              "pointer": "/queues/deepen/target/id",
+              "type": "string"
+            },
+            {
+              "id": "claim-name",
+              "matches": "\\S",
+              "pointer": "/queues/deepen/target/name",
+              "type": "string"
+            },
+            {
+              "id": "ranking-explanation",
+              "matches": "^'.+' is at S[0-5] — .+$",
+              "pointer": "/queues/deepen/reason",
+              "type": "string"
+            },
+            {
+              "contains": "already green",
+              "id": "already-green",
+              "pointer": "/queues/deepen/prompt_contract/mindset",
+              "type": "string"
+            },
+            {
+              "contains": "every floor is met",
+              "id": "floors-met",
+              "pointer": "/queues/deepen/prompt_contract/why_now",
+              "type": "string"
+            },
+            {
+              "id": "concrete-evidence-move",
+              "matches": "^the move for this behavior is: (strengthen_assertions|anchor_to_code|freeze_baseline|replay_and_refreeze|widen_boundary) — close it with one proof move:",
+              "pointer": "/queues/deepen/prompt_contract/write_back",
+              "type": "string"
+            },
+            {
+              "contains": "stop after ONE move",
+              "id": "one-move-only",
+              "pointer": "/queues/deepen/prompt_contract/stop_condition",
+              "type": "string"
+            },
+            {
+              "contains": "re-run `loom deepen`",
+              "id": "rerank-after-move",
+              "pointer": "/queues/deepen/next_step",
+              "type": "string"
+            },
+            {
+              "id": "packet-recorded",
+              "matches": "^pkt-[0-9]+-[0-9]+$",
+              "pointer": "/queues/deepen/packet_id",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Confirm all ordinary floors are met and return the weakest standing claim"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mode",
+          "owned",
+          "--json"
+        ],
+        "id": "prepare-owned-snapshot",
+        "output": {
+          "assertions": [
+            {
+              "equals": "owned",
+              "id": "owned-mode",
+              "pointer": "/mode",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "not-observed",
+              "pointer": "/observed",
+              "type": "boolean"
+            },
+            {
+              "equals": true,
+              "id": "mode-established",
+              "pointer": "/changed",
+              "type": "boolean"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Establish an owned isolated graph snapshot"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-owned-snapshot"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-deepening-opportunity",
+      "step_id": "inspect-deepening-opportunity"
+    }
+  ]
+}

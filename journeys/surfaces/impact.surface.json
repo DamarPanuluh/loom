@@ -1,0 +1,119 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "impact",
+  "journey_hash": "352296cc29dd349c",
+  "surface": {
+    "id": "loom-impact",
+    "title": "Loom change impact",
+    "identity": "loom impact",
+    "codefile": "src/commands/diagnostics_cmd.rs",
+    "locator": "impact_cmd",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "impact",
+          "impact_from",
+          "--depth",
+          "3",
+          "--json"
+        ],
+        "id": "inspect-change-impact",
+        "output": {
+          "assertions": [
+            {
+              "equals": "impact_from",
+              "id": "target-is-impact-from",
+              "pointer": "/target",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "depth-is-three",
+              "pointer": "/depth",
+              "type": "integer"
+            },
+            {
+              "contains": {
+                "file": "src/callgraph.rs",
+                "hops": 1,
+                "resolution": "exact",
+                "symbol": "exact_impact_at"
+              },
+              "id": "exact-caller-is-distinguished",
+              "pointer": "/callers",
+              "type": "json"
+            },
+            {
+              "contains": {
+                "file": "src/proofstrength.rs",
+                "hops": 2,
+                "resolution": "heuristic",
+                "symbol": "call_witness"
+              },
+              "id": "heuristic-caller-is-distinguished",
+              "pointer": "/callers",
+              "type": "json"
+            },
+            {
+              "id": "exact-count-is-nonzero",
+              "not_equals": 0,
+              "pointer": "/resolution/exact",
+              "type": "integer"
+            },
+            {
+              "id": "heuristic-count-is-nonzero",
+              "not_equals": 0,
+              "pointer": "/resolution/heuristic",
+              "type": "integer"
+            },
+            {
+              "id": "unresolved-calls-are-counted",
+              "not_equals": 0,
+              "pointer": "/unresolved_calls",
+              "type": "integer"
+            },
+            {
+              "id": "behavior-risk-is-nonempty",
+              "not_equals": [],
+              "pointer": "/intents_at_risk",
+              "type": "json"
+            },
+            {
+              "id": "behavior-risk-names-an-intent",
+              "not_equals": "",
+              "pointer": "/intents_at_risk/0/intent",
+              "type": "string"
+            },
+            {
+              "id": "behavior-risk-has-stable-id",
+              "matches": "^[0-9a-f]{8}$",
+              "pointer": "/intents_at_risk/0/id",
+              "type": "string"
+            },
+            {
+              "id": "behavior-risk-reports-proof-count",
+              "pointer": "/intents_at_risk/0/proofs",
+              "type": "integer"
+            },
+            {
+              "id": "behavior-risk-reports-passing-count",
+              "pointer": "/intents_at_risk/0/passing",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect reverse caller reach, confidence classes, unresolved calls, and grounded behavior proof exposure"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-change-impact",
+      "step_id": "inspect-change-impact"
+    }
+  ]
+}

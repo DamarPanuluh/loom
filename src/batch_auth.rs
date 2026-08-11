@@ -15,7 +15,7 @@ use crate::store::Store;
 use crate::Result;
 use anyhow::{bail, Context};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 /// Journal event name for a sealed batch authorization.
@@ -610,6 +610,140 @@ pub fn covering_envelope(
         }
     }
     Ok(None)
+}
+
+/// Find a trusted set of batch envelopes whose union covers one exact burst.
+///
+/// The historical single-envelope path remains authoritative and is checked
+/// first. Union coverage is deliberately narrower: every contributing
+/// envelope must be a local, human-gated batch named by the covered facts,
+/// cover only subjects in this burst, and predate every fact it covers. This
+/// lets several independently approved Journey derivations land in one minute
+/// without turning unrelated, retrospective, imported, or machine-only seals
+/// into authority.
+pub fn covering_envelopes(
+    store: &Store,
+    subjects: &[String],
+    claim: BatchClaim,
+    actor: &str,
+    minute: &str,
+    batch_ids: &BTreeSet<String>,
+    latest_assertion_millis: i64,
+) -> Result<Option<Vec<String>>> {
+    if let Some(id) = covering_envelope(
+        store,
+        subjects,
+        claim,
+        actor,
+        minute,
+        batch_ids,
+        latest_assertion_millis,
+    )? {
+        return Ok(Some(vec![id]));
+    }
+
+    let burst_subjects: BTreeSet<String> = subjects.iter().cloned().collect();
+    if burst_subjects.is_empty() {
+        return Ok(None);
+    }
+    let Some(burst_minute) = normalized_minute(minute) else {
+        return Ok(None);
+    };
+
+    // One current fact exists per subject+claim. Retain the fact's exact batch
+    // stamp and assertion time so each sub-envelope is checked against the
+    // facts it authorized, not merely the final fact in the larger burst.
+    let mut facts_by_subject: BTreeMap<String, (String, i64)> = BTreeMap::new();
+    for fact in store.all_facts()? {
+        if !claim.matches_fact(fact.claim)
+            || fact.asserted_by != actor
+            || !burst_subjects.contains(&fact.subject_id)
+            || journal::minute_key(&fact.asserted_at).as_deref() != Some(burst_minute.as_str())
+        {
+            continue;
+        }
+        let Some(asserted_millis) = journal::stamp_millis(&fact.asserted_at) else {
+            continue;
+        };
+        facts_by_subject.insert(fact.subject_id, (fact.batch_id, asserted_millis));
+    }
+
+    let envelopes = load_envelopes(store.root())?;
+    let mut covered = BTreeSet::new();
+    let mut covering_ids = Vec::new();
+    for (entry, envelope) in envelopes {
+        if !batch_ids.contains(&entry.id)
+            || !authority_is_human(&envelope.authority)
+            || envelope.human_decision.is_none()
+            || envelope.subjects.is_empty()
+            || envelope
+                .subjects
+                .iter()
+                .any(|subject| !burst_subjects.contains(subject))
+        {
+            continue;
+        }
+
+        let actor_ok = envelope.executor == actor
+            || envelope.authority == actor
+            || (actor == "human" && authority_is_human(&envelope.authority));
+        if !actor_ok {
+            continue;
+        }
+
+        let mut first_assertion_millis = i64::MAX;
+        let mut facts_match_batch = true;
+        for subject in &envelope.subjects {
+            let Some((batch_id, asserted_millis)) = facts_by_subject.get(subject) else {
+                facts_match_batch = false;
+                break;
+            };
+            if batch_id != &entry.id {
+                facts_match_batch = false;
+                break;
+            }
+            first_assertion_millis = first_assertion_millis.min(*asserted_millis);
+        }
+        if !facts_match_batch {
+            continue;
+        }
+        let Some(envelope_millis) = journal::stamp_millis(&entry.ts) else {
+            continue;
+        };
+        if envelope_millis > first_assertion_millis {
+            continue;
+        }
+
+        if validate_cover(
+            store,
+            &envelope,
+            CoverContext {
+                envelope_ts: &entry.ts,
+                envelope_origin: entry.origin,
+                subjects: &envelope.subjects,
+                claim,
+                burst_minute: &burst_minute,
+                // Checking against the first covered assertion proves the
+                // envelope predates every fact in this sub-batch.
+                latest_assertion_millis: first_assertion_millis,
+            },
+        )
+        .is_err()
+        {
+            continue;
+        }
+
+        covered.extend(envelope.subjects.iter().cloned());
+        covering_ids.push(entry.id);
+    }
+
+    if covered == burst_subjects {
+        covering_ids.sort();
+        covering_ids.dedup();
+        Ok(Some(covering_ids))
+    } else {
+        Ok(None)
+    }
 }
 
 #[cfg(test)]

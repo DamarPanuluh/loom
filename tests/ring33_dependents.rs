@@ -66,6 +66,11 @@ fn dependents_are_transitive_and_report_the_shortest_route() {
     // Give A a direct route as well; it must now report the SHORTER one.
     link(&store, EdgeKind::Requires, &a.id, &c.id);
     let found = store.dependents(&c.id, 5).unwrap();
+    assert_eq!(
+        found.iter().filter(|d| d.intent.id == a.id).count(),
+        1,
+        "multiple reverse routes must collapse to one dependent row"
+    );
     let a_row = found
         .iter()
         .find(|d| d.intent.name == "A the far dependent")

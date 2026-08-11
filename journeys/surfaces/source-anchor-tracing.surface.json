@@ -1,0 +1,260 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "source-anchor-tracing",
+  "journey_hash": "2662e55df8bfbc05",
+  "surface": {
+    "id": "loom-source-anchor-tracing",
+    "title": "Loom source anchor navigation and rejection",
+    "identity": "loom codefile anchor, edge set-locator, impact, and sync",
+    "codefile": "src/commands.rs",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "edge",
+          "set-locator",
+          "2eff56f5be59f1e6fd4b3ae8dcd07903",
+          "anchor:commands.codefile.cmd.codefile.anchor",
+          "--json"
+        ],
+        "id": "bind-existing-grounding-to-attached-anchor",
+        "output": {
+          "assertions": [
+            {
+              "equals": "2eff56f5be59f1e6fd4b3ae8dcd07903",
+              "id": "existing-edge-id-is-preserved",
+              "pointer": "/edge/id",
+              "type": "string"
+            },
+            {
+              "equals": "passing",
+              "id": "existing-edge-remains-settled",
+              "pointer": "/edge/status",
+              "type": "string"
+            },
+            {
+              "equals": "anchor:commands.codefile.cmd.codefile.anchor",
+              "id": "attached-anchor-locator-is-accepted",
+              "pointer": "/locator",
+              "type": "string"
+            },
+            {
+              "contains": "navigation-only",
+              "id": "navigation-only-lint-is-explicit",
+              "pointer": "/lints/0",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Repoint the existing uninspected navigation grounding to the newly attached anchor without creating a relationship or proof verdict"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "sync",
+          "--json"
+        ],
+        "id": "reject-duplicated-anchor-on-sync",
+        "output": {
+          "assertions": [
+            {
+              "equals": 1,
+              "id": "invalid-anchor-source-change-is-detected",
+              "pointer": "/files_changed",
+              "type": "integer"
+            },
+            {
+              "id": "invalid-anchor-reopens-state",
+              "not_equals": 0,
+              "pointer": "/edges_staled",
+              "type": "integer"
+            },
+            {
+              "equals": 0,
+              "id": "invalid-anchor-deletes-no-file",
+              "pointer": "/files_deleted",
+              "type": "integer"
+            },
+            {
+              "equals": [],
+              "id": "invalid-anchor-guesses-no-missing-file",
+              "pointer": "/missing",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Synchronize after duplicating the exact marker so Loom fails closed by reopening affected state rather than guessing a target"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "codefile",
+          "anchor",
+          "src/commands/codefile_cmd.rs",
+          "--at-line",
+          "455",
+          "--json"
+        ],
+        "id": "request-codefile-command-anchor",
+        "output": {
+          "assertions": [
+            {
+              "equals": "commands.codefile.cmd.codefile.anchor",
+              "id": "issued-anchor-id-is-exact",
+              "pointer": "/anchor_id",
+              "type": "string"
+            },
+            {
+              "equals": "anchor:commands.codefile.cmd.codefile.anchor",
+              "id": "issued-anchor-locator-is-exact",
+              "pointer": "/locator",
+              "type": "string"
+            },
+            {
+              "equals": "// loom:anchor commands.codefile.cmd.codefile.anchor",
+              "id": "issued-marker-is-exact",
+              "pointer": "/marker",
+              "type": "string"
+            },
+            {
+              "equals": "src/commands/codefile_cmd.rs",
+              "id": "issued-anchor-file-is-exact",
+              "pointer": "/codefile",
+              "type": "string"
+            },
+            {
+              "equals": "codefile_anchor",
+              "id": "issued-anchor-entry-is-exact",
+              "pointer": "/attached_entry/name",
+              "type": "string"
+            }
+          ],
+          "captures": [
+            {
+              "id": "anchor-id",
+              "pointer": "/anchor_id",
+              "redact": false,
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Issue a deterministic anchor for the existing codefile_anchor function without changing source or graph truth"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "impact",
+          "anchor:commands.codefile.cmd.codefile.anchor",
+          "--depth",
+          "3",
+          "--json"
+        ],
+        "id": "trace-renamed-entry-by-anchor",
+        "output": {
+          "assertions": [
+            {
+              "id": "trace-keeps-issued-anchor-id",
+              "pointer": "/anchor/id",
+              "source": "steps.request-anchor.outputs.anchor-id",
+              "type": "string"
+            },
+            {
+              "equals": "anchor:commands.codefile.cmd.codefile.anchor",
+              "id": "trace-keeps-canonical-locator",
+              "pointer": "/anchor/locator",
+              "type": "string"
+            },
+            {
+              "equals": "src/commands/codefile_cmd.rs",
+              "id": "trace-keeps-codefile",
+              "pointer": "/anchor/codefile",
+              "type": "string"
+            },
+            {
+              "equals": "codefile_anchor_renamed",
+              "id": "trace-resolves-current-entry-name",
+              "pointer": "/anchor/entry/name",
+              "type": "string"
+            },
+            {
+              "equals": "codefile_anchor_renamed",
+              "id": "trace-resolves-current-callable",
+              "pointer": "/anchor/entry/callable_symbol",
+              "type": "string"
+            },
+            {
+              "equals": "Issue stable source anchor identifiers",
+              "id": "trace-projects-anchor-owner",
+              "pointer": "/intents_at_risk/0/intent",
+              "type": "string"
+            },
+            {
+              "id": "trace-projects-blast-radius",
+              "pointer": "/intents_at_risk",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Resolve the same attached entry after its ordinary function name changes and project its blast radius"
+      }
+    ]
+  },
+  "setup": {
+    "before_steps": {
+      "attach-anchor": [
+        {
+          "expected_hash": "251718910273bdb6",
+          "path": "src/commands/codefile_cmd.rs",
+          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor() {}\n"
+        }
+      ],
+      "reject-invalid-anchor": [
+        {
+          "expected_hash": "e030df467a994f2c",
+          "path": "src/commands/codefile_cmd.rs",
+          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\n// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor_renamed() {}\n"
+        }
+      ],
+      "trace-anchor": [
+        {
+          "expected_hash": "beae001daf92c4d1",
+          "path": "src/commands/codefile_cmd.rs",
+          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor_renamed() {}\n"
+        }
+      ]
+    },
+    "graph": "local_snapshot",
+    "operations": []
+  },
+  "bindings": [
+    {
+      "operation_id": "request-codefile-command-anchor",
+      "step_id": "request-anchor"
+    },
+    {
+      "operation_id": "bind-existing-grounding-to-attached-anchor",
+      "step_id": "attach-anchor"
+    },
+    {
+      "operation_id": "trace-renamed-entry-by-anchor",
+      "step_id": "trace-anchor"
+    },
+    {
+      "operation_id": "reject-duplicated-anchor-on-sync",
+      "step_id": "reject-invalid-anchor"
+    }
+  ]
+}

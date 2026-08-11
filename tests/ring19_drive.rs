@@ -19,7 +19,7 @@ fn drive_rejects_noninteractive_stdin() {
 }
 
 #[test]
-fn drive_freeze_compiles_a_synthetic_journaled_chain() {
+fn drive_freeze_registers_a_semantic_journaled_chain() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     store
@@ -45,12 +45,17 @@ fn drive_freeze_compiles_a_synthetic_journaled_chain() {
     })
     .unwrap();
     let yaml = std::fs::read_to_string(tmp.path().join("journeys/demo.yaml")).unwrap();
-    assert!(yaml.contains("printf driven"));
-    assert!(tmp.path().join(".loom/baselines/demo.json").exists());
+    assert!(yaml.contains("show status"));
+    assert!(!yaml.contains("printf driven"));
+    assert!(!tmp.path().join(".loom/baselines").exists());
+    let store = Store::open(tmp.path()).unwrap();
+    assert!(store
+        .resolve_node("demo", Some(loom::model::NodeType::Journey))
+        .is_ok());
 }
 
 #[test]
-fn drive_freeze_rejects_a_failed_chain_without_baseline_or_freeze_event() {
+fn drive_freeze_keeps_failed_execution_evidence_out_of_semantics() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     store
@@ -66,7 +71,7 @@ fn drive_freeze_rejects_a_failed_chain_without_baseline_or_freeze_event() {
         .unwrap();
     drop(store);
 
-    let err = loom::commands::run(Cli {
+    loom::commands::run(Cli {
         graph: Some(tmp.path().to_path_buf()),
         json: true,
         command: Some(Command::Drive {
@@ -75,16 +80,14 @@ fn drive_freeze_rejects_a_failed_chain_without_baseline_or_freeze_event() {
             }),
         }),
     })
-    .unwrap_err()
-    .to_string();
+    .unwrap();
 
-    assert!(err.contains("step 'drive-1' failed"));
-    assert!(!tmp
-        .path()
-        .join(".loom/baselines/failed-drive.json")
-        .exists());
-    assert!(loom::journal::read(tmp.path())
-        .unwrap()
-        .iter()
-        .all(|entry| entry.event != "drive_freeze"));
+    let artifact = tmp.path().join("journeys/failed-drive.yaml");
+    let yaml = std::fs::read_to_string(&artifact).unwrap();
+    assert!(yaml.contains("run a failing check"));
+    assert!(!yaml.contains("command"));
+    assert!(!yaml.contains("false"));
+    assert!(!tmp.path().join(".loom/baselines").exists());
+    let parsed = loom::journey::parse(&artifact).unwrap();
+    assert_eq!(parsed.id, "failed-drive");
 }

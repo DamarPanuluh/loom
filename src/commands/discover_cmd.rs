@@ -53,7 +53,12 @@ pub(crate) fn find_cmd(
     json: bool,
 ) -> Result<()> {
     let store = open(graph)?;
-    let kinds = [NodeType::Intent, NodeType::CodeFile, NodeType::QualityRule];
+    let kinds = [
+        NodeType::Journey,
+        NodeType::Intent,
+        NodeType::CodeFile,
+        NodeType::QualityRule,
+    ];
     let filter_ids = resolve_find_filters(&store, tag, where_facets)?;
     let has_filters = tag.is_some() || !where_facets.is_empty();
     let filter_desc = {
@@ -190,6 +195,18 @@ fn find_exact(
                 limited.push((100usize, kind.as_str().to_string(), n.name, n.id));
             }
         }
+    }
+    if limited.len() > 1 {
+        let candidates = limited
+            .iter()
+            .map(|(_, kind, name, id)| format!("{kind} [{}] {name}", crate::model::short(id)))
+            .collect::<Vec<_>>()
+            .join("; ");
+        bail!(
+            "ambiguous exact match for '{query}': {} active nodes are named exactly this \
+             — narrow with --tag/--where: {candidates}",
+            limited.len()
+        );
     }
     print_find_hits(store, query, &limited, true, "", json)
 }
@@ -653,7 +670,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
                 serde_json::json!({
                     "kind": s.kind.as_str(),
                     "from": s.from.as_str(),
-                    "to": s.to.as_str(),
+                    "to": s.to.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
                     "truth_classes": s.truth_classes.iter().map(|t| t.as_str()).collect::<Vec<_>>(),
                     "owner": s.owner.as_str(),
                 })
@@ -685,7 +702,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
             "  {:<12} {} → {}  [{}] owner={}",
             s.kind.as_str(),
             s.from.as_str(),
-            s.to.as_str(),
+            s.to_display(),
             tcs.join("|"),
             s.owner.as_str()
         );

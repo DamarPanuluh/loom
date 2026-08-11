@@ -1,1735 +1,2461 @@
-//! Journey runner — the consumer-plane proof executor (ring 6).
+//! Strict semantic Journey artifacts and their accepted projections.
 //!
-//! Plane: execution + graph write-back. A journey spec is an ordered chain of
-//! steps, each naming the intent it proves. A step is either:
-//! - **HTTP** — `request` + response expectations (API / contract surfaces)
-//! - **CLI** — `run` (shell command) + exit/stdout expectations (CLI / tool surfaces)
-//!
-//! Values captured from one step thread into later steps. `run` stamps
-//! `validates` edges: consecutive passing steps pass, the failing boundary fails
-//! with the exact broken expectation, and never-reached steps are not executed;
-//! previously passing validates edges for never-reached steps are reopened.
-//!
-//! JSONPath is a dotted-subset (`$.a.b`) — enough for capture/threading without
-//! a full RFC 9535 engine.
+//! A Journey is authored without transport or implementation detail. It says
+//! who does what, in which order, and what must then be true. Technical intents
+//! and reusable CLI surfaces are separate, hash-bound projections accepted by
+//! dedicated commands.
 
-use crate::model::{EdgeKind, InspectionStatus, Node, NodeType};
-use crate::store::Store;
 use crate::Result;
-use anyhow::{anyhow, Context};
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
-use std::time::Instant;
+use anyhow::{anyhow, bail, Context};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Component, Path, PathBuf};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SpecKind {
-    JourneyJson,
-    HttpContractJson,
+pub const JOURNEY_SCHEMA: &str = "loom.journey/v1";
+pub const DERIVATION_SCHEMA: &str = "loom.journey-derivation/v1";
+pub const SURFACE_SCHEMA: &str = "loom.journey.surface/v1";
+pub const INTERFACE_SURFACE_SCHEMA: &str = "loom.interface-surface/v1";
+pub const COMPILED_PROOF_SCHEMA: &str = "loom.journey.proof/v1";
+pub const BASELINE_SCHEMA: &str = "loom.journey.baseline/v1";
+pub const JOURNEY_COMPILER_VERSION: &str = "2";
+
+fn default_true() -> bool {
+    true
 }
 
-impl SpecKind {
-    pub fn as_str(self) -> &'static str {
+/// Value types shared by Journey inputs/outputs and CLI operation arguments.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueType {
+    String,
+    Integer,
+    Number,
+    Boolean,
+    Json,
+}
+
+impl ValueType {
+    pub(crate) fn accepts(self, value: &Value) -> bool {
         match self {
-            SpecKind::JourneyJson => "journey_json",
-            SpecKind::HttpContractJson => "http_contract_json",
+            Self::String => value.is_string(),
+            Self::Integer => value.as_i64().is_some() || value.as_u64().is_some(),
+            Self::Number => value.is_number(),
+            Self::Boolean => value.is_boolean(),
+            Self::Json => true,
         }
+    }
+
+    pub(crate) fn is_scalar(self) -> bool {
+        !matches!(self, Self::Json)
     }
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
-pub struct JourneySpec {
-    pub journey: String,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JourneyInput {
+    #[serde(rename = "type")]
+    pub value_type: ValueType,
     #[serde(default)]
-    pub base: String,
-    pub steps: Vec<Step>,
-}
-
-#[derive(Debug, Clone, Default, serde::Deserialize)]
-pub struct Step {
+    pub description: String,
+    #[serde(default = "default_true")]
+    pub required: bool,
+    /// Secret inputs are never authored as values. Every proof profile must
+    /// resolve them from a named process environment variable.
     #[serde(default)]
-    pub name: String,
-    pub intent: String,
-    /// Shell command for a CLI step (`sh -c`). Mutually exclusive with a
-    /// meaningful HTTP `request` — when `run` is non-empty, the step is CLI.
-    #[serde(default)]
-    pub run: String,
-    #[serde(default)]
-    pub request: Request,
-    #[serde(default)]
-    pub expect: Expect,
-    #[serde(default)]
-    pub capture: BTreeMap<String, String>,
-    /// Run this CLI step in a hermetic Solo fixture identity rather than
-    /// inheriting the journey recorder's lane. This is explicit in the
-    /// authored journey because only the author knows whether a command is
-    /// constructing an isolated test graph or exercising identity itself.
-    #[serde(default)]
-    pub fixture: bool,
-    /// Per-step wall-clock limit in seconds. A step that needs longer than
-    /// the default declares it here rather than failing opaquely at 300s
-    /// (CLI) or 30s (HTTP); a killed step always names timeout_secs at
-    /// violation time.
+    pub secret: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout_secs: Option<u64>,
+    pub default: Option<Value>,
 }
 
-impl Step {
-    /// CLI steps name a shell command; HTTP steps name a request URL/method.
-    pub fn is_cli(&self) -> bool {
-        !self.run.trim().is_empty()
-    }
-
-    /// The step's effective limit: declared, else the CLI/HTTP default.
-    pub fn effective_timeout_secs(&self) -> u64 {
-        self.timeout_secs
-            .filter(|s| *s > 0)
-            .unwrap_or(if self.is_cli() {
-                crate::runner::DEFAULT_TIMEOUT_SECS
-            } else {
-                DEFAULT_HTTP_TIMEOUT_SECS
-            })
-    }
-}
-
-/// Default wall-clock limit for one HTTP step.
-pub const DEFAULT_HTTP_TIMEOUT_SECS: u64 = 30;
-
-#[derive(Debug, Clone, serde::Deserialize)]
-pub struct Request {
-    #[serde(default = "get")]
-    pub method: String,
-    pub url: String,
-    #[serde(default)]
-    pub headers: BTreeMap<String, String>,
-    #[serde(default)]
-    pub query: BTreeMap<String, serde_json::Value>,
-    #[serde(default)]
-    pub json: Option<serde_json::Value>,
-}
-
-impl Default for Request {
-    fn default() -> Self {
-        Self {
-            method: get(),
-            url: String::new(),
-            headers: BTreeMap::new(),
-            query: BTreeMap::new(),
-            json: None,
-        }
-    }
-}
-
-fn get() -> String {
-    "GET".into()
-}
-
-#[derive(Debug, Clone, Default, serde::Deserialize)]
-pub struct Expect {
-    /// HTTP response status (HTTP steps).
-    pub status: Option<u16>,
-    /// Process exit code (CLI steps). Defaults to `0` when omitted on a CLI step.
-    pub exit_code: Option<i32>,
-    /// Substrings that must appear in CLI stdout (CLI steps).
-    #[serde(default)]
-    pub stdout_contains: Vec<String>,
-    /// Substrings that must appear in CLI stderr (CLI steps).
-    #[serde(default)]
-    pub stderr_contains: Vec<String>,
-    /// JSONPath → expected value. HTTP: response body. CLI: stdout parsed as JSON.
-    #[serde(default)]
-    pub body: BTreeMap<String, serde_json::Value>,
-    /// JSONPaths that must exist. HTTP: response body. CLI: stdout parsed as JSON.
-    #[serde(default)]
-    pub exists: Vec<String>,
-}
-
-#[derive(Debug, Clone, serde::Deserialize)]
-struct HttpContract {
+/// One semantic action. Array order is the Journey's linear order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JourneyStep {
+    pub id: String,
     pub name: String,
-    #[serde(default)]
-    pub base: String,
-    #[serde(default)]
-    pub auth: Option<HttpAuth>,
-    #[serde(default)]
-    pub routes: Vec<HttpRoute>,
+    pub action: String,
+    pub expects: Vec<String>,
+    pub produces: BTreeMap<String, JourneyOutput>,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
-struct HttpAuth {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JourneyOutput {
+    #[serde(rename = "type")]
+    pub value_type: ValueType,
     #[serde(default)]
-    pub scheme: String,
-    #[serde(default = "authorization")]
-    pub header: String,
+    pub description: String,
 }
 
-fn authorization() -> String {
-    "Authorization".into()
-}
-
-#[derive(Debug, Clone, serde::Deserialize)]
-struct HttpRoute {
-    #[serde(default = "get")]
-    pub method: String,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TemporaryFile {
     pub path: String,
-    #[serde(default)]
-    pub intent: Option<String>,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub success_status: Option<u16>,
-    #[serde(default)]
-    pub query: BTreeMap<String, serde_json::Value>,
-    #[serde(default)]
-    pub example_request: Option<serde_json::Value>,
-    #[serde(default)]
-    pub extract: Vec<HttpExtract>,
-    #[serde(default)]
-    pub response_fields: Vec<String>,
+    pub content: String,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
-struct HttpExtract {
-    pub field: String,
-    #[serde(rename = "as")]
-    pub as_name: String,
+/// Declarative, confined fixture setup. There is deliberately no command hook.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TemporarySetup {
+    #[serde(default)]
+    pub directories: Vec<String>,
+    #[serde(default)]
+    pub files: Vec<TemporaryFile>,
+    #[serde(default)]
+    pub env: BTreeMap<String, String>,
 }
 
-/// The outcome of one executed step.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct StepOutcome {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileInputBinding {
+    /// A non-secret template. References use `inputs.<id>` or `run.id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub template: Option<String>,
+    /// Name of a process environment variable read only at proof execution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub env: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JourneyProfile {
+    pub inputs: BTreeMap<String, ProfileInputBinding>,
+    pub workspace: TemporarySetup,
+}
+
+/// The only authored Journey schema. It contains no HTTP, command, or Intent
+/// fields; those implementation projections are accepted separately.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JourneySpec {
+    pub schema: String,
+    pub id: String,
     pub name: String,
-    pub intent: String,
-    pub passed: bool,
-    pub detail: String,
-    #[serde(default)]
-    pub transcript: String,
-    /// Wall-clock execution time retained with a frozen baseline so an
-    /// otherwise-passing replay can still surface a latency cliff.
-    #[serde(default)]
-    pub latency_ms: u128,
+    pub actor: String,
+    pub goal: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub inputs: BTreeMap<String, JourneyInput>,
+    pub preconditions: Vec<String>,
+    pub steps: Vec<JourneyStep>,
+    pub profiles: BTreeMap<String, JourneyProfile>,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct Baseline {
-    pub journey: String,
-    pub outcomes: Vec<StepOutcome>,
-}
-
-impl Baseline {
-    /// Legacy/imported failed and truncated baselines are not proof. New writes
-    /// are gated earlier, but every read path also fails closed so an old bad
-    /// file cannot silently confer S4 strength.
-    pub fn is_successful(&self) -> bool {
-        !self.outcomes.is_empty() && self.outcomes.iter().all(|outcome| outcome.passed)
-    }
-}
-
-/// Write `bytes` to `path` only when the parent directory is not a symlink and
-/// the final path component does not already exist as a symlink. This blocks
-/// the classic "replace target with symlink then write" escape for baselines
-/// and frozen journeys under `.loom/` / `journeys/`.
-/// Write `bytes` to `root.join(rel)` with agent-local path confinement.
-///
-/// Requirements:
-/// - `rel` is relative and contains no `..` segments
-/// - after creating parents, the parent directory's canonical path stays under
-///   the canonical `root` (so a symlinked ancestor *outside* the checkout
-///   cannot redirect the write)
-/// - the immediate parent and final path are not symlinks
-/// - write via sibling temp + rename
-///
-/// This is best-effort confinement for a single-user local graph, not a
-/// multi-tenant sandbox with `openat2(RESOLVE_BENEATH)`. Residual TOCTOU
-/// against a concurrent attacker on the same machine remains.
-pub fn write_confined_file(path: &Path, bytes: &[u8]) -> Result<()> {
-    // Legacy entry: confine relative to the path's own parent checks only.
-    write_confined_file_inner(None, path, bytes)
-}
-
-/// Root-anchored variant used for baselines and drive freezes.
-pub fn write_confined_under(root: &Path, rel: &Path, bytes: &[u8]) -> Result<()> {
-    if rel.is_absolute() {
-        return Err(anyhow::anyhow!(
-            "refusing absolute write path {}",
-            rel.display()
-        ));
-    }
-    if rel
-        .components()
-        .any(|c| matches!(c, std::path::Component::ParentDir))
-    {
-        return Err(anyhow::anyhow!(
-            "refusing path with '..': {}",
-            rel.display()
-        ));
-    }
-    let path = root.join(rel);
-    write_confined_file_inner(Some(root), &path, bytes)
-}
-
-/// Create `dir` and missing parents, refusing to follow a symlink that leaves
-/// `root`. Existing components under root may be normal directories only
-/// (immediate symlink components are rejected). Platform temp roots that are
-/// themselves symlinks (macOS `/var` → `/private/var`) are outside this check
-/// because we only walk from `root` downward.
-fn create_dirs_under_root(root: &Path, dir: &Path) -> Result<()> {
-    let root_canon = root
-        .canonicalize()
-        .map_err(|e| anyhow::anyhow!("cannot resolve root {}: {e}", root.display()))?;
-    // `dir` must be under root (lexical first).
-    let rel = if dir.starts_with(root) {
-        dir.strip_prefix(root).unwrap()
-    } else if dir.starts_with(&root_canon) {
-        dir.strip_prefix(&root_canon).unwrap()
-    } else {
-        // Fall back: join as root-relative if `dir` is already absolute under root after create.
-        return Err(anyhow::anyhow!(
-            "directory {} is not under root {}",
-            dir.display(),
-            root.display()
-        ));
-    };
-    let mut cur = root_canon.clone();
-    for comp in rel.components() {
-        use std::path::Component;
-        match comp {
-            Component::Normal(name) => {
-                cur.push(name);
-                if cur.exists() {
-                    let meta = std::fs::symlink_metadata(&cur)?;
-                    if meta.file_type().is_symlink() {
-                        // After canonicalize of root, a symlink component under
-                        // root is only accepted if its target stays under root.
-                        let target = cur.canonicalize().map_err(|e| {
-                            anyhow::anyhow!("cannot resolve {}: {e}", cur.display())
-                        })?;
-                        if !target.starts_with(&root_canon) {
-                            return Err(anyhow::anyhow!(
-                                "refusing symlink {} escaping root {}",
-                                cur.display(),
-                                root_canon.display()
-                            ));
-                        }
-                        cur = target;
-                    } else if !meta.is_dir() {
-                        return Err(anyhow::anyhow!(
-                            "path component {} is not a directory",
-                            cur.display()
-                        ));
-                    }
-                } else {
-                    std::fs::create_dir(&cur)?;
-                }
-            }
-            Component::CurDir => {}
-            other => {
-                return Err(anyhow::anyhow!(
-                    "refusing path component {:?} under {}",
-                    other,
-                    root.display()
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn write_confined_file_inner(root: Option<&Path>, path: &Path, bytes: &[u8]) -> Result<()> {
-    use std::io::Write;
-    let parent = path
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("path '{}' has no parent", path.display()))?;
-    if let Some(root) = root {
-        create_dirs_under_root(root, parent)?;
-    } else {
-        std::fs::create_dir_all(parent)?;
-    }
-    let parent_meta = std::fs::symlink_metadata(parent)?;
-    if parent_meta.file_type().is_symlink() {
-        return Err(anyhow::anyhow!(
-            "refusing to write through symlinked directory {}",
-            parent.display()
-        ));
-    }
-    if let Some(root) = root {
-        let root_canon = root
-            .canonicalize()
-            .map_err(|e| anyhow::anyhow!("cannot resolve root {}: {e}", root.display()))?;
-        let parent_canon = parent
-            .canonicalize()
-            .map_err(|e| anyhow::anyhow!("cannot resolve parent {}: {e}", parent.display()))?;
-        if !parent_canon.starts_with(&root_canon) {
-            return Err(anyhow::anyhow!(
-                "write parent {} escapes root {}",
-                parent_canon.display(),
-                root_canon.display()
-            ));
-        }
-    }
-    if path.exists() {
-        let meta = std::fs::symlink_metadata(path)?;
-        if meta.file_type().is_symlink() {
-            return Err(anyhow::anyhow!(
-                "refusing to overwrite symlink {}",
-                path.display()
-            ));
-        }
-    }
-    let tmp = parent.join(format!(
-        ".{}.tmp-{}",
-        path.file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("loom-write"),
-        std::process::id()
-    ));
-    {
-        let mut f = std::fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&tmp)?;
-        f.write_all(bytes)?;
-        f.sync_all()?;
-    }
-    std::fs::rename(&tmp, path).inspect_err(|_| {
-        let _ = std::fs::remove_file(&tmp);
-    })?;
-    Ok(())
-}
-
-/// True when `journey` is a single safe filename segment (no path separators,
-/// no `..`, no absolute form). Baseline files are keyed only by this name.
-pub fn safe_journey_id(journey: &str) -> bool {
-    // One filename segment: prose names with spaces are allowed ("checkout happy
-    // path"). Path separators and a `..` segment are not — those escape baselines/.
-    !journey.is_empty()
-        && journey != "."
-        && journey != ".."
-        && !journey.contains('/')
-        && !journey.contains('\\')
-        && journey
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.'))
-}
-
-pub fn baseline_path(root: &Path, journey: &str) -> PathBuf {
-    // Callers must pass a safe id; path construction never interpolates raw
-    // user text that could escape `.loom/baselines/`.
-    let segment = if safe_journey_id(journey) {
-        journey
-    } else {
-        // Fail closed to a non-usable relative name that cannot escape.
-        "_"
-    };
-    root.join(crate::LOOM_DIR)
-        .join("baselines")
-        .join(format!("{segment}.json"))
-}
-
-/// Every frozen baseline, sorted by journey name so they travel
-/// deterministically in the export (baselines are local runtime state —
-/// without them an imported graph's journeys cannot grade S4+).
-pub fn read_baselines(root: &Path) -> Result<Vec<Baseline>> {
-    let dir = root.join(crate::LOOM_DIR).join("baselines");
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        return Ok(Vec::new());
-    };
-    let mut out = Vec::new();
-    for entry in entries.flatten() {
-        let text = match std::fs::read_to_string(entry.path()) {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
-        if let Ok(b) = serde_json::from_str::<Baseline>(&text) {
-            if b.is_successful() {
-                out.push(b);
-            }
-        }
-    }
-    out.sort_by(|a, b| a.journey.cmp(&b.journey));
-    Ok(out)
-}
-
-/// Restore exported baselines verbatim (the journey names are the keys).
-/// Idempotent: an existing baseline for the same journey is left untouched.
-pub fn restore_baselines(root: &Path, baselines: &[Baseline]) -> Result<usize> {
-    let mut restored = 0;
-    for b in baselines {
-        if !b.is_successful() {
-            continue;
-        }
-        let path = baseline_path(root, &b.journey);
-        if path.exists() {
-            continue;
-        }
-        write_baseline(root, &b.journey, &b.outcomes)?;
-        restored += 1;
-    }
-    Ok(restored)
-}
-
-pub fn write_baseline(root: &Path, journey: &str, outcomes: &[StepOutcome]) -> Result<PathBuf> {
-    if !safe_journey_id(journey) {
-        return Err(anyhow::anyhow!(
-            "journey id '{journey}' is not a safe baseline filename segment"
-        ));
-    }
-    let path = baseline_path(root, journey);
-    let rel = path
-        .strip_prefix(root)
-        .map_err(|_| anyhow::anyhow!("baseline path escapes root"))?;
-    write_confined_under(
-        root,
-        rel,
-        &serde_json::to_vec_pretty(&Baseline {
-            journey: journey.into(),
-            outcomes: outcomes.to_vec(),
-        })?,
-    )?;
-    Ok(path)
-}
-
-/// Freeze only a complete, successful execution of an authored journey.
-///
-/// Keep this gate immediately in front of every user-facing freeze write so a
-/// failed or truncated run cannot replace the last known-good baseline.
-pub fn write_successful_baseline(
-    root: &Path,
-    spec: &JourneySpec,
-    outcomes: &[StepOutcome],
-) -> Result<PathBuf> {
-    if spec.steps.is_empty() {
-        anyhow::bail!("journey '{}' has no authored steps to freeze", spec.journey);
-    }
-    if outcomes.len() != spec.steps.len() {
-        anyhow::bail!(
-            "journey '{}' cannot be frozen: completed {}/{} authored steps",
-            spec.journey,
-            outcomes.len(),
-            spec.steps.len()
-        );
-    }
-    if let Some(outcome) = outcomes.iter().find(|outcome| !outcome.passed) {
-        anyhow::bail!(
-            "journey '{}' cannot be frozen: step '{}' failed",
-            spec.journey,
-            outcome.name
-        );
-    }
-    write_baseline(root, &spec.journey, outcomes)
-}
-
-pub fn read_baseline(root: &Path, journey: &str) -> Result<Option<Baseline>> {
-    if !safe_journey_id(journey) {
-        return Ok(None);
-    }
-    let path = baseline_path(root, journey);
-    match std::fs::read(&path) {
-        Ok(bytes) => {
-            let baseline: Baseline = serde_json::from_slice(&bytes)?;
-            Ok(baseline.is_successful().then_some(baseline))
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error.into()),
-    }
-}
-
-pub fn deviations(baseline: &Baseline, outcomes: &[StepOutcome]) -> Vec<String> {
-    let mut deviations = Vec::new();
-    for (index, outcome) in outcomes.iter().enumerate() {
-        let Some(before) = baseline.outcomes.get(index) else {
-            deviations.push(format!("new step '{}'", outcome.name));
-            continue;
-        };
-        if before.transcript != outcome.transcript {
-            deviations.push(format!("{}: verbatim output changed", outcome.name));
-        }
-        if before.passed != outcome.passed {
-            deviations.push(format!("{}: pass/fail changed", outcome.name));
-        }
-        // Avoid flagging scheduler noise: a cliff is at least 100 ms slower
-        // and at least twice the frozen execution time.
-        if outcome.latency_ms >= before.latency_ms.saturating_mul(2)
-            && outcome.latency_ms.saturating_sub(before.latency_ms) >= 100
-        {
-            deviations.push(format!(
-                "{}: latency cliff ({}ms → {}ms)",
-                outcome.name, before.latency_ms, outcome.latency_ms
-            ));
-        }
-    }
-    if baseline.outcomes.len() > outcomes.len() {
-        deviations.push("one or more baseline steps were not reached".into());
-    }
-    deviations
-}
-
-pub fn parse(path: &Path) -> Result<JourneySpec> {
-    Ok(parse_with_kind(path)?.0)
-}
-
-pub fn parse_with_kind(path: &Path) -> Result<(JourneySpec, SpecKind)> {
-    let text =
-        std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-    // Try JSON first; fall back to YAML for `.yaml`/`.yml` specs.
-    let value: serde_json::Value = match serde_json::from_str(&text) {
-        Ok(v) => v,
-        Err(json_err) => {
-            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            if ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml") {
-                serde_norway::from_str(&text).with_context(|| {
-                    format!("parsing journey spec as YAML (JSON failed: {json_err})")
-                })?
-            } else {
-                return Err(json_err).context("parsing journey spec (JSON)");
-            }
-        }
-    };
-    if value.get("routes").is_some() {
-        let contract: HttpContract =
-            serde_json::from_value(value).context("parsing HTTP contract")?;
-        return Ok((
-            http_contract_to_journey(contract),
-            SpecKind::HttpContractJson,
-        ));
-    }
-    let spec: JourneySpec = serde_json::from_value(value).context("parsing journey spec")?;
-    Ok((spec, SpecKind::JourneyJson))
-}
-
-fn http_contract_to_journey(contract: HttpContract) -> JourneySpec {
-    let auth_header = contract.auth.as_ref().and_then(|auth| {
-        if auth.scheme.eq_ignore_ascii_case("bearer") {
-            Some((
-                auth.header.clone(),
-                "Bearer {{ env.LOOM_JOURNEY_AUTH_TOKEN }}".to_string(),
-            ))
-        } else {
-            None
-        }
-    });
-    let steps = contract
-        .routes
-        .into_iter()
-        .map(|route| {
-            let method = route.method.to_uppercase();
-            let name = route
-                .name
-                .unwrap_or_else(|| format!("{method} {}", route.path));
-            let intent = route.intent.unwrap_or_else(|| name.clone());
-            let mut headers = BTreeMap::new();
-            if let Some((header, value)) = &auth_header {
-                headers.insert(header.clone(), value.clone());
-            }
-            let capture = route
-                .extract
-                .into_iter()
-                .map(|e| (e.as_name, field_path(&e.field)))
-                .collect();
-            Step {
-                name,
-                intent,
-                run: String::new(),
-                fixture: false,
-                timeout_secs: None,
-                request: Request {
-                    method,
-                    url: normalize_path_params(&route.path),
-                    headers,
-                    query: route.query,
-                    json: route.example_request,
-                },
-                expect: Expect {
-                    status: route.success_status,
-                    exit_code: None,
-                    stdout_contains: Vec::new(),
-                    stderr_contains: Vec::new(),
-                    body: BTreeMap::new(),
-                    exists: route
-                        .response_fields
-                        .into_iter()
-                        .map(|field| field_path(&field))
-                        .collect(),
-                },
-                capture,
-            }
-        })
-        .collect();
-    let base = if contract.base.trim().is_empty() {
-        "{{ env.BASE_URL }}".to_string()
-    } else {
-        contract.base
-    };
-    JourneySpec {
-        journey: contract.name,
-        base,
-        steps,
-    }
-}
-
-/// Normalize OpenAPI/REST-style single-brace path params (`{person_id}`) to
-/// loom's canonical `{{ person_id }}` interpolation syntax, so a contract's
-/// path template threads a prior step's `extract`/`capture` without the
-/// author having to hand-rewrite braces. A path that already uses `{{ }}` is
-/// left untouched (its inner text starts with `{`, which this skips).
-fn normalize_path_params(path: &str) -> String {
-    let mut out = String::with_capacity(path.len());
-    let mut rest = path;
-    while let Some(brace_pos) = rest.find('{') {
-        out.push_str(&rest[..brace_pos]);
-        let after_brace = &rest[brace_pos + 1..];
-        // Already double-braced (`{{ ... }}`) — copy through and continue past it.
-        if let Some(stripped) = after_brace.strip_prefix('{') {
-            out.push_str("{{");
-            rest = stripped;
-            continue;
-        }
-        match after_brace.find('}') {
-            Some(rel_end) => {
-                let ident = &after_brace[..rel_end];
-                let is_bare_ident = !ident.is_empty()
-                    && ident
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.');
-                if is_bare_ident {
-                    out.push_str("{{ ");
-                    out.push_str(ident);
-                    out.push_str(" }}");
-                } else {
-                    // Not a bare identifier — leave the original braces as-is.
-                    out.push('{');
-                    out.push_str(ident);
-                    out.push('}');
-                }
-                rest = &after_brace[rel_end + 1..];
-            }
-            None => {
-                // Unterminated brace — copy the rest verbatim and stop.
-                out.push('{');
-                out.push_str(after_brace);
-                rest = "";
-                break;
-            }
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
-fn field_path(field: &str) -> String {
-    if field.starts_with('$') {
-        field.to_string()
-    } else {
-        format!("$.{field}")
-    }
-}
-
-/// Execute a journey. When `record` is true, write verdicts onto the journey's
-/// `validates` edges; otherwise (diagnose) only report.
-///
-/// `cwd` is the working directory for CLI steps (`run:`). HTTP steps ignore it.
-/// When `None`, CLI steps use the process current directory.
-///
-/// Prefer [`execute_steps`] + [`record_outcomes`] from `journey run` so the
-/// exclusive graph lock is not held while nested CLI steps touch the same graph.
-pub fn execute(
-    store: Option<&Store>,
-    spec: &JourneySpec,
-    record: bool,
-) -> Result<Vec<StepOutcome>> {
-    execute_in(store, spec, record, None)
-}
-
-/// Like [`execute`], but CLI steps run with `cwd` as the working directory.
-pub fn execute_in(
-    store: Option<&Store>,
-    spec: &JourneySpec,
-    record: bool,
-    cwd: Option<&Path>,
-) -> Result<Vec<StepOutcome>> {
-    let mut outcomes = execute_steps(spec, cwd, !record)?;
-    if record {
-        let store =
-            store.ok_or_else(|| anyhow!("recording a journey run requires a graph store"))?;
-        record_outcomes(store, spec, &mut outcomes)?;
-    }
-    Ok(outcomes)
-}
-
-/// Run every step without holding a graph store (no verdict write-back).
-///
-/// Use this from `journey run` after dropping the exclusive lock so CLI steps
-/// that invoke the same repo's loom (or any other graph writer) can open the
-/// graph. Call [`record_outcomes`] afterward to stamp proofs.
-///
-/// Dry-run parity contract: `diagnose_style` changes ONLY the verbosity of
-/// failure details. Pass criteria (status, body, capture, exit code, text
-/// assertions, timeouts) are identical either way — a diagnose success must
-/// predict a run success, so the two modes share every check on this path.
-pub fn execute_steps(
-    spec: &JourneySpec,
-    cwd: Option<&Path>,
-    diagnose_style: bool,
-) -> Result<Vec<StepOutcome>> {
-    let has_http = spec.steps.iter().any(|s| !s.is_cli());
-    let client = if has_http {
-        Some(
-            reqwest::blocking::Client::builder()
-                .timeout(Duration::from_secs(DEFAULT_HTTP_TIMEOUT_SECS))
-                .build()
-                .context("building http client")?,
-        )
-    } else {
-        None
-    };
-    let mut vars: BTreeMap<String, String> = BTreeMap::new();
-    let mut outcomes = Vec::new();
-    for step in &spec.steps {
-        if step.is_cli() && !step.request.url.trim().is_empty() {
-            anyhow::bail!(
-                "step '{}': set either `run` (CLI) or `request` (HTTP), not both",
-                step.name
+impl JourneySpec {
+    pub fn validate(&self) -> Result<()> {
+        if self.schema != JOURNEY_SCHEMA {
+            bail!(
+                "unsupported Journey schema '{}' (expected '{JOURNEY_SCHEMA}')",
+                self.schema
             );
         }
-        let started = Instant::now();
-        let mut outcome = if step.is_cli() {
-            match run_cli_step(step, &mut vars, cwd, diagnose_style) {
-                Ok(outcome) => outcome,
-                Err(error) => match error.downcast_ref::<RunnerKill>() {
-                    Some(kill) => kill.outcome.clone(),
-                    None => return Err(error),
-                },
-            }
-        } else {
-            let client = client
-                .as_ref()
-                .ok_or_else(|| anyhow!("internal: HTTP client missing for HTTP step"))?;
-            run_http_step(client, spec, step, &mut vars, diagnose_style)?
-        };
-        outcome.latency_ms = started.elapsed().as_millis();
-        let passed = outcome.passed;
-        outcomes.push(outcome);
-        if !passed {
-            break;
+        validate_stable_id("journey", &self.id)?;
+        nonempty("journey name", &self.name)?;
+        nonempty("journey actor", &self.actor)?;
+        nonempty("journey goal", &self.goal)?;
+        if self.steps.is_empty() {
+            bail!(
+                "journey '{}' must contain at least one semantic step",
+                self.id
+            );
         }
-    }
-    Ok(outcomes)
-}
 
-fn run_http_step(
-    client: &reqwest::blocking::Client,
-    spec: &JourneySpec,
-    step: &Step,
-    vars: &mut BTreeMap<String, String>,
-    diagnose_style: bool,
-) -> Result<StepOutcome> {
-    let base = interpolate(&spec.base, vars);
-    // Fail fast on an unusable base in BOTH modes — run previously discovered
-    // this as an opaque reqwest error while diagnose bailed early.
-    if base.is_empty() || base.contains("{{") {
-        bail_no_usable_base(spec, &base)?;
-    }
-    let url = interpolate(&format!("{base}{}", step.request.url), vars);
-    let method_name = step.request.method.to_uppercase();
-    let method = reqwest::Method::from_bytes(method_name.as_bytes())
-        .map_err(|_| anyhow!("step '{}': invalid HTTP method '{method_name}'", step.name))?;
-    let mut request = client.request(method, &url);
-    for (name, value) in &step.request.headers {
-        request = request.header(name, interpolate(value, vars));
-    }
-    if !step.request.query.is_empty() {
-        let query: Vec<(String, String)> = step
-            .request
-            .query
+        if self
+            .description
+            .as_deref()
+            .is_some_and(|description| description.trim().is_empty())
+        {
+            bail!("journey description must not be empty when present");
+        }
+        // Every addressable semantic element has one globally unique stable id.
+        let mut all_ids = BTreeSet::new();
+        insert_unique(&mut all_ids, "journey", &self.id)?;
+        for (input_id, input) in &self.inputs {
+            insert_unique(&mut all_ids, "input", input_id)?;
+            if let Some(default) = &input.default {
+                if input.secret {
+                    bail!(
+                        "secret input '{}' must not declare a default; bind it with profiles.proof.inputs.{}.env",
+                        input_id,
+                        input_id
+                    );
+                }
+                if !input.value_type.accepts(default) {
+                    bail!(
+                        "input '{}' default does not match type {:?}",
+                        input_id,
+                        input.value_type
+                    );
+                }
+            }
+        }
+        let input_by_id: BTreeMap<&str, &JourneyInput> = self
+            .inputs
             .iter()
-            .map(|(key, value)| (key.clone(), interpolate(&value_to_string(value), vars)))
+            .map(|(id, input)| (id.as_str(), input))
             .collect();
-        request = request.query(&query);
-    }
-    if let Some(body) = &step.request.json {
-        request = request.json(&interpolate_json(body, vars));
-    }
-    // A declared per-step limit overrides the client default for this request.
-    if let Some(secs) = step.timeout_secs.filter(|s| *s > 0) {
-        request = request.timeout(Duration::from_secs(secs));
-    }
-    Ok(match request.send() {
-        Ok(response) => check_response(step, response, vars, diagnose_style),
-        Err(error) if error.is_timeout() => failed_step(
-            step,
-            format!(
-                "killed: step '{}' exceeded timeout_secs={}",
-                step.name,
-                step.effective_timeout_secs()
-            ),
-        ),
-        Err(error) => failed_step(
-            step,
-            if diagnose_style {
-                format!("request failed: {error}")
-            } else {
-                format!("request error: {error}")
-            },
-        ),
-    })
-}
-
-/// Stamp `validates` verdicts and journey status from already-executed outcomes.
-///
-/// Resolves the journey validation (repairing duplicates when needed). Mutates
-/// `outcomes` when a step intent cannot be resolved (marks that step failed).
-/// The intent NAME a step targets, for matching spec steps back to the intent
-/// their verdict aggregates.
-fn intent_name<'a>(store: &Store, intent_id: &'a str) -> std::borrow::Cow<'a, str> {
-    match store.get_node(intent_id) {
-        Ok(Some(n)) => std::borrow::Cow::Owned(n.name),
-        _ => std::borrow::Cow::Borrowed(intent_id),
-    }
-}
-
-pub fn record_outcomes(
-    store: &Store,
-    spec: &JourneySpec,
-    outcomes: &mut [StepOutcome],
-) -> Result<Node> {
-    let journey = resolve_validation(store, &spec.journey, true)?;
-    let mut first_fail_idx: Option<usize> = None;
-    let mut runner_killed = false;
-    let mut intent_outcomes: BTreeMap<String, (InspectionStatus, Vec<String>)> = BTreeMap::new();
-    for (idx, outcome) in outcomes.iter_mut().enumerate() {
-        if is_runner_kill(outcome) {
-            // Timeout is an inability to observe, not evidence that the
-            // behavior failed. Keep it out of intent verdicts while still
-            // blocking the journey and staling steps that were never reached.
-            runner_killed = true;
-        } else {
-            match store.resolve_node(&outcome.intent, Some(NodeType::Intent)) {
-                Ok(intent) => {
-                    let entry = intent_outcomes
-                        .entry(intent.id)
-                        .or_insert_with(|| (InspectionStatus::Passing, Vec::new()));
-                    if !outcome.passed {
-                        entry.0 = InspectionStatus::Failing;
+        for (index, precondition) in self.preconditions.iter().enumerate() {
+            nonempty(&format!("precondition #{}", index + 1), precondition)?;
+            validate_template_references(precondition, &input_by_id, None)?;
+        }
+        let mut prior_outputs = BTreeSet::new();
+        for step in &self.steps {
+            insert_unique(&mut all_ids, "step", &step.id)?;
+            nonempty(&format!("step '{}' name", step.id), &step.name)?;
+            nonempty(&format!("step '{}' action", step.id), &step.action)?;
+            validate_template_references(&step.action, &input_by_id, Some(&prior_outputs))?;
+            for (index, expectation) in step.expects.iter().enumerate() {
+                nonempty(
+                    &format!("step '{}' expectation #{}", step.id, index + 1),
+                    expectation,
+                )?;
+                validate_template_references(expectation, &input_by_id, Some(&prior_outputs))?;
+            }
+            for output_id in step.produces.keys() {
+                validate_stable_id("step output", output_id)?;
+                prior_outputs.insert(format!("steps.{}.outputs.{}", step.id, output_id));
+            }
+        }
+        if !self.profiles.contains_key("proof") {
+            bail!(
+                "journey '{}' must declare the canonical proof profile at profiles.proof",
+                self.id
+            );
+        }
+        for (profile_id, profile) in &self.profiles {
+            insert_unique(&mut all_ids, "profile", profile_id)?;
+            for (input_id, binding) in &profile.inputs {
+                let input = input_by_id.get(input_id.as_str()).ok_or_else(|| {
+                    anyhow!(
+                        "profile '{}' supplies unknown input '{}'",
+                        profile_id,
+                        input_id
+                    )
+                })?;
+                match (&binding.template, &binding.env) {
+                    (Some(_), Some(_)) | (None, None) => bail!(
+                        "profiles.{}.inputs.{} must declare exactly one of template or env",
+                        profile_id,
+                        input_id
+                    ),
+                    (Some(_), None) if input.secret => bail!(
+                        "secret input '{}' must bind via profiles.{}.inputs.{}.env, never template",
+                        input_id,
+                        profile_id,
+                        input_id
+                    ),
+                    (Some(template), None) => {
+                        validate_template_references(template, &input_by_id, None).with_context(
+                            || format!("profiles.{}.inputs.{}.template", profile_id, input_id),
+                        )?;
+                        if !template.contains("{{") {
+                            let value = parse_typed_text(template, input.value_type).with_context(
+                                || {
+                                    format!(
+                                        "profiles.{}.inputs.{}.template has the wrong type",
+                                        profile_id, input_id
+                                    )
+                                },
+                            )?;
+                            if !input.value_type.accepts(&value) {
+                                bail!(
+                                    "profiles.{}.inputs.{}.template does not match type {:?}",
+                                    profile_id,
+                                    input_id,
+                                    input.value_type
+                                );
+                            }
+                        }
                     }
-                    entry
-                        .1
-                        .push(format!("{}: {}", outcome.name, outcome.detail));
+                    (None, Some(env)) => {
+                        validate_env_name(profile_id, input_id, env)?;
+                        if input.secret && profile.workspace.env.contains_key(env) {
+                            bail!(
+                                "secret input '{}' environment '{}' must come from the process, not literal profile setup.env",
+                                input_id,
+                                env
+                            );
+                        }
+                    }
                 }
-                Err(e) => {
-                    outcome.passed = false;
-                    outcome.detail = format!("unresolved step intent '{}': {e}", outcome.intent);
+            }
+            if profile_id == "proof" {
+                for (input_id, input) in &self.inputs {
+                    if input.required
+                        && input.default.is_none()
+                        && !profile.inputs.contains_key(input_id)
+                    {
+                        bail!(
+                            "required input '{}' must bind at profiles.proof.inputs.{}",
+                            input_id,
+                            input_id
+                        );
+                    }
+                    if input.secret
+                        && profile
+                            .inputs
+                            .get(input_id)
+                            .and_then(|binding| binding.env.as_ref())
+                            .is_none()
+                    {
+                        bail!(
+                            "secret input '{}' must bind at profiles.proof.inputs.{}.env",
+                            input_id,
+                            input_id
+                        );
+                    }
+                }
+            }
+            for (input_id, binding) in &profile.inputs {
+                let input = input_by_id.get(input_id.as_str()).expect("validated above");
+                if input.secret && binding.template.is_some() {
+                    bail!(
+                        "secret input '{}' must not have a literal or template binding",
+                        input_id
+                    );
+                }
+            }
+            validate_setup(profile_id, &profile.workspace)?;
+        }
+        Ok(())
+    }
+
+    /// Canonical semantic JSON. Only `steps` retains authored array order;
+    /// other addressable collections sort by stable id.
+    pub fn canonical_value(&self) -> Result<Value> {
+        self.validate()?;
+        let mut spec = self.clone();
+        for profile in spec.profiles.values_mut() {
+            profile.workspace.directories.sort();
+            profile.workspace.directories.dedup();
+            profile.workspace.files.sort_by(|a, b| a.path.cmp(&b.path));
+        }
+        Ok(canonicalize_value(serde_json::to_value(spec)?))
+    }
+
+    pub fn semantic_hash(&self) -> Result<String> {
+        let mut canonical = self.canonical_value()?;
+        // `name` is display-only. Stable id owns identity and a rename does not
+        // stale authorized technical projections.
+        let object = canonical
+            .as_object_mut()
+            .expect("Journey serializes as object");
+        object.remove("name");
+        if let Some(steps) = object.get_mut("steps").and_then(Value::as_array_mut) {
+            for step in steps {
+                step.as_object_mut()
+                    .expect("JourneyStep serializes as object")
+                    .remove("name");
+            }
+        }
+        let canonical = serde_json::to_string(&canonical)?;
+        Ok(crate::artifact::fingerprint(&canonical))
+    }
+
+    /// Semantic context shared by every step projection. Profile/workspace and
+    /// display labels are deliberately excluded so their drift only stales
+    /// compiled/runtime artifacts.
+    pub fn root_semantics_hash(&self) -> Result<String> {
+        let value = json!({
+            "actor": self.actor,
+            "goal": self.goal,
+            "description": self.description,
+            "inputs": self.inputs,
+            "preconditions": self.preconditions,
+        });
+        Ok(crate::artifact::fingerprint(&serde_json::to_string(
+            &canonicalize_value(value),
+        )?))
+    }
+
+    pub fn step_order_hash(&self) -> String {
+        crate::artifact::fingerprint(&self.step_ids().join("\0"))
+    }
+
+    pub fn step_semantics_hash(&self) -> Result<String> {
+        let by_id = self.step_hashes()?;
+        Ok(crate::artifact::fingerprint(&serde_json::to_string(
+            &by_id,
+        )?))
+    }
+
+    pub fn step_hashes(&self) -> Result<BTreeMap<String, String>> {
+        self.steps
+            .iter()
+            .map(|step| {
+                let mut value = canonicalize_value(serde_json::to_value(step)?);
+                // Step names, like the Journey name, are display labels. The
+                // stable step id owns binding identity.
+                value
+                    .as_object_mut()
+                    .expect("JourneyStep serializes as an object")
+                    .remove("name");
+                Ok((
+                    step.id.clone(),
+                    crate::artifact::fingerprint(&serde_json::to_string(&value)?),
+                ))
+            })
+            .collect()
+    }
+
+    pub fn step_ids(&self) -> Vec<String> {
+        self.steps.iter().map(|step| step.id.clone()).collect()
+    }
+}
+
+pub fn proof_profiles() -> BTreeMap<String, JourneyProfile> {
+    BTreeMap::from([(
+        "proof".into(),
+        JourneyProfile {
+            inputs: BTreeMap::new(),
+            workspace: TemporarySetup::default(),
+        },
+    )])
+}
+
+fn nonempty(label: &str, value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        bail!("{label} must not be empty");
+    }
+    Ok(())
+}
+
+pub fn validate_stable_id(label: &str, id: &str) -> Result<()> {
+    let mut chars = id.chars();
+    let Some(first) = chars.next() else {
+        bail!("{label} id must not be empty");
+    };
+    if !first.is_ascii_lowercase() {
+        bail!("{label} id '{id}' must start with a lowercase ASCII letter");
+    }
+    let mut previous_separator = false;
+    for ch in chars {
+        let separator = matches!(ch, '.' | '-' | '_');
+        if !(ch.is_ascii_lowercase() || ch.is_ascii_digit() || separator) {
+            bail!(
+                "{label} id '{id}' may contain only lowercase ASCII letters, digits, '.', '-' and '_'"
+            );
+        }
+        if separator && previous_separator {
+            bail!("{label} id '{id}' contains adjacent separators");
+        }
+        previous_separator = separator;
+    }
+    if previous_separator {
+        bail!("{label} id '{id}' must not end with a separator");
+    }
+    Ok(())
+}
+
+fn insert_unique(ids: &mut BTreeSet<String>, label: &str, id: &str) -> Result<()> {
+    validate_stable_id(label, id)?;
+    if !ids.insert(id.to_string()) {
+        bail!("duplicate stable id '{id}' ({label})");
+    }
+    Ok(())
+}
+
+fn validate_setup(profile_id: &str, setup: &TemporarySetup) -> Result<()> {
+    let mut paths = BTreeSet::new();
+    for dir in &setup.directories {
+        validate_relative_setup_path(profile_id, dir)?;
+        if !paths.insert(dir) {
+            bail!("profile '{profile_id}' repeats setup path '{dir}'");
+        }
+    }
+    for file in &setup.files {
+        validate_relative_setup_path(profile_id, &file.path)?;
+        if !paths.insert(&file.path) {
+            bail!(
+                "profile '{profile_id}' declares setup path '{}' more than once",
+                file.path
+            );
+        }
+    }
+    for key in setup.env.keys() {
+        if key.trim().is_empty() || key.contains('=') || key.contains('\0') {
+            bail!("profile '{profile_id}' has invalid environment key '{key}'");
+        }
+    }
+    Ok(())
+}
+
+fn validate_env_name(profile_id: &str, input_id: &str, env: &str) -> Result<()> {
+    if validate_process_environment_name(env).is_err() {
+        if env.is_empty() {
+            bail!("profiles.{profile_id}.inputs.{input_id}.env must not be empty");
+        }
+        bail!(
+            "profiles.{profile_id}.inputs.{input_id}.env '{env}' is not a valid environment variable name"
+        );
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_process_environment_name(name: &str) -> Result<()> {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        bail!("environment variable name must not be empty");
+    };
+    if !(first == '_' || first.is_ascii_alphabetic())
+        || !chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+    {
+        bail!("'{name}' is not a valid process environment variable name");
+    }
+    Ok(())
+}
+
+fn validate_template_references(
+    template: &str,
+    inputs: &BTreeMap<&str, &JourneyInput>,
+    prior_step_outputs: Option<&BTreeSet<String>>,
+) -> Result<()> {
+    for reference in template_references(template)? {
+        if reference == "run.id" {
+            continue;
+        }
+        if let Some(id) = reference.strip_prefix("inputs.") {
+            validate_stable_id("input reference", id)?;
+            if let Some(input) = inputs.get(id) {
+                if input.secret {
+                    bail!(
+                        "secret input '{}' cannot be interpolated by a template; bind and consume it through env/redacted input",
+                        id
+                    );
+                }
+                continue;
+            }
+            bail!("template references unknown input '{id}'");
+        }
+        if reference.starts_with("steps.") {
+            if prior_step_outputs.is_some_and(|outputs| outputs.contains(reference)) {
+                continue;
+            }
+            bail!("template reference '{reference}' is not an output of a prior Journey step");
+        }
+        bail!(
+            "unsupported template reference '{reference}'; use inputs.<id>, a prior steps.<step>.outputs.<id>, or run.id"
+        );
+    }
+    Ok(())
+}
+
+pub(crate) fn template_references(template: &str) -> Result<Vec<&str>> {
+    let mut references = Vec::new();
+    let mut rest = template;
+    while let Some(start) = rest.find("{{") {
+        let after = &rest[start + 2..];
+        let end = after
+            .find("}}")
+            .ok_or_else(|| anyhow!("template contains an unterminated '{{{{' reference"))?;
+        let reference = after[..end].trim();
+        if reference.is_empty() {
+            bail!("template contains an empty reference");
+        }
+        references.push(reference);
+        rest = &after[end + 2..];
+    }
+    if rest.contains("}}") {
+        bail!("template contains an unmatched '}}}}'");
+    }
+    Ok(references)
+}
+
+pub(crate) fn parse_typed_text(text: &str, value_type: ValueType) -> Result<Value> {
+    let value = match value_type {
+        ValueType::String => Value::String(text.to_string()),
+        _ => serde_json::from_str(text)
+            .with_context(|| format!("'{text}' is not valid {:?} JSON", value_type))?,
+    };
+    if !value_type.accepts(&value) {
+        bail!("'{text}' does not match type {:?}", value_type);
+    }
+    Ok(value)
+}
+
+fn validate_relative_setup_path(profile_id: &str, raw: &str) -> Result<()> {
+    let path = Path::new(raw);
+    if raw.trim().is_empty() || path.is_absolute() {
+        bail!("profile '{profile_id}' setup path '{raw}' must be a non-empty relative path");
+    }
+    if path.components().any(|component| {
+        matches!(
+            component,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_)
+        )
+    }) {
+        bail!("profile '{profile_id}' setup path '{raw}' escapes the temporary root");
+    }
+    Ok(())
+}
+
+/// Parse strict JSON, or YAML only for `.yaml`/`.yml` artifacts.
+pub fn parse(path: &Path) -> Result<JourneySpec> {
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("reading Journey artifact {}", path.display()))?;
+    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+    let spec: JourneySpec =
+        if extension.eq_ignore_ascii_case("yaml") || extension.eq_ignore_ascii_case("yml") {
+            serde_norway::from_str(&text)
+                .with_context(|| format!("parsing {} as {JOURNEY_SCHEMA}", path.display()))?
+        } else {
+            serde_json::from_str(&text)
+                .with_context(|| format!("parsing {} as {JOURNEY_SCHEMA}", path.display()))?
+        };
+    spec.validate()?;
+    Ok(spec)
+}
+
+fn canonicalize_value(value: Value) -> Value {
+    match value {
+        Value::Array(values) => Value::Array(values.into_iter().map(canonicalize_value).collect()),
+        Value::Object(object) => {
+            let sorted: BTreeMap<String, Value> = object
+                .into_iter()
+                .map(|(key, value)| (key, canonicalize_value(value)))
+                .collect();
+            Value::Object(sorted.into_iter().collect())
+        }
+        scalar => scalar,
+    }
+}
+
+/// Deterministic content hash of a Journey's accepted reusable surface
+/// projection. Consumers use this as a compiler/routing cache key; it is
+/// derived on read and is deliberately not stored as another stale facet.
+pub fn surface_projection_hash(
+    store: &crate::store::Store,
+    journey: &crate::model::Node,
+) -> Result<Option<String>> {
+    use crate::model::{EdgeKind, TargetKind};
+
+    let surface_edges = store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)?;
+    if surface_edges.is_empty() {
+        return Ok(None);
+    }
+
+    let mut surfaces: Vec<(String, Value)> = Vec::new();
+    for edge in surface_edges {
+        let surface = store.get_node(&edge.to_id)?.ok_or_else(|| {
+            anyhow!(
+                "Journey '{}' has a Surfaces edge to missing node '{}'",
+                journey.name,
+                edge.to_id
+            )
+        })?;
+        let stable_id = surface
+            .body
+            .get("stable_id")
+            .and_then(Value::as_str)
+            .unwrap_or(&surface.id)
+            .to_string();
+        let operation_bindings =
+            match store.get_facet(&edge.id, TargetKind::Edge, "operation_bindings")? {
+                Some(raw) => canonicalize_value(serde_json::from_str(&raw).with_context(|| {
+                    format!(
+                        "Surfaces edge '{}' has malformed operation_bindings JSON",
+                        edge.id
+                    )
+                })?),
+                None => Value::Null,
+            };
+        let setup = match store.get_facet(&edge.id, TargetKind::Edge, "setup")? {
+            Some(raw) => canonicalize_value(serde_json::from_str(&raw).with_context(|| {
+                format!("Surfaces edge '{}' has malformed setup JSON", edge.id)
+            })?),
+            None => Value::Null,
+        };
+
+        let mut exposes: Vec<(String, Value)> = Vec::new();
+        for exposed in store.edges_with(Some(EdgeKind::Exposes), Some(&surface.id), None)? {
+            let codefile = store.get_node(&exposed.to_id)?.ok_or_else(|| {
+                anyhow!(
+                    "InterfaceSurface '{}' exposes missing node '{}'",
+                    surface.name,
+                    exposed.to_id
+                )
+            })?;
+            let sort_key = format!("{}\0{}", codefile.name, codefile.id);
+            exposes.push((
+                sort_key,
+                json!({
+                    "codefile_name": codefile.name,
+                    "codefile_id": codefile.id,
+                    "locator": store.get_facet(&exposed.id, TargetKind::Edge, "locator")?,
+                }),
+            ));
+        }
+        exposes.sort_by(|a, b| a.0.cmp(&b.0));
+        let sort_key = format!("{}\0{}", stable_id, surface.id);
+        surfaces.push((
+            sort_key,
+            json!({
+                "stable_id": stable_id,
+                "surface_id": surface.id,
+                "surface_body": canonicalize_value(surface.body),
+                "journey_hash": store.get_facet(
+                    &edge.id,
+                    TargetKind::Edge,
+                    "journey_hash"
+                )?,
+                "setup": setup,
+                "operation_bindings": operation_bindings,
+                "exposes": exposes.into_iter().map(|(_, row)| row).collect::<Vec<_>>(),
+            }),
+        ));
+    }
+    surfaces.sort_by(|a, b| a.0.cmp(&b.0));
+    let projection = canonicalize_value(json!({
+        "journey_semantic_hash": journey.body.get("semantic_hash"),
+        "surfaces": surfaces.into_iter().map(|(_, row)| row).collect::<Vec<_>>(),
+    }));
+    Ok(Some(crate::artifact::fingerprint(&serde_json::to_string(
+        &projection,
+    )?)))
+}
+
+// -------------------------------------------------------------------------
+// Derivation manifest
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DerivationManifest {
+    pub schema: String,
+    pub journey_id: String,
+    pub journey_hash: String,
+    pub proposal_id: String,
+    pub proposal_rationale: String,
+    pub intents: Vec<DerivedIntent>,
+    pub relationships: Vec<DerivedRelationship>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unresolved_question: Option<DerivationQuestion>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DerivedIntent {
+    /// Stable projection-local id used by relationship endpoints.
+    pub id: String,
+    pub operation: DerivedIntentOperation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub criterion: Option<String>,
+    pub level: String,
+    pub visibility: String,
+    pub rationale: String,
+    pub step_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DerivedIntentOperation {
+    Create,
+    Reuse,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DerivationQuestion {
+    pub id: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DerivedRelationshipKind {
+    Requires,
+    Hierarchy,
+}
+
+impl DerivedRelationshipKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Requires => "requires",
+            Self::Hierarchy => "hierarchy",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DerivedRelationship {
+    pub id: String,
+    pub kind: DerivedRelationshipKind,
+    pub from: String,
+    pub to: String,
+    pub rationale: String,
+}
+
+impl DerivationManifest {
+    pub fn parse_json(path: &Path) -> Result<Self> {
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("reading derivation manifest {}", path.display()))?;
+        let manifest: Self = serde_json::from_str(&text)
+            .with_context(|| format!("parsing {} as {DERIVATION_SCHEMA}", path.display()))?;
+        Ok(manifest)
+    }
+
+    pub fn validate_for(&self, journey: &JourneySpec, hash: &str) -> Result<()> {
+        if self.schema != DERIVATION_SCHEMA {
+            bail!(
+                "unsupported derivation schema '{}' (expected '{DERIVATION_SCHEMA}')",
+                self.schema
+            );
+        }
+        if self.journey_id != journey.id {
+            bail!(
+                "derivation targets journey '{}', not '{}'",
+                self.journey_id,
+                journey.id
+            );
+        }
+        if self.journey_hash != hash {
+            bail!(
+                "derivation manifest is stale for journey '{}' (hash mismatch)",
+                journey.id
+            );
+        }
+        if self.intents.is_empty() {
+            bail!("derivation manifest must contain at least one technical intent");
+        }
+        validate_stable_id("derivation proposal", &self.proposal_id)?;
+        nonempty("derivation proposal rationale", &self.proposal_rationale)?;
+        let journey_steps: BTreeSet<&str> =
+            journey.steps.iter().map(|step| step.id.as_str()).collect();
+        let mut derivation_ids = BTreeSet::new();
+        let mut covered = BTreeSet::new();
+        for intent in &self.intents {
+            insert_unique(&mut derivation_ids, "derived intent", &intent.id)?;
+            nonempty(
+                &format!("derived intent '{}' rationale", intent.id),
+                &intent.rationale,
+            )?;
+            nonempty(
+                &format!("derived intent '{}' level", intent.id),
+                &intent.level,
+            )?;
+            nonempty(
+                &format!("derived intent '{}' visibility", intent.id),
+                &intent.visibility,
+            )?;
+            if intent.step_ids.is_empty() {
+                bail!(
+                    "derived intent '{}' must cover at least one step",
+                    intent.id
+                );
+            }
+            let mut local = BTreeSet::new();
+            for step_id in &intent.step_ids {
+                if !journey_steps.contains(step_id.as_str()) {
+                    bail!(
+                        "derived intent '{}' references unknown journey step '{}'",
+                        intent.id,
+                        step_id
+                    );
+                }
+                if !local.insert(step_id) {
+                    bail!(
+                        "derived intent '{}' repeats journey step '{}'",
+                        intent.id,
+                        step_id
+                    );
+                }
+                covered.insert(step_id.as_str());
+            }
+            match intent.operation {
+                DerivedIntentOperation::Reuse => {
+                    nonempty(
+                        &format!("derived intent '{}' intent_id", intent.id),
+                        intent.intent_id.as_deref().unwrap_or(""),
+                    )?;
+                    if intent.name.is_some() || intent.criterion.is_some() {
+                        bail!(
+                            "derived intent '{}' operation=reuse must not define name/criterion",
+                            intent.id
+                        );
+                    }
+                }
+                DerivedIntentOperation::Create => {
+                    if intent.intent_id.is_some() {
+                        bail!(
+                            "derived intent '{}' operation=create must not define intent_id",
+                            intent.id
+                        );
+                    }
+                    nonempty(
+                        &format!("derived intent '{}' name", intent.id),
+                        intent.name.as_deref().unwrap_or(""),
+                    )?;
+                    nonempty(
+                        &format!("derived intent '{}' criterion", intent.id),
+                        intent.criterion.as_deref().unwrap_or(""),
+                    )?;
                 }
             }
         }
-        if !outcome.passed && first_fail_idx.is_none() {
-            first_fail_idx = Some(idx);
+        let mut relationship_ids = BTreeSet::new();
+        let mut relationships = BTreeSet::new();
+        for (index, relationship) in self.relationships.iter().enumerate() {
+            let label = format!("relationship #{}", index + 1);
+            insert_unique(
+                &mut relationship_ids,
+                "derived relationship",
+                &relationship.id,
+            )?;
+            nonempty(
+                &format!("derived relationship '{}' rationale", relationship.id),
+                &relationship.rationale,
+            )?;
+            if !derivation_ids.contains(&relationship.from) {
+                bail!(
+                    "{label} references unknown from intent entry '{}'",
+                    relationship.from
+                );
+            }
+            if !derivation_ids.contains(&relationship.to) {
+                bail!(
+                    "{label} references unknown to intent entry '{}'",
+                    relationship.to
+                );
+            }
+            if relationship.from == relationship.to {
+                bail!("{label} must not link an Intent to itself");
+            }
+            if !relationships.insert((
+                relationship.kind,
+                relationship.from.as_str(),
+                relationship.to.as_str(),
+            )) {
+                bail!("{label} duplicates an earlier declared relationship");
+            }
+        }
+        validate_declared_relationship_cycles(&self.relationships)?;
+        if let Some(question) = &self.unresolved_question {
+            validate_stable_id("derivation question", &question.id)?;
+            nonempty("derivation question text", &question.text)?;
+        }
+        let missing: Vec<&str> = journey_steps.difference(&covered).copied().collect();
+        if !missing.is_empty() {
+            bail!(
+                "derivation does not cover journey step(s): {}",
+                missing.join(", ")
+            );
+        }
+        Ok(())
+    }
+}
+
+fn validate_declared_relationship_cycles(relationships: &[DerivedRelationship]) -> Result<()> {
+    for kind in [
+        DerivedRelationshipKind::Requires,
+        DerivedRelationshipKind::Hierarchy,
+    ] {
+        let edges: Vec<(String, String)> = relationships
+            .iter()
+            .filter(|relationship| relationship.kind == kind)
+            .map(|relationship| (relationship.from.clone(), relationship.to.clone()))
+            .collect();
+        for (from, to) in &edges {
+            if relationship_path_exists(to, from, &edges, &mut BTreeSet::new()) {
+                bail!(
+                    "declared {} relationships contain a cycle through '{}' and '{}'",
+                    kind.as_str(),
+                    from,
+                    to
+                );
+            }
         }
     }
-    // Several protocol steps may exercise the same behavior. Record one
-    // aggregate verdict per intent instead of repeatedly cycling the same edge
-    // through each step's evidence; otherwise a logically identical rerun
-    // dirties updated_at even when the final evidence is byte-identical.
-    for (intent_id, (status, details)) in intent_outcomes {
-        let evidence = details.join(" | ");
-        // loom RAN these steps, so the verdict is anchored to the run — not to
-        // a sentence about it. `assertions` counts the content checks the spec
-        // actually made (`exit_code` deliberately excluded: an exit code proves
-        // liveness, not behavior), and `covered` is the code the proof
-        // exercised, so the proof expires when that code moves.
-        let assertions: usize = spec
-            .steps
+    Ok(())
+}
+
+fn relationship_path_exists(
+    current: &str,
+    target: &str,
+    edges: &[(String, String)],
+    seen: &mut BTreeSet<String>,
+) -> bool {
+    if current == target {
+        return true;
+    }
+    if !seen.insert(current.to_string()) {
+        return false;
+    }
+    edges
+        .iter()
+        .filter(|(from, _)| from == current)
+        .any(|(_, to)| relationship_path_exists(to, target, edges, seen))
+}
+
+// -------------------------------------------------------------------------
+// Reusable CLI surface manifest
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceManifest {
+    pub schema: String,
+    pub journey_id: String,
+    pub journey_hash: String,
+    pub surface: InterfaceSurfaceDefinition,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup: Option<SurfaceSetup>,
+    pub bindings: Vec<SurfaceBinding>,
+}
+
+/// Journey-specific preparation for an accepted reusable surface. The manifest
+/// exposes only the graph source and ordered operation ids; cloning, confinement,
+/// execution, and evidence accounting remain runtime implementation details.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceSetup {
+    pub graph: SetupGraph,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub git: Option<SurfaceGitSetup>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub before_steps: BTreeMap<String, Vec<SurfaceFileAction>>,
+    pub operations: Vec<String>,
+}
+
+/// One exact file transition applied only inside the trusted local snapshot,
+/// immediately before the keyed authored step. Literal content and templates
+/// are separate so source files containing `{{ ... }}` remain representable
+/// without accidentally becoming runtime interpolation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceFileAction {
+    pub path: String,
+    pub expected_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub template: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SetupGraph {
+    LocalSnapshot,
+}
+
+/// Optional Git state materialized only inside the runtime's trusted local
+/// snapshot. The manifest names evidence paths; repository initialization,
+/// history construction, confinement, and teardown remain runtime details.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SurfaceGitSetup {
+    pub mode: SurfaceGitMode,
+    pub dirty_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SurfaceGitMode {
+    IsolatedSnapshot,
+}
+
+impl SurfaceGitSetup {
+    pub(crate) fn validate(&self) -> Result<()> {
+        if self.dirty_paths.is_empty() {
+            bail!("surface setup git.dirty_paths must not be empty");
+        }
+        let mut seen = BTreeSet::new();
+        for path in &self.dirty_paths {
+            validate_surface_git_path(path)?;
+            if !seen.insert(path.as_str()) {
+                bail!("surface setup git.dirty_paths repeats path '{path}'");
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn validate_for_store(&self, store: &crate::store::Store) -> Result<()> {
+        self.validate()?;
+        let root = store
+            .root()
+            .canonicalize()
+            .with_context(|| format!("canonicalizing graph root {}", store.root().display()))?;
+        let registered: BTreeSet<String> = store
+            .list_nodes(Some(crate::model::NodeType::CodeFile), usize::MAX)?
+            .into_iter()
+            .map(|node| node.name)
+            .collect();
+        for path in &self.dirty_paths {
+            if !registered.contains(path) {
+                bail!("surface setup git dirty path '{path}' is not a registered CodeFile");
+            }
+            let file = store.root().join(path);
+            let metadata = std::fs::symlink_metadata(&file)
+                .with_context(|| format!("reading surface setup git dirty path '{path}'"))?;
+            if !metadata.file_type().is_file() || metadata.file_type().is_symlink() {
+                bail!("surface setup git dirty path '{path}' is not a file");
+            }
+            if !file
+                .canonicalize()
+                .with_context(|| format!("canonicalizing surface setup git dirty path '{path}'"))?
+                .starts_with(&root)
+            {
+                bail!("surface setup git dirty path '{path}' escapes the graph root");
+            }
+        }
+        Ok(())
+    }
+}
+
+impl SurfaceFileAction {
+    pub(crate) fn validate(&self) -> Result<()> {
+        validate_surface_temporal_path(&self.path)?;
+        if self.expected_hash.len() != 16
+            || !self
+                .expected_hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            bail!(
+                "surface setup temporal path '{}' expected_hash must be a lowercase 16-digit content fingerprint",
+                self.path
+            );
+        }
+        match (&self.content, &self.template) {
+            (Some(_), None) => Ok(()),
+            (None, Some(template)) => template_references(template).map(|_| ()),
+            (Some(_), Some(_)) => bail!(
+                "surface setup temporal path '{}' must declare exactly one of content or template",
+                self.path
+            ),
+            (None, None) => bail!(
+                "surface setup temporal path '{}' must declare content or template",
+                self.path
+            ),
+        }
+    }
+
+    pub(crate) fn resolve_for_store(&self, store: &crate::store::Store) -> Result<PathBuf> {
+        self.validate()?;
+        let registered = store
+            .list_nodes(Some(crate::model::NodeType::CodeFile), usize::MAX)?
+            .into_iter()
+            .any(|node| node.name == self.path);
+        if !registered {
+            bail!(
+                "surface setup temporal path '{}' is not a registered CodeFile",
+                self.path
+            );
+        }
+        confined_regular_file(store.root(), &self.path, "surface setup temporal path")
+    }
+}
+
+impl SurfaceSetup {
+    fn has_temporal_actions(&self) -> bool {
+        self.before_steps
+            .values()
+            .any(|actions| !actions.is_empty())
+    }
+
+    pub(crate) fn validate_for_store(&self, store: &crate::store::Store) -> Result<()> {
+        if let Some(git) = &self.git {
+            git.validate_for_store(store)?;
+        }
+        for actions in self.before_steps.values() {
+            for action in actions {
+                action.resolve_for_store(store)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+fn validate_surface_temporal_path(path: &str) -> Result<()> {
+    validate_confined_surface_path("surface setup temporal", path)
+}
+
+fn validate_surface_git_path(path: &str) -> Result<()> {
+    validate_confined_surface_path("surface setup git dirty", path)
+}
+
+fn validate_confined_surface_path(label: &str, path: &str) -> Result<()> {
+    if path.is_empty() || path.trim() != path || path.contains('\\') {
+        bail!("{label} path '{path}' is not a normalized relative path");
+    }
+    let value = Path::new(path);
+    if value.is_absolute()
+        || value
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        bail!("{label} path '{path}' is not a normalized relative path");
+    }
+    let normalized = value
+        .components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => value.to_str(),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("/");
+    if normalized != path {
+        bail!("{label} path '{path}' is not a normalized relative path");
+    }
+    if value.components().any(|component| match component {
+        Component::Normal(value) => matches!(value.to_str(), Some(".loom" | ".git")),
+        _ => false,
+    }) {
+        bail!("{label} path '{path}' targets reserved state");
+    }
+    Ok(())
+}
+
+fn confined_regular_file(root: &Path, path: &str, label: &str) -> Result<PathBuf> {
+    let canonical_root = root
+        .canonicalize()
+        .with_context(|| format!("canonicalizing graph root {}", root.display()))?;
+    let mut current = root.to_path_buf();
+    let components: Vec<_> = Path::new(path).components().collect();
+    for (index, component) in components.iter().enumerate() {
+        let Component::Normal(component) = component else {
+            bail!("{label} '{path}' is not a normalized relative path");
+        };
+        current.push(component);
+        let metadata = std::fs::symlink_metadata(&current)
+            .with_context(|| format!("reading {label} '{path}'"))?;
+        if metadata.file_type().is_symlink() {
+            bail!("{label} '{path}' traverses a symlink");
+        }
+        let last = index + 1 == components.len();
+        if (last && !metadata.file_type().is_file()) || (!last && !metadata.is_dir()) {
+            bail!("{label} '{path}' is not a regular file");
+        }
+    }
+    if !current
+        .canonicalize()
+        .with_context(|| format!("canonicalizing {label} '{path}'"))?
+        .starts_with(&canonical_root)
+    {
+        bail!("{label} '{path}' escapes the graph root");
+    }
+    Ok(current)
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InterfaceSurfaceDefinition {
+    pub id: String,
+    pub title: String,
+    pub identity: String,
+    /// Exactly one CodeFile owns this reusable CLI entrypoint.
+    pub codefile: String,
+    /// Live symbol locator for the entrypoint in `codefile`.
+    pub locator: String,
+    pub operations: Vec<CliOperation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CliOperation {
+    pub id: String,
+    pub summary: String,
+    /// Structured argv passed directly to a process by a future executor.
+    pub argv: Vec<String>,
+    /// Host environment names this operation is permitted to inherit, apart
+    /// from the runtime's fixed process-launch infrastructure allowlist.
+    /// Values are resolved only at execution time and never enter the manifest
+    /// hash or compiled proof artifact.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub environment: Vec<String>,
+    /// Read-only operations may inspect the repository graph in place. Any
+    /// surface containing a mutable operation executes against a temporary
+    /// Loom-owned workspace/graph instead.
+    #[serde(default)]
+    pub read_only: bool,
+    #[serde(default)]
+    pub arguments: Vec<OperationArgument>,
+    pub output: OperationOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OperationArgument {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub value_type: ValueType,
+    #[serde(default = "default_true")]
+    pub required: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// Never persist or print the resolved value of this argument.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub redact: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OperationOutput {
+    pub format: OutputFormat,
+    /// Typed values extracted from the JSON document for later operations.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub captures: Vec<OutputCapture>,
+    /// Machine-checkable content expectations. Exit status is deliberately not
+    /// represented here: a process exiting zero is liveness, not an assertion.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub assertions: Vec<OutputAssertion>,
+    /// JSON pointers whose values must be removed from reports and baselines.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub redact: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OutputCapture {
+    pub id: String,
+    /// RFC 6901 JSON pointer into the operation's stdout document.
+    pub pointer: String,
+    #[serde(rename = "type")]
+    pub value_type: ValueType,
+    #[serde(default)]
+    pub redact: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OutputAssertion {
+    pub id: String,
+    /// RFC 6901 JSON pointer into the operation's stdout document.
+    pub pointer: String,
+    /// Optional type assertion for the selected value.
+    pub value_type: Option<ValueType>,
+    /// Compare the selected value with this literal.
+    pub equals: Option<Value>,
+    /// Compare the selected value with a prior input/capture source.
+    pub source: Option<String>,
+}
+
+const ASSERTION_NOT_EQUALS: &str = "$loom.assertion/not_equals/";
+const ASSERTION_EXISTS: &str = "$loom.assertion/exists/";
+const ASSERTION_CONTAINS: &str = "$loom.assertion/contains/";
+const ASSERTION_MATCHES: &str = "$loom.assertion/matches/";
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OutputAssertionWire {
+    id: String,
+    pointer: String,
+    #[serde(default, rename = "type")]
+    value_type: Option<ValueType>,
+    #[serde(default)]
+    equals: Option<Value>,
+    #[serde(default)]
+    not_equals: Option<Value>,
+    #[serde(default)]
+    exists: Option<bool>,
+    #[serde(default)]
+    contains: Option<Value>,
+    #[serde(default)]
+    matches: Option<String>,
+    #[serde(default)]
+    source: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for OutputAssertion {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let wire = OutputAssertionWire::deserialize(deserializer)?;
+        let comparisons = [
+            wire.equals.is_some(),
+            wire.not_equals.is_some(),
+            wire.exists.is_some(),
+            wire.contains.is_some(),
+            wire.matches.is_some(),
+            wire.source.is_some(),
+        ]
+        .into_iter()
+        .filter(|present| *present)
+        .count();
+        if comparisons > 1 {
+            return Err(D::Error::custom(
+                "output assertion must declare at most one comparison operator",
+            ));
+        }
+        let source = if let Some(value) = wire.not_equals {
+            Some(format!(
+                "{ASSERTION_NOT_EQUALS}{}",
+                serde_json::to_string(&value).map_err(D::Error::custom)?
+            ))
+        } else if let Some(value) = wire.exists {
+            Some(format!("{ASSERTION_EXISTS}{value}"))
+        } else if let Some(value) = wire.contains {
+            Some(format!(
+                "{ASSERTION_CONTAINS}{}",
+                serde_json::to_string(&value).map_err(D::Error::custom)?
+            ))
+        } else if let Some(value) = wire.matches {
+            Some(format!(
+                "{ASSERTION_MATCHES}{}",
+                serde_json::to_string(&value).map_err(D::Error::custom)?
+            ))
+        } else {
+            wire.source
+        };
+        Ok(Self {
+            id: wire.id,
+            pointer: wire.pointer,
+            value_type: wire.value_type,
+            equals: wire.equals,
+            source,
+        })
+    }
+}
+
+impl Serialize for OutputAssertion {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::Error;
+
+        let mut object = serde_json::Map::new();
+        object.insert("id".into(), Value::String(self.id.clone()));
+        object.insert("pointer".into(), Value::String(self.pointer.clone()));
+        if let Some(value_type) = self.value_type {
+            object.insert(
+                "type".into(),
+                serde_json::to_value(value_type).map_err(S::Error::custom)?,
+            );
+        }
+        if let Some(equals) = &self.equals {
+            object.insert("equals".into(), equals.clone());
+        } else if let Some(value) = self.not_equals_value() {
+            object.insert("not_equals".into(), value);
+        } else if let Some(value) = self.exists_value() {
+            object.insert("exists".into(), Value::Bool(value));
+        } else if let Some(value) = self.contains_value() {
+            object.insert("contains".into(), value);
+        } else if let Some(pattern) = self.matches_pattern() {
+            object.insert("matches".into(), Value::String(pattern));
+        } else if let Some(source) = self.runtime_source() {
+            object.insert("source".into(), Value::String(source.to_string()));
+        }
+        Value::Object(object).serialize(serializer)
+    }
+}
+
+impl OutputAssertion {
+    pub(crate) fn runtime_source(&self) -> Option<&str> {
+        self.source.as_deref().filter(|source| {
+            !source.starts_with(ASSERTION_NOT_EQUALS)
+                && !source.starts_with(ASSERTION_EXISTS)
+                && !source.starts_with(ASSERTION_CONTAINS)
+                && !source.starts_with(ASSERTION_MATCHES)
+        })
+    }
+
+    pub(crate) fn not_equals_value(&self) -> Option<Value> {
+        decode_assertion_value(self.source.as_deref()?, ASSERTION_NOT_EQUALS)
+    }
+
+    pub(crate) fn exists_value(&self) -> Option<bool> {
+        self.source
+            .as_deref()?
+            .strip_prefix(ASSERTION_EXISTS)?
+            .parse()
+            .ok()
+    }
+
+    pub(crate) fn contains_value(&self) -> Option<Value> {
+        decode_assertion_value(self.source.as_deref()?, ASSERTION_CONTAINS)
+    }
+
+    pub(crate) fn matches_pattern(&self) -> Option<String> {
+        let encoded = self.source.as_deref()?.strip_prefix(ASSERTION_MATCHES)?;
+        serde_json::from_str(encoded).ok()
+    }
+}
+
+fn decode_assertion_value(source: &str, prefix: &str) -> Option<Value> {
+    serde_json::from_str(source.strip_prefix(prefix)?).ok()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputFormat {
+    Json,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OperationBinding {
+    pub step_id: String,
+    pub operation_id: String,
+}
+
+/// A surface step is either executed through one structured CLI operation or
+/// suspended at an intrinsic host-mediated human decision. The untagged
+/// variants are individually strict, so a manifest cannot combine both forms
+/// or smuggle command/template/default-answer fields into a gate.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SurfaceBinding {
+    Operation(OperationBinding),
+    HumanDecision(HumanDecisionBinding),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HumanDecisionBinding {
+    pub step_id: String,
+    pub human_decision: HumanDecisionSource,
+}
+
+/// The structured prompt is observed from an earlier operation. `pointer`
+/// selects a JSON object containing `subject`, `question`, `recommendation`,
+/// and two or three ordered `options`; the manifest never contains an answer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HumanDecisionSource {
+    pub operation_id: String,
+    pub pointer: String,
+}
+
+impl From<OperationBinding> for SurfaceBinding {
+    fn from(binding: OperationBinding) -> Self {
+        Self::Operation(binding)
+    }
+}
+
+impl SurfaceBinding {
+    pub fn step_id(&self) -> &str {
+        match self {
+            Self::Operation(binding) => &binding.step_id,
+            Self::HumanDecision(binding) => &binding.step_id,
+        }
+    }
+
+    pub fn operation_id(&self) -> Option<&str> {
+        match self {
+            Self::Operation(binding) => Some(&binding.operation_id),
+            Self::HumanDecision(_) => None,
+        }
+    }
+
+    pub fn human_decision(&self) -> Option<&HumanDecisionSource> {
+        match self {
+            Self::Operation(_) => None,
+            Self::HumanDecision(binding) => Some(&binding.human_decision),
+        }
+    }
+
+    pub fn identity(&self) -> String {
+        match self {
+            Self::Operation(binding) => format!("operation:{}", binding.operation_id),
+            Self::HumanDecision(binding) => format!(
+                "human_decision:{}:{}",
+                binding.human_decision.operation_id, binding.human_decision.pointer
+            ),
+        }
+    }
+}
+
+impl HumanDecisionSource {
+    pub fn validate(&self) -> Result<()> {
+        validate_stable_id("human decision source operation", &self.operation_id)?;
+        validate_json_pointer("human decision source", &self.operation_id, &self.pointer)
+    }
+}
+
+impl InterfaceSurfaceDefinition {
+    pub fn validate(&self) -> Result<()> {
+        validate_stable_id("interface surface", &self.id)?;
+        nonempty("interface surface title", &self.title)?;
+        nonempty("interface surface identity", &self.identity)?;
+        nonempty("interface surface codefile", &self.codefile)?;
+        nonempty("interface surface locator", &self.locator)?;
+        if self.operations.is_empty() {
+            bail!("interface surface '{}' must define an operation", self.id);
+        }
+        let mut operation_ids = BTreeSet::new();
+        for operation in &self.operations {
+            insert_unique(&mut operation_ids, "operation", &operation.id)?;
+            nonempty(
+                &format!("operation '{}' summary", operation.id),
+                &operation.summary,
+            )?;
+            if operation.argv.is_empty() || operation.argv.iter().any(|part| part.is_empty()) {
+                bail!(
+                    "operation '{}' argv must contain non-empty structured arguments",
+                    operation.id
+                );
+            }
+            let mut environment = BTreeSet::new();
+            for name in &operation.environment {
+                validate_process_environment_name(name).with_context(|| {
+                    format!(
+                        "operation '{}' has invalid environment declaration",
+                        operation.id
+                    )
+                })?;
+                if !environment.insert(name.as_str()) {
+                    bail!(
+                        "operation '{}' repeats environment name '{}'",
+                        operation.id,
+                        name
+                    );
+                }
+            }
+            for (index, token) in operation.argv.iter().enumerate() {
+                if argv_token_source(token)?.is_some() && index == 0 {
+                    bail!(
+                        "operation '{}' executable argv token cannot be a runtime template",
+                        operation.id
+                    );
+                }
+            }
+            let executable = Path::new(&operation.argv[0])
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            if matches!(
+                executable.as_str(),
+                "sh" | "bash" | "zsh" | "fish" | "cmd" | "powershell" | "pwsh"
+            ) {
+                bail!(
+                    "operation '{}' uses a shell executable; operations must be structured argv",
+                    operation.id
+                );
+            }
+            if matches!(
+                executable.as_str(),
+                "curl" | "wget" | "http" | "https" | "httpie"
+            ) || operation
+                .argv
+                .iter()
+                .any(|part| part.starts_with("http://") || part.starts_with("https://"))
+            {
+                bail!(
+                    "operation '{}' declares an HTTP client/URL; Journey proofs execute reusable CLI surfaces only",
+                    operation.id
+                );
+            }
+            if executable == "loom" && operation.argv[1..].iter().any(|part| part == "--graph") {
+                bail!(
+                    "operation '{}' must not supply --graph; the Journey runtime owns graph confinement",
+                    operation.id
+                );
+            }
+            let mut argument_ids = BTreeSet::new();
+            for argument in &operation.arguments {
+                insert_unique(&mut argument_ids, "operation argument", &argument.id)?;
+                if let Some(flag) = &argument.flag {
+                    if !flag.starts_with('-') || flag.chars().any(char::is_whitespace) {
+                        bail!(
+                            "operation '{}' argument '{}' has invalid flag '{}'",
+                            operation.id,
+                            argument.id,
+                            flag
+                        );
+                    }
+                }
+                if let Some(source) = &argument.source {
+                    validate_runtime_source(source).with_context(|| {
+                        format!(
+                            "operation '{}' argument '{}' has invalid source",
+                            operation.id, argument.id
+                        )
+                    })?;
+                }
+            }
+            let mut output_ids = BTreeSet::new();
+            for capture in &operation.output.captures {
+                insert_unique(&mut output_ids, "output capture", &capture.id)?;
+                validate_json_pointer("capture", &capture.id, &capture.pointer)?;
+            }
+            for assertion in &operation.output.assertions {
+                insert_unique(&mut output_ids, "output assertion", &assertion.id)?;
+                validate_json_pointer("assertion", &assertion.id, &assertion.pointer)?;
+                let comparisons = [
+                    assertion.equals.is_some(),
+                    assertion.not_equals_value().is_some(),
+                    assertion.contains_value().is_some(),
+                    assertion.matches_pattern().is_some(),
+                    assertion.runtime_source().is_some(),
+                ]
+                .into_iter()
+                .filter(|present| *present)
+                .count();
+                if comparisons > 1 {
+                    bail!(
+                        "assertion '{}' must declare at most one of equals, not_equals, contains, matches, or source",
+                        assertion.id
+                    );
+                }
+                if assertion.exists_value().is_some()
+                    && (comparisons > 0 || assertion.value_type.is_some())
+                {
+                    bail!(
+                        "assertion '{}' exists operator must not be combined with a type or value comparison",
+                        assertion.id
+                    );
+                }
+                if assertion.exists_value().is_none()
+                    && comparisons == 0
+                    && assertion.value_type.is_none()
+                {
+                    bail!(
+                        "assertion '{}' must declare a type or comparison",
+                        assertion.id
+                    );
+                }
+                if assertion.matches_pattern().is_some()
+                    && assertion
+                        .value_type
+                        .is_some_and(|value_type| value_type != ValueType::String)
+                {
+                    bail!(
+                        "assertion '{}' matches operator is compatible only with type string",
+                        assertion.id
+                    );
+                }
+                if let Some(pattern) = assertion.matches_pattern() {
+                    regex::Regex::new(&pattern).with_context(|| {
+                        format!("assertion '{}' has invalid matches regex", assertion.id)
+                    })?;
+                }
+                if assertion.contains_value().is_some()
+                    && assertion.value_type.is_some_and(|value_type| {
+                        !matches!(value_type, ValueType::String | ValueType::Json)
+                    })
+                {
+                    bail!(
+                        "assertion '{}' contains operator requires type string, json, or no explicit type",
+                        assertion.id
+                    );
+                }
+                if assertion.value_type == Some(ValueType::String)
+                    && assertion
+                        .contains_value()
+                        .is_some_and(|value| !value.is_string())
+                {
+                    bail!(
+                        "assertion '{}' string contains operand must be a string",
+                        assertion.id
+                    );
+                }
+                if let Some(source) = assertion.runtime_source() {
+                    validate_runtime_source(source).with_context(|| {
+                        format!("assertion '{}' has invalid source", assertion.id)
+                    })?;
+                }
+            }
+            for pointer in &operation.output.redact {
+                validate_json_pointer("redaction", &operation.id, pointer)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn canonical_operations(&self) -> Result<Value> {
+        self.validate()?;
+        let mut operations = self.operations.clone();
+        operations.sort_by(|a, b| a.id.cmp(&b.id));
+        for operation in &mut operations {
+            operation.arguments.sort_by(|a, b| a.id.cmp(&b.id));
+            operation.environment.sort();
+        }
+        Ok(canonicalize_value(serde_json::to_value(operations)?))
+    }
+
+    pub fn node_body(&self) -> Result<Value> {
+        Ok(json!({
+            "schema": INTERFACE_SURFACE_SCHEMA,
+            "stable_id": self.id,
+            "title": self.title,
+            "kind": "cli",
+            "identity": self.identity,
+            "codefile": self.codefile,
+            "locator": self.locator,
+            "operations": self.canonical_operations()?,
+        }))
+    }
+}
+
+impl SurfaceManifest {
+    pub fn parse_json(path: &Path) -> Result<Self> {
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("reading surface manifest {}", path.display()))?;
+        let manifest: Self = serde_json::from_str(&text)
+            .with_context(|| format!("parsing {} as {SURFACE_SCHEMA}", path.display()))?;
+        Ok(manifest)
+    }
+
+    pub fn validate_for(&self, journey: &JourneySpec, hash: &str) -> Result<()> {
+        if self.schema != SURFACE_SCHEMA {
+            bail!(
+                "unsupported surface schema '{}' (expected '{SURFACE_SCHEMA}')",
+                self.schema
+            );
+        }
+        if self.journey_id != journey.id {
+            bail!(
+                "surface manifest targets journey '{}', not '{}'",
+                self.journey_id,
+                journey.id
+            );
+        }
+        if self.journey_hash != hash {
+            bail!(
+                "surface manifest is stale for journey '{}' (hash mismatch)",
+                journey.id
+            );
+        }
+        self.surface.validate()?;
+        let operations: BTreeSet<&str> = self
+            .surface
+            .operations
             .iter()
-            .filter(|st| st.intent == *intent_name(store, &intent_id))
-            .map(|st| {
-                st.expect.body.len()
-                    + st.expect.exists.len()
-                    + st.expect.stdout_contains.len()
-                    + st.expect.stderr_contains.len()
-            })
-            .sum();
-        let covered = store.files_grounding(&intent_id)?;
-        let transcript: String = outcomes
+            .map(|operation| operation.id.as_str())
+            .collect();
+        let operation_by_id: BTreeMap<&str, &CliOperation> = self
+            .surface
+            .operations
             .iter()
-            .map(|o| o.transcript.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
-        let run = crate::runner::record(
+            .map(|operation| (operation.id.as_str(), operation))
+            .collect();
+        let input_by_id: BTreeMap<&str, &JourneyInput> = journey
+            .inputs
+            .iter()
+            .map(|(id, input)| (id.as_str(), input))
+            .collect();
+        let journey_steps: BTreeSet<&str> =
+            journey.steps.iter().map(|step| step.id.as_str()).collect();
+        let mut bound = BTreeSet::new();
+        let mut bound_operations = BTreeSet::new();
+        let mut has_human_decision = false;
+        for binding in &self.bindings {
+            let step_id = binding.step_id();
+            if !journey_steps.contains(step_id) {
+                bail!("surface binding references unknown step '{}'", step_id);
+            }
+            if !bound.insert(step_id) {
+                bail!(
+                    "journey step '{}' has more than one surface binding",
+                    step_id
+                );
+            }
+            match binding {
+                SurfaceBinding::Operation(binding) => {
+                    if !operations.contains(binding.operation_id.as_str()) {
+                        bail!(
+                            "surface binding for step '{}' references unknown operation '{}'",
+                            binding.step_id,
+                            binding.operation_id
+                        );
+                    }
+                    if !bound_operations.insert(binding.operation_id.as_str()) {
+                        bail!(
+                            "surface operation '{}' is bound more than once; each Journey step requires one primary operation",
+                            binding.operation_id
+                        );
+                    }
+                }
+                SurfaceBinding::HumanDecision(binding) => {
+                    has_human_decision = true;
+                    binding.human_decision.validate()?;
+                }
+            }
+        }
+        let missing: Vec<&str> = journey_steps.difference(&bound).copied().collect();
+        if !missing.is_empty() {
+            bail!(
+                "surface manifest does not bind journey step(s): {}",
+                missing.join(", ")
+            );
+        }
+
+        if has_human_decision && self.setup.is_none() {
+            bail!("human decision bindings require setup.graph=local_snapshot");
+        }
+        if let Some(setup) = &self.setup {
+            if setup.operations.is_empty() && !setup.has_temporal_actions() && !has_human_decision {
+                bail!("surface setup must name an operation or declare a before_steps file action");
+            }
+            if let Some(git) = &setup.git {
+                match setup.graph {
+                    SetupGraph::LocalSnapshot => git.validate()?,
+                }
+            }
+            let mut setup_operations = BTreeSet::new();
+            let no_outputs = BTreeMap::new();
+            for (step_id, actions) in &setup.before_steps {
+                if !journey_steps.contains(step_id.as_str()) {
+                    bail!("surface setup before_steps references unknown step '{step_id}'");
+                }
+                if actions.is_empty() {
+                    bail!("surface setup before_steps.{step_id} must contain a file action");
+                }
+                let mut paths = BTreeSet::new();
+                for action in actions {
+                    action.validate()?;
+                    if !paths.insert(action.path.as_str()) {
+                        bail!(
+                            "surface setup before_steps.{step_id} repeats path '{}'",
+                            action.path
+                        );
+                    }
+                }
+            }
+            for operation_id in &setup.operations {
+                if !setup_operations.insert(operation_id.as_str()) {
+                    bail!("surface setup repeats operation '{operation_id}'");
+                }
+                let operation = operation_by_id.get(operation_id.as_str()).ok_or_else(|| {
+                    anyhow!("surface setup references unknown operation '{operation_id}'")
+                })?;
+                if bound_operations.contains(operation_id.as_str()) {
+                    bail!(
+                        "surface setup operation '{operation_id}' is also bound to an authored step"
+                    );
+                }
+                if operation.read_only {
+                    bail!(
+                        "surface setup operation '{operation_id}' must be mutable so it can establish the isolated fixture"
+                    );
+                }
+                if !operation.output.captures.is_empty() {
+                    bail!(
+                        "surface setup operation '{operation_id}' must not capture authored step outputs"
+                    );
+                }
+                if operation.output.assertions.is_empty() {
+                    bail!(
+                        "surface setup operation '{operation_id}' must assert the fixture it establishes"
+                    );
+                }
+                validate_operation_references(operation, &input_by_id, &no_outputs)?;
+            }
+        }
+
+        // References are checked in semantic step order. A surface may read
+        // authored inputs, this execution's run.id, or typed outputs captured
+        // by an operation bound to an earlier step—never a forward/global
+        // capture name.
+        let binding_by_step: BTreeMap<&str, &SurfaceBinding> = self
+            .bindings
+            .iter()
+            .map(|binding| (binding.step_id(), binding))
+            .collect();
+        let mut prior_outputs = BTreeMap::new();
+        let mut prior_operations = BTreeSet::new();
+        for step in &journey.steps {
+            if let Some(actions) = self
+                .setup
+                .as_ref()
+                .and_then(|setup| setup.before_steps.get(&step.id))
+            {
+                for action in actions {
+                    validate_temporal_action_references(action, &input_by_id, &prior_outputs)
+                        .with_context(|| {
+                            format!(
+                                "surface setup before_steps.{} path '{}'",
+                                step.id, action.path
+                            )
+                        })?;
+                }
+            }
+            let binding = binding_by_step
+                .get(step.id.as_str())
+                .expect("complete bindings validated above");
+            match binding {
+                SurfaceBinding::Operation(binding) => {
+                    let operation = operation_by_id
+                        .get(binding.operation_id.as_str())
+                        .expect("operation binding validated above");
+                    validate_operation_references(operation, &input_by_id, &prior_outputs)?;
+                    for capture in &operation.output.captures {
+                        let authored = step.produces.get(&capture.id).ok_or_else(|| {
+                            anyhow!(
+                                "operation '{}' captures undeclared output '{}' for Journey step '{}'",
+                                operation.id,
+                                capture.id,
+                                step.id
+                            )
+                        })?;
+                        if authored.value_type != capture.value_type {
+                            bail!(
+                                "operation '{}' capture '{}' type does not match Journey step '{}' output type",
+                                operation.id,
+                                capture.id,
+                                step.id
+                            );
+                        }
+                        prior_outputs.insert(
+                            format!("steps.{}.outputs.{}", step.id, capture.id),
+                            (capture.value_type, capture.redact),
+                        );
+                    }
+                    let captured: BTreeSet<&str> = operation
+                        .output
+                        .captures
+                        .iter()
+                        .map(|capture| capture.id.as_str())
+                        .collect();
+                    let missing: Vec<&str> = step
+                        .produces
+                        .keys()
+                        .map(String::as_str)
+                        .filter(|id| !captured.contains(id))
+                        .collect();
+                    if !missing.is_empty() {
+                        bail!(
+                            "operation '{}' does not capture Journey step '{}' output(s): {}",
+                            operation.id,
+                            step.id,
+                            missing.join(", ")
+                        );
+                    }
+                    prior_operations.insert(operation.id.as_str());
+                }
+                SurfaceBinding::HumanDecision(binding) => {
+                    if !prior_operations.contains(binding.human_decision.operation_id.as_str()) {
+                        bail!(
+                            "human decision step '{}' must reference an operation bound to an earlier authored step (found '{}')",
+                            step.id,
+                            binding.human_decision.operation_id
+                        );
+                    }
+                    if !step.produces.is_empty() {
+                        bail!(
+                            "human decision step '{}' cannot declare produced machine outputs",
+                            step.id
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Validate setup paths against local graph authority before accepting a
+    /// reusable surface. Compilation repeats this check in the isolated clone.
+    pub fn validate_setup_for_store(&self, store: &crate::store::Store) -> Result<()> {
+        if let Some(setup) = &self.setup {
+            setup.validate_for_store(store)?;
+        }
+        Ok(())
+    }
+
+    pub fn canonical_bindings(&self, journey: &JourneySpec) -> Value {
+        let by_step: BTreeMap<&str, &SurfaceBinding> = self
+            .bindings
+            .iter()
+            .map(|binding| (binding.step_id(), binding))
+            .collect();
+        Value::Array(
+            journey
+                .steps
+                .iter()
+                .filter_map(|step| by_step.get(step.id.as_str()))
+                .map(|binding| {
+                    serde_json::to_value(binding).expect("surface binding is serializable")
+                })
+                .collect(),
+        )
+    }
+
+    pub fn canonical_setup(&self) -> Result<Option<Value>> {
+        self.setup
+            .as_ref()
+            .map(|setup| serde_json::to_value(setup).map(canonicalize_value))
+            .transpose()
+            .map_err(Into::into)
+    }
+}
+
+/// Settle a compiled Journey Validation from the observation made by the
+/// direct-argv runtime. Kept beside the Journey proof vocabulary so every proof
+/// status write remains on the repository's proof-stability chokepoint.
+pub fn settle_compiled_validation(
+    store: &crate::store::Store,
+    validation_id: &str,
+    report: &crate::journey_runtime::RuntimeReport,
+    covered_files: &[String],
+) -> Result<()> {
+    use crate::model::{Claim, EdgeKind, InspectionStatus, RunProducer};
+    use crate::store::{Assertion, Subject};
+
+    let (node_status, edge_status) = match report.status {
+        crate::journey_runtime::RuntimeStatus::Passed => ("passed", InspectionStatus::Passing),
+        crate::journey_runtime::RuntimeStatus::Failed => ("failed", InspectionStatus::Failing),
+        crate::journey_runtime::RuntimeStatus::Blocked => ("blocked", InspectionStatus::Blocked),
+    };
+    let evidence = match &report.detail {
+        Some(detail) => format!(
+            "compiled Journey '{}:{}' observed {}: {detail}",
+            report.journey_id, report.profile, node_status
+        ),
+        None => format!(
+            "compiled Journey '{}:{}' observed {} with {} typed assertion(s)",
+            report.journey_id, report.profile, node_status, report.assertions_passed
+        ),
+    };
+    let run = if report.status == crate::journey_runtime::RuntimeStatus::Blocked {
+        None
+    } else {
+        let stdout = crate::journey_runtime::report_observation_json(report)?;
+        Some(crate::runner::record(
             store.root(),
-            crate::model::RunProducer::Journey,
-            &format!("loom journey run '{}'", spec.journey),
-            &covered,
-            assertions,
-            i64::from(status != InspectionStatus::Passing),
-            transcript.as_bytes(),
-            &[],
+            RunProducer::Journey,
+            &format!(
+                "loom journey run {} --profile {}",
+                report.journey_id, report.profile
+            ),
+            covered_files,
+            report.assertions_passed,
+            if report.status == crate::journey_runtime::RuntimeStatus::Passed {
+                0
+            } else {
+                1
+            },
+            &stdout,
+            report.detail.as_deref().unwrap_or("").as_bytes(),
             0,
+        ))
+    };
+
+    for kind in [EdgeKind::Validates, EdgeKind::Proves] {
+        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {
+            let mut assertion = Assertion::new(
+                Subject::Edge(edge.id),
+                Claim::Verdict,
+                edge_status.as_str(),
+                "loom",
+            )
+            .criterion("compiled Journey profile")
+            .confidence(1.0)
+            .cited(crate::evidence::cite(store.root(), &evidence)?);
+            if let Some(run) = &run {
+                assertion = assertion.observed(run.clone());
+            }
+            store.assert_fact(assertion)?;
+        }
+    }
+    store.record_proof_stability(validation_id, node_status)?;
+    store.set_node_status(validation_id, node_status)?;
+    store.append_journal(
+        "journey_run",
+        validation_id,
+        json!({
+            "journey_id": report.journey_id,
+            "profile": report.profile,
+            "outcome": node_status,
+            "journey_hash": report.journey_hash,
+            "surface_hash": report.surface_hash,
+            "assertions_passed": report.assertions_passed,
+            "assertions_failed": report.assertions_failed,
+            "detail": report.detail,
+        }),
+    )?;
+    regrade_compiled_validation(store, validation_id)
+}
+
+fn regrade_compiled_validation(store: &crate::store::Store, validation_id: &str) -> Result<()> {
+    use crate::model::EdgeKind;
+    let Some(validation) = store.get_node(validation_id)? else {
+        return Ok(());
+    };
+    let callgraph = crate::callgraph::build(store)?;
+    let mut best: Option<crate::proofstrength::StrengthWitness> = None;
+    for edge in store.edges_with(Some(EdgeKind::Validates), Some(validation_id), None)? {
+        let witness =
+            crate::proofstrength::grade(store, store.root(), &validation, &edge.to_id, &callgraph)?;
+        let stronger = best
+            .as_ref()
+            .map(|current| {
+                crate::proofstrength::Strength::parse(&witness.grade)
+                    > crate::proofstrength::Strength::parse(&current.grade)
+            })
+            .unwrap_or(true);
+        if stronger {
+            best = Some(witness);
+        }
+    }
+    if let Some(witness) = best {
+        crate::proofstrength::store_witness(store, validation_id, &witness)?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RuntimeSource<'a> {
+    Input(&'a str),
+    StepOutput {
+        step_id: &'a str,
+        output_id: &'a str,
+    },
+    RunId,
+}
+
+pub(crate) fn parse_runtime_source(source: &str) -> Result<RuntimeSource<'_>> {
+    if source == "run.id" {
+        return Ok(RuntimeSource::RunId);
+    }
+    if let Some(id) = source.strip_prefix("inputs.") {
+        validate_stable_id("input source", id)?;
+        return Ok(RuntimeSource::Input(id));
+    }
+    if let Some(rest) = source.strip_prefix("steps.") {
+        let Some((step_id, output_id)) = rest.split_once(".outputs.") else {
+            bail!("source '{source}' must use steps.<step-id>.outputs.<output-id>");
+        };
+        validate_stable_id("step source", step_id)?;
+        validate_stable_id("step output source", output_id)?;
+        return Ok(RuntimeSource::StepOutput { step_id, output_id });
+    }
+    bail!("source '{source}' must be inputs.<id>, steps.<prior-step>.outputs.<id>, or run.id")
+}
+
+/// Return the runtime source named by one whole argv token. Runtime values may
+/// replace a token, never splice into one: that keeps argv ordering explicit
+/// and prevents a value from becoming shell syntax or changing token count.
+pub(crate) fn argv_token_source(token: &str) -> Result<Option<&str>> {
+    if !token.contains("{{") {
+        return Ok(None);
+    }
+    let references = template_references(token)?;
+    if references.is_empty() {
+        return Ok(None);
+    }
+    let whole_source = token
+        .strip_prefix("${{")
+        .and_then(|inner| inner.strip_suffix("}}"))
+        // Retain the pre-v1 spelling as read compatibility. Newly emitted
+        // manifests use the canonical `${{ ... }}` form.
+        .or_else(|| {
+            token
+                .strip_prefix("{{")
+                .and_then(|inner| inner.strip_suffix("}}"))
+        })
+        .map(str::trim);
+    if references.len() != 1 || whole_source != Some(references[0]) {
+        bail!(
+            "argv token templates must be exactly one '${{{{ inputs.<id> }}}}' or '${{{{ steps.<prior-step>.outputs.<id> }}}}' source"
         );
-        for e in store.edges_with(
-            Some(EdgeKind::Validates),
-            Some(&journey.id),
-            Some(&intent_id),
-        )? {
-            store.assert_fact(
-                crate::store::Assertion::new(
-                    crate::store::Subject::Edge(e.id.clone()),
-                    crate::model::Claim::Verdict,
-                    status.as_str(),
-                    "journey",
-                )
-                .criterion("journey steps")
-                .confidence(1.0)
-                .cited(crate::evidence::cite(store.root(), &evidence)?)
-                .observed(run.clone()),
+    }
+    match parse_runtime_source(references[0])? {
+        RuntimeSource::Input(_) | RuntimeSource::StepOutput { .. } => Ok(Some(references[0])),
+        RuntimeSource::RunId => {
+            bail!("argv token templates may not use run.id; use an authored input or prior output")
+        }
+    }
+}
+
+fn validate_runtime_source(source: &str) -> Result<()> {
+    parse_runtime_source(source).map(|_| ())
+}
+
+fn validate_available_source(
+    source: &str,
+    inputs: &BTreeMap<&str, &JourneyInput>,
+    prior_step_outputs: &BTreeMap<String, (ValueType, bool)>,
+) -> Result<()> {
+    match parse_runtime_source(source)? {
+        RuntimeSource::RunId => Ok(()),
+        RuntimeSource::Input(id) if inputs.contains_key(id) => Ok(()),
+        RuntimeSource::Input(id) => bail!("unknown Journey input '{id}'"),
+        RuntimeSource::StepOutput { .. } if prior_step_outputs.contains_key(source) => Ok(()),
+        RuntimeSource::StepOutput { .. } => {
+            bail!("'{source}' is not an output of a prior Journey step")
+        }
+    }
+}
+
+fn validate_interpolated_source(
+    source: &str,
+    inputs: &BTreeMap<&str, &JourneyInput>,
+    prior_outputs: &BTreeMap<String, (ValueType, bool)>,
+    allow_run_id: bool,
+) -> Result<()> {
+    validate_available_source(source, inputs, prior_outputs)?;
+    match parse_runtime_source(source)? {
+        RuntimeSource::RunId if allow_run_id => Ok(()),
+        RuntimeSource::RunId => bail!("run.id is not allowed in this runtime template"),
+        RuntimeSource::Input(id) => {
+            let input = inputs
+                .get(id)
+                .expect("input existence validated before interpolation policy");
+            if input.secret {
+                bail!("secret input '{id}' cannot enter a runtime template");
+            }
+            if !input.value_type.is_scalar() {
+                bail!("input '{id}' is not scalar and cannot replace one argv/content token");
+            }
+            Ok(())
+        }
+        RuntimeSource::StepOutput { .. } => {
+            let (value_type, redact) = prior_outputs
+                .get(source)
+                .expect("output availability validated before interpolation policy");
+            if *redact {
+                bail!("redacted output '{source}' cannot enter a runtime template");
+            }
+            if !value_type.is_scalar() {
+                bail!("output '{source}' is not scalar and cannot enter a runtime template");
+            }
+            Ok(())
+        }
+    }
+}
+
+fn validate_temporal_action_references(
+    action: &SurfaceFileAction,
+    inputs: &BTreeMap<&str, &JourneyInput>,
+    prior_outputs: &BTreeMap<String, (ValueType, bool)>,
+) -> Result<()> {
+    let Some(template) = &action.template else {
+        return Ok(());
+    };
+    for source in template_references(template)? {
+        validate_interpolated_source(source, inputs, prior_outputs, true)?;
+    }
+    Ok(())
+}
+
+fn validate_operation_references(
+    operation: &CliOperation,
+    inputs: &BTreeMap<&str, &JourneyInput>,
+    prior_outputs: &BTreeMap<String, (ValueType, bool)>,
+) -> Result<()> {
+    for (index, token) in operation.argv.iter().enumerate() {
+        if let Some(source) = argv_token_source(token)? {
+            if index == 0 {
+                bail!(
+                    "operation '{}' executable argv token cannot be a runtime template",
+                    operation.id
+                );
+            }
+            validate_interpolated_source(source, inputs, prior_outputs, false).with_context(
+                || format!("operation '{}' argv token #{}", operation.id, index + 1),
             )?;
         }
     }
-    if let Some(idx) = first_fail_idx {
-        stale_unreached_passing_steps(store, spec, &journey.id, idx + 1)?;
-    }
-    let all_pass = !outcomes.is_empty() && outcomes.iter().all(|o| o.passed);
-    let outcome = if all_pass {
-        "passed"
-    } else if runner_killed {
-        "blocked"
-    } else {
-        "failed"
-    };
-    // A journey is a proof too, and it covers every user-visible behavior. The
-    // first stability guard sat in `validation run` only, so this path — the one
-    // dogfood exercises most — was never watched.
-    store.record_proof_stability(&journey.id, outcome)?;
-    store.set_node_status(&journey.id, outcome)?;
-    Ok(journey)
-}
-
-#[derive(Debug)]
-struct RunnerKill {
-    outcome: StepOutcome,
-}
-
-impl std::fmt::Display for RunnerKill {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "step '{}': {}", self.outcome.name, self.outcome.detail)
-    }
-}
-
-impl std::error::Error for RunnerKill {}
-
-fn run_cli_step(
-    step: &Step,
-    vars: &mut BTreeMap<String, String>,
-    cwd: Option<&Path>,
-    _diagnose_style: bool,
-) -> Result<StepOutcome> {
-    let command = interpolate(&step.run, vars);
-    // Declared per step, else the shared default, so a journey step and a
-    // validation obey one timeout policy rather than contradicting each other.
-    let timeout_secs = step.effective_timeout_secs();
-    let output = execute_cli_command(step, &command, cwd, timeout_secs)?;
-    let output = match output {
-        crate::subprocess::Observed::Exited(output) => output,
-        crate::subprocess::Observed::Killed {
-            stdout,
-            stderr,
-            stdout_total,
-            stderr_total,
-        } => {
-            let stdout = String::from_utf8_lossy(&stdout).into_owned();
-            let stderr = String::from_utf8_lossy(&stderr).into_owned();
-            let outcome = failed_cli_step(
-                step,
-                CliFailure {
-                    command: &command,
-                    stdout: &stdout,
-                    stderr: &stderr,
-                    stdout_total,
-                    stderr_total,
-                    classification: "runner_kill",
-                    summary: &format!("killed: command exceeded timeout_secs={timeout_secs}"),
-                },
-            );
-            return Err(RunnerKill { outcome }.into());
-        }
-    };
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-    let code = output.status.code().unwrap_or(-1) as i32;
-    let want = step.expect.exit_code.unwrap_or(0);
-    if code != want {
-        return Ok(failed_cli_step(
-            step,
-            CliFailure {
-                command: &command,
-                stdout: &stdout,
-                stderr: &stderr,
-                stdout_total: output.stdout_total,
-                stderr_total: output.stderr_total,
-                classification: "step_exit",
-                summary: &format!("exit {code} (want {want})"),
-            },
-        ));
-    }
-    if let Some(detail) = cli_text_failure(step, &stdout, &stderr, vars) {
-        return Ok(failed_cli_step(
-            step,
-            CliFailure {
-                command: &command,
-                stdout: &stdout,
-                stderr: &stderr,
-                stdout_total: output.stdout_total,
-                stderr_total: output.stderr_total,
-                classification: "step_exit",
-                summary: &detail,
-            },
-        ));
-    }
-    let stdout_json = serde_json::from_str::<serde_json::Value>(stdout.trim()).ok();
-    if let Some(detail) = apply_cli_json_contract(step, stdout_json.as_ref(), vars) {
-        return Ok(failed_cli_step(
-            step,
-            CliFailure {
-                command: &command,
-                stdout: &stdout,
-                stderr: &stderr,
-                stdout_total: output.stdout_total,
-                stderr_total: output.stderr_total,
-                classification: "step_exit",
-                summary: &detail,
-            },
-        ));
-    }
-    // Always expose raw streams for later interpolation when useful.
-    vars.insert("stdout".into(), stdout.clone());
-    vars.insert("stderr".into(), stderr.clone());
-    Ok(StepOutcome {
-        name: step.name.clone(),
-        intent: step.intent.clone(),
-        passed: true,
-        // Persist the authored template, not runtime substitutions such as a
-        // captured random id. The exit code is the observed fact; volatile
-        // values would make an identical passing journey dirty the export and
-        // can also disclose data that only needed to flow between steps.
-        detail: format!("`{}` exit {code}", step.run),
-        transcript: format!("stdout:\n{stdout}\nstderr:\n{stderr}\nexit:{code}"),
-        latency_ms: 0,
-    })
-}
-
-fn execute_cli_command(
-    step: &Step,
-    command: &str,
-    cwd: Option<&Path>,
-    timeout_secs: u64,
-) -> Result<crate::subprocess::Observed> {
-    let dir = cwd.unwrap_or_else(|| Path::new("."));
-    let environment = if step.fixture {
-        crate::subprocess::ChildEnvironment::SoloTestFixture
-    } else {
-        crate::subprocess::ChildEnvironment::Inherit
-    };
-    crate::subprocess::run_observed_with_environment(
-        command,
-        dir,
-        Duration::from_secs(timeout_secs),
-        environment,
-    )
-    .with_context(|| format!("step '{}': running `{command}`", step.name))
-}
-
-#[derive(Debug, Clone, Copy)]
-struct CliFailure<'a> {
-    command: &'a str,
-    stdout: &'a str,
-    stderr: &'a str,
-    stdout_total: usize,
-    stderr_total: usize,
-    classification: &'a str,
-    summary: &'a str,
-}
-
-fn failed_cli_step(step: &Step, failure: CliFailure<'_>) -> StepOutcome {
-    let CliFailure {
-        command,
-        stdout,
-        stderr,
-        stdout_total,
-        stderr_total,
-        classification,
-        summary,
-    } = failure;
-    let stdout_tail = stream_tail(stdout, 2_000);
-    let stderr_tail = stream_tail(stderr, 2_000);
-    StepOutcome {
-        name: step.name.clone(),
-        intent: step.intent.clone(),
-        passed: false,
-        detail: format!(
-            "{summary}\n  command: `{command}`\n  classification: {classification}\n  \
-             stdout tail ({stdout_total} bytes):\n{stdout_tail}\n  \
-             stderr tail ({stderr_total} bytes):\n{stderr_tail}"
-        ),
-        transcript: format!(
-            "classification:{classification}\ncommand:{command}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-        ),
-        latency_ms: 0,
-    }
-}
-
-fn stream_tail(stream: &str, max_chars: usize) -> String {
-    let trimmed = stream.trim_end();
-    if trimmed.is_empty() {
-        return "<empty>".into();
-    }
-    let count = trimmed.chars().count();
-    if count <= max_chars {
-        return trimmed.to_string();
-    }
-    let tail: String = trimmed.chars().skip(count - max_chars).collect();
-    format!("…[{} chars omitted]…\n{tail}", count - max_chars)
-}
-
-fn is_runner_kill(outcome: &StepOutcome) -> bool {
-    outcome
-        .transcript
-        .starts_with("classification:runner_kill\n")
-}
-
-fn cli_text_failure(
-    step: &Step,
-    stdout: &str,
-    stderr: &str,
-    vars: &BTreeMap<String, String>,
-) -> Option<String> {
-    for needle in &step.expect.stdout_contains {
-        let expected = interpolate(needle, vars);
-        if !stdout.contains(&expected) {
-            return Some(format!("stdout missing `{expected}`"));
+    for argument in &operation.arguments {
+        let default_source = format!("inputs.{}", argument.id);
+        let source = argument.source.as_deref().unwrap_or(&default_source);
+        validate_available_source(source, inputs, prior_outputs).with_context(|| {
+            format!(
+                "operation '{}' argument '{}' source",
+                operation.id, argument.id
+            )
+        })?;
+        if let RuntimeSource::Input(id) = parse_runtime_source(source)? {
+            if inputs.get(id).is_some_and(|input| input.secret) {
+                bail!(
+                    "operation '{}' argument '{}' reads secret input '{}'; secret inputs are environment-only and must not enter CLI argv",
+                    operation.id,
+                    argument.id,
+                    id
+                );
+            }
         }
     }
-    for needle in &step.expect.stderr_contains {
-        let expected = interpolate(needle, vars);
-        if !stderr.contains(&expected) {
-            return Some(format!("stderr missing `{expected}`"));
-        }
-    }
-    None
-}
-
-fn apply_cli_json_contract(
-    step: &Step,
-    body: Option<&serde_json::Value>,
-    vars: &mut BTreeMap<String, String>,
-) -> Option<String> {
-    let needs_json =
-        !step.expect.body.is_empty() || !step.expect.exists.is_empty() || !step.capture.is_empty();
-    let Some(body) = body else {
-        return needs_json.then(|| {
-            "CLI step expects JSON stdout for body/exists/capture, but stdout was not JSON".into()
-        });
-    };
-    for path in &step.expect.exists {
-        if jsonpath(body, path).is_none() {
-            return Some(format!("stdout JSON missing `{path}`"));
-        }
-    }
-    for (path, expected) in &step.expect.body {
-        let Some(got) = jsonpath(body, path) else {
-            return Some(format!("stdout JSON missing `{path}`"));
-        };
-        let expected = interpolate_json(expected, vars);
-        if got != expected {
-            return Some(format!("stdout JSON `{path}`: got {got}, want {expected}"));
-        }
-    }
-    for (name, path) in &step.capture {
-        let Some(value) = jsonpath(body, path) else {
-            return Some(format!(
-                "capture `{name}` from `{path}` missing in stdout JSON"
-            ));
-        };
-        vars.insert(name.clone(), value_to_string(&value));
-    }
-    None
-}
-
-fn failed_step(step: &Step, detail: impl Into<String>) -> StepOutcome {
-    StepOutcome {
-        name: step.name.clone(),
-        intent: step.intent.clone(),
-        passed: false,
-        detail: detail.into(),
-        transcript: String::new(),
-        latency_ms: 0,
-    }
-}
-
-fn bail_no_usable_base(spec: &JourneySpec, resolved_base: &str) -> Result<()> {
-    anyhow::bail!(
-        "journey '{}' has no usable base URL (spec base='{}' resolved to '{resolved_base}'). \
-         Pass --base-url, set BASE_URL in the environment, or add a \"base\" field to the spec.",
-        spec.journey,
-        spec.base
-    )
-}
-
-fn stale_unreached_passing_steps(
-    store: &Store,
-    spec: &JourneySpec,
-    journey_id: &str,
-    start: usize,
-) -> Result<()> {
-    for step in spec.steps.iter().skip(start) {
-        let Ok(intent) = store.resolve_node(&step.intent, Some(NodeType::Intent)) else {
-            continue;
-        };
-        for e in store.edges_with(
-            Some(EdgeKind::Validates),
-            Some(journey_id),
-            Some(&intent.id),
-        )? {
-            store.stale_passing_edge(&e.id)?;
+    for assertion in &operation.output.assertions {
+        if let Some(source) = assertion.runtime_source() {
+            validate_available_source(source, inputs, prior_outputs).with_context(|| {
+                format!(
+                    "operation '{}' assertion '{}' source",
+                    operation.id, assertion.id
+                )
+            })?;
         }
     }
     Ok(())
 }
 
-fn check_response(
-    step: &Step,
-    resp: reqwest::blocking::Response,
-    vars: &mut BTreeMap<String, String>,
-    diagnose_style: bool,
-) -> StepOutcome {
-    let status = resp.status().as_u16();
-    // Keep the raw body in the baseline transcript even when no assertion
-    // currently inspects it; a changed response is still operational drift.
-    let body_text = resp.text().unwrap_or_default();
-    let body_parse: Result<serde_json::Value, _> = serde_json::from_str(&body_text);
-    let transcript = || format!("status:{status}\nbody:\n{body_text}");
-    // One pass criterion for diagnose and run alike: an undeclared status
-    // accepts any 2xx. Diagnose previously demanded exactly 200, so a dry-run
-    // failure predicted nothing about the recorded run.
-    let status_ok = match step.expect.status {
-        Some(want) => status == want,
-        None => (200..300).contains(&status),
-    };
-    if !status_ok {
-        let detail = if diagnose_style {
-            format!(
-                "expected status {}, got {status}",
-                step.expect
-                    .status
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| "2xx".into())
-            )
-        } else {
-            format!("expected status {:?}, got {status}", step.expect.status)
-        };
-        return StepOutcome {
-            name: step.name.clone(),
-            intent: step.intent.clone(),
-            passed: false,
-            detail,
-            transcript: transcript(),
-            latency_ms: 0,
-        };
+fn validate_json_pointer(label: &str, id: &str, pointer: &str) -> Result<()> {
+    if !pointer.is_empty() && !pointer.starts_with('/') {
+        bail!("{label} '{id}' JSON pointer must be empty or start with '/'");
     }
-    // A step that never reads the body (status-only check) tolerates a
-    // non-JSON response; a step that checks fields or captures variables
-    // must fail honestly instead of matching against a silent Null.
-    let needs_body =
-        !step.expect.body.is_empty() || !step.expect.exists.is_empty() || !step.capture.is_empty();
-    let body = match body_parse {
-        Ok(v) => v,
-        Err(e) if needs_body => {
-            return StepOutcome {
-                name: step.name.clone(),
-                intent: step.intent.clone(),
-                passed: false,
-                detail: format!("response body is not valid JSON ({e}); status {status}"),
-                transcript: transcript(),
-                latency_ms: 0,
-            };
-        }
-        Err(_) => serde_json::Value::Null,
-    };
-    for (path, want) in &step.expect.body {
-        let want_resolved = interpolate_json(want, vars);
-        let got = jsonpath(&body, path);
-        if got.as_ref() != Some(&want_resolved) {
-            let detail = if diagnose_style {
-                format!(
-                    "body {path}: expected {want_resolved}, got {}",
-                    got.map(|v| v.to_string()).unwrap_or_else(|| "null".into())
-                )
-            } else {
-                format!("expected {path}={want_resolved}, got {got:?}")
-            };
-            return StepOutcome {
-                name: step.name.clone(),
-                intent: step.intent.clone(),
-                passed: false,
-                detail,
-                transcript: transcript(),
-                latency_ms: 0,
-            };
-        }
-    }
-    for path in &step.expect.exists {
-        if jsonpath(&body, path).is_none() {
-            let detail = if diagnose_style {
-                format!("missing field {path}")
-            } else {
-                format!("expected field {path} to exist")
-            };
-            return StepOutcome {
-                name: step.name.clone(),
-                intent: step.intent.clone(),
-                passed: false,
-                detail,
-                transcript: transcript(),
-                latency_ms: 0,
-            };
-        }
-    }
-    for (var, path) in &step.capture {
-        if let Some(v) = jsonpath(&body, path) {
-            let s = match v {
-                serde_json::Value::String(s) => s,
-                other => other.to_string(),
-            };
-            vars.insert(var.clone(), s);
-        }
-    }
-    let detail = if step.expect.exists.is_empty() && step.expect.body.is_empty() {
-        if diagnose_style {
-            format!("status {status} ok")
-        } else {
-            format!("status {status}")
-        }
-    } else {
-        let mut checked: Vec<&str> = step.expect.body.keys().map(String::as_str).collect();
-        checked.extend(step.expect.exists.iter().map(String::as_str));
-        if diagnose_style {
-            format!("status {status} ok, verified: {}", checked.join(", "))
-        } else {
-            format!("status {status}, verified: {}", checked.join(", "))
-        }
-    };
-    StepOutcome {
-        name: step.name.clone(),
-        intent: step.intent.clone(),
-        passed: true,
-        detail,
-        transcript: transcript(),
-        latency_ms: 0,
-    }
-}
-
-/// Replace `{{ var }}` and `{{ env.NAME }}` in a string.
-fn interpolate(s: &str, vars: &BTreeMap<String, String>) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut rest = s;
-    while let Some(start) = rest.find("{{") {
-        out.push_str(&rest[..start]);
-        let after = &rest[start + 2..];
-        if let Some(end) = after.find("}}") {
-            let key = after[..end].trim();
-            let value = if let Some(env_key) = key.strip_prefix("env.") {
-                env_value(env_key)
-            } else {
-                vars.get(key).cloned().unwrap_or_default()
-            };
-            out.push_str(&value);
-            rest = &after[end + 2..];
-        } else {
-            out.push_str("{{");
-            rest = after;
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
-fn env_value(key: &str) -> String {
-    std::env::var(key)
-        .or_else(|_| {
-            if key == "LOOM_JOURNEY_AUTH_TOKEN" {
-                std::env::var("LOOM_SAGA_AUTH_TOKEN")
-            } else {
-                Err(std::env::VarError::NotPresent)
+    // RFC 6901 allows only ~0 and ~1 escapes. Rejecting malformed escapes here
+    // keeps compile/run parity deterministic across serde_json versions.
+    let bytes = pointer.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'~' {
+            if index + 1 >= bytes.len() || !matches!(bytes[index + 1], b'0' | b'1') {
+                bail!("{label} '{id}' has malformed JSON pointer escape");
             }
-        })
-        .unwrap_or_default()
-}
-
-fn value_to_string(v: &serde_json::Value) -> String {
-    match v {
-        serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Null => String::new(),
-        other => other.to_string(),
-    }
-}
-
-fn interpolate_json(v: &serde_json::Value, vars: &BTreeMap<String, String>) -> serde_json::Value {
-    match v {
-        serde_json::Value::String(s) => serde_json::Value::String(interpolate(s, vars)),
-        serde_json::Value::Array(a) => {
-            serde_json::Value::Array(a.iter().map(|x| interpolate_json(x, vars)).collect())
-        }
-        serde_json::Value::Object(o) => serde_json::Value::Object(
-            o.iter()
-                .map(|(k, x)| (k.clone(), interpolate_json(x, vars)))
-                .collect(),
-        ),
-        other => other.clone(),
-    }
-}
-
-/// Dotted JSONPath subset: `$.a.b` / `$.id`. Returns the value if present.
-fn jsonpath(v: &serde_json::Value, path: &str) -> Option<serde_json::Value> {
-    let p = path
-        .strip_prefix("$.")
-        .or_else(|| path.strip_prefix('$'))
-        .unwrap_or(path);
-    if p.is_empty() {
-        return Some(v.clone());
-    }
-    let mut cur = v;
-    for seg in p.split('.') {
-        cur = cur.get(seg)?;
-    }
-    Some(cur.clone())
-}
-
-/// Diagnose common failure roots before/without recording.
-pub fn diagnose_hints(spec: &JourneySpec) -> Vec<String> {
-    let mut hints = Vec::new();
-    let has_http = spec.steps.iter().any(|s| !s.is_cli());
-    let has_cli = spec.steps.iter().any(|s| s.is_cli());
-    if has_http && spec.base.is_empty() {
-        hints.push("no `base` url set — relative HTTP step urls will fail".into());
-    }
-    if has_cli {
-        hints.push(
-            "CLI steps run via `sh -c` in the graph root with the exclusive lock released — put the binary on PATH (or use a repo-relative path)"
-                .into(),
-        );
-    }
-    let mut blob = String::new();
-    for s in &spec.steps {
-        blob.push_str(&s.run);
-        blob.push_str(&s.request.url);
-        for v in s.request.headers.values() {
-            blob.push_str(v);
-        }
-        for n in &s.expect.stdout_contains {
-            blob.push_str(n);
+            index += 2;
+        } else {
+            index += 1;
         }
     }
-    if blob.contains("{{ env.") || blob.contains("{{env.") {
-        hints.push("steps reference env vars — ensure they are set before running".into());
-    }
-    hints
-}
-
-fn journey_status_rank(status: &str) -> u8 {
-    match status {
-        "passed" => 0,
-        "not_run" => 1,
-        _ => 2,
-    }
-}
-
-/// Every journey validation registered for `journey_id`, canonical-sorted: a
-/// passed proof first, then not_run, then by id. A non-idempotent `add` could
-/// leave several duplicates for one id; the first is the one to keep.
-pub fn journey_validations(store: &Store, journey_id: &str) -> Result<Vec<Node>> {
-    let mut vals: Vec<Node> = store
-        .list_nodes(Some(NodeType::Validation), usize::MAX)?
-        .into_iter()
-        .filter(|n| {
-            // A journey validation created by `journey add` carries body.journey_id;
-            // a name-based one (e.g. `validation add --proof-kind journey`, or a
-            // legacy node) is matched by name. The is-journey guard keeps a
-            // same-named non-journey validation out.
-            let is_journey = n.body.get("type").and_then(|t| t.as_str()) == Some("journey")
-                || n.body.get("proof_kind").and_then(|t| t.as_str()) == Some("journey");
-            is_journey
-                && (n.body.get("journey_id").and_then(|v| v.as_str()) == Some(journey_id)
-                    || n.name == journey_id)
-        })
-        .collect();
-    vals.sort_by(|a, b| {
-        journey_status_rank(&a.status)
-            .cmp(&journey_status_rank(&b.status))
-            .then(a.id.cmp(&b.id))
-    });
-    Ok(vals)
-}
-
-/// Resolve the single journey validation for `journey_id`. Tolerates duplicates
-/// left by a non-idempotent add (picks the canonical one); when `repair`, removes
-/// the duplicates so the graph self-heals on run. Errors only when none exists —
-/// the honest "add it first" case (never the misleading ambiguous-name error).
-pub fn resolve_validation(store: &Store, journey_id: &str, repair: bool) -> Result<Node> {
-    let mut vals = journey_validations(store, journey_id)?;
-    if vals.is_empty() {
-        anyhow::bail!(
-            "no journey validation '{journey_id}' — add it first with `loom journey add`"
-        );
-    }
-    let canonical = vals.remove(0);
-    if repair {
-        for dup in &vals {
-            // Inherit the duplicate's step links before removing it, so a later
-            // fixed add that linked more/different steps loses no coverage.
-            for e in store.edges_with(Some(EdgeKind::Validates), Some(&dup.id), None)? {
-                store.ensure_edge(EdgeKind::Validates, &canonical.id, &e.to_id)?;
-            }
-            store.delete_node(&dup.id)?;
-        }
-    }
-    Ok(canonical)
-}
-
-pub fn require(store: &Store, name: &str) -> Result<()> {
-    resolve_validation(store, name, false).map(|_| ())
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn interpolation_threads_vars_and_env() {
-        let mut vars = BTreeMap::new();
-        vars.insert("cart_id".to_string(), "abc".to_string());
-        assert_eq!(
-            interpolate("/carts/{{ cart_id }}/pay", &vars),
-            "/carts/abc/pay"
-        );
-        std::env::set_var("LOOM_JOURNEY_TEST_BASE", "http://x");
-        assert_eq!(
-            interpolate("{{ env.LOOM_JOURNEY_TEST_BASE }}/y", &vars),
-            "http://x/y"
-        );
+    fn example() -> JourneySpec {
+        serde_json::from_value(json!({
+            "schema": JOURNEY_SCHEMA,
+            "id": "checkout.happy",
+            "name": "Checkout succeeds",
+            "actor": "shopper",
+            "goal": "Pay for an order",
+            "inputs": {
+                "sku": {"type":"string", "description":"Item SKU"},
+                "quantity": {"type":"integer", "description":"Quantity", "default":1}
+            },
+            "preconditions": [],
+            "steps": [
+                {
+                    "id":"add-item",
+                    "name":"Add item",
+                    "action":"adds an item",
+                    "expects":[],
+                    "produces":{}
+                },
+                {
+                    "id":"pay",
+                    "name":"Pay",
+                    "action":"pays for the order",
+                    "expects":["the order is paid"],
+                    "produces":{"order-id":{"type":"string","description":"Created order id"}}
+                }
+            ],
+            "profiles": {
+                "proof": {
+                    "inputs":{"sku":{"template":"sku-1"}},
+                    "workspace":{"files":[{"path":"fixtures/cart.json","content":"{}"}]}
+                }
+            }
+        }))
+        .unwrap()
     }
 
     #[test]
-    fn jsonpath_dotted_subset() {
-        let v = serde_json::json!({"id": "c1", "state": {"paid": true}});
-        assert_eq!(jsonpath(&v, "$.id"), Some(serde_json::json!("c1")));
-        assert_eq!(jsonpath(&v, "$.state.paid"), Some(serde_json::json!(true)));
-        assert_eq!(jsonpath(&v, "$.missing"), None);
+    fn canonical_hash_ignores_display_name_but_tracks_step_order() {
+        let a = example();
+        let mut b = a.clone();
+        b.name = "A renamed checkout".into();
+        assert_eq!(a.semantic_hash().unwrap(), b.semantic_hash().unwrap());
+        b.steps.reverse();
+        assert_ne!(a.semantic_hash().unwrap(), b.semantic_hash().unwrap());
     }
 
     #[test]
-    fn normalize_path_params_converts_single_brace_idents() {
-        assert_eq!(
-            normalize_path_params("/v1/grid/standing/{person_id}"),
-            "/v1/grid/standing/{{ person_id }}"
-        );
-        assert_eq!(
-            normalize_path_params("/a/{x}/b/{y}/c"),
-            "/a/{{ x }}/b/{{ y }}/c"
-        );
-    }
-
-    #[test]
-    fn normalize_path_params_leaves_already_double_braced_alone() {
-        assert_eq!(
-            normalize_path_params("/v1/persons/{{ person_id }}"),
-            "/v1/persons/{{ person_id }}"
-        );
-    }
-
-    #[test]
-    fn normalize_path_params_ignores_non_identifier_braces() {
-        // Not a bare identifier (contains a space/symbol not in the allowed
-        // set) — left untouched rather than guessed at.
-        assert_eq!(normalize_path_params("/x/{a b}/y"), "/x/{a b}/y");
-    }
-
-    #[test]
-    fn successful_cli_evidence_preserves_the_template_not_runtime_values() {
-        let step = Step {
-            name: "use captured id".into(),
-            intent: "captured values remain ephemeral".into(),
-            run: "true # {{ item_id }}".into(),
-            fixture: false,
-            timeout_secs: None,
-            request: Request::default(),
-            expect: Expect::default(),
-            capture: BTreeMap::new(),
-        };
-        let mut vars = BTreeMap::from([("item_id".into(), "random-runtime-id".into())]);
-
-        let outcome = run_cli_step(&step, &mut vars, None, false).unwrap();
-
-        assert!(outcome.passed);
-        assert_eq!(outcome.detail, "`true # {{ item_id }}` exit 0");
-        assert!(!outcome.detail.contains("random-runtime-id"));
-    }
-
-    #[test]
-    fn fixture_cli_steps_receive_solo_identity_and_no_profile() {
-        let step = Step {
-            name: "isolated graph fixture".into(),
-            intent: "journey fixtures do not inherit recorder authority".into(),
-            run: "test \"$LOOM_AGENT\" = solo && test -z \"${LOOM_AGENT_PROFILE+x}\"".into(),
-            fixture: true,
-            ..Step::default()
-        };
-        let mut vars = BTreeMap::new();
-
-        let outcome = run_cli_step(&step, &mut vars, None, false).unwrap();
-
-        assert!(outcome.passed, "{}", outcome.detail);
-    }
-
-    #[test]
-    fn declared_step_timeout_overrides_the_default() {
-        let http = Step {
-            timeout_secs: Some(9),
-            ..Step::default()
-        };
-        assert_eq!(http.effective_timeout_secs(), 9);
-        let cli_default = Step {
-            run: "true".into(),
-            ..Step::default()
-        };
-        assert_eq!(
-            cli_default.effective_timeout_secs(),
-            crate::runner::DEFAULT_TIMEOUT_SECS
-        );
-        let http_default = Step::default();
-        assert_eq!(
-            http_default.effective_timeout_secs(),
-            DEFAULT_HTTP_TIMEOUT_SECS
-        );
-        // A zero declaration is not a limit; it falls back to the default.
-        let zero = Step {
-            timeout_secs: Some(0),
-            ..Step::default()
-        };
-        assert_eq!(zero.effective_timeout_secs(), DEFAULT_HTTP_TIMEOUT_SECS);
-    }
-
-    #[test]
-    fn a_killed_cli_step_names_timeout_secs_and_the_value() {
-        let step = Step {
-            name: "hangs".into(),
-            intent: "i".into(),
-            run: "sleep 5".into(),
-            timeout_secs: Some(1),
-            ..Step::default()
-        };
-        let mut vars = BTreeMap::new();
-        let err = run_cli_step(&step, &mut vars, None, false).unwrap_err();
-        let msg = err.to_string();
-        assert!(
-            msg.contains("exceeded timeout_secs=1"),
-            "unnamed kill: {msg}"
-        );
+    fn setup_is_confined() {
+        let mut spec = example();
+        spec.profiles.get_mut("proof").unwrap().workspace.files[0].path = "../escape".into();
+        assert!(spec.validate().unwrap_err().to_string().contains("escapes"));
     }
 }

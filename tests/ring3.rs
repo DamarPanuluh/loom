@@ -460,14 +460,30 @@ fn build_queue_serves_prerequisites_before_dependents() {
         "build lane serves the prerequisite before the intent that requires it"
     );
 
-    // Once the prerequisite is implemented, the dependent becomes ready.
+    // Once the prerequisite is REALIZED, the dependent becomes ready. Marking it
+    // `implemented` is not enough on its own: an implemented intent with no
+    // realizing grounding is itself build work (the code that performs it is
+    // unlinked or unwritten), so it would keep its own place in the queue and
+    // the dependent would still be standing on nothing.
     store.set_node_status(&prereq, "implemented").unwrap();
     let item = workitem::next(&store, Some(Lane::Build))
         .unwrap()
         .expect("a build item");
     assert_eq!(
+        item.target.id, prereq,
+        "implemented but ungrounded is still the prerequisite's own build work"
+    );
+
+    let cf = codefile(&store, "src/prerequisite.rs");
+    store
+        .add_edge(EdgeKind::Implements, &prereq, &cf.id, TruthClass::Asserted)
+        .unwrap();
+    let item = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("a build item");
+    assert_eq!(
         item.target.id, dependent,
-        "the dependent is served once its prerequisite is implemented"
+        "the dependent is served once its prerequisite is implemented and grounded"
     );
 }
 

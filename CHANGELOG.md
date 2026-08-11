@@ -1,27 +1,59 @@
 # Changelog
 
 Notable changes to the `loom` crate. Versioning follows [semver](https://semver.org):
-**patch** = bug fixes, **minor** = backward-compatible features, **major** = breaking
-changes. (`SCHEMA_VERSION` in `src/lib.rs` is separate — it versions the on-disk graph
-schema, not the crate.)
+**patch** = compatible bug fixes; before 1.0, **minor** may deliberately break an
+unstable surface; at or after 1.0, **minor** is backward-compatible and **major**
+is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk graph.)
 
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
+
+## [0.30.0] - 2026-08-09
+
+**Breaking pre-1.0 release.** Schema v12 replaces executable Journey proof specs
+with authored Journey roots. Loom refuses every older SQLite graph and
+`loom.graph.json` export untouched; there is no in-place migration. Translating
+operations, endpoints, or old step-to-Intent references into authored user
+meaning would fabricate product judgment.
+
+Rebuild after upgrading:
+
+1. Preserve the old export only as historical reference, then initialize a new graph.
+2. Register repository code and use `loom bootstrap suggest` for non-authoritative clues.
+3. Author strict `loom.journey/v1` artifacts with stable IDs, actors, semantic actions,
+   expectations, typed inputs/outputs, and optional declarative profiles.
+4. Add each Journey and inspect `loom journey derive`; a human must authorize every
+   exact hash-bound `loom.journey-derivation/v1` manifest before `derive-accept`.
+   The strict manifest records a proposal ID/rationale, explicit create-or-reuse
+   Intent operations, criteria/rationales, relationship reconciliation, and no
+   unresolved question. Acceptance records an adopted Proposal; identical replay
+   is idempotent.
+5. Implement and ground the accepted technical Intents, build the real target-repository
+   CLI, and accept its structured `loom.journey.surface/v1` projection.
+6. Compile and run the selected Journey profile to establish the compiler-owned S3 proof.
+
+- Adds first-class `Journey` roots and asserted `Derives`, `Surfaces`, and `Proves`
+  topology. Semantic edits invalidate their hash-bound projections.
+- Adds `journey add/show/list/remove/map`, read-only `derive` and `surface` packets,
+  human-gated `derive-accept`, atomic `surface-accept`, and compiler-owned
+  `compile/run/diagnose/freeze/drift` lifecycle.
+- Removes executable authored steps, transport-specific Journey artifacts, direct
+  Journey metadata on `validation add`, and the old coverage/invariant/prompt families.
+- Converts all 27 dogfood artifacts to strict semantic roots.
+- Runtime provenance now separates write authority (`LOOM_AGENT=llm:<lane>`) from self-declared executor attribution (`LOOM_AGENT_PROFILE=loom-auditor`, etc.). One typed identity is resolved before locking and propagated to facts, journals, graph/proof lock holders, and `whoami`; profiles never grant authority, and `whoami` reports their source and verification status. Adjudications and verdicts retain the canonical lane instead of collapsing to `llm`; bare, empty, noncanonical, and unknown authority values fail closed. Schema v11 stores absent `fact.asserted_profile` values as SQL `NULL`, leaving legacy rows honestly unprofiled.
+- Read-only graph commands wait up to ten seconds for an in-flight writer while competing writers remain fail-fast at two seconds, preventing routine `loom status --json` calls from surfacing transient lock-contention failures.
+- TypeScript `export const <name>` locators resolve consistently across syncs.
+- Grounding creation refuses role collisions and locator changes on inspected edges instead of mutating settled evidence; same-role pre-verdict re-grounding remains available, while settled changes require explicit `set-role`, `set-locator`, or removal.
+- Duplicate-intent rectify clears persist for the exact pair of intent descriptions and reopen only when either description changes.
+- Adds read-only `loom checkpoint recommend` for an explicit Intent or cohesive bundle. It fails closed unless the selected work is implemented and ratified, relevant validations pass, sync and doctor are clean, the export is fresh, and the Git diff maps unambiguously to the selected scope; successful output lists exact included and excluded paths, checks, and a deterministic suggested message without staging, committing, or pushing.
+- Semantic checkpoint guidance permits an acting LLM to make or defer an exact-path local commit, never `git add -A`; pushing still requires a current human decision bound to the repository, remote, branch, and commit. Git history remains evidence outside Loom truth, and no change-count heuristic is used.
+- Adds read-only stable source-anchor issuance through `loom codefile anchor`; it prints the exact marker without editing source or graph state. Sync validates inserted anchor locators through the shared locator policy, preserving valid anchors while surfacing genuinely stale groundings.
 
 ## [0.29.2] - 2026-08-09
 - make validation registration atomic and preserve unchanged clean quality scans
 
 ## [0.29.1] - 2026-08-06
 - restore host-mediated human decisions in release builds
-
-## [Unreleased]
-- Runtime provenance now separates write authority (`LOOM_AGENT=llm:<lane>`) from self-declared executor attribution (`LOOM_AGENT_PROFILE=loom-auditor`, etc.). One typed identity is resolved before locking and propagated to facts, journals, graph/proof lock holders, and `whoami`; profiles never grant authority, and `whoami` reports their source and verification status. Adjudications and verdicts retain the canonical lane instead of collapsing to `llm`; bare, empty, noncanonical, and unknown authority values fail closed. Schema v11 stores absent `fact.asserted_profile` values as SQL `NULL`, leaving legacy rows honestly unprofiled.
-- Read-only graph commands wait up to ten seconds for an in-flight writer while competing writers remain fail-fast at two seconds, preventing routine `loom status --json` calls from surfacing transient lock-contention failures.
-- TypeScript `export const <name>` locators resolve consistently across syncs.
-- Grounding creation refuses role collisions and locator changes on inspected edges instead of mutating settled evidence; same-role pre-verdict re-grounding remains available, while settled changes require explicit `set-role`, `set-locator`, or removal.
-- Duplicate-intent rectify clears persist for the exact pair of intent descriptions and reopen only when either description changes.
-- Failing journey CLI steps report the resolved command, bounded stdout/stderr tails, and whether the process exited or the runner killed it on timeout.
-
 
 ## [0.29.0] - 2026-08-03
 - locator drift re-opens groundings that name nothing, shared proof commands are reported, ordered steps gate readiness, and loom answers what stands on a behavior

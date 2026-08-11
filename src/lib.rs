@@ -18,6 +18,8 @@ pub mod artifact;
 pub mod audit;
 pub mod batch_auth;
 pub mod callgraph;
+pub mod candidate_surface_policy;
+pub mod checkpoint;
 pub mod cli;
 pub mod commands;
 pub mod completeness;
@@ -33,6 +35,8 @@ pub mod harness;
 pub mod identity;
 pub mod journal;
 pub mod journey;
+pub mod journey_gate;
+pub mod journey_runtime;
 pub mod lane;
 pub mod limits;
 pub mod locator;
@@ -48,6 +52,7 @@ pub mod proof;
 pub mod proofstrength;
 pub mod ratification;
 pub mod registry;
+pub mod release;
 pub mod research;
 pub mod risk;
 pub mod runner;
@@ -68,9 +73,9 @@ pub mod workitem;
 /// expressible.
 pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
-/// The on-disk schema version stamped into every graph. Bumped when the SQLite
-/// schema changes in a way that requires migration.
-pub const SCHEMA_VERSION: u32 = 11;
+/// The on-disk schema version stamped into every graph. Bumped when the storage
+/// shape or graph vocabulary changes incompatibly.
+pub const SCHEMA_VERSION: u32 = 12;
 
 /// Directory holding the local graph store, relative to a project root.
 pub const LOOM_DIR: &str = ".loom";

@@ -392,7 +392,7 @@ fn blast_radius(
     intent_id: &str,
 ) -> Result<usize> {
     let mut total = 0usize;
-    for symbol in crate::locator::realizing_symbols(store, intent_id)? {
+    for symbol in crate::locator::realizing_navigation_symbols(store, intent_id)? {
         total += graph.impact(&symbol, 3).callers.len();
     }
     Ok(total)

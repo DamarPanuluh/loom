@@ -1,198 +1,147 @@
-//! Ring 18 — local verbatim journey baselines and replay deviations.
+//! Ring 18 — compiled Journey profile baselines.
 
-use loom::cli::{Cli, Command, JourneyCmd};
-use loom::journey::{self, Baseline, Expect, JourneySpec, Step, StepOutcome};
-use loom::store::Store;
+use loom::journey::{
+    CliOperation, JourneySpec, OperationBinding, OperationOutput, OutputAssertion, OutputFormat,
+    ValueType, JOURNEY_SCHEMA,
+};
+use loom::journey_runtime::{self, CompiledJourneyProof, RuntimeStatus};
+use serde_json::json;
+use std::collections::BTreeMap;
+
 mod common;
 use common::*;
 
-fn spec(command: &str) -> JourneySpec {
-    JourneySpec {
-        journey: "baseline-demo".into(),
-        base: String::new(),
-        steps: vec![Step {
-            name: "print".into(),
-            intent: "demo intent".into(),
-            run: command.into(),
-            fixture: false,
-            timeout_secs: None,
-            request: Default::default(),
-            expect: Expect {
-                exit_code: Some(0),
-                ..Default::default()
-            },
-            capture: Default::default(),
-        }],
+fn spec() -> JourneySpec {
+    serde_json::from_value(json!({
+        "schema": JOURNEY_SCHEMA,
+        "id": "baseline.demo",
+        "name": "Baseline demo",
+        "actor": "operator",
+        "goal": "Print a stable result",
+        "inputs": {},
+        "preconditions": [],
+        "steps": [{"id":"print","name":"Print","action":"prints the result","expects":[],"produces":{}}],
+        "profiles":{"proof":{"inputs":{},"workspace":{}}}
+    }))
+    .unwrap()
+}
+
+fn operation(value: &str) -> CliOperation {
+    CliOperation {
+        id: "print-op".into(),
+        summary: "Print JSON".into(),
+        argv: vec![
+            "python3".into(),
+            "-c".into(),
+            format!("import json; print(json.dumps({{'value':'{value}'}}))"),
+        ],
+        environment: Vec::new(),
+        read_only: true,
+        arguments: Vec::new(),
+        output: OperationOutput {
+            format: OutputFormat::Json,
+            captures: Vec::new(),
+            assertions: vec![OutputAssertion {
+                id: "value-is-stable".into(),
+                pointer: "/value".into(),
+                value_type: Some(ValueType::String),
+                equals: Some(json!(value)),
+                source: None,
+            }],
+            redact: Vec::new(),
+        },
     }
 }
 
-#[test]
-fn freeze_then_identical_replay_has_no_deviations() {
-    let tmp = Tmp::new();
-    let first = journey::execute_steps(&spec("printf stable"), Some(tmp.path()), false).unwrap();
-    journey::write_baseline(tmp.path(), "baseline-demo", &first).unwrap();
-    let replay = journey::execute_steps(&spec("printf stable"), Some(tmp.path()), false).unwrap();
-    let baseline = journey::read_baseline(tmp.path(), "baseline-demo")
-        .unwrap()
-        .unwrap();
-    assert!(journey::deviations(&baseline, &replay).is_empty());
+fn compiled(value: &str, surface_hash: &str) -> CompiledJourneyProof {
+    journey_runtime::compile(
+        &spec(),
+        surface_hash,
+        "proof",
+        vec![operation(value)],
+        &[OperationBinding {
+            step_id: "print".into(),
+            operation_id: "print-op".into(),
+        }],
+    )
+    .unwrap()
 }
 
 #[test]
-fn output_drift_is_reported_even_when_exit_expectation_passes() {
+fn freeze_then_identical_replay_has_a_current_baseline() {
     let tmp = Tmp::new();
-    let first = journey::execute_steps(&spec("printf before"), Some(tmp.path()), false).unwrap();
-    journey::write_baseline(tmp.path(), "baseline-demo", &first).unwrap();
-    let replay = journey::execute_steps(&spec("printf after"), Some(tmp.path()), false).unwrap();
-    assert!(replay[0].passed, "exit-code expectation still passes");
-    let baseline = journey::read_baseline(tmp.path(), "baseline-demo")
-        .unwrap()
-        .unwrap();
+    let proof = compiled("stable", "surface-v1");
+    let first = journey_runtime::execute(tmp.path(), &spec(), &proof, &BTreeMap::new());
+    assert_eq!(first.status, RuntimeStatus::Passed, "{first:#?}");
+    journey_runtime::write_baseline(tmp.path(), &first).unwrap();
+
+    let replay = journey_runtime::execute(tmp.path(), &spec(), &proof, &BTreeMap::new());
+    assert_eq!(replay, first);
     assert_eq!(
-        journey::deviations(&baseline, &replay),
-        vec!["print: verbatim output changed"]
+        journey_runtime::baseline_current(tmp.path(), &proof).unwrap(),
+        Some(true)
     );
 }
 
 #[test]
-fn latency_cliff_is_reported_without_changing_the_expectation_result() {
-    let baseline = Baseline {
-        journey: "baseline-demo".into(),
-        outcomes: vec![StepOutcome {
-            name: "print".into(),
-            intent: "demo intent".into(),
-            passed: true,
-            detail: "ok".into(),
-            transcript: "stable".into(),
-            latency_ms: 50,
-        }],
-    };
-    let replay = vec![StepOutcome {
-        latency_ms: 200,
-        ..baseline.outcomes[0].clone()
-    }];
+fn compiled_contract_drift_invalidates_the_baseline() {
+    let tmp = Tmp::new();
+    let original = compiled("before", "surface-v1");
+    let report = journey_runtime::execute(tmp.path(), &spec(), &original, &BTreeMap::new());
+    journey_runtime::write_baseline(tmp.path(), &report).unwrap();
+
+    let drifted = compiled("after", "surface-v2");
     assert_eq!(
-        journey::deviations(&baseline, &replay),
-        vec!["print: latency cliff (50ms → 200ms)"]
+        journey_runtime::baseline_current(tmp.path(), &drifted).unwrap(),
+        Some(false),
+        "a baseline is bound to the exact semantic Journey and surface projection"
     );
 }
 
 #[test]
-fn legacy_failed_baseline_is_not_read_as_proof() {
+fn only_a_passing_compiled_observation_can_be_frozen() {
     let tmp = Tmp::new();
-    let failed = Baseline {
-        journey: "legacy-failure".into(),
-        outcomes: vec![StepOutcome {
-            name: "broken".into(),
-            intent: "demo intent".into(),
-            passed: false,
-            detail: "exit 1 (want 0)".into(),
-            transcript: String::new(),
-            latency_ms: 1,
-        }],
-    };
-    journey::write_baseline(tmp.path(), &failed.journey, &failed.outcomes).unwrap();
-    assert!(journey::read_baseline(tmp.path(), &failed.journey)
-        .unwrap()
-        .is_none());
-    assert!(journey::read_baselines(tmp.path()).unwrap().is_empty());
-}
-
-fn freeze(tmp: &Tmp, spec: &std::path::Path) -> loom::Result<()> {
-    loom::commands::run(Cli {
-        graph: Some(tmp.path().to_path_buf()),
-        json: true,
-        command: Some(Command::Journey {
-            cmd: JourneyCmd::Freeze {
-                spec: spec.to_path_buf(),
-            },
-        }),
-    })
-}
-
-fn freeze_events(tmp: &Tmp) -> usize {
-    loom::journal::read(tmp.path())
-        .unwrap()
-        .iter()
-        .filter(|entry| entry.event == "journey_freeze")
-        .count()
+    let mut proof = compiled("expected", "surface-v1");
+    proof.steps[0].argv = vec![
+        "python3".into(),
+        "-c".into(),
+        "import json; print(json.dumps({'value':'wrong'}))".into(),
+    ];
+    let failed = journey_runtime::execute(tmp.path(), &spec(), &proof, &BTreeMap::new());
+    assert_eq!(failed.status, RuntimeStatus::Failed, "{failed:#?}");
+    let error = journey_runtime::write_baseline(tmp.path(), &failed).unwrap_err();
+    assert!(error.to_string().contains("only a passing"), "{error}");
+    assert!(
+        !journey_runtime::baseline_path(tmp.path(), "baseline.demo", "proof")
+            .unwrap()
+            .exists()
+    );
 }
 
 #[test]
-fn successful_cli_freeze_writes_baseline_and_event() {
+fn failed_refreeze_preserves_the_prior_baseline_bytes() {
     let tmp = Tmp::new();
-    Store::init(tmp.path(), Some("t"), false).unwrap();
-    let path = tmp.path().join("success.json");
-    std::fs::write(
-        &path,
-        r#"{"journey":"success","steps":[{"name":"one","intent":"demo","run":"printf ok","expect":{"exit_code":0}}]}"#,
-    )
-    .unwrap();
+    let proof = compiled("stable", "surface-v1");
+    let passed = journey_runtime::execute(tmp.path(), &spec(), &proof, &BTreeMap::new());
+    let path = journey_runtime::write_baseline(tmp.path(), &passed).unwrap();
+    let before = std::fs::read(&path).unwrap();
 
-    freeze(&tmp, &path).unwrap();
-
-    let baseline = journey::read_baseline(tmp.path(), "success")
-        .unwrap()
-        .unwrap();
-    assert_eq!(baseline.outcomes.len(), 1);
-    assert!(baseline.outcomes[0].passed);
-    assert_eq!(freeze_events(&tmp), 1);
+    let mut failing = proof;
+    failing.steps[0].argv = vec!["definitely-not-a-real-ring18-command".into()];
+    let blocked = journey_runtime::execute(tmp.path(), &spec(), &failing, &BTreeMap::new());
+    assert_eq!(blocked.status, RuntimeStatus::Blocked);
+    assert!(journey_runtime::write_baseline(tmp.path(), &blocked).is_err());
+    assert_eq!(std::fs::read(path).unwrap(), before);
 }
 
 #[test]
-fn mixed_failure_does_not_write_a_baseline_or_success_event() {
-    let tmp = Tmp::new();
-    Store::init(tmp.path(), Some("t"), false).unwrap();
-    let path = tmp.path().join("mixed.json");
-    std::fs::write(
-        &path,
-        r#"{"journey":"mixed","steps":[{"name":"pass","intent":"demo","run":"true"},{"name":"fail","intent":"demo","run":"false"}]}"#,
-    )
-    .unwrap();
-
-    let err = freeze(&tmp, &path).unwrap_err().to_string();
-
-    assert!(err.contains("completed 2/2") || err.contains("step 'fail' failed"));
-    assert!(!journey::baseline_path(tmp.path(), "mixed").exists());
-    assert_eq!(freeze_events(&tmp), 0);
-}
-
-#[test]
-fn failed_refreeze_preserves_prior_baseline_bytes_and_adds_no_event() {
-    let tmp = Tmp::new();
-    Store::init(tmp.path(), Some("t"), false).unwrap();
-    let path = tmp.path().join("refreeze.json");
-    std::fs::write(
-        &path,
-        r#"{"journey":"refreeze","steps":[{"name":"one","intent":"demo","run":"printf stable"}]}"#,
-    )
-    .unwrap();
-    freeze(&tmp, &path).unwrap();
-    let baseline_path = journey::baseline_path(tmp.path(), "refreeze");
-    let before = std::fs::read(&baseline_path).unwrap();
-    let events_before = freeze_events(&tmp);
-    std::fs::write(
-        &path,
-        r#"{"journey":"refreeze","steps":[{"name":"one","intent":"demo","run":"false"}]}"#,
-    )
-    .unwrap();
-
-    freeze(&tmp, &path).unwrap_err();
-
-    assert_eq!(std::fs::read(baseline_path).unwrap(), before);
-    assert_eq!(freeze_events(&tmp), events_before);
-}
-
-#[test]
-fn empty_spec_cannot_be_frozen() {
-    let tmp = Tmp::new();
-    Store::init(tmp.path(), Some("t"), false).unwrap();
-    let path = tmp.path().join("empty.json");
-    std::fs::write(&path, r#"{"journey":"empty","steps":[]}"#).unwrap();
-
-    let err = freeze(&tmp, &path).unwrap_err().to_string();
-
-    assert!(err.contains("no authored steps"));
-    assert!(!journey::baseline_path(tmp.path(), "empty").exists());
-    assert_eq!(freeze_events(&tmp), 0);
+fn an_uncompiled_or_empty_profile_cannot_be_frozen() {
+    let mut empty = spec();
+    empty.steps.clear();
+    let error =
+        journey_runtime::compile(&empty, "surface-v1", "proof", Vec::new(), &[]).unwrap_err();
+    assert!(
+        error.to_string().contains("at least one semantic step"),
+        "{error}"
+    );
 }

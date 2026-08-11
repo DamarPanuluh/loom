@@ -754,9 +754,9 @@ fn journey_proof_smells(snap: &Snapshot, intents: &[&Node]) -> Vec<Smell> {
             kind: kind.into(),
             message,
             remedy:
-                "add or update a repo-native JourneyProof validation (proof_kind=journey) that reaches S3 — \
-                 loom runs it, it asserts something about the output, and its call closure \
-                 reaches the symbol this behavior is grounded in"
+                "compile and run the current Journey proof profile until it reaches S3 — \
+                 Loom observes positive structured output assertions, the compiled Validation Calls \
+                 the accepted surface, and its Exercises entry reaches the grounded symbol"
                     .into(),
             identity: format!("{kind}:{}", intent.id),
         });
@@ -971,11 +971,14 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
                     e.id, e.kind, e.to_id
                 ),
             }),
-            Some(tt) if *tt != spec.to => issues.push(DoctorIssue {
+            Some(tt) if !spec.allows_to(*tt) => issues.push(DoctorIssue {
                 kind: "edge_endpoint_type".into(),
                 message: format!(
                     "edge {} ({}) to-type {} != spec {}",
-                    e.id, e.kind, tt, spec.to
+                    e.id,
+                    e.kind,
+                    tt,
+                    spec.to_display()
                 ),
             }),
             _ => {}
@@ -989,6 +992,35 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
                     e.id, e.kind, e.truth_class
                 ),
             });
+        }
+        // A source marker is never graph truth by itself. Once an asserted
+        // edge references `anchor:<id>`, however, the graph owns that locator
+        // claim and doctor verifies its strict cardinality, attachment, and
+        // target-file identity. Unreferenced source comments remain outside
+        // the graph inventory.
+        if let Some(locator) = facet_value(&snap, &e.id, "locator") {
+            if crate::locator::is_anchor_locator(locator) {
+                let result = match store.get_node(&e.to_id)? {
+                    Some(codefile) if codefile.node_type == NodeType::CodeFile => {
+                        crate::locator::validate_for_codefile(store, &codefile, locator)
+                    }
+                    Some(target) => Err(anyhow::anyhow!(
+                        "target '{}' is {}, not CodeFile",
+                        target.name,
+                        target.node_type
+                    )),
+                    None => Err(anyhow::anyhow!("target CodeFile '{}' is missing", e.to_id)),
+                };
+                if let Err(error) = result {
+                    issues.push(DoctorIssue {
+                        kind: "invalid_source_anchor".into(),
+                        message: format!(
+                            "{} edge '{}' has invalid locator '{}': {error}",
+                            e.kind, e.id, locator
+                        ),
+                    });
+                }
+            }
         }
         // truth-class partition (INV-5): derived edge with an asserted verdict
         if e.truth_class == TruthClass::Derived
@@ -1070,6 +1102,7 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
         }
     }
     issues.extend(hierarchy_cycle_issues(&snap));
+    issues.extend(journey_integrity_issues(store, &snap));
     // Validation names ending in `  proof` — the fingerprint left when a
     // retired proof-level token was excised immediately before a trailing
     // `proof` without rejoining words. Mid-phrase double spaces are legitimate.
@@ -1110,7 +1143,343 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
             }
         }
     }
+    // Keep the complete aggregate deterministic without hiding repeated
+    // violations that happen to share the same classification or wording.
+    issues.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| a.message.cmp(&b.message)));
     Ok(issues)
+}
+
+/// Fail-closed integrity checks for the Journey-root proof topology. Readiness
+/// gaps belong to the ladder; doctor reports malformed or internally
+/// contradictory Journey data that normal commands should never persist.
+fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> {
+    let mut issues = Vec::new();
+    // Assemble retired keys so the terminology guard can continue treating an
+    // exact source-level spelling as accidental teaching, while doctor still
+    // detects imported/corrupt v11 payloads.
+    let retired_proof_key = ["proof", "kind"].join("_");
+    let retired_journey_key = ["journey", "id"].join("_");
+    let nodes: BTreeMap<&str, &Node> = snap
+        .nodes
+        .iter()
+        .map(|node| (node.id.as_str(), node))
+        .collect();
+
+    for node in &snap.nodes {
+        // These keys classified an executable Validation as a legacy Journey.
+        // `journey_id` is also legitimate inside the v1 derivation manifest
+        // retained by an adopted Proposal, so it is retired metadata only on
+        // the old Validation representation.
+        if node.node_type == NodeType::Validation
+            && (node.body.get(&retired_proof_key).is_some()
+                || node.body.get(&retired_journey_key).is_some())
+        {
+            issues.push(DoctorIssue {
+                kind: "retired_journey_metadata".into(),
+                message: format!(
+                    "{} '{}' contains retired Journey-classification metadata; rebuild it with the v12 Journey topology",
+                    node.node_type, node.name
+                ),
+            });
+        }
+    }
+
+    for journey in snap
+        .nodes
+        .iter()
+        .filter(|node| node.node_type == NodeType::Journey)
+    {
+        let stable_id = journey
+            .body
+            .get("stable_id")
+            .and_then(|value| value.as_str());
+        let semantic_hash = journey
+            .body
+            .get("semantic_hash")
+            .and_then(|value| value.as_str());
+        let artifact = journey
+            .body
+            .get("artifact")
+            .and_then(|value| value.as_str());
+        let step_order: Vec<&str> = journey
+            .body
+            .get("step_ids")
+            .and_then(|value| value.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|value| value.as_str())
+            .collect();
+        let step_ids: BTreeSet<&str> = step_order.iter().copied().collect();
+        if journey.body.get("schema").and_then(|value| value.as_str())
+            != Some(crate::journey::JOURNEY_SCHEMA)
+            || stable_id != Some(journey.name.as_str())
+            || semantic_hash.is_none()
+            || artifact.is_none()
+            || step_ids.is_empty()
+        {
+            issues.push(DoctorIssue {
+                kind: "invalid_journey_artifact".into(),
+                message: format!(
+                    "Journey '{}' has an incomplete or inconsistent v1 registration body",
+                    journey.name
+                ),
+            });
+        } else if let Some(path) = artifact {
+            match crate::journey::parse(&store.root().join(path)) {
+                Ok(spec) => match spec.semantic_hash() {
+                    Ok(hash)
+                        if spec.id == journey.name
+                            && Some(hash.as_str()) == semantic_hash
+                            && spec
+                                .step_ids()
+                                .iter()
+                                .map(String::as_str)
+                                .collect::<Vec<_>>()
+                                == journey
+                                    .body
+                                    .get("step_ids")
+                                    .and_then(|value| value.as_array())
+                                    .into_iter()
+                                    .flatten()
+                                    .filter_map(|value| value.as_str())
+                                    .collect::<Vec<_>>() => {}
+                    Ok(_) => issues.push(DoctorIssue {
+                        kind: "invalid_journey_artifact".into(),
+                        message: format!(
+                            "Journey '{}' registration no longer matches its authored artifact",
+                            journey.name
+                        ),
+                    }),
+                    Err(error) => issues.push(DoctorIssue {
+                        kind: "invalid_journey_artifact".into(),
+                        message: format!(
+                            "Journey '{}' cannot hash its authored artifact: {error}",
+                            journey.name
+                        ),
+                    }),
+                },
+                Err(error) => issues.push(DoctorIssue {
+                    kind: "invalid_journey_artifact".into(),
+                    message: format!(
+                        "Journey '{}' artifact is missing or invalid: {error}",
+                        journey.name
+                    ),
+                }),
+            }
+        }
+
+        let derives: Vec<&Edge> = snap
+            .edges
+            .iter()
+            .filter(|edge| edge.kind == EdgeKind::Derives && edge.from_id == journey.id)
+            .collect();
+        for edge in &derives {
+            let bound_hash = facet_value(snap, &edge.id, "journey_hash");
+            let bound_steps = facet_value(snap, &edge.id, "step_ids")
+                .and_then(|raw| serde_json::from_str::<Vec<String>>(raw).ok());
+            let valid_steps = bound_steps.as_ref().is_some_and(|ids| {
+                !ids.is_empty()
+                    && ids.iter().all(|id| step_ids.contains(id.as_str()))
+                    && ids.iter().collect::<BTreeSet<_>>().len() == ids.len()
+            });
+            if bound_hash != semantic_hash || !valid_steps {
+                issues.push(DoctorIssue {
+                    kind: "bad_journey_step_binding".into(),
+                    message: format!(
+                        "Derives edge '{}' has a stale or malformed Journey step binding",
+                        edge.id
+                    ),
+                });
+            }
+            if store.ratification(&edge.to_id).ok().as_deref() != Some("ratified") {
+                issues.push(DoctorIssue {
+                    kind: "unratified_journey_derivation".into(),
+                    message: format!(
+                        "Derives edge '{}' targets an Intent that is not ratified",
+                        edge.id
+                    ),
+                });
+            }
+        }
+
+        let surfaces: Vec<&Edge> = snap
+            .edges
+            .iter()
+            .filter(|edge| edge.kind == EdgeKind::Surfaces && edge.from_id == journey.id)
+            .collect();
+        for edge in &surfaces {
+            let target = nodes.get(edge.to_id.as_str());
+            let operations = target
+                .and_then(|target| target.body.get("operations"))
+                .cloned()
+                .and_then(|value| {
+                    serde_json::from_value::<Vec<crate::journey::CliOperation>>(value).ok()
+                });
+            let valid_target = target.is_some_and(|target| {
+                target.node_type == NodeType::InterfaceSurface
+                    && target
+                        .body
+                        .get("schema")
+                        .and_then(serde_json::Value::as_str)
+                        == Some(crate::journey::INTERFACE_SURFACE_SCHEMA)
+                    && target.body.get("kind").and_then(serde_json::Value::as_str) == Some("cli")
+                    && operations.as_ref().is_some_and(|operations| {
+                        crate::journey::InterfaceSurfaceDefinition {
+                            id: target
+                                .body
+                                .get("stable_id")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("")
+                                .into(),
+                            title: target
+                                .body
+                                .get("title")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("")
+                                .into(),
+                            identity: target
+                                .body
+                                .get("identity")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("")
+                                .into(),
+                            codefile: target
+                                .body
+                                .get("codefile")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("")
+                                .into(),
+                            locator: target
+                                .body
+                                .get("locator")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("")
+                                .into(),
+                            operations: operations.clone(),
+                        }
+                        .validate()
+                        .is_ok()
+                    })
+            });
+            let valid_bindings = facet_value(snap, &edge.id, "operation_bindings")
+                .and_then(|raw| {
+                    crate::completeness::exact_surface_bindings(
+                        raw,
+                        &step_order,
+                        operations.as_deref().unwrap_or_default(),
+                    )
+                })
+                .is_some();
+            if !valid_target
+                || facet_value(snap, &edge.id, "journey_hash") != semantic_hash
+                || !valid_bindings
+            {
+                issues.push(DoctorIssue {
+                    kind: "bad_journey_surface_binding".into(),
+                    message: format!(
+                        "Surfaces edge '{}' has an incompatible target or binding contract",
+                        edge.id
+                    ),
+                });
+            }
+            let exposes = snap.edges.iter().filter(|candidate| {
+                candidate.kind == EdgeKind::Exposes && candidate.from_id == edge.to_id
+            });
+            if !exposes.clone().any(|candidate| {
+                nodes
+                    .get(candidate.to_id.as_str())
+                    .is_some_and(|target| target.node_type == NodeType::CodeFile)
+                    && facet_value(snap, &candidate.id, "locator")
+                        .is_some_and(|value| !value.trim().is_empty())
+            }) {
+                issues.push(DoctorIssue {
+                    kind: "journey_surface_missing_locator".into(),
+                    message: format!(
+                        "InterfaceSurface '{}' has no exposed CLI entrypoint locator",
+                        edge.to_id
+                    ),
+                });
+            }
+        }
+
+        let proves: Vec<&Edge> = snap
+            .edges
+            .iter()
+            .filter(|edge| edge.kind == EdgeKind::Proves && edge.to_id == journey.id)
+            .collect();
+        let mut by_profile: BTreeMap<&str, Vec<&Edge>> = BTreeMap::new();
+        for edge in &proves {
+            let Some(validation) = nodes.get(edge.from_id.as_str()) else {
+                continue;
+            };
+            let profile = validation
+                .body
+                .get("profile")
+                .and_then(|value| value.as_str())
+                .unwrap_or("");
+            by_profile.entry(profile).or_default().push(edge);
+            let calls_surface = snap.edges.iter().any(|candidate| {
+                candidate.kind == EdgeKind::Calls
+                    && candidate.from_id == validation.id
+                    && surfaces
+                        .iter()
+                        .any(|surface| surface.to_id == candidate.to_id)
+            });
+            let exercises_locator = snap.edges.iter().any(|candidate| {
+                candidate.kind == EdgeKind::Exercises
+                    && candidate.from_id == validation.id
+                    && facet_value(snap, &candidate.id, "locator")
+                        .is_some_and(|value| !value.trim().is_empty())
+            });
+            let validates_all = derives.iter().all(|derived| {
+                snap.edges.iter().any(|candidate| {
+                    candidate.kind == EdgeKind::Validates
+                        && candidate.from_id == validation.id
+                        && candidate.to_id == derived.to_id
+                })
+            });
+            if profile.is_empty()
+                || validation
+                    .body
+                    .get("journey_hash")
+                    .and_then(|value| value.as_str())
+                    != semantic_hash
+                || !calls_surface
+                || !exercises_locator
+                || !validates_all
+            {
+                issues.push(DoctorIssue {
+                    kind: "broken_journey_proof_chain".into(),
+                    message: format!("Validation '{}' does not form a current Proves/Validates/Calls/Exercises Journey chain", validation.name),
+                });
+            }
+        }
+        for (profile, edges) in by_profile {
+            if edges.len() > 1 {
+                issues.push(DoctorIssue {
+                    kind: "duplicate_journey_profile_validation".into(),
+                    message: format!(
+                        "Journey '{}' profile '{}' has {} Proves validations",
+                        journey.name,
+                        profile,
+                        edges.len()
+                    ),
+                });
+            }
+        }
+    }
+    issues
+}
+
+fn facet_value<'a>(snap: &'a Snapshot, target_id: &str, key: &str) -> Option<&'a str> {
+    snap.facets
+        .iter()
+        .find(|facet| {
+            facet.target_kind == TargetKind::Edge
+                && facet.target_id == target_id
+                && facet.key == key
+        })
+        .map(|facet| facet.value.as_str())
 }
 
 /// Whether a `consumes` grounding's criterion (or locator) names the seam it

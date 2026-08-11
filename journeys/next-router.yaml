@@ -1,16 +1,21 @@
-journey: next router serves residue
+schema: loom.journey/v1
+id: next-router
+name: Receive the highest-priority actionable work
+actor: operator
+goal: The next-work router returns one self-contained packet for the most important
+  asserted residue.
+inputs: {}
+preconditions:
+- At least one enabled work lane contains actionable asserted residue.
 steps:
-  - name: next serves an actionable prompt contract
-    intent: the next router serves the highest-priority asserted residue with a prompt contract
-    run: "target/debug/loom next --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["work_item", "prompt_contract", "allowed_actions", "forbidden_actions"]
-      exists:
-        - "$.work_item.mode"
-        - "$.work_item.owner_role"
-        - "$.work_item.target.id"
-        - "$.work_item.prompt_contract.allowed_actions"
-        - "$.work_item.prompt_contract.forbidden_actions"
-        - "$.work_item.prompt_contract.required_evidence"
-        - "$.work_item.prompt_contract.evidence_clauses"
+- id: request-next-work
+  name: Request Next Work
+  action: Ask Loom for the next work item.
+  expects:
+  - The response identifies the lane, owner, target, allowed and forbidden actions,
+    required evidence, write-back, and stop condition.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

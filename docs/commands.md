@@ -18,7 +18,7 @@ loom status [--json]
 
 Graph identity, maturity ladder, queue counts, validation summary, code ownership, and the compass. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of open first-class `Question` nodes.
 
-`loom status` now prints a true per-queue backlog line (`fix=N validate=N build=N coverage=N quality=N analyze=N prove=N triage=N review=N elaborate=N`) computed by the same partition that `loom next` serves, plus a note when human questions are waiting or intents await human ratification. In JSON mode the output gains a `queues` object with the same counts (including `ratify`).
+`loom status` prints a true per-queue backlog line, including Journey `derive` and `surface` work alongside `fix`, `validate`, `build`, `coverage`, `quality`, `analyze`, `prove`, `triage`, `review`, and `elaborate`. Counts come from the same partition that `loom next` serves. In JSON mode the output gains a `queues` object with the same counts, including human-only `ratify` work.
 
 ```text
 loom session [--json]
@@ -35,7 +35,7 @@ Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `-
 Closure invariant (uniform adjudicability): every served packet's `write_back` names the runnable loom command(s) that close it, and — for every lane whose closure is a graph write — that command accepts the packet's own target (id, short-id prefix, name, or edge endpoints). `fix` and `audit` packets close through state re-reads (`loom sync` / `loom audit --json`), so their closeout names the command without a target argument. An item whose closure cannot be named is a loom defect, not work: plain `loom next` skips it, `loom next --mode <m>` refuses with the defect named, and either way it is journaled as `unservable_packet` (mode, target, problem, write_back) — grep the journal for that kind to find contracts that need repair.
 
 ```text
---mode: build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate | rectify | ratify
+--mode: derive | surface | build | coverage | fix | analyze/discovery | validate | quality | prove | triage | review | elaborate | rectify | ratify
 --all:  closeout view — the top item of every queue at once
 --mode <m> --all:  the FULL depth of one queue — every item it would serve, in
                    priority order (entry 1 is what `loom next --mode <m>` serves),
@@ -46,13 +46,15 @@ Closure invariant (uniform adjudicability): every served packet's `write_back` n
 
 Queue partition is deliberately disjoint:
 
+- `derive`: authored Journey steps without a current accepted technical mapping, plus unrooted non-exempt Intents. The packet proposes a hash-bound manifest and stops at the human gate.
+- `surface`: a Journey whose accepted Intents are implemented and realizing-grounded but which lacks a current complete CLI surface. The builder writes real repository source and accepts structured operation bindings.
 - `fix`: every failing asserted edge — strictly root-cause repair. A fix packet never carries verdict authority: repair the source, run `loom sync`, and the owning lane re-measures.
 - `analyze`: uninspected and stale non-`governs`/non-`validates` asserted claims, plus open research TaskRecords. Stale claims are served first; bounded external research follows before ordinary uninspected claims.
 - `quality`: uninspected or stale `governs` only. Failing `governs` routes to `fix`.
 - `validate`: uninspected or stale `validates` only. Failing `validates` routes to `fix`.
 - `coverage`: registered codefiles with no live realizing owner. Files grounded only by `consumes`, `configures`, or `verifies` edges remain unowned. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
 - `review`: asserted `passing` or `independent` verdicts with `0 < confidence < 0.7`, lowest confidence first. The work item keeps the edge kind's registry owner as `owner_role`, but the mindset is independent re-inspection.
-- `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet tells the LLM to proactively explain that a partial idea is enough, fill technical/repository-derivable gaps, and translate a true product decision into ONE plain-language question. It records the Question, asks the user directly, waits rather than inferring consent, records the answer, then resumes. The packet also routes missing scenarios/prerequisites/proofs/journey coverage and reasoned non-question waivers.
+- `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet tells the LLM to proactively explain that a partial idea is enough, fill technical/repository-derivable gaps, and translate a true product decision into ONE plain-language question. It records the Question, asks the user directly, waits rather than inferring consent, records the answer, then resumes. The packet also routes missing scenarios, prerequisites, proofs, and Journey ancestry. An Intent is either rooted by a current accepted derivation or deliberately Journey-exempt through a separate human decision.
 - `rectify`: live, re-derived structural friction before human ratify. Duplicate-intent clears are pair decisions tied to the content hash of both descriptions, so unrelated writes do not resurrect them and rewording either intent does. Discovered-behavior entries remain observations of the current graph: a structural write can create a new witness and legitimately raise the count mid-drain. Treat the queue as live work, not a fixed settle snapshot.
 
 Fixer lane safety: fix the source and run `loom sync`; sync re-opens the claim (`needs_reverification` plus any `stale_cause` facet), and the owning lane re-measures it.
@@ -116,6 +118,28 @@ loom schema [--json]
 
 Node types, edge kinds, property registry, tag vocabulary, state machine, lifecycle model, and valid value enums.
 
+```text
+loom checkpoint recommend --intent <intent> [--intent <intent> ...] [--json]
+```
+
+Read-only semantic checkpoint inspection. Every selected Intent must be
+implemented and ratified; a bundle must share an accepted Journey or form one
+connected `requires`/`hierarchy` subgraph. Loom checks the exact Git diff,
+current relevant validations, read-only sync freshness, `doctor`, and
+`loom.graph.json` freshness. Ready output contains scope and rationale, every
+included and excluded path with a reason, every check and exact validation
+command, deterministic message, and driver policy. Blocked output contains no
+recommendation and names every blocker. Readiness is semantic and never uses a
+fixed file/change count.
+
+The command opens the graph read-only and never stages, commits, or pushes. An
+acting LLM may autonomously create or defer the exact local commit, staging
+only the included paths and never `git add -A`; ambiguity or user-owned overlap
+means defer. Push is a separate external action requiring a current explicit
+human answer bound to the exact repository, remote, branch, and commit. Silence,
+refusal, or drift leaves the commit local and requires no question merely to
+create the local checkpoint.
+
 ---
 
 ## Graph init and travel
@@ -158,7 +182,7 @@ Show or set the graph **mode**. `observed` maps code the driver does not own —
 loom sync [--json]
 ```
 
-Runs a discovery pass then recomputes the structural plane from disk. The discovery pass expands all remembered codefile globs (from prior `codefile add '<glob>'` calls) and registers any new files that appeared since the last run, respecting `loom ignore` exclusions — so a single `loom sync` both discovers and extracts without a separate `codefile rescan`. The structural recompute is content-hash based — mtime churn never false-flags. Sync stales Targets (`hypothesis -> intent`) edges, records `stale_cause` facets on every staled edge, deterministically resets validations, downgrades never-reached previously-passing journey steps to `needs_reverification` when a journey run fails earlier, reopens realizing `implements` groundings on changed files **symbol-scoped**, and reopens non-realizing `implements` groundings only when their seam locator drifts. Symbol-scoped means: sync keeps a per-symbol fingerprint map for every extracted file, and a realizing grounding whose `--locator` resolves to a symbol the change did not touch is spared instead of re-opened (reported as `edges_spared`); a grounding with no locator, an unresolvable locator (routes, config keys), or a file synced before fingerprints existed stales whole-file as before, and same-named symbols fold into one fingerprint so an ambiguous locator is never spared past a real change. The `stale_cause` is precise (`symbol 'x' in <file> changed`) and graded by evidence anchoring: when the recorded verdict cited `file:line` spans, the cause says whether every cited span is still intact (`cited evidence intact, cheap re-confirm`) or not (`cited evidence rewritten, full re-inspection`) — and a rewritten cited span re-opens the grounding even when its locator symbol is untouched. Directional relationships (`requires`, `triggers`, `sequence`, `scenario-of`, `variant-of`) now stay settled when their own stamped citations cover every CodeFile that changed the relevant endpoint and all those bytes remain intact; `relates` uses the same check after its both-endpoints/`depends_on` gate. Missing coverage, deleted or rewritten citations, and legacy evidence at the old stamp cap fail closed to full re-inspection, so the churn reduction never substitutes inference for proof. As a byproduct sync refreshes `loom.graph.json` when — and only when — the file already exists and has drifted, so the committed export stays fresh without a separate `loom export` call (it never creates an untracked file, and a fresh export is left byte-identical). JSON output includes `new_files` (list of discovered paths) and `new_observed` (count of observed-mode discoveries) alongside the structural counts (`edges_staled`, `edges_spared`, …).
+Runs a discovery pass then recomputes the structural plane from disk. Discovery expands remembered codefile globs, respects `loom ignore`, and registers new files; structural recomputation uses content hashes, so mtime churn never false-flags. Sync re-verifies evidence anchors, records precise `stale_cause` facets, resets affected ordinary validations, invalidates compiler-owned Journey proof state when its semantic, derivation, surface, compiler, or covered-code hashes drift, and reopens realizing `implements` groundings **symbol-scoped**. A resolving locator whose symbol body did not change is spared; missing, ambiguous, or unresolvable locators fail closed to file scope. Directional relationships stay settled only when their stamped citations cover the changed endpoint and those bytes remain intact. If `loom.graph.json` already exists, sync refreshes it only when the export has drifted; it never creates an untracked export. JSON output reports newly discovered files plus structural counts such as `edges_staled` and `edges_spared`.
 
 ```text
 loom export [--check] [--json]
@@ -343,9 +367,15 @@ loom intent show <intent> [--json]
 loom intent list [--limit N] [--offset N] [--json]
 loom intent tag add <intent> <term> [--json]
 loom intent tag remove <intent> <term> [--json]
+loom intent journey-exempt <intent> --kind <stable-class> --reason "<why>"
+  [--human-decision "<exact human answer>"] [--json]
+loom intent journey-require <intent> --reason "<why ancestry is required again>"
+  [--human-decision "<exact human answer>"] [--json]
 ```
 
 `ratify` and `reject` are human-authorized decisions (INV-8), but the human no longer has to execute the CLI write. In a host conversation, the LLM summarizes the packet, recommends Keep / Remove / Revise with reasons, asks the human, and waits. After the reply it may execute the selected command with `--human-decision` containing the human's exact answer. Loom records `ratified_by=human` while the journal separately retains the executing `llm:*` actor and the mediated response. Without `--human-decision`, every `llm:*` direct write is rejected; a solo terminal retains the exact typed challenge. This is mediation, not policy delegation: silence, a placeholder, or an LLM-generated answer grants no authority. Redefining a ratified intent (`update --description` without `--reword`) stales its ratification to `needs_reconfirmation` and the ratify queue re-serves it. `confirm` re-affirms meaning (a note, not a ratification). `retire` sets status to deprecated and removes the intent from active computation while preserving history. `waive` records a reasoned waiver for a non-question completeness axis (`scenarios`, `prerequisites`, `boundary`, `proof`, `journey`); if the intent is later redefined through `intent update --description`, waiver facets are cleared and those axes are scored again. Open questions must be answered with `loom question answer` or closed with `loom question close`.
+
+`journey-exempt` is a separate human product decision: it records why an Intent deliberately has no authored Journey ancestry. It is not a shortcut for incomplete derivation. `journey-require` withdraws that exemption when the behavior becomes user-reachable. Both operations require the exact human answer when executed by an `llm:*` actor. Rewording preserves the exemption; changing the behavior's criterion invalidates it.
 
 ---
 
@@ -399,11 +429,20 @@ Verdict commands inspect relationship/grounding claims. `independent` means meas
 
 ```text
 loom codefile add <path-or-glob> [--observed] [--json]
+loom codefile anchor <path> --at-line <one-based-line> [--json]
 loom codefile rescan [--json]
 loom codefile remove <path-or-key> [--successor <path-or-key>] [--json]
 loom codefile show <path-or-key> [--json]
 loom codefile list [--limit N] [--offset N] [--json]
 ```
+
+`codefile anchor` is read-only: it issues and prints the exact stable marker and
+locator for the smallest supported declaration containing `--at-line`, without
+editing source or graph state. It fails closed when the path is unregistered,
+the line is outside a supported declaration, or an equivalent marker would be
+ambiguous. After the caller inserts the issued marker, anchor syntax,
+attachment, and cardinality are owned by the locator module; sync and checkpoint
+freshness consume that same resolver instead of re-parsing marker text.
 
 `codefile remove` is refactor-safe: with live asserted edges pointing at the file it REFUSES and lists every blocker with its `loom edge retarget <id> --to …` remedy (no silent orphaning, no ghost registration). With `--successor <file>` (register the successor first), a rename/split is one recorded operation: each live edge is retargeted in place — verdict history kept — then the node is removed and an `edge_retargeted`/`node_removed` journal pair records the move. Live edges originating FROM the file can never be auto-cascaded and block either way.
 
@@ -429,14 +468,12 @@ Coverage exclusions live in the graph with a recorded reason. `loom coverage` ho
 loom validation add --name "<name>" --intent <intent>
   [--type test|assertion|benchmark|manual_check|journey|scenario|contract]
   [--command "<cmd>"]
-  [--proof-kind journey]
-  [--journey-id <id>]
-  [--repo-native-kind <kind>]
-  [--artifact <path-or-ref>]
   [--json]
 ```
 
-Proof strength is derived (S0–S5), never authored. S3 is validation-specific: loom first reads an explicit `edge exercises` entry — the `--locator <entry-symbol>` form is S3-eligible, a bare file claim is not — then derives entry points from that validation's journey/command (`cargo test --test …`, test filters, `cargo run --bin …`, direct repo binaries, and script paths), and walks the call graph to the intent's realizing symbol. `validation show` records the grounded symbol plus `call_evidence.source`, file, and entry symbol. A legacy intent-wide `verifies` grounding is displayed as `intent_wide_fallback` with `s3_eligible: false`; it cannot strengthen an `echo` sibling. Unknown command shapes fail closed at S2 until an explicit locator-bound `edge exercises` is attached. `loom sync` re-grades old facets under the current witness model and journals model-only demotions as `proof_strength_changed` with `witness_model_change: intent-wide → validation-specific`. Strength remains reported, never gated. Journey metadata flags require `--proof-kind journey`; the canonical journey creation path is `loom journey add <spec>`.
+The `journey` validation type is reserved for compiler output. Although it remains a stored enum value, do not use it to create a Journey proof through `validation add`; use `loom journey compile`.
+
+Proof strength is derived (S0–S5), never authored. S3 is validation-specific: Loom first reads an explicit `edge exercises` entry — the `--locator <entry-symbol>` form is S3-eligible, a bare file claim is not — then derives entry points from that validation's registered operation, test target, binary, or script path and walks the call graph to the Intent's realizing symbol. `validation show` records the grounded symbol plus `call_evidence.source`, file, and entry symbol. An Intent-wide `verifies` grounding is displayed as a non-eligible fallback and cannot strengthen a sibling proof. Unknown execution shapes fail closed at S2 until an explicit locator-bound `edge exercises` is attached. Journey composition is the exception to manual creation: `loom journey compile` owns its Journey Validation and exact `proves`/`validates`/`calls`/`exercises` closure.
 
 ```text
 loom validation verdict <validation> passed|failed|blocked
@@ -454,7 +491,7 @@ loom validation run [<intent-or-validation>] [--all] [--json]
 
 `loom validation run` executes stored commands without holding the graph lock while the command executes. Settled verdicts are not re-run unless made pending by sync or command changes.
 
-Proof EXECUTION is serialized by an advisory harness lock (`.loom/harness.lock`), taken by `loom validation run`, `loom observe`, `loom journey run`, `loom journey freeze`, and `loom journey diagnose` — because two concurrent runs share ports, databases, and processes and would mint false failing verdicts. A second executor refuses immediately (exit 75) with the holder's agent, pid, purpose, and command rather than racing it. A loom spawned as a child of the holder (a journey CLI step invoking `loom …`) inherits an env marker and proceeds. Graph-free `journey diagnose` locks per-spec instead of per-repo, so diagnoses of independent specs parallelize.
+Proof execution is serialized by an advisory harness lock (`.loom/harness.lock`), taken by `loom validation run`, `loom observe`, and compiled Journey execution — because two concurrent runs may share repository resources and mint false failing verdicts. A second executor refuses immediately (exit 75) with the holder's agent, pid, purpose, and operation rather than racing it. `journey diagnose` observes the selected compiled profile without settling its proof; `journey run` records the observed result.
 
 ### Finding triage commands
 
@@ -474,98 +511,119 @@ Resolving adjudications (`justified` | `rejected` | `deferred` | `duplicate` | `
 
 ## Journey commands
 
-`journey` is the canonical family for flow/composition proofs.
+An authored Journey is the root of delivery, not an executable proof specification. Its strict `loom.journey/v1` artifact contains stable IDs, typed inputs and outputs, declarative preconditions, ordered actor/action steps, expectations attached to steps, and optional profiles. It contains no implementation Intent references, endpoints, or executable operations.
 
 ```text
-loom journey add <spec.json|spec.yaml|http-contract.json> [--json]
+loom journey add <spec.json|spec.yaml> [--json]
+loom journey show <journey> [--json]
 loom journey list [--limit N] [--offset N] [--json]
-loom journey run <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--json]
-loom journey diagnose <spec.json|spec.yaml|http-contract.json> [--base-url <url>] [--json]
+loom journey remove <journey> [--json]
+loom journey map [--json]
+loom journey derive <journey> [--json]
+loom journey derive-accept <journey> --manifest <derivation.json>
+  --human-decision "<exact human answer>" [--json]
+loom journey surface <journey> [--json]
+loom journey surface-accept <journey> --manifest <surface.json> [--json]
+loom journey compile <journey> [--profile <profile>] [--json]
+loom journey run <journey> [--profile <profile>] [--json]
+loom journey diagnose <journey> [--profile <profile>] [--input <key=json>]... [--json]
+loom journey freeze <journey> [--profile <profile>] [--json]
+loom journey drift [<journey>] [--json]
 ```
 
-`add` creates a `Validation` whose body uses `type: "journey"`, `proof_kind: "journey"`, and command `loom journey run <artifact>`. Strength is derived when the proof runs (user-visible coverage expects an S3-or-stronger journey proof). For CLI steps, S3 derives entry points from the command attached to the step's own intent; a sibling step or validation cannot lend it a call witness. Custom runner shapes can declare the entry with `loom edge exercises <validation> <codefile> --locator <symbol>`. It links resolved step intents with `validates`. It does NOT link steps with `sequence` — a spec's step order is a test script, not a domain claim; assert ordering deliberately with `loom edge relate sequence` if it is real. Every step intent must resolve at registration (both native specs and HTTP-contract routes): a step intent that resolves to no intent could never be proven by any run, so `add` refuses the spec BEFORE any write, naming each unresolvable step and the remedy (`loom intent add …` or fix the step text).
+`add` registers only the authored `Journey` node and its semantic hash. Re-adding the same semantics is idempotent. A semantic change invalidates hash-bound `Derives` and `Surfaces` projections; it never silently carries old technical meaning onto the new Journey. `show` reads one root and `map` shows rooted and unrooted non-exempt Intents.
 
-`diagnose` is the dry run and predicts the recorded run exactly: it executes the same step semantics as `journey run` — same status/body/capture/exit-code checks, same timeouts, same fail-fast on an unusable base — minus persistence and the graph (no verdicts, no journal, no registration required). The only difference is richer failure detail. If diagnose passes, run passes.
-
-Native specs accept JSON or YAML:
+`derive` is read-only. It emits the current Journey hash, authored steps, existing mappings, unrooted Intents, and the contract for a strict `loom.journey-derivation/v1` manifest. `derive-accept` applies exactly that hash-bound manifest only after a human authorizes one conversational hash-table batch. Silence, name similarity, an LLM-authored approval, a non-null `unresolved_question`, duplicate entries/relationships, or a `requires`/`hierarchy` cycle are rejected.
 
 ```json
 {
-  "journey": "checkout happy path",
-  "base": "{{ env.BASE_URL }}",
-  "steps": [
+  "schema": "loom.journey-derivation/v1",
+  "journey_id": "checkout",
+  "journey_hash": "<current semantic hash>",
+  "proposal_id": "checkout-derivation-v1",
+  "proposal_rationale": "This is the smallest technical projection of the current checkout steps.",
+  "intents": [
     {
-      "name": "create cart",
-      "intent": "cart can be created",
-      "request": { "method": "POST", "url": "/carts", "query": {}, "json": { "sku": "A" } },
-      "expect": { "status": 201, "body": { "ok": true }, "exists": ["$.id"] },
-      "capture": { "cart_id": "$.id" }
+      "id": "capture-payment",
+      "operation": "create",
+      "name": "checkout captures authorized payment",
+      "criterion": "A valid confirmation records exactly one authorized payment before order acceptance.",
+      "level": "feature",
+      "visibility": "internal",
+      "rationale": "Payment capture is independently falsifiable and covers confirmation.",
+      "step_ids": ["confirm-order"]
+    },
+    {
+      "id": "existing-cart",
+      "operation": "reuse",
+      "intent_id": "<existing intent id>",
+      "level": "feature",
+      "visibility": "internal",
+      "rationale": "The existing cart criterion exactly covers product selection.",
+      "step_ids": ["choose-product"]
     }
-  ]
+  ],
+  "relationships": [
+    {
+      "id": "payment-requires-cart",
+      "kind": "requires",
+      "from": "capture-payment",
+      "to": "existing-cart",
+      "rationale": "An order confirmation requires a selected cart."
+    }
+  ],
+  "unresolved_question": null
 }
 ```
 
-The spec name key is `journey`. A step is either **HTTP** (`request` + response expectations) or **CLI** (`run` + exit/stdout expectations) — not both:
+Every authored step must be covered by at least one Intent entry. `operation:create` requires `name` and `criterion` and must not carry `intent_id`; `operation:reuse` requires `intent_id` and must not restate the existing name or criterion. Every entry needs `rationale`; every relationship needs stable `id`, `kind`, `from`, `to`, and `rationale`, and its endpoints must name included entry IDs. Only `requires` and `hierarchy` are allowed. Loom rejects duplicate IDs or resolved relationships, self-links and cycles, unresolved questions, stale Journey hashes, and reuse that does not resolve to the claimed existing Intent.
+
+Before acceptance, present the human one conversational hash-table batch containing the proposal ID, Journey hash, manifest hash, each create/reuse row, criteria, rationales, covered step IDs, and relationships. On acceptance Loom creates or updates the adopted Proposal and reconciles its `Derives`, `requires`, and `hierarchy` projection. Replaying byte-identical accepted content is idempotent; using an already-adopted `proposal_id` with a different manifest is rejected rather than silently changing the authorized decision.
+
+`surface` is also read-only. Once every current derivation is accepted, implemented, and realizing-grounded, it emits the contract for a real CLI in the target repository. The builder writes that source in the repository's language and idiom. A `loom.journey.surface/v1` manifest binds every Journey step to a reusable operation on a `loom.interface-surface/v1`; operations use structured argv, typed arguments, and JSON output. `surface-accept` records the hash-bound surface, its operation bindings, and the exposed registered CodeFile. Loom does not template-generate application source.
+
+The authored format is semantic:
 
 ```yaml
-journey: door capture happy path
+schema: loom.journey/v1
+id: checkout
+name: Complete checkout
+actor: shopper
+goal: Purchase a selected product and receive an accepted order.
+inputs:
+  sku:
+    type: string
+    description: The product selected by the shopper.
+preconditions:
+  - The product is available to purchase.
 steps:
-  - name: capture utterance
-    intent: an operator captures a topic through door and routes it from the landing menu
-    run: "loom door 'ship faster checkout' --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["landing_menu"]
-    capture:
-      inbox_id: "$.captured.id"
+  - id: choose-product
+    name: Choose product
+    action: Choose a product to purchase.
+    expects: []
+    produces: {}
+  - id: confirm-order
+    name: Confirm order
+    action: Confirm the order.
+    expects:
+      - The shopper receives an accepted order with a stable receipt identifier.
+    produces:
+      receipt:
+        type: string
+        description: The stable receipt identifier for the accepted order.
+profiles:
+  proof:
+    inputs:
+      sku:
+        template: sku-1
+    workspace: {}
 ```
 
-CLI steps run via `sh -c` with the graph root as cwd (so repo-local binaries and fixtures resolve). `journey run` releases the exclusive graph lock while steps execute, then reopens to stamp verdicts — so a step may invoke the same repo's CLI (or any other graph writer) without deadlocking. `expect.exit_code` defaults to `0`. `body` / `exists` / `capture` on a CLI step parse stdout as JSON. A step may declare `timeout_secs: <seconds>` to override the default wall-clock limit (300s CLI / 30s HTTP, listed by `loom limits`). Every failed CLI outcome includes the resolved command, bounded stdout and stderr tails, and an exit classification: `step_exit` for an observed process exit or `runner_kill` when timeout enforcement killed the process group.
+`compile` owns the proof topology. For the selected profile (default `proof`), it resolves the accepted surface operations and creates or refreshes the Validation-specific `Proves`, `Validates`, `Calls`, and `Exercises` closure. `run` executes only that compiled profile and records what Loom observes. A current passing proof counts as S3 only when the closure reaches the accepted CLI surface and realizing code. Do not create a sibling Journey Validation by hand.
 
-`run` records graph verdicts. A failing step exit records the exact failed expectation and reopens previously-passing never-reached later steps. A runner kill blocks the journey without writing a failing behavior verdict: it is failure to observe, not evidence that the behavior failed. `diagnose` executes directly without graph writes and uses the same failure output. Both accept `--base-url`, which overrides the spec base and `{{ env.BASE_URL }}` for HTTP steps.
+`diagnose` uses the same compiled profile but does not settle proof. It alone accepts repeatable typed input overrides as `--input key=json`. `freeze` records the current observed result as the selected profile's baseline. `drift` reports semantic, derivation, surface, compiler, or baseline hashes that no longer agree.
 
-### Journey coverage
-
-```text
-loom journey coverage add <intent> --name <name> --flow <flow>
-  [--description <description>]
-  [--runner-ref <path-or-symbol>]
-  [--test-ref <path-or-symbol>]
-  [--contract-artifact <path>]
-  [--json]
-loom journey coverage update <coverage> --reason "<why>"
-  [--runner-ref <path-or-symbol>] [--test-ref <path-or-symbol>] [--contract-artifact <path>]
-  [--json]
-loom journey coverage remove <coverage> [--json]
-loom journey coverage list [--limit N] [--offset N] [--json]
-loom journey coverage discover [--spawn-missing] [--json]
-loom journey coverage drift [--json]
-```
-
-Coverage nodes mark flows that need a journey proof. Effective coverage is derived: covered iff the linked intent has a passing S3-or-stronger journey validation. Runner/test refs alone do not satisfy coverage; the proof must run.
-
-### Journey invariant points
-
-```text
-loom journey invariant add <intent> --name <name> --field <field> --assertion <assertion>
-  [--reason <reason>]
-  [--json]
-loom journey invariant update <invariant> --reason "<why>"
-  [--field <field>] [--assertion <assertion>] [--asserts <intent>] [--reason-text <reason>]
-  [--json]
-loom journey invariant remove <invariant> [--json]
-loom journey invariant list [--limit N] [--offset N] [--json]
-```
-
-Invariant points mark internal domain assertions that a journey should verify. `update --asserts <intent>` re-points the invariant at a different intent by replacing its `asserts` edge in place — the node, its history, and its notes stay intact, and the move is recorded as a decision note.
-
-### Journey runner prompt
-
-```text
-loom journey prompt <intent> [--json]
-```
-
-Assembles a typed journey-runner prompt context from loom's code understanding of an intent. It is read-time assembly, not code generation.
+Schema v12 is a deliberate rebuild boundary. Older graphs and exports are refused untouched because an executable proof specification cannot be translated into authored user meaning without inventing judgment. Rebuild in this order: initialize a new graph; register repository code; use `loom bootstrap suggest` for clues; author and add `loom.journey/v1` roots; derive technical Intents; obtain the human decision for each exact manifest; implement and ground those Intents; build and accept the real CLI surface; then compile and run the proof profile.
 
 ---
 
@@ -773,7 +831,7 @@ loom whoami [--json]
 loom limits [--json]
 ```
 
-- `limits`: every enforced resource limit with its value, scope, and remedy. Violation errors name the same limit (e.g. `killed: exceeded timeout_secs=300`, `evidence exceeds max_spans=16`, `graph lock exceeded lock_wait_ms=2000`, `graph lock exceeded read_lock_wait_ms=10000`), so a failure message plus this list always yields the threshold and the way to change the outcome. Journey steps declare a per-step override with `timeout_secs: <seconds>` in the spec (CLI and HTTP steps both honor it); validation commands use the body key `timeout_seconds`.
+- `limits`: every enforced resource limit with its value, scope, and remedy. Violation errors name the same limit (e.g. `killed: exceeded timeout_secs=300`, `evidence exceeds max_spans=16`, `graph lock exceeded lock_wait_ms=2000`, `graph lock exceeded read_lock_wait_ms=10000`), so a failure message plus this list always yields the threshold and the way to change the outcome. Ordinary validation execution uses its registered timeout policy; Journey execution uses the compiled profile and surfaced operation policy.
 - `coverage`: vertical spine — intent tree shape, leaf grounding, file ownership by live realizing `implements` edges, unaccounted files after ignores.
 - `completeness`: Definition-of-Complete scorecard for one intent or all feature intents; non-question axes can be waived through `loom intent waive` and re-open on intent redefinition.
 - `scan`: external diagnostic adapters; `run` turns registered-codefile diagnostics into derived findings for triage, and disappeared diagnostics resolve on the next run.
@@ -867,6 +925,7 @@ These are **not** current shipped commands or flags. Do not emit them from promp
 - removed/deferred flags: `guide --mode`, `import --as-planned`
 - shipped since this list was written (do **not** treat as deferred): batch writes (`loom apply`), wiki projection (`loom wiki`, with the verb set above — the older `generate/verify/publish/update` design in `wiki-projection.md` was superseded), and federation (`loom graph link/unlink/list`, `graph unlink --prune`, `graph prune-orphans`, `loom edge depends-on`)
 - removed legacy (grammar convergence): top-level `loom validate` (→ `loom validation run`), `validation mark --result` (→ `validation verdict <outcome>`), `rule verdict --status` (→ positional outcome), `hypothesis prove --verdict` (→ positional outcome), `validation delete`/`surface delete` (→ `remove`), `rule ungovern` (→ `rule unlink`), the `loom saga` alias, the `saga` validation type, and the `saga:` spec name key
+- removed by the schema-v12 Journey-root break: executable Journey artifact fields and transport-specific steps; Journey metadata flags on `validation add`; `journey coverage`, `journey invariant`, and `journey prompt`; `journey run <artifact>` and transport override flags. Use the authored-root lifecycle documented above.
 
 ---
 
@@ -887,7 +946,7 @@ In text mode the human summary ends with:
 next: <step>
 ```
 
-List commands bound output with `--limit` and page with `--offset` (0-based) where the binary exposes it (`intent`, `codefile`, `edge`, `rule`, `validation`, `hypothesis`, `surface`, `proposal`, `task`, `note`, `inbox`, `question`, `wiki`, `journey`, `journey coverage`, `journey invariant`). Text output prints an explicit footer — `… showing N–M of TOTAL. More items exist; rerun this list command with --offset M to see the next page.` — so a human or agent immediately knows that rows remain and how to retrieve them.
+List commands bound output with `--limit` and page with `--offset` (0-based) where the binary exposes it (`intent`, `codefile`, `edge`, `rule`, `validation`, `hypothesis`, `surface`, `proposal`, `task`, `note`, `inbox`, `question`, `wiki`, `journey`). Text output prints an explicit footer — `… showing N–M of TOTAL. More items exist; rerun this list command with --offset M to see the next page.` — so a human or agent immediately knows that rows remain and how to retrieve them.
 
 **Breaking in 0.28.0:** paginated `list --json` output is an object rather than a bare array. Rows are under `items`; `pagination` reports `offset`, `limit`, `returned`, `total`, `has_more`, and `next_offset`. When `has_more` is false, `next_offset` is `null`. Migrate consumers from `response[]` to `response.items[]`:
 

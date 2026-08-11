@@ -1,16 +1,31 @@
-journey: sync reopens grounded edges
+schema: loom.journey/v1
+id: sync-ripple
+name: Ripple only real repository changes
+actor: operator
+goal: Synchronization scans repository state and reopens grounded claims only after
+  relevant bytes change.
+inputs: {}
+preconditions:
+- A settled grounding points to a registered file whose content hash is current.
 steps:
-  - name: sync json
-    intent: changing a file re-opens the asserted edges grounded in it
-    run: "loom sync --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["files_scanned"]
-
-  - name: content hashes ripple only after a real file change
-    fixture: true
-    intent: changing a file re-opens the asserted edges grounded in it
-    run: "cargo test --test ring2 sync_ripples_only_on_real_change -- --exact"
-    expect:
-      exit_code: 0
-      stdout_contains: ["test result: ok. 1 passed; 0 failed"]
+- id: synchronize-unchanged-file
+  name: Synchronize Unchanged File
+  action: Synchronize the graph without changing the registered file.
+  expects:
+  - Loom scans the file without reopening the settled grounding.
+  produces: {}
+- id: edit-grounded-content
+  name: Edit Grounded Content
+  action: Change the grounded content in the registered file.
+  expects: []
+  produces: {}
+- id: synchronize-changed-file
+  name: Synchronize Changed File
+  action: Synchronize the graph again.
+  expects:
+  - Loom detects the real content change and reopens the affected grounding.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

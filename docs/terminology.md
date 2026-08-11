@@ -137,6 +137,12 @@ A structural smell: ≥2 intents realize the same codefile **and** those co-owne
 
 ## Node types
 
+### Journey
+
+The human-authored semantic root of delivery. A `loom.journey/v1` artifact says who acts, in which order, and what must then be true. It may declare typed inputs and outputs, preconditions, and named profiles, but it does not name implementation Intents or executable operations.
+
+Technical Intents, the real repository CLI surface, and the compiler-owned proof are hash-bound projections of the Journey. If authored meaning changes, those projections become stale rather than being silently reinterpreted.
+
 ### Intent
 
 A falsifiable statement of what the codebase should do. It can be user-visible or internal. It may be broad or atomic, but it should have a criterion that can eventually be grounded and proven.
@@ -225,7 +231,7 @@ A quality-rule assist, not a verdict. Pack rules may carry `patterns[]` as regex
 
 ### Validation
 
-A proof object: command, manual check, journey, benchmark, assertion, scenario, or contract that validates one or more intents.
+A proof object: test, manual check, benchmark, assertion, scenario, contract, or compiler-owned Journey profile that validates technical behavior or composition.
 
 A test file is a `CodeFile`; the proof is the `Validation`.
 
@@ -370,7 +376,7 @@ The condition belongs as an edge facet/property.
 
 ### sequence
 
-`Intent -> Intent`. Ordered step relation inside a journey. Asserted by judgment via `loom edge relate sequence`; `loom journey add` does not create it, because a spec's step order is a test script, not a domain ordering claim.
+`Intent -> Intent`. A technical readiness relation: the target Intent must be realized before the source Intent is ready. Authored Journey step order is stored on the Journey itself; it does not automatically assert that two reusable technical Intents always have the same ordering.
 
 ### implements
 
@@ -418,7 +424,19 @@ The role on an `implements` edge. Canonical values are `realizes`, `consumes`, `
 
 ### calls / exercises
 
-`Validation -> InterfaceSurface`. A proof exercises a surface.
+`calls` is `Validation -> InterfaceSurface`: a proof invokes the accepted consumer surface. `exercises` is `Validation -> CodeFile`: the proof reaches a specific code entry point.
+
+### derives
+
+`Journey -> Intent`. A human-authorized technical Intent derives from one or more stable Journey step IDs. The edge carries the Journey semantic hash and step bindings; a changed Journey makes the mapping stale.
+
+### surfaces
+
+`Journey -> InterfaceSurface`. A real repository interface exposes every authored step through accepted structured operations. The edge carries the Journey hash and complete step-to-operation bindings.
+
+### proves
+
+`Validation -> Journey`. A compiler-owned validation proves one hash-bound Journey profile through its accepted surface.
 
 ### targets
 
@@ -446,7 +464,7 @@ Examples:
 - assertion,
 - benchmark,
 - manual_check,
-- journey,
+- journey (compiler-owned profile only),
 - scenario,
 - contract.
 
@@ -461,16 +479,17 @@ Examples:
 | atomic leaf | unit/module test, assertion, property test |
 | internal capability | integration test through seam |
 | external interface | contract/API/CLI/UI test |
-| scenario/journey | journey or flow test |
+| scenario Intent | scenario or flow test |
+| authored Journey | compiled Journey profile through its accepted surface |
 | reaction | event/scenario test |
 | performance | benchmark |
 | visual/product acceptance | manual or visual proof |
 
 ### journey
 
-A proof that multiple behaviors work together in an ordered flow. The term is `journey`. `saga` is the retired v1 name — as of 0.15 the binary accepts no `saga` alias, validation type, or spec key; use it only when narrating history.
+A Journey is an authored semantic root, not a proof script. It records an ordered flow in terms of actors, actions, and expected outcomes. The technical derivation, executable surface, and proof are separate projections, each bound to the Journey's semantic hash.
 
-Child proofs alone do not necessarily prove parent composition.
+`loom journey compile` owns the corresponding composition proof topology. Child Intent proofs alone do not prove that the Journey works through its accepted consumer surface.
 
 ### blocked proof
 
@@ -633,7 +652,11 @@ The deterministic extracted view of codefiles, symbols, imports, surfaces, hashe
 
 ### locator
 
-A stable-ish reference to code: file path plus symbol or line range.
+A reference from a graph edge to code. The default is an extracted symbol locator scoped by the edge's target CodeFile.
+
+For declarations or comment-bearing configuration entries whose symbol identity is unstable, Loom may issue `anchor:<stable-id>`. Source carries the exact standalone marker `// loom:anchor <stable-id>` or `# loom:anchor <stable-id>`. The marker must be globally unique among registered CodeFiles and attach immediately to one smallest supported entry. Missing, duplicate, detached, unsupported, and wrong-file anchors fail closed; JSON and other commentless formats cannot use them.
+
+A source anchor is navigation metadata, not authority. The marker alone creates no graph relationship and proves no behavior. It may supply a current navigation/blast-radius symbol after a rename, but it is excluded from proof symbols and S3 eligibility. Normal symbol locators remain the default.
 
 ### read set
 
@@ -715,18 +738,21 @@ Superseded intent retained for history, excluded from active computation.
 | code intelligence decides | extraction suggests, LLM judges | Static facts do not replace semantic judgment. |
 | workflow phase | route / WorkItem / PromptContract | Loom is event/ripple-driven, not linear. |
 | task proves behavior | Validation proves behavior | TaskRecord can produce evidence but is not proof. |
+| journey test script | authored Journey + compiled Journey proof | Meaning is authored first; executable operations belong to the accepted surface. |
+| journey validation created by hand | compiler-owned Journey proof | `loom journey compile` owns the exact proof topology. |
 
 ---
 
 ## Naming rules
 
-1. If it describes behavior, use `Intent`.
-2. If it describes source reality, use `CodeFile` or derived code fact.
-3. If it proves behavior, use `Validation`.
-4. If it measures a behavioral norm, use `QualityRule` + `GOVERNS` verdict.
-5. If it measures a structural norm, use `CodeRule` + `Finding`.
-6. If it is temporary work, use `TaskRecord`.
-7. If it is generated documentation, use `WikiProjection` / `WikiPage`.
-8. If it is heuristic suspicion, use `DebtSignal` / `DebtCluster` until confirmed.
-9. If it guides the LLM, use `WorkItem` + `PromptContract`.
+1. If it describes an ordered user or operator flow, author a `Journey`.
+2. If it describes one falsifiable technical behavior derived from that flow, use `Intent`.
+3. If it describes source reality, use `CodeFile` or derived code fact.
+4. If it proves behavior, use `Validation`; Journey composition proofs are compiler-owned.
+5. If it measures a behavioral norm, use `QualityRule` + `GOVERNS` verdict.
+6. If it measures a structural norm, use `CodeRule` + `Finding`.
+7. If it is temporary work, use `TaskRecord`.
+8. If it is generated documentation, use `WikiProjection` / `WikiPage`.
+9. If it is heuristic suspicion, use `DebtSignal` / `DebtCluster` until confirmed.
+10. If it guides the LLM, use `WorkItem` + `PromptContract`.
 10. If it is raw free-form input, use `InboxItem`.

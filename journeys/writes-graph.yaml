@@ -1,14 +1,22 @@
-journey: loom writes the graph from what it observed
+schema: loom.journey/v1
+id: writes-graph
+name: Propose graph writes from observed repository work
+actor: operator
+goal: Loom reads repository evidence and proposes typed graph mutations instead of
+  asking the operator to restate the work.
+inputs: {}
+preconditions:
+- The repository contains registered code whose observed behavior is not yet represented
+  in the graph.
 steps:
-  - name: absorb proposes mutations from the tree
-    fixture: true
-    intent: loom writes the graph from the work rather than asking for it twice
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      printf 'fn demo() {}\n' > "$tmp/src.rs" &&
-      loom codefile add --graph "$tmp" src.rs &&
-      loom absorb --graph "$tmp" --json &&
-      rm -rf "$tmp"
-    expect:
-      exit_code: 0
-      stdout_contains: ["items", "evidence"]
+- id: inspect-repository-work
+  name: Inspect Repository Work
+  action: Ask Loom to absorb the current repository state.
+  expects:
+  - Loom proposes typed graph mutations and includes the repository evidence behind
+    each proposal.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

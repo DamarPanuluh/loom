@@ -1,8 +1,21 @@
-journey: a green graph is pointed at its weakest standing claim
+schema: loom.journey/v1
+id: green-graph
+name: Deepen a graph whose floors are met
+actor: operator
+goal: When ordinary maturity work is settled, Loom still identifies the weakest standing
+  claim worth strengthening.
+inputs: {}
+preconditions:
+- The graph has no open work below the continuous deepening rung.
 steps:
-  - name: deepen ranks the weakest standing claim
-    intent: a green graph is pointed at its weakest standing claim
-    run: "loom deepen --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["intent_id", "next_move", "why"]
+- id: inspect-deepening-opportunity
+  name: Inspect Deepening Opportunity
+  action: Ask Loom what standing claim should be strengthened next.
+  expects:
+  - Loom names the weakest claim, explains why it ranks first, and proposes the next
+    evidence move.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

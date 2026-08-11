@@ -311,17 +311,17 @@ impl Store {
         let to = self
             .get_node(to_id)?
             .ok_or_else(|| anyhow!("to node '{to_id}' does not exist"))?;
-        if from.node_type != spec.from {
+        if !spec.allows_from(from.node_type) {
             bail!(
                 "edge '{kind}' requires from-node type '{}', got '{}'",
                 spec.from,
                 from.node_type
             );
         }
-        if to.node_type != spec.to {
+        if !spec.allows_to(to.node_type) {
             bail!(
                 "edge '{kind}' requires to-node type '{}', got '{}'",
-                spec.to,
+                spec.to_display(),
                 to.node_type
             );
         }

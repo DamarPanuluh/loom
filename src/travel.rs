@@ -16,6 +16,7 @@ use std::path::Path;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Export {
     pub format: u32,
+    pub schema_version: u32,
     pub graph_id: String,
     pub name: String,
     pub observed: bool,
@@ -39,19 +40,16 @@ pub struct Export {
     /// runtime state). Absent on graphs with no journal-cited evidence.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub journal: Vec<crate::journal::Entry>,
-    /// Frozen journey baselines (local runtime state; without them an imported
-    /// graph's journeys cannot grade S4+).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub baselines: Vec<crate::journey::Baseline>,
 }
 
 /// Current export format version.
-pub const FORMAT: u32 = 3;
+pub const FORMAT: u32 = 4;
 
 impl Export {
     pub fn from_snapshot(snap: Snapshot) -> Export {
         Export {
             format: FORMAT,
+            schema_version: crate::SCHEMA_VERSION,
             graph_id: snap.identity.graph_id,
             name: snap.identity.name,
             observed: snap.identity.observed,
@@ -63,7 +61,6 @@ impl Export {
             tags: snap.tags,
             config: snap.config,
             journal: Vec::new(),
-            baselines: Vec::new(),
         }
     }
 
@@ -74,7 +71,7 @@ impl Export {
             identity: Identity {
                 graph_id: self.graph_id,
                 name: self.name,
-                schema_version: crate::SCHEMA_VERSION,
+                schema_version: self.schema_version,
                 observed: self.observed,
             },
             nodes: self.nodes,
@@ -95,16 +92,44 @@ impl Export {
     pub fn from_json(text: &str) -> Result<Export> {
         // Two-phase import begins here: parse fully (and loudly) before the
         // store ever sees it. A malformed export never leaves a partial graph.
-        let export: Export =
+        let value: serde_json::Value =
             serde_json::from_str(text).context("parsing export (malformed loom.graph.json)")?;
-        // Reject a format this loom does not speak, rather than silently
-        // restoring it as the current schema (M-7).
-        if !matches!(export.format, 2 | FORMAT) {
+        // Inspect the envelope before deserializing typed nodes and edges. An
+        // old graph may contain vocabulary v12 intentionally removed; report
+        // the rebuild boundary instead of whichever retired enum is seen first.
+        let format = value
+            .get("format")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| {
+                anyhow::anyhow!("export format version is missing or malformed (expected {FORMAT})")
+            })?;
+        if format != u64::from(FORMAT) {
             anyhow::bail!(
-                "export format version {} is unsupported (this loom accepts formats 2 and {FORMAT}) — upgrade loom or re-export",
-                export.format
+                "export format version {format} is unsupported (this loom accepts only format {FORMAT}) — re-export with loom v12"
             );
         }
+        let schema_version = value
+            .get("schema_version")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "export schema_version is missing or malformed (expected {})",
+                    crate::SCHEMA_VERSION
+                )
+            })?;
+        if schema_version < u64::from(crate::SCHEMA_VERSION) {
+            anyhow::bail!(
+                "export schema v{schema_version} is unsupported; loom v12 introduced the journey paradigm — re-init and rebuild (loom bootstrap suggest, author journeys, loom journey derive)"
+            );
+        }
+        if schema_version > u64::from(crate::SCHEMA_VERSION) {
+            anyhow::bail!(
+                "export schema v{schema_version} was written by a newer loom; this loom understands v{} — upgrade before importing",
+                crate::SCHEMA_VERSION
+            );
+        }
+        let export: Export =
+            serde_json::from_value(value).context("parsing export (malformed loom.graph.json)")?;
         Ok(export)
     }
 }
@@ -116,7 +141,6 @@ impl Export {
 fn render_export(store: &Store) -> Result<String> {
     let mut export = Export::from_snapshot(store.snapshot()?);
     export.journal = crate::journal::cited_entries(store.root(), &export.evidence)?;
-    export.baselines = crate::journey::read_baselines(store.root())?;
     export.to_json()
 }
 
@@ -167,9 +191,9 @@ pub fn read_export(path: &Path) -> Result<Export> {
 }
 
 /// Quarantine executable text crossing the import trust boundary. The graph
-/// structure still restores atomically, but imported validation and scan
-/// commands cannot execute until an operator re-enters each exact command via
-/// the corresponding local update command.
+/// structure still restores atomically, but imported validation/scan commands
+/// and reusable CLI surfaces cannot execute until an operator re-enters the
+/// exact contract through its corresponding local authorization command.
 ///
 /// The upstream-graph registry is quarantined the same way: its paths point at
 /// the EXPORTER's filesystem, so restoring it would aim the next sync's
@@ -178,23 +202,62 @@ pub fn read_export(path: &Path) -> Result<Export> {
 /// re-`graph link`s each upstream locally.
 pub fn quarantine_imported_execution(snap: &mut Snapshot) -> Result<usize> {
     let mut quarantined = 0;
+    let mut quarantined_surfaces = std::collections::BTreeSet::new();
     for node in &mut snap.nodes {
-        if node.node_type != NodeType::Validation {
-            continue;
-        }
-        let has_command = node
-            .body
-            .get("command")
-            .and_then(|value| value.as_str())
-            .is_some_and(|command| !command.trim().is_empty());
-        if has_command {
-            node.body["command_trusted"] = serde_json::Value::Bool(false);
-            // The imported "passed" is untrustworthy — the run behind it was
-            // downgraded to a claim below, so nothing re-checks it. Reset the
-            // proof to not_run: verification is re-earned only by a LOCAL run
-            // after the operator re-approves the exact command.
-            node.status = "not_run".into();
+        if node.node_type == NodeType::InterfaceSurface
+            && node
+                .body
+                .get("operations")
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|operations| {
+                    operations.iter().any(|operation| {
+                        operation
+                            .get("argv")
+                            .and_then(serde_json::Value::as_array)
+                            .is_some_and(|argv| !argv.is_empty())
+                    })
+                })
+        {
+            // Preserve the exact portable contract bytes, but disable their
+            // executable interpretation. A local surface-accept validates the
+            // same body against this checkout before returning it to `declared`.
+            node.status = "quarantined".into();
+            quarantined_surfaces.insert(node.id.clone());
             quarantined += 1;
+        }
+        if node.node_type == NodeType::Validation {
+            let has_command = node
+                .body
+                .get("command")
+                .and_then(|value| value.as_str())
+                .is_some_and(|command| !command.trim().is_empty());
+            if has_command {
+                node.body["command_trusted"] = serde_json::Value::Bool(false);
+                // The imported "passed" is untrustworthy — the run behind it was
+                // downgraded to a claim below, so nothing re-checks it. Reset the
+                // proof to not_run: verification is re-earned only by a LOCAL run
+                // after the operator re-approves the exact command.
+                node.status = "not_run".into();
+                quarantined += 1;
+            }
+        }
+    }
+    if !quarantined_surfaces.is_empty() {
+        let callers: std::collections::BTreeSet<String> = snap
+            .edges
+            .iter()
+            .filter(|edge| {
+                edge.kind == crate::model::EdgeKind::Calls
+                    && quarantined_surfaces.contains(&edge.to_id)
+            })
+            .map(|edge| edge.from_id.clone())
+            .collect();
+        for validation in snap
+            .nodes
+            .iter_mut()
+            .filter(|node| node.node_type == NodeType::Validation && callers.contains(&node.id))
+        {
+            validation.status = "not_run".into();
         }
     }
     if let Some(raw) = snap.config.get("scan_adapters").cloned() {
@@ -285,6 +348,7 @@ mod tests {
             facts: Vec::new(),
             evidence: Vec::new(),
             format: FORMAT,
+            schema_version: crate::SCHEMA_VERSION,
             graph_id: "g1".into(),
             name: "demo".into(),
             observed: false,
@@ -294,12 +358,12 @@ mod tests {
             tags: vec![],
             config: Default::default(),
             journal: Vec::new(),
-            baselines: Vec::new(),
         };
         let json = e.to_json().unwrap();
         insta::assert_snapshot!(json, @r###"
 {
-  "format": 3,
+  "format": 4,
+  "schema_version": 12,
   "graph_id": "g1",
   "name": "demo",
   "observed": false,
@@ -322,6 +386,7 @@ mod tests {
             facts: Vec::new(),
             evidence: Vec::new(),
             format: FORMAT,
+            schema_version: crate::SCHEMA_VERSION,
             graph_id: "g1".into(),
             name: "demo".into(),
             observed: false,
@@ -331,7 +396,6 @@ mod tests {
             tags: vec![],
             config,
             journal: Vec::new(),
-            baselines: Vec::new(),
         };
         let json = e.to_json().unwrap();
         assert!(json.contains("\"layer_order\""));
@@ -339,7 +403,7 @@ mod tests {
         // …and an export without the optional sections still parses: `config`,
         // `facts` and `evidence` are all absent-when-empty, so a structural
         // export keeps its exact byte shape.
-        let minimal = r#"{"format":3,"graph_id":"g","name":"n","observed":false,
+        let minimal = r#"{"format":4,"schema_version":12,"graph_id":"g","name":"n","observed":false,
                           "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
         let parsed = Export::from_json(minimal).unwrap();
         assert!(parsed.config.is_empty());
@@ -402,6 +466,86 @@ mod tests {
     }
 
     #[test]
+    fn import_quarantines_interface_surface_argv_without_rewriting_contract() {
+        let surface_body = serde_json::json!({
+            "schema": crate::journey::INTERFACE_SURFACE_SCHEMA,
+            "stable_id": "checkout-cli",
+            "title": "Checkout CLI",
+            "kind": "cli",
+            "identity": "checkout",
+            "codefile": "src/checkout.rs",
+            "locator": "checkout",
+            "operations": [{
+                "id": "checkout-op",
+                "summary": "Run checkout",
+                "argv": ["/exporter/bin/checkout", "--commit"],
+                "read_only": false,
+                "arguments": [],
+                "output": {"format": "json", "assertions": []}
+            }]
+        });
+        let mut snapshot = Snapshot {
+            facts: Vec::new(),
+            evidence: Vec::new(),
+            identity: Identity {
+                graph_id: "g".into(),
+                name: "n".into(),
+                schema_version: crate::SCHEMA_VERSION,
+                observed: false,
+            },
+            nodes: vec![
+                Node {
+                    id: "surface".into(),
+                    node_type: NodeType::InterfaceSurface,
+                    name: "checkout-cli".into(),
+                    description: String::new(),
+                    status: "declared".into(),
+                    truth_class: crate::model::TruthClass::Asserted,
+                    body: surface_body.clone(),
+                    created_at: String::new(),
+                    updated_at: String::new(),
+                },
+                Node {
+                    id: "validation".into(),
+                    node_type: NodeType::Validation,
+                    name: "journey:checkout:proof".into(),
+                    description: String::new(),
+                    status: "passed".into(),
+                    truth_class: crate::model::TruthClass::Asserted,
+                    body: serde_json::json!({"type":"journey"}),
+                    created_at: String::new(),
+                    updated_at: String::new(),
+                },
+            ],
+            edges: vec![crate::model::Edge {
+                id: "calls".into(),
+                from_id: "validation".into(),
+                to_id: "surface".into(),
+                kind: crate::model::EdgeKind::Calls,
+                truth_class: crate::model::TruthClass::Asserted,
+                status: crate::model::InspectionStatus::Passing,
+                criterion: String::new(),
+                confidence: 1.0,
+                depends_on: serde_json::json!([]),
+                inspected_by: String::new(),
+                created_at: String::new(),
+                updated_at: String::new(),
+            }],
+            facets: Vec::new(),
+            tags: Vec::new(),
+            config: std::collections::BTreeMap::new(),
+        };
+
+        assert_eq!(quarantine_imported_execution(&mut snapshot).unwrap(), 1);
+        assert_eq!(snapshot.nodes[0].status, "quarantined");
+        assert_eq!(snapshot.nodes[0].body, surface_body);
+        assert_eq!(snapshot.nodes[1].status, "not_run");
+        let once = snapshot.clone();
+        quarantine_imported_execution(&mut snapshot).unwrap();
+        assert_eq!(snapshot, once, "quarantine must be deterministic");
+    }
+
+    #[test]
     fn export_dispatches_through_the_projection_registry() {
         // The canonical projection is registered and keys are honest.
         let proj = projection(GRAPH_JSON_PROJECTION).expect("graph_json registered");
@@ -445,6 +589,7 @@ mod tests {
                 facts: Vec::new(),
                 evidence: Vec::new(),
                 format: FORMAT,
+                schema_version: crate::SCHEMA_VERSION,
                 graph_id,
                 name,
                 observed,
@@ -454,7 +599,6 @@ mod tests {
                 tags: vec![],
                 config: Default::default(),
             journal: Vec::new(),
-            baselines: Vec::new(),
             };
 
             let first = export.to_json().unwrap();
@@ -465,10 +609,15 @@ mod tests {
     }
 
     #[test]
-    fn imports_prior_format_but_rejects_legacy_and_future_formats() {
-        let base = r#"{"format":2,"graph_id":"g","name":"n","observed":false,"nodes":[],"edges":[],"facets":[],"tags":[]}"#;
-        assert_eq!(Export::from_json(base).unwrap().format, 2);
-        assert!(Export::from_json(&base.replace("\"format\":2", "\"format\":1")).is_err());
-        assert!(Export::from_json(&base.replace("\"format\":2", "\"format\":4")).is_err());
+    fn accepts_only_format_four_at_schema_twelve() {
+        let base = r#"{"format":4,"schema_version":12,"graph_id":"g","name":"n","observed":false,"nodes":[],"edges":[],"facets":[],"tags":[]}"#;
+        assert_eq!(Export::from_json(base).unwrap().format, FORMAT);
+        assert!(Export::from_json(&base.replace("\"format\":4", "\"format\":3")).is_err());
+        assert!(Export::from_json(&base.replace("\"format\":4", "\"format\":5")).is_err());
+        assert!(
+            Export::from_json(&base.replace("\"schema_version\":12", "\"schema_version\":11"))
+                .is_err()
+        );
+        assert!(Export::from_json(&base.replace("\"schema_version\":12,", "")).is_err());
     }
 }

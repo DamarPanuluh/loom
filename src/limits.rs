@@ -26,15 +26,8 @@ pub fn all() -> Vec<Limit> {
             name: "timeout_secs",
             value: crate::runner::DEFAULT_TIMEOUT_SECS,
             unit: "seconds",
-            scope: "validation command runs; journey CLI steps (default)",
-            remedy: "per validation: body key `timeout_seconds`; per journey step: `timeout_secs` in the spec",
-        },
-        Limit {
-            name: "http_timeout_secs",
-            value: crate::journey::DEFAULT_HTTP_TIMEOUT_SECS,
-            unit: "seconds",
-            scope: "journey HTTP steps (default)",
-            remedy: "per journey step: `timeout_secs` in the spec",
+            scope: "validation command runs",
+            remedy: "per validation: body key `timeout_seconds`",
         },
         Limit {
             name: "scan_timeout_secs",

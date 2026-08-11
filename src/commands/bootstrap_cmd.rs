@@ -1,9 +1,10 @@
-//! `loom bootstrap` — cold-start assist that drafts a Proposal of planned
-//! pillar intents from derived signals (registered codefiles, tests, README).
+//! `loom bootstrap` — cold-start assist that drafts a Proposal of behavior
+//! clues from derived signals (registered codefiles, tests, README). The clues
+//! inform authored Journey roots; they are never product roots by themselves.
 //!
 //! Plane: judgment-plane capture only. Never writes verdicts, never sets
 //! `lifecycle=implemented`, never creates `implements`/`governs`/`validates`
-//! edges. The operator adopts items via `loom proposal item adopt --as intent`.
+//! edges. The operator turns the clues into authored Journey artifacts.
 
 use super::{open, pulse};
 use crate::cli::BootstrapCmd;
@@ -24,12 +25,12 @@ pub fn dispatch(graph: Option<&Path>, cmd: BootstrapCmd, json: bool) -> Result<(
 fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     let root = store.root().to_path_buf();
-    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
-    if !intents.is_empty() {
+    let journeys = store.list_nodes(Some(NodeType::Journey), usize::MAX)?;
+    if !journeys.is_empty() {
         bail!(
-            "bootstrap suggest refuses a non-empty intent graph ({} intent(s) already exist) — \
-             use loom door / loom intent add for incremental capture",
-            intents.len()
+            "bootstrap suggest refuses a graph with authored Journeys ({} Journey root(s) already exist) — \
+             use loom door to route incremental product input to a Journey",
+            journeys.len()
         );
     }
     let codefiles = store.list_nodes(Some(NodeType::CodeFile), usize::MAX)?;
@@ -46,10 +47,11 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
     }
 
     let mut raw_lines = vec![
-        "Auto-drafted by loom bootstrap suggest from derived signals.".to_string(),
-        "Adopt with: loom proposal item adopt <id> <n> --as intent --name '…' --description '…'"
+        "Auto-drafted by loom bootstrap suggest from derived repository signals.".to_string(),
+        "Use these clues to author loom.journey/v1 artifacts, then run: loom journey add <spec>"
             .to_string(),
-        "Never treat these as proven — they are planned drafts only.".to_string(),
+        "Never treat inferred code structure as authored product meaning or a root Intent."
+            .to_string(),
         String::new(),
     ];
     for (i, c) in candidates.iter().enumerate() {
@@ -69,7 +71,7 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
         items.push(json!({
             "number": i + 1,
             "text": format!("{} — {}", c.name, c.description),
-            "kind": "intent",
+            "kind": "journey_clue",
             "status": "open",
             "suggested_name": c.name,
             "suggested_description": c.description,
@@ -81,16 +83,16 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
 
     let body = json!({
         "raw": raw,
-        "source": "bootstrap_suggest",
+        "source": "bootstrap_journey_clues",
         "source_path": Value::Null,
         "items": items,
     });
     let title = format!(
-        "bootstrap pillars for {}",
+        "bootstrap Journey clues for {}",
         root.file_name().and_then(|s| s.to_str()).unwrap_or("repo")
     );
     let description = format!(
-        "{} candidate pillar intent(s) from codefiles/tests/README — adopt to planned intents",
+        "{} candidate behavior clue(s) from codefiles/tests/README — use to author Journeys",
         candidates.len()
     );
     let node = store.add_node(NodeType::Proposal, &title, &description, "captured", body)?;
@@ -107,10 +109,7 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
                     "body": node.body,
                 },
                 "candidates": candidates.len(),
-                "next": format!(
-                    "loom proposal item adopt {} <n> --as intent --name '<pillar>' --description '<criterion>'",
-                    crate::model::short(&node.id)
-                ),
+                "next": "author a loom.journey/v1 artifact from the reviewed clues, then loom journey add <spec>",
             }))?
         );
     } else {
@@ -121,22 +120,18 @@ fn suggest(graph: Option<&Path>, json: bool) -> Result<()> {
                 "proposal_id": node.id,
                 "candidates": candidates.len(),
             }),
-            &format!(
-                "loom proposal item adopt {} 1 --as intent --name '<pillar>' --description '<criterion>'",
-                crate::model::short(&node.id)
-            ),
+            "author a loom.journey/v1 artifact, then loom journey add <spec>",
             format!(
-                "bootstrap suggest: proposal '{}' [{}] with {} candidate pillar(s)",
+                "bootstrap suggest: proposal '{}' [{}] with {} Journey clue(s)",
                 node.name,
                 crate::model::short(&node.id),
                 candidates.len()
             ),
         )?;
         println!(
-            "  adopt each: loom proposal item adopt {} <n> --as intent",
-            crate::model::short(&node.id)
+            "  review the clues, author a loom.journey/v1 artifact, then: loom journey add <spec>"
         );
-        println!("  never auto-implements or marks implemented — planned only");
+        println!("  repository signals never become product roots automatically");
     }
     Ok(())
 }

@@ -1,14 +1,21 @@
-journey: loom answers what a change here could reach
+schema: loom.journey/v1
+id: impact
+name: Inspect what a change could reach
+actor: operator
+goal: An operator sees callers and behaviors at risk without losing resolution confidence
+  or unresolved uncertainty.
+inputs: {}
+preconditions:
+- The repository has extracted call relationships for the target symbol.
 steps:
-  - name: impact reports callers and intents at risk
-    intent: loom answers what a change here could reach
-    run: "loom impact door --json"
-    expect:
-      exit_code: 0
-      stdout_contains:
-        - "callers"
-        - "intents_at_risk"
-        - "resolution"
-        - "exact"
-        - "heuristic"
-        - "unresolved_calls"
+- id: inspect-change-impact
+  name: Inspect Change Impact
+  action: Ask what changing the target symbol could reach.
+  expects:
+  - Loom reports callers and behaviors at risk, separates exact from heuristic resolution,
+    and counts unresolved calls.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

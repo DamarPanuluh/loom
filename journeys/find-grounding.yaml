@@ -1,17 +1,21 @@
-journey: find surfaces grounding
+schema: loom.journey/v1
+id: find-grounding
+name: Find a behavior with its grounding
+actor: operator
+goal: Search results explain where matched behavior lives and how confidently that
+  location is known.
+inputs: {}
+preconditions:
+- A behavior has a realizing file, a symbol locator, and recorded grounding evidence.
 steps:
-  - name: find the grounded find behavior
-    intent: find surfaces each matched intent's grounding
-    run: "loom find \"find surfaces each matched intent's grounding\" --exact --json"
-    expect:
-      exit_code: 0
-      stdout_contains:
-        - "groundings"
-        - "path"
-        - "src/commands/discover_cmd.rs"
-        - "locator"
-        - "fn find_cmd"
-        - "role"
-        - "realizes"
-        - "status"
-        - "evidence"
+- id: find-exact-behavior
+  name: Find Exact Behavior
+  action: Find the behavior by its exact name.
+  expects:
+  - The result includes the realizing path, locator, grounding role, inspection state,
+    and evidence.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

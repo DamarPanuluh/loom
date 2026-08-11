@@ -215,6 +215,14 @@ pub fn resolve_locator(
 ) -> Option<LocatorResolution> {
     let content = std::fs::read_to_string(root.join(file)).ok()?;
     let locator = locator.map(str::trim).filter(|l| !l.is_empty())?;
+    // Source anchors are repository-aware navigation identities. Resolving one
+    // requires the registered CodeFile roster and strict global cardinality,
+    // which lives in `locator::resolve_anchor`. More importantly, an anchor is
+    // never a proof observation: returning a Locator Run here would let the
+    // fact store promote a source comment into verified behavioral evidence.
+    if crate::locator::is_anchor_locator(locator) {
+        return None;
+    }
     let extraction = crate::extract::extract(file, &content);
     // One shared parse with proof strength / risk / divergence. Semicolon
     // lists, `Type::method:line`, declaration modifiers, and prose rejection
@@ -315,6 +323,12 @@ pub fn grounding_locator_resolves(root: &Path, file: &str, locator: &str) -> boo
     if locator.is_empty() || crate::locator::is_module_scope(locator) {
         return true;
     }
+    // Callers with a Store must use `locator::validate_for_codefile`, which can
+    // enforce global uniqueness and wrong-file rejection. This legacy helper
+    // deliberately cannot approve an anchor from file-local information.
+    if crate::locator::is_anchor_locator(locator) {
+        return false;
+    }
     resolve_locator(root, file, Some(locator))
         .map(|r| r.match_count > 0)
         .unwrap_or(false)
@@ -389,6 +403,12 @@ pub fn prescreen_probe(
 pub fn seam_probe(root: &Path, file: &str, locator: Option<&str>) -> Option<RunRecord> {
     let content = std::fs::read_to_string(root.join(file)).ok()?;
     let locator = locator.map(str::trim).filter(|l| !l.is_empty())?;
+    // A source anchor is navigation-only regardless of grounding role. Letting
+    // the literal marker satisfy a Seam run would turn the comment itself into
+    // verified evidence for a consumes/configures/verifies claim.
+    if crate::locator::is_anchor_locator(locator) {
+        return None;
+    }
     let present = seam_present(&content, locator);
     Some(record(
         root,

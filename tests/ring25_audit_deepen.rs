@@ -935,6 +935,201 @@ fn ratify_all_seals_a_batch_and_avoids_a_burst() {
     );
 }
 
+fn partitioned_human_ratification_burst(leave_one_uncovered: bool) -> (Tmp, Store, Vec<String>) {
+    // The burst premise is "every judgment inside one minute". These writes
+    // use the real clock, so a run that begins near :50 can straddle the
+    // boundary under load, split the bucket, and fail both callers spuriously.
+    // Park until the fresh minute when close; the assertions stay untouched.
+    let since_minute = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        % 60;
+    if since_minute >= 50 {
+        std::thread::sleep(std::time::Duration::from_secs(61 - since_minute));
+    }
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("partitioned ratification"), false).unwrap();
+    let decision = loom::ratification::HumanDecision::mediated(
+        "Approve all 27 independently reviewed derivation manifests.",
+    )
+    .unwrap();
+    let mut all_subjects = Vec::new();
+
+    // Twenty-five two-Intent manifests and two one-Intent manifests reproduce
+    // the observed 27 accepted manifests / 52 ratified Intents shape.
+    for batch in 0..27 {
+        let batch_size = if batch < 25 { 2 } else { 1 };
+        let subjects = (0..batch_size)
+            .map(|item| intent(&store, &format!("derived behavior {batch}-{item}")))
+            .collect::<Vec<_>>();
+        all_subjects.extend(subjects.iter().cloned());
+
+        if leave_one_uncovered && batch == 26 {
+            store
+                .ratify_intent_from_human(
+                    &subjects[0],
+                    "The human approved this behavior, but no matching batch envelope covers it.",
+                    &decision,
+                )
+                .unwrap();
+
+            // Keep the setup near-identical: a twenty-seventh valid human batch
+            // exists, but it covers only an unrelated subject and cannot fill
+            // the one-subject hole in the burst union.
+            let unrelated = intent(&store, "authorized but unrelated behavior");
+            let digest = loom::batch_auth::subject_digest(std::slice::from_ref(&unrelated));
+            let pre = store
+                .append_journal(
+                    "batch_intent",
+                    &digest,
+                    serde_json::json!({
+                        "operation": "ratify",
+                        "subjects": [&unrelated],
+                        "human_decision": decision,
+                        "evidence": "The human approved an unrelated manifest."
+                    }),
+                )
+                .unwrap();
+            let now = loom::journal::now_iso();
+            let envelope = loom::batch_auth::BatchAuthorization::seal(
+                loom::batch_auth::BatchClaim::Ratification,
+                "ratify",
+                [unrelated],
+                "human",
+                "solo",
+                "Ratify the unrelated reviewed derivation manifest.",
+                vec![format!("journal:{}", pre.id)],
+            )
+            .unwrap()
+            .with_time_bounds(&now, &now)
+            .with_human_decision(decision.clone());
+            loom::batch_auth::append_envelope(&store, &envelope).unwrap();
+            continue;
+        }
+
+        let digest = loom::batch_auth::subject_digest(&subjects);
+        let pre = store
+            .append_journal(
+                "batch_intent",
+                &digest,
+                serde_json::json!({
+                    "operation": "ratify",
+                    "subjects": subjects,
+                    "human_decision": decision,
+                    "evidence": "The human approved this exact derivation manifest."
+                }),
+            )
+            .unwrap();
+        let now = loom::journal::now_iso();
+        let envelope = loom::batch_auth::BatchAuthorization::seal(
+            loom::batch_auth::BatchClaim::Ratification,
+            "ratify",
+            subjects.clone(),
+            "human",
+            "solo",
+            "Ratify the Intents in this independently reviewed derivation manifest.",
+            vec![format!("journal:{}", pre.id)],
+        )
+        .unwrap()
+        .with_time_bounds(&now, &now)
+        .with_human_decision(decision.clone());
+        let entry = loom::batch_auth::append_envelope(&store, &envelope).unwrap();
+        for subject in &subjects {
+            store
+                .ratify_intent_from_human_batch(
+                    subject,
+                    "The human approved this exact derivation manifest.",
+                    &decision,
+                    &entry.id,
+                )
+                .unwrap();
+        }
+    }
+
+    (tmp, store, all_subjects)
+}
+
+#[test]
+fn disjoint_human_sub_batches_collectively_authorize_one_judgment_burst() {
+    let (_tmp, store, subjects) = partitioned_human_ratification_burst(false);
+    assert_eq!(subjects.len(), 52);
+    let fact = store
+        .all_facts()
+        .unwrap()
+        .into_iter()
+        .find(|fact| fact.claim == Claim::Ratification)
+        .unwrap();
+    let minute: String = fact.asserted_at.chars().take(16).collect();
+    let bucket = loom::audit::JudgmentBurstBucket::for_key(
+        &store,
+        &fact.asserted_by,
+        &minute,
+        loom::batch_auth::BatchClaim::Ratification,
+    )
+    .unwrap()
+    .unwrap();
+    let covering = loom::batch_auth::covering_envelopes(
+        &store,
+        &bucket.subjects,
+        bucket.claim,
+        &bucket.actor,
+        &bucket.minute,
+        &bucket.batch_ids,
+        bucket.latest_assertion_millis,
+    )
+    .unwrap()
+    .expect("the exact burst union is covered");
+    assert_eq!(covering.len(), 27);
+
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        found.iter().all(|finding| finding.kind != "judgment_burst"),
+        "27 trusted disjoint sub-batches cover the exact 52-subject burst union: {found:#?}"
+    );
+}
+
+#[test]
+fn partitioned_human_sub_batches_fail_closed_with_one_subject_uncovered() {
+    let (_tmp, store, subjects) = partitioned_human_ratification_burst(true);
+    assert_eq!(subjects.len(), 52);
+    let fact = store
+        .all_facts()
+        .unwrap()
+        .into_iter()
+        .find(|fact| fact.claim == Claim::Ratification)
+        .unwrap();
+    let minute: String = fact.asserted_at.chars().take(16).collect();
+    let bucket = loom::audit::JudgmentBurstBucket::for_key(
+        &store,
+        &fact.asserted_by,
+        &minute,
+        loom::batch_auth::BatchClaim::Ratification,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(bucket.subjects.len(), 52);
+    assert_eq!(
+        loom::batch_auth::covering_envelopes(
+            &store,
+            &bucket.subjects,
+            bucket.claim,
+            &bucket.actor,
+            &bucket.minute,
+            &bucket.batch_ids,
+            bucket.latest_assertion_millis,
+        )
+        .unwrap(),
+        None
+    );
+
+    let found = loom::audit::run(&store).unwrap();
+    assert!(
+        found.iter().any(|finding| finding.kind == "judgment_burst"),
+        "an unrelated extra-only envelope must not cover the one missing burst subject: {found:#?}"
+    );
+}
+
 /// Re-judging burst subjects is NOT a remedy: the fact row for (subject, claim)
 /// is an UPSERT keyed on the subject+claim, so a changed re-judgment rewrites
 /// `asserted_at` to the current minute — the burst simply relocates (and is

@@ -22,7 +22,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
                         "idea_help": PARTIAL_IDEA_HELP,
                         "get_started": [
                             "loom init",
-                            "loom door \"what this codebase should do\""
+                            "loom door \"the user journey this codebase should support\""
                         ],
                     }))?
                 );
@@ -31,7 +31,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
                 println!();
                 println!("  No loom graph here yet.");
                 println!("  → Get started:  loom init");
-                println!("                  then  loom door \"what this codebase should do\"");
+                println!("                  then  loom door \"the user journey this codebase should support\"");
                 println!();
                 println!("  Go deeper:  loom guide");
             }
@@ -44,6 +44,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
         .iter()
         .filter(|n| n.status != "deprecated")
         .count();
+    let journeys = store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len();
     let ladder = crate::maturity::ladder(&store)?;
     let (headline, why) = phase_in_plain_english(&ladder.phase);
 
@@ -55,6 +56,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
                 "intro": WELCOME_INTRO,
                 "idea_help": PARTIAL_IDEA_HELP,
                 "intents": active,
+                "journeys": journeys,
                 "phase": ladder.phase,
                 "state": headline,
                 "next_command": ladder.next_command,
@@ -67,30 +69,30 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
     print_welcome_intro();
     println!();
     println!("  Where you are now:");
-    println!("    {active} intent(s).  {headline}");
+    println!("    {journeys} Journey root(s), {active} technical intent(s).  {headline}");
     println!();
     println!("  → Do this next:  {}", ladder.next_command);
     println!("    {why}");
     println!();
     println!("  Go deeper:  loom status (the ladder)   loom guide (full protocol)");
-    println!("  New idea?   loom door \"what you want the code to do\"");
+    println!("  New idea?   loom door \"the journey you want a user to complete\"");
     println!();
     println!("  (run `loom --help` to see every command)");
     Ok(())
 }
 
-const WELCOME_INTRO: &str = "loom — a living map of what your code is meant to do.";
-const PARTIAL_IDEA_HELP: &str = "You can start with a partial idea. Loom helps the LLM fill technical gaps and surface the product choices that need your judgment, one understandable question at a time.";
+const WELCOME_INTRO: &str = "loom — a living map from authored user Journeys to code and proof.";
+const PARTIAL_IDEA_HELP: &str = "You can start with a partial journey. Loom helps shape the authored root, derive technical Intents, surface a real CLI, and ask for your judgment one understandable question at a time.";
 
 fn print_welcome_intro() {
     println!("{WELCOME_INTRO}");
     println!("  {PARTIAL_IDEA_HELP}");
     println!();
-    println!("  Every \"intent\" is one thing the codebase should do. Loom links each to the");
-    println!("  code that does it, tracks what's proven vs. still owed, and always points you");
+    println!("  Every Journey is an authored root. Loom derives the technical Intents, links them");
+    println!("  to the code and surfaced CLI, tracks what's proven, and always points you");
     println!("  at the single next thing worth doing. You climb a ladder:");
     println!();
-    println!("    seed what it should do → build it → prove it → keep it clean");
+    println!("    author the Journey → derive → build → surface → prove → keep it clean");
 }
 
 /// Translate a compass phase into a human headline + the reason to act. The
@@ -98,8 +100,12 @@ fn print_welcome_intro() {
 fn phase_in_plain_english(phase: &str) -> (&'static str, &'static str) {
     match phase {
         "seed" => (
-            "Nothing's defined yet.",
-            "Tell loom what this codebase is supposed to do — one intent at a time.",
+            "No Journey root is authored yet.",
+            "Author the user behavior first, then register it with `loom journey add <spec>`.",
+        ),
+        "derive" => (
+            "Some Journey steps have no accepted technical meaning yet.",
+            "Derive the smallest falsifiable technical Intents, then ask the human to accept the exact manifest.",
         ),
         "fix" => (
             "Something that was true has broken.",
@@ -108,6 +114,10 @@ fn phase_in_plain_english(phase: &str) -> (&'static str, &'static str) {
         "build" => (
             "Some intents have no working code yet.",
             "Build the next one; loom hands you the intent and what it needs.",
+        ),
+        "surface" => (
+            "A derived Journey has no reusable consumer CLI yet.",
+            "Build the real CLI in the target repo and accept its hash-bound surface manifest.",
         ),
         "coverage" => (
             "Some code isn't tied to any intent.",
@@ -171,6 +181,7 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     // mutating command emits. Session only adds the offer framing on top.
     let pulse = crate::workitem::graph_state(&store)?;
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
+    let journeys = store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len();
     let codefiles = store
         .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
         .len();
@@ -188,13 +199,14 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
             serde_json::to_string_pretty(&serde_json::json!({
                 "graph_state": pulse,
                 "intents": intents,
+                "journeys": journeys,
                 "codefiles": codefiles,
                 "open_completeness_axes": open_axes,
                 "phase": ladder.phase,
                 "recommended": ladder.next_command,
-                "capture_entry": "loom door \"<utterance>\" — capture-first entry for a new topic/story/change",
-                "bootstrap_suggest": if intents == 0 && codefiles > 0 {
-                    Some("loom bootstrap suggest — draft planned pillar intents from codefiles/tests/README")
+                "capture_entry": "loom door \"<utterance>\" — route a new topic/story/change toward a Journey root",
+                "bootstrap_suggest": if journeys == 0 && intents == 0 && codefiles > 0 {
+                    Some("loom bootstrap suggest — recover behavior clues from codefiles/tests/README before authoring Journeys")
                 } else {
                     None
                 },
@@ -226,17 +238,17 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         for r in open_rungs.iter().skip(1).take(2) {
             println!("  - then {}: {}", r.name, r.detail);
         }
-    } else if intents == 0 && codefiles == 0 {
-        println!("  - fresh graph — nothing mapped yet. Start here:");
+    } else if journeys == 0 && codefiles == 0 {
+        println!("  - fresh graph — no Journey root authored yet. Start here:");
         println!("      loom guide                  the driving loop + roles");
         println!("      loom guide --role monitor   watch an upstream you depend on");
-        println!("      loom intent add --name <pillar>   seed what this codebase should do");
-    } else if intents == 0 && codefiles > 0 {
-        println!("  - code registered, no intents yet — draft pillars:");
+        println!("      loom journey add <spec>     register the authored user Journey root");
+    } else if journeys == 0 && codefiles > 0 {
+        println!("  - code registered, no Journey root yet — recover clues, then author one:");
         println!(
-            "      loom bootstrap suggest      Proposal of planned intents from code/tests/README"
+            "      loom bootstrap suggest      Proposal of behavior clues from code/tests/README"
         );
-        println!("      loom intent add --name <pillar>   or seed one by hand");
+        println!("      loom journey add <spec>     register the human-authored Journey root");
     } else {
         println!("  - graph is settled; map more, or just get to work");
     }
@@ -288,27 +300,26 @@ fn operator_loops() -> Vec<serde_json::Value> {
     vec![
         serde_json::json!({
             "mode": "seeding",
-            "purpose": "turn ambiguous product/code understanding into durable graph artifacts",
+            "purpose": "turn ambiguous product understanding into authored Journey roots and accepted projections",
             "caller": "user or orchestrator chooses this when using a stronger model or human operator",
             "prefer": [
                 "loom door <utterance>",
-                "loom next --mode coverage",
+                "loom journey add <spec>",
+                "loom next --mode derive",
                 "loom next --mode build",
-                "loom next --mode elaborate",
-                "loom journey coverage discover",
-                "loom journey prompt <intent>",
+                "loom next --mode surface",
                 "loom rule seed <pack>"
             ],
             "creates": [
-                "intents",
+                "authored Journey roots",
+                "human-approved technical Intent derivations",
+                "real target-repository CLI surfaces",
                 "scenario families",
                 "prerequisite edges",
                 "interface boundaries",
                 "validations",
-                "journey coverage",
-                "journey invariant points",
                 "product questions",
-                "reasoned non-question waivers"
+                "human-authorized Journey exemptions"
             ],
             "forbidden": [
                 "answering product questions for the human",
@@ -323,18 +334,21 @@ fn operator_loops() -> Vec<serde_json::Value> {
             "prefer": [
                 "loom next",
                 "loom next --mode fix",
+                "loom next --mode derive",
+                "loom next --mode surface",
                 "loom next --mode validate",
                 "loom next --mode quality",
                 "loom next --mode analyze",
                 "loom next --mode review",
                 "loom validation run <intent>",
-                "loom journey run <spec>",
+                "loom journey compile <journey> --profile proof",
+                "loom journey run <journey> --profile proof",
                 "loom export --check"
             ],
             "closes": [
                 "failing/stale implementation claims",
                 "unrun validations",
-                "stale journey proofs",
+                "stale compiled Journey proofs",
                 "unmeasured quality rules",
                 "uninspected relationships",
                 "low-confidence review items",
@@ -352,14 +366,14 @@ fn operator_loops() -> Vec<serde_json::Value> {
 fn print_operator_loops() {
     println!("Operator modes — caller chooses the mode/model; evidence still proves truth:");
     println!("  seeding   use a stronger model/human to turn ambiguous understanding into graph artifacts");
-    println!("            create intents, scenarios, prerequisites, validations, journey coverage, invariant points, questions, and reasoned waivers");
+    println!("            author Journey roots, accept technical derivations, build CLI surfaces, and route product questions");
     println!(
         "            do not answer product questions or mark proofs passed without observed runs"
     );
     println!(
         "  draining  use a bounded/cheaper model to close already-routed gaps one packet at a time"
     );
-    println!("            run validations/journeys, inspect stated claims, record evidence, confidence, or blocked prerequisites");
+    println!("            compile/run Journey proof profiles, inspect stated claims, and record observed evidence or blockers");
     println!("            do not invent broad product structure or expand beyond the packet");
     println!("  invariant mode routes work; role controls writes; evidence determines truth.");
 }
@@ -372,7 +386,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                 "role": role,
                 "commands": ["loom sync", "loom next --all", "loom status", "loom coverage", "loom doctor", "loom export --check", "loom door", "loom finding add", "loom question add"],
                 "intake": {
-                    "human_or_external_input": "loom door \"<utterance>\" — capture raw input, route later with inbox mark",
+                    "human_or_external_input": "loom door \"<utterance>\" — capture raw input, route it to an existing or newly authored Journey",
                     "evidence_backed_observation": "loom finding add \"<claim>\" --source code_audit --file <codefile> --evidence \"…\" --impact \"…\" --confidence <n>",
                     "product_question": "loom question add \"<question>\" --intent <intent>",
                     "structured_plan": "loom proposal add --title '…' (--file <path> | --text '…') — decompose into adoptable items",
@@ -403,9 +417,11 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             println!("  loom next --all show every lane queue + compass");
             println!("  loom next       serve one work item + its prompt contract");
             println!("  loom status     rung ladder + the single next move");
-            println!("  loom door       capture a raw utterance before routing it");
+            println!(
+                "  loom door       capture a raw utterance and route it toward a Journey root"
+            );
             println!("Capture routing — pick the entrance by input shape:");
-            println!("  human/external input             loom door \"<utterance>\"        capture raw input; route via inbox mark");
+            println!("  human/external input             loom door \"<utterance>\"        capture raw input; route to a Journey, then mark routed");
             println!("  evidence-backed code/tool smell  loom finding add \"<claim>\" ... capture for finding triage");
             println!("  product decision needed          loom question add \"<question>\" --intent <intent>");
             println!("  structured plan / RFC              loom proposal add               decompose into adoptable items");

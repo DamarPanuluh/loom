@@ -1,14 +1,21 @@
-journey: loom runs a proof and reports the outcome
+schema: loom.journey/v1
+id: runs-proofs
+name: Run a proof and report the observed outcome
+actor: validator
+goal: Loom executes a registered proof itself and records what the process actually
+  did.
+inputs: {}
+preconditions:
+- An implemented behavior has a registered proof that will pass when executed.
 steps:
-  - name: a true command records passed
-    fixture: true
-    intent: loom runs proofs and reports what it observed
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'demo behavior' --description 'does something' --level feature &&
-      loom validation add --graph "$tmp" --name 'true proof' --type test --command 'true' --intent 'demo behavior' &&
-      loom validation run --graph "$tmp" --all &&
-      rm -rf "$tmp"
-    expect:
-      exit_code: 0
-      stdout_contains: ["PASS true proof"]
+- id: run-registered-proof
+  name: Run Registered Proof
+  action: Ask Loom to execute the registered proof.
+  expects:
+  - Loom reports the proof as passing and records the observation rather than accepting
+    a claimed result.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

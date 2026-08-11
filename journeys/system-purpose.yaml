@@ -1,19 +1,32 @@
-journey: loom system purpose
+schema: loom.journey/v1
+id: system-purpose
+name: Maintain a falsifiable graph for codebase work
+actor: operator
+goal: An operator can inspect the living graph, recover why the system exists, and
+  audit its integrity.
+inputs: {}
+preconditions: []
 steps:
-  - name: report the living graph
-    intent: loom maintains a falsifiable graph for LLM-driven codebase work
-    run: "loom status --json"
-    expect:
-      exit_code: 0
-      exists: ["$.graph.graph_id", "$.maturity.rungs", "$.queues"]
-  - name: recover the product intent
-    intent: loom maintains a falsifiable graph for LLM-driven codebase work
-    run: "loom find 'falsifiable graph' --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["loom maintains a falsifiable graph", "groundings"]
-  - name: audit graph integrity
-    intent: loom maintains a falsifiable graph for LLM-driven codebase work
-    run: "loom doctor --json"
-    expect:
-      exit_code: 0
+- id: inspect-living-graph
+  name: Inspect Living Graph
+  action: Inspect the graph's identity, maturity, and routed work.
+  expects:
+  - Loom reports the graph identity, maturity rungs, and queue state.
+  produces: {}
+- id: recover-product-purpose
+  name: Recover Product Purpose
+  action: Find the behavior that states Loom's product purpose.
+  expects:
+  - Loom returns its falsifiable-graph purpose together with the code grounding that
+    realizes it.
+  produces: {}
+- id: audit-graph-integrity
+  name: Audit Graph Integrity
+  action: Audit the graph for integrity violations.
+  expects:
+  - Loom completes an integrity audit and makes any violations explicit.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

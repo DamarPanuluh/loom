@@ -10,6 +10,7 @@
 //!    leaves the process and recorded append-only, so "did loom's context change
 //!    the outcome?" is answerable from the record rather than self-reported.
 
+use loom::mcp::{InspectedMcpRequestKind, McpTranscriptEffect};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
 use loom::store::Store;
 use serde_json::{json, Value};
@@ -72,6 +73,29 @@ fn journal_events(root: &std::path::Path, event: &str) -> Vec<Value> {
         .filter(|e| e.event == event)
         .map(|e| e.payload)
         .collect()
+}
+
+#[test]
+fn journal_tool_makes_local_provenance_explicit_on_the_wire() {
+    let tmp = Tmp::new();
+    let store = seeded(&tmp);
+    store
+        .append_journal(
+            "batch_authorization",
+            "bfixture",
+            json!({"claim":"ratification", "operation":"ratify"}),
+        )
+        .unwrap();
+    drop(store);
+
+    let rows = call(
+        tmp.path(),
+        "loom_journal",
+        json!({"event":"batch_authorization", "limit":1}),
+    );
+    assert_eq!(rows.as_array().unwrap().len(), 1);
+    assert_eq!(rows[0]["origin"], "local");
+    assert_eq!(rows[0]["event"], "batch_authorization");
 }
 
 #[test]
@@ -453,10 +477,11 @@ fn a_failing_tool_and_an_unknown_tool_are_different_conditions() {
     let responses = serve_lines(
         tmp.path(),
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_nope\",\"arguments\":{}}}\n\
-         {\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_context\",\"arguments\":{\"target\":\"nothing in this graph matches\"}}}\n",
+         {\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_context\",\"arguments\":{\"target\":\"nothing in this graph matches\"}}}\n\
+         {\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"ping\",\"params\":{}}\n",
     );
 
-    assert_eq!(responses.len(), 2, "{responses:?}");
+    assert_eq!(responses.len(), 3, "{responses:?}");
     assert_eq!(
         responses[0]["error"]["code"], -32602,
         "an unknown tool is a bad request, not a tool that ran: {:?}",
@@ -467,4 +492,349 @@ fn a_failing_tool_and_an_unknown_tool_are_different_conditions() {
         "a tool that ran and could not answer reports isError: {:?}",
         responses[1]
     );
+    assert_eq!(
+        responses[2]["id"], 3,
+        "the session remains usable after a failing known tool: {responses:?}"
+    );
+    assert_eq!(responses[2]["result"], json!({}));
+}
+
+#[test]
+fn transcript_adapter_drives_one_live_session_and_preserves_every_response() {
+    let tmp = Tmp::new();
+    let store = seeded(&tmp);
+    std::fs::write(
+        tmp.path().join("src/cart.rs"),
+        "pub fn add_item() {}\npub fn checkout() { add_item(); }\n",
+    )
+    .unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+    drop(store);
+
+    let requests = json!([
+        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}},
+        {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}},
+        {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{
+            "name":"loom_impact","arguments":{"target":"add_item"}
+        }},
+        {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{
+            "name":"loom_nope","arguments":{}
+        }},
+        {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{
+            "name":"loom_context","arguments":{"target":"nothing in this graph matches"}
+        }},
+        {"jsonrpc":"2.0","id":6,"method":"ping","params":{}}
+    ]);
+
+    let report = loom::mcp::transcript(Some(tmp.path()), &requests.to_string()).unwrap();
+    assert_eq!(report["protocol"], "json-rpc-2.0");
+    assert_eq!(report["request_count"], 6);
+    assert_eq!(report["response_count"], 6);
+    assert_eq!(report["session_completed"], true);
+    let responses = report["responses"].as_array().unwrap();
+    assert_eq!(
+        responses
+            .iter()
+            .map(|response| response["id"].as_u64().unwrap())
+            .collect::<Vec<_>>(),
+        vec![1, 2, 3, 4, 5, 6],
+        "responses retain wire order: {responses:?}"
+    );
+
+    assert_eq!(responses[0]["result"]["serverInfo"]["name"], "loom");
+    let tools = responses[1]["result"]["tools"].as_array().unwrap();
+    assert!(tools
+        .iter()
+        .any(|tool| { tool["name"] == "loom_impact" && tool["inputSchema"]["type"] == "object" }));
+
+    assert_eq!(responses[2]["result"]["isError"], false);
+    let impact: Value = serde_json::from_str(
+        responses[2]["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(impact["target"], "add_item");
+    assert!(
+        impact["callers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|caller| caller["symbol"] == "checkout"),
+        "live impact contains the extracted caller: {impact}"
+    );
+    assert!(impact["resolution"]["exact"].as_u64().unwrap() >= 1);
+
+    assert_eq!(responses[3]["error"]["code"], -32602);
+    assert!(responses[3].get("result").is_none());
+    assert_eq!(responses[4]["result"]["isError"], true);
+    assert!(responses[4].get("error").is_none());
+    assert_eq!(responses[5]["result"], json!({}));
+}
+
+#[test]
+fn transcript_adapter_rejects_invalid_or_malformed_request_arrays() {
+    for (input, expected) in [
+        ("not-json", "valid JSON"),
+        ("{}", "JSON array"),
+        ("[]", "at least one request"),
+        (r#"[1]"#, "request 1 must be a JSON object"),
+        (
+            r#"[{"jsonrpc":"1.0","id":1,"method":"ping"}]"#,
+            "jsonrpc \"2.0\"",
+        ),
+        (r#"[{"jsonrpc":"2.0","id":1}]"#, "non-empty string method"),
+        (r#"[{"jsonrpc":"2.0","method":"ping"}]"#, "must have an id"),
+        (
+            r#"[{"jsonrpc":"2.0","id":{},"method":"ping"}]"#,
+            "id must be a string or number",
+        ),
+        (
+            r#"[{"jsonrpc":"2.0","id":1,"method":"ping","params":true}]"#,
+            "ping params must be an empty object",
+        ),
+    ] {
+        let error = loom::mcp::transcript(None, input).unwrap_err().to_string();
+        assert!(error.contains(expected), "{input}: {error}");
+    }
+}
+
+#[test]
+fn every_reviewed_mcp_surface_transcript_passes_strict_nonexecuting_inspection() {
+    let manifests = [
+        include_str!("../journeys/surfaces/mcp-in-band.surface.json"),
+        include_str!("../journeys/surfaces/plain-next-not-ratify.surface.json"),
+        include_str!("../journeys/surfaces/ratify-guard.surface.json"),
+        include_str!("../journeys/surfaces/self-audit.surface.json"),
+        include_str!("../journeys/surfaces/system-purpose.surface.json"),
+    ];
+    let mut transcripts = 0;
+    let mut requests = 0;
+    let mut initialize = 0;
+    let mut tools_list = 0;
+    let mut ping = 0;
+    let mut unknown_probe = 0;
+    let mut reads = 0;
+    let mut observes = 0;
+    let mut applies = 0;
+
+    for source in manifests {
+        let manifest: Value = serde_json::from_str(source).unwrap();
+        for operation in manifest["surface"]["operations"].as_array().unwrap() {
+            let argv = operation["argv"].as_array().unwrap();
+            let Some(index) = argv
+                .iter()
+                .position(|token| token.as_str() == Some("--requests-json"))
+            else {
+                continue;
+            };
+            let requests_json = argv[index + 1].as_str().unwrap();
+            let inspected = loom::mcp::inspect_transcript_requests(requests_json)
+                .unwrap_or_else(|error| panic!("{}: {error:#}", operation["id"].as_str().unwrap()));
+            transcripts += 1;
+            requests += inspected.len();
+            for (expected_index, request) in inspected.into_iter().enumerate() {
+                assert_eq!(request.index, expected_index);
+                match request.kind {
+                    InspectedMcpRequestKind::Initialize => initialize += 1,
+                    InspectedMcpRequestKind::ToolsList => tools_list += 1,
+                    InspectedMcpRequestKind::Ping => ping += 1,
+                    InspectedMcpRequestKind::UnknownTool { name } => {
+                        assert_eq!(name, "loom_nope");
+                        unknown_probe += 1;
+                    }
+                    InspectedMcpRequestKind::ToolCall {
+                        effect,
+                        nested_argv,
+                        ..
+                    } => match effect {
+                        McpTranscriptEffect::Read => {
+                            assert!(nested_argv.is_none());
+                            reads += 1;
+                        }
+                        McpTranscriptEffect::ObserveArgv => {
+                            assert_eq!(
+                                nested_argv
+                                    .as_ref()
+                                    .and_then(|argv| argv.first())
+                                    .map(String::as_str),
+                                Some("loom")
+                            );
+                            observes += 1;
+                        }
+                        McpTranscriptEffect::ApplyFragment => {
+                            assert!(nested_argv.is_none());
+                            applies += 1;
+                        }
+                    },
+                }
+            }
+        }
+    }
+
+    assert_eq!(transcripts, 10);
+    assert_eq!(requests, 48);
+    assert_eq!(initialize, 10);
+    assert_eq!(tools_list, 5);
+    assert_eq!(ping, 2);
+    assert_eq!(unknown_probe, 2);
+    assert_eq!(reads, 7);
+    assert_eq!(observes, 11);
+    assert_eq!(applies, 11);
+}
+
+fn inspect_one(request: Value) -> anyhow::Result<Vec<loom::mcp::InspectedMcpRequest>> {
+    loom::mcp::inspect_transcript_requests(&json!([request]).to_string())
+}
+
+fn tool_request(name: &str, arguments: Value) -> Value {
+    json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": name, "arguments": arguments}
+    })
+}
+
+#[test]
+fn transcript_inspector_rejects_envelope_identity_and_tool_argument_escapes() {
+    let duplicate = json!([
+        {"jsonrpc":"2.0","id":1,"method":"ping","params":{}},
+        {"jsonrpc":"2.0","id":1,"method":"ping","params":{}}
+    ]);
+    assert!(
+        loom::mcp::inspect_transcript_requests(&duplicate.to_string())
+            .unwrap_err()
+            .to_string()
+            .contains("repeats an earlier id")
+    );
+
+    for (request, expected) in [
+        (
+            json!({"jsonrpc":"2.0","id":1,"method":"ping","params":{},"extra":true}),
+            "unknown field",
+        ),
+        (
+            json!({"jsonrpc":"2.0","id":1,"method":"notifications/initialized","params":{}}),
+            "not allowed",
+        ),
+        (
+            json!({"jsonrpc":"2.0","id":1,"method":"ping","params":{"root":"/tmp"}}),
+            "empty object",
+        ),
+        (tool_request("loom_impact", json!({})), "target"),
+        (
+            tool_request("loom_impact", json!({"target":"serve","root":"/tmp"})),
+            "unknown field",
+        ),
+        (
+            tool_request("loom_impact", json!({"target":"serve","depth":0})),
+            "minimum",
+        ),
+        (
+            tool_request("loom_impact", json!({"target":"serve","depth":11})),
+            "maximum",
+        ),
+        (
+            tool_request("loom_next", json!({"lane":"build"})),
+            "empty or ratify-lane",
+        ),
+        (
+            tool_request("loom_nope", json!({"command":["loom","status"]})),
+            "empty object",
+        ),
+        (
+            tool_request("arbitrary_tool", json!({})),
+            "not an allowed probe",
+        ),
+    ] {
+        let error = inspect_one(request).unwrap_err().to_string();
+        assert!(error.contains(expected), "expected {expected:?}: {error}");
+    }
+}
+
+#[test]
+fn transcript_inspector_returns_only_strict_bare_loom_observe_argv() {
+    let request = tool_request(
+        "loom_observe",
+        json!({"command":["loom","intent","ratify","fixture","--json"]}),
+    );
+    let inspected = inspect_one(request).unwrap();
+    match &inspected[0].kind {
+        InspectedMcpRequestKind::ToolCall {
+            effect: McpTranscriptEffect::ObserveArgv,
+            nested_argv: Some(argv),
+            ..
+        } => assert_eq!(argv, &["loom", "intent", "ratify", "fixture", "--json"]),
+        other => panic!("unexpected inspection: {other:?}"),
+    }
+
+    for arguments in [
+        json!({"command":[]}),
+        json!({"command":["sh","-c","git push"]}),
+        json!({"command":["loom",1]}),
+        json!({"command":["loom","status"],"timeout":1}),
+        json!({"command":["loom","status"],"for_behavior":"fixture"}),
+    ] {
+        assert!(inspect_one(tool_request("loom_observe", arguments)).is_err());
+    }
+}
+
+#[test]
+fn transcript_inspector_allows_only_needed_adjudication_apply_fragments() {
+    let valid = json!({"fragment":{"adjudications":[{
+        "finding":"finding-id",
+        "verdict":"needed",
+        "reason":"Reviewed only in the detached proof graph."
+    }]}});
+    let inspected = inspect_one(tool_request("loom_apply", valid)).unwrap();
+    assert!(matches!(
+        inspected[0].kind,
+        InspectedMcpRequestKind::ToolCall {
+            effect: McpTranscriptEffect::ApplyFragment,
+            ..
+        }
+    ));
+
+    for fragment in [
+        json!({"intents":[]}),
+        json!({"adjudications":[]}),
+        json!({"adjudications":[{"finding":"f","verdict":"waived","reason":"x"}]}),
+        json!({"adjudications":[{"finding":"f","verdict":"needed","reason":"x","authority":"human"}]}),
+        json!({"adjudications":[{"finding":"","verdict":"needed","reason":"x"}]}),
+    ] {
+        assert!(inspect_one(tool_request("loom_apply", json!({"fragment": fragment}))).is_err());
+    }
+}
+
+#[test]
+fn transcript_cli_emits_one_json_document() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+    let requests = json!([
+        {"jsonrpc":"2.0","id":"init","method":"initialize","params":{}},
+        {"jsonrpc":"2.0","id":"ping","method":"ping","params":{}}
+    ]);
+    let output = loom_command()
+        .arg("--graph")
+        .arg(tmp.path())
+        .arg("mcp")
+        .arg("transcript")
+        .arg("--requests-json")
+        .arg(requests.to_string())
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "transcript failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["request_count"], 2);
+    assert_eq!(report["response_count"], 2);
+    assert_eq!(report["responses"][0]["id"], "init");
+    assert_eq!(report["responses"][1]["id"], "ping");
+    assert_eq!(report["responses"][1]["result"], json!({}));
 }

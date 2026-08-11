@@ -328,10 +328,6 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             r#type,
             command,
             intent,
-            proof_kind,
-            journey_id,
-            repo_native_kind,
-            artifact,
         } => {
             // Enforce the validation-type vocabulary (M-15/I-5): the CLI advertises
             // a finite set, so reject a typo instead of storing an arbitrary string.
@@ -343,33 +339,14 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                 ),
             };
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
-            warn_if_command_already_proves_another(&store, &command, &i.id, None)?;
-            let has_journey_metadata =
-                journey_id.is_some() || repo_native_kind.is_some() || artifact.is_some();
-            if has_journey_metadata && proof_kind.as_deref() != Some("journey") {
-                bail!(
-                    "--journey-id, --repo-native-kind, and --artifact require --proof-kind journey"
-                );
-            }
+            let collision = warn_if_command_already_proves_another(&store, &command, &i.id, None)?;
             // Registration is one fact: a Validation without its Validates
             // edge proves nothing and becomes an orphan that blocks a clean
             // retry. Fail the lane gate before the first mutation, then keep
             // node + edge in one transaction so any later edge error rolls the
             // node back as well.
             store.require_edge_kind_owner(EdgeKind::Validates)?;
-            let mut body = serde_json::json!({ "type": vtype.as_str(), "command": command });
-            if let Some(v) = proof_kind {
-                body["proof_kind"] = serde_json::json!(v);
-            }
-            if let Some(v) = journey_id {
-                body["journey_id"] = serde_json::json!(v);
-            }
-            if let Some(v) = repo_native_kind {
-                body["repo_native_kind"] = serde_json::json!(v);
-            }
-            if let Some(v) = artifact {
-                body["artifact"] = serde_json::json!(v);
-            }
+            let body = serde_json::json!({ "type": vtype.as_str(), "command": command });
             let tx = store.begin()?;
             let val = store.add_node(NodeType::Validation, &name, "", "not_run", body)?;
             let edge = store.ensure_edge(EdgeKind::Validates, &val.id, &i.id)?;
@@ -381,6 +358,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                     "validation": node_json(&val),
                     "intent": node_json(&i),
                     "edge": edge,
+                    "collision": collision,
                 }),
                 "loom status",
                 format!("added validation '{}' → '{}'", val.name, i.name),
@@ -482,11 +460,12 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
             let mut body = val.body.clone();
+            let mut collision = ProofCommandCollision::none("");
             if let Some(t) = &r#type {
                 body["type"] = serde_json::json!(t);
             }
             if let Some(c) = &command {
-                warn_if_command_already_proves_another(&store, c, "", Some(&val.id))?;
+                collision = warn_if_command_already_proves_another(&store, c, "", Some(&val.id))?;
                 body["command"] = serde_json::json!(c);
                 // Re-entering the command through the local CLI is the explicit
                 // approval step for a command quarantined during import.
@@ -530,6 +509,7 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                         "status": current.status,
                         "body": body,
                     },
+                    "collision": collision,
                 }),
                 "loom status",
                 format!("updated validation '{}'", current.name),
@@ -659,7 +639,51 @@ fn covered_hashes(
         .collect())
 }
 
-/// Say so when a command is already registered as another behavior's proof.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+struct PriorProofBehavior {
+    id: String,
+    name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+struct ProofCommandCollision {
+    detected: bool,
+    command: String,
+    prior_behavior_count: usize,
+    prior_behaviors: Vec<PriorProofBehavior>,
+}
+
+impl ProofCommandCollision {
+    fn none(command: &str) -> Self {
+        Self {
+            detected: false,
+            command: command.to_string(),
+            prior_behavior_count: 0,
+            prior_behaviors: Vec::new(),
+        }
+    }
+
+    fn warn(&self) {
+        if !self.detected {
+            return;
+        }
+        eprintln!(
+            "warning: `{}` is already the proof of {} other behavior(s): {}.\n\
+             \x20        One command exercises at most one of them; the rest stand on whatever it\n\
+             \x20        really tests. Narrow this proof to the test that asserts THIS behavior,\n\
+             \x20        or accept it knowingly — `loom smells` will keep reporting it.",
+            self.command,
+            self.prior_behavior_count,
+            self.prior_behaviors
+                .iter()
+                .map(|behavior| format!("'{}'", behavior.name))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+}
+
+/// Report and say so when a command already proves another behavior.
 ///
 /// A warning, never a refusal. A ring genuinely covering several behaviors is a
 /// legitimate shape — fifteen of this repo's shared commands are exactly that —
@@ -676,40 +700,39 @@ fn warn_if_command_already_proves_another(
     command: &str,
     intent_id: &str,
     skip_validation: Option<&str>,
-) -> Result<()> {
+) -> Result<ProofCommandCollision> {
     let command = command.trim();
     if command.is_empty() {
-        return Ok(());
+        return Ok(ProofCommandCollision::none(command));
     }
-    let mut others: Vec<String> = Vec::new();
+    let mut prior_behaviors = Vec::new();
     for val_id in store.validations_with_command(command, skip_validation)? {
         for e in store.edges_with(Some(EdgeKind::Validates), Some(&val_id), None)? {
             if e.to_id == intent_id {
                 continue;
             }
             if let Some(other) = store.get_node(&e.to_id)? {
-                others.push(other.name);
+                prior_behaviors.push(PriorProofBehavior {
+                    id: other.id,
+                    name: other.name,
+                });
             }
         }
     }
-    others.sort();
-    others.dedup();
-    if others.is_empty() {
-        return Ok(());
-    }
-    eprintln!(
-        "warning: `{command}` is already the proof of {} other behavior(s): {}.\n\
-         \x20        One command exercises at most one of them; the rest stand on whatever it\n\
-         \x20        really tests. Narrow this proof to the test that asserts THIS behavior,\n\
-         \x20        or accept it knowingly — `loom smells` will keep reporting it.",
-        others.len(),
-        others
-            .iter()
-            .map(|n| format!("'{n}'"))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-    Ok(())
+    prior_behaviors.sort_by(|left, right| {
+        left.name
+            .cmp(&right.name)
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    prior_behaviors.dedup_by(|left, right| left.id == right.id);
+    let collision = ProofCommandCollision {
+        detected: !prior_behaviors.is_empty(),
+        command: command.to_string(),
+        prior_behavior_count: prior_behaviors.len(),
+        prior_behaviors,
+    };
+    collision.warn();
+    Ok(collision)
 }
 
 fn mark_validation(
@@ -1239,6 +1262,8 @@ pub(crate) fn observe_run(
         "observed": true,
         "command": command,
         "exit_code": run.exit_code,
+        "stdout_excerpt": run.stdout_excerpt,
+        "stderr_excerpt": run.stderr_excerpt,
         "covered": run.covered.keys().collect::<Vec<_>>(),
         "journal": entry.id,
         "bound_to": bound,

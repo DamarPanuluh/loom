@@ -7,8 +7,8 @@
 //! was produced correctly.
 //!
 //! That is not theoretical. `loom observe` held the graph's write lock across
-//! its own child, so any command that also opened the graph — and loom's own
-//! journey proofs are all `loom journey run …` — blocked on its observer and
+//! its own child, so any command that also opened the graph — including a
+//! compiled Journey profile settling proof — blocked on its observer and
 //! exited non-zero. loom recorded a FAILING verdict against a behavior that
 //! passes: a false fact, anchored, `verified`, written by the component whose
 //! whole purpose is honest observation. Nothing in the spine could have caught
@@ -114,7 +114,7 @@ fn no_runner_holds_the_graph_while_it_observes() {
         let intent = seeded(tmp.path());
 
         // The proof's command opens the SAME graph for writing, exactly as
-        // `loom journey run` and `loom sync` do.
+        // compiled Journey settlement and `loom sync` do.
         let child = format!(
             "{} --graph {} sync",
             shell_token(&loom_bin()),

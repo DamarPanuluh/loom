@@ -1,0 +1,269 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "human-asked",
+  "journey_hash": "3ce94e731a0791e0",
+  "surface": {
+    "id": "human-asked-cli",
+    "title": "Present and resume a host-mediated human decision",
+    "identity": "loom intent update and next --mode ratify with intrinsic human decision",
+    "codefile": "src/commands.rs",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "intent",
+          "update",
+          "428f2b0e0a8d55edc61caad0099f2ad1",
+          "--description",
+          "The host offers only Keep or Remove and requires the human to construct a terminal command; it provides no evidence, recommendation, or revision path.",
+          "--reason",
+          "Journey proof fixture: create criterion drift only inside the local snapshot"
+        ],
+        "id": "create-criterion-drift",
+        "output": {
+          "assertions": [
+            {
+              "equals": "428f2b0e0a8d55edc61caad0099f2ad1",
+              "id": "setup-target-id",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "human decisions are presented conversationally",
+              "id": "setup-target-name",
+              "pointer": "/intent/name",
+              "type": "string"
+            },
+            {
+              "equals": "The host offers only Keep or Remove and requires the human to construct a terminal command; it provides no evidence, recommendation, or revision path.",
+              "id": "setup-changed-criterion",
+              "pointer": "/intent/description",
+              "type": "string"
+            },
+            {
+              "equals": "implemented",
+              "id": "setup-target-still-implemented",
+              "pointer": "/intent/status",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "setup-is-redefinition",
+              "pointer": "/reword",
+              "type": "boolean"
+            },
+            {
+              "id": "setup-reopen-count",
+              "pointer": "/reopened_edges",
+              "type": "integer"
+            },
+            {
+              "equals": "Journey proof fixture: create criterion drift only inside the local snapshot",
+              "id": "setup-reason",
+              "pointer": "/reason",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Redefine one genuinely ratified behavior only inside the local snapshot"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "next",
+          "--mode",
+          "ratify"
+        ],
+        "id": "present-decision",
+        "output": {
+          "assertions": [
+            {
+              "equals": "ratify",
+              "id": "present-mode",
+              "pointer": "/work_item/mode",
+              "type": "string"
+            },
+            {
+              "equals": "human",
+              "id": "present-owner",
+              "pointer": "/work_item/owner_role",
+              "type": "string"
+            },
+            {
+              "equals": "intent",
+              "id": "present-target-kind",
+              "pointer": "/work_item/target/kind",
+              "type": "string"
+            },
+            {
+              "id": "present-target-id",
+              "matches": "^[0-9a-f]{32}$",
+              "pointer": "/work_item/target/id",
+              "type": "string"
+            },
+            {
+              "id": "present-target-name",
+              "matches": "\\S",
+              "pointer": "/work_item/target/name",
+              "type": "string"
+            },
+            {
+              "contains": "meaning drifted: '",
+              "id": "present-drift-kind",
+              "pointer": "/work_item/reason",
+              "type": "string"
+            },
+            {
+              "contains": "redefined after ratification — the words changed under the yes",
+              "id": "present-drift-evidence",
+              "pointer": "/work_item/reason",
+              "type": "string"
+            },
+            {
+              "equals": "target",
+              "id": "present-context-role",
+              "pointer": "/work_item/context/linked_entities/0/role",
+              "type": "string"
+            },
+            {
+              "equals": "intent",
+              "id": "present-context-kind",
+              "pointer": "/work_item/context/linked_entities/0/kind",
+              "type": "string"
+            },
+            {
+              "id": "present-context-id",
+              "matches": "^[0-9a-f]{32}$",
+              "pointer": "/work_item/context/linked_entities/0/id",
+              "type": "string"
+            },
+            {
+              "id": "present-current-meaning",
+              "matches": "\\S",
+              "pointer": "/work_item/context/linked_entities/0/description",
+              "type": "string"
+            },
+            {
+              "equals": "implemented",
+              "id": "present-context-status",
+              "pointer": "/work_item/context/linked_entities/0/status",
+              "type": "string"
+            },
+            {
+              "contains": "remain a wanted behavior?",
+              "id": "present-question",
+              "pointer": "/work_item/prompt_contract/human_gate/question",
+              "type": "string"
+            },
+            {
+              "contains": "recommend one option",
+              "id": "present-recommendation-required",
+              "pointer": "/work_item/prompt_contract/human_gate/recommendation",
+              "type": "string"
+            },
+            {
+              "contains": "evidence",
+              "id": "present-recommendation-evidence",
+              "pointer": "/work_item/prompt_contract/human_gate/recommendation",
+              "type": "string"
+            },
+            {
+              "contains": "never treat the recommendation as the decision",
+              "id": "present-recommendation-not-decision",
+              "pointer": "/work_item/prompt_contract/human_gate/recommendation",
+              "type": "string"
+            },
+            {
+              "equals": "ratify",
+              "id": "present-keep-id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "Keep behavior",
+              "id": "present-keep-label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/0/label",
+              "type": "string"
+            },
+            {
+              "equals": "Ratify the current criterion as wanted and continue proving or maintaining it.",
+              "id": "present-keep-description",
+              "pointer": "/work_item/prompt_contract/human_gate/options/0/description",
+              "type": "string"
+            },
+            {
+              "equals": "reject",
+              "id": "present-remove-id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/1/id",
+              "type": "string"
+            },
+            {
+              "equals": "Remove behavior",
+              "id": "present-remove-label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/1/label",
+              "type": "string"
+            },
+            {
+              "equals": "Reject it as unwanted; Loom will track any live implementation as removal work.",
+              "id": "present-remove-description",
+              "pointer": "/work_item/prompt_contract/human_gate/options/1/description",
+              "type": "string"
+            },
+            {
+              "equals": "revise",
+              "id": "present-revise-id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/2/id",
+              "type": "string"
+            },
+            {
+              "equals": "Revise criterion",
+              "id": "present-revise-label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/2/label",
+              "type": "string"
+            },
+            {
+              "equals": "Correct what the behavior should mean before deciding whether to keep it.",
+              "id": "present-revise-description",
+              "pointer": "/work_item/prompt_contract/human_gate/options/2/description",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "present-exactly-three-options",
+              "pointer": "/work_item/prompt_contract/human_gate/options/3"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Project the changed ratified behavior as a structured conversational human gate"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "create-criterion-drift"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "present-decision",
+      "step_id": "present-decision"
+    },
+    {
+      "human_decision": {
+        "operation_id": "present-decision",
+        "pointer": "/work_item"
+      },
+      "step_id": "record-human-choice"
+    }
+  ]
+}

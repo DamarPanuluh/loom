@@ -62,6 +62,16 @@ pub enum Command {
         #[command(subcommand)]
         cmd: CodefileCmd,
     },
+    /// Inspect whether an implemented Intent or cohesive bundle is ready for a semantic Git checkpoint.
+    Checkpoint {
+        #[command(subcommand)]
+        cmd: CheckpointCmd,
+    },
+    /// Rehearse the fresh Journey-root release gates without releasing anything.
+    Release {
+        #[command(subcommand)]
+        cmd: ReleaseCmd,
+    },
     /// Write the deterministic export (loom.graph.json).
     Export {
         /// Exit non-zero if the committed export drifts from the live graph.
@@ -131,7 +141,7 @@ pub enum Command {
         #[command(subcommand)]
         cmd: EdgeCmd,
     },
-    /// Capture a raw utterance as an inbox item (the entrance).
+    /// Capture a raw product utterance and route it toward an authored Journey root.
     Door { utterance: String },
     /// Inbox commands (the single free-form input boundary).
     Inbox {
@@ -185,7 +195,7 @@ pub enum Command {
         /// Intent name, id, or unique fragment.
         intent: String,
     },
-    /// Pull one read-only context packet for an intent, registered file, or query.
+    /// Pull one read-only context packet for a Journey, Intent, registered file, or query.
     Context {
         /// Intent id/name/prefix, registered codefile path, or free-text query.
         target: String,
@@ -294,7 +304,7 @@ pub enum Command {
         #[command(subcommand)]
         cmd: JudgmentCmd,
     },
-    /// Journey proof, coverage, and invariant-point commands.
+    /// Author Journey roots, project technical Intents and CLI surfaces, then prove them.
     Journey {
         #[command(subcommand)]
         cmd: JourneyCmd,
@@ -404,8 +414,8 @@ pub enum Command {
         #[command(subcommand)]
         cmd: GraphCmd,
     },
-    /// Cold-start assist: draft a Proposal of planned pillar intents from
-    /// derived signals (codefiles, tests, README). Never auto-verdicts.
+    /// Cold-start assist: recover candidate behavior from code as input to
+    /// authored Journeys. Never treats inferred Intents as product roots.
     Bootstrap {
         #[command(subcommand)]
         cmd: BootstrapCmd,
@@ -416,8 +426,12 @@ pub enum Command {
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 pub enum ModeArg {
     Fix,
+    /// Project authored Journey steps into human-approved technical Intents.
+    Derive,
     Validate,
     Build,
+    /// Build a reusable CLI projection for a fully derived Journey.
+    Surface,
     Coverage,
     Quality,
     /// Alias: discovery.
@@ -442,8 +456,10 @@ impl ModeArg {
     pub fn as_str(self) -> &'static str {
         match self {
             ModeArg::Fix => "fix",
+            ModeArg::Derive => "derive",
             ModeArg::Validate => "validate",
             ModeArg::Build => "build",
+            ModeArg::Surface => "surface",
             ModeArg::Coverage => "coverage",
             ModeArg::Quality => "quality",
             ModeArg::Analyze => "analyze",
@@ -568,20 +584,5 @@ mod tests {
             modes, lanes,
             "the CLI --mode enum and the MCP lane enum must serve the same lanes"
         );
-    }
-
-    #[test]
-    fn journey_coverage_help_uses_the_derived_strength_scale() {
-        let mut cmd = Cli::command();
-        let coverage = cmd
-            .find_subcommand_mut("journey")
-            .and_then(|journey| journey.find_subcommand_mut("coverage"))
-            .expect("journey coverage command");
-        let mut help = Vec::new();
-        coverage.write_long_help(&mut help).unwrap();
-        let help = String::from_utf8(help).unwrap();
-        assert!(help.contains("S3-or-stronger"), "{help}");
-        assert!(!help.contains("L5"), "{help}");
-        assert!(!help.contains("L6"), "{help}");
     }
 }

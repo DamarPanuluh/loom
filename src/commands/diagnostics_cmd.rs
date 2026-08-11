@@ -1101,21 +1101,31 @@ pub(crate) fn impact_report(
     depth: usize,
 ) -> Result<serde_json::Value> {
     let cg = crate::callgraph::build(store)?;
+    let anchor = if crate::locator::is_anchor_locator(target) {
+        Some(crate::locator::resolve_anchor(store, target)?)
+    } else {
+        None
+    };
 
-    // A file target means "everything this file defines".
-    let symbols: Vec<String> = match store.codefiles()?.into_iter().find(|c| c.name == target) {
-        Some(cf) => store
-            .get_facet(
-                &cf.id,
-                TargetKind::Node,
-                crate::seed::SYMBOL_FINGERPRINTS_KEY,
-            )?
-            .and_then(|j| {
-                serde_json::from_str::<std::collections::BTreeMap<String, String>>(&j).ok()
-            })
-            .map(|m| m.keys().cloned().collect())
-            .unwrap_or_default(),
-        None => vec![target.to_string()],
+    // A file target means "everything this file defines". An anchor means its
+    // currently attached callable declaration; configuration entries still
+    // return exact navigation and graph ownership without inventing a call.
+    let symbols: Vec<String> = match &anchor {
+        Some(anchor) => anchor.callable_symbol.iter().cloned().collect(),
+        None => match store.codefiles()?.into_iter().find(|c| c.name == target) {
+            Some(cf) => store
+                .get_facet(
+                    &cf.id,
+                    TargetKind::Node,
+                    crate::seed::SYMBOL_FINGERPRINTS_KEY,
+                )?
+                .and_then(|j| {
+                    serde_json::from_str::<std::collections::BTreeMap<String, String>>(&j).ok()
+                })
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default(),
+            None => vec![target.to_string()],
+        },
     };
 
     let mut callers: Vec<crate::callgraph::Caller> = Vec::new();
@@ -1138,8 +1148,13 @@ pub(crate) fn impact_report(
         .collect();
     let mut at_risk: Vec<serde_json::Value> = Vec::new();
     let mut seen_intents = std::collections::BTreeSet::new();
-    for c in &callers {
-        let Some(cf) = codefiles_by_name.get(&c.file) else {
+    let mut reached_files: std::collections::BTreeSet<&str> =
+        callers.iter().map(|caller| caller.file.as_str()).collect();
+    if let Some(anchor) = &anchor {
+        reached_files.insert(anchor.file.as_str());
+    }
+    for file in reached_files {
+        let Some(cf) = codefiles_by_name.get(file) else {
             continue;
         };
         for e in store.realizing_implementers(&cf.id)? {
@@ -1169,6 +1184,19 @@ pub(crate) fn impact_report(
         .count();
     Ok(serde_json::json!({
         "target": target,
+        "anchor": anchor.as_ref().map(|anchor| serde_json::json!({
+            "id": anchor.id,
+            "locator": anchor.locator,
+            "marker": anchor.marker,
+            "codefile": anchor.file,
+            "entry": {
+                "kind": anchor.entry_kind,
+                "name": anchor.entry_name,
+                "line_start": anchor.line_start,
+                "line_end": anchor.line_end,
+                "callable_symbol": anchor.callable_symbol,
+            }
+        })),
         "depth": depth,
         "callers": callers,
         "intents_at_risk": at_risk,
@@ -1208,6 +1236,17 @@ pub(crate) fn impact_cmd(
     let unresolved = report["unresolved_calls"].as_u64().unwrap_or(0);
 
     println!("impact of {target} (depth {depth}):");
+    if let Some(anchor) = report["anchor"].as_object() {
+        let entry = &anchor["entry"];
+        println!(
+            "  anchor resolves to {}:{}-{} ({} {})",
+            anchor["codefile"].as_str().unwrap_or(""),
+            entry["line_start"].as_u64().unwrap_or(0),
+            entry["line_end"].as_u64().unwrap_or(0),
+            entry["kind"].as_str().unwrap_or("entry"),
+            entry["name"].as_str().unwrap_or("")
+        );
+    }
     if callers.is_empty() {
         println!("  nothing in this graph calls it — a leaf, or a seam loom cannot see");
     }
@@ -1336,13 +1375,21 @@ pub(crate) fn absorb_cmd(graph: Option<&Path>, confirm: bool, json: bool) -> Res
     let items = crate::absorb::observe(&store, &root)?;
     if items.is_empty() {
         if json {
-            println!("{}", serde_json::json!({ "items": [], "proposal": null }));
+            println!(
+                "{}",
+                serde_json::json!({
+                    "items": [],
+                    "proposal": null,
+                    "persisted_proposal": null,
+                })
+            );
         } else {
             println!("nothing to absorb — the graph already reflects the tree");
         }
         return Ok(());
     }
     let proposal = crate::absorb::record(&store, &items)?;
+    let persisted_proposal = super::node_json(&proposal);
 
     // `--confirm` adopts only what needs nothing from a human. The behavioral
     // criterion is the one thing loom cannot derive, so an item that wants one
@@ -1352,7 +1399,8 @@ pub(crate) fn absorb_cmd(graph: Option<&Path>, confirm: bool, json: bool) -> Res
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
-                "proposal": proposal.id,
+                "proposal": proposal.id.clone(),
+                "persisted_proposal": persisted_proposal,
                 "items": items,
                 "ready": ready.len(),
                 "needs_you": items.len() - ready.len(),

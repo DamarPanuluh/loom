@@ -1,13 +1,23 @@
-journey: plain next never serves a human-only ratify packet
+schema: loom.journey/v1
+id: plain-next-not-ratify
+name: Keep human decisions out of autonomous routing
+actor: autonomous worker
+goal: Ordinary next-work routing continues with autonomous work and never interrupts
+  itself with a ratification decision.
+inputs: {}
+preconditions:
+- At least one autonomous work lane contains actionable residue.
+- A separate human-only ratification decision is pending.
 steps:
-  - name: default next serves builder work, not the ratify lane
-    fixture: true
-    intent: plain loom next never interrupts autonomous work with a human decision
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature &&
-      loom next --graph "$tmp" --json &&
-      rm -rf "$tmp"
-    expect:
-      exit_code: 0
-      stdout_contains: ['"mode": "build"']
+- id: request-ordinary-next-work
+  name: Request Ordinary Next Work
+  action: Ask Loom for the next ordinary work item.
+  expects:
+  - Loom serves the highest-priority autonomous work packet and does not serve a
+    human-only decision packet.
+  - The pending human decision remains available through explicit ratify mode.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

@@ -12,7 +12,7 @@
 //! intent's meaning changes. The `elaborate` queue drains open axes
 //! cognitively; questions route to the human through the inbox.
 
-use crate::model::{EdgeKind, Node, NodeType, TargetKind};
+use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
 use anyhow::bail;
@@ -63,6 +63,543 @@ pub struct Scorecard {
     pub axes: Vec<AxisState>,
     /// Number of axes in state `open`.
     pub open: usize,
+}
+
+/// Read-time Journey maturity. None of these booleans is stored: each is a
+/// projection over the authored semantic hash, its current projections, the
+/// target repository, and the proof Loom actually observed.
+#[derive(Debug, Clone, Serialize)]
+pub struct JourneyReadiness {
+    pub journey_id: String,
+    pub journey_name: String,
+    pub semantic_hash: String,
+    pub step_ids: Vec<String>,
+    pub authored: bool,
+    pub derived: bool,
+    pub implemented: bool,
+    pub surfaced: bool,
+    pub compiled: bool,
+    pub proven: bool,
+    pub realized: bool,
+    pub derivations_ratified: bool,
+    pub derived_intent_ids: Vec<String>,
+    pub derive_gaps: Vec<String>,
+    pub surface_gaps: Vec<String>,
+}
+
+/// One independently closable item in the derive queue. Several gaps may name
+/// the same Journey; the full roster enumerates them so queue depth remains
+/// exactly the number the lane advertises.
+#[derive(Debug, Clone, Serialize)]
+pub struct JourneyDeriveGap {
+    pub journey_id: String,
+    pub kind: String,
+    pub subject_id: String,
+    pub subject_name: String,
+    pub detail: String,
+}
+
+/// One Journey eligible for surface work. Surface work is deliberately held
+/// until every current derivation is ratified and realizing-grounded.
+#[derive(Debug, Clone, Serialize)]
+pub struct JourneySurfaceGap {
+    pub journey_id: String,
+    pub detail: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct JourneyExemption {
+    kind: String,
+    reason: String,
+    human_decision_digest: String,
+}
+
+/// A Journey projection edge is current when it is freshly accepted or has a
+/// passing inspection. `independent` means the relationship was inspected and
+/// found not to hold, so it cannot satisfy readiness.
+fn projection_current(edge: &Edge) -> bool {
+    matches!(
+        edge.status,
+        InspectionStatus::Uninspected | InspectionStatus::Passing
+    )
+}
+
+fn canonicalize_json(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => {
+            let sorted: std::collections::BTreeMap<String, serde_json::Value> = map
+                .iter()
+                .map(|(key, value)| (key.clone(), canonicalize_json(value)))
+                .collect();
+            serde_json::to_value(sorted).expect("a JSON map remains serializable")
+        }
+        serde_json::Value::Array(values) => {
+            serde_json::Value::Array(values.iter().map(canonicalize_json).collect())
+        }
+        other => other.clone(),
+    }
+}
+
+fn parse_canonical_json(raw: &str) -> Option<serde_json::Value> {
+    let parsed: serde_json::Value = serde_json::from_str(raw).ok()?;
+    let canonical = canonicalize_json(&parsed);
+    (serde_json::to_string(&canonical).ok()?.as_str() == raw).then_some(canonical)
+}
+
+/// Only the dedicated, human-authorized Journey exemption exempts an Intent
+/// from ancestry. A malformed, whitespace-padded, or semantically empty JSON
+/// value is treated as no exemption at all.
+pub fn intent_journey_exempt(store: &Store, intent_id: &str) -> Result<bool> {
+    let Some(raw) = store.get_facet(intent_id, TargetKind::Node, "journey_exemption")? else {
+        return Ok(false);
+    };
+    let Some(value) = parse_canonical_json(&raw) else {
+        return Ok(false);
+    };
+    let Ok(exemption) = serde_json::from_value::<JourneyExemption>(value) else {
+        return Ok(false);
+    };
+    Ok(!exemption.kind.trim().is_empty()
+        && !exemption.reason.trim().is_empty()
+        && !exemption.human_decision_digest.trim().is_empty())
+}
+
+fn exact_string_array(value: Option<&serde_json::Value>) -> Option<Vec<String>> {
+    let values = value?.as_array()?;
+    let mut out = Vec::with_capacity(values.len());
+    let mut seen = std::collections::BTreeSet::new();
+    for value in values {
+        let item = value.as_str()?.trim();
+        if item.is_empty() || !seen.insert(item.to_string()) {
+            return None;
+        }
+        out.push(item.to_string());
+    }
+    Some(out)
+}
+
+fn exact_facet_array(store: &Store, edge_id: &str, key: &str) -> Result<Option<Vec<String>>> {
+    let Some(raw) = store.get_facet(edge_id, TargetKind::Edge, key)? else {
+        return Ok(None);
+    };
+    let Some(value) = parse_canonical_json(&raw) else {
+        return Ok(None);
+    };
+    Ok(exact_string_array(Some(&value)))
+}
+
+fn hash_bound(store: &Store, edge: &Edge, semantic_hash: &str) -> Result<bool> {
+    Ok(store
+        .get_facet(&edge.id, TargetKind::Edge, "journey_hash")?
+        .as_deref()
+        == Some(semantic_hash))
+}
+
+/// Parse the canonical binding union shared by acceptance, readiness, and
+/// doctor. Machine operations are unique executable witnesses. An intrinsic
+/// human decision instead points back to a machine operation bound by an
+/// earlier authored step; it completes its own step without becoming another
+/// CLI witness.
+pub(crate) fn exact_surface_bindings(
+    raw: &str,
+    step_ids: &[&str],
+    operations: &[crate::journey::CliOperation],
+) -> Option<Vec<crate::journey::SurfaceBinding>> {
+    let value = parse_canonical_json(raw)?;
+    let bindings = serde_json::from_value::<Vec<crate::journey::SurfaceBinding>>(value).ok()?;
+    if bindings.len() != step_ids.len() {
+        return None;
+    }
+
+    let mut operation_ids = std::collections::BTreeSet::new();
+    for operation in operations {
+        if operation.id.trim().is_empty() || !operation_ids.insert(operation.id.as_str()) {
+            return None;
+        }
+    }
+
+    let mut seen_steps = std::collections::BTreeSet::new();
+    let mut bound_operations = std::collections::BTreeSet::new();
+    let mut prior_operations = std::collections::BTreeSet::new();
+    for (binding, expected_step) in bindings.iter().zip(step_ids) {
+        let step_id = binding.step_id();
+        if step_id != *expected_step || step_id.trim().is_empty() || !seen_steps.insert(step_id) {
+            return None;
+        }
+        match binding {
+            crate::journey::SurfaceBinding::Operation(binding) => {
+                let operation_id = binding.operation_id.as_str();
+                if operation_id.trim().is_empty()
+                    || !operation_ids.contains(operation_id)
+                    || !bound_operations.insert(operation_id)
+                {
+                    return None;
+                }
+                prior_operations.insert(operation_id);
+            }
+            crate::journey::SurfaceBinding::HumanDecision(binding) => {
+                let source = &binding.human_decision;
+                if source.validate().is_err()
+                    || !operation_ids.contains(source.operation_id.as_str())
+                    || !prior_operations.contains(source.operation_id.as_str())
+                {
+                    return None;
+                }
+            }
+        }
+    }
+    Some(bindings)
+}
+
+fn exact_operation_bindings(
+    store: &Store,
+    edge_id: &str,
+    step_ids: &[String],
+    operations: &[crate::journey::CliOperation],
+) -> Result<Option<Vec<crate::journey::SurfaceBinding>>> {
+    let Some(raw) = store.get_facet(edge_id, TargetKind::Edge, "operation_bindings")? else {
+        return Ok(None);
+    };
+    let expected_order: Vec<&str> = step_ids.iter().map(String::as_str).collect();
+    Ok(exact_surface_bindings(&raw, &expected_order, operations))
+}
+
+fn current_derivation(
+    store: &Store,
+    edge: &Edge,
+    semantic_hash: &str,
+    authored_steps: &[String],
+) -> Result<Option<Vec<String>>> {
+    if !projection_current(edge) || !hash_bound(store, edge, semantic_hash)? {
+        return Ok(None);
+    }
+    let Some(mapped) = exact_facet_array(store, &edge.id, "step_ids")? else {
+        return Ok(None);
+    };
+    let authored: std::collections::BTreeSet<&str> =
+        authored_steps.iter().map(String::as_str).collect();
+    if mapped.iter().any(|step| !authored.contains(step.as_str())) {
+        return Ok(None);
+    }
+    // The edge facet's order is canonical Journey order, never caller order.
+    let expected: Vec<String> = authored_steps
+        .iter()
+        .filter(|step| mapped.contains(step))
+        .cloned()
+        .collect();
+    Ok((mapped == expected).then_some(mapped))
+}
+
+fn valid_cli_interface(interface: &Node) -> bool {
+    interface.node_type == NodeType::InterfaceSurface
+        && interface.status != "quarantined"
+        && interface.body.get("schema").and_then(|v| v.as_str())
+            == Some("loom.interface-surface/v1")
+        && interface.body.get("kind").and_then(|v| v.as_str()) == Some("cli")
+        && interface
+            .body
+            .get("operations")
+            .and_then(|v| v.as_array())
+            .is_some_and(|operations| !operations.is_empty())
+}
+
+fn interface_operations(interface: &Node) -> Option<Vec<crate::journey::CliOperation>> {
+    serde_json::from_value(interface.body.get("operations")?.clone()).ok()
+}
+
+fn interface_has_code(store: &Store, interface: &Node) -> Result<bool> {
+    if !valid_cli_interface(interface) {
+        return Ok(false);
+    }
+    for exposes in store.edges_with(Some(EdgeKind::Exposes), Some(&interface.id), None)? {
+        if !projection_current(&exposes) {
+            continue;
+        }
+        let Some(codefile) = store.get_node(&exposes.to_id)? else {
+            continue;
+        };
+        if codefile.node_type == NodeType::CodeFile && store.root().join(&codefile.name).is_file() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Compute all seven readiness stages for one authored Journey.
+pub fn journey_readiness(store: &Store, journey: &Node) -> Result<JourneyReadiness> {
+    let schema_ok = journey.body.get("schema").and_then(|v| v.as_str()) == Some("loom.journey/v1");
+    let stable_id = journey
+        .body
+        .get("stable_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    let semantic_hash = journey
+        .body
+        .get("semantic_hash")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    let artifact = journey
+        .body
+        .get("artifact")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    let step_ids = exact_string_array(journey.body.get("step_ids")).unwrap_or_default();
+    let authored = journey.node_type == NodeType::Journey
+        && schema_ok
+        && !stable_id.is_empty()
+        && stable_id == journey.name
+        && !semantic_hash.is_empty()
+        && !artifact.is_empty()
+        && !step_ids.is_empty()
+        && store.root().join(artifact).is_file();
+
+    let derivations = store.edges_with(Some(EdgeKind::Derives), Some(&journey.id), None)?;
+    let mut covered_steps = std::collections::BTreeSet::new();
+    let mut derived_intent_ids = Vec::new();
+    let mut derive_gaps = Vec::new();
+    for edge in &derivations {
+        match current_derivation(store, edge, &semantic_hash, &step_ids)? {
+            Some(mapped) => {
+                covered_steps.extend(mapped);
+                if !derived_intent_ids.contains(&edge.to_id) {
+                    derived_intent_ids.push(edge.to_id.clone());
+                }
+            }
+            None => derive_gaps.push(format!(
+                "derivation {} is stale, hash-mismatched, or has invalid step_ids",
+                crate::model::short(&edge.id)
+            )),
+        }
+    }
+    for step in &step_ids {
+        if !covered_steps.contains(step) {
+            derive_gaps.push(format!("step '{step}' is unmapped"));
+        }
+    }
+    derived_intent_ids.sort();
+    let derived = authored && derive_gaps.is_empty() && !derived_intent_ids.is_empty();
+
+    let mut derivations_ratified = derived;
+    let mut implemented = derived;
+    for id in &derived_intent_ids {
+        let Some(intent) = store.get_node(id)? else {
+            derivations_ratified = false;
+            implemented = false;
+            continue;
+        };
+        if store.ratification(id)? != "ratified" {
+            derivations_ratified = false;
+        }
+        if intent.status != "implemented" || store.realizing_groundings(id)?.is_empty() {
+            implemented = false;
+        }
+    }
+
+    let surfaces = store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)?;
+    let mut surface_declared = false;
+    let mut surfaced = false;
+    let mut surface_gaps = Vec::new();
+    for edge in &surfaces {
+        if !projection_current(edge) || !hash_bound(store, edge, &semantic_hash)? {
+            surface_gaps.push(format!(
+                "surface {} is stale or bound to an older Journey hash",
+                crate::model::short(&edge.id)
+            ));
+            continue;
+        }
+        let Some(interface) = store.get_node(&edge.to_id)? else {
+            surface_gaps.push("accepted CLI surface target is missing".into());
+            continue;
+        };
+        if !valid_cli_interface(&interface) {
+            surface_gaps
+                .push("accepted surface is not a valid loom.interface-surface/v1 CLI".into());
+            continue;
+        }
+        let Some(operations) = interface_operations(&interface) else {
+            surface_gaps.push("accepted CLI surface has malformed operations".into());
+            continue;
+        };
+        if exact_operation_bindings(store, &edge.id, &step_ids, &operations)?.is_none() {
+            surface_gaps.push(format!(
+                "surface {} lacks canonical complete operation bindings",
+                crate::model::short(&edge.id)
+            ));
+            continue;
+        }
+        surface_declared = true;
+        if interface_has_code(store, &interface)? {
+            surfaced = true;
+        } else {
+            surface_gaps.push("accepted CLI surface has no exposed live CodeFile".into());
+        }
+    }
+    if !surface_declared {
+        surface_gaps.push("no current hash-bound CLI surface".into());
+    }
+
+    let current_surface_hash = crate::journey::surface_projection_hash(store, journey)?;
+    let mut compiled = false;
+    let mut proven = false;
+    for edge in store.edges_with(Some(EdgeKind::Proves), None, Some(&journey.id))? {
+        if !projection_current(&edge) {
+            continue;
+        }
+        let Some(validation) = store.get_node(&edge.from_id)? else {
+            continue;
+        };
+        let hash_current = surfaced
+            && validation.body.get("journey_hash").and_then(|v| v.as_str())
+                == Some(semantic_hash.as_str())
+            && validation.body.get("surface_hash").and_then(|v| v.as_str())
+                == current_surface_hash.as_deref()
+            && current_surface_hash.is_some()
+            && validation.body.get("profile").and_then(|v| v.as_str()) == Some("proof")
+            && validation
+                .body
+                .get("compiler_version")
+                .and_then(|v| v.as_str())
+                .is_some_and(|version| !version.is_empty());
+        if validation.node_type != NodeType::Validation || !hash_current {
+            continue;
+        }
+        compiled = true;
+        if edge.status == InspectionStatus::Passing
+            && validation.status == "passed"
+            && crate::proofstrength::of(store, &validation.id)?
+                >= crate::proofstrength::Strength::END_TO_END
+        {
+            proven = true;
+        }
+    }
+    let realized = authored
+        && derived
+        && derivations_ratified
+        && implemented
+        && surfaced
+        && compiled
+        && proven;
+
+    Ok(JourneyReadiness {
+        journey_id: journey.id.clone(),
+        journey_name: journey.name.clone(),
+        semantic_hash,
+        step_ids,
+        authored,
+        derived,
+        implemented,
+        surfaced,
+        compiled,
+        proven,
+        realized,
+        derivations_ratified,
+        derived_intent_ids,
+        derive_gaps,
+        surface_gaps,
+    })
+}
+
+/// Every active authored Journey, stable by authored id.
+pub fn all_journey_readiness(store: &Store) -> Result<Vec<JourneyReadiness>> {
+    let mut out = Vec::new();
+    for journey in store.list_nodes(Some(NodeType::Journey), usize::MAX)? {
+        if journey.status == "deprecated" {
+            continue;
+        }
+        out.push(journey_readiness(store, &journey)?);
+    }
+    out.sort_by(|a, b| a.journey_name.cmp(&b.journey_name));
+    Ok(out)
+}
+
+/// The single enumerated predicate behind Derive depth, roster, and serving.
+pub fn journey_derive_gaps(store: &Store) -> Result<Vec<JourneyDeriveGap>> {
+    let readiness = all_journey_readiness(store)?;
+    let mut out = Vec::new();
+    for journey in &readiness {
+        for detail in &journey.derive_gaps {
+            let (kind, subject_id, subject_name) = match detail
+                .strip_prefix("step '")
+                .and_then(|rest| rest.strip_suffix("' is unmapped"))
+            {
+                Some(step) => ("unmapped_step", step, step),
+                None => (
+                    "stale_derivation",
+                    journey.journey_id.as_str(),
+                    journey.journey_name.as_str(),
+                ),
+            };
+            out.push(JourneyDeriveGap {
+                journey_id: journey.journey_id.clone(),
+                kind: kind.into(),
+                subject_id: subject_id.into(),
+                subject_name: subject_name.into(),
+                detail: detail.clone(),
+            });
+        }
+    }
+
+    // An unrooted Intent is assigned to the first authored Journey only as the
+    // packet subject that can accept a manifest. The worker still has to decide
+    // whether that Journey honestly derives it; otherwise it authors a better
+    // root or records the dedicated human exemption.
+    let Some(host) = readiness.iter().find(|journey| journey.authored) else {
+        return Ok(out);
+    };
+    let currently_rooted: std::collections::BTreeSet<&str> = readiness
+        .iter()
+        .flat_map(|journey| journey.derived_intent_ids.iter().map(String::as_str))
+        .collect();
+    for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
+        if intent.status == "deprecated"
+            || currently_rooted.contains(intent.id.as_str())
+            || intent_journey_exempt(store, &intent.id)?
+        {
+            continue;
+        }
+        out.push(JourneyDeriveGap {
+            journey_id: host.journey_id.clone(),
+            kind: "unrooted_intent".into(),
+            subject_id: intent.id.clone(),
+            subject_name: intent.name.clone(),
+            detail: format!(
+                "intent '{}' has no current Journey derivation and no valid journey_exemption",
+                intent.name
+            ),
+        });
+    }
+    out.sort_by(|a, b| {
+        let rank = |kind: &str| match kind {
+            "unmapped_step" => 0,
+            "stale_derivation" => 1,
+            _ => 2,
+        };
+        rank(&a.kind)
+            .cmp(&rank(&b.kind))
+            .then(a.journey_id.cmp(&b.journey_id))
+            .then(a.subject_name.cmp(&b.subject_name))
+    });
+    Ok(out)
+}
+
+/// The single enumerated predicate behind Surface depth, roster, and serving.
+pub fn journey_surface_gaps(store: &Store) -> Result<Vec<JourneySurfaceGap>> {
+    let mut out = Vec::new();
+    for journey in all_journey_readiness(store)? {
+        if journey.authored
+            && journey.derived
+            && journey.derivations_ratified
+            && journey.implemented
+            && !journey.surfaced
+        {
+            out.push(JourneySurfaceGap {
+                journey_id: journey.journey_id,
+                detail: journey.surface_gaps.join("; "),
+            });
+        }
+    }
+    Ok(out)
 }
 
 impl Scorecard {
@@ -213,6 +750,24 @@ fn scenarios_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<Ax
     }
 }
 
+/// Whether an intent can satisfy a `requires` prerequisite.
+///
+/// Lifecycle alone is not realization: an implemented leaf still belongs to
+/// the build queue until it has a current realizing grounding. Hierarchy
+/// parents remain exempt from direct grounding because their implementation
+/// rolls up through their children, matching the build-lane residue rule.
+pub(crate) fn prerequisite_is_realized(store: &Store, intent: &Node) -> Result<bool> {
+    if intent.status != "implemented" {
+        return Ok(false);
+    }
+    if !store.realizing_groundings(&intent.id)?.is_empty() {
+        return Ok(true);
+    }
+    Ok(!store
+        .edges_with(Some(EdgeKind::Hierarchy), Some(&intent.id), None)?
+        .is_empty())
+}
+
 /// Every declared prerequisite (requires edge) must be realized.
 fn prerequisites_axis(store: &Store, intent: &Node) -> Result<AxisState> {
     let requires = store.edges_with(Some(EdgeKind::Requires), Some(&intent.id), None)?;
@@ -226,8 +781,13 @@ fn prerequisites_axis(store: &Store, intent: &Node) -> Result<AxisState> {
     let mut unmet = Vec::new();
     for e in &requires {
         if let Some(target) = store.get_node(&e.to_id)? {
-            if target.status != "implemented" {
-                unmet.push(format!("'{}' is {}", target.name, target.status));
+            if !prerequisite_is_realized(store, &target)? {
+                let state = if target.status == "implemented" {
+                    "implemented but ungrounded"
+                } else {
+                    target.status.as_str()
+                };
+                unmet.push(format!("'{}' is {state}", target.name));
             }
         }
     }
@@ -235,7 +795,7 @@ fn prerequisites_axis(store: &Store, intent: &Node) -> Result<AxisState> {
         Ok(axis(
             "prerequisites",
             "met",
-            format!("all {} prerequisite(s) implemented", requires.len()),
+            format!("all {} prerequisite(s) realized", requires.len()),
         ))
     } else {
         Ok(axis("prerequisites", "open", unmet.join("; ")))
@@ -361,8 +921,10 @@ fn proof_axis(store: &Store, intent: &Node) -> Result<AxisState> {
     }
 }
 
-/// A user-visible behavior is reachable end to end: a passing journey proof,
-/// or at least declared journey coverage.
+/// A user-visible behavior is complete on the Journey axis only when a current
+/// root Journey derives it and that Journey is fully realized: authored,
+/// derived, implemented, surfaced into real target-repository code, compiled,
+/// and proven by a passing S3 proof through that surface.
 fn journey_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<AxisState> {
     if !user_visible {
         return Ok(axis(
@@ -371,33 +933,49 @@ fn journey_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<Axis
             "internal intent — journeys prove user-reachable flows".into(),
         ));
     }
-    for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))? {
-        let Some(v) = store.get_node(&e.from_id)? else {
-            continue;
-        };
-        let is_journey = v.body.get("proof_kind").and_then(|x| x.as_str()) == Some("journey");
-        let is_l5 =
-            crate::proofstrength::of(store, &v.id)? >= crate::proofstrength::Strength::END_TO_END;
-        if is_journey && is_l5 && e.status.as_str() == "passing" {
-            return Ok(axis("journey", "met", "passing journey proof".into()));
-        }
-    }
-    let covered = !store
-        .edges_with(Some(EdgeKind::Covers), None, Some(&intent.id))?
-        .is_empty();
-    if covered {
-        Ok(axis(
+    let readiness = all_journey_readiness(store)?;
+    let mut roots: Vec<&JourneyReadiness> = readiness
+        .iter()
+        .filter(|journey| journey.derived_intent_ids.contains(&intent.id))
+        .collect();
+    if roots.iter().any(|journey| journey.realized) {
+        return Ok(axis(
             "journey",
-            "open",
-            "journey coverage declared but no passing journey proof".into(),
-        ))
-    } else {
-        Ok(axis(
-            "journey",
-            "open",
-            "no journey proof or coverage (loom journey add / coverage add)".into(),
-        ))
+            "met",
+            "derived from a realized Journey with a passing S3 proof through its surfaced CLI"
+                .into(),
+        ));
     }
+    roots.sort_by(|a, b| a.journey_name.cmp(&b.journey_name));
+    let detail = match roots.first() {
+        None => "no current Journey derives this behavior — loom next --mode derive".into(),
+        Some(journey) if !journey.derived => format!(
+            "Journey '{}' still has unmapped or stale derivations",
+            journey.journey_name
+        ),
+        Some(journey) if !journey.derivations_ratified => format!(
+            "Journey '{}' has derivations awaiting human ratification",
+            journey.journey_name
+        ),
+        Some(journey) if !journey.implemented => format!(
+            "Journey '{}' has derived intents without realizing groundings",
+            journey.journey_name
+        ),
+        Some(journey) if !journey.surfaced => format!(
+            "Journey '{}' has no current CLI surface",
+            journey.journey_name
+        ),
+        Some(journey) if !journey.compiled => format!(
+            "Journey '{}' surface does not expose a live target-repository CodeFile",
+            journey.journey_name
+        ),
+        Some(journey) if !journey.proven => format!(
+            "Journey '{}' is compiled but lacks a passing S3 proof",
+            journey.journey_name
+        ),
+        Some(journey) => format!("Journey '{}' is not yet realized", journey.journey_name),
+    };
+    Ok(axis("journey", "open", detail))
 }
 
 /// Unanswered questions raised for the human: open Question nodes linked to

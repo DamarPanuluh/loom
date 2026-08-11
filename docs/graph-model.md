@@ -8,6 +8,7 @@ Status: canonical draft. This is the authoritative description of the graph sche
 
 The graph is the durable memory of a repository. It models:
 
+- which authored flows root delivery (`Journey`)
 - what the codebase is supposed to do (`Intent`)
 - where it lives (`CodeFile`)
 - how it is proven (`Validation`)
@@ -23,9 +24,10 @@ The model is designed so every fact has a canonical owner, a truth class, and a 
 
 ## Cornerstone nodes
 
-Two nodes anchor the model. Every other node is a family member of one or both.
+Journey is the authored root of delivery. Intent and CodeFile remain the two implementation cornerstones beneath it.
 
 ```text
+Journey     who does what, in what order, and what must then be true
 Intent      what the code should do
 CodeFile    where code lives
 ```
@@ -34,6 +36,7 @@ Everything else is a supporting family member:
 
 ```text
 Intent family
+  Journey         authored semantic root that derives technical Intent
   QualityRule     a reusable behavioral norm held against Intent
   Validation      a proof that Intent holds
   Hypothesis      a proposed change to Intent, proven before adoption
@@ -216,41 +219,33 @@ created_at
 updated_at
 ```
 
-`journey` is canonical for flow/composition proofs. Legacy graphs may still contain the old proof-type spelling, but new journey commands write `type: "journey"` and `proof_kind: "journey"`.
- 
-### JourneyCoverage
+The `journey` validation type is compiler-owned. `loom journey compile` creates it for one accepted Journey/profile and wires its exact `proves`, `validates`, `calls`, and `exercises` closure. Operators do not create Journey validations directly.
 
-A flow that should have an S3-or-stronger journey proof for an intent. Its effective coverage status is derived: covered iff the linked intent currently has a passing S3-or-stronger journey validation.
+### Journey
 
-Fields:
-
-```text
-id
-name
-description
-flow:              human-readable flow path
-runner_ref:        optional path or path::symbol that must exist
-test_ref:          optional path or path::symbol that must exist
-contract_artifact: optional expected journey/contract artifact
-created_at
-updated_at
-```
-
-### JourneyInvariantPoint
-
-An internal domain assertion a journey should verify, linked to the intent it concerns.
+The authored root artifact. A Journey records user or operator meaning before technical Intent, code, interface, or proof choices.
 
 Fields:
 
 ```text
 id
-name
-field
-assertion
-reason
+schema:             loom.journey/v1
+stable_id:          stable artifact id
+title
+summary
+artifact:           confined repository-relative JSON or YAML path
+semantic_hash:      canonical hash of authored meaning
+input_ids:          typed input ids
+precondition_ids:   declarative prerequisite ids
+step_ids:           ordered semantic actor/action ids
+expectation_ids:    outcome ids bound to steps
+output_ids:         typed output ids
+profile_ids:        named execution scenarios
 created_at
 updated_at
 ```
+
+Only `steps` preserve authored array order. Other addressable collections are canonicalized by stable ID. A semantic hash change invalidates every accepted `derives` and `surfaces` projection because prior technical meaning was authorized against different authored behavior.
 
 ### Hypothesis
 
@@ -308,6 +303,8 @@ contract_ref:   path to schema/IDL/OpenAPI artifact if exists
 created_at
 updated_at
 ```
+
+For Journey-root delivery, an accepted surface uses `loom.interface-surface/v1`, kind `cli`, structured argv, typed arguments, JSON output, and stable operation IDs. A `surfaces` edge binds the Journey to that surface and stores complete step-to-operation bindings plus the Journey hash. An `exposes` edge points from the surface to the real registered source file.
 
 ### Note
 
@@ -443,19 +440,21 @@ The write-time check verifies the supplied truth class is in the allowed set for
 | `scenario_of` | Intent | Intent | asserted | builder | child scenario to parent capability |
 | `variant_of` | Intent | Intent | asserted | builder | variant to base behavior |
 | `triggers` | Intent | Intent | asserted | builder/analyzer | when condition occurs, response must hold |
-| `sequence` | Intent | Intent | asserted | builder | ordered step in journey |
+| `sequence` | Intent | Intent | asserted | builder | technical readiness ordering between behaviors |
 | `implements` | Intent | CodeFile | asserted | builder | behavior grounded at file/locator; `role` facet defaults to `realizes` |
 | `validates` | Validation | Intent | asserted | validator | proof checks behavior |
 | `governs` | QualityRule | Intent | asserted | quality | norm measured against behavior |
 | `targets` | Hypothesis | Intent | asserted | analyzer | hypothesis concerns intent |
-| `questions` | Question | Intent | asserted | builder | product question awaiting human answer for an intent |
+| `questions` | Question | Journey or Intent | asserted | builder | product question awaiting a human answer about authored or technical meaning |
 | `flags` | Finding | CodeFile | derived | sync | finding concerns codefile |
 | `assesses` | Finding | CodeRule | derived | sync | finding is occurrence of code rule |
 | `exposes` | InterfaceSurface | CodeFile | asserted | builder | declared surface exposed by a codefile |
 | `calls` | Validation | InterfaceSurface | asserted | validator | proof exercises a surface |
+| `exercises` | Validation | CodeFile | asserted | validator | proof reaches a specific code entry point |
 | `relates` | Intent | Intent | asserted | analyzer | manual relationship, kind TBD |
-| `covers` | JourneyCoverage | Intent | asserted | builder | a flow that needs a journey proof covers this intent |
-| `asserts` | JourneyInvariantPoint | Intent | asserted | builder | an internal domain invariant point marks this intent |
+| `derives` | Journey | Intent | asserted | builder | accepted technical Intent derives from stable Journey steps |
+| `surfaces` | Journey | InterfaceSurface | asserted | builder | accepted surface exposes every Journey step through real repository code |
+| `proves` | Validation | Journey | asserted | validator | compiler-owned Validation proves the hash-bound Journey profile |
 
 **`exposes` truth class note.** `exposes` is asserted-only. Derived `exposes` extraction was never implemented; sync does not create these edges, and attempts to add a derived `exposes` edge are rejected.
 
@@ -466,6 +465,10 @@ The write-time check verifies the supplied truth class is in the allowed set for
 - `verifies` — this file checks behavior that lives elsewhere. It never owns coverage.
 
 Coverage and navigation use only live, non-superseded `implements` edges with `role=realizes` as owners. A CodeFile grounded only by `consumes`, `configures`, or `verifies` remains unowned until a realizing intent/file grounding exists.
+
+Locators normally name extracted symbols. When a declaration or comment-bearing configuration entry has no stable symbol identity, Loom can issue an optional source anchor with `loom codefile anchor <path> --at-line <line>`. The command returns an exact `// loom:anchor <id>` or `# loom:anchor <id>` marker and canonical `anchor:<id>` locator without editing source or graph state. A referenced anchor must occur exactly once among registered CodeFiles and attach immediately to exactly one smallest supported declaration/config entry; malformed, missing, duplicated, detached, unsupported, and wrong-file anchors fail closed. JSON and other commentless formats cannot carry anchors.
+
+An anchor is locator/navigation metadata only. Its source comment creates no node, edge, relationship, ownership, or proof; the graph remains authoritative. Anchor-backed realizing edges contribute their currently attached callable symbol to impact/risk navigation, but anchors are excluded from proof-facing symbol projections and can never earn S3. Use ordinary symbol locators by default and anchors only where symbol identity is unstable.
 
 Sync reopens realizing groundings on file content changes and ripples to the intent's dependents. Non-realizing groundings reopen only when their seam locator drifts: the file vanished, or the locator string (or its last token) no longer appears in the file content. They do not ripple to the consumed/configured/verified intent.
 
@@ -614,7 +617,7 @@ These are core value families used by the store and CLI. Some values are registr
 NodeType =
   Intent | CodeFile | QualityRule | CodeRule | Validation | Hypothesis |
   Finding | Question | InterfaceSurface | Note | InboxItem | TaskRecord | Proposal |
-  JourneyCoverage | JourneyInvariantPoint | WikiPage | UpstreamIntent
+  Journey | WikiPage | UpstreamIntent | Pattern
 
 EdgeTruthClass =
   derived | asserted
@@ -661,7 +664,10 @@ The graph shape exposes gaps without cognitive judgment. The LLM confirms whethe
 | Leaf intent with no realizing `implements` edge | Grounding gap |
 | CodeFile with no live realizing owner | Ownership gap |
 | `triggers` with no response intent | Reaction gap |
-| Journey sequence with no journey validation | Composition proof gap |
+| Journey step with no current `derives` mapping | Technical derivation gap |
+| Journey whose current derivations are not implemented and realizing-grounded | Realization gap |
+| Realized Journey with no accepted complete `surfaces` projection | Consumer-surface gap |
+| Surfaced Journey with no current compiler-owned passing S3 proof | Journey proof gap |
 | `governs` edge `uninspected` | Unmeasured quality norm |
 | `Validation.last_result = not_run`; linked `validates` edge `needs_reverification` | Unrun proof |
 | Realizing `implements` locator stale, or non-realizing seam locator drifted | Grounding mismatch after code change |

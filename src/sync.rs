@@ -11,9 +11,10 @@
 //! byte-identical derived plane (deterministic ids + sentinel timestamps + a
 //! pure extraction), and ripples nothing because no prior hashes remain.
 
-use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
+use serde::Serialize;
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -44,6 +45,136 @@ pub struct SyncReport {
     pub missing: Vec<String>,
 }
 
+/// One strict source-anchor locator that a read-only sync preview can no
+/// longer resolve. The locator module owns syntax and cardinality policy; sync
+/// carries only the affected graph edge and the exact resolver error.
+#[derive(Debug, Clone, Serialize)]
+pub struct AnchorStaleness {
+    pub edge_id: String,
+    pub edge_kind: EdgeKind,
+    pub codefile_id: String,
+    pub path: String,
+    pub locator: String,
+    pub cause: String,
+}
+
+/// Read-only answer to “would structural sync observe different repository
+/// state?”. It deliberately does not run derivers or write a freshness stamp.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct SyncPreview {
+    pub fresh: bool,
+    pub changed_files: Vec<String>,
+    pub missing_files: Vec<String>,
+    pub unregistered_glob_matches: Vec<String>,
+    pub invalid_anchors: Vec<AnchorStaleness>,
+}
+
+impl SyncPreview {
+    pub fn affected_paths(&self) -> Vec<String> {
+        let mut paths = self.changed_files.clone();
+        paths.extend(self.missing_files.iter().cloned());
+        paths.extend(self.unregistered_glob_matches.iter().cloned());
+        paths.extend(
+            self.invalid_anchors
+                .iter()
+                .map(|anchor| anchor.path.clone()),
+        );
+        paths.sort();
+        paths.dedup();
+        paths
+    }
+
+    pub fn evidence_lines(&self) -> Vec<String> {
+        if self.fresh {
+            return vec!["registered repository content matches the synchronized graph".into()];
+        }
+        let mut evidence = Vec::new();
+        evidence.extend(
+            self.changed_files
+                .iter()
+                .map(|path| format!("content changed since sync: {path}")),
+        );
+        evidence.extend(
+            self.missing_files
+                .iter()
+                .map(|path| format!("registered file missing: {path}")),
+        );
+        evidence.extend(
+            self.unregistered_glob_matches
+                .iter()
+                .map(|path| format!("remembered glob has unregistered file: {path}")),
+        );
+        evidence.extend(self.invalid_anchors.iter().map(|anchor| {
+            format!(
+                "anchor invalid on {} edge {} at {}: {}",
+                anchor.edge_kind, anchor.edge_id, anchor.path, anchor.cause
+            )
+        }));
+        evidence.sort();
+        evidence
+    }
+}
+
+/// Inspect repository/sync drift without mutating graph or filesystem state.
+/// Both this preview and [`run`] consume the same strict anchor plan, keeping
+/// the definition of anchor freshness local to one implementation.
+pub fn preview(store: &Store, root: &Path) -> Result<SyncPreview> {
+    let codefiles = store.codefiles()?;
+    let mut changed_files = Vec::new();
+    let mut missing_files = Vec::new();
+    let existing: BTreeSet<String> = codefiles.iter().map(|file| file.name.clone()).collect();
+
+    for file in &codefiles {
+        let path = root.join(&file.name);
+        let content = match std::fs::read_to_string(&path) {
+            Ok(content) if crate::fsglob::contains(root, &path) => content,
+            _ => {
+                missing_files.push(file.name.clone());
+                continue;
+            }
+        };
+        let current = crate::extract::fnv1a(&content);
+        let stored = store.get_facet(&file.id, TargetKind::Node, "content_hash")?;
+        if stored.as_deref() != Some(current.as_str()) {
+            changed_files.push(file.name.clone());
+        }
+    }
+
+    let ignored = crate::fsglob::matcher(store.ignore_globs()?)?;
+    let globs: Vec<String> = store
+        .get_meta("codefile_globs")?
+        .map(|raw| serde_json::from_str(&raw))
+        .transpose()?
+        .unwrap_or_default();
+    let mut unregistered_glob_matches = Vec::new();
+    for glob in globs {
+        for path in crate::fsglob::expand(root, &glob)? {
+            if !existing.contains(&path) && !ignored.is_match(&path) {
+                unregistered_glob_matches.push(path);
+            }
+        }
+    }
+
+    changed_files.sort();
+    changed_files.dedup();
+    missing_files.sort();
+    missing_files.dedup();
+    unregistered_glob_matches.sort();
+    unregistered_glob_matches.dedup();
+    let invalid_anchors = plan_anchor_staleness(store)?;
+    let fresh = changed_files.is_empty()
+        && missing_files.is_empty()
+        && unregistered_glob_matches.is_empty()
+        && invalid_anchors.is_empty();
+    Ok(SyncPreview {
+        fresh,
+        changed_files,
+        missing_files,
+        unregistered_glob_matches,
+        invalid_anchors,
+    })
+}
+
 /// Run a full sync against the graph rooted at `root`. Orchestrates the
 /// registered code-seed derivers to recompute the derived plane, then ripples
 /// the artifact changes they report — the engine names no extraction type, so
@@ -67,8 +198,7 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
         }
     }
     report.surfaces_affected = seen_surfaces.len();
-    ripple_artifact_drift(store, root, &mut report)?;
-    ripple_runner_drift(store, root, &mut report)?;
+    ripple_compiled_journey_drift(store, &mut report)?;
     // The re-verification pass. One question — "does the thing this fact points
     // at still say what it said?" — asked of every anchor in the graph.
     //
@@ -91,12 +221,33 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     // derived plane one sync stale (a proof graded S3 this run, demoted next),
     // so a second sync produced a different graph — a fixpoint violation of
     // INV-2. Settling status first makes one sync converge.
+    // Explicit dependency ripples above may already have moved an edge to
+    // `needs_reverification` before its evidence fact is rechecked here. The
+    // re-verifier reports demoted facts, so adding that raw count would count
+    // the same edge twice. Snapshot the settled boundary and count only edge
+    // IDs whose status actually transitions during this pass.
+    let stale_before_reverify: BTreeSet<String> = store
+        .list_edges(None, usize::MAX)?
+        .into_iter()
+        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)
+        .map(|edge| edge.id)
+        .collect();
     let pass = store.reverify_all(&changed_paths)?;
-    report.edges_staled += pass.demoted;
+    let stale_after_reverify: BTreeSet<String> = store
+        .list_edges(None, usize::MAX)?
+        .into_iter()
+        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)
+        .map(|edge| edge.id)
+        .collect();
+    report.edges_staled += stale_after_reverify
+        .difference(&stale_before_reverify)
+        .count();
     report.edges_spared += pass.spared;
     report.validations_reset += pass.validations_reset;
     report.evidence_reanchored += pass.reanchored;
     ripple_validation_evidence_drift(store, &changed_paths, &mut report)?;
+    let anchor_staleness = plan_anchor_staleness(store)?;
+    apply_anchor_staleness(store, &anchor_staleness, &mut report)?;
     // AFTER the pass, deliberately. The anchor machinery is more precise —
     // it distinguishes a redefined symbol from a missing one and spares
     // untouched groundings — so it gets first say, and this is the backstop
@@ -143,18 +294,13 @@ fn ripple_validation_evidence_drift(
                 .get_node(&edge.from_id)?
                 .is_some_and(|validation| validation.status != "not_run");
             if was_run {
-                store.reset_validation_status_for_sync(&edge.from_id)?;
-                for validates in
-                    store.edges_with(Some(EdgeKind::Validates), Some(&edge.from_id), None)?
-                {
-                    if store.stale_edge(
-                        &validates.id,
-                        &format!("validation evidence file '{}' changed", path),
-                    )? {
-                        report.edges_staled += 1;
-                    }
-                }
-                report.validations_reset += 1;
+                stale_validation_closure(
+                    store,
+                    &edge.from_id,
+                    &format!("validation evidence file '{}' changed", path),
+                    false,
+                    report,
+                )?;
             }
         }
     }
@@ -193,198 +339,129 @@ fn ripple_surface_contracts(
             if !was_proven {
                 continue;
             }
-            if store.stale_edge(&call.id, cause)? {
-                report.edges_staled += 1;
-            }
-            store.reset_validation_status_for_sync(&call.from_id)?;
+            stale_validation_closure(store, &call.from_id, cause, true, report)?;
             report.contracts_reset += 1;
-            // Fold into the headline reset tally so the summary line can never
-            // read `0 validations reset` next to a reset contract.
-            report.validations_reset += 1;
-            // The contract proves intents via `validates`; reset those so the
-            // intent's proof reads as unproven, mirroring the implements ripple.
-            for v in store.edges_with(Some(EdgeKind::Validates), Some(&call.from_id), None)? {
-                if store.stale_edge(&v.id, cause)? {
-                    report.edges_staled += 1;
-                }
-            }
         }
     }
     Ok(())
 }
 
-/// Pass 2b: ripple drift of a JourneyProof validation's `body.artifact` file.
-///
-/// A validation may point at a contract JSON / journey YAML / runner file via
-/// `body.artifact`. Those paths are not necessarily registered CodeFiles, so
-/// the structural pass cannot see them. Track a derived `artifact_hash` facet
-/// per such validation and, when the file changes or disappears, stale its
-/// `validates` edges and reset a proven validation to `not_run` — so a stale
-/// artifact cannot keep a user-visible intent "proven" and silence the journey
-/// smell. Mirrors the codefile content_hash convergence (INV-2).
-fn ripple_artifact_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {
-    let validations = store.list_nodes(Some(NodeType::Validation), usize::MAX)?;
-    for val in validations {
-        let Some(artifact) = val.body.get("artifact").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let prior = store.get_facet(&val.id, TargetKind::Node, "artifact_hash")?;
-        // Route reads through root confinement: an absolute path, a `..`, or a
-        // symlink escape is treated as absent/drifted, never opened outside
-        // the checkout (a crafted/imported graph must not fingerprint the host).
-        let current = match crate::proofstrength::confined_journey_path(root, artifact) {
-            Some(path) => std::fs::read_to_string(&path)
-                .ok()
-                .map(|c| crate::artifact::fingerprint(&c)),
-            None => None,
-        };
-        // No prior hash and no current file: never-hashed + absent → nothing to
-        // ripple (first observation of a not-yet-present artifact).
-        let drifted = match (prior.as_deref(), current.as_deref()) {
-            (Some(p), Some(c)) => p != c,
-            (Some(_), None) => true, // file disappeared
-            _ => false,
-        };
-        // Refresh the derived hash so a wipe+rebuild converges (INV-2).
-        match &current {
-            Some(h) => store.set_facet(
-                &val.id,
-                TargetKind::Node,
-                "artifact_hash",
-                h,
-                TruthClass::Derived,
-            )?,
-            None => store.clear_facet(&val.id, TargetKind::Node, "artifact_hash")?,
-        }
-        if !drifted {
-            continue;
-        }
-        let cause = if current.is_some() {
-            format!("artifact {artifact} changed")
-        } else {
-            format!("artifact {artifact} disappeared")
-        };
-        for e in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
-            if store.stale_edge(&e.id, &cause)? {
+fn stale_validation_closure(
+    store: &Store,
+    validation_id: &str,
+    cause: &str,
+    stale_calls: bool,
+    report: &mut SyncReport,
+) -> Result<()> {
+    for kind in [EdgeKind::Proves, EdgeKind::Validates] {
+        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {
+            if store.stale_edge(&edge.id, cause)? {
                 report.edges_staled += 1;
             }
         }
-        // Only count/reset a validation that was actually proven; one already
-        // at `not_run` is unchanged, so it is neither reset nor counted.
-        if val.status != "not_run" {
-            store.reset_validation_status_for_sync(&val.id)?;
-            report.validations_reset += 1;
+    }
+    if stale_calls {
+        for edge in store.edges_with(Some(EdgeKind::Calls), Some(validation_id), None)? {
+            if store.stale_edge(&edge.id, cause)? {
+                report.edges_staled += 1;
+            }
         }
+    }
+    if store
+        .get_node(validation_id)?
+        .is_some_and(|validation| validation.status != "not_run")
+    {
+        store.reset_validation_status_for_sync(validation_id)?;
+        report.validations_reset += 1;
     }
     Ok(())
 }
 
-/// Self-healing ripple for typed-runner coverage. A `journey_coverage` node may
-/// carry `runner_ref` / `test_ref` pointing at the code that proves its flow
-/// (path or `path::symbol`). Those files are not necessarily registered
-/// CodeFiles, so the structural pass never sees them — meaning a developer can
-/// edit (and break) the runner while the coverage's proof stays green. Track a
-/// derived hash per ref and, on a real change or disappearance, stale the
-/// covered intent's journey `validates` edges and reset a proven journey
-/// validation to `not_run` — so the proof re-enters the validate queue and the
-/// coverage flips to uncovered until it is re-run. Mirrors `ripple_artifact_drift`.
-///
-/// Only explicit path refs are content-tracked; a free-text ref (no on-disk
-/// path component) is left to `journey coverage drift`'s existence check.
-fn ripple_runner_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {
-    let coverages = store.list_nodes(Some(NodeType::JourneyCoverage), usize::MAX)?;
-    for cov in coverages {
-        let mut causes = BTreeSet::new();
-        for field in ["runner_ref", "test_ref"] {
-            let Some(reference) = cov.body.get(field).and_then(|v| v.as_str()) else {
-                continue;
-            };
-            // The on-disk path is the ref up to an optional `::symbol` locator.
-            let rel_path = reference.split("::").next().unwrap_or(reference);
-            if rel_path.is_empty() {
-                continue;
-            }
-            let facet_key = format!("{field}_hash");
-            let prior = store.get_facet(&cov.id, TargetKind::Node, &facet_key)?;
-            // Confined under root, like `ripple_artifact_drift` — an escaping
-            // or absolute path is treated as absent/drifted, never read outside
-            // the checkout.
-            let current = match crate::proofstrength::confined_journey_path(root, rel_path) {
-                Some(path) => std::fs::read_to_string(&path)
-                    .ok()
-                    .map(|c| crate::artifact::fingerprint(&c)),
-                None => None,
-            };
-            // Seed on first observation (no prior hash) — never stale on it.
-            let this_drifted = match (prior.as_deref(), current.as_deref()) {
-                (Some(p), Some(c)) => p != c,
-                (Some(_), None) => true, // file disappeared
-                _ => false,
-            };
-            match &current {
-                Some(h) => store.set_facet(
-                    &cov.id,
-                    TargetKind::Node,
-                    &facet_key,
-                    h,
-                    TruthClass::Derived,
-                )?,
-                None => store.clear_facet(&cov.id, TargetKind::Node, &facet_key)?,
-            }
-            if this_drifted {
-                let cause = if current.is_some() {
-                    format!("{field} {rel_path} changed")
-                } else {
-                    format!("{field} {rel_path} disappeared")
-                };
-                causes.insert(cause);
-            }
-        }
-        if causes.is_empty() {
+/// Invalidate compiler output when its semantic or reusable-surface inputs no
+/// longer match the graph. Raw authored artifact paths are intentionally absent:
+/// the compiler contract is the Proves+Calls+Exercises closure and its hashes.
+fn ripple_compiled_journey_drift(store: &Store, report: &mut SyncReport) -> Result<()> {
+    for proves in store.edges_with(Some(EdgeKind::Proves), None, None)? {
+        let Some(validation) = store.get_node(&proves.from_id)? else {
+            continue;
+        };
+        let Some(journey) = store.get_node(&proves.to_id)? else {
+            continue;
+        };
+        if validation.body.get("type").and_then(|value| value.as_str()) != Some("journey") {
             continue;
         }
-        let cause = causes.iter().cloned().collect::<Vec<_>>().join("; ");
-        // Find the covered intent (Covers: coverage → intent) and stale only the
-        // journey proof(s) this coverage actually stands behind, so a sibling
-        // proof for the same intent isn't disturbed. When the coverage declares
-        // a `contract_artifact`, match it to the validation's `body.artifact`;
-        // otherwise fall back to the intent's current passing S3-or-stronger
-        // journey proofs. Restricting to S3-or-stronger keeps an already-unproven or
-        // shallow validation untouched.
-        let Some(cover_edge) = store
-            .edges_with(Some(EdgeKind::Covers), Some(&cov.id), None)?
+        let journey_hash = journey
+            .body
+            .get("semantic_hash")
+            .and_then(|value| value.as_str());
+        let surface_hash = crate::journey::surface_projection_hash(store, &journey)?;
+        let body_current = journey_hash.is_some()
+            && validation
+                .body
+                .get("journey_hash")
+                .and_then(|value| value.as_str())
+                == journey_hash
+            && surface_hash.is_some()
+            && validation
+                .body
+                .get("surface_hash")
+                .and_then(|value| value.as_str())
+                == surface_hash.as_deref()
+            && validation
+                .body
+                .get("profile")
+                .and_then(|value| value.as_str())
+                == Some("proof")
+            && validation
+                .body
+                .get("compiler_version")
+                .and_then(|value| value.as_str())
+                .is_some_and(|version| !version.trim().is_empty());
+
+        let mut accepted_surfaces = BTreeSet::new();
+        if let Some(hash) = journey_hash {
+            for surface in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {
+                if matches!(
+                    surface.status,
+                    InspectionStatus::Uninspected | InspectionStatus::Passing
+                ) && store
+                    .get_facet(&surface.id, TargetKind::Edge, "journey_hash")?
+                    .as_deref()
+                    == Some(hash)
+                {
+                    accepted_surfaces.insert(surface.to_id);
+                }
+            }
+        }
+        let calls_current = store
+            .edges_with(Some(EdgeKind::Calls), Some(&validation.id), None)?
             .into_iter()
-            .next()
-        else {
+            .any(|call| {
+                matches!(
+                    call.status,
+                    InspectionStatus::Uninspected | InspectionStatus::Passing
+                ) && accepted_surfaces.contains(&call.to_id)
+            });
+        let exercises_current = store
+            .edges_with(Some(EdgeKind::Exercises), Some(&validation.id), None)?
+            .into_iter()
+            .any(|edge| {
+                matches!(
+                    edge.status,
+                    InspectionStatus::Uninspected | InspectionStatus::Passing
+                )
+            });
+        if body_current && calls_current && exercises_current {
             continue;
-        };
-        let coverage_artifact = cov.body.get("contract_artifact").and_then(|v| v.as_str());
-        for e in store.edges_with(Some(EdgeKind::Validates), None, Some(&cover_edge.to_id))? {
-            let Some(val) = store.get_node(&e.from_id)? else {
-                continue;
-            };
-            let is_journey = val.body.get("proof_kind").and_then(|v| v.as_str()) == Some("journey");
-            if !is_journey {
-                continue;
-            }
-            // Only a currently-proven proof is worth re-opening.
-            if val.status != "passed" {
-                continue;
-            }
-            // If the coverage names a specific artifact, only stale the proof
-            // backed by that same artifact.
-            if let Some(want) = coverage_artifact {
-                let proof_artifact = val.body.get("artifact").and_then(|v| v.as_str());
-                if proof_artifact != Some(want) {
-                    continue;
-                }
-            }
-            if store.stale_edge(&e.id, &cause)? {
-                report.edges_staled += 1;
-            }
-            store.reset_validation_status_for_sync(&val.id)?;
-            report.validations_reset += 1;
         }
+        stale_validation_closure(
+            store,
+            &validation.id,
+            "compiled Journey inputs or proof topology drifted",
+            true,
+            report,
+        )?;
     }
     Ok(())
 }
@@ -461,7 +538,10 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
             continue;
         };
         let locator = locator.trim();
-        if locator.is_empty() || crate::locator::is_module_scope(locator) {
+        if locator.is_empty()
+            || crate::locator::is_module_scope(locator)
+            || crate::locator::is_anchor_locator(locator)
+        {
             continue;
         }
         let Some(file) = store.get_node(&edge.to_id)? else {
@@ -489,6 +569,86 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
         let cause = format!("locator '{locator}' names no symbol in {}", file.name);
         if store.stale_edge(&edge.id, &cause)? {
             report.edges_staled += 1;
+        }
+    }
+    Ok(())
+}
+
+/// Resolve every anchor-form locator through the locator module. Sync never
+/// parses marker syntax or guesses cardinality itself.
+fn plan_anchor_staleness(store: &Store) -> Result<Vec<AnchorStaleness>> {
+    let mut stale = Vec::new();
+    for kind in [EdgeKind::Implements, EdgeKind::Exposes, EdgeKind::Exercises] {
+        for edge in store.edges_with(Some(kind), None, None)? {
+            if kind == EdgeKind::Implements && store.edge_superseded(&edge.id)? {
+                continue;
+            }
+            let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
+                continue;
+            };
+            if !crate::locator::is_anchor_locator(&locator) {
+                continue;
+            }
+            let Some(codefile) = store.get_node(&edge.to_id)? else {
+                continue;
+            };
+            if codefile.node_type != NodeType::CodeFile {
+                continue;
+            }
+            if let Err(error) = crate::locator::validate_for_codefile(store, &codefile, &locator) {
+                stale.push(AnchorStaleness {
+                    edge_id: edge.id,
+                    edge_kind: kind,
+                    codefile_id: codefile.id,
+                    path: codefile.name,
+                    locator,
+                    cause: error.to_string(),
+                });
+            }
+        }
+    }
+    stale.sort_by(|a, b| a.edge_id.cmp(&b.edge_id));
+    Ok(stale)
+}
+
+fn apply_anchor_staleness(
+    store: &Store,
+    stale: &[AnchorStaleness],
+    report: &mut SyncReport,
+) -> Result<()> {
+    let mut reset_validations = BTreeSet::new();
+    for anchor in stale {
+        if store.stale_edge(&anchor.edge_id, &anchor.cause)? {
+            report.edges_staled += 1;
+        }
+        match anchor.edge_kind {
+            EdgeKind::Exercises => {
+                let Some(edge) = store.get_edge(&anchor.edge_id)? else {
+                    continue;
+                };
+                if reset_validations.insert(edge.from_id.clone()) {
+                    stale_validation_closure(store, &edge.from_id, &anchor.cause, false, report)?;
+                }
+            }
+            EdgeKind::Exposes => {
+                let Some(edge) = store.get_edge(&anchor.edge_id)? else {
+                    continue;
+                };
+                for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&edge.from_id))? {
+                    if reset_validations.insert(call.from_id.clone()) {
+                        stale_validation_closure(
+                            store,
+                            &call.from_id,
+                            &anchor.cause,
+                            true,
+                            report,
+                        )?;
+                        report.contracts_reset += 1;
+                    }
+                }
+            }
+            EdgeKind::Implements => {}
+            _ => unreachable!("anchor staleness is planned only for locator-bearing edges"),
         }
     }
     Ok(())

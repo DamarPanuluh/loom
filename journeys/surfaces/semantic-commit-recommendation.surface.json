@@ -1,0 +1,516 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "semantic-commit-recommendation",
+  "journey_hash": "5b97bc005b7f5990",
+  "surface": {
+    "id": "semantic-checkpoint-cli",
+    "title": "Semantic checkpoint recommendation CLI",
+    "identity": "loom checkpoint recommend",
+    "codefile": "src/commands/checkpoint_cmd.rs",
+    "locator": "dispatch",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "checkpoint",
+          "recommend",
+          "--intent",
+          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "--json"
+        ],
+        "id": "inspect-checkpoint-readiness",
+        "output": {
+          "assertions": [
+            {
+              "equals": "ready",
+              "id": "checkpoint-is-ready",
+              "pointer": "/status",
+              "type": "string"
+            },
+            {
+              "equals": [],
+              "id": "checkpoint-has-no-blockers",
+              "pointer": "/blockers",
+              "type": "json"
+            },
+            {
+              "equals": [
+                "8fe1e8413db5f3df8c41f23ad4f3327f"
+              ],
+              "id": "checkpoint-scope-is-exact",
+              "pointer": "/scope/intent_ids",
+              "type": "json"
+            },
+            {
+              "equals": [],
+              "id": "checkpoint-scope-names-no-journey",
+              "pointer": "/scope/journey_ids",
+              "type": "json"
+            },
+            {
+              "equals": "src/candidate_surface_policy.rs",
+              "id": "checkpoint-includes-registered-source",
+              "pointer": "/included_paths/0/path",
+              "type": "string"
+            },
+            {
+              "equals": " M",
+              "id": "checkpoint-source-is-unstaged",
+              "pointer": "/included_paths/0/git_status",
+              "type": "string"
+            },
+            {
+              "equals": "grounded to selected Intent(s): 8fe1e8413db5f3df8c41f23ad4f3327f",
+              "id": "checkpoint-source-is-grounded-to-scope",
+              "pointer": "/included_paths/0/reason",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "checkpoint-includes-no-second-path",
+              "pointer": "/included_paths/1"
+            },
+            {
+              "equals": [],
+              "id": "checkpoint-excludes-no-fixture-path",
+              "pointer": "/excluded_paths",
+              "type": "json"
+            },
+            {
+              "equals": "passed",
+              "id": "doctor-check-passes",
+              "pointer": "/checks/0/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom_doctor",
+              "id": "doctor-check-is-exact",
+              "pointer": "/checks/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "export-check-passes",
+              "pointer": "/checks/1/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom_export",
+              "id": "export-check-is-exact",
+              "pointer": "/checks/1/id",
+              "type": "string"
+            },
+            {
+              "equals": "loom.graph.json matches the live graph",
+              "id": "export-evidence-is-current",
+              "pointer": "/checks/1/evidence/0",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "sync-check-passes",
+              "pointer": "/checks/2/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom_sync",
+              "id": "sync-check-is-exact",
+              "pointer": "/checks/2/id",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "fixture-validation-check-passes",
+              "pointer": "/checks/3/status",
+              "type": "string"
+            },
+            {
+              "id": "fixture-validation-check-is-a-registered-proof",
+              "matches": "^validation:[0-9a-f]{32}$",
+              "pointer": "/checks/3/id",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "fixture-validation-command-is-exact",
+              "pointer": "/checks/3/command",
+              "type": "string"
+            },
+            {
+              "equals": "validates:8fe1e8413db5f3df8c41f23ad4f3327f:passing",
+              "id": "fixture-validation-evidence-is-current",
+              "pointer": "/checks/3/evidence/0",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "checkpoint-has-no-extra-check",
+              "pointer": "/checks/4"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect readiness, exact Intent scope, included path, and current evidence"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "checkpoint",
+          "recommend",
+          "--intent",
+          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "--json"
+        ],
+        "id": "observe-human-push-gate",
+        "output": {
+          "assertions": [
+            {
+              "equals": false,
+              "id": "push-needs-human",
+              "pointer": "/driver_policy/push/allowed_without_human_decision",
+              "type": "boolean"
+            },
+            {
+              "equals": [
+                "repository",
+                "remote",
+                "branch",
+                "commit"
+              ],
+              "id": "push-binding-is-exact",
+              "pointer": "/driver_policy/push/required_binding",
+              "type": "json"
+            },
+            {
+              "equals": true,
+              "id": "push-drift-needs-new-decision",
+              "pointer": "/driver_policy/push/drift_requires_new_decision",
+              "type": "boolean"
+            },
+            {
+              "equals": "keep_local",
+              "id": "missing-decision-keeps-local",
+              "pointer": "/driver_policy/push/silence_or_refusal",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "observation-performs-no-push",
+              "pointer": "/push_result"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Observe that publication remains blocked without a current exact human decision"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "checkpoint",
+          "recommend",
+          "--intent",
+          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "--json"
+        ],
+        "id": "observe-llm-commit-or-defer-policy",
+        "output": {
+          "assertions": [
+            {
+              "equals": "acting_llm",
+              "id": "local-authority-is-acting-llm",
+              "pointer": "/driver_policy/local_commit/authority",
+              "type": "string"
+            },
+            {
+              "equals": true,
+              "id": "llm-may-commit-or-defer",
+              "pointer": "/driver_policy/local_commit/may_commit_or_defer",
+              "type": "boolean"
+            },
+            {
+              "equals": true,
+              "id": "llm-stages-only-recommended-paths",
+              "pointer": "/driver_policy/local_commit/stage_only_included_paths",
+              "type": "boolean"
+            },
+            {
+              "equals": "git add -A",
+              "id": "bulk-staging-is-forbidden",
+              "pointer": "/driver_policy/local_commit/forbidden_command",
+              "type": "string"
+            },
+            {
+              "equals": true,
+              "id": "ambiguity-causes-deferral",
+              "pointer": "/driver_policy/local_commit/defer_on_ambiguity",
+              "type": "boolean"
+            },
+            {
+              "equals": "local_only",
+              "id": "checkpoint-remains-local",
+              "pointer": "/driver_policy/local_commit/publication",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Observe that the acting LLM may commit or defer while staging only the exact local scope"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "add",
+          "--name",
+          "journey semantic commit recommendation fixture pass",
+          "--type",
+          "test",
+          "--command",
+          "loom whoami --json",
+          "--intent",
+          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "--json"
+        ],
+        "id": "register-checkpoint-fixture-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": "journey semantic commit recommendation fixture pass",
+              "id": "fixture-proof-name",
+              "pointer": "/validation/name",
+              "type": "string"
+            },
+            {
+              "equals": "not_run",
+              "id": "fixture-proof-is-pending",
+              "pointer": "/validation/status",
+              "type": "string"
+            },
+            {
+              "equals": "test",
+              "id": "fixture-proof-type",
+              "pointer": "/validation/body/type",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "fixture-proof-command",
+              "pointer": "/validation/body/command",
+              "type": "string"
+            },
+            {
+              "equals": "8fe1e8413db5f3df8c41f23ad4f3327f",
+              "id": "fixture-proof-intent",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "8fe1e8413db5f3df8c41f23ad4f3327f",
+              "id": "fixture-proof-validates-the-scope",
+              "pointer": "/edge/to_id",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Register the fixture's own deterministic proof against the Intent this checkpoint scopes"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "checkpoint",
+          "recommend",
+          "--intent",
+          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "--json"
+        ],
+        "id": "review-commit-recommendation",
+        "output": {
+          "assertions": [
+            {
+              "equals": "loom.checkpoint-recommendation/v1",
+              "id": "recommendation-schema-is-current",
+              "pointer": "/schema",
+              "type": "string"
+            },
+            {
+              "equals": "implemented Intent 'Confined compiled Journey execution'",
+              "id": "recommendation-rationale-is-semantic",
+              "pointer": "/scope/rationale",
+              "type": "string"
+            },
+            {
+              "equals": "src/candidate_surface_policy.rs",
+              "id": "recommendation-names-exact-source",
+              "pointer": "/included_paths/0/path",
+              "type": "string"
+            },
+            {
+              "id": "recommendation-exposes-observed-checks",
+              "pointer": "/checks",
+              "type": "json"
+            },
+            {
+              "equals": "feat: Confined compiled Journey execution",
+              "id": "recommendation-message-is-deterministic",
+              "pointer": "/suggested_message",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "recommendation-creates-no-commit",
+              "pointer": "/commit_id"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Review the deterministic checkpoint rationale, evidence, and suggested message without creating a commit"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "run",
+          "journey semantic commit recommendation fixture pass",
+          "--json"
+        ],
+        "id": "run-checkpoint-fixture-proof",
+        "output": {
+          "assertions": [
+            {
+              "id": "observed-fixture-proof-has-id",
+              "pointer": "/ran/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "journey semantic commit recommendation fixture pass",
+              "id": "observed-fixture-proof-name",
+              "pointer": "/ran/0/name",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "observed-fixture-proof-passes",
+              "pointer": "/ran/0/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "observed-fixture-proof-command",
+              "pointer": "/ran/0/command",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "only-one-fixture-proof-ran",
+              "pointer": "/ran/1"
+            },
+            {
+              "contains": {
+                "blocked": 0,
+                "failed": 0,
+                "passed": 1,
+                "skipped": 0
+              },
+              "id": "observed-fixture-summary-passes",
+              "pointer": "/summary",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Let Loom execute the registered proof so the cloned graph carries an observed passing verdict"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "sync",
+          "--json"
+        ],
+        "id": "verify-isolated-checkpoint-fixture",
+        "output": {
+          "assertions": [
+            {
+              "equals": 0,
+              "id": "fixture-files-unchanged",
+              "pointer": "/files_changed",
+              "type": "integer"
+            },
+            {
+              "equals": 0,
+              "id": "fixture-edges-unchanged",
+              "pointer": "/edges_staled",
+              "type": "integer"
+            },
+            {
+              "equals": 0,
+              "id": "fixture-validations-unchanged",
+              "pointer": "/validations_reset",
+              "type": "integer"
+            },
+            {
+              "equals": [],
+              "id": "fixture-has-no-missing-files",
+              "pointer": "/missing",
+              "type": "json"
+            },
+            {
+              "equals": true,
+              "id": "fixture-export-is-refreshed",
+              "pointer": "/reexported",
+              "type": "boolean"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Re-synchronize the cloned graph after the fixture proof and refresh its portable export"
+      }
+    ]
+  },
+  "setup": {
+    "git": {
+      "dirty_paths": [
+        "src/candidate_surface_policy.rs"
+      ],
+      "mode": "isolated_snapshot"
+    },
+    "graph": "local_snapshot",
+    "operations": [
+      "register-checkpoint-fixture-proof",
+      "run-checkpoint-fixture-proof",
+      "verify-isolated-checkpoint-fixture"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-checkpoint-readiness",
+      "step_id": "inspect-checkpoint-readiness"
+    },
+    {
+      "operation_id": "review-commit-recommendation",
+      "step_id": "review-commit-recommendation"
+    },
+    {
+      "operation_id": "observe-llm-commit-or-defer-policy",
+      "step_id": "decide-commit-checkpoint"
+    },
+    {
+      "operation_id": "observe-human-push-gate",
+      "step_id": "request-push-decision"
+    }
+  ]
+}

@@ -1,22 +1,20 @@
 //! Ratification — whether a behavior is WANTED, and who gets to say so.
 //!
-//! Plane: asserted judgment (human-authorized, INV-8) over a derived witness.
+//! Plane: asserted judgment (human-authorized, INV-8) alongside a derived
+//! technical witness.
 //!
-//! Contract — **asserted judgment always wins; evidence speaks only where the
-//! human is silent.** An unratified intent that the code demonstrably performs,
-//! that a proof loom ran covers, and that shows up in recorded usage is
-//! `de_facto` wanted: it is happening, whether or not anyone said so. That is
-//! not the same as approved, and loom never writes it as though it were — but
-//! it is enough to stop asking, which is the point.
+//! Contract — **technical evidence never establishes wantedness.** Grounding,
+//! proof strength, verdicts, and recorded usage form an inspectable witness that
+//! the behavior exists. They may expose a discovery or a conflict, but without
+//! a direct or mediated human decision its ratification remains `unratified`.
 //!
 //! A REJECTION is absolute. No amount of evidence resurrects a behavior the
 //! authority killed; a rejected intent that the code still performs is not
 //! wanted-after-all, it is a `ZombieBehavior` and it blocks.
 //!
-//! The problem this solves: the one rung requiring human attention used to
-//! block the five above it, so a worker facing 51 challenge prompts forged 39
-//! of them. Wantedness is now EARNED from evidence by default, and the human is
-//! asked only where evidence and judgment actually diverge.
+//! Missing approval is projected explicitly without turning every unratified
+//! behavior into an interruption: the human is asked only where evidence and
+//! judgment actually diverge.
 
 use crate::model::{EdgeKind, NodeType, TargetKind, Verification};
 use crate::store::Store;
@@ -81,8 +79,9 @@ impl HumanDecision {
 #[serde(rename_all = "snake_case")]
 pub enum Ratification {
     Unratified,
-    /// Nobody said yes, but the code does it, a proof loom ran covers it, and
-    /// it appears in real recorded usage.
+    /// Legacy serialized state retained for compatibility only. A technical
+    /// witness is not authority, so [`effective`] normalizes this to
+    /// [`Ratification::Unratified`] and it is never settled.
     DeFacto,
     Ratified,
     Rejected,
@@ -110,10 +109,9 @@ impl Ratification {
         }
     }
 
-    /// Does this state mean "stop asking"? `de_facto` counts; that is the whole
-    /// reason it exists.
+    /// Does this state carry a current human approval?
     pub fn settled(self) -> bool {
-        matches!(self, Ratification::Ratified | Ratification::DeFacto)
+        matches!(self, Ratification::Ratified)
     }
 }
 
@@ -130,26 +128,23 @@ pub struct DeFactoWitness {
 }
 
 impl DeFactoWitness {
-    /// All three, or it is not de facto. Each is falsifiable on its own, and
-    /// two of the three (D1, D2) expire with the code — so a behavior that
-    /// stops being performed stops being de facto wanted.
+    /// All three make a complete technical witness. Each is falsifiable on its
+    /// own, and two of the three (D1, D2) expire with the code, so the witness
+    /// stops holding when the behavior stops being performed or proven.
     pub fn holds(&self) -> bool {
         self.demonstrated_in.is_some() && self.proven_by.is_some() && self.used_by.is_some()
     }
 }
 
-/// Asserted judgment always wins. Evidence speaks only into silence.
-pub fn effective(asserted: Ratification, witness: Option<&DeFactoWitness>) -> Ratification {
+/// Project authoritative wantedness without deriving it from technical facts.
+///
+/// The witness remains available through [`witness`] for discovery and
+/// diagnostics, but cannot settle this projection. `DeFacto` is a legacy wire
+/// value and therefore fails closed to `Unratified`.
+pub fn effective(asserted: Ratification, _witness: Option<&DeFactoWitness>) -> Ratification {
     match asserted {
-        // A rejection is absolute: evidence that the code still does it is a
-        // divergence to fix, never a reason to re-approve.
-        Ratification::Rejected => Ratification::Rejected,
-        Ratification::Ratified => Ratification::Ratified,
-        Ratification::NeedsReconfirmation => Ratification::NeedsReconfirmation,
-        Ratification::Unratified | Ratification::DeFacto => match witness {
-            Some(w) if w.holds() => Ratification::DeFacto,
-            _ => Ratification::Unratified,
-        },
+        Ratification::DeFacto => Ratification::Unratified,
+        state => state,
     }
 }
 
@@ -284,11 +279,13 @@ fn intents_with_recorded_usage(store: &Store) -> Result<std::collections::BTreeS
     Ok(out)
 }
 
-/// Recompute every intent's de-facto witness. Derived, so sync owns it and
-/// `wipe_derived` + `sync` reproduces it byte-identically.
+/// Recompute every intent's technical witness. Derived, so sync owns it and
+/// `wipe_derived` + `sync` reproduces it byte-identically. The historical
+/// `de_facto` facet key is retained for export compatibility; its contents do
+/// not carry ratification authority.
 pub fn recompute(store: &Store) -> Result<usize> {
     let named = intents_with_recorded_usage(store)?;
-    let mut earned = 0usize;
+    let mut complete = 0usize;
     for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
         if intent.status == "deprecated" {
             continue;
@@ -301,7 +298,7 @@ pub fn recompute(store: &Store) -> Result<usize> {
             usage_hops,
         };
         if witness.holds() {
-            earned += 1;
+            complete += 1;
         }
         store.set_facet(
             &intent.id,
@@ -311,7 +308,7 @@ pub fn recompute(store: &Store) -> Result<usize> {
             crate::model::TruthClass::Derived,
         )?;
     }
-    Ok(earned)
+    Ok(complete)
 }
 
 /// One intent's witness, read back.
@@ -321,11 +318,13 @@ pub fn witness(store: &Store, intent_id: &str) -> Result<Option<DeFactoWitness>>
         .and_then(|j| serde_json::from_str(&j).ok()))
 }
 
-/// What this intent's wantedness effectively is, judgment and evidence combined.
+/// What this intent's authoritative wantedness is.
+///
+/// Technical evidence is deliberately not consulted here; callers that need
+/// the independently derived observation use [`witness`].
 pub fn effective_for(store: &Store, intent_id: &str) -> Result<Ratification> {
     let asserted = Ratification::parse(&store.ratification(intent_id)?);
-    let w = witness(store, intent_id)?;
-    Ok(effective(asserted, w.as_ref()))
+    Ok(effective(asserted, None))
 }
 
 #[cfg(test)]
@@ -351,10 +350,11 @@ mod tests {
     }
 
     #[test]
-    fn evidence_speaks_only_into_silence() {
+    fn technical_evidence_never_establishes_wantedness() {
         assert_eq!(
             effective(Ratification::Unratified, Some(&full())),
-            Ratification::DeFacto
+            Ratification::Unratified,
+            "a complete technical witness is not human authority"
         );
         assert_eq!(
             effective(Ratification::Unratified, None),
@@ -368,13 +368,24 @@ mod tests {
             effective(Ratification::Unratified, Some(&partial)),
             Ratification::Unratified
         );
+        assert_eq!(
+            effective(Ratification::Ratified, Some(&full())),
+            Ratification::Ratified,
+            "an explicit human ratification remains authoritative"
+        );
     }
 
     #[test]
-    fn de_facto_settles_so_the_queue_stops_asking() {
-        assert!(Ratification::DeFacto.settled());
+    fn legacy_de_facto_is_not_settled_or_authoritative() {
+        assert_eq!(Ratification::parse("de_facto"), Ratification::DeFacto);
+        assert_eq!(
+            effective(Ratification::DeFacto, Some(&full())),
+            Ratification::Unratified
+        );
+        assert!(!Ratification::DeFacto.settled());
         assert!(!Ratification::Unratified.settled());
         assert!(!Ratification::Rejected.settled());
+        assert!(Ratification::Ratified.settled());
     }
 
     #[test]

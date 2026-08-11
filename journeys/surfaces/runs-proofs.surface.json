@@ -1,0 +1,138 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "runs-proofs",
+  "journey_hash": "4be352d4f97e4f13",
+  "surface": {
+    "id": "loom-runs-proofs",
+    "title": "Loom observed proof execution",
+    "identity": "loom validation run",
+    "codefile": "src/commands/proof_cmd.rs",
+    "locator": "validate_cmd",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "add",
+          "--name",
+          "journey runs proofs pass",
+          "--type",
+          "test",
+          "--command",
+          "loom whoami --json",
+          "--intent",
+          "5345985b41a16ffdade0d603bced3643",
+          "--json"
+        ],
+        "id": "register-passing-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": "journey runs proofs pass",
+              "id": "fixture-proof-name",
+              "pointer": "/validation/name",
+              "type": "string"
+            },
+            {
+              "equals": "not_run",
+              "id": "fixture-proof-is-pending",
+              "pointer": "/validation/status",
+              "type": "string"
+            },
+            {
+              "equals": "test",
+              "id": "fixture-proof-type",
+              "pointer": "/validation/body/type",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "fixture-proof-command",
+              "pointer": "/validation/body/command",
+              "type": "string"
+            },
+            {
+              "equals": "5345985b41a16ffdade0d603bced3643",
+              "id": "fixture-proof-intent",
+              "pointer": "/intent/id",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Register a deterministic passing proof against an implemented behavior"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "run",
+          "journey runs proofs pass",
+          "--json"
+        ],
+        "id": "run-registered-proof",
+        "output": {
+          "assertions": [
+            {
+              "id": "observed-proof-has-id",
+              "pointer": "/ran/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "journey runs proofs pass",
+              "id": "observed-proof-name",
+              "pointer": "/ran/0/name",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "observed-proof-passes",
+              "pointer": "/ran/0/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "observed-proof-command",
+              "pointer": "/ran/0/command",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "only-one-proof-ran",
+              "pointer": "/ran/1"
+            },
+            {
+              "contains": {
+                "blocked": 0,
+                "failed": 0,
+                "passed": 1,
+                "skipped": 0
+              },
+              "id": "observed-summary-passes",
+              "pointer": "/summary",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Ask Loom to execute the registered proof and report its observed outcome"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "register-passing-proof"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "run-registered-proof",
+      "step_id": "run-registered-proof"
+    }
+  ]
+}

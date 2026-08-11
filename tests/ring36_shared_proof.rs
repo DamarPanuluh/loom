@@ -311,10 +311,6 @@ fn in_process_add_of_a_shared_command_reaches_the_warning() {
                 r#type: "test".into(),
                 command: "cargo test --test ring6 -q".into(),
                 intent: "the second behavior".into(),
-                proof_kind: None,
-                journey_id: None,
-                repo_native_kind: None,
-                artifact: None,
             },
         }),
     })
@@ -346,6 +342,7 @@ fn updating_a_validation_command_skips_self_and_still_warns_on_others() {
         .args([
             "--graph",
             tmp.path().to_str().unwrap(),
+            "--json",
             "validation",
             "update",
             "second proof",
@@ -357,6 +354,12 @@ fn updating_a_validation_command_skips_self_and_still_warns_on_others() {
     assert!(
         out.status.success(),
         "update must succeed (warn, not refuse)"
+    );
+    let payload: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(payload["collision"]["detected"], true);
+    assert_eq!(
+        payload["collision"]["prior_behaviors"],
+        serde_json::json!([{"id": a, "name": "the first behavior"}])
     );
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
@@ -392,13 +395,27 @@ fn updating_a_validation_command_skips_self_and_still_warns_on_others() {
     );
 }
 
-/// Attack: under `--json`, the collision warning still goes to stderr.
+/// Attack: JSON clients receive deterministic collision facts while the same
+/// conversational warning remains on stderr for a human at the terminal.
 #[test]
-fn duplicate_command_warning_goes_to_stderr_even_with_json() {
+fn duplicate_command_json_is_structured_while_warning_stays_on_stderr() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let a = behavior(&store, "the first behavior");
-    proved_by(&store, &a, "first proof", "cargo test --test ring6 -q");
+    let zeta = behavior(&store, "zeta prior behavior");
+    let alpha = behavior(&store, "alpha prior behavior");
+    proved_by(&store, &zeta, "zeta proof", "cargo test --test ring6 -q");
+    proved_by(
+        &store,
+        &alpha,
+        "alpha proof one",
+        "cargo test --test ring6 -q",
+    );
+    proved_by(
+        &store,
+        &alpha,
+        "alpha proof two",
+        "cargo test --test ring6 -q",
+    );
     drop(store);
 
     let out = std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
@@ -438,16 +455,103 @@ fn duplicate_command_warning_goes_to_stderr_even_with_json() {
         .output()
         .unwrap();
     assert!(out.status.success());
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let payload: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(
-        serde_json::from_str::<serde_json::Value>(&stdout).is_ok(),
-        "stdout must stay parseable JSON under --json: {stdout}"
+    assert_eq!(payload["validation"]["name"], "second proof");
+    assert_eq!(payload["edge"]["kind"], "validates");
+    assert_eq!(
+        payload["collision"],
+        serde_json::json!({
+            "detected": true,
+            "command": "cargo test --test ring6 -q",
+            "prior_behavior_count": 2,
+            "prior_behaviors": [
+                {"id": alpha, "name": "alpha prior behavior"},
+                {"id": zeta, "name": "zeta prior behavior"}
+            ]
+        }),
+        "collision rows must be unique and sorted by behavior name/id"
     );
     assert!(
         stderr.contains("already the proof of"),
-        "warning is on stderr, not folded into the JSON envelope: {stderr}"
+        "the conversational warning must remain on stderr: {stderr}"
     );
+    assert!(stderr.contains("alpha prior behavior"), "{stderr}");
+    assert!(stderr.contains("zeta prior behavior"), "{stderr}");
+
+    let store = Store::open(tmp.path()).unwrap();
+    let registered = store
+        .resolve_node("second proof", Some(NodeType::Validation))
+        .unwrap();
+    assert_eq!(registered.status, "not_run");
+    assert_eq!(
+        store
+            .edges_with(Some(EdgeKind::Validates), Some(&registered.id), None)
+            .unwrap()
+            .len(),
+        1,
+        "the nonblocking diagnostic must preserve atomic registration"
+    );
+}
+
+#[test]
+fn unique_and_blank_commands_report_explicit_empty_collision_objects() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let unique_target = behavior(&store, "unique target");
+    let blank_target = behavior(&store, "blank target");
+    drop(store);
+
+    let register = |name: &str, command: &str, intent: &str| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_loom"))
+            .args([
+                "--graph",
+                tmp.path().to_str().unwrap(),
+                "--json",
+                "validation",
+                "add",
+                "--name",
+                name,
+                "--type",
+                "test",
+                "--command",
+                command,
+                "--intent",
+                intent,
+            ])
+            .output()
+            .unwrap()
+    };
+
+    for (name, command, intent) in [
+        (
+            "unique proof",
+            "cargo test --test ring36 unique-sentinel",
+            unique_target.as_str(),
+        ),
+        ("blank proof", "", blank_target.as_str()),
+    ] {
+        let out = register(name, command, intent);
+        assert!(
+            out.status.success(),
+            "registration failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(
+            !String::from_utf8_lossy(&out.stderr).contains("already the proof of"),
+            "non-collisions must stay conversationally silent"
+        );
+        let payload: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(
+            payload["collision"],
+            serde_json::json!({
+                "detected": false,
+                "command": command,
+                "prior_behavior_count": 0,
+                "prior_behaviors": []
+            })
+        );
+    }
 }
 
 /// **The collision lookup asks SQLite, and asks it exactly.**

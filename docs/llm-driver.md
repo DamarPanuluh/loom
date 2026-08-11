@@ -91,7 +91,7 @@ Real `WorkItem` fields:
 
 ```text
 WorkItem
-  mode:            build | coverage | fix | analyze | validate | quality | prove | triage | review | elaborate | rectify | ratify | audit | deepen
+  mode:            derive | surface | build | coverage | fix | analyze | validate | quality | prove | triage | review | elaborate | rectify | ratify | audit | deepen
   owner_role:      builder | analyzer | fixer | validator | quality | rectify | human
   effort:          low | mid | high
   routing_hint:    mechanical | judgment   # optional; orchestrators map to model tiers
@@ -140,9 +140,9 @@ Operators also need a session strategy. The user or orchestrator chooses the
 model and loop; the model does not self-certify capability.
 
 **Seeding mode** spends high-capability reasoning to turn ambiguous product/code
-understanding into durable graph artifacts: intents, scenario families,
-prerequisites, interface boundaries, validations, journey coverage, invariant
-points, reasoned waivers, and crisp product questions. Prefer graph writes over
+understanding into durable graph artifacts: authored Journeys, human-authorized
+technical derivations, scenario families, prerequisites, interface boundaries,
+ordinary Intent validations, reasoned exemptions, and crisp product questions. Prefer graph writes over
 prose summaries. Do not answer product questions for the human, and do not mark
 proofs passed without observed runs. On a cold graph with codefiles registered
 and no intents yet, start from `loom bootstrap suggest` (a Proposal of planned
@@ -150,7 +150,7 @@ pillars) then adopt — never invent an entire spine as `implemented`.
 
 **Draining mode** closes already-routed gaps one packet at a time. A bounded or
 cheaper model can run `loom next`, inspect the packet's `read_set`, satisfy
-`truth_gap.correct_when`, execute validations/journeys/scans, and record
+`truth_gap.correct_when`, execute validations, compiled Journey profiles, or scans, and record
 evidence, confidence, or blocked prerequisites. Do not rediscover product shape
 or invent broad graph structure; if meaning is missing, raise a linked question
 or mark the proof blocked.
@@ -330,11 +330,22 @@ mindset:
   Run sync after code changes.
   Do not mark proof passing — that is validator work.
 
+  For a derive packet, the authored Journey is the root. Map every stable step
+    to the smallest falsifiable technical Intents, but do not accept the manifest
+    until the human authorizes that exact Journey hash and mapping.
+  For a surface packet, implement the packet's structured CLI contract as real
+    source in the target repository, then bind every step to a reusable operation.
+    Never substitute an executable string or ask Loom to generate application source.
+
 allowed:
   edit code
   loom intent update <intent> --lifecycle implemented --reason '…'
   loom edge implement --role realizes|consumes|configures|verifies
   loom validation add (stub only)
+  loom journey derive <journey> (read-only)
+  loom journey derive-accept <journey> --manifest <file> --human-decision '<exact human answer>'
+  loom journey surface <journey> (read-only)
+  loom journey surface-accept <journey> --manifest <file>
   loom sync
   loom finding add '<claim>' --source code_audit --kind code_audit --file <registered-codefile> --evidence '<file:line — observed fact>' --impact '<why it matters>' --confidence <0.0-1.0>
   loom intent add --allow-symbol-name (only when name is a known public symbol
@@ -345,6 +356,9 @@ forbidden:
   loom rule verdict passing (quality role)
   loom edge explore ground (analyzer role)
   creating intents that are just function/method names with no behavioral criterion
+  inventing a human derivation decision or accepting a stale hash-bound manifest
+  surfacing a Journey before every current derivation is accepted, implemented, and realizing-grounded
+  recording a passing Journey proof from the builder role
 
 evidence required:
   code written, locator confirmed, sync clean
@@ -419,7 +433,9 @@ mindset:
 allowed:
   run validation command
   loom validation verdict <validation> passed|failed|blocked
-  loom journey run
+  loom journey compile <journey> --profile proof
+  loom journey run <journey> --profile proof
+  loom journey diagnose <journey> --profile proof [--input <key=json>]...
   loom validation run <intent>
   loom edge exercises <validation> <codefile> --locator <entry-symbol> (only when command derivation cannot identify the custom runner)
 
@@ -433,6 +449,73 @@ forbidden:
 evidence required:
   command stdout/stderr, test count, failure message, or blocking reason
 ```
+
+### Journey-root delivery loop
+
+Journey work is ordered by semantic authority, not by convenience:
+
+```text
+human authors loom.journey/v1 meaning
+  → loom journey add <artifact>
+builder inspects loom journey derive <journey>
+  → proposes a strict loom.journey-derivation/v1 manifest
+  → reconciles explicit create/reuse Intent entries and requires/hierarchy relationships
+  → presents one conversational hash-table batch for that exact hash-bound mapping
+  → waits
+human answers
+  → builder records the exact answer with derive-accept; Loom stores an adopted Proposal
+builder realizes and grounds every accepted technical Intent
+  → inspects loom journey surface <journey>
+  → writes the real target-repository CLI source
+  → accepts the complete structured surface manifest
+validator compiles the selected profile
+  → compiler owns Proves / Validates / Calls / Exercises
+  → validator runs it and records only the observed outcome
+```
+
+Authored Journey steps contain actors, actions, and expected outcomes. Implementation details belong to the derivation and surface projections. A semantic hash change invalidates those projections and returns the work to derive; it never invites an agent to reinterpret an old acceptance.
+
+`derive-accept` is a human gate. The strict derivation manifest contains `proposal_id`, `proposal_rationale`, `intents[]`, `relationships[]`, and `unresolved_question`; every Intent entry declares `operation: create|reuse`, its stable entry `id`, `step_ids`, `level`, `visibility`, and `rationale`. A `create` entry additionally supplies `name` and a falsifiable `criterion`; a `reuse` entry supplies `intent_id` instead. Every relationship declares `id`, `kind` (`requires|hierarchy`), `from`, `to`, and `rationale`, with endpoints referring to included entry IDs. Loom rejects duplicate entries/relationships, relationship cycles, unresolved questions, stale hashes, and an adopted `proposal_id` paired with different content. An identical accepted replay is an idempotent no-op. The human reviews this as one conversational hash-table batch—proposal ID, Journey hash, manifest hash, entries, criteria, rationales, step IDs, and relationships—and authorizes that exact table, never an LLM summary.
+
+`surface-accept` is not a product decision, but it requires cited live source and complete step bindings. `compile` and `run` belong to Validate. `diagnose` may override typed inputs for investigation but does not settle the proof. A compiled Journey reaches S3 only through its own accepted surface and code entry path.
+
+### Semantic local checkpoints
+
+After one Intent or cohesive accepted bundle is implemented, relevant tests
+pass, sync and doctor are clean, and the portable export reflects the graph,
+ask Loom for the exact evidence-bearing checkpoint scope:
+
+```text
+loom checkpoint recommend --intent <intent> [--intent <intent> ...] --json
+```
+
+Loom only recommends. It never stages, commits, or pushes, and a Git commit is
+repository-history evidence rather than Loom truth. A ready response includes
+the exact included paths, excluded dirty paths and reasons, checks and commands,
+scope rationale, and suggested message. There is no “N changes” threshold.
+
+The acting LLM then decides autonomously whether the local commit improves
+historical tracing, reviewability, or regression bisecting:
+
+```text
+ready and exact:
+  git add -- <only recommendation.included_paths>
+  verify `git diff --cached --name-only -z` equals that set exactly
+  git commit -m '<suggested_message>'
+  leave the commit local
+
+blocked, ambiguous ownership, user-owned overlap, or cached-set drift:
+  defer; do not guess, widen the stage, or use `git add -A`
+```
+
+Creating or deferring the local commit does not interrupt the human. Publication
+is the separate authority boundary. If push would be useful, present one table
+containing the canonical repository, remote name and URL, full branch ref, and
+full local commit OID, with Push / Keep local choices and a recommendation.
+Only an explicit answer authorizes that exact tuple. Re-resolve it immediately
+before push; a changed repository, remote, branch, or commit invalidates the
+answer and requires a new decision. Silence or refusal keeps the checkpoint
+local. Never treat a previous answer as blanket approval and never force-push.
 
 ### quality
 
@@ -531,7 +614,7 @@ evidence required:
 
 ### elaborate builder loop
 
-`loom next --mode elaborate` serves the most-incomplete user-visible feature intent. The packet embeds the Definition-of-Complete scorecard, including the open axes: `scenarios`, `prerequisites`, `boundary`, `proof`, `journey`, and `questions`.
+`loom next --mode elaborate` serves the most-incomplete user-visible feature intent. The packet embeds the Definition-of-Complete scorecard, including the open axes: `scenarios`, `prerequisites`, `boundary`, `proof`, `journey`, and `questions`. Journey ancestry is satisfied by a current accepted `derives` path from an authored root, or by a canonical human-approved Journey exemption; an ordinary waiver cannot fabricate either.
 
 The loop is deliberately cognitive-cognitive:
 
@@ -541,7 +624,7 @@ LLM first tells the user, in plain language, that a partial idea is enough
   → does not assume the user knows Loom, scorecards, axes, or graph commands
 LLM proposes missing surroundings
   → add scenario intents with --aspect sad|fallback|edge_case and scenario-of edges
-  → add prerequisite edges or proof/journey coverage where the answer is graph-derivable
+  → add prerequisite edges or route missing Journey ancestry through authored roots and derivation
   → for a true product decision, record and directly ask ONE plain-language question:
        loom question add "<one crisp product question>" --intent <intent>
   → offer a recommended default and consequences when useful, then WAIT

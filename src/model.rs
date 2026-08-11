@@ -111,12 +111,52 @@ str_enum! {
         InboxItem => "inbox_item",
         TaskRecord => "task_record",
         Proposal => "proposal",
-        JourneyCoverage => "journey_coverage",
-        JourneyInvariantPoint => "journey_invariant_point",
+        Journey => "journey",
         WikiPage => "wiki_page",
         UpstreamIntent => "upstream_intent",
         Pattern => "pattern",
     }
+}
+
+str_enum! {
+    /// The typed landing selected for a captured intake item. The stored
+    /// reference is always an exact node id; names and fragments are display
+    /// conveniences and never durable routing identities.
+    IntakeDestinationKind {
+        ExistingJourney => "existing_journey",
+        NewJourney => "new_journey",
+        ExistingIntent => "existing_intent",
+        Hypothesis => "hypothesis",
+        Spike => "spike",
+        ExternalResearch => "external_research",
+    }
+}
+
+impl IntakeDestinationKind {
+    pub fn node_type(self) -> NodeType {
+        match self {
+            Self::ExistingJourney | Self::NewJourney => NodeType::Journey,
+            Self::ExistingIntent => NodeType::Intent,
+            Self::Hypothesis => NodeType::Hypothesis,
+            Self::Spike | Self::ExternalResearch => NodeType::TaskRecord,
+        }
+    }
+
+    pub fn task_kind(self) -> Option<&'static str> {
+        match self {
+            Self::Spike => Some("investigation"),
+            Self::ExternalResearch => Some("research"),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct IntakeDestination {
+    #[serde(rename = "type")]
+    pub destination_type: IntakeDestinationKind,
+    #[serde(rename = "ref")]
+    pub reference: String,
 }
 
 str_enum! {
@@ -186,8 +226,9 @@ str_enum! {
         Calls => "calls",
         Exercises => "exercises",
         Relates => "relates",
-        Covers => "covers",
-        Asserts => "asserts",
+        Derives => "derives",
+        Surfaces => "surfaces",
+        Proves => "proves",
         Documents => "documents",
         DependsOn => "depends_on",
         Questions => "questions",
@@ -506,6 +547,16 @@ mod tests {
                 *mode
             );
         }
+        for kind in IntakeDestinationKind::ALL {
+            assert_eq!(
+                IntakeDestinationKind::from_str(kind.as_str()).unwrap(),
+                *kind
+            );
+            assert_eq!(
+                serde_json::to_string(kind).unwrap(),
+                format!("\"{}\"", kind.as_str())
+            );
+        }
     }
 
     #[test]
@@ -518,5 +569,10 @@ mod tests {
     #[test]
     fn unknown_enum_value_errors() {
         assert!(NodeType::from_str("nonsense").is_err());
+        assert_eq!(NodeType::from_str("journey").unwrap(), NodeType::Journey);
+        assert!(NodeType::from_str("journey_coverage").is_err());
+        assert!(NodeType::from_str("journey_invariant_point").is_err());
+        assert!(EdgeKind::from_str("covers").is_err());
+        assert!(EdgeKind::from_str("asserts").is_err());
     }
 }

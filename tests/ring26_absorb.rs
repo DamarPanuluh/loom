@@ -221,6 +221,136 @@ fn the_batch_is_an_ordinary_proposal() {
     );
 }
 
+/// The JSON adapter returns the exact Proposal state written by absorb. The
+/// legacy observation fields remain available, while the persisted view proves
+/// that every proposed mutation is still open and none became graph truth.
+#[test]
+fn absorb_json_exposes_persisted_open_proposal_without_adopting_items() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    seed(&store, tmp.path());
+    std::fs::write(
+        tmp.path().join("src/checkout.rs"),
+        "pub fn perform_checkout() {}\npub fn apply_discount() {}\n",
+    )
+    .unwrap();
+
+    let intent_ids_before: std::collections::BTreeSet<_> = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .map(|node| node.id)
+        .collect();
+    let edge_ids_before: std::collections::BTreeSet<_> = store
+        .list_edges(None, usize::MAX)
+        .unwrap()
+        .into_iter()
+        .map(|edge| edge.id)
+        .collect();
+    let proposal_count_before = store.count_nodes(Some(NodeType::Proposal)).unwrap();
+    drop(store);
+
+    let output = loom_command()
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["absorb", "--json"])
+        .output()
+        .expect("run loom absorb --json");
+    assert!(
+        output.status.success(),
+        "absorb failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let response: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let proposal_id = response["proposal"]
+        .as_str()
+        .expect("legacy proposal id remains a string");
+    let persisted = &response["persisted_proposal"];
+    assert_eq!(persisted["id"], proposal_id);
+    assert_eq!(persisted["type"], "proposal");
+    assert_eq!(persisted["truth_class"], "asserted");
+    assert_eq!(persisted["status"], "captured");
+    assert_eq!(persisted["body"]["source"], "absorb");
+
+    let observed_items = response["items"]
+        .as_array()
+        .expect("legacy observation items remain an array");
+    let persisted_items = persisted["body"]["items"]
+        .as_array()
+        .expect("persisted proposal items are returned");
+    assert!(!persisted_items.is_empty());
+    assert_eq!(persisted_items.len(), observed_items.len());
+    for (index, (persisted_item, observed_item)) in
+        persisted_items.iter().zip(observed_items).enumerate()
+    {
+        assert_eq!(persisted_item["number"], index + 1);
+        assert_eq!(persisted_item["status"], "open");
+        assert_eq!(persisted_item["kind"], observed_item["kind"]);
+        assert_eq!(persisted_item["text"], observed_item["text"]);
+        assert_eq!(persisted_item["intent_id"], observed_item["intent_id"]);
+        assert_eq!(persisted_item["absorb_evidence"], observed_item["evidence"]);
+        assert_eq!(persisted_item["needs"], observed_item["needs"]);
+        assert!(
+            persisted_item.get("spawned").is_none(),
+            "an unadopted absorb item must not name authoritative work"
+        );
+    }
+    assert_eq!(
+        response["ready"].as_u64().unwrap() + response["needs_you"].as_u64().unwrap(),
+        observed_items.len() as u64
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let intent_ids_after: std::collections::BTreeSet<_> = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .map(|node| node.id)
+        .collect();
+    let edge_ids_after: std::collections::BTreeSet<_> = store
+        .list_edges(None, usize::MAX)
+        .unwrap()
+        .into_iter()
+        .map(|edge| edge.id)
+        .collect();
+    assert_eq!(intent_ids_after, intent_ids_before);
+    assert_eq!(edge_ids_after, edge_ids_before);
+    assert_eq!(
+        store.count_nodes(Some(NodeType::Proposal)).unwrap(),
+        proposal_count_before + 1
+    );
+    let stored = store.get_node(proposal_id).unwrap().unwrap();
+    assert_eq!(stored.status, "captured");
+    assert_eq!(stored.body, persisted["body"]);
+}
+
+#[test]
+fn absorb_json_returns_null_persisted_proposal_when_nothing_is_missing() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    seed(&store, tmp.path());
+    drop(store);
+
+    let output = loom_command()
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["absorb", "--json"])
+        .output()
+        .expect("run empty loom absorb --json");
+    assert!(
+        output.status.success(),
+        "absorb failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let response: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(response["proposal"], serde_json::Value::Null);
+    assert_eq!(response["persisted_proposal"], serde_json::Value::Null);
+    assert_eq!(response["items"], serde_json::json!([]));
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(store.count_nodes(Some(NodeType::Proposal)).unwrap(), 0);
+}
+
 /// A new test symbol whose call closure reaches a behavior's code is a proof
 /// waiting to be registered. This rule needed `tests/` in the graph to fire at
 /// all — before that, no test file was a call-graph entry point, and the

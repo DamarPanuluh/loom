@@ -61,7 +61,13 @@ fn de_facto_cannot_be_asserted() {
     }
 }
 
-/// Wantedness is earned. All three conjuncts, or it is silence.
+/// The technical witness is earned — all three conjuncts, or it does not hold —
+/// and even when complete it stays evidence rather than wantedness.
+///
+/// The witness answers "is this behavior demonstrably happening?". Only a human
+/// answers "is this behavior wanted?". Deriving the second from the first is the
+/// exact shortcut that produced 39 fabricated ratifications, so a complete
+/// witness now projects `Unratified` and surfaces as a question instead.
 #[test]
 fn de_facto_needs_all_three_conjuncts() {
     let full = DeFactoWitness {
@@ -70,9 +76,11 @@ fn de_facto_needs_all_three_conjuncts() {
         used_by: Some("exercised directly".into()),
         usage_hops: 0,
     };
+    assert!(full.holds(), "all three conjuncts make a complete witness");
     assert_eq!(
         effective(Ratification::Unratified, Some(&full)),
-        Ratification::DeFacto
+        Ratification::Unratified,
+        "a complete technical witness is evidence, never human wantedness"
     );
     for drop_one in 0..3 {
         let mut w = full.clone();
@@ -81,10 +89,14 @@ fn de_facto_needs_all_three_conjuncts() {
             1 => w.proven_by = None,
             _ => w.used_by = None,
         }
+        assert!(
+            !w.holds(),
+            "two of three conjuncts is silence about the third"
+        );
         assert_eq!(
             effective(Ratification::Unratified, Some(&w)),
             Ratification::Unratified,
-            "two of three conjuncts is silence about the third"
+            "a partial witness is no closer to wantedness than a complete one"
         );
     }
 }

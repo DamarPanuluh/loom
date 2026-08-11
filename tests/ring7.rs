@@ -56,6 +56,15 @@ fn build_clean_graph(tmp: &Tmp) -> Store {
     store
         .add_edge(EdgeKind::Hierarchy, &sys.id, &cart.id, TruthClass::Asserted)
         .unwrap();
+    store
+        .set_facet(
+            &sys.id,
+            loom::model::TargetKind::Node,
+            "journey_exemption",
+            r#"{"human_decision_digest":"sha256:ring7","kind":"aggregate","reason":"hierarchy parent is proven through its Journey-rooted children"}"#,
+            TruthClass::Asserted,
+        )
+        .unwrap();
 
     let fa = codefile(&store, "src/auth.rs");
     let fc = codefile(&store, "src/cart.rs");
@@ -109,32 +118,8 @@ fn build_clean_graph(tmp: &Tmp) -> Store {
     // this fixture, which asserts the graph is CLEAN, has to hold proofs that
     // actually assert something. (`sys` is a hierarchy parent — proven through
     // its children.)
-    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
     for (intent, slug) in [(&auth, "login"), (&cart, "cart")] {
-        let spec = format!(
-            "journey: {slug}\nsteps:\n  - name: exercise it\n    intent: {}\n    run: echo {slug}-ok\n    expect:\n      stdout_contains: [\"{slug}-ok\"]\n",
-            intent.name
-        );
-        std::fs::write(tmp.path().join(format!("journeys/{slug}.yaml")), spec).unwrap();
-        let val = store
-            .add_node(
-                NodeType::Validation,
-                &format!("{slug} proof"),
-                "",
-                "not_run",
-                serde_json::json!({
-                    "type": "test",
-                    "command": format!("echo {slug}-ok"),
-                    "proof_kind": "journey",
-                    "artifact": format!("journeys/{slug}.yaml"),
-                }),
-            )
-            .unwrap();
-        store
-            .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
-            .unwrap();
-        let fresh = store.get_node(&val.id).unwrap().unwrap();
-        loom::commands::observe_validation(&store, &fresh).unwrap();
+        s3_journey_proof(&store, tmp.path(), &intent.id, slug);
     }
     // arm duplicate detection with distinct vocab tags (no collisions)
     for (id, term) in [(&sys.id, "system"), (&auth.id, "auth"), (&cart.id, "cart")] {
@@ -194,7 +179,7 @@ fn dogfood_maturity_is_meaningful_not_seed() {
     };
     assert!(met("seeded"));
     assert!(met("grounded"));
-    assert!(met("covered"));
+    assert!(met("covered"), "{ladder:#?}");
     assert!(
         met("inspected") && met("measured"),
         "no asserted residue should leave the verdict rungs met"
@@ -224,16 +209,54 @@ fn dogfood_export_check_detects_drift() {
 }
 
 #[test]
+fn release_workflow_keeps_tests_as_proof_artifacts_and_hash_binds_semantics() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let dogfood = std::fs::read_to_string(root.join("scripts/dogfood.sh")).unwrap();
+    let test_gate = dogfood
+        .find("cargo test --all-targets --quiet")
+        .expect("dogfood must execute the complete test gate");
+    let graph_gate = dogfood
+        .find("== fresh v12 graph ==")
+        .expect("dogfood must create the fresh graph after code gates");
+    assert!(
+        test_gate < graph_gate,
+        "tests must execute before fresh-graph discovery"
+    );
+
+    let reason = "Tests are Validation/proof artifacts, not implementation ownership; literal test paths may be re-registered when an Exercises edge needs source-drift tracking.";
+    assert!(
+        dogfood.contains(reason),
+        "the exact approved policy is recorded"
+    );
+    assert!(
+        dogfood.contains("ignore add 'tests/**'"),
+        "fresh graphs must persist the coverage exclusion"
+    );
+    assert!(
+        !dogfood.contains("'tests/**/*.rs'"),
+        "blanket source discovery must not register tests as implementation CodeFiles"
+    );
+
+    let journey = loom::journey::parse(&root.join("journeys/release-workflow.yaml"))
+        .expect("release workflow must remain a strict semantic Journey");
+    assert_eq!(journey.semantic_hash().unwrap(), "8cd6742023f60b62");
+}
+
+#[test]
 fn dogfood_next_serves_work_until_clean() {
     let tmp = Tmp::new();
     let store = build_clean_graph(&tmp);
-    // clean grounded graph: no required residue
-    assert!(
-        workitem::next(&store, None).unwrap().is_none(),
-        "clean graph has no required work"
+    // A clean graph has no required residue. The only remaining packet is the
+    // deliberately-open terminal deepen lane, which is optional strengthening.
+    let pending = workitem::next(&store, None).unwrap();
+    assert_eq!(
+        pending.as_ref().map(|item| item.mode.as_str()),
+        Some("deepen"),
+        "clean graph may offer only optional strengthening: {pending:#?}"
     );
-    // introduce a planned intent → build work appears
-    store
+    // Introducing an unrooted planned intent creates required derivation work
+    // before implementation can begin. The packet must name that exact intent.
+    let planned = store
         .add_node(
             NodeType::Intent,
             "checkout works",
@@ -242,8 +265,16 @@ fn dogfood_next_serves_work_until_clean() {
             serde_json::json!({}),
         )
         .unwrap();
-    let item = workitem::next(&store, None).unwrap().unwrap();
-    assert_eq!(item.mode, "build");
+    let derive = workitem::next(&store, None).unwrap().unwrap();
+    assert_eq!(derive.mode, "derive");
+    assert!(
+        derive
+            .context
+            .linked_entities
+            .iter()
+            .any(|entity| entity.id == planned.id && entity.role == "unrooted_intent"),
+        "derive packet must carry the exact unrooted intent: {derive:#?}"
+    );
 }
 
 /// Every command a packet offers must resolve.
@@ -605,17 +636,8 @@ fn passing_liveness_proof_is_routed_to_strengthen_then_clears_at_s2() {
         proof_axis.detail
     );
 
-    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
-    let spec = format!(
-        "journey: strong-proof\nsteps:\n  - name: assert output\n    intent: {}\n    run: echo behavior-ok\n    expect:\n      stdout_contains: [\"behavior-ok\"]\n",
-        intent.name
-    );
-    std::fs::write(tmp.path().join("journeys/strong-proof.yaml"), spec).unwrap();
     let mut body = proof.body.clone();
-    body["proof_kind"] = serde_json::json!("journey");
-    body["journey"] = serde_json::json!("strong-proof");
-    body["artifact"] = serde_json::json!("journeys/strong-proof.yaml");
-    body["command"] = serde_json::json!("echo behavior-ok");
+    body["command"] = serde_json::json!("printf 'test result: ok. 1 passed; 0 failed\\n'");
     store.set_node_body(&proof.id, &body).unwrap();
     let updated = store.get_node(&proof.id).unwrap().unwrap();
     loom::commands::observe_validation(&store, &updated).unwrap();

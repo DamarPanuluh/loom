@@ -1,0 +1,1072 @@
+{
+  "schema": "loom.release-inventory/v2",
+  "files": [
+    {
+      "path": ".commandcode/taste/loom/taste.md",
+      "mode": "regular"
+    },
+    {
+      "path": ".commandcode/taste/taste.md",
+      "mode": "regular"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "regular"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "regular"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "mode": "regular"
+    },
+    {
+      "path": "Cargo.lock",
+      "mode": "regular"
+    },
+    {
+      "path": "Cargo.toml",
+      "mode": "regular"
+    },
+    {
+      "path": "RATIFY-REVIEW.md",
+      "mode": "regular"
+    },
+    {
+      "path": "README.md",
+      "mode": "regular"
+    },
+    {
+      "path": "WATCHDOG.yml",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/README.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/build-plan.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/commands.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/design.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/graph-model.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/llm-driver.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/proposals/pattern-library.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/rethink-lived-graph.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/scratchpad.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/state-machine.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/terminology.md",
+      "mode": "regular"
+    },
+    {
+      "path": "docs/wiki-projection.md",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/compass-projection.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/dependents.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/divergence-queue.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/door-capture.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/duplicate-command-warn.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/find-grounding.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/green-graph.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/human-asked.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/impact.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/locator-drift.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/mcp-in-band.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/next-router.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/ordered-steps.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/pagination.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/plain-next-not-ratify.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/proof-stability.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/proof-strength.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/ratify-guard.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/release-workflow.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/reopens-claims.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/runs-proofs.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/self-audit.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/semantic-commit-recommendation.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/shared-proof.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/source-anchor-tracing.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/compass-projection.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/dependents.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/divergence-queue.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/door-capture.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/duplicate-command-warn.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/find-grounding.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/green-graph.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/human-asked.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/impact.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/locator-drift.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/mcp-in-band.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/next-router.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/ordered-steps.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/pagination.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/plain-next-not-ratify.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/proof-stability.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/proof-strength.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/ratify-guard.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/release-workflow.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/reopens-claims.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/runs-proofs.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/self-audit.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/semantic-commit-recommendation.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/shared-proof.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/source-anchor-tracing.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/sync-ripple.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/system-purpose.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/unratified-ungated.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/wantedness.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/writes-graph.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/sync-ripple.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/system-purpose.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/unratified-ungated.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/wantedness.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/writes-graph.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "loom.graph.json",
+      "mode": "regular"
+    },
+    {
+      "path": "ratify.sh",
+      "mode": "executable"
+    },
+    {
+      "path": "release/inventory.json",
+      "mode": "regular"
+    },
+    {
+      "path": "scripts/check-fixpoint.sh",
+      "mode": "executable"
+    },
+    {
+      "path": "scripts/dogfood.sh",
+      "mode": "executable"
+    },
+    {
+      "path": "scripts/release.sh",
+      "mode": "executable"
+    },
+    {
+      "path": "src/absorb.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/anchor.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/artifact.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/audit.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/batch_auth.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/callgraph.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/candidate_surface_policy.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/checkpoint.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/debt.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/apply_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/audit_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/bootstrap_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/capture_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/checkpoint_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/codefile_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/context_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/diagnostics_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/discover_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/domain_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/drive_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/edge.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/graph_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/hook_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/intent.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/journey/coverage.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/commands/journey/invariants.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/commands/journey/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/journey/prompt.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/commands/judgment_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/limits_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/misc_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/orient_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/pattern_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/proof_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/proposal_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/pulse.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/release_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/status_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/wiki.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/completeness.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/coverage.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/deriver.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/divergence.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/evidence.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/extract/calls.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/extract/langs.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/extract/metrics.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/extract/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/extract/rust.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/federation.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/fsglob.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/grammar.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/harness.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/identity.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journal.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_gate.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/lane.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/lib.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/limits.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/locator.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/main.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/maturity.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/mcp.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/model.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/packet.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/packs.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/pattern.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/policy.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/prescan.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/proof.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/proofstrength.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/ratification.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/registry.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/research.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/risk.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/runner.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/scan.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/seed.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/signal.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/signal/debt.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/signal/debt/cochange.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/signal/debt/git.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/statistics.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/adjudications.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/derived.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/edges.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/facets.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/facts.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/judgments.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/nodes.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/subprocess.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/sync.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/thresholds.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/travel.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/truth.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/context.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/queues.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/bootstrap.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/common/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/concurrent_readers.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/debt_promotion.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/find_explain.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/intake_fidelity.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/journal_concurrent_append.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/post_update_defects.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring1.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring10.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring11_roles.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring12_federation.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring12_phase1.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring13_precision.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring14_ratify.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring15_context.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring17_journal.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring18_journey_baseline.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring19_drive.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring2.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring20_hooks.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring21_lane_ladder.proptest-regressions",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring21_lane_ladder.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring22_mcp_packets.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring23_chokepoint.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring24_ratification.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring25_audit_deepen.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring26_absorb.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring27_observe.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring28_retirement.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring29_one_definition.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring3.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring30_runner.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring31_pattern_delivery.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring32_research.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring33_dependents.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring34_sequence.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring35_locator_drift.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring36_shared_proof.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring37_proof_stability.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring38_rectify.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring39_hit_adjudication.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring4.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring40_packet_closure.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring41_diagnose_parity.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "tests/ring42_edge_lint.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring43_retarget.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring43_validation_specific_strength.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring44_lock_holder.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring44_v12_journey_schema.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring45_judgment_inbox.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring45_semantic_journey.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring46_journey_routing.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring47_journey_integration.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring48_journey_cli.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring49_journey_runtime.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring5.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring50_journey_doctor.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring51_semantic_checkpoint.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring51_source_anchors.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring52_journey_manual_gate.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring53_release_rehearsal.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring6.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring7.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring8.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring9.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/terminology.rs",
+      "mode": "regular"
+    }
+  ],
+  "reserved_components": [
+    ".git",
+    ".loom",
+    ".qoder",
+    ".reasonix",
+    ".release-sandbox",
+    "review-manifests",
+    "target"
+  ],
+  "secret_name_patterns": [
+    ".env",
+    ".env.*",
+    "*.key",
+    "*.pem",
+    ".netrc",
+    ".npmrc",
+    ".pypirc",
+    "credentials",
+    "credentials.json",
+    "id_ed25519",
+    "id_rsa",
+    "secrets.json"
+  ]
+}

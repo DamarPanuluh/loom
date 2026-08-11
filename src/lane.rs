@@ -24,7 +24,9 @@ use serde::Serialize;
 pub enum Lane {
     Seed,
     Fix,
+    Derive,
     Build,
+    Surface,
     Coverage,
     Validate,
     Quality,
@@ -52,7 +54,9 @@ impl Lane {
     pub const LADDER: &'static [Lane] = &[
         Lane::Seed,
         Lane::Fix,
+        Lane::Derive,
         Lane::Build,
+        Lane::Surface,
         Lane::Coverage,
         Lane::Validate,
         Lane::Quality,
@@ -76,7 +80,9 @@ impl Lane {
         match self {
             Lane::Seed => "seeded",
             Lane::Fix => "repaired",
+            Lane::Derive => "derived",
             Lane::Build => "grounded",
+            Lane::Surface => "surfaced",
             Lane::Coverage => "covered",
             Lane::Validate => "proven",
             Lane::Quality => "measured",
@@ -98,7 +104,9 @@ impl Lane {
         match self {
             Lane::Seed => "seed",
             Lane::Fix => "fix",
+            Lane::Derive => "derive",
             Lane::Build => "build",
+            Lane::Surface => "surface",
             Lane::Coverage => "coverage",
             Lane::Validate => "validate",
             Lane::Quality => "quality",
@@ -120,7 +128,9 @@ impl Lane {
         match s {
             "seed" => Some(Lane::Seed),
             "fix" => Some(Lane::Fix),
+            "derive" => Some(Lane::Derive),
             "build" => Some(Lane::Build),
+            "surface" => Some(Lane::Surface),
             "coverage" => Some(Lane::Coverage),
             "validate" => Some(Lane::Validate),
             "quality" => Some(Lane::Quality),
@@ -141,7 +151,7 @@ impl Lane {
     /// The single suggested next command when this lane is the compass gate.
     pub fn next_command(self) -> String {
         match self {
-            Lane::Seed => "loom door \"<what should this codebase do>\" or loom intent add".into(),
+            Lane::Seed => "loom journey add <spec>".into(),
             Lane::Coverage => "loom coverage".into(),
             Lane::Audit => "loom audit".into(),
             Lane::Export => "loom export && loom export --check".into(),
@@ -154,8 +164,10 @@ impl Lane {
     /// arm by grepping the command text.
     pub fn axis(self) -> TruthAxis {
         match self {
-            Lane::Seed | Lane::Elaborate | Lane::Rectify | Lane::Divergence => TruthAxis::Intent,
-            Lane::Fix | Lane::Build | Lane::Coverage => TruthAxis::Implementation,
+            Lane::Seed | Lane::Derive | Lane::Elaborate | Lane::Rectify | Lane::Divergence => {
+                TruthAxis::Intent
+            }
+            Lane::Fix | Lane::Build | Lane::Surface | Lane::Coverage => TruthAxis::Implementation,
             Lane::Validate => TruthAxis::Proof,
             Lane::Quality | Lane::Analyze | Lane::Review | Lane::Prove => TruthAxis::Verdict,
             Lane::Triage | Lane::Audit => TruthAxis::Signal,
@@ -169,7 +181,12 @@ impl Lane {
     pub fn observed_disabled(self) -> bool {
         matches!(
             self,
-            Lane::Build | Lane::Fix | Lane::Coverage | Lane::Elaborate
+            Lane::Build
+                | Lane::Fix
+                | Lane::Derive
+                | Lane::Surface
+                | Lane::Coverage
+                | Lane::Elaborate
         )
     }
 
@@ -193,9 +210,11 @@ impl Lane {
             return 0;
         }
         match self {
-            Lane::Seed => usize::from(c.active == 0),
+            Lane::Seed => usize::from(c.authored_journeys == 0),
             Lane::Fix => c.failing,
+            Lane::Derive => c.derive_gaps,
             Lane::Build => c.planned + c.ungrounded,
+            Lane::Surface => c.surface_gaps,
             Lane::Coverage => c.unowned_codefiles,
             // The rung and the queue agree only because `validate_item` also
             // serves an implemented intent that has no registered proof at all;
@@ -230,11 +249,19 @@ impl Lane {
     /// reader can always see why a rung is unmet.
     pub fn detail(self, c: &LadderInputs) -> String {
         match self {
-            Lane::Seed => format!("{} active intent(s)", c.active),
+            Lane::Seed => format!("{} authored journey(s)", c.authored_journeys),
             Lane::Fix => format!("{} failing claim(s)", c.failing),
+            Lane::Derive => format!(
+                "{} unmapped/stale journey step(s) or unrooted intent(s)",
+                c.derive_gaps
+            ),
             Lane::Build => format!(
                 "{} unrealized, {} ungrounded implemented intent(s)",
                 c.planned, c.ungrounded
+            ),
+            Lane::Surface => format!(
+                "{} journey(s) ready for a real target-repository surface",
+                c.surface_gaps
             ),
             Lane::Coverage => format!("{} unowned codefile(s)", c.unowned_codefiles),
             Lane::Validate => format!(
@@ -306,6 +333,7 @@ impl Lane {
             // Proof is not owed until something is implemented.
             Lane::Validate => c.implemented == 0,
             Lane::Deepen => c.codefiles == 0,
+            Lane::Derive | Lane::Surface => c.authored_journeys == 0,
             _ => c.active == 0,
         }
     }
@@ -318,6 +346,7 @@ impl Lane {
 #[derive(Debug, Clone, Default)]
 pub struct LadderInputs {
     pub observed: bool,
+    pub authored_journeys: usize,
     pub active: usize,
     pub implemented: usize,
     pub codefiles: usize,
@@ -325,6 +354,8 @@ pub struct LadderInputs {
     pub ungrounded: usize,
     pub unowned_codefiles: usize,
     pub failing: usize,
+    pub derive_gaps: usize,
+    pub surface_gaps: usize,
     pub failing_exemplars: usize,
     pub open_research: usize,
     pub stale_relationships: usize,
@@ -410,16 +441,21 @@ mod tests {
     fn depth_is_zero_for_disabled_lanes_on_an_observed_graph() {
         let c = LadderInputs {
             observed: true,
+            authored_journeys: 2,
             active: 3,
             planned: 5,
             ungrounded: 2,
             unowned_codefiles: 4,
             failing: 7,
+            derive_gaps: 3,
+            surface_gaps: 2,
             open_elaborations: 1,
             ..Default::default()
         };
         assert_eq!(Lane::Build.depth(&c), 0);
         assert_eq!(Lane::Fix.depth(&c), 0);
+        assert_eq!(Lane::Derive.depth(&c), 0);
+        assert_eq!(Lane::Surface.depth(&c), 0);
         assert_eq!(Lane::Coverage.depth(&c), 0);
         assert_eq!(Lane::Elaborate.depth(&c), 0);
     }

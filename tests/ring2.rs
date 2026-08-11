@@ -334,205 +334,131 @@ fn sync_ripples_upstream_change_to_integration_contract() {
     );
 }
 
-// A JourneyProof validation's `body.artifact` (a contract JSON / journey spec file) is
-// not necessarily a registered CodeFile, so the structural pass cannot see it.
-// Sync must track it directly: when the artifact changes, the validation is
-// reset and its Validates edge stales — a stale proof cannot keep an intent
-// "proven" and silence the journey smell.
-#[test]
-fn sync_stales_journey_proof_when_artifact_drifts() {
-    let tmp = Tmp::new();
-    // A contract artifact that is NOT registered as a CodeFile node.
-    tmp.write("contracts/checkout.v1.json", r#"{"routes":[]}"#);
+// Compiled Journey proofs are bound to the authored semantic hash. Artifact
+// drift or disappearance invalidates the compiler-owned proof closure.
+fn compiled_journey_fixture(tmp: &Tmp) -> (Store, loom::model::Node, loom::model::Node) {
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-
     let intent = store
         .add_node(
             NodeType::Intent,
             "checkout completes",
-            "",
+            "checkout records a result",
             "implemented",
             serde_json::json!({}),
         )
         .unwrap();
-    let val = store
-        .add_node(
-            NodeType::Validation,
-            "checkout journey",
-            "",
-            "not_run",
-            serde_json::json!({
-                "type": "journey",
-                "proof_kind": "journey",
-                "artifact": "contracts/checkout.v1.json",
-            }),
-        )
+    let validation = s3_journey_proof(&store, tmp.path(), &intent.id, "checkout-journey");
+    let journey = store
+        .resolve_node("checkout-journey", Some(NodeType::Journey))
         .unwrap();
-    let validates = store
-        .add_edge(
-            EdgeKind::Validates,
-            &val.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
+    (store, journey, validation)
+}
+
+fn readd_journey(root: &std::path::Path, artifact: &std::path::Path) {
+    let output = loom_command()
+        .arg("--graph")
+        .arg(root)
+        .args(["journey", "add"])
+        .arg(artifact)
+        .output()
         .unwrap();
-
-    // Baseline sync establishes the artifact hash; no prior → no ripple.
-    let base = loom::sync::run(&store, tmp.path()).unwrap();
-    assert_eq!(base.validations_reset, 0, "baseline must not ripple");
-
-    // The journey proof passes.
-    store.set_node_status(&val.id, "passed").unwrap();
-    store
-        .record_verdict(
-            &validates.id,
-            InspectionStatus::Passing,
-            "journey passes end-to-end",
-            "journey run passed — see contracts/checkout.v1.json:1",
-            0.9,
-            "llm",
-        )
-        .unwrap();
-
-    // Identical artifact again → no ripple, proof stays passed.
-    let noop = loom::sync::run(&store, tmp.path()).unwrap();
-    assert_eq!(
-        noop.validations_reset, 0,
-        "unchanged artifact must not reset"
-    );
-    assert_eq!(store.get_node(&val.id).unwrap().unwrap().status, "passed");
-
-    // Artifact drifts → proof resets and Validates edge stales.
-    tmp.write(
-        "contracts/checkout.v1.json",
-        r#"{"routes":[{"path":"/x"}]}"#,
-    );
-    let report = loom::sync::run(&store, tmp.path()).unwrap();
-    assert_eq!(
-        report.validations_reset, 1,
-        "a drifted journey artifact must reset its validation"
-    );
-    assert_eq!(
-        store.get_node(&val.id).unwrap().unwrap().status,
-        "not_run",
-        "a drifted artifact must reset the proof to not_run"
-    );
-    assert_eq!(
-        store.get_edge(&validates.id).unwrap().unwrap().status,
-        InspectionStatus::NeedsReverification,
-        "the Validates edge must read as unproven after artifact drift"
+    assert!(
+        output.status.success(),
+        "journey add failed: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }
 
-// An artifact that disappears is the same as one that drifts: a proof against a
-// vanished artifact is no longer proven.
 #[test]
-fn sync_stales_journey_proof_when_artifact_disappears() {
+fn sync_stales_compiled_journey_when_semantic_artifact_drifts() {
     let tmp = Tmp::new();
-    tmp.write("contracts/checkout.v1.json", r#"{"routes":[]}"#);
-    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let intent = store
-        .add_node(
-            NodeType::Intent,
-            "checkout completes",
-            "",
-            "implemented",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let val = store
-        .add_node(
-            NodeType::Validation,
-            "checkout journey",
-            "",
-            "not_run",
-            serde_json::json!({
-                "type": "journey",
-                "proof_kind": "journey",
-                "artifact": "contracts/checkout.v1.json",
-            }),
-        )
-        .unwrap();
-    let validates = store
-        .add_edge(
-            EdgeKind::Validates,
-            &val.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    // Baseline + pass.
-    loom::sync::run(&store, tmp.path()).unwrap();
-    store.set_node_status(&val.id, "passed").unwrap();
-    store
-        .record_verdict(
-            &validates.id,
-            InspectionStatus::Passing,
-            "journey passes",
-            "journey run passed — see contracts/checkout.v1.json:1",
-            0.9,
-            "llm",
-        )
-        .unwrap();
-    // Artifact deleted → proof resets and edge stales.
-    std::fs::remove_file(tmp.path().join("contracts/checkout.v1.json")).unwrap();
+    let (store, journey, validation) = compiled_journey_fixture(&tmp);
+    let artifact = journey.body["artifact"].as_str().unwrap();
+    let mut spec = loom::journey::parse(&tmp.path().join(artifact)).unwrap();
+    spec.steps[0].action = "checks out with a changed semantic contract".into();
+    std::fs::write(
+        tmp.path().join(artifact),
+        serde_norway::to_string(&spec).unwrap(),
+    )
+    .unwrap();
+    drop(store);
+    readd_journey(tmp.path(), &tmp.path().join(artifact));
+    let store = Store::open(tmp.path()).unwrap();
+
     let report = loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(report.validations_reset, 1);
     assert_eq!(
-        report.validations_reset, 1,
-        "vanished artifact resets proof"
+        store.get_node(&validation.id).unwrap().unwrap().status,
+        "not_run"
     );
-    assert_eq!(store.get_node(&val.id).unwrap().unwrap().status, "not_run");
+    for kind in [EdgeKind::Proves, EdgeKind::Validates] {
+        let edge = store
+            .edges_with(Some(kind), Some(&validation.id), None)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        assert_eq!(edge.status, InspectionStatus::NeedsReverification);
+    }
 }
 
-// INV-2 convergence: a wipe of derived facets then sync must not re-ripple a
-// drifted-and-reset artifact (no prior hash → no second reset).
 #[test]
-fn sync_artifact_drift_is_deterministic_on_rebuild() {
+fn journey_drift_reports_a_missing_semantic_artifact() {
     let tmp = Tmp::new();
-    tmp.write("contracts/c.json", r#"{"v":1}"#);
-    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let intent = store
-        .add_node(
-            NodeType::Intent,
-            "checkout completes",
-            "",
-            "implemented",
-            serde_json::json!({}),
-        )
+    let (store, journey, validation) = compiled_journey_fixture(&tmp);
+    std::fs::remove_file(tmp.path().join(journey.body["artifact"].as_str().unwrap())).unwrap();
+    drop(store);
+    let output = loom_command()
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["--json", "journey", "drift", "checkout-journey"])
+        .output()
         .unwrap();
-    let val = store
-        .add_node(
-            NodeType::Validation,
-            "checkout journey",
-            "",
-            "not_run",
-            serde_json::json!({
-                "type": "journey",
-                "proof_kind": "journey",
-                "artifact": "contracts/c.json",
-            }),
-        )
-        .unwrap();
-    store
-        .add_edge(
-            EdgeKind::Validates,
-            &val.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    loom::sync::run(&store, tmp.path()).unwrap();
-    store.set_node_status(&val.id, "passed").unwrap();
-    // Drift + reset.
-    tmp.write("contracts/c.json", r#"{"v":2}"#);
-    let r1 = loom::sync::run(&store, tmp.path()).unwrap();
-    assert_eq!(r1.validations_reset, 1);
-    // Wipe derived + rebuild must NOT re-ripple (prior hash gone).
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let drift: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(drift["stale"], 1, "{drift}");
+    assert_eq!(drift["journeys"][0]["current"], false, "{drift}");
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(
+        store.get_node(&validation.id).unwrap().unwrap().status,
+        "passed",
+        "drift diagnosis is read-only; run/add owns proof mutation"
+    );
+}
+
+#[test]
+fn journey_display_rename_preserves_compiled_truth_across_derived_rebuild() {
+    let tmp = Tmp::new();
+    let (store, journey, _) = compiled_journey_fixture(&tmp);
+    let artifact = journey.body["artifact"].as_str().unwrap();
+    let mut spec = loom::journey::parse(&tmp.path().join(artifact)).unwrap();
+    spec.name = "Changed checkout title".into();
+    std::fs::write(
+        tmp.path().join(artifact),
+        serde_norway::to_string(&spec).unwrap(),
+    )
+    .unwrap();
+    drop(store);
+    readd_journey(tmp.path(), &tmp.path().join(artifact));
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(
+        loom::sync::run(&store, tmp.path())
+            .unwrap()
+            .validations_reset,
+        0,
+        "display-name changes are nonsemantic and must not reset compiled proof"
+    );
     store.wipe_derived().unwrap();
-    let r2 = loom::sync::run(&store, tmp.path()).unwrap();
     assert_eq!(
-        r2.validations_reset, 0,
-        "a wipe+rebuild must converge: no prior artifact_hash → no re-ripple"
+        loom::sync::run(&store, tmp.path())
+            .unwrap()
+            .validations_reset,
+        0,
+        "a derived rebuild must not re-ripple an already reset compiled proof"
     );
 }
 

@@ -216,8 +216,9 @@ fn an_unratified_intent_with_no_evidence_is_not_a_divergence() {
     let ladder = loom::maturity::ladder(&store).unwrap();
     let converged = ladder.rungs.iter().find(|r| r.name == "converged").unwrap();
     assert_eq!(converged.state, loom::maturity::RungState::Met);
-    // The gate is where the work actually is.
-    assert_eq!(ladder.phase, "build");
+    // The Intent is still not a human divergence. The owned graph remains at
+    // the earlier Journey-root seed gate until an authored Journey exists.
+    assert_eq!(ladder.phase, "seed");
 
     // Ratifying it is still allowed and still records provenance — the human
     // may speak first, they are simply no longer REQUIRED to before any work.
@@ -304,6 +305,60 @@ fn redefinition_stales_ratification() {
         "every top-level decision command must carry mediated authority: {}",
         packet.next_step
     );
+}
+
+#[test]
+fn explicit_ratify_remains_available_while_plain_next_serves_autonomous_build() {
+    let _env = IsolatedCliEnv::acquire();
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("ratify-coexistence"), false).unwrap();
+    let pending = store
+        .add_node(
+            NodeType::Intent,
+            "zeta report export needs reconfirmation",
+            "users export CSV reports",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .ratify_intent(
+            &pending.id,
+            "the Q1 product review requested CSV exports",
+            "keep CSV exports",
+        )
+        .unwrap();
+    store
+        .redefine_intent(&pending.id, "users export signed PDF reports")
+        .unwrap();
+    let autonomous = store
+        .add_node(
+            NodeType::Intent,
+            "alpha autonomous cache refresh",
+            "the cache refresh follows the existing retry policy",
+            "needs_change",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    let explicit_before = loom::workitem::next(&store, Lane::parse("ratify"))
+        .unwrap()
+        .expect("explicit Ratify must serve the pending human decision");
+    assert_eq!(explicit_before.mode, "ratify");
+    assert_eq!(explicit_before.target.id, pending.id);
+
+    let ordinary = loom::workitem::next(&store, None)
+        .unwrap()
+        .expect("plain Next must continue with autonomous work");
+    assert_eq!(ordinary.mode, "build");
+    assert_eq!(ordinary.target.id, autonomous.id);
+    assert_ne!(ordinary.target.id, pending.id);
+
+    let explicit_after = loom::workitem::next(&store, Lane::parse("ratify"))
+        .unwrap()
+        .expect("plain Next must not consume the pending human decision");
+    assert_eq!(explicit_after.mode, "ratify");
+    assert_eq!(explicit_after.target.id, pending.id);
 }
 
 // =========================================================================

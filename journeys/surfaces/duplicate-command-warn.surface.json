@@ -1,0 +1,187 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "duplicate-command-warn",
+  "journey_hash": "c28da61dc5013846",
+  "surface": {
+    "id": "validation-command-collision",
+    "title": "Register a validation and expose proof-command collisions",
+    "identity": "loom validation add",
+    "codefile": "src/commands/proof_cmd.rs",
+    "locator": "validation",
+    "operations": [
+      {
+        "arguments": [
+          {
+            "flag": "--command",
+            "id": "collision-command",
+            "required": true,
+            "source": "run.id",
+            "type": "string"
+          }
+        ],
+        "argv": [
+          "loom",
+          "--json",
+          "validation",
+          "add",
+          "--name",
+          "journey duplicate collision prior proof",
+          "--type",
+          "test",
+          "--intent",
+          "56d44edf69fdfa63987c0569d22a37c3"
+        ],
+        "id": "establish-prior-proof",
+        "output": {
+          "assertions": [
+            {
+              "id": "prior-validation-created",
+              "pointer": "/validation/id",
+              "type": "string"
+            },
+            {
+              "equals": "journey duplicate collision prior proof",
+              "id": "prior-validation-named",
+              "pointer": "/validation/name",
+              "type": "string"
+            },
+            {
+              "equals": "56d44edf69fdfa63987c0569d22a37c3",
+              "id": "prior-behavior-targeted",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "validates",
+              "id": "prior-validation-linked",
+              "pointer": "/edge/kind",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "prior-command-is-unique",
+              "pointer": "/collision/detected",
+              "type": "boolean"
+            },
+            {
+              "equals": 0,
+              "id": "prior-command-has-no-owner",
+              "pointer": "/collision/prior_behavior_count",
+              "type": "number"
+            },
+            {
+              "id": "prior-command-is-run-bound",
+              "pointer": "/collision/command",
+              "source": "run.id",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Establish one prior validation using a run-unique command in the isolated graph snapshot"
+      },
+      {
+        "arguments": [
+          {
+            "flag": "--command",
+            "id": "collision-command",
+            "required": true,
+            "source": "run.id",
+            "type": "string"
+          }
+        ],
+        "argv": [
+          "loom",
+          "--json",
+          "validation",
+          "add",
+          "--name",
+          "journey duplicate collision second proof",
+          "--type",
+          "test",
+          "--intent",
+          "284ec4b8f0ae2be0374d73fb6f947ebb"
+        ],
+        "id": "register-duplicate-proof",
+        "output": {
+          "assertions": [
+            {
+              "id": "second-validation-created",
+              "pointer": "/validation/id",
+              "type": "string"
+            },
+            {
+              "equals": "journey duplicate collision second proof",
+              "id": "second-validation-named",
+              "pointer": "/validation/name",
+              "type": "string"
+            },
+            {
+              "equals": "284ec4b8f0ae2be0374d73fb6f947ebb",
+              "id": "second-behavior-targeted",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "validates",
+              "id": "second-validation-linked",
+              "pointer": "/edge/kind",
+              "type": "string"
+            },
+            {
+              "equals": true,
+              "id": "collision-detected",
+              "pointer": "/collision/detected",
+              "type": "boolean"
+            },
+            {
+              "id": "collision-command-is-exact",
+              "pointer": "/collision/command",
+              "source": "run.id",
+              "type": "string"
+            },
+            {
+              "equals": 1,
+              "id": "one-prior-behavior",
+              "pointer": "/collision/prior_behavior_count",
+              "type": "number"
+            },
+            {
+              "equals": "56d44edf69fdfa63987c0569d22a37c3",
+              "id": "prior-behavior-id-is-exposed",
+              "pointer": "/collision/prior_behaviors/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "Loom detects proof command collisions",
+              "id": "prior-behavior-name-is-exposed",
+              "pointer": "/collision/prior_behaviors/0/name",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "collision-list-is-exact",
+              "pointer": "/collision/prior_behaviors/1"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Register the same command for a second behavior and return the nonblocking collision diagnostic"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "establish-prior-proof"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "register-duplicate-proof",
+      "step_id": "register-second-proof"
+    }
+  ]
+}

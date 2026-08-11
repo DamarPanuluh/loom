@@ -1,48 +1,27 @@
-journey: loom re-opens a grounding whose locator names nothing
+schema: loom.journey/v1
+id: locator-drift
+name: Reopen a grounding when its locator disappears
+actor: operator
+goal: Synchronization distinguishes a vanished grounded symbol from a locator that
+  still resolves.
+inputs: {}
+preconditions:
+- Two settled groundings cite live symbols, after which one symbol is removed while
+  the other remains unchanged.
 steps:
-  - name: a grounding settled on a cited span re-opens once its symbol is gone
-    fixture: true
-    intent: a grounding whose locator names nothing re-opens instead of standing
-    # The span is the point: it satisfies the anchor floor without anyone ever
-    # probing the locator, which is how 13 claims in this repo stayed green over
-    # symbols that no longer existed.
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      printf 'pub fn alpha() {}\n' > "$tmp/src.rs" &&
-      loom intent add --graph "$tmp" --name 'alpha behavior' --description 'alpha does something' --lifecycle implemented &&
-      loom codefile add --graph "$tmp" src.rs &&
-      loom edge implement --graph "$tmp" 'alpha behavior' src.rs --locator 'fn alpha' &&
-      eid=$(loom edge list --graph "$tmp" --json | python3 -c "import json,sys;print(json.load(sys.stdin)['items'][0]['id'])") &&
-      loom edge verdict --graph "$tmp" "$eid" ground --criterion 'alpha lives here' --evidence 'src.rs:1 — fn alpha realizes it' &&
-      loom sync --graph "$tmp" &&
-      printf 'pub fn beta() {}\n' > "$tmp/src.rs" &&
-      loom sync --graph "$tmp" &&
-      loom edge show --graph "$tmp" "$eid" --json; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains: ["needs_reverification"]
-
-  - name: a locator that still resolves is left settled
-    fixture: true
-    intent: a grounding whose locator names nothing re-opens instead of standing
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      printf 'pub fn alpha() {}\n' > "$tmp/src.rs" &&
-      loom intent add --graph "$tmp" --name 'alpha behavior' --description 'alpha does something' --lifecycle implemented &&
-      loom codefile add --graph "$tmp" src.rs &&
-      loom edge implement --graph "$tmp" 'alpha behavior' src.rs --locator 'fn alpha' &&
-      eid=$(loom edge list --graph "$tmp" --json | python3 -c "import json,sys;print(json.load(sys.stdin)['items'][0]['id'])") &&
-      loom edge verdict --graph "$tmp" "$eid" ground --criterion 'alpha lives here' --evidence 'src.rs:1 — fn alpha realizes it' &&
-      loom sync --graph "$tmp" && loom sync --graph "$tmp" &&
-      loom edge show --graph "$tmp" "$eid" --json; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains: ["passing"]
-
-  - name: the locator regression reopens a grounding whose symbol vanished
-    fixture: true
-    intent: a grounding whose locator names nothing re-opens instead of standing
-    run: "cargo test --test ring35_locator_drift a_locator_that_names_nothing_reopens -- --exact"
-    expect:
-      exit_code: 0
-      stdout_contains: ["test result: ok. 1 passed; 0 failed"]
+- id: synchronize-after-symbol-change
+  name: Synchronize After Symbol Change
+  action: Synchronize the graph after the repository change.
+  expects: []
+  produces: {}
+- id: inspect-grounding-states
+  name: Inspect Grounding States
+  action: Inspect both grounding claims after synchronization.
+  expects:
+  - The grounding whose locator no longer resolves needs reverification.
+  - The unchanged grounding whose locator still resolves remains settled.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

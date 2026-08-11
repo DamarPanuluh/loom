@@ -1,22 +1,31 @@
-journey: a proof that flips over unchanged code is reported
+schema: loom.journey/v1
+id: proof-stability
+name: Report a proof that flips over unchanged code
+actor: validator
+goal: Contradictory proof outcomes over the same code anchors become visible as instability.
+inputs: {}
+preconditions:
+- An implemented behavior has a settled grounding and a repeatable proof.
 steps:
-  - name: a flip over unchanged anchors is visible in smells after sync
-    fixture: true
-    intent: a proof that flips over unchanged code is reported as unstable
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      printf 'pub fn a() {}\n' > "$tmp/s.rs" &&
-      loom codefile add --graph "$tmp" s.rs &&
-      loom intent add --graph "$tmp" --name 'a behavior' --description 'does something' --lifecycle implemented &&
-      loom edge implement --graph "$tmp" 'a behavior' s.rs --locator 'fn a' &&
-      loom validation add --graph "$tmp" --name 'flip proof' --type test --command "sh -c 'test ! -f flip'" --intent 'a behavior' &&
-      loom validation run --graph "$tmp" 'flip proof' &&
-      printf '' > "$tmp/flip" &&
-      loom validation run --graph "$tmp" 'flip proof' &&
-      loom sync --graph "$tmp" &&
-      loom smells --graph "$tmp"; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains:
-        - "unstable_proof"
-        - "unchanged code"
+- id: observe-passing-proof
+  name: Observe Passing Proof
+  action: Run the proof and observe it passing without changing the grounded code.
+  expects: []
+  produces: {}
+- id: observe-failing-proof
+  name: Observe Failing Proof
+  action: Run the same proof again and observe it failing while the grounded code
+    remains unchanged.
+  expects: []
+  produces: {}
+- id: inspect-structural-signals
+  name: Inspect Structural Signals
+  action: Inspect the graph's structural signals.
+  expects:
+  - Loom reports the proof as unstable and explains that the result flipped over unchanged
+    code.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

@@ -9,7 +9,7 @@ use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use loom::store::{Agent, Store};
 
 mod common;
-use common::{earn_call_witness, s3_journey_proof, Tmp};
+use common::{earn_call_witness, Tmp};
 
 fn seed_duplicate_pair(store: &Store) -> (String, String) {
     // Shared realizing file+symbol + empty tags (jaccard 1.0) → DuplicateIntent.
@@ -104,6 +104,92 @@ fn duplicate_routes_to_rectify_not_ratify() {
 }
 
 #[test]
+fn human_queue_requires_recorded_evidence_judgment_conflict() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("ratify-conflict"), false).unwrap();
+    let missing_approval = store
+        .add_node(
+            NodeType::Intent,
+            "users can download an activity report",
+            "an activity report can be downloaded as CSV",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &missing_approval.id,
+            TargetKind::Node,
+            "visibility",
+            "user_visible",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    assert!(
+        loom::workitem::unratified_intents(&store)
+            .unwrap()
+            .iter()
+            .any(|intent| intent.id == missing_approval.id),
+        "missing approval must remain explicit in the wantedness projection"
+    );
+    assert_eq!(
+        loom::divergence::human_blocking_count(&store).unwrap(),
+        0,
+        "missing approval alone is not an evidence/judgment conflict"
+    );
+    assert!(
+        loom::workitem::next(&store, Some(Lane::Divergence))
+            .unwrap()
+            .is_none(),
+        "a bare unratified intent must not interrupt the human queue"
+    );
+
+    let drifted = store
+        .add_node(
+            NodeType::Intent,
+            "users export reports",
+            "users export CSV reports",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .ratify_intent(
+            &drifted.id,
+            "the Q1 product review requested CSV exports",
+            "keep CSV exports",
+        )
+        .unwrap();
+    store
+        .redefine_intent(&drifted.id, "users export PDF reports")
+        .unwrap();
+
+    assert_eq!(
+        store.ratification(&drifted.id).unwrap(),
+        "needs_reconfirmation",
+        "changed meaning must stale the prior wantedness judgment"
+    );
+    assert_eq!(
+        loom::divergence::human_blocking_count(&store).unwrap(),
+        1,
+        "recorded wantedness against changed meaning is a concrete conflict"
+    );
+    let ratify = loom::workitem::next(&store, Some(Lane::Divergence))
+        .unwrap()
+        .expect("the concrete evidence/judgment conflict must enter Ratify");
+    assert_eq!(ratify.mode, "ratify");
+    assert_eq!(ratify.target.id, drifted.id);
+    assert_ne!(ratify.target.id, missing_approval.id);
+    assert!(
+        ratify.reason.contains("meaning drifted")
+            && ratify.reason.contains("redefined after ratification"),
+        "Ratify must explain the concrete conflict: {}",
+        ratify.reason
+    );
+}
+
+#[test]
 fn plain_next_does_not_skip_rectify_the_way_it_skips_ratify() {
     // Contract: rectify is autonomous prep; ratify is human-gated. The plain
     // `loom next` walk skips `requires_human_decision` lanes only — so it can
@@ -174,8 +260,33 @@ fn escalate_moves_discovery_from_rectify_to_ratify() {
             "llm",
         )
         .unwrap();
-    s3_journey_proof(&store, tmp.path(), &intent.id, "cancel-via-rectify");
+    common::s3_journey_proof_unratified(&store, tmp.path(), &intent.id, "cancel-via-rectify");
     loom::sync::run(&store, tmp.path()).unwrap();
+
+    let witness = loom::ratification::witness(&store, &intent.id)
+        .unwrap()
+        .expect("sync records the complete technical witness");
+    assert!(
+        witness.holds(),
+        "grounding, verdict, proof strength, and recorded usage should remain inspectable"
+    );
+    assert_eq!(
+        store.ratification(&intent.id).unwrap(),
+        "unratified",
+        "technical evidence must not write a human Ratification fact"
+    );
+    assert_eq!(
+        loom::ratification::effective_for(&store, &intent.id).unwrap(),
+        loom::ratification::Ratification::Unratified,
+        "a complete technical witness must not imply human wantedness"
+    );
+    assert!(
+        loom::workitem::unratified_intents(&store)
+            .unwrap()
+            .iter()
+            .any(|candidate| candidate.id == intent.id),
+        "missing human authority stays explicit after technical evidence accumulates"
+    );
 
     let discovered = loom::divergence::all(&store)
         .unwrap()

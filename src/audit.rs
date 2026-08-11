@@ -427,8 +427,9 @@ fn malformed_judgment_timestamp_findings(facts: Vec<crate::evidence::Fact>) -> V
 /// Many asserted writes by one actor inside one minute.
 ///
 /// Statistical, and reported as such: unexplained judgment compression looks
-/// like this. A sealed batch authorization envelope covering exactly those
-/// subjects is batch truth, not an exemption — the facts retain
+/// like this. One sealed batch authorization envelope, or a union of trusted
+/// human-gated sub-batch envelopes, covering exactly those subjects is batch
+/// truth, not an exemption — the facts retain
 /// `decision_mode=batch` and the burst is not reported.
 fn bursts(store: &Store, entries: &[crate::journal::Entry]) -> Result<Vec<AuditFinding>> {
     let mut out = Vec::new();
@@ -436,7 +437,7 @@ fn bursts(store: &Store, entries: &[crate::journal::Entry]) -> Result<Vec<AuditF
         if bucket.subjects.len() < BURST_THRESHOLD {
             continue;
         }
-        if crate::batch_auth::covering_envelope(
+        if crate::batch_auth::covering_envelopes(
             store,
             &bucket.subjects,
             bucket.claim,
@@ -458,7 +459,7 @@ fn bursts(store: &Store, entries: &[crate::journal::Entry]) -> Result<Vec<AuditF
             detail: format!(
                 "{} {} judgments by '{}'{} inside one minute ({}) — \
                  too fast to have been made one at a time, and no sealed \
-                 batch authorization covers this exact set",
+                 batch authorization set covers this exact subject union",
                 bucket.subjects.len(),
                 bucket.claim.as_str(),
                 bucket.actor,

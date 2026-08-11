@@ -318,7 +318,7 @@ impl Store {
             let tt = node_types
                 .get(e.to_id.as_str())
                 .ok_or_else(|| anyhow!("import: edge '{}' to-node '{}' missing", e.id, e.to_id))?;
-            if *ft != spec.from || *tt != spec.to {
+            if !spec.allows_from(*ft) || !spec.allows_to(*tt) {
                 bail!(
                     "import: edge '{}' has endpoints violating kind '{}'",
                     e.id,

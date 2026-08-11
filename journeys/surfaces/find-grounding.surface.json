@@ -1,0 +1,95 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "find-grounding",
+  "journey_hash": "24ee5adf3e646bdd",
+  "surface": {
+    "id": "find-grounding-cli",
+    "title": "Exact behavior grounding lookup",
+    "identity": "loom find --exact --json",
+    "codefile": "src/commands/discover_cmd.rs",
+    "locator": "find_exact",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "find",
+          "Loom resolves exact behavior identity",
+          "--exact",
+          "--json"
+        ],
+        "id": "find-exact-grounding",
+        "output": {
+          "assertions": [
+            {
+              "equals": true,
+              "id": "exact-hit",
+              "pointer": "/0/exact",
+              "type": "boolean"
+            },
+            {
+              "equals": "9037bd5e25b911691b83ef769f79e198",
+              "id": "behavior-id",
+              "pointer": "/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "intent",
+              "id": "behavior-kind",
+              "pointer": "/0/kind",
+              "type": "string"
+            },
+            {
+              "equals": "Loom resolves exact behavior identity",
+              "id": "behavior-name",
+              "pointer": "/0/name",
+              "type": "string"
+            },
+            {
+              "id": "grounding-edge",
+              "pointer": "/0/groundings/0/edge_id",
+              "type": "string"
+            },
+            {
+              "equals": "src/commands/discover_cmd.rs",
+              "id": "realizing-path",
+              "pointer": "/0/groundings/0/path",
+              "type": "string"
+            },
+            {
+              "equals": "find_exact",
+              "id": "symbol-locator",
+              "pointer": "/0/groundings/0/locator",
+              "type": "string"
+            },
+            {
+              "equals": "realizes",
+              "id": "grounding-role",
+              "pointer": "/0/groundings/0/role",
+              "type": "string"
+            },
+            {
+              "id": "inspection-state",
+              "pointer": "/0/groundings/0/status",
+              "type": "string"
+            },
+            {
+              "id": "grounding-evidence",
+              "pointer": "/0/groundings/0/evidence",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Resolve one exact behavior and return its grounding detail"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "find-exact-grounding",
+      "step_id": "find-exact-behavior"
+    }
+  ]
+}

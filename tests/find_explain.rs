@@ -131,7 +131,7 @@ fn find_exact_uses_the_grounding_aware_projection() {
     std::fs::create_dir_all(tmp.path().join("src")).unwrap();
     std::fs::write(tmp.path().join("src/auth.rs"), "fn sign_in() {}\n").unwrap();
     loom_ok(tmp.path(), &["codefile", "add", "src/auth.rs"]);
-    loom_ok(
+    let grounding = loom_ok(
         tmp.path(),
         &[
             "edge",
@@ -140,6 +140,25 @@ fn find_exact_uses_the_grounding_aware_projection() {
             "src/auth.rs",
             "--locator",
             "sign_in:12-30",
+            "--json",
+        ],
+    );
+    let grounding: serde_json::Value = serde_json::from_str(&grounding).unwrap();
+    let edge_id = grounding["edge"]["id"]
+        .as_str()
+        .expect("edge implement returns the grounding id");
+    let evidence_sentinel = "reviewed sign-in grounding implementation";
+    loom_ok(
+        tmp.path(),
+        &[
+            "edge",
+            "verdict",
+            edge_id,
+            "ground",
+            "--criterion",
+            "the sign_in locator resolves the behavior's realizing implementation",
+            "--evidence",
+            evidence_sentinel,
         ],
     );
 
@@ -153,5 +172,65 @@ fn find_exact_uses_the_grounding_aware_projection() {
     assert_eq!(hit["groundings"][0]["path"], "src/auth.rs");
     assert_eq!(hit["groundings"][0]["locator"], "sign_in:12-30");
     assert_eq!(hit["groundings"][0]["role"], "realizes");
-    assert_eq!(hit["groundings"][0]["status"], "uninspected");
+    assert_eq!(hit["groundings"][0]["status"], "passing");
+    assert!(
+        hit["groundings"][0]["evidence"]
+            .as_str()
+            .is_some_and(|evidence| evidence.contains(evidence_sentinel)),
+        "exact result carries the grounding's verdict evidence: {out}"
+    );
+}
+
+#[test]
+fn find_exact_refuses_ambiguous_behavior_identity() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path());
+
+    let store = loom::store::Store::open(tmp.path()).unwrap();
+    let first = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "shared exact behavior",
+            "first behavior",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let second = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "shared exact behavior",
+            "second behavior",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    drop(store);
+
+    let output = Command::new(loom_bin())
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["find", "shared exact behavior", "--exact", "--json"])
+        .output()
+        .unwrap();
+    assert!(
+        !output.status.success(),
+        "ambiguous exact identity must be refused"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stdout).trim().is_empty(),
+        "ambiguity must not emit successful result rows"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("ambiguous exact match for 'shared exact behavior'"),
+        "error must explain the ambiguity: {stderr}"
+    );
+    for candidate in [&first, &second] {
+        assert!(
+            stderr.contains(&candidate.id[..8]),
+            "error must list candidate short id {}: {stderr}",
+            &candidate.id[..8]
+        );
+    }
 }

@@ -129,6 +129,13 @@ impl LadderInputs {
             .iter()
             .filter(|n| n.status == "implemented")
             .collect();
+        let journey_readiness = crate::completeness::all_journey_readiness(store)?;
+        let authored_journeys = journey_readiness
+            .iter()
+            .filter(|journey| journey.authored)
+            .count();
+        let derive_gaps = crate::completeness::journey_derive_gaps(store)?.len();
+        let surface_gaps = crate::completeness::journey_surface_gaps(store)?.len();
 
         // Edge residue, split exactly the way the lanes serve it.
         let failing_edges =
@@ -228,6 +235,7 @@ impl LadderInputs {
 
         Ok(LadderInputs {
             observed: identity.observed,
+            authored_journeys,
             active: active.len(),
             implemented: implemented.len(),
             codefiles: store
@@ -239,6 +247,8 @@ impl LadderInputs {
             ungrounded: crate::workitem::ungrounded_implemented_intents(store)?.len(),
             unowned_codefiles: crate::coverage::unowned_codefiles(store)?.len(),
             failing,
+            derive_gaps,
+            surface_gaps,
             failing_exemplars,
             open_research,
             stale_relationships,

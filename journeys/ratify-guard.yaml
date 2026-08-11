@@ -1,11 +1,20 @@
-journey: the human ratification boundary refuses automation
+schema: loom.journey/v1
+id: ratify-guard
+name: Refuse automated human ratification
+actor: autonomous worker
+goal: An autonomous actor cannot manufacture evidence of a human wantedness decision.
+inputs: {}
+preconditions:
+- A behavior is eligible for ratification but no human has answered the decision.
 steps:
-  - name: direct non-interactive ratification is refused
-    intent: an operator records a human decision on an intent as wanted
-    run: >-
-      loom intent ratify
-      'the next router serves the highest-priority asserted residue with a prompt contract'
-      --evidence 'automated probe' --json
-    expect:
-      exit_code: 1
-      stderr_contains: ["INV-8", "indistinguishable from an LLM"]
+- id: attempt-automated-ratification
+  name: Attempt Automated Ratification
+  action: Attempt to record the behavior as wanted without an interactive human answer.
+  expects:
+  - Loom refuses the attempt and explains that automated evidence is indistinguishable
+    from an LLM assertion.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

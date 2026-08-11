@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use loom::journey::{Expect, JourneySpec, Step};
 use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 
@@ -277,43 +276,4 @@ fn duplicate_clear_survives_unrelated_writes_and_expires_on_reword() {
         1,
         "changing either description invalidates the pair decision"
     );
-}
-
-#[test]
-fn failing_cli_steps_include_command_stream_tails_and_exit_classification() {
-    let tmp = Tmp::new("journey-output");
-    let exited = JourneySpec {
-        journey: "step exit evidence".into(),
-        base: String::new(),
-        steps: vec![Step {
-            name: "broken command".into(),
-            intent: "observable behavior".into(),
-            run: "printf 'stdout-evidence\\n'; printf 'stderr-evidence\\n' >&2; exit 7".into(),
-            expect: Expect::default(),
-            ..Step::default()
-        }],
-    };
-    let outcomes = loom::journey::execute_steps(&exited, Some(tmp.path()), false).unwrap();
-    let detail = &outcomes[0].detail;
-    assert!(detail.contains("classification: step_exit"), "{detail}");
-    assert!(detail.contains("command: `printf"), "{detail}");
-    assert!(detail.contains("stdout-evidence"), "{detail}");
-    assert!(detail.contains("stderr-evidence"), "{detail}");
-
-    let killed = JourneySpec {
-        journey: "runner kill evidence".into(),
-        base: String::new(),
-        steps: vec![Step {
-            name: "timed out command".into(),
-            intent: "observable behavior".into(),
-            run: "printf 'before-timeout\\n'; printf 'timeout-stderr\\n' >&2; sleep 2".into(),
-            timeout_secs: Some(1),
-            ..Step::default()
-        }],
-    };
-    let outcomes = loom::journey::execute_steps(&killed, Some(tmp.path()), false).unwrap();
-    let detail = &outcomes[0].detail;
-    assert!(detail.contains("classification: runner_kill"), "{detail}");
-    assert!(detail.contains("before-timeout"), "{detail}");
-    assert!(detail.contains("timeout-stderr"), "{detail}");
 }

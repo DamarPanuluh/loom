@@ -1,8 +1,23 @@
-journey: divergences route to the human-only queue
+schema: loom.journey/v1
+id: divergence-queue
+name: Present divergence as a conversational human decision
+actor: operator
+goal: Concrete evidence and human judgment disagreements become recommendation-first
+  conversational decisions while agent-resolvable friction remains autonomous.
+inputs: {}
+preconditions:
+- The graph contains a disagreement between recorded evidence and wantedness judgment.
 steps:
-  - name: the ratify lane answers with the routing envelope
-    intent: divergences route to a human-decision queue
-    run: "loom next --mode ratify --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["work_item", "graph_state"]
+- id: inspect-human-decision-work
+  name: Inspect Human Decision Work
+  action: Inspect the next item that requires a human decision.
+  expects:
+  - Loom returns only a concrete judgment-evidence conflict, not merely missing approval
+    or agent-resolvable friction.
+  - The host agent presents the graph state, evidence, recommendation, reasoning,
+    choices, and revision path needed for a conversational decision.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

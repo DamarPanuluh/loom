@@ -1,59 +1,39 @@
-journey: loom serves its capabilities in band
+schema: loom.journey/v1
+id: mcp-in-band
+name: Use Loom through an in-band tool protocol
+actor: MCP client
+goal: An MCP client can discover Loom's capabilities, receive live graph data, and
+  distinguish protocol errors from tool failures.
+inputs: {}
+preconditions:
+- Loom is available to an MCP client over a live in-band session.
 steps:
-  - name: initialize and list tools over stdio
-    intent: loom is reachable in-band as tools, not only as a subprocess
-    run: >-
-      printf '%s\n%s\n'
-      '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
-      '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-      | loom mcp serve
-    expect:
-      exit_code: 0
-      # Every capability, not just the read-only three. A tool that is missing
-      # here is one an agent has to stop and shell out for.
-      stdout_contains:
-        - "loom_status"
-        - "loom_next"
-        - "loom_context"
-        - "loom_impact"
-        - "loom_observe"
-        - "loom_absorb"
-        - "loom_journal"
-        - "loom_apply"
-        - "inputSchema"
-
-  - name: a tool call returns real graph data
-    intent: loom is reachable in-band as tools, not only as a subprocess
-    run: >-
-      printf '%s\n'
-      '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"loom_impact","arguments":{"target":"assert_fact"}}}'
-      | loom mcp serve
-    expect:
-      exit_code: 0
-      # Answering with the real call graph, not an empty envelope.
-      stdout_contains: ["callers", "record_verdict", "exact"]
-
-  - name: an unknown tool name is a protocol error naming the tool
-    intent: loom is reachable in-band as tools, not only as a subprocess
-    run: >-
-      printf '%s\n'
-      '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"loom_nope","arguments":{}}}'
-      | loom mcp serve
-    expect:
-      exit_code: 0
-      # Asking for a tool that does not exist is a bad REQUEST — JSON-RPC
-      # -32602 — not a tool that ran and failed. The two are different
-      # conditions and a client routes them differently.
-      stdout_contains: ["-32602", "loom_nope"]
-
-  - name: a tool that runs and fails reports why and keeps the transport alive
-    intent: loom is reachable in-band as tools, not only as a subprocess
-    run: >-
-      printf '%s\n'
-      '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"loom_context","arguments":{"target":"nothing in this graph matches"}}}'
-      | loom mcp serve
-    expect:
-      exit_code: 0
-      # THIS is isError: the tool existed, ran, and could not answer. A dead
-      # transport here would make every later call fail for the wrong reason.
-      stdout_contains: ["isError", "result"]
+- id: discover-tools
+  name: Discover Tools
+  action: Initialize the session and request the available Loom tools.
+  expects:
+  - The client sees Loom's read and write capabilities with structured input descriptions.
+  produces: {}
+- id: inspect-live-impact
+  name: Inspect Live Impact
+  action: Invoke the impact capability for a symbol that exists in the graph.
+  expects:
+  - The result contains real caller and resolution information from the current graph.
+  produces: {}
+- id: request-unknown-tool
+  name: Request Unknown Tool
+  action: Invoke a tool name that Loom does not expose.
+  expects:
+  - Loom identifies the unknown name as an invalid request rather than a tool execution
+    failure.
+  produces: {}
+- id: invoke-failing-tool
+  name: Invoke Failing Tool
+  action: Invoke an existing context capability with a target that cannot be resolved.
+  expects:
+  - Loom reports that the known tool failed and keeps the in-band session usable.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

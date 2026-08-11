@@ -4,7 +4,8 @@ use super::{open, pulse, require_challenge};
 use crate::cli::DriveCmd;
 use crate::model::NodeType;
 use crate::Result;
-use anyhow::bail;
+use anyhow::{bail, Context};
+use std::collections::BTreeMap;
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -16,8 +17,8 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: Option<DriveCmd>, json: bool) 
 }
 
 /// A drive is intentionally an in-terminal human session. The selected intent
-/// and the command's complete observed result are journaled together; this is
-/// the replayable evidence chain consumed by `drive freeze`.
+/// and the command's complete observed result are journaled together; `drive
+/// freeze` extracts only their semantic user actions into an authored Journey.
 fn drive(graph: Option<&Path>, json: bool) -> Result<()> {
     let store = open(graph)?;
     require_challenge("drive")?;
@@ -142,47 +143,89 @@ fn freeze(graph: Option<&Path>, name: &str, json: bool) -> Result<()> {
     if entries.is_empty() {
         bail!("no journaled drive exchanges available for '{name}'");
     }
-    let steps: Vec<_> = entries
-        .iter()
-        .enumerate()
-        .filter_map(|(index, entry)| {
-            let command = entry.payload.get("command")?.as_str()?;
-            (!command.trim().is_empty()).then(|| serde_json::json!({
-                "name": format!("drive-{}", index + 1),
-                "intent": entry.payload.get("intent").and_then(|v| v.as_str()).unwrap_or("drive exchange"),
-                "run": command,
-                "expect": { "exit_code": 0 },
-            }))
-        })
-        .collect();
-    if !crate::journey::safe_journey_id(name) {
+    crate::journey::validate_stable_id("drive Journey", name)?;
+    let mut steps = Vec::with_capacity(entries.len());
+    for (index, entry) in entries.iter().enumerate() {
+        let utterance = entry
+            .payload
+            .get("utterance")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        let intent = entry
+            .payload
+            .get("intent")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        let action = utterance.or(intent).ok_or_else(|| {
+            anyhow::anyhow!(
+                "drive exchange {} has no semantic utterance or intent; cannot register a semantic Journey",
+                index + 1
+            )
+        })?;
+        let step_id = format!("drive-{}", index + 1);
+        let expectation = intent
+            .map(|value| format!("{value} is true"))
+            .unwrap_or_else(|| format!("the requested outcome '{action}' is observable"));
+        steps.push(crate::journey::JourneyStep {
+            id: step_id,
+            name: format!("Drive exchange {}", index + 1),
+            action: action.into(),
+            expects: vec![expectation],
+            produces: BTreeMap::new(),
+        });
+    }
+    let spec = crate::journey::JourneySpec {
+        schema: crate::journey::JOURNEY_SCHEMA.into(),
+        id: name.into(),
+        name: format!("Drive: {name}"),
+        actor: "operator".into(),
+        goal: format!(
+            "Semantic Journey captured from {} journaled drive exchange(s)",
+            entries.len()
+        ),
+        description: None,
+        inputs: BTreeMap::new(),
+        preconditions: Vec::new(),
+        steps,
+        profiles: crate::journey::proof_profiles(),
+    };
+    spec.validate()?;
+
+    let journeys = store.root().join("journeys");
+    std::fs::create_dir_all(&journeys)
+        .with_context(|| format!("creating {}", journeys.display()))?;
+    let root = store
+        .root()
+        .canonicalize()
+        .with_context(|| format!("resolving graph root {}", store.root().display()))?;
+    let journeys = journeys
+        .canonicalize()
+        .with_context(|| format!("resolving {}", journeys.display()))?;
+    if !journeys.starts_with(&root) {
         bail!(
-            "drive name '{name}' is not a safe journey filename segment (one path segment; no '/' or '..')"
+            "Journey directory '{}' escapes graph root {}",
+            journeys.display(),
+            store.root().display()
         );
     }
-    let rel = Path::new("journeys").join(format!("{name}.yaml"));
-    let path = store.root().join(&rel);
-    crate::journey::write_confined_under(
-        store.root(),
-        &rel,
-        serde_norway::to_string(&serde_json::json!({ "journey": name, "steps": steps }))?
-            .as_bytes(),
-    )?;
-    // A frozen drive is immediately replayable: compile the observed command
-    // chain, then freeze its first run as the journey baseline.
-    let spec = crate::journey::parse(&path)?;
-    let outcomes = crate::journey::execute_steps(&spec, Some(store.root()), false)?;
-    let baseline = crate::journey::write_successful_baseline(store.root(), &spec, &outcomes)?;
-    let entry = store.append_journal(
-        "drive_freeze",
-        name,
-        serde_json::json!({ "journey": path, "baseline": baseline, "exchanges": entries.len() }),
-    )?;
-    pulse::emit_line(
-        &store,
-        json,
-        serde_json::json!({ "journey": path, "baseline": baseline, "journal": crate::journal::reference(&entry) }),
-        "loom journey run",
-        format!("compiled and froze drive '{name}' into {}", path.display()),
-    )
+    let path = journeys.join(format!("{name}.yaml"));
+    if std::fs::symlink_metadata(&path)
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
+    {
+        bail!(
+            "refusing to replace symlinked Journey artifact {}",
+            path.display()
+        );
+    }
+    std::fs::write(&path, serde_norway::to_string(&spec)?)
+        .with_context(|| format!("writing semantic Journey {}", path.display()))?;
+
+    // Registration owns hashing, update invalidation, and command output. The
+    // drive's executable commands and observed streams remain only in its
+    // journal evidence; they never cross into the authored Journey artifact.
+    drop(store);
+    super::journey::journey_add(graph, path, json)
 }

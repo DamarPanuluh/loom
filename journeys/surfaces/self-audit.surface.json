@@ -1,0 +1,362 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "self-audit",
+  "journey_hash": "0dcc2efcd203fd34",
+  "surface": {
+    "id": "self-audit-cli",
+    "title": "Confined Loom self-audit",
+    "identity": "loom audit with confined typed fixtures",
+    "codefile": "src/commands.rs",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_journal\",\"arguments\":{\"event\":\"batch_authorization\",\"limit\":1000}}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"audit\",\"--json\"]}}},{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d0572c792f5d2fffe\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 01 exists only in the confined self-audit proof.\"},{\"finding\":\"da040baa6f94eca3b\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 02 exists only in the confined self-audit proof.\"},{\"finding\":\"d039957eab9262339\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 03 exists only in the confined self-audit proof.\"},{\"finding\":\"dbe26ead2b61f615e\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 04 exists only in the confined self-audit proof.\"},{\"finding\":\"d311d5c832d33aafa\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 05 exists only in the confined self-audit proof.\"},{\"finding\":\"d6896ac41ee433370\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 06 exists only in the confined self-audit proof.\"},{\"finding\":\"d2a8727a70d01a570\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 07 exists only in the confined self-audit proof.\"},{\"finding\":\"d3e19853cc047810b\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 08 exists only in the confined self-audit proof.\"},{\"finding\":\"d407228545c87af52\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 09 exists only in the confined self-audit proof.\"},{\"finding\":\"d9ebdd77a33b627a2\",\"verdict\":\"needed\",\"reason\":\"Synthetic batch-authorized judgment 10 exists only in the confined self-audit proof.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"audit\",\"--json\"]}}},{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"dbb4e12c1f01f072c\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 11 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d741602dee3e6b623\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 12 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d78f906d51e3e9a1a\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 13 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"da2ef1ad02853aa11\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 14 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d281d30bd4107c9f0\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 15 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d9b1bfd3bf237da1e\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 16 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d50159c1fcfba260f\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 17 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":13,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d4f7a47d3338fa071\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 18 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"d6a04a2f5a3e8a223\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 19 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_apply\",\"arguments\":{\"fragment\":{\"adjudications\":[{\"finding\":\"da10b71b963b8abaa\",\"verdict\":\"needed\",\"reason\":\"Synthetic out-of-envelope judgment 20 deliberately tests fail-closed exact-set coverage.\"}]}}}},{\"jsonrpc\":\"2.0\",\"id\":16,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"audit\",\"--json\"]}}}]",
+          "--json"
+        ],
+        "id": "audit-authorized-batch",
+        "output": {
+          "assertions": [
+            {
+              "equals": "json-rpc-2.0",
+              "id": "authorized-protocol",
+              "pointer": "/protocol",
+              "type": "string"
+            },
+            {
+              "equals": 16,
+              "id": "authorized-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 16,
+              "id": "authorized-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "authorized-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "id": "authorized-current-ratification-envelope",
+              "matches": "(?s)\"event\":\\s*\"batch_authorization\".*?\"origin\":\\s*\"local\".*?\"payload\":\\s*\\{\\s*\"authority\":\\s*\"human\"\\s*,\\s*\"claim\":\\s*\"ratification\"\\s*,\\s*\"command_id\":\\s*\"journey-derive-accept:2\"\\s*,\\s*\"criterion\":\\s*\"accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest [0-9a-f]{16}\"\\s*,\\s*\"decision_mode\":\\s*\"batch\".*?\"operation\":\\s*\"ratify\"\\s*,\\s*\"subject_digest\":\\s*\"b[0-9a-f]{16}\"\\s*,\\s*\"subjects\":\\s*\\[\\s*\"[0-9a-f]{32}\"\\s*,\\s*\"[0-9a-f]{32}\"\\s*\\]",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "authorized-preaudit-observed",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 0",
+              "id": "authorized-preaudit-exited-zero",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"stdout_excerpt\": \"[]\\n\"",
+              "id": "authorized-preaudit-empty",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 10",
+              "id": "authorized-exact-batch-recorded",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "authorized-exact-audit-observed",
+              "pointer": "/responses/4/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 0",
+              "id": "authorized-exact-audit-exited-zero",
+              "pointer": "/responses/4/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"stdout_excerpt\": \"[]\\n\"",
+              "id": "authorized-exact-audit-empty",
+              "pointer": "/responses/4/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-11-recorded-alone",
+              "pointer": "/responses/5/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-12-recorded-alone",
+              "pointer": "/responses/6/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-13-recorded-alone",
+              "pointer": "/responses/7/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-14-recorded-alone",
+              "pointer": "/responses/8/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-15-recorded-alone",
+              "pointer": "/responses/9/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-16-recorded-alone",
+              "pointer": "/responses/10/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-17-recorded-alone",
+              "pointer": "/responses/11/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-18-recorded-alone",
+              "pointer": "/responses/12/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-19-recorded-alone",
+              "pointer": "/responses/13/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"adjudications\": 1",
+              "id": "authorized-extra-20-recorded-alone",
+              "pointer": "/responses/14/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "authorized-postaudit-observed",
+              "pointer": "/responses/15/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 1",
+              "id": "authorized-postaudit-unsuccessful",
+              "pointer": "/responses/15/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"kind\\\": \\\"judgment_burst\\\"",
+              "id": "authorized-extra-reported-as-burst",
+              "pointer": "/responses/15/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "adjudication judgments",
+              "id": "authorized-extra-detail",
+              "pointer": "/responses/15/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "no sealed batch authorization set covers this exact subject union",
+              "id": "authorized-extra-uncovered",
+              "pointer": "/responses/15/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"remedy\\\":",
+              "id": "authorized-extra-remedy",
+              "pointer": "/responses/15/result/content/0/text",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Read the genuine human authorization, prove an exact synthetic batch stays clean, then prove out-of-envelope judgments fail closed."
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "audit",
+          "--json"
+        ],
+        "id": "audit-clean-graph",
+        "output": {
+          "assertions": [
+            {
+              "equals": [],
+              "id": "clean-empty-finding-set",
+              "pointer": "",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Audit the confined graph before any synthetic judgment is recorded."
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"audit\",\"--json\"]}}}]",
+          "--json"
+        ],
+        "id": "audit-defective-graph",
+        "output": {
+          "assertions": [
+            {
+              "equals": "json-rpc-2.0",
+              "id": "defect-protocol",
+              "pointer": "/protocol",
+              "type": "string"
+            },
+            {
+              "equals": 2,
+              "id": "defect-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 2,
+              "id": "defect-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "defect-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "defect-audit-observed",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 1",
+              "id": "defect-audit-unsuccessful",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"kind\\\": \\\"judgment_burst\\\"",
+              "id": "defect-kind",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "adjudication judgments",
+              "id": "defect-detail",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "no sealed batch authorization set covers this exact subject union",
+              "id": "defect-exact-uncovered-set",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"remedy\\\":",
+              "id": "defect-remedy-present",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "Re-judging the subjects is NOT a remedy",
+              "id": "defect-remedy-warns-against-laundering",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Re-audit the deliberately seeded judgment burst and expose its observed nonzero result, detail, and remedy."
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mode",
+          "owned",
+          "--json"
+        ],
+        "id": "prepare-owned-snapshot",
+        "output": {
+          "assertions": [
+            {
+              "equals": "owned",
+              "id": "setup-mode-owned",
+              "pointer": "/mode",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "setup-not-observed",
+              "pointer": "/observed",
+              "type": "boolean"
+            },
+            {
+              "id": "setup-change-reported",
+              "pointer": "/changed",
+              "type": "boolean"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Establish an owned disposable graph while preserving the staged journal and derived findings."
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-owned-snapshot"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "audit-clean-graph",
+      "step_id": "audit-clean-graph"
+    },
+    {
+      "operation_id": "audit-authorized-batch",
+      "step_id": "audit-authorized-batch"
+    },
+    {
+      "operation_id": "audit-defective-graph",
+      "step_id": "audit-defective-graph"
+    }
+  ]
+}

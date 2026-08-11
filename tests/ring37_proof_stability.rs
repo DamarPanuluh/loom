@@ -651,8 +651,8 @@ fn a_realizing_file_edit_does_not_wipe_a_sticky_flake_record() {
 ///
 /// Structural, and it reads loom's own source, because this is a claim about
 /// WHERE code may live and no runtime assertion can defend it. The first
-/// version of stability tracking guarded `validation run` alone — and
-/// `journey run` settles its status directly, so the proofs covering every
+/// version of stability tracking guarded `validation run` alone — and compiled
+/// Journey settlement writes status directly, so proofs covering every
 /// user-visible behavior were never watched.
 ///
 /// The FIRST version of this test had the same shape of hole it exists to

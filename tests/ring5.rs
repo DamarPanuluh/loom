@@ -1,11 +1,14 @@
 //! Ring 5 tests — quality, validation, hypothesis, journey model, vocab/layer.
 
 use loom::cli::{
-    Cli, CodefileCmd, Command, EdgeCmd, HypothesisCmd, IntentCmd, JourneyCmd, LayerCmd,
+    Cli, CodefileCmd, Command, EdgeCmd, HypothesisCmd, InboxCmd, IntentCmd, JourneyCmd, LayerCmd,
     ValidationCmd, WikiCmd,
 };
 use loom::lane::Lane;
-use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
+use loom::model::{
+    EdgeKind, InspectionStatus, IntakeDestination, IntakeDestinationKind, NodeType, TargetKind,
+    TruthClass,
+};
 use loom::store::Store;
 use loom::workitem;
 use std::path::Path;
@@ -167,10 +170,6 @@ fn validate_runs_command_and_records_result() {
                 r#type: "test".into(),
                 command: "true".into(),
                 intent: "always passes".into(),
-                proof_kind: None,
-                journey_id: None,
-                repo_native_kind: None,
-                artifact: None,
             },
         },
     );
@@ -245,10 +244,6 @@ fn validate_failing_command_records_failure() {
                 r#type: "test".into(),
                 command,
                 intent: "always fails".into(),
-                proof_kind: None,
-                journey_id: None,
-                repo_native_kind: None,
-                artifact: None,
             },
         },
     );
@@ -356,10 +351,6 @@ fn validate_timed_out_command_records_blocked() {
                 r#type: "test".into(),
                 command: "sleep 2".into(),
                 intent: "can hang".into(),
-                proof_kind: None,
-                journey_id: None,
-                repo_native_kind: None,
-                artifact: None,
             },
         },
     );
@@ -389,25 +380,34 @@ fn validate_timed_out_command_records_blocked() {
     assert_eq!(proof.status, "blocked");
 }
 
-/// A batch assesses Validation nodes, but executes unique proof plans. Two
-/// nodes naming the exact same command share one subprocess observation while
-/// retaining separate statuses, edge verdicts, and journal records.
+/// A batch assesses behavior claims, but executes unique proof plans. Two
+/// distinct Intents whose Validation nodes name the exact same command share
+/// one subprocess observation while retaining separate statuses, edge verdicts,
+/// and journal records.
 #[test]
 fn validation_batch_executes_one_plan_once_and_assesses_each_validation() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let intent = store
-        .add_node(
-            NodeType::Intent,
-            "shared observation behavior",
-            "one observation may assess multiple registered proofs",
-            "implemented",
-            serde_json::json!({}),
-        )
-        .unwrap();
+    let intents: Vec<_> = ["first shared behavior", "second shared behavior"]
+        .into_iter()
+        .map(|name| {
+            store
+                .add_node(
+                    NodeType::Intent,
+                    name,
+                    "each behavior retains its own claim truth",
+                    "implemented",
+                    serde_json::json!({}),
+                )
+                .unwrap()
+        })
+        .collect();
     let command = "printf x >> .proof-executions";
     let mut validation_ids = Vec::new();
-    for name in ["shared proof one", "shared proof two"] {
+    for (name, intent) in ["shared proof one", "shared proof two"]
+        .into_iter()
+        .zip(&intents)
+    {
         let validation = store
             .add_node(
                 NodeType::Validation,
@@ -439,13 +439,17 @@ fn validation_batch_executes_one_plan_once_and_assesses_each_validation() {
     );
 
     let store = Store::open(tmp.path()).unwrap();
-    for validation_id in &validation_ids {
+    for (validation_id, intent) in validation_ids.iter().zip(&intents) {
         let validation = store.get_node(validation_id).unwrap().unwrap();
         assert_eq!(validation.status, "passed", "{} assessed", validation.name);
         let edges = store
-            .edges_with(Some(EdgeKind::Validates), Some(validation_id), None)
+            .edges_with(
+                Some(EdgeKind::Validates),
+                Some(validation_id),
+                Some(&intent.id),
+            )
             .unwrap();
-        assert_eq!(edges.len(), 1);
+        assert_eq!(edges.len(), 1, "each behavior keeps its exact proof claim");
         assert_eq!(edges[0].status, InspectionStatus::Passing);
     }
     let journal = loom::journal::read(tmp.path()).unwrap();
@@ -464,6 +468,176 @@ fn validation_batch_executes_one_plan_once_and_assesses_each_validation() {
             .iter()
             .all(|id| verdict_targets.contains(id.as_str())),
         "both validation ids are journaled: {verdict_targets:?}"
+    );
+}
+
+#[test]
+fn running_one_shared_command_validation_does_not_settle_the_other_behavior() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("shared command claim isolation"), false).unwrap();
+    let mut validation_ids = Vec::new();
+    let mut validates_edge_ids = Vec::new();
+    let command = "printf x >> .targeted-proof-executions";
+    for (intent_name, validation_name) in [
+        ("first isolated behavior", "first isolated proof"),
+        ("second isolated behavior", "second isolated proof"),
+    ] {
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                intent_name,
+                "a distinct behavior claim",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        let validation = store
+            .add_node(
+                NodeType::Validation,
+                validation_name,
+                "",
+                "not_run",
+                serde_json::json!({ "type": "test", "command": command }),
+            )
+            .unwrap();
+        let edge = store
+            .add_edge(
+                EdgeKind::Validates,
+                &validation.id,
+                &intent.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        validation_ids.push(validation.id);
+        validates_edge_ids.push(edge.id);
+    }
+    drop(store);
+
+    let output = loom_json_out(
+        tmp.path(),
+        &["validation", "run", "first isolated proof", "--json"],
+    );
+    let ran = output["ran"].as_array().unwrap();
+    assert_eq!(
+        ran.len(),
+        1,
+        "only the requested claim is assessed: {output}"
+    );
+    assert_eq!(ran[0]["id"], validation_ids[0], "{output}");
+    assert_eq!(
+        std::fs::read_to_string(tmp.path().join(".targeted-proof-executions")).unwrap(),
+        "x",
+        "the requested proof command executes once"
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let first = store.get_node(&validation_ids[0]).unwrap().unwrap();
+    let second = store.get_node(&validation_ids[1]).unwrap().unwrap();
+    assert_eq!(first.status, "passed");
+    assert_eq!(
+        second.status, "not_run",
+        "the sibling claim remains unsettled"
+    );
+    let first_edge = store.get_edge(&validates_edge_ids[0]).unwrap().unwrap();
+    let second_edge = store.get_edge(&validates_edge_ids[1]).unwrap().unwrap();
+    assert_eq!(first_edge.status, InspectionStatus::Passing);
+    assert_eq!(second_edge.status, InspectionStatus::Uninspected);
+
+    let journal = loom::journal::read(tmp.path()).unwrap();
+    let verdict_targets: std::collections::BTreeSet<_> = journal
+        .iter()
+        .filter(|entry| entry.event == "validation_verdict")
+        .map(|entry| entry.target_id.as_str())
+        .collect();
+    assert_eq!(
+        verdict_targets,
+        std::collections::BTreeSet::from([validation_ids[0].as_str()]),
+        "the green result records no verdict for its shared-command sibling"
+    );
+}
+
+#[test]
+fn validation_add_warns_about_a_shared_command_without_refusing_registration() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("proof command collision"), false).unwrap();
+    let first_intent = store
+        .add_node(
+            NodeType::Intent,
+            "first collision behavior",
+            "the first behavior has its own proof criterion",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let second_intent = store
+        .add_node(
+            NodeType::Intent,
+            "second collision behavior",
+            "the second behavior has a distinct proof criterion",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    drop(store);
+
+    let command = "cargo test --test ring5 collision-sentinel";
+    let register = |name: &str, intent_id: &str| {
+        std::process::Command::new(loom_bin())
+            .arg("--graph")
+            .arg(tmp.path())
+            .args([
+                "validation",
+                "add",
+                "--name",
+                name,
+                "--type",
+                "test",
+                "--command",
+                command,
+                "--intent",
+                intent_id,
+            ])
+            .output()
+            .unwrap_or_else(|error| panic!("spawn validation add: {error}"))
+    };
+
+    let first = register("first collision proof", &first_intent.id);
+    assert!(
+        first.status.success(),
+        "first registration failed: {}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+    let second = register("second collision proof", &second_intent.id);
+    let warning = String::from_utf8_lossy(&second.stderr);
+    assert!(
+        second.status.success(),
+        "a command collision is diagnostic, not a refusal: {warning}"
+    );
+    assert!(
+        warning.contains(command),
+        "warning names the shared command: {warning}"
+    );
+    assert!(
+        warning.contains("first collision behavior"),
+        "warning names the prior behavior using the command: {warning}"
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let validation = store
+        .resolve_node("second collision proof", Some(NodeType::Validation))
+        .expect("the warned-about Validation remains registered");
+    assert_eq!(validation.status, "not_run");
+    let mappings = store
+        .edges_with(
+            Some(EdgeKind::Validates),
+            Some(&validation.id),
+            Some(&second_intent.id),
+        )
+        .unwrap();
+    assert_eq!(
+        mappings.len(),
+        1,
+        "the warned-about Validation retains its exact Validates mapping"
     );
 }
 
@@ -539,195 +713,6 @@ fn hypothesis_invisible_until_adopted() {
 // ---- journey model ---------------------------------------------------------
 
 #[test]
-fn journey_add_links_steps_with_validates_not_sequence() {
-    let tmp = Tmp::new();
-    run(
-        tmp.path(),
-        Command::Init {
-            path: Some(tmp.path().to_path_buf()),
-            name: Some("t".into()),
-            observed: false,
-        },
-    );
-    let store = Store::open(tmp.path()).unwrap();
-    for n in ["create cart", "capture payment"] {
-        store
-            .add_node(
-                NodeType::Intent,
-                n,
-                "",
-                "implemented",
-                serde_json::json!({}),
-            )
-            .unwrap();
-    }
-    drop(store);
-
-    let spec = tmp.path().join("checkout.journey.json");
-    std::fs::write(
-        &spec,
-        r#"{"journey":"checkout-flow","steps":[{"intent":"create cart"},{"intent":"capture payment"}]}"#,
-    )
-    .unwrap();
-    run(
-        tmp.path(),
-        Command::Journey {
-            cmd: JourneyCmd::Add { spec },
-        },
-    );
-
-    let store = Store::open(tmp.path()).unwrap();
-    let journey = store
-        .resolve_node("checkout-flow", Some(NodeType::Validation))
-        .unwrap();
-    assert_eq!(
-        journey.body.get("type").and_then(|t| t.as_str()),
-        Some("journey")
-    );
-    let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
-        .unwrap();
-    assert_eq!(validates.len(), 2, "journey validates each step intent");
-    // journey add does NOT auto-create sequence edges — a spec's step order
-    // is a test script, not a domain claim (assert deliberately via `edge relate`).
-    let cart = store
-        .resolve_node("create cart", Some(NodeType::Intent))
-        .unwrap();
-    let seq = store
-        .edges_with(Some(EdgeKind::Sequence), Some(&cart.id), None)
-        .unwrap();
-    assert!(
-        seq.is_empty(),
-        "journey add must not auto-create sequence edges"
-    );
-}
-
-#[test]
-fn journey_add_is_idempotent_and_dedupes() {
-    // Reported bug: `journey add` twice for the same id created duplicate
-    // validation nodes, and `journey run` then failed with "add it first".
-    let tmp = Tmp::new();
-    run(
-        tmp.path(),
-        Command::Init {
-            path: Some(tmp.path().to_path_buf()),
-            name: Some("t".into()),
-            observed: false,
-        },
-    );
-    let store = Store::open(tmp.path()).unwrap();
-    for n in ["create cart", "capture payment"] {
-        store
-            .add_node(
-                NodeType::Intent,
-                n,
-                "",
-                "implemented",
-                serde_json::json!({}),
-            )
-            .unwrap();
-    }
-    drop(store);
-    let spec = tmp.path().join("checkout.journey.json");
-    std::fs::write(
-        &spec,
-        r#"{"journey":"checkout-flow","steps":[{"intent":"create cart"},{"intent":"capture payment"}]}"#,
-    )
-    .unwrap();
-    for _ in 0..3 {
-        run(
-            tmp.path(),
-            Command::Journey {
-                cmd: JourneyCmd::Add { spec: spec.clone() },
-            },
-        );
-    }
-    let store = Store::open(tmp.path()).unwrap();
-    let vals = loom::journey::journey_validations(&store, "checkout-flow").unwrap();
-    assert_eq!(
-        vals.len(),
-        1,
-        "repeated add upserts one validation, not N duplicates"
-    );
-    // the run guard resolves cleanly — no ambiguity, no misleading "add it first"
-    assert!(loom::journey::require(&store, "checkout-flow").is_ok());
-    let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&vals[0].id), None)
-        .unwrap();
-    assert_eq!(
-        validates.len(),
-        2,
-        "steps linked once, not duplicated per add"
-    );
-}
-
-#[test]
-fn resolve_validation_repairs_a_duplicated_graph() {
-    // A graph already bricked by the old bug (N duplicate nodes) self-heals:
-    // resolve_validation picks the canonical, merges links, deletes the rest.
-    let tmp = Tmp::new();
-    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let cart = store
-        .add_node(
-            NodeType::Intent,
-            "create cart",
-            "",
-            "implemented",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let mut ids = vec![];
-    for _ in 0..3 {
-        let v = store
-            .add_node(
-                NodeType::Validation,
-                "dup-flow",
-                "",
-                "not_run",
-                serde_json::json!({"type":"journey","proof_kind":"journey","journey_id":"dup-flow"}),
-            )
-            .unwrap();
-        ids.push(v.id);
-    }
-    // A later fixed add linked a step onto one dup only.
-    store
-        .ensure_edge(EdgeKind::Validates, ids.last().unwrap(), &cart.id)
-        .unwrap();
-    assert_eq!(
-        loom::journey::journey_validations(&store, "dup-flow")
-            .unwrap()
-            .len(),
-        3
-    );
-    let canonical = loom::journey::resolve_validation(&store, "dup-flow", true).unwrap();
-    let after = loom::journey::journey_validations(&store, "dup-flow").unwrap();
-    assert_eq!(after.len(), 1, "duplicates removed");
-    assert_eq!(after[0].id, canonical.id);
-    let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&canonical.id), None)
-        .unwrap();
-    assert_eq!(
-        validates.len(),
-        1,
-        "the deleted dup's link merged onto the canonical — no coverage lost"
-    );
-    assert!(loom::journey::require(&store, "dup-flow").is_ok());
-}
-
-#[test]
-fn missing_journey_gives_add_it_first_not_ambiguous() {
-    let tmp = Tmp::new();
-    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let err = loom::journey::require(&store, "nope")
-        .unwrap_err()
-        .to_string();
-    assert!(
-        err.contains("add it first"),
-        "0-case gives the honest error: {err}"
-    );
-}
-
-#[test]
 fn journey_remove_deletes_the_journey() {
     let tmp = Tmp::new();
     run(
@@ -739,7 +724,11 @@ fn journey_remove_deletes_the_journey() {
         },
     );
     let spec = tmp.path().join("f.journey.json");
-    std::fs::write(&spec, r#"{"journey":"gone-flow","steps":[]}"#).unwrap();
+    std::fs::write(
+        &spec,
+        r#"{"schema":"loom.journey/v1","id":"gone-flow","name":"Gone flow","actor":"user","goal":"Leave","inputs":{},"preconditions":[],"steps":[{"id":"leave","name":"Leave","action":"leaves","expects":[],"produces":{}}],"profiles":{"proof":{"inputs":{},"workspace":{}}}}"#,
+    )
+    .unwrap();
     run(
         tmp.path(),
         Command::Journey {
@@ -747,29 +736,26 @@ fn journey_remove_deletes_the_journey() {
         },
     );
     let store = Store::open(tmp.path()).unwrap();
-    assert_eq!(
-        loom::journey::journey_validations(&store, "gone-flow")
-            .unwrap()
-            .len(),
-        1
-    );
+    assert!(store
+        .resolve_node("gone-flow", Some(NodeType::Journey))
+        .is_ok());
     drop(store);
     run(
         tmp.path(),
         Command::Journey {
             cmd: JourneyCmd::Remove {
-                id: "gone-flow".into(),
+                journey: "gone-flow".into(),
             },
         },
     );
     let store = Store::open(tmp.path()).unwrap();
-    assert!(loom::journey::journey_validations(&store, "gone-flow")
-        .unwrap()
-        .is_empty());
+    assert!(store
+        .resolve_node("gone-flow", Some(NodeType::Journey))
+        .is_err());
 }
 
 #[test]
-fn journey_readd_after_spec_change_resets_proof() {
+fn journey_readd_after_semantic_change_invalidates_projections() {
     let tmp = Tmp::new();
     run(
         tmp.path(),
@@ -779,21 +765,10 @@ fn journey_readd_after_spec_change_resets_proof() {
             observed: false,
         },
     );
-    let store = Store::open(tmp.path()).unwrap();
-    store
-        .add_node(
-            NodeType::Intent,
-            "step a",
-            "",
-            "implemented",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    drop(store);
     let spec = tmp.path().join("r.journey.json");
     std::fs::write(
         &spec,
-        r#"{"journey":"reset-flow","steps":[{"intent":"step a"}]}"#,
+        r#"{"schema":"loom.journey/v1","id":"reset-flow","name":"Reset flow","actor":"user","goal":"Complete A","inputs":{},"preconditions":[],"steps":[{"id":"step-a","name":"Step A","action":"does A","expects":[],"produces":{}}],"profiles":{"proof":{"inputs":{},"workspace":{}}}}"#,
     )
     .unwrap();
     run(
@@ -803,15 +778,48 @@ fn journey_readd_after_spec_change_resets_proof() {
         },
     );
     let store = Store::open(tmp.path()).unwrap();
-    let v = loom::journey::journey_validations(&store, "reset-flow")
-        .unwrap()
-        .remove(0);
-    store.set_node_status(&v.id, "passed").unwrap();
+    let journey = store
+        .resolve_node("reset-flow", Some(NodeType::Journey))
+        .unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "step A works",
+            "",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let surface = store
+        .add_node(
+            NodeType::InterfaceSurface,
+            "reset CLI",
+            "",
+            "active",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Derives,
+            &journey.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Surfaces,
+            &journey.id,
+            &surface.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
     drop(store);
     // Edit the spec at the SAME path (different bytes) and re-add.
     std::fs::write(
         &spec,
-        r#"{"journey":"reset-flow","base":"http://x","steps":[{"intent":"step a"}]}"#,
+        r#"{"schema":"loom.journey/v1","id":"reset-flow","name":"Reset flow","actor":"user","goal":"Complete A","inputs":{},"preconditions":[],"steps":[{"id":"step-a","name":"Step A","action":"does A differently","expects":[],"produces":{}}],"profiles":{"proof":{"inputs":{},"workspace":{}}}}"#,
     )
     .unwrap();
     run(
@@ -821,49 +829,14 @@ fn journey_readd_after_spec_change_resets_proof() {
         },
     );
     let store = Store::open(tmp.path()).unwrap();
-    let v = loom::journey::journey_validations(&store, "reset-flow")
+    assert!(store
+        .edges_with(Some(EdgeKind::Derives), Some(&journey.id), None)
         .unwrap()
-        .remove(0);
-    assert_eq!(
-        v.status, "not_run",
-        "a changed spec resets the passed proof to not_run"
-    );
-}
-
-#[test]
-fn journey_list_recognizes_proof_kind_journey() {
-    let tmp = Tmp::new();
-    run(
-        tmp.path(),
-        Command::Init {
-            path: Some(tmp.path().to_path_buf()),
-            name: Some("t".into()),
-            observed: false,
-        },
-    );
-    let store = Store::open(tmp.path()).unwrap();
-    store
-        .add_node(
-            NodeType::Validation,
-            "checkout-flow-runner",
-            "",
-            "not_run",
-            serde_json::json!({"type":"manual_check","proof_kind":"journey"}),
-        )
-        .unwrap();
-    drop(store);
-
-    // `journey list` recognizes a journey proof by `proof_kind`, not only by
-    // `type: journey` — a repo-native runner stays visible to the family.
-    let journey_rows = loom_json_out(tmp.path(), &["journey", "list", "--json"]);
-    assert!(
-        journey_rows["items"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|n| n["name"] == "checkout-flow-runner"),
-        "journey list includes proof_kind=journey validations: {journey_rows}"
-    );
+        .is_empty());
+    assert!(store
+        .edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)
+        .unwrap()
+        .is_empty());
 }
 
 // ---- vocab + layer ---------------------------------------------------------
@@ -1211,6 +1184,18 @@ fn codefile_list_json_reports_pagination_metadata() {
     assert_eq!(final_page["pagination"]["total"], 51);
     assert_eq!(final_page["pagination"]["has_more"], false);
     assert!(final_page["pagination"]["next_offset"].is_null());
+
+    let past_end = loom_json_out(
+        tmp.path(),
+        &["codefile", "list", "--offset", "52", "--json"],
+    );
+    assert!(past_end["items"].as_array().unwrap().is_empty());
+    assert_eq!(past_end["pagination"]["offset"], 52);
+    assert_eq!(past_end["pagination"]["limit"], 50);
+    assert_eq!(past_end["pagination"]["returned"], 0);
+    assert_eq!(past_end["pagination"]["total"], 51);
+    assert_eq!(past_end["pagination"]["has_more"], false);
+    assert!(past_end["pagination"]["next_offset"].is_null());
 }
 
 // ---- in-process dispatcher coverage ---------------------------------------
@@ -1253,6 +1238,95 @@ fn door_dispatch_in_process_records_an_inbox_item() {
         "the captured item must keep the utterance, got '{}'",
         items[0].name
     );
+}
+
+#[test]
+fn inbox_mark_routed_persists_typed_destination_reference_in_process() {
+    let tmp = Tmp::new();
+    run(
+        tmp.path(),
+        Command::Init {
+            path: Some(tmp.path().to_path_buf()),
+            name: Some("typed-route".into()),
+            observed: false,
+        },
+    );
+    run(
+        tmp.path(),
+        Command::Door {
+            utterance: "consider guarded receipt export".into(),
+        },
+    );
+    let store = Store::open(tmp.path()).unwrap();
+    let item = store
+        .list_nodes(Some(NodeType::InboxItem), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    let destination = store
+        .add_node(
+            NodeType::Hypothesis,
+            "guarded receipt export",
+            "test the proposed export behavior",
+            "proposed",
+            serde_json::json!({
+                "proposal": "require a review before export",
+                "predicted_outcome": "accidental sharing decreases",
+            }),
+        )
+        .unwrap();
+    drop(store);
+
+    run(
+        tmp.path(),
+        Command::Inbox {
+            cmd: InboxCmd::Mark {
+                key: item.id.clone(),
+                status: "routed".into(),
+                reason: Some(format!("hypothesis:{}", destination.id)),
+            },
+        },
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let routed = store.get_node(&item.id).unwrap().unwrap();
+    assert_eq!(routed.status, "routed");
+    assert_eq!(routed.body["destination"]["type"], "hypothesis");
+    assert_eq!(routed.body["destination"]["ref"], destination.id);
+
+    let research_task = store
+        .add_node(
+            NodeType::TaskRecord,
+            "external receipt research",
+            "",
+            "proposed",
+            serde_json::json!({"kind": "research"}),
+        )
+        .unwrap();
+    let unrouted = store
+        .add_node(
+            NodeType::InboxItem,
+            "subtype mismatch",
+            "must remain new",
+            "new",
+            serde_json::json!({"source": "human"}),
+        )
+        .unwrap();
+    let spike_to_research = IntakeDestination {
+        destination_type: IntakeDestinationKind::Spike,
+        reference: research_task.id,
+    };
+    let subtype_error = store
+        .route_inbox_item(&unrouted.id, &spike_to_research)
+        .unwrap_err();
+    assert!(subtype_error.to_string().contains("investigation"));
+    assert_eq!(store.get_node(&unrouted.id).unwrap().unwrap().status, "new");
+
+    let source_error = store
+        .route_inbox_item(&destination.id, &spike_to_research)
+        .unwrap_err();
+    assert!(source_error.to_string().contains("not an inbox item"));
 }
 
 #[test]
@@ -1644,27 +1718,6 @@ fn loom_json_out(tmp: &Path, args: &[&str]) -> serde_json::Value {
         panic!(
             "loom {:?} did not emit JSON under --json (status {:?}):\n--stdout--\n{}\nparse error: {e}",
             args, out.status, stdout
-        )
-    })
-}
-fn loom_json_err(tmp: &Path, args: &[&str]) -> serde_json::Value {
-    let mut cmd = std::process::Command::new(loom_bin());
-    cmd.arg("--graph").arg(tmp).args(args);
-    let out = cmd.output().unwrap_or_else(|e| panic!("spawn loom: {e}"));
-    assert!(
-        !out.status.success(),
-        "loom {:?} unexpectedly succeeded:\n--stdout--\n{}\n--stderr--\n{}",
-        args,
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    serde_json::from_str(&stdout).unwrap_or_else(|e| {
-        panic!(
-            "loom {:?} did not emit JSON on failure:\n--stdout--\n{}\n--stderr--\n{}\nparse error: {e}",
-            args,
-            stdout,
-            String::from_utf8_lossy(&out.stderr)
         )
     })
 }
@@ -2551,85 +2604,6 @@ fn proposal_item_reject_marks_item_and_defer_records_reason() {
 // reddens this. Drives the compiled binary end-to-end.
 
 #[test]
-fn validation_add_journey_metadata_round_trips_in_show_json() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "register a person",
-            "--description",
-            "demo",
-            "--level",
-            "feature",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "add",
-            "--name",
-            "journey-proof-http",
-            "--type",
-            "contract",
-            "--command",
-            "loom journey run sample-service-http.contract.json",
-            "--intent",
-            "register a person",
-            "--proof-kind",
-            "journey",
-            "--journey-id",
-            "sample-service-http",
-            "--repo-native-kind",
-            "http_contract_json",
-            "--artifact",
-            "sample-service-http.contract.json",
-        ],
-    );
-
-    let v = loom_json_out(
-        tmp.path(),
-        &["validation", "show", "journey-proof-http", "--json"],
-    );
-    assert_eq!(v["name"], "journey-proof-http");
-    let body = &v["body"];
-    // Every metadata flag lands in the stored body with the exact value passed.
-    // `proof_level` is absent by construction now: strength is DERIVED from the
-    // proof's shape, so there is no flag with which to claim it.
-    assert!(
-        body.get("proof_level").is_none(),
-        "no claimed level: {body}"
-    );
-    assert_eq!(body["proof_kind"], "journey", "proof_kind stored: {body}");
-    assert_eq!(
-        body["journey_id"], "sample-service-http",
-        "journey_id stored: {body}"
-    );
-    assert_eq!(
-        body["repo_native_kind"], "http_contract_json",
-        "repo_native_kind stored: {body}"
-    );
-    assert_eq!(
-        body["artifact"], "sample-service-http.contract.json",
-        "artifact stored: {body}"
-    );
-    // the baseline command/type are preserved alongside the metadata
-    assert_eq!(body["type"], "contract");
-    assert_eq!(
-        body["command"],
-        "loom journey run sample-service-http.contract.json"
-    );
-}
-
-/// Contract: a validation added WITHOUT journey metadata must not synthesize
-/// JourneyProof keys — the metadata is opt-in, not defaulted.
-#[test]
 fn validation_add_without_metadata_has_no_journey_keys() {
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("t"));
@@ -2678,1306 +2652,6 @@ fn validation_add_without_metadata_has_no_journey_keys() {
         );
     }
 }
-
-// ---- journey add on an HTTP contract writes JourneyProof metadata ----------
-//
-// `loom journey add <contract.json>` must create a journey Validation whose body
-// carries repo-agnostic JourneyProof metadata (proof_kind journey, a
-// journey_id, repo_native_kind, artifact) — and must link the
-// route intents it can resolve. No grid-specific names appear anywhere.
-// Drives the compiled binary end-to-end and reads the stored node back.
-
-#[test]
-fn journey_add_http_contract_creates_validation_with_journey_metadata() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    // the route intents the contract declares
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "register a person",
-            "--description",
-            "demo",
-            "--level",
-            "feature",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "fetch the person record",
-            "--description",
-            "demo",
-            "--level",
-            "feature",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-
-    let spec = tmp.path().join("sample-service-http.contract.json");
-    std::fs::write(
-        &spec,
-        serde_json::json!({
-            "name": "sample-service-http",
-            "base": "http://127.0.0.1:0",
-            "routes": [
-                {
-                    "method": "POST",
-                    "path": "/v1/example/persons",
-                    "intent": "register a person",
-                    "success_status": 201,
-                    "extract": [{ "field": "person_id", "as": "person_id" }],
-                    "response_fields": ["person_id"]
-                },
-                {
-                    "method": "GET",
-                    "path": "/v1/example/persons/{{ person_id }}",
-                    "intent": "fetch the person record",
-                    "success_status": 200,
-                    "response_fields": ["person_id"]
-                }
-            ]
-        })
-        .to_string(),
-    )
-    .unwrap();
-
-    let added = loom_json_out(
-        tmp.path(),
-        &["journey", "add", spec.to_str().unwrap(), "--json"],
-    );
-    assert_eq!(added["added"], true);
-    assert_eq!(
-        added["linked_steps"], 2,
-        "both resolvable route intents linked: {added}"
-    );
-
-    // The journey Validation node carries the JourneyProof metadata contract.
-    let store = Store::open(tmp.path()).unwrap();
-    let journey = store
-        .resolve_node("sample-service-http", Some(NodeType::Validation))
-        .unwrap();
-    assert_eq!(
-        journey.body.get("type").and_then(|t| t.as_str()),
-        Some("journey"),
-        "journey node body type is `journey`: {}",
-        journey.body
-    );
-    // `loom journey add` used to stamp "L5" here — the top of the old scale,
-    // hardcoded, for any spec at all. That single line is how a one-step
-    // journey asserting `exit_code: 0` became the strongest evidence class in
-    // loom's own graph. Nothing claims a grade now.
-    assert!(
-        journey.body.get("proof_level").is_none(),
-        "no hardcoded grade: {}",
-        journey.body
-    );
-    assert_eq!(
-        journey.body.get("proof_kind").and_then(|v| v.as_str()),
-        Some("journey"),
-        "proof_kind journey stamped: {}",
-        journey.body
-    );
-    assert_eq!(
-        journey.body.get("journey_id").and_then(|v| v.as_str()),
-        Some("sample-service-http"),
-        "journey_id is the contract name: {}",
-        journey.body
-    );
-    assert_eq!(
-        journey
-            .body
-            .get("repo_native_kind")
-            .and_then(|v| v.as_str()),
-        Some("http_contract_json"),
-        "repo_native_kind marks the HTTP contract: {}",
-        journey.body
-    );
-    let artifact = journey
-        .body
-        .get("artifact")
-        .and_then(|v| v.as_str())
-        .expect("artifact present");
-    assert!(
-        artifact.ends_with("sample-service-http.contract.json"),
-        "artifact points at the spec path: {artifact}"
-    );
-
-    // both route intents are validates-linked
-    let validates = store
-        .edges_with(Some(EdgeKind::Validates), Some(&journey.id), None)
-        .unwrap();
-    assert_eq!(validates.len(), 2, "both routes linked: {validates:?}");
-    // journey add does NOT order routes with sequence edges
-    let first = store
-        .resolve_node("register a person", Some(NodeType::Intent))
-        .unwrap();
-    let seq = store
-        .edges_with(Some(EdgeKind::Sequence), Some(&first.id), None)
-        .unwrap();
-    assert!(
-        seq.is_empty(),
-        "journey add must not auto-create sequence edges"
-    );
-}
-
-// ---- journey coverage: derived status (single truth source) ---------------
-
-/// A coverage node starts uncovered; `coverage list --json` reports
-/// effective_status derived from the linked intent's validations.
-#[test]
-fn journey_coverage_starts_uncovered_without_journey_proof() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "src/api.rs::post -> record -> standing",
-            "--description",
-            "core trust ingress",
-            "checkout completes",
-        ],
-    );
-    let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = v["items"]
-        .as_array()
-        .expect("coverage list is an array")
-        .first()
-        .expect("one row");
-    assert_eq!(row["name"], "checkout flow");
-    assert_eq!(row["effective_status"], "uncovered");
-    assert_eq!(row["covers"], "checkout completes");
-}
-
-/// Coverage status is DERIVED from a passing L5 journey proof on the covered
-/// intent — and flips back to uncovered when the proof is staled by sync. This
-/// is the single-truth-source contract: no second asserted "covered" claim.
-#[test]
-fn journey_coverage_status_derived_from_journey_proof_and_stales_with_it() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    // artifact-backed journey proof
-    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
-    std::fs::write(
-        tmp.path().join("contracts/checkout.v1.json"),
-        r#"{"routes":[]}"#,
-    )
-    .unwrap();
-    // The spec has to exist and assert something about the output: coverage
-    // asks whether the flow is PROVEN, and the grade that answers that is
-    // derived from the spec, not from a flag.
-    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
-    std::fs::write(
-        tmp.path().join("journeys/checkout.yaml"),
-        concat!(
-            "journey: checkout\n",
-            "steps:\n",
-            "  - name: run it\n",
-            "    intent: checkout completes\n",
-            "    run: echo checkout-ok\n",
-            "    expect:\n",
-            "      stdout_contains: [\"checkout-ok\"]\n",
-        ),
-    )
-    .unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "add",
-            "--name",
-            "checkout journey",
-            "--type",
-            "journey",
-            "--command",
-            "loom journey run checkout",
-            "--intent",
-            "checkout completes",
-            "--proof-kind",
-            "journey",
-            "--journey-id",
-            "checkout",
-            "--artifact",
-            "contracts/checkout.v1.json",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "f",
-            "checkout completes",
-        ],
-    );
-    // mark the validation passed via the CLI
-    // A proof is RUN, never reported. Point it at a trivial command
-    // (this test is about coverage, not the command) and let loom watch.
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "update",
-            "checkout journey",
-            "--command",
-            "true",
-        ],
-    );
-    loom_ok(tmp.path(), &["validation", "run", "checkout journey"]);
-
-    // before sync establishes the artifact hash, the edge is still uninspected
-    // → still uncovered. Run sync to baseline, then record the verdict on the edge.
-    loom_ok(tmp.path(), &["sync"]);
-    // The validation verdict set node status=passed, but the Validates edge needs a
-    // Passing verdict to count as a current proof. Use the store directly to
-    // stamp the edge (mirrors what `loom journey run` does on a green run).
-    {
-        use loom::model::NodeType;
-        use loom::store::Store;
-        let store = Store::open(tmp.path()).unwrap();
-        let val = store
-            .resolve_node("checkout journey", Some(NodeType::Validation))
-            .unwrap();
-        let intent = store
-            .resolve_node("checkout completes", Some(NodeType::Intent))
-            .unwrap();
-        // Earned, not asserted: loom runs it, and the proof reaches the code
-        // the behavior is grounded in.
-        earn_call_witness(&store, tmp.path(), &intent.id);
-        observe_passing(&store, &val.name);
-    }
-
-    // The proof reaches S3 — loom ran it, it asserts something about the
-    // output, and what it runs reaches the code the behavior is grounded in.
-    // That is the bar journey coverage asks for, and every conjunct is real.
-    let shown = loom_json_out(
-        tmp.path(),
-        &["validation", "show", "checkout journey", "--json"],
-    );
-    assert_eq!(shown["strength"]["grade"], "S3", "derived grade: {shown}");
-    assert_eq!(shown["strength"]["call_witness"], "perform_behavior");
-    let covered = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = covered["items"].as_array().unwrap().first().unwrap();
-    assert_eq!(
-        row["effective_status"], "covered",
-        "a passing L5 journey proof must derive coverage=covered: {row}"
-    );
-
-    // Artifact drifts → sync stales the proof → coverage reads uncovered again.
-    std::fs::write(
-        tmp.path().join("contracts/checkout.v1.json"),
-        r#"{"routes":[{"path":"/x"}]}"#,
-    )
-    .unwrap();
-    loom_ok(tmp.path(), &["sync"]);
-    let drifted = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = drifted["items"].as_array().unwrap().first().unwrap();
-    assert_eq!(
-        row["effective_status"], "uncovered",
-        "a staled journey proof must flip coverage back to uncovered (single truth source): {row}"
-    );
-}
-
-/// A non-L5 (too shallow) proof does NOT cover, even when passing — coverage
-/// mirrors the journey smell's L5+ threshold.
-#[test]
-fn journey_coverage_requires_l5_plus_proof_not_just_any_passing_validation() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "add",
-            "--name",
-            "unit checkout",
-            "--type",
-            "test",
-            "--command",
-            "cargo test checkout",
-            "--intent",
-            "checkout completes",
-            "--proof-kind",
-            "unit",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "f",
-            "checkout completes",
-        ],
-    );
-    // A proof is RUN, never reported. Point it at a trivial command
-    // (this test is about coverage, not the command) and let loom watch.
-    loom_ok(
-        tmp.path(),
-        &["validation", "update", "unit checkout", "--command", "true"],
-    );
-    loom_ok(tmp.path(), &["validation", "run", "unit checkout"]);
-    {
-        use loom::model::NodeType;
-        use loom::store::Store;
-        let store = Store::open(tmp.path()).unwrap();
-        let val = store
-            .resolve_node("unit checkout", Some(NodeType::Validation))
-            .unwrap();
-        let intent = store
-            .resolve_node("checkout completes", Some(NodeType::Intent))
-            .unwrap();
-        // Earned, not asserted: loom runs it, and the proof reaches the code
-        // the behavior is grounded in.
-        earn_call_witness(&store, tmp.path(), &intent.id);
-        observe_passing(&store, &val.name);
-    }
-    let v = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    let row = v["items"].as_array().unwrap().first().unwrap();
-    assert_eq!(
-        row["effective_status"], "uncovered",
-        "an L1 unit proof must NOT cover a journey: {row}"
-    );
-}
-
-/// Journey invariant points record their asserted invariant + link to an intent.
-#[test]
-fn journey_invariant_point_links_to_intent_and_lists() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "compute standing",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "invariant",
-            "add",
-            "--name",
-            "standing threshold",
-            "compute standing",
-            "--field",
-            "headline",
-            "--assertion",
-            "headline > 1.0 when voucher_count >= 1",
-            "--reason",
-            "trust math not serialized in HTTP",
-        ],
-    );
-    let v = loom_json_out(tmp.path(), &["journey", "invariant", "list", "--json"]);
-    let row = v["items"].as_array().unwrap().first().unwrap();
-    assert_eq!(row["name"], "standing threshold");
-    assert_eq!(row["field"], "headline");
-    assert_eq!(row["assertion"], "headline > 1.0 when voucher_count >= 1");
-    assert_eq!(row["asserts"], "compute standing");
-}
-
-/// `journey coverage discover` surfaces user-visible implemented intents with
-/// no passing L5 journey proof and no coverage node; --spawn-missing creates
-/// one per gap. Graph-derived, not static call-graph analysis.
-#[test]
-fn journey_coverage_discover_finds_and_spawns_gaps() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    // two user-visible implemented intents; one internal; one planned.
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-            "--visibility",
-            "user_visible",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "search returns results",
-            "--lifecycle",
-            "implemented",
-            "--visibility",
-            "user_visible",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "index rebuild",
-            "--lifecycle",
-            "implemented",
-            "--visibility",
-            "internal",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "future feature",
-            "--lifecycle",
-            "planned",
-            "--visibility",
-            "user_visible",
-        ],
-    );
-
-    let gaps = loom_json_out(tmp.path(), &["journey", "coverage", "discover", "--json"]);
-    let gap_names = gaps["gaps"].as_array().unwrap();
-    assert_eq!(
-        gaps["gap_count"], 2,
-        "two user-visible implemented gaps: {gaps}"
-    );
-    let names: Vec<String> = gap_names
-        .iter()
-        .map(|v| v.as_str().unwrap().to_string())
-        .collect();
-    assert!(names.contains(&"checkout completes".to_string()));
-    assert!(names.contains(&"search returns results".to_string()));
-    assert!(
-        !names.contains(&"index rebuild".to_string()),
-        "internal intents are not gaps"
-    );
-    assert!(
-        !names.contains(&"future feature".to_string()),
-        "planned intents are not gaps"
-    );
-
-    // spawn-missing creates coverage nodes for each gap.
-    let spawned = loom_json_out(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "discover",
-            "--spawn-missing",
-            "--json",
-        ],
-    );
-    assert_eq!(
-        spawned["spawned_count"], 2,
-        "two coverage nodes spawned: {spawned}"
-    );
-
-    // re-discover: the spawned intents are now covered by a node → no gaps.
-    let again = loom_json_out(tmp.path(), &["journey", "coverage", "discover", "--json"]);
-    assert_eq!(
-        again["gap_count"], 0,
-        "spawned coverage nodes remove the gaps: {again}"
-    );
-}
-
-/// `journey prompt` emits typed-runner prompt context from graph knowledge:
-/// intent meaning, implementing modules/locators, coverage flows, and invariant
-/// markers. It does not generate code; it packages context for an on-site LLM.
-#[test]
-fn journey_prompt_emits_context_from_graph() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
-    std::fs::write(tmp.path().join("src/checkout.rs"), "pub fn checkout() {}\n").unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--description",
-            "buyer can pay and see confirmation",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(tmp.path(), &["codefile", "add", "src/checkout.rs"]);
-    loom_ok(
-        tmp.path(),
-        &[
-            "edge",
-            "implement",
-            "checkout completes",
-            "src/checkout.rs",
-            "--locator",
-            "fn checkout",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "src/checkout.rs::checkout",
-            "checkout completes",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "invariant",
-            "add",
-            "--name",
-            "paid order visible",
-            "checkout completes",
-            "--field",
-            "order.status",
-            "--assertion",
-            "status == paid",
-            "--reason",
-            "payment mutation must project",
-        ],
-    );
-
-    let v = loom_json_out(
-        tmp.path(),
-        &["journey", "prompt", "checkout completes", "--json"],
-    );
-    assert_eq!(v["intent"]["name"], "checkout completes");
-    assert_eq!(v["modules"][0]["path"], "src/checkout.rs");
-    assert_eq!(v["modules"][0]["locator"], "fn checkout");
-    assert_eq!(v["flows"][0]["flow"], "src/checkout.rs::checkout");
-    assert_eq!(v["invariant_points"][0]["field"], "order.status");
-    assert_eq!(v["invariant_points"][0]["assertion"], "status == paid");
-    assert!(v["rules"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|r| { r.as_str().unwrap().contains("Assert internal domain state") }));
-}
-
-/// Drift enforcement is clean when a covered journey has an existing contract
-/// artifact and configured runner/test refs that resolve on disk.
-#[test]
-fn journey_coverage_drift_clean_when_artifact_runner_and_test_match() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
-    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
-    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
-    std::fs::write(
-        tmp.path().join("contracts/checkout.v1.json"),
-        r#"{"routes":[]}"#,
-    )
-    .unwrap();
-    std::fs::write(
-        tmp.path().join("src/journey_runner.rs"),
-        "pub fn checkout_runner() {}\n",
-    )
-    .unwrap();
-    std::fs::write(
-        tmp.path().join("tests/journey_runner.rs"),
-        "fn checkout_runner_test() {}\n",
-    )
-    .unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "add",
-            "--name",
-            "checkout journey",
-            "--type",
-            "journey",
-            "--command",
-            "cargo test checkout_runner_test",
-            "--intent",
-            "checkout completes",
-            "--proof-kind",
-            "journey",
-            "--artifact",
-            "contracts/checkout.v1.json",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "src/journey_runner.rs::checkout_runner",
-            "--runner-ref",
-            "src/journey_runner.rs::checkout_runner",
-            "--test-ref",
-            "tests/journey_runner.rs::checkout_runner_test",
-            "--contract-artifact",
-            "contracts/checkout.v1.json",
-            "checkout completes",
-        ],
-    );
-    {
-        use loom::model::NodeType;
-        use loom::store::Store;
-        let store = Store::open(tmp.path()).unwrap();
-        let val = store
-            .resolve_node("checkout journey", Some(NodeType::Validation))
-            .unwrap();
-        let intent = store
-            .resolve_node("checkout completes", Some(NodeType::Intent))
-            .unwrap();
-        // Earned, not asserted: loom runs it, and the proof reaches the code
-        // the behavior is grounded in.
-        earn_call_witness(&store, tmp.path(), &intent.id);
-        observe_passing(&store, &val.name);
-    }
-    let findings = loom_json_out(tmp.path(), &["journey", "coverage", "drift", "--json"]);
-    assert_eq!(
-        findings.as_array().unwrap().len(),
-        0,
-        "drift clean: {findings}"
-    );
-}
-
-/// Declared typed runner/test refs are checked even when the coverage is still
-/// uncovered; ref drift is independent of proof availability.
-#[test]
-fn journey_coverage_drift_reports_declared_refs_without_current_proof() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "f",
-            "--runner-ref",
-            "src/missing_runner.rs::checkout_runner",
-            "--test-ref",
-            "tests/missing_runner.rs::checkout_runner_test",
-            "checkout completes",
-        ],
-    );
-    let findings = loom_json_err(tmp.path(), &["journey", "coverage", "drift", "--json"]);
-    let kinds: Vec<&str> = findings
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|f| f["kind"].as_str().unwrap())
-        .collect();
-    assert!(kinds.contains(&"journey_runner_ref_missing"));
-    assert!(kinds.contains(&"journey_test_ref_missing"));
-}
-
-/// A coverage node's configured contract artifact must match a current passing
-/// L5 journey proof artifact. Mismatch is a drift failure.
-#[test]
-fn journey_coverage_drift_reports_contract_artifact_mismatch() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
-    std::fs::write(
-        tmp.path().join("contracts/proof.v1.json"),
-        r#"{"routes":[]}"#,
-    )
-    .unwrap();
-    std::fs::write(
-        tmp.path().join("contracts/expected.v1.json"),
-        r#"{"routes":[]}"#,
-    )
-    .unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "add",
-            "--name",
-            "checkout journey",
-            "--type",
-            "journey",
-            "--command",
-            "loom journey run proof",
-            "--intent",
-            "checkout completes",
-            "--proof-kind",
-            "journey",
-            "--artifact",
-            "contracts/proof.v1.json",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "f",
-            "--contract-artifact",
-            "contracts/expected.v1.json",
-            "checkout completes",
-        ],
-    );
-    {
-        use loom::model::NodeType;
-        use loom::store::Store;
-        let store = Store::open(tmp.path()).unwrap();
-        let val = store
-            .resolve_node("checkout journey", Some(NodeType::Validation))
-            .unwrap();
-        let intent = store
-            .resolve_node("checkout completes", Some(NodeType::Intent))
-            .unwrap();
-        // Earned, not asserted: loom runs it, and the proof reaches the code
-        // the behavior is grounded in.
-        earn_call_witness(&store, tmp.path(), &intent.id);
-        observe_passing(&store, &val.name);
-    }
-    let findings = loom_json_err(tmp.path(), &["journey", "coverage", "drift", "--json"]);
-    let arr = findings.as_array().unwrap();
-    assert_eq!(arr[0]["kind"], "journey_contract_artifact_mismatch");
-    assert_eq!(arr[0]["expected_artifact"], "contracts/expected.v1.json");
-}
-
-/// Multiple current L5 proofs should not cause false drift: when coverage names
-/// contract_artifact=B and one passing proof uses A while another uses B, the
-/// drift checker must select the matching proof and stay clean.
-#[test]
-fn journey_coverage_drift_selects_matching_artifact_among_multiple_proofs() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
-    std::fs::write(tmp.path().join("contracts/a.json"), r#"{"a":1}"#).unwrap();
-    std::fs::write(tmp.path().join("contracts/b.json"), r#"{"b":1}"#).unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-        ],
-    );
-    for (name, artifact) in [
-        ("journey a", "contracts/a.json"),
-        ("journey b", "contracts/b.json"),
-    ] {
-        loom_ok(
-            tmp.path(),
-            &[
-                "validation",
-                "add",
-                "--name",
-                name,
-                "--type",
-                "journey",
-                "--command",
-                "loom journey run",
-                "--intent",
-                "checkout completes",
-                "--proof-kind",
-                "journey",
-                "--artifact",
-                artifact,
-            ],
-        );
-    }
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "f",
-            "--contract-artifact",
-            "contracts/b.json",
-            "checkout completes",
-        ],
-    );
-    {
-        use loom::model::NodeType;
-        use loom::store::Store;
-        let store = Store::open(tmp.path()).unwrap();
-        let intent = store
-            .resolve_node("checkout completes", Some(NodeType::Intent))
-            .unwrap();
-        for name in ["journey a", "journey b"] {
-            let val = store
-                .resolve_node(name, Some(NodeType::Validation))
-                .unwrap();
-            store.set_node_status(&val.id, "passed").unwrap();
-            // Earned, not asserted: loom runs it and records what it saw.
-            let _ = &intent;
-            observe_passing(&store, &val.name);
-        }
-    }
-    let findings = loom_json_out(tmp.path(), &["journey", "coverage", "drift", "--json"]);
-    assert_eq!(
-        findings.as_array().unwrap().len(),
-        0,
-        "matching proof must avoid false drift: {findings}"
-    );
-}
-
-/// Self-healing (slice 2): editing a covered journey's `runner_ref` source
-/// after the proof passed stales that journey proof on the next `loom sync`,
-/// resetting it to `not_run` so the flow re-enters the validate queue and
-/// coverage flips back to uncovered. The compiler/test suite catches the
-/// breakage; loom's job is to make the stale proof tracked work again.
-#[test]
-fn sync_stales_journey_proof_when_runner_ref_source_changes() {
-    use loom::model::NodeType;
-    use loom::store::Store;
-
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
-    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
-    std::fs::write(
-        tmp.path().join("src/journey_runner.rs"),
-        "pub fn checkout_runner() { /* v1 */ }\n",
-    )
-    .unwrap();
-    std::fs::write(
-        tmp.path().join("contracts/checkout.v1.json"),
-        r#"{"routes":[]}"#,
-    )
-    .unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-            "--visibility",
-            "user_visible",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "validation",
-            "add",
-            "--name",
-            "checkout journey",
-            "--type",
-            "journey",
-            "--command",
-            "cargo test checkout_runner_test",
-            "--intent",
-            "checkout completes",
-            "--proof-kind",
-            "journey",
-            "--artifact",
-            "contracts/checkout.v1.json",
-        ],
-    );
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow",
-            "--flow",
-            "src/journey_runner.rs::checkout_runner",
-            "--runner-ref",
-            "src/journey_runner.rs::checkout_runner",
-            "--contract-artifact",
-            "contracts/checkout.v1.json",
-            "checkout completes",
-        ],
-    );
-    // Make the proof pass.
-    {
-        let store = Store::open(tmp.path()).unwrap();
-        let val = store
-            .resolve_node("checkout journey", Some(NodeType::Validation))
-            .unwrap();
-        let intent = store
-            .resolve_node("checkout completes", Some(NodeType::Intent))
-            .unwrap();
-        // Earned, not asserted: loom runs it, and the proof reaches the code
-        // the behavior is grounded in.
-        earn_call_witness(&store, tmp.path(), &intent.id);
-        observe_passing(&store, &val.name);
-    }
-    // First sync SEEDS the runner_ref hash — it must NOT stale the fresh proof.
-    loom_ok(tmp.path(), &["sync"]);
-    {
-        let store = Store::open(tmp.path()).unwrap();
-        let val = store
-            .resolve_node("checkout journey", Some(NodeType::Validation))
-            .unwrap();
-        assert_eq!(
-            val.status, "passed",
-            "seeding sync must not stale the proof"
-        );
-    }
-    // Edit the runner source → next sync must stale the proof.
-    std::fs::write(
-        tmp.path().join("src/journey_runner.rs"),
-        "pub fn checkout_runner() { /* v2 — added a field */ }\n",
-    )
-    .unwrap();
-    loom_ok(tmp.path(), &["sync"]);
-    {
-        let store = Store::open(tmp.path()).unwrap();
-        let val = store
-            .resolve_node("checkout journey", Some(NodeType::Validation))
-            .unwrap();
-        assert_eq!(
-            val.status, "not_run",
-            "editing the runner_ref source must reset the journey proof"
-        );
-    }
-    // Coverage now reads uncovered (derived from the reset proof).
-    let rows = loom_json_out(tmp.path(), &["journey", "coverage", "list", "--json"]);
-    assert_eq!(
-        rows["items"][0]["effective_status"], "uncovered",
-        "coverage flips to uncovered after runner drift: {rows}"
-    );
-}
-
-/// Signal-fed prompt (slice 1): when the intent's grounded code imports an
-/// infra crate (sqlx), `journey prompt` reports it in `signals.infra_hints`
-/// and emits the "needs infrastructure" rule — instead of blindly assuming an
-/// in-process typed runner. `grounded` reflects IMPLEMENTS modules, not imports.
-#[test]
-fn journey_prompt_signals_flag_infra_and_condition_rules() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
-    std::fs::write(
-        tmp.path().join("src/repo.rs"),
-        "use sqlx::PgPool;\npub fn load(pool: &PgPool) {}\n",
-    )
-    .unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "orders persist to the database",
-            "--lifecycle",
-            "implemented",
-            "--visibility",
-            "user_visible",
-        ],
-    );
-    loom_ok(tmp.path(), &["codefile", "add", "src/repo.rs"]);
-    loom_ok(
-        tmp.path(),
-        &[
-            "edge",
-            "implement",
-            "orders persist to the database",
-            "src/repo.rs",
-            "--locator",
-            "fn load",
-        ],
-    );
-    // sync so the codefile's `imports` facet is extracted.
-    loom_ok(tmp.path(), &["sync"]);
-
-    let v = loom_json_out(
-        tmp.path(),
-        &[
-            "journey",
-            "prompt",
-            "orders persist to the database",
-            "--json",
-        ],
-    );
-    assert_eq!(
-        v["signals"]["grounded"], true,
-        "grounded via IMPLEMENTS: {v}"
-    );
-    let infra = v["signals"]["infra_hints"].as_array().unwrap();
-    assert!(
-        infra.iter().any(|h| h["capability"] == "database"),
-        "sqlx import flagged as database infra: {infra:?}"
-    );
-    let rules = v["rules"].as_array().unwrap();
-    assert!(
-        rules
-            .iter()
-            .any(|r| r.as_str().unwrap().contains("needs infrastructure")),
-        "infra hint emits the needs-infrastructure rule: {rules:?}"
-    );
-}
-
-/// Signal-fed prompt (slice 1): an intent with no code grounding must NOT get
-/// the in-process typed-runner rules; it should be steered to a consumer-facing
-/// HTTP/journey proof instead.
-#[test]
-fn journey_prompt_ungrounded_intent_steers_to_http_proof() {
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "external billing settles",
-            "--lifecycle",
-            "implemented",
-            "--visibility",
-            "user_visible",
-        ],
-    );
-
-    let v = loom_json_out(
-        tmp.path(),
-        &["journey", "prompt", "external billing settles", "--json"],
-    );
-    assert_eq!(v["signals"]["grounded"], false, "no modules: {v}");
-    let rules = v["rules"].as_array().unwrap();
-    assert!(
-        rules
-            .iter()
-            .any(|r| r.as_str().unwrap().contains("no in-process code grounding")),
-        "ungrounded intent is steered to an HTTP/journey proof: {rules:?}"
-    );
-    assert!(
-        !rules
-            .iter()
-            .any(|r| r.as_str().unwrap().contains("actual domain types")),
-        "ungrounded intent must NOT get the in-process typed-runner rule: {rules:?}"
-    );
-}
-
-/// Self-healing narrowing (slice 2): when an intent has two passing L5 journey
-/// proofs (artifacts A and B) and a coverage declares `contract_artifact=B`,
-/// editing that coverage's runner_ref must stale ONLY the B proof — the sibling
-/// A proof stays passed. Guards the over-stale bug the artifact match fixes.
-#[test]
-fn sync_runner_drift_stales_only_the_artifact_matched_proof() {
-    use loom::model::NodeType;
-    use loom::store::Store;
-
-    let tmp = Tmp::new();
-    loom_init(tmp.path(), Some("t"));
-    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
-    std::fs::create_dir_all(tmp.path().join("contracts")).unwrap();
-    std::fs::write(
-        tmp.path().join("src/runner_b.rs"),
-        "pub fn runner_b() { /* v1 */ }\n",
-    )
-    .unwrap();
-    std::fs::write(tmp.path().join("contracts/a.json"), r#"{"a":1}"#).unwrap();
-    std::fs::write(tmp.path().join("contracts/b.json"), r#"{"b":1}"#).unwrap();
-    loom_ok(
-        tmp.path(),
-        &[
-            "intent",
-            "add",
-            "--name",
-            "checkout completes",
-            "--lifecycle",
-            "implemented",
-            "--visibility",
-            "user_visible",
-        ],
-    );
-    for (name, artifact) in [
-        ("journey a", "contracts/a.json"),
-        ("journey b", "contracts/b.json"),
-    ] {
-        loom_ok(
-            tmp.path(),
-            &[
-                "validation",
-                "add",
-                "--name",
-                name,
-                "--type",
-                "journey",
-                "--command",
-                "loom journey run",
-                "--intent",
-                "checkout completes",
-                "--proof-kind",
-                "journey",
-                "--artifact",
-                artifact,
-            ],
-        );
-    }
-    // Coverage stands behind the B proof, with a runner_ref we will edit.
-    loom_ok(
-        tmp.path(),
-        &[
-            "journey",
-            "coverage",
-            "add",
-            "--name",
-            "checkout flow b",
-            "--flow",
-            "f",
-            "--runner-ref",
-            "src/runner_b.rs::runner_b",
-            "--contract-artifact",
-            "contracts/b.json",
-            "checkout completes",
-        ],
-    );
-    // Pass both proofs.
-    {
-        let store = Store::open(tmp.path()).unwrap();
-        let intent = store
-            .resolve_node("checkout completes", Some(NodeType::Intent))
-            .unwrap();
-        for name in ["journey a", "journey b"] {
-            let val = store
-                .resolve_node(name, Some(NodeType::Validation))
-                .unwrap();
-            store.set_node_status(&val.id, "passed").unwrap();
-            // Earned, not asserted: loom runs it and records what it saw.
-            let _ = &intent;
-            observe_passing(&store, &val.name);
-        }
-    }
-    loom_ok(tmp.path(), &["sync"]); // seed
-    std::fs::write(
-        tmp.path().join("src/runner_b.rs"),
-        "pub fn runner_b() { /* v2 */ }\n",
-    )
-    .unwrap();
-    loom_ok(tmp.path(), &["sync"]); // drift
-    let store = Store::open(tmp.path()).unwrap();
-    let a = store
-        .resolve_node("journey a", Some(NodeType::Validation))
-        .unwrap();
-    let b = store
-        .resolve_node("journey b", Some(NodeType::Validation))
-        .unwrap();
-    assert_eq!(a.status, "passed", "sibling A proof must stay passed");
-    assert_eq!(b.status, "not_run", "artifact-matched B proof must reset");
-}
-
-// ---- wiki: reader-first docs as a tracked projection -----------------------
 
 #[test]
 fn wiki_scope_hash_tracks_documented_intent_state() {
@@ -4930,147 +3604,34 @@ fn a_clean_pattern_scan_is_reported_as_evidence() {
     assert!(item.prompt_contract.pre_screened_hits.is_empty());
 }
 
-/// A journey's spec is found by its recorded PATH, not by guessing a filename
-/// from its name.
-///
-/// `loom journey add` records `artifact: journeys/mcp-in-band.yaml` while the
-/// journey is NAMED "loom serves its capabilities in band". Resolving by name
-/// looked for `journeys/loom serves its capabilities in band.yaml`, found
-/// nothing, and counted zero content assertions — so every journey whose file
-/// is named sensibly graded S1 forever no matter how much it asserted. Silent,
-/// and it capped the whole strength scale.
-#[test]
-fn a_journey_grades_from_the_spec_its_artifact_points_at() {
-    let tmp = Tmp::new();
-    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
-    // The FILE name and the JOURNEY name deliberately differ, as they do in
-    // every real repo.
-    std::fs::write(
-        tmp.path().join("journeys/short-name.yaml"),
-        concat!(
-            "journey: a behavior stated at length in prose\n",
-            "steps:\n",
-            "  - name: run it\n",
-            "    intent: a behavior stated at length in prose\n",
-            "    run: echo ok\n",
-            "    expect:\n",
-            "      stdout_contains: [\"ok\"]\n",
-        ),
-    )
-    .unwrap();
-
-    let intent = store
-        .add_node(
-            NodeType::Intent,
-            "a behavior stated at length in prose",
-            "d",
-            "implemented",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let val = store
-        .add_node(NodeType::Validation, "its journey", "", "not_run", {
-            let yaml =
-                std::fs::read_to_string(tmp.path().join("journeys/short-name.yaml")).unwrap();
-            serde_json::json!({
-                "type": "test",
-                "command": "echo ok",
-                "proof_kind": "journey",
-                "journey": "a behavior stated at length in prose",
-                "artifact": "journeys/short-name.yaml",
-                "spec_hash": loom::artifact::fingerprint(&yaml),
-            })
-        })
-        .unwrap();
-    store
-        .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
-        .unwrap();
-    let fresh = store.get_node(&val.id).unwrap().unwrap();
-    loom::commands::observe_validation(&store, &fresh).unwrap();
-    loom::sync::run(&store, tmp.path()).unwrap();
-
-    let witness: serde_json::Value = serde_json::from_str(
-        &store
-            .get_facet(&val.id, TargetKind::Node, "proof_strength")
-            .unwrap()
-            .expect("graded"),
-    )
-    .unwrap();
-    assert_eq!(
-        witness["content_assertions"], 1,
-        "the spec was found and its assertions counted: {witness}"
-    );
-    assert_ne!(
-        witness["grade"], "S1",
-        "a journey that asserts on output is not liveness-only: {witness}"
-    );
-}
-
-/// Confinement: a crafted/imported graph must not make `loom sync` read and
-/// fingerprint files outside the checkout. `body.artifact` (and runner refs)
-/// are routed through root confinement, so an escaping path is treated as
-/// absent/drifted — the outside file is never opened.
+/// A semantic Journey artifact must be confined to the graph root before any
+/// Journey node or projection is written.
 #[test]
 fn sync_confines_artifact_reads_to_the_checkout_root() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-
-    // A file OUTSIDE the checkout root. If sync ever read it, the proof would
-    // look stable and the escape would be silently followed.
     let outside = std::env::temp_dir().join(format!("loom_escape_{:x}", std::process::id()));
-    std::fs::write(&outside, "outside the checkout\n").unwrap();
-    let outside_fingerprint = loom::artifact::fingerprint("outside the checkout\n");
-
-    let intent = store
-        .add_node(
-            NodeType::Intent,
-            "escapes the checkout",
-            "d",
-            "implemented",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let val = store
-        .add_node(
-            NodeType::Validation,
-            "escaped artifact journey",
-            "",
-            "passed",
-            serde_json::json!({
-                "type": "journey",
-                "command": "loom journey run escape.yaml",
-                "proof_kind": "journey",
-                "artifact": outside.to_string_lossy().to_string(),
-            }),
-        )
-        .unwrap();
-    store
-        .ensure_edge(EdgeKind::Validates, &val.id, &intent.id)
-        .unwrap();
-    // A prior hash that MATCHES the outside file: if sync followed the escape
-    // and hashed the outside file, it would see no drift. Confinement must
-    // instead treat the escaping path as absent → drifted → reset.
-    store
-        .set_facet(
-            &val.id,
-            TargetKind::Node,
-            "artifact_hash",
-            &outside_fingerprint,
-            TruthClass::Derived,
-        )
-        .unwrap();
-
-    let report = loom::sync::run(&store, tmp.path()).unwrap();
-
-    let reloaded = store.get_node(&val.id).unwrap().unwrap();
-    assert_eq!(
-        reloaded.status, "not_run",
-        "escaping artifact path must be treated as drifted, not read outside the checkout"
-    );
-    assert!(
-        report.validations_reset >= 1,
-        "the escaping artifact must count as a reset"
-    );
+    std::fs::write(
+        &outside,
+        r#"{"schema":"loom.journey/v1","id":"escape","name":"Escape","actor":"user","goal":"Leave","inputs":{},"preconditions":[],"steps":[{"id":"leave","name":"Leave","action":"leaves","expects":[],"produces":{}}],"profiles":{"proof":{"inputs":{},"workspace":{}}}}"#,
+    )
+    .unwrap();
+    drop(store);
+    let error = loom::commands::run(Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(Command::Journey {
+            cmd: JourneyCmd::Add {
+                spec: outside.clone(),
+            },
+        }),
+    })
+    .unwrap_err();
+    assert!(error.to_string().contains("outside graph root"), "{error}");
+    assert!(Store::open(tmp.path())
+        .unwrap()
+        .list_nodes(Some(NodeType::Journey), usize::MAX)
+        .unwrap()
+        .is_empty());
     std::fs::remove_file(&outside).ok();
 }

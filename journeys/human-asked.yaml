@@ -1,9 +1,31 @@
-journey: divergences reach the human, not the machine
+schema: loom.journey/v1
+id: human-asked
+name: Ask the human conversationally when meaning diverges
+actor: operator
+goal: Meaning drift is presented with evidence, a recommendation, and concrete choices;
+  the human answers conversationally and the agent records the exact decision.
+inputs: {}
+preconditions:
+- A previously accepted behavior has changed meaning while its prior human judgment
+  remains on record.
 steps:
-  - name: meaning drift reaches the human ratify lane
-    fixture: true
-    intent: the human is asked only where judgment and evidence disagree
-    run: "cargo test --test ring14_ratify redefinition_stales_ratification"
-    expect:
-      exit_code: 0
-      stdout_contains: ["redefinition_stales_ratification", "1 passed", "0 failed"]
+- id: present-decision
+  name: Present Decision
+  action: Ask the host agent to explain the meaning drift and recommend a decision.
+  expects:
+  - The agent presents relevant evidence, its recommendation and reasoning, two or
+    three concrete choices, and a free-form revision path.
+  - The human is not required to use a terminal or construct a Loom command.
+  produces: {}
+- id: record-human-choice
+  name: Record Human Choice
+  action: Choose an option conversationally and let the agent record that exact answer.
+  expects:
+  - Loom binds the exact answer to the current subject or manifest hash and records
+    the human as authority separately from the agent executor.
+  - Silence, ambiguity, and placeholder answers do not become approval.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

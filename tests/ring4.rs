@@ -12,6 +12,64 @@ use common::*;
 /// Test fixture: seeded intents are wanted by construction — ratify them all
 /// so ladder/compass tests exercise the gate under test, not the ratify gate.
 fn ratify_all(store: &Store) {
+    if store
+        .list_nodes(Some(NodeType::Journey), usize::MAX)
+        .unwrap()
+        .is_empty()
+    {
+        let existing = store
+            .list_nodes(Some(NodeType::Intent), usize::MAX)
+            .unwrap();
+        for intent in &existing {
+            store
+                .set_facet(
+                    &intent.id,
+                    TargetKind::Node,
+                    "journey_exemption",
+                    r#"{"human_decision_digest":"sha256:ring4","kind":"test_subject","reason":"this fixture isolates a non-Journey ladder gate"}"#,
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+        }
+        let floor = store
+            .add_node(
+                NodeType::Intent,
+                "the fixture runtime is available",
+                "a canonical Journey establishes the v12 routing floor",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        for (index, intent) in store
+            .list_nodes(Some(NodeType::Intent), usize::MAX)
+            .unwrap()
+            .into_iter()
+            .enumerate()
+        {
+            let term = format!("ring4-fixture-{index}");
+            if !store.vocab_has(&term).unwrap() {
+                store
+                    .add_vocab_term(&term, "ring4 fixture responsibility")
+                    .unwrap();
+            }
+            store.set_tag(&intent.id, TargetKind::Node, &term).unwrap();
+        }
+        s3_journey_proof(store, store.root(), &floor.id, "ring4-floor");
+    }
+    for (index, intent) in store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .enumerate()
+    {
+        let term = format!("ring4-fixture-{index}");
+        if !store.vocab_has(&term).unwrap() {
+            store
+                .add_vocab_term(&term, "ring4 fixture responsibility")
+                .unwrap();
+        }
+        store.set_tag(&intent.id, TargetKind::Node, &term).unwrap();
+    }
     for n in workitem::unratified_intents(store).unwrap() {
         store
             .ratify_intent(
@@ -102,7 +160,7 @@ fn planned_intent_routes_to_build() {
     // seeded met, wanted met (fixture-ratified), realized unmet
     assert_eq!(l.rungs[0].state, RungState::Met);
     assert_eq!(l.rungs[1].state, RungState::Met);
-    assert_eq!(l.rungs[2].state, RungState::Unmet);
+    assert_eq!(l.rungs[3].state, RungState::Unmet);
 }
 
 #[test]
@@ -343,20 +401,21 @@ fn rungs_above_the_lowest_unmet_rung_are_marked_blocked() {
     ratify_all(&store);
     let l = ladder(&store).unwrap();
 
-    // The gate is the lowest Unmet rung: `grounded` at index 2 (after seeded
-    // and repaired).
+    // The gate is the lowest Unmet rung: `grounded` at index 3 (after seeded,
+    // repaired, and the Journey-rooted derivation floor).
     let gate = l.rungs.iter().position(|r| r.state == RungState::Unmet);
-    assert_eq!(gate, Some(2), "grounded is the lowest unmet rung");
+    assert_eq!(gate, Some(3), "grounded is the lowest unmet rung");
 
     // Gate and everything below it are never blocked.
     assert!(!l.rungs[0].blocked, "seeded (below gate) is not blocked");
     assert!(!l.rungs[1].blocked, "repaired (below gate) is not blocked");
-    assert!(!l.rungs[2].blocked, "the gate rung itself is not blocked");
-    assert_eq!(l.rungs[2].blocked_by, None);
+    assert!(!l.rungs[2].blocked, "derived (below gate) is not blocked");
+    assert!(!l.rungs[3].blocked, "the gate rung itself is not blocked");
+    assert_eq!(l.rungs[3].blocked_by, None);
 
     // Every rung above the gate is blocked by it — including a rung that is
     // independently Met but must not read as satisfied above an unmet lower rung.
-    for r in &l.rungs[3..] {
+    for r in &l.rungs[4..] {
         assert!(
             r.blocked,
             "{} sits above the gate and must be blocked",
@@ -419,6 +478,7 @@ fn stale_edge_routes_to_fix() {
             "llm",
         )
         .unwrap();
+    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "fix");
     // repaired unmet because of the failing edge
@@ -460,7 +520,12 @@ fn fully_grounded_no_residue_routes_complete() {
     prove_s2(&store, tmp.path(), &a.id, "proof-a");
     ratify_all(&store);
     let before_export = ladder(&store).unwrap();
-    assert_eq!(before_export.phase, "export");
+    assert_eq!(
+        before_export.phase,
+        "export",
+        "{before_export:#?}\nsmells={:#?}",
+        loom::signal::smells(&store).unwrap()
+    );
     let exported = before_export
         .rungs
         .iter()
@@ -668,6 +733,10 @@ fn doctor_issue_routes_to_audit_after_earlier_gates_pass() {
             )
             .unwrap();
     }
+    // Establish the canonical Journey floor before introducing the malformed
+    // cycle; otherwise the fixture helper's sync would materialize the doctor
+    // issue as triage work and obscure the audit-routing contract.
+    ratify_all(&store);
     let down = store
         .add_edge(
             EdgeKind::Hierarchy,
@@ -699,8 +768,6 @@ fn doctor_issue_routes_to_audit_after_earlier_gates_pass() {
     for (intent, name) in [(&parent, "proof parent"), (&child, "proof child")] {
         loom::commands::prove_intent(&store, &intent.id, name, "true").unwrap();
     }
-
-    ratify_all(&store);
     let l = ladder(&store).unwrap();
     assert_eq!(l.phase, "audit");
     assert_eq!(l.next_command, "loom audit");
@@ -822,7 +889,6 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
             serde_json::json!({
                 "type": "test",
                 "command": "true",
-                "proof_kind": "unit",
             }),
         )
         .unwrap();
@@ -847,32 +913,9 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
         proven_before.detail
     );
 
-    let journey = store
-        .add_node(
-            NodeType::Validation,
-            "journey proof",
-            "",
-            "passed",
-            serde_json::json!({
-                "type": "test",
-                "command": "true",
-                "proof_kind": "journey",
-            }),
-        )
-        .unwrap();
-    store
-        .add_edge(
-            EdgeKind::Validates,
-            &journey.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    // A user-visible behavior needs an END-TO-END proof: one whose call closure
-    // reaches the code the behavior is grounded in. The fixture builds that
-    // reach instead of labelling the proof with it.
-    earn_call_witness(&store, tmp.path(), &intent.id);
-    observe_passing(&store, &journey.name);
+    // A user-visible behavior needs an END-TO-END compiled Journey whose
+    // observed runtime reaches the surfaced code.
+    s3_journey_proof(&store, tmp.path(), &intent.id, "checkout-visible-journey");
 
     ratify_all(&store);
     let after = ladder(&store).unwrap();
@@ -886,100 +929,85 @@ fn proven_rung_requires_journey_proof_for_user_visible_intents() {
 }
 
 #[test]
-fn proven_rung_honors_journey_axis_waiver() {
+fn derived_rung_honors_canonical_journey_exemption() {
+    use loom::journey::{JourneySpec, JOURNEY_SCHEMA};
+
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    let spec: JourneySpec = serde_json::from_value(serde_json::json!({
+        "schema": JOURNEY_SCHEMA,
+        "id": "cli-flow",
+        "name": "CLI flow",
+        "actor": "operator",
+        "goal": "Invoke the CLI",
+        "inputs": {},
+        "preconditions": [],
+        "steps": [{"id":"invoke","name":"Invoke","action":"invokes the CLI","expects":[],"produces":{}}],
+        "profiles":{"proof":{"inputs":{},"workspace":{}}}
+    }))
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("journeys/cli-flow.yaml"),
+        serde_norway::to_string(&spec).unwrap(),
+    )
+    .unwrap();
+    store
+        .add_node(
+            NodeType::Journey,
+            "cli-flow",
+            "CLI flow",
+            "authored",
+            serde_json::json!({
+                "schema": JOURNEY_SCHEMA,
+                "stable_id": "cli-flow",
+                "name": "CLI flow",
+                "artifact": "journeys/cli-flow.yaml",
+                "semantic_hash": spec.semantic_hash().unwrap(),
+                "input_ids": [],
+                "preconditions": [],
+                "step_ids": ["invoke"],
+                "output_ids": [],
+                "profile_ids": ["proof"]
+            }),
+        )
+        .unwrap();
     let intent = store
         .add_node(
             NodeType::Intent,
-            "cli surface holds",
-            "",
+            "repository-local CLI plumbing holds",
+            "internal CLI plumbing remains coherent",
             "implemented",
             serde_json::json!({}),
         )
         .unwrap();
-    store
-        .set_facet(
-            &intent.id,
-            TargetKind::Node,
-            "visibility",
-            "user_visible",
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    let file = codefile(&store, "src/cli.rs");
-    let impl_edge = store
-        .add_edge(
-            EdgeKind::Implements,
-            &intent.id,
-            &file.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    store
-        .record_verdict(
-            &impl_edge.id,
-            InspectionStatus::Passing,
-            "grounded",
-            "src/cli.rs:1",
-            0.9,
-            "test",
-        )
-        .unwrap();
-    let unit = store
-        .add_node(
-            NodeType::Validation,
-            "unit proof",
-            "",
-            "passed",
-            serde_json::json!({
-                "type": "test",
-                "command": "true",
-                "proof_kind": "unit",
-            }),
-        )
-        .unwrap();
-    store
-        .add_edge(
-            EdgeKind::Validates,
-            &unit.id,
-            &intent.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    loom::commands::observe_validation(&store, &unit).unwrap();
-
-    let before = ladder(&store).unwrap();
-    assert_eq!(
-        before
-            .rungs
-            .iter()
-            .find(|r| r.name == "proven")
+    assert!(
+        loom::completeness::journey_derive_gaps(&store)
             .unwrap()
-            .state,
-        RungState::Unmet
+            .iter()
+            .any(|gap| gap.kind == "unrooted_intent" && gap.subject_id == intent.id),
+        "a non-exempt implemented intent must remain visible as derivation work"
     );
 
     store
         .set_facet(
             &intent.id,
             TargetKind::Node,
-            "waiver:journey",
-            "CLI surface; HTTP journey runner does not apply",
+            "journey_exemption",
+            r#"{"human_decision_digest":"sha256:ring4-cli-exemption","kind":"infrastructure","reason":"CLI plumbing is not independently user-reachable"}"#,
             TruthClass::Asserted,
         )
         .unwrap();
-    // The waiver excuses the JOURNEY axis, not proof depth — `proven` still
-    // requires S2, which is a separate question and deliberately not waivable.
-    prove_s2(&store, tmp.path(), &intent.id, "waiver-subject");
-
-    let after = ladder(&store).unwrap();
-    let proven = after.rungs.iter().find(|r| r.name == "proven").unwrap();
-    assert_eq!(proven.state, RungState::Met);
     assert!(
-        !proven.detail.contains("journey proof gap"),
-        "waived journey must not count as a proven gap: {}",
-        proven.detail
+        loom::completeness::intent_journey_exempt(&store, &intent.id).unwrap(),
+        "the structured exemption must be recognized as canonical"
+    );
+    assert!(
+        loom::completeness::journey_derive_gaps(&store)
+            .unwrap()
+            .iter()
+            .all(|gap| gap.subject_id != intent.id),
+        "the canonical exemption must remove only its intent from Journey derivation work"
     );
 }
 
@@ -1156,25 +1184,33 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
     let rules = store
         .list_nodes(Some(NodeType::QualityRule), usize::MAX)
         .unwrap();
+    let implemented = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .filter(|node| node.status == "implemented")
+        .collect::<Vec<_>>();
     for rule in &rules {
-        let ge = store
-            .add_edge(
-                EdgeKind::Governs,
-                &rule.id,
-                &intent.id,
-                TruthClass::Asserted,
-            )
-            .unwrap();
-        store
-            .record_verdict(
-                &ge.id,
-                InspectionStatus::Passing,
-                "criterion",
-                "evidence",
-                0.9,
-                "llm",
-            )
-            .unwrap();
+        for subject in &implemented {
+            let ge = store
+                .add_edge(
+                    EdgeKind::Governs,
+                    &rule.id,
+                    &subject.id,
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+            store
+                .record_verdict(
+                    &ge.id,
+                    InspectionStatus::Passing,
+                    "criterion",
+                    "evidence",
+                    0.9,
+                    "llm",
+                )
+                .unwrap();
+        }
     }
 
     // Now hardened should be Met.

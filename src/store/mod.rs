@@ -15,7 +15,7 @@ use crate::model::*;
 use crate::registry;
 use crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION};
 use anyhow::{anyhow, bail, Context};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use rusqlite_migration::{Migrations, M};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
@@ -177,6 +177,7 @@ impl Store {
         let fresh = !db_path.exists();
         let mut conn =
             Connection::open(&db_path).with_context(|| format!("opening {}", db_path.display()))?;
+        ensure_supported_persisted_schema(&conn)?;
         configure(&conn)?;
         apply_schema_migrations(&mut conn)?;
         if fresh {
@@ -251,6 +252,7 @@ impl Store {
         }
         let lock = acquire_lock(&loom_dir, true, &identity)?;
         let mut conn = Connection::open(&db_path)?;
+        ensure_supported_persisted_schema(&conn)?;
         configure(&conn)?;
         apply_schema_migrations(&mut conn)?;
         Ok(Store {
@@ -278,31 +280,17 @@ impl Store {
         let identity = crate::identity::ExecutionIdentity::resolve_env()?;
         let lock = acquire_lock(&loom_dir, false, &identity)?;
         let conn = Connection::open(&db_path)?;
+        ensure_supported_persisted_schema(&conn)?;
         configure_read(&conn)?;
         // `user_version` is the migration stamp maintained by the write path
         // (`apply_schema_migrations`); a read open must not migrate, so a mismatch
         // is an explicit "run a write command first", never a silent read of an
         // older shape.
         let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-        // Older graph: a write command migrates it forward. NEWER graph: this
-        // binary is behind, and there is nothing the operator can run to fix
-        // that here — telling them to `loom sync` invites an action that fails
-        // with raw migration-library jargon, which is how a clear failure
-        // becomes a confusing one. Phantom stamps (aborted no-op bumps that
-        // never changed the schema) are the same shape as SCHEMA_VERSION and
-        // stay readable; a write open reclaim-downstamps them.
-        if user_version > SCHEMA_VERSION && !is_phantom_schema(user_version) {
-            bail!(
-                "this graph is v{user_version}; this loom understands v{SCHEMA_VERSION}. \
-                 It was written by a newer loom — upgrade this one \
-                 (`cargo install --path .`) rather than migrating the graph, which \
-                 only ever moves forward"
-            );
-        }
         if user_version < SCHEMA_VERSION {
             bail!(
-                "graph schema (v{user_version}) needs migration to v{SCHEMA_VERSION} — run a \
-                 write command (e.g. `loom sync`) once to migrate before read-only commands"
+                "graph schema is unstamped (v{user_version}); open it once with a write-capable \
+                 loom v{SCHEMA_VERSION} command before using read-only commands"
             );
         }
         Ok(Store {
@@ -311,6 +299,131 @@ impl Store {
             identity: std::cell::RefCell::new(identity),
             _lock: lock,
         })
+    }
+
+    /// Clone this trusted local graph into an empty temporary root without
+    /// applying import semantics. The interface deliberately hides SQLite/WAL
+    /// consistency and journal provenance: callers get one confined graph clone
+    /// that preserves the source graph's local authority while leaving every
+    /// source byte untouched.
+    pub fn clone_local_snapshot(&self, destination_root: &Path) -> Result<()> {
+        fn copy_addressed_file(
+            source_root: &Path,
+            destination_root: &Path,
+            relative: &Path,
+        ) -> Result<()> {
+            if relative.as_os_str().is_empty()
+                || relative.is_absolute()
+                || relative
+                    .components()
+                    .any(|component| !matches!(component, std::path::Component::Normal(_)))
+            {
+                bail!(
+                    "local graph snapshot refuses non-confined registered path '{}'",
+                    relative.display()
+                );
+            }
+            let source = source_root.join(relative);
+            if !source.is_file() {
+                return Ok(());
+            }
+            let destination = destination_root.join(relative);
+            if let Some(parent) = destination.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::copy(&source, &destination).with_context(|| {
+                format!(
+                    "copying registered snapshot artifact {} to {}",
+                    source.display(),
+                    destination.display()
+                )
+            })?;
+            Ok(())
+        }
+
+        if destination_root == self.root {
+            bail!("local graph snapshot destination must differ from its source");
+        }
+        let destination_loom = destination_root.join(LOOM_DIR);
+        if destination_loom.exists() {
+            bail!(
+                "local graph snapshot destination '{}' is not empty",
+                destination_loom.display()
+            );
+        }
+        std::fs::create_dir_all(&destination_loom)
+            .with_context(|| format!("creating {}", destination_loom.display()))?;
+        let destination_db = destination_loom.join(GRAPH_DB);
+        let result = (|| -> Result<()> {
+            // VACUUM INTO is SQLite's consistent online-copy operation. Opening
+            // the source read-only and holding this Store's graph lock ensures
+            // the clone includes committed WAL state without checkpointing or
+            // otherwise changing the source database.
+            let source_db = self.root.join(LOOM_DIR).join(GRAPH_DB);
+            let source = Connection::open_with_flags(&source_db, OpenFlags::SQLITE_OPEN_READ_ONLY)
+                .with_context(|| {
+                    format!("opening local snapshot source {}", source_db.display())
+                })?;
+            let destination = destination_db.to_str().ok_or_else(|| {
+                anyhow!(
+                    "local graph snapshot destination '{}' is not valid UTF-8",
+                    destination_db.display()
+                )
+            })?;
+            source
+                .execute("VACUUM INTO ?1", params![destination])
+                .with_context(|| {
+                    format!("cloning local graph into {}", destination_db.display())
+                })?;
+
+            // Journal provenance is local authority and therefore must not pass
+            // through `restore_entries`, whose correct import behavior marks it
+            // imported. Copy the immutable JSONL bytes verbatim instead.
+            let source_journal = crate::journal::path(&self.root);
+            if source_journal.is_file() {
+                let destination_journal = crate::journal::path(destination_root);
+                let parent = destination_journal.parent().ok_or_else(|| {
+                    anyhow!(
+                        "journal destination '{}' has no parent",
+                        destination_journal.display()
+                    )
+                })?;
+                std::fs::create_dir_all(parent)?;
+                std::fs::copy(&source_journal, &destination_journal).with_context(|| {
+                    format!(
+                        "copying local journal {} to {}",
+                        source_journal.display(),
+                        destination_journal.display()
+                    )
+                })?;
+            }
+
+            // Graph predicates resolve these files relative to Store::root.
+            // Copy only graph-addressed artifacts, not the whole repository, so
+            // the clone preserves semantic state without broadening execution.
+            let mut paths = std::collections::BTreeSet::new();
+            for node in self.list_nodes(Some(NodeType::CodeFile), usize::MAX)? {
+                paths.insert(PathBuf::from(node.name));
+            }
+            for node in self.list_nodes(Some(NodeType::Journey), usize::MAX)? {
+                if let Some(artifact) = node
+                    .body
+                    .get("artifact")
+                    .and_then(serde_json::Value::as_str)
+                {
+                    paths.insert(PathBuf::from(artifact));
+                }
+            }
+            paths.insert(PathBuf::from("loom.graph.json"));
+            for relative in paths {
+                copy_addressed_file(&self.root, destination_root, &relative)?;
+            }
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_dir_all(&destination_loom);
+        }
+        result
     }
 
     /// Walk up from `start` to find the nearest ancestor containing `.loom/`.
@@ -671,88 +784,70 @@ fn schema_migrations() -> Migrations<'static> {
         M::up(MIGRATION_9_JUDGMENT_INBOX),
         M::up(MIGRATION_10_EXECUTOR_PROFILE),
         M::up(MIGRATION_11_NULLABLE_EXECUTOR_PROFILE),
+        // V12 is a semantic hard cut: the SQLite shape is unchanged, but old
+        // graph vocabularies cannot be interpreted under the journey-root model.
+        M::up("SELECT 1;"),
     ])
 }
 
-// Schema versions a retracted local bump stamped with **no** on-disk change.
-//
-// Empty now that real v7 (batch-auth columns) ships; stale phantom-7 graphs
-// without those columns are reclaimed by `reclaim_stale_phantom_v7`.
-const PHANTOM_SCHEMA_VERSIONS: &[u32] = &[];
-
-fn is_phantom_schema(user_version: u32) -> bool {
-    user_version > SCHEMA_VERSION && PHANTOM_SCHEMA_VERSIONS.contains(&user_version)
-}
-
-/// Reclaim a phantom future stamp so rusqlite_migration can proceed.
-fn reclaim_phantom_schema(conn: &Connection, user_version: u32) -> Result<()> {
-    if !is_phantom_schema(user_version) {
-        return Ok(());
-    }
-    conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
-    let _ = conn.execute(
-        "UPDATE meta SET value=?1 WHERE key='schema_version'",
-        params![SCHEMA_VERSION.to_string()],
-    )?;
-    Ok(())
-}
-
-/// An uncommitted loom briefly stamped user_version=7 with only `SELECT 1`.
-/// Real v7 adds `decision_mode`/`batch_id`. Graphs that still claim v7 without
-/// those columns are rolled back to v6 so the real migration can apply.
-fn reclaim_stale_phantom_v7(conn: &Connection) -> Result<()> {
-    let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    if user_version != 7 {
-        return Ok(());
-    }
-    // Only a graph that HAS the evidence spine can be a phantom v7. A legacy
-    // graph adopted from its meta stamp (v1 tables claiming v7) has no fact
-    // table at all — rolling it back would point migration 7 at a table that
-    // does not exist.
-    let has_fact = conn
+fn persisted_meta_schema_version(conn: &Connection) -> Result<Option<u32>> {
+    let has_meta = conn
         .query_row(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fact'",
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='meta'",
             [],
             |_| Ok(true),
         )
         .optional()?
         .unwrap_or(false);
-    if !has_fact {
-        return Ok(());
+    if !has_meta {
+        return Ok(None);
     }
-    let has_col: bool = conn
-        .prepare("PRAGMA table_info(fact)")?
-        .query_map([], |r| r.get::<_, String>(1))?
-        .filter_map(|c| c.ok())
-        .any(|name| name == "decision_mode");
-    if has_col {
-        return Ok(());
-    }
-    conn.pragma_update(None, "user_version", 6u32)?;
-    let _ = conn.execute("UPDATE meta SET value='6' WHERE key='schema_version'", [])?;
-    Ok(())
+    conn.query_row(
+        "SELECT value FROM meta WHERE key='schema_version'",
+        [],
+        |row| row.get::<_, String>(0),
+    )
+    .optional()?
+    .map(|raw| {
+        raw.parse::<u32>()
+            .with_context(|| format!("invalid persisted schema_version '{raw}'"))
+    })
+    .transpose()
 }
 
-fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
-    adopt_legacy_schema_version(conn)?;
-    // Refuse a graph from the future BEFORE handing it to the migrator, which
-    // reports it as "migration number that is too high" — an accurate sentence
-    // about its own internals and a useless one to the person holding an old
-    // binary. Migrations only move forward; the fix is always to upgrade loom.
-    // Phantom stamps (aborted no-op bumps) are reclaimed, not refused.
-    let user_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    if user_version > SCHEMA_VERSION {
-        if is_phantom_schema(user_version) {
-            reclaim_phantom_schema(conn, user_version)?;
-        } else {
+/// Refuse incompatible persisted graphs before configuration or migration can
+/// mutate their database. Version zero with no meta stamp is a fresh database;
+/// version zero with a v12 meta stamp is the old-style current stamp adopted
+/// below. Every genuine v1-v11 graph must be rebuilt under the journey-root
+/// vocabulary rather than translated into a graph that claims new semantics.
+fn ensure_supported_persisted_schema(conn: &Connection) -> Result<()> {
+    let user_version: u32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    let meta_version = persisted_meta_schema_version(conn)?;
+    for version in [(user_version != 0).then_some(user_version), meta_version]
+        .into_iter()
+        .flatten()
+    {
+        if version < SCHEMA_VERSION {
             bail!(
-                "this graph is v{user_version}; this loom understands v{SCHEMA_VERSION}. \
+                "this graph is v{version}; loom v12 introduced the journey paradigm — re-init \
+                 and rebuild (loom bootstrap suggest, author journeys, loom journey derive). \
+                 The graph is untouched."
+            );
+        }
+        if version > SCHEMA_VERSION {
+            bail!(
+                "this graph is v{version}; this loom understands v{SCHEMA_VERSION}. \
                  It was written by a newer loom — upgrade this one \
                  (`cargo install --path .`). The graph is untouched."
             );
         }
     }
-    reclaim_stale_phantom_v7(conn)?;
+    Ok(())
+}
+
+fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
+    ensure_supported_persisted_schema(conn)?;
+    adopt_legacy_schema_version(conn)?;
     schema_migrations()
         .to_latest(conn)
         .context("migrating graph schema")?;
@@ -1164,51 +1259,44 @@ mod tests {
         );
     }
 
-    /// The aborted v7 no-op stamp must not brick a local graph after rollback:
-    /// a write open rolls it back to v6 and the real migrations re-apply.
     #[test]
-    fn phantom_v7_write_open_reclaims_to_current() {
-        let tmp = TmpRoot::new("loom-store-phantom-v7");
+    fn pre_v12_graph_is_refused_without_changing_its_stamps() {
+        let tmp = TmpRoot::new("loom-store-v11-hard-cut");
         {
-            let store = Store::init(tmp.path(), Some("phantom"), false).unwrap();
+            let store = Store::init(tmp.path(), Some("old"), false).unwrap();
             drop(store);
         }
         let db = tmp.path().join(crate::LOOM_DIR).join(crate::GRAPH_DB);
         let conn = Connection::open(&db).unwrap();
-        // A faithful phantom v7: the v7 columns and everything v8/v9 add are
-        // absent, but the stamp claims 7.
-        conn.execute_batch(
-            "ALTER TABLE fact DROP COLUMN asserted_profile;
-             ALTER TABLE fact DROP COLUMN decision_mode;
-             ALTER TABLE fact DROP COLUMN batch_id;
-             DROP TABLE hit_adjudication;
-             DROP TABLE judgment_proposal;",
-        )
-        .unwrap();
-        conn.pragma_update(None, "user_version", 7u32).unwrap();
-        conn.execute("UPDATE meta SET value='7' WHERE key='schema_version'", [])
+        conn.pragma_update(None, "user_version", 11u32).unwrap();
+        conn.execute("UPDATE meta SET value='11' WHERE key='schema_version'", [])
             .unwrap();
         drop(conn);
 
-        // Any old-schema graph — phantom or not — is migrated by a write open
-        // before reads are served.
-        assert!(Store::open_read(tmp.path()).is_err());
+        for error in [
+            Store::open_read(tmp.path())
+                .err()
+                .expect("read open refuses"),
+            Store::open(tmp.path()).err().expect("write open refuses"),
+            Store::init(tmp.path(), None, false)
+                .err()
+                .expect("idempotent init refuses"),
+        ] {
+            let message = error.to_string();
+            assert!(message.contains("journey paradigm"), "{message}");
+            assert!(message.contains("re-init and rebuild"), "{message}");
+        }
 
-        let writer = Store::open(tmp.path()).expect("write open reclaims phantom v7");
-        assert_eq!(sqlite_user_version(&writer.conn), SCHEMA_VERSION);
-        assert_eq!(writer.identity().unwrap().schema_version, SCHEMA_VERSION);
-        let has_hit_table: i64 = writer
-            .conn
+        let conn = Connection::open(&db).unwrap();
+        assert_eq!(sqlite_user_version(&conn), 11);
+        let meta: String = conn
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='hit_adjudication'",
+                "SELECT value FROM meta WHERE key='schema_version'",
                 [],
-                |r| r.get(0),
+                |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(
-            has_hit_table, 1,
-            "migration 8 re-applied on the reclaimed graph"
-        );
+        assert_eq!(meta, "11");
     }
 
     #[test]
@@ -1273,6 +1361,15 @@ mod tests {
             .pragma_update(None, "user_version", 4u32)
             .unwrap();
         drop(store);
+
+        // Public Store opens must refuse v4 under the v12 hard cut. Exercise
+        // the preserved historical migration directly: those steps exist to
+        // build fresh databases and remain independently valid, not to upgrade
+        // persisted pre-journey graphs.
+        let db = tmp.path().join(LOOM_DIR).join(GRAPH_DB);
+        let mut conn = Connection::open(db).unwrap();
+        schema_migrations().to_latest(&mut conn).unwrap();
+        drop(conn);
 
         let store = Store::open(tmp.path()).unwrap();
         assert_eq!(store.ratification(&intent.id).unwrap(), "unratified");

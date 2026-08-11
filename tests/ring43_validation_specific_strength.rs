@@ -103,19 +103,9 @@ fn fixture() -> Fixture {
 fn add_journey_validation(
     fixture: &Fixture,
     name: &str,
-    artifact: &str,
+    _artifact: &str,
     step_command: &str,
 ) -> String {
-    // Content assertion keeps grade above S1; body.command must still equal
-    // this step's `run` for S3 entry binding (no printf/command mismatch).
-    // body.command is what the runner executes and what S3 binding uses.
-    // It must match the journey step's `run` for that step to earn
-    // entry evidence — a printf placeholder cannot borrow credit from
-    // an unrelated cargo test step in the YAML.
-    let yaml = format!(
-        "journey: {name}\nsteps:\n  - name: prove it\n    intent: the behavior works\n    run: {step_command}\n    expect:\n      exit_code: 0\n      stdout_contains: [\"proof-ok\"]\n"
-    );
-    std::fs::write(fixture.tmp.path().join(artifact), &yaml).unwrap();
     let validation = fixture
         .store
         .add_node(
@@ -125,10 +115,7 @@ fn add_journey_validation(
             "not_run",
             serde_json::json!({
                 "type": "test",
-                "proof_kind": "journey",
-                "artifact": artifact,
                 "command": step_command,
-                "spec_hash": loom::artifact::fingerprint(&yaml),
             }),
         )
         .unwrap();
@@ -203,43 +190,6 @@ fn mark_validation_passing(fixture: &Fixture, validation_id: &str, command: &str
         .store
         .set_node_status(validation_id, "passed")
         .unwrap();
-}
-
-fn add_outer_journey_validation(
-    fixture: &Fixture,
-    name: &str,
-    artifact: &str,
-    step_command: &str,
-) -> String {
-    let yaml = format!(
-        "journey: {name}\nsteps:\n  - name: prove it\n    intent: the behavior works\n    run: {step_command}\n    expect:\n      exit_code: 0\n      stdout_contains: [\"proof-ok\"]\n"
-    );
-    std::fs::write(fixture.tmp.path().join(artifact), &yaml).unwrap();
-    let outer = format!("loom journey run {artifact}");
-    let validation = fixture
-        .store
-        .add_node(
-            NodeType::Validation,
-            name,
-            "",
-            "not_run",
-            serde_json::json!({
-                "type": "journey",
-                "proof_kind": "journey",
-                "journey_id": name,
-                "artifact": artifact,
-                "command": outer,
-                "spec_hash": loom::artifact::fingerprint(&yaml),
-            }),
-        )
-        .unwrap();
-    fixture
-        .store
-        .ensure_edge(EdgeKind::Validates, &validation.id, &fixture.intent_id)
-        .unwrap();
-    mark_validation_passing(fixture, &validation.id, &outer);
-    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
-    validation.id
 }
 
 fn witness(store: &Store, validation_id: &str) -> StrengthWitness {
@@ -339,7 +289,7 @@ fn uncalled_helper_inside_cfg_test_module_is_not_a_test_entry() {
 }
 
 #[test]
-fn journey_that_runs_the_verifier_earns_s3_but_echo_sibling_stays_s2() {
+fn validation_that_runs_the_verifier_earns_s3_but_echo_sibling_stays_s2() {
     let fixture = fixture();
     let genuine = add_journey_validation(
         &fixture,
@@ -364,7 +314,7 @@ fn journey_that_runs_the_verifier_earns_s3_but_echo_sibling_stays_s2() {
     let evidence = genuine_witness
         .call_evidence
         .expect("exact evidence source");
-    assert_eq!(evidence.source, "journey_command");
+    assert_eq!(evidence.source, "validation_command");
     assert_eq!(evidence.file, "tests/behavior_test.rs");
     assert!(matches!(
         evidence.entry_symbol.as_deref(),
@@ -382,84 +332,6 @@ fn journey_that_runs_the_verifier_earns_s3_but_echo_sibling_stays_s2() {
     assert!(echo_witness
         .next
         .contains("nothing this proof runs reaches the symbol"));
-}
-
-#[test]
-fn bare_loom_earns_credit_only_from_an_exact_checkout_bound_journey() {
-    let fixture = fixture();
-    // A tiny stand-in for Loom's real status route: the typed mapper must enter
-    // this exact file+symbol, whose call closure reaches the grounded behavior.
-    std::fs::create_dir_all(fixture.tmp.path().join("src/commands")).unwrap();
-    std::fs::write(
-        fixture.tmp.path().join("src/commands/status_cmd.rs"),
-        "pub fn status() { perform_behavior(); }\n",
-    )
-    .unwrap();
-    fixture
-        .store
-        .add_node(
-            NodeType::CodeFile,
-            "src/commands/status_cmd.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
-
-    let graph = loom::callgraph::build(&fixture.store).unwrap();
-    assert!(
-        loom::proofstrength::command_entries("loom status --json", &graph, "validation_command")
-            .is_empty(),
-        "a generic validation cannot assume which PATH binary bare loom names"
-    );
-    assert!(
-        loom::proofstrength::command_entries("./loom status --json", &graph, "validation_command")
-            .iter()
-            .any(|entry| {
-                entry.file == "src/commands/status_cmd.rs"
-                    && entry.entry_symbol.as_deref() == Some("status")
-            }),
-        "an explicit checkout path remains trusted"
-    );
-
-    let trusted = add_outer_journey_validation(
-        &fixture,
-        "checkout-bound bare loom",
-        "journeys/checkout-bound.yaml",
-        "loom status --json",
-    );
-    let untrusted = add_journey_validation(
-        &fixture,
-        "free-form bare loom",
-        "journeys/free-form.yaml",
-        "loom status --json",
-    );
-    let compound = add_outer_journey_validation(
-        &fixture,
-        "compound bare loom",
-        "journeys/compound.yaml",
-        "loom status --json || loom status --json",
-    );
-
-    let trusted_witness = witness(&fixture.store, &trusted);
-    assert_eq!(trusted_witness.grade, "S3");
-    let evidence = trusted_witness
-        .call_evidence
-        .expect("checkout-bound journey evidence");
-    assert_eq!(evidence.source, "journey_command");
-    assert_eq!(evidence.file, "src/commands/status_cmd.rs");
-    assert_eq!(evidence.entry_symbol.as_deref(), Some("status"));
-    assert_eq!(
-        witness(&fixture.store, &untrusted).grade,
-        "S2",
-        "a free-form command that merely names the same bare loom stays untrusted"
-    );
-    assert_eq!(
-        witness(&fixture.store, &compound).grade,
-        "S2",
-        "checkout binding must not weaken compound-shell rejection"
-    );
 }
 
 #[test]
@@ -499,11 +371,11 @@ fn exact_typed_handler_grounding_earns_a_zero_hop_s3_witness() {
         .unwrap();
     loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
 
-    let validation = add_outer_journey_validation(
+    let validation = add_journey_validation(
         &fixture,
         "door handler proof",
         "journeys/door-handler.yaml",
-        "loom door 'ship the exact handler' --json",
+        "./loom door 'ship the exact handler' --json",
     );
     let w = witness(&fixture.store, &validation);
     assert_eq!(
@@ -512,7 +384,7 @@ fn exact_typed_handler_grounding_earns_a_zero_hop_s3_witness() {
     );
     assert_eq!(w.call_witness.as_deref(), Some("door"));
     let evidence = w.call_evidence.expect("zero-hop call evidence");
-    assert_eq!(evidence.source, "journey_command");
+    assert_eq!(evidence.source, "validation_command");
     assert_eq!(evidence.file, handler_path);
     assert_eq!(evidence.entry_symbol.as_deref(), Some("door"));
     assert!(evidence.s3_eligible);
@@ -1317,6 +1189,56 @@ fn bare_exercises_file_without_locator_cannot_earn_s3() {
 }
 
 #[test]
+fn anchor_bound_exercises_is_navigation_only_and_cannot_earn_s3() {
+    let fixture = fixture();
+    std::fs::write(
+        fixture.tmp.path().join("tests/behavior_test.rs"),
+        "#[test]\n// loom:anchor proof.behavior-entry\nfn exercises_behavior() { let _ = perform_behavior(); }\n#[test]\nfn another_entry() { let _ = perform_behavior(); }\n",
+    )
+    .unwrap();
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+    let validation_id = add_journey_validation(
+        &fixture,
+        "anchor exercises proof",
+        "journeys/anchor-exercises.yaml",
+        "echo proof-ok",
+    );
+    let edge = fixture
+        .store
+        .add_edge(
+            EdgeKind::Exercises,
+            &validation_id,
+            &fixture.test_file_id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    fixture
+        .store
+        .set_facet(
+            &edge.id,
+            TargetKind::Edge,
+            "locator",
+            "anchor:proof.behavior-entry",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+
+    let witness = witness(&fixture.store, &validation_id);
+    assert_eq!(
+        witness.grade, "S2",
+        "anchor must not manufacture S3: {witness:?}"
+    );
+    assert_eq!(witness.call_witness, None);
+    let evidence = witness
+        .call_evidence
+        .expect("visible navigation provenance");
+    assert_eq!(evidence.source, "anchor_navigation");
+    assert_eq!(evidence.entry_symbol, None);
+    assert!(!evidence.s3_eligible);
+}
+
+#[test]
 fn quoted_cargo_filter_is_one_token_and_unsupported_shell_fails_closed() {
     let fixture = fixture();
     let graph = loom::callgraph::build(&fixture.store).unwrap();
@@ -1698,89 +1620,6 @@ fn live() { let _ = crate_under_test::perform_behavior(); }
             .collect(),
         "unknown macros and cfg_attr ignore must not be harness entries: {tests:?}"
     );
-}
-
-#[test]
-fn journey_yaml_step_cannot_borrow_credit_from_mismatched_body_command() {
-    let fixture = fixture();
-    // YAML claims cargo test; body.command is a no-op. Must not earn S3.
-    let yaml = r#"journey: mismatch
-steps:
-  - name: prove it
-    intent: the behavior works
-    run: cargo test --test behavior_test
-    expect:
-      exit_code: 0
-      stdout_contains: ["proof-ok"]
-"#;
-    std::fs::write(fixture.tmp.path().join("journeys/mismatch.yaml"), yaml).unwrap();
-    let validation = fixture
-        .store
-        .add_node(
-            NodeType::Validation,
-            "mismatched journey",
-            "",
-            "not_run",
-            serde_json::json!({
-                "type": "test",
-                "proof_kind": "journey",
-                "artifact": "journeys/mismatch.yaml",
-                "command": "printf proof-ok",
-                "spec_hash": loom::artifact::fingerprint(yaml),
-            }),
-        )
-        .unwrap();
-    fixture
-        .store
-        .ensure_edge(EdgeKind::Validates, &validation.id, &fixture.intent_id)
-        .unwrap();
-    let run = loom::runner::record(
-        fixture.tmp.path(),
-        loom::model::RunProducer::Command,
-        "printf proof-ok",
-        &[],
-        1,
-        0,
-        b"proof-ok\n",
-        b"",
-        1,
-    );
-    for e in fixture
-        .store
-        .edges_with(Some(EdgeKind::Validates), Some(&validation.id), None)
-        .unwrap()
-    {
-        fixture
-            .store
-            .assert_fact(
-                loom::store::Assertion::new(
-                    loom::store::Subject::Edge(e.id.clone()),
-                    loom::model::Claim::Verdict,
-                    loom::model::InspectionStatus::Passing.as_str(),
-                    "test",
-                )
-                .criterion("proof")
-                .confidence(1.0)
-                .cited(loom::evidence::cite(fixture.tmp.path(), "proof-ok").unwrap())
-                .observed(run.clone()),
-            )
-            .unwrap();
-    }
-    fixture
-        .store
-        .record_proof_stability(&validation.id, "passed")
-        .unwrap();
-    fixture
-        .store
-        .set_node_status(&validation.id, "passed")
-        .unwrap();
-    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
-    let w = witness(&fixture.store, &validation.id);
-    assert_ne!(
-        w.grade, "S3",
-        "mismatched body.command must not earn S3: {w:?}"
-    );
-    assert_eq!(w.call_witness, None);
 }
 
 #[test]

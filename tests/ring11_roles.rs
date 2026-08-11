@@ -1125,18 +1125,16 @@ fn m7_unsupported_export_format_is_rejected() {
         Export::from_json(bad).is_err(),
         "an export with format 999 must be rejected (M-7)"
     );
-    // sanity: the current format still parses. Format 1 is deliberately NOT
-    // accepted — it predates the evidence spine, and silently importing its
-    // verdicts would reintroduce exactly the unanchored facts the spine exists
-    // to refuse. `loom carry-forward` is the explicit path for those.
-    let ok = r#"{"format":2,"graph_id":"g","name":"n","observed":false,
+    // Sanity: only the current format at the current schema parses. The v12
+    // journey-root cut deliberately refuses every older export.
+    let ok = r#"{"format":4,"schema_version":12,"graph_id":"g","name":"n","observed":false,
                   "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
     assert!(Export::from_json(ok).is_ok());
-    let legacy = r#"{"format":1,"graph_id":"g","name":"n","observed":false,
+    let legacy = r#"{"format":3,"schema_version":11,"graph_id":"g","name":"n","observed":false,
                   "nodes":[],"edges":[],"facets":[],"tags":[]}"#;
     assert!(
         Export::from_json(legacy).is_err(),
-        "a pre-evidence-spine export must not import silently"
+        "a pre-journey-root export must not import silently"
     );
 }
 

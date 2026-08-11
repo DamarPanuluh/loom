@@ -1,30 +1,23 @@
-journey: loom reports behaviors that share one proof command
+schema: loom.journey/v1
+id: shared-proof
+name: Expose behaviors that borrow one proof's green state
+actor: operator
+goal: Loom distinguishes suspiciously shared proof mechanisms from a behavior with
+  a proof of its own.
+inputs: {}
+preconditions:
+- Two implemented behaviors are registered with the same proof mechanism.
+- A third implemented behavior has a proof mechanism used only for that behavior.
 steps:
-  - name: two behaviors proved by one command are reported with the count and the command
-    fixture: true
-    intent: behaviors sharing one proof command are reported as borrowing its green
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'the first behavior' --description 'does one thing' --lifecycle implemented &&
-      loom intent add --graph "$tmp" --name 'the second behavior' --description 'does another thing' --lifecycle implemented &&
-      loom validation add --graph "$tmp" --name 'first proof' --type test --command 'true' --intent 'the first behavior' &&
-      loom validation add --graph "$tmp" --name 'second proof' --type test --command 'true' --intent 'the second behavior' &&
-      loom smells --graph "$tmp"; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains:
-        - "shared_proof_command"
-        - "2 behaviors are proved by the same command"
-        - "narrow each proof to the behavior it proves"
-
-  - name: a behavior with its own command is not reported
-    fixture: true
-    intent: behaviors sharing one proof command are reported as borrowing its green
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'the only behavior' --description 'does one thing' --lifecycle implemented &&
-      loom validation add --graph "$tmp" --name 'its own proof' --type test --command 'true' --intent 'the only behavior' &&
-      loom smells --graph "$tmp"; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains: ["no open smells"]
+- id: inspect-proof-sharing
+  name: Inspect Proof Sharing
+  action: Inspect the graph for proof-sharing risks.
+  expects:
+  - Loom reports the two behaviors sharing one mechanism and recommends narrowing
+    each proof to what it proves.
+  - Loom does not report the behavior whose proof mechanism is independent.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

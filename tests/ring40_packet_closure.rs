@@ -7,7 +7,6 @@
 //! worker. These tests serve real packets across lanes on real graphs and
 //! assert the invariant holds for each.
 
-use loom::cli::{Cli, CodefileCmd, Command, EdgeCmd, JourneyCmd};
 use loom::lane::Lane;
 use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
@@ -59,6 +58,142 @@ fn ratify_all(store: &Store) {
             .ratify_intent(&n.id, "test fixture: wanted", "test fixture")
             .unwrap();
     }
+}
+
+#[test]
+fn a_served_build_packet_carries_the_complete_role_scope() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "build a role-scoped packet",
+            "the packet names everything the builder may and must do",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    let item = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("the planned intent produces a Build packet");
+    assert_eq!(item.mode, "build");
+    assert_eq!(item.owner_role, "builder");
+    assert_eq!(item.target.id, intent.id);
+
+    let contract = &item.prompt_contract;
+    assert_eq!(contract.role, item.owner_role);
+    assert!(!contract.allowed_actions.is_empty());
+    assert!(!contract.forbidden_actions.is_empty());
+    assert!(!contract.required_evidence.trim().is_empty());
+    assert!(!contract.write_back.trim().is_empty());
+    assert!(!contract.stop_condition.trim().is_empty());
+    assert_closure(&item);
+}
+
+#[test]
+fn ratify_packet_presents_meaning_drift_as_a_conversational_human_gate() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "export reports",
+            "users export CSV reports",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .ratify_intent(
+            &intent.id,
+            "requested in the Q1 product review",
+            "keep CSV exports",
+        )
+        .unwrap();
+    store
+        .redefine_intent(&intent.id, "users export PDF reports")
+        .unwrap();
+
+    let item = workitem::next(&store, Some(Lane::Divergence))
+        .unwrap()
+        .expect("changed meaning after a human judgment must produce a Ratify packet");
+    let packet = serde_json::to_value(&item).unwrap();
+    assert!(
+        serde_json::to_string(&packet)
+            .unwrap()
+            .contains("users export PDF reports"),
+        "packet must present the current meaning: {packet}"
+    );
+    assert!(
+        item.reason.contains("meaning drifted"),
+        "packet must name the concrete drift: {}",
+        item.reason
+    );
+    assert!(
+        item.reason.contains("redefined after ratification")
+            && item.reason.contains("the words changed under the yes"),
+        "packet must carry concrete evidence for the drift: {}",
+        item.reason
+    );
+
+    let gate = item
+        .prompt_contract
+        .human_gate
+        .as_ref()
+        .expect("Ratify packet must carry a structured human gate");
+    assert!(
+        gate.recommendation.contains("recommend one option")
+            && gate.recommendation.contains("evidence")
+            && gate
+                .recommendation
+                .contains("never treat the recommendation as the decision"),
+        "host must receive evidence-bound recommendation guidance: {}",
+        gate.recommendation
+    );
+    let labels: Vec<_> = gate
+        .options
+        .iter()
+        .map(|option| option.label.as_str())
+        .collect();
+    assert_eq!(
+        labels,
+        ["Keep behavior", "Remove behavior", "Revise criterion"]
+    );
+
+    let revise = gate
+        .options
+        .iter()
+        .find(|option| option.id == "revise")
+        .expect("one choice must accept a free-form revision");
+    assert!(revise
+        .description
+        .contains("Correct what the behavior should mean"));
+    assert!(
+        revise
+            .write_back
+            .as_deref()
+            .is_some_and(|write_back| write_back.contains("<corrected criterion>")),
+        "revision write-back must preserve the human's free-form criterion"
+    );
+
+    for human_text in std::iter::once(gate.question.as_str()).chain(
+        gate.options
+            .iter()
+            .flat_map(|option| [option.label.as_str(), option.description.as_str()]),
+    ) {
+        assert!(
+            !human_text.contains("loom ") && !human_text.contains("--"),
+            "human-facing copy must not require terminal construction: {human_text}"
+        );
+    }
+    assert!(
+        gate.options.iter().all(|option| option
+            .write_back
+            .as_deref()
+            .is_some_and(|write_back| write_back.contains("loom "))),
+        "prefilled terminal writes belong to executor metadata, separate from human-facing copy"
+    );
 }
 
 /// A quality packet: the closure is `loom rule verdict` naming both endpoints.
@@ -254,6 +389,112 @@ fn a_deepen_packet_names_the_intent_in_its_closure() {
     );
 }
 
+/// Deepen consistently serves the weakest ranked claim and carries the facts
+/// that explain why it ranks first.
+#[test]
+fn deepen_deterministically_selects_and_explains_the_weakest_claim() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let weaker = store
+        .add_node(
+            NodeType::Intent,
+            "users can recover a draft",
+            "a behavior with only a liveness proof",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let stronger = store
+        .add_node(
+            NodeType::Intent,
+            "users can retain a draft",
+            "a behavior with an assertion-bearing proof",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    // Give both claims the same grounded call shape so proof strength is the
+    // distinguishing weakness: S1 liveness versus an S2 asserted outcome.
+    earn_call_witness(&store, tmp.path(), &weaker.id);
+    loom::commands::prove_intent(&store, &weaker.id, "liveness proof", "true").unwrap();
+    earn_call_witness(&store, tmp.path(), &stronger.id);
+    prove_s2(&store, tmp.path(), &stronger.id, "asserted-outcome");
+    ratify_all(&store);
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    let ranked_once = loom::risk::rank(&store).unwrap();
+    let ranked_twice = loom::risk::rank(&store).unwrap();
+    assert!(
+        ranked_once.len() >= 2,
+        "the fixture must produce multiple standing claims: {ranked_once:#?}"
+    );
+    let ids_once: Vec<&str> = ranked_once
+        .iter()
+        .map(|candidate| candidate.intent_id.as_str())
+        .collect();
+    let ids_twice: Vec<&str> = ranked_twice
+        .iter()
+        .map(|candidate| candidate.intent_id.as_str())
+        .collect();
+    assert_eq!(ids_once, ids_twice, "ranking order must be deterministic");
+
+    let weakest = &ranked_once[0];
+    assert_eq!(
+        weakest.intent_id, weaker.id,
+        "the liveness-only claim must rank ahead of the stronger proof"
+    );
+    assert!(
+        !weakest.next_move.as_str().is_empty(),
+        "the ranked weakness must propose a concrete evidence move"
+    );
+    let first_packet = workitem::next(&store, Some(Lane::Deepen))
+        .unwrap()
+        .expect("multiple standing claims produce Deepen work");
+    let second_packet = workitem::next(&store, Some(Lane::Deepen))
+        .unwrap()
+        .expect("unchanged graph produces the same Deepen work");
+    for packet in [&first_packet, &second_packet] {
+        assert_eq!(packet.target.id, weakest.intent_id);
+        assert!(
+            packet.reason.contains(&weakest.proof_strength.to_string()),
+            "packet must name the selected claim's proof strength: {}",
+            packet.reason
+        );
+        assert!(
+            packet.reason.contains(weakest.why),
+            "packet must include the ranking rationale: {}",
+            packet.reason
+        );
+        assert!(
+            packet
+                .prompt_contract
+                .write_back
+                .contains(weakest.next_move.as_str()),
+            "packet must carry the ranked claim's exact next move: {}",
+            packet.prompt_contract.write_back
+        );
+        assert!(
+            packet.prompt_contract.mindset.contains("already green")
+                && packet
+                    .prompt_contract
+                    .why_now
+                    .contains("every floor is met"),
+            "Deepen must remain optional work on an already-green graph: {:?}",
+            packet.prompt_contract
+        );
+        assert!(
+            packet.prompt_contract.stop_condition.contains("ONE move")
+                && packet.prompt_contract.stop_condition.contains("re-ranks")
+                && packet.next_step.contains("make ONE move")
+                && packet.next_step.contains("re-run `loom deepen`"),
+            "packet must stop after one move and explicitly re-rank: {:?}",
+            packet.prompt_contract
+        );
+    }
+    assert_eq!(first_packet.reason, second_packet.reason);
+}
+
 /// An audit packet: prose remedies still name a runnable closeout — fix per
 /// the remedy, then re-read the record.
 #[test]
@@ -374,20 +615,40 @@ fn every_lane_loom_ships_serves_a_closable_packet_on_this_graph() {
     assert_closure(&default);
 }
 
-/// A validate packet for a user-visible intent whose proof is meaningful but
-/// not end-to-end: the closure is `loom journey add`/`run`, and the write_back
-/// must name the intent or the packet is refused as `unservable_packet`.
-/// Regression: the journey-gap branch once wrote back only `<spec>`
-/// placeholders, so the validate lane could not serve this gap at all.
+/// A surfaced semantic Journey with no compiled proof is validate work. Its
+/// packet names a runnable, Journey-bound compile/run closure, and executing
+/// that closure removes the gap while earning S3.
 #[test]
-fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
+fn a_journey_gap_validate_packet_names_the_journey_in_its_closure() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let runner_path = tmp.path().join("runner.py");
+    std::fs::write(
+        &runner_path,
+        "#!/usr/bin/env python3\nimport json\ndef main():\n    print(json.dumps({'ok': True}))\nif __name__ == '__main__':\n    main()\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&runner_path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&runner_path, permissions).unwrap();
+    }
+    let code = store
+        .add_node(
+            NodeType::CodeFile,
+            "runner.py",
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
     let intent = store
         .add_node(
             NodeType::Intent,
             "users can check out",
-            "a flow a user can see",
+            "a checkout emits a successful recorded result",
             "implemented",
             serde_json::json!({}),
         )
@@ -401,163 +662,205 @@ fn a_journey_gap_validate_packet_names_the_intent_in_its_closure() {
             TruthClass::Asserted,
         )
         .unwrap();
-    // A passing S2 proof (runner-reported assertions, no call witness):
-    // meaningful, but NOT end-to-end — exactly the shallow journey gap the
-    // validate lane serves when nothing else is pending.
-    loom::commands::prove_intent(
-        &store,
-        &intent.id,
-        "unit proof",
-        "echo 'test result: ok. 4 passed; 0 failed'",
-    )
+    store
+        .ratify_intent(&intent.id, "fixture behavior is wanted", "test fixture")
+        .unwrap();
+    let grounding = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &code.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &grounding.id,
+            TargetKind::Edge,
+            "locator",
+            "main",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
+    let artifact = tmp.path().join("journeys/checkout-flow.yaml");
+    let spec: loom::journey::JourneySpec = serde_json::from_value(serde_json::json!({
+        "schema":"loom.journey/v1",
+        "id":"checkout-flow",
+        "name":"Checkout flow",
+        "actor":"shopper",
+        "goal":"Complete checkout",
+        "inputs":{},
+        "preconditions":[],
+        "steps":[{"id":"checkout","name":"Checkout","action":"checks out","expects":[],"produces":{}}],
+        "profiles":{"proof":{"inputs":{},"workspace":{}}}
+    }))
     .unwrap();
-    ratify_all(&store);
+    std::fs::write(&artifact, serde_norway::to_string(&spec).unwrap()).unwrap();
+    let hash = spec.semantic_hash().unwrap();
+    let journey = store
+        .add_node(
+            NodeType::Journey,
+            "checkout-flow",
+            "Checkout flow",
+            "authored",
+            serde_json::json!({
+                "schema":"loom.journey/v1",
+                "stable_id":"checkout-flow",
+                "name":"Checkout flow",
+                "artifact":"journeys/checkout-flow.yaml",
+                "semantic_hash":hash,
+                "input_ids":[],
+                "preconditions":[],
+                "step_ids":["checkout"],
+                "output_ids":[],
+                "profile_ids":["proof"]
+            }),
+        )
+        .unwrap();
+    let derives = store
+        .add_edge(
+            EdgeKind::Derives,
+            &journey.id,
+            &intent.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &derives.id,
+            TargetKind::Edge,
+            "journey_hash",
+            &hash,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &derives.id,
+            TargetKind::Edge,
+            "step_ids",
+            "[\"checkout\"]",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let surface = store
+        .add_node(
+            NodeType::InterfaceSurface,
+            "checkout CLI",
+            "real checkout CLI",
+            "active",
+            serde_json::json!({
+                "schema":"loom.interface-surface/v1",
+                "stable_id":"checkout-cli",
+                "title":"Checkout CLI",
+                "kind":"cli",
+                "identity":"runner.py",
+                "operations":[{
+                    "id":"checkout-op",
+                    "summary":"Run checkout",
+                    "argv":[runner_path.to_str().unwrap()],
+                    "arguments":[],
+                    "output":{
+                        "format":"json",
+                        "assertions":[{
+                            "id":"checkout-ok",
+                            "pointer":"/ok",
+                            "type":"boolean",
+                            "equals":true
+                        }]
+                    }
+                }]
+            }),
+        )
+        .unwrap();
+    let surfaces = store
+        .add_edge(
+            EdgeKind::Surfaces,
+            &journey.id,
+            &surface.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &surfaces.id,
+            TargetKind::Edge,
+            "journey_hash",
+            &hash,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &surfaces.id,
+            TargetKind::Edge,
+            "operation_bindings",
+            "[{\"operation_id\":\"checkout-op\",\"step_id\":\"checkout\"}]",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let exposes = store
+        .add_edge(
+            EdgeKind::Exposes,
+            &surface.id,
+            &code.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &exposes.id,
+            TargetKind::Edge,
+            "locator",
+            "main",
+            TruthClass::Asserted,
+        )
+        .unwrap();
 
     let item = workitem::next(&store, Some(Lane::Validate))
         .unwrap()
-        .expect("an S2-only proof of a user-visible behavior is validate work");
+        .expect("a surfaced, uncompiled Journey is validate work");
     assert_closure(&item);
-    // The packet must advertise the grounding operations the closure needs,
-    // so the executed workflow below is exactly the advertised one — the S3
-    // call witness is earned by the grounding the packet itself prescribes,
-    // not by test-only steps.
-    assert!(
-        item.prompt_contract
-            .allowed_actions
-            .iter()
-            .any(|a| a.contains("loom edge implement") && a.contains("--role verifies")),
-        "the packet must advertise the grounding steps: {:?}",
-        item.prompt_contract.allowed_actions
-    );
-    // The re-grade after the run must also be advertised: `loom journey run`
-    // records the outcome but proof strength is derived by sync.
-    assert!(
-        item.prompt_contract
-            .write_back
-            .contains("loom sync to re-grade"),
-        "the write_back must advertise the sync that re-grades the proof: {}",
-        item.prompt_contract.write_back
-    );
-    // The target-bearing command must be runnable as-is: `loom journey prompt`
-    // takes exactly one intent argument, so it must end at the intent id (a
-    // name containing `;` or a newline must not split the write_back).
-    assert!(
-        item.prompt_contract
-            .write_back
-            .contains(&format!("loom journey prompt '{}';", intent.id)),
-        "the closure names the intent in a runnable command: {}",
-        item.prompt_contract.write_back
-    );
+    assert_eq!(item.target.id, journey.id);
+    assert!(item.prompt_contract.write_back.contains("journey compile"));
+    assert!(item.prompt_contract.write_back.contains("journey run"));
+    assert!(item.prompt_contract.write_back.contains(&journey.id));
+    drop(store);
 
-    // Executing the advertised closure must REMOVE this packet from the
-    // queue. The closure is target-bound: ground the behavior, give it a
-    // verifying test that calls the grounded symbol (the S3 call witness),
-    // author a journey spec whose steps name the intent AND run the grounded
-    // verifier (`cargo test --test behavior_test`), register it (`loom
-    // journey add`), run it (`loom journey run`), and re-grade (`loom sync`).
-    // Grounding is added WITHOUT sync so the fixture's S2 proof keeps its
-    // stored grade — the journey run genuinely exercises the code the witness
-    // is claimed from, and only the journey validation re-grades to S3.
-    drop(store); // release the fixture's write lock so CLI commands can open the graph
-    std::fs::write(
-        tmp.path().join("Cargo.toml"),
-        "[package]\nname = \"loom-fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\nname = \"loom_fixture\"\npath = \"src/behavior.rs\"\n",
-    )
-    .unwrap();
-    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
-    std::fs::write(
-        tmp.path().join("src/behavior.rs"),
-        "pub fn perform_behavior() -> &'static str {\n    \"ok\"\n}\n",
-    )
-    .unwrap();
-    std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
-    std::fs::write(
-        tmp.path().join("tests/behavior_test.rs"),
-        "use loom_fixture::perform_behavior;\n#[test]\nfn exercises_behavior() {\n    \
-         assert_eq!(perform_behavior(), \"ok\");\n}\n",
-    )
-    .unwrap();
-    std::fs::create_dir_all(tmp.path().join("journeys")).unwrap();
-    let spec = tmp.path().join("journeys/checkout-flow.yaml");
-    std::fs::write(
-        &spec,
-        "journey: checkout-flow\nsteps:\n  - name: run the verifier\n    intent: users can check out\n    \
-         run: cargo test --test behavior_test\n    expect:\n      stdout_contains: [\"test result: ok\"]\n",
-    )
-    .unwrap();
-    let mut cmds: Vec<Command> = vec![
-        Command::Codefile {
-            cmd: CodefileCmd::Add {
-                path: "src/behavior.rs".into(),
-                observed: false,
-            },
-        },
-        Command::Edge {
-            cmd: EdgeCmd::Implement {
-                intent: "users can check out".into(),
-                codefile: "src/behavior.rs".into(),
-                locator: Some("fn perform_behavior".into()),
-                role: Some("realizes".into()),
-            },
-        },
-        Command::Codefile {
-            cmd: CodefileCmd::Add {
-                path: "tests/behavior_test.rs".into(),
-                observed: false,
-            },
-        },
-        Command::Edge {
-            cmd: EdgeCmd::Implement {
-                intent: "users can check out".into(),
-                codefile: "tests/behavior_test.rs".into(),
-                locator: None,
-                role: Some("verifies".into()),
-            },
-        },
-        Command::Journey {
-            cmd: JourneyCmd::Add { spec: spec.clone() },
-        },
-        Command::Journey {
-            cmd: JourneyCmd::Run {
-                spec,
-                base_url: None,
-            },
-        },
-    ];
-    for cmd in cmds.drain(..) {
-        loom::commands::run(Cli {
-            graph: Some(tmp.path().to_path_buf()),
-            json: false,
-            command: Some(cmd),
-        })
-        .unwrap();
+    for args in [
+        vec!["journey", "compile", "checkout-flow", "--profile", "proof"],
+        vec!["journey", "run", "checkout-flow", "--profile", "proof"],
+        vec!["sync"],
+    ] {
+        let output = loom_command()
+            .arg("--graph")
+            .arg(tmp.path())
+            .args(&args)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "loom {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     let store = Store::open(tmp.path()).unwrap();
-    // The advertised closure must have earned the bar: the registered journey
-    // validation is a passing S3-or-stronger proof of this intent (loom ran
-    // it, its spec asserts output/content, and its call closure reaches the
-    // grounded behavior). Sync derives the strength from those facts.
-    loom::sync::run(&store, tmp.path()).unwrap();
-    let journey = store
-        .resolve_node("checkout-flow", Some(NodeType::Validation))
+    let validation = store
+        .resolve_node("journey:checkout-flow:proof", Some(NodeType::Validation))
         .unwrap();
-    assert_eq!(
-        journey.status, "passed",
-        "the closure's journey run must pass"
-    );
+    assert_eq!(validation.status, "passed");
     assert!(
-        loom::proofstrength::of(&store, &journey.id).unwrap()
-            >= loom::proofstrength::Strength::END_TO_END,
-        "the journey proof registered by the closure must reach S3"
+        loom::proofstrength::of(&store, &validation.id).unwrap()
+            >= loom::proofstrength::Strength::END_TO_END
     );
-
     let after = workitem::next(&store, Some(Lane::Validate)).unwrap();
-    if let Some(w) = after {
-        assert_ne!(
-            w.target.id, intent.id,
-            "executing the advertised closure must remove the journey-gap packet: {}",
-            w.prompt_contract.write_back
-        );
-    }
+    assert!(
+        after
+            .as_ref()
+            .is_none_or(|work| work.target.id != journey.id),
+        "executing the advertised closure must remove the Journey gap: {after:#?}"
+    );
 }

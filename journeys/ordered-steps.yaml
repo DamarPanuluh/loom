@@ -1,30 +1,30 @@
-journey: loom serves ordered steps in order
+schema: loom.journey/v1
+id: ordered-steps
+name: Serve ordered work in readiness order
+actor: operator
+goal: A later behavior remains blocked until the behavior it follows has been realized.
+inputs: {}
+preconditions:
+- Checkout follows adding an item to a cart, and neither behavior has yet been realized.
 steps:
-  - name: the earlier step is served and the later one is blocked by name
-    fixture: true
-    intent: ordered steps are served in order, one readiness gate not a task list
-    # A three-step flow in a throwaway graph, nothing built. The lane must hand
-    # back step one, not whichever intent sorts first.
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'add to cart' --description 'an item lands in the cart' &&
-      loom intent add --graph "$tmp" --name 'checkout' --description 'the cart becomes an order' &&
-      loom edge relate --graph "$tmp" sequence 'checkout' 'add to cart' &&
-      loom next --graph "$tmp" --mode build; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains: ["[build] add to cart"]
-
-  - name: building the earlier step releases the later one
-    fixture: true
-    intent: ordered steps are served in order, one readiness gate not a task list
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'add to cart' --description 'an item lands in the cart' &&
-      loom intent add --graph "$tmp" --name 'checkout' --description 'the cart becomes an order' &&
-      loom edge relate --graph "$tmp" sequence 'checkout' 'add to cart' &&
-      loom intent update --graph "$tmp" 'add to cart' --lifecycle implemented --reason 'built the cart' &&
-      loom next --graph "$tmp" --mode build; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains: ["[build] checkout"]
+- id: request-work-before-prerequisite
+  name: Request Work Before Prerequisite
+  action: Ask for build work while both ordered behaviors remain unrealized.
+  expects:
+  - Loom serves add-to-cart and keeps checkout blocked by name.
+  produces: {}
+- id: realize-earlier-behavior
+  name: Realize Earlier Behavior
+  action: Realize the add-to-cart behavior.
+  expects: []
+  produces: {}
+- id: request-work-after-prerequisite
+  name: Request Work After Prerequisite
+  action: Ask for build work again.
+  expects:
+  - Loom serves checkout after the earlier behavior is realized.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

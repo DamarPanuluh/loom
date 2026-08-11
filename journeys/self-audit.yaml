@@ -1,40 +1,40 @@
-journey: the self-audit reports what it finds
+schema: loom.journey/v1
+id: self-audit
+name: Audit Loom's own record for falsifiability
+actor: operator
+goal: The audit distinguishes a clean record from a deliberately seeded judgment burst
+  and explains how to repair findings.
+inputs: {}
+preconditions:
+- One graph contains no audit findings.
+- Another graph contains a fast batch of judgments covered by one prior human decision
+  over the exact presented subject set.
+- Another graph contains a deliberately seeded burst of similarly timed judgments.
 steps:
-  # This step used to assert exit 1 against loom's OWN graph — it proved the
-  # audit works by requiring this repo to be unhealthy, so clearing the last
-  # finding broke the proof. A check that only passes while you are broken is
-  # not a check. The behavior has two halves, and each is now asserted directly.
-  - name: a clean graph is reported as clean
-    intent: loom can fail its own falsifiability check
-    run: "loom audit --json"
-    expect:
-      exit_code: 0
-      # An empty finding set, not a silent success.
-      stdout_contains: ["[]"]
-
-  - name: a seeded defect is detected, named, and exits non-zero
-    fixture: true
-    intent: loom can fail its own falsifiability check
-    # Seed the very signature the audit exists to catch — a judgment burst —
-    # in a throwaway graph, then require the audit to find it. Detection is
-    # proven against a defect loom created on purpose, so the assertion holds
-    # whatever state this repository happens to be in.
-    #
-    # Every line sits at one indent level: a folded scalar keeps the newline on
-    # any MORE-indented line, which would split a command in half.
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      printf 'pub fn a() {}\n' > "$tmp/f.rs" &&
-      loom codefile add --graph "$tmp" f.rs &&
-      for n in 1 2 3 4 5 6 7 8 9 10 11; do
-      loom finding add --graph "$tmp" "finding $n" --source code_audit --kind code_audit --file f.rs --evidence 'f.rs:1 — observed' --impact 'matters' --confidence 0.8 || exit 1;
-      done &&
-      loom finding list --graph "$tmp" --json | python3 -c "import json,sys;[print(i['node']['id']) for i in json.load(sys.stdin)]" > "$tmp/ids" &&
-      while read -r id; do
-      loom finding verdict --graph "$tmp" "$id" justified --reason 'checked it' --evidence 'f.rs:1' || exit 1;
-      done < "$tmp/ids" &&
-      loom audit --graph "$tmp" --json; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 1
-      # Named, with a remedy — an audit that only accuses is a scoreboard.
-      stdout_contains: ["kind", "detail", "judgment_burst", "remedy"]
+- id: audit-clean-graph
+  name: Audit Clean Graph
+  action: Audit the clean graph.
+  expects:
+  - Loom explicitly reports an empty finding set and a successful audit.
+  produces: {}
+- id: audit-authorized-batch
+  name: Audit Authorized Batch
+  action: Audit the graph after a human approves a presented table of judgments as one
+    batch and an LLM records the covered writes.
+  expects:
+  - Loom recognizes the prior hash-bound human batch authorization and does not report
+    the covered fast judgments as a suspicious burst.
+  - Any extra or changed judgment outside the exact approved set remains unauthorised
+    and is reported.
+  produces: {}
+- id: audit-defective-graph
+  name: Audit Defective Graph
+  action: Audit the graph containing the seeded judgment burst.
+  expects:
+  - Loom reports the judgment burst by kind and detail, supplies a remedy, and marks
+    the audit unsuccessful.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

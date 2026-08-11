@@ -1,0 +1,59 @@
+schema: loom.journey/v1
+id: semantic-commit-recommendation
+name: Recommend a semantic commit checkpoint
+actor: autonomous worker
+goal: Receive an evidence-backed Git commit recommendation for one implemented Intent
+  or cohesive bundle, decide autonomously whether that local checkpoint improves repository
+  history, and leave publication under explicit human control.
+inputs: {}
+preconditions:
+- One accepted Intent or cohesive Intent bundle has been implemented in a Git worktree.
+- The working tree contains changes that may form a cohesive semantic checkpoint.
+steps:
+- id: inspect-checkpoint-readiness
+  name: Inspect Checkpoint Readiness
+  action: Ask Loom to inspect the completed work for semantic checkpoint readiness.
+  expects:
+  - Loom recommends a checkpoint only when one implemented Intent or one semantically
+    connected bundle explains every included change, every relevant recorded test is
+    currently passing, repository structure is synchronized, doctor reports no integrity
+    issue, and the current portable graph export matches the live graph.
+  - Any unmet or ambiguous condition blocks the recommendation with concrete reasons;
+    neither file count nor change count can make a scope ready, and unrelated dirty paths
+    are explicitly excluded.
+  produces: {}
+- id: review-commit-recommendation
+  name: Review Commit Recommendation
+  action: Review the proposed Git history checkpoint before deciding whether to create
+    it.
+  expects:
+  - The recommendation states the selected Intent scope and rationale, every included
+    file, every check and observed outcome, and a suggested commit message.
+  - The recommendation describes a Git history checkpoint as evidence of the completed
+    work without treating the commit as Loom truth.
+  produces: {}
+- id: decide-commit-checkpoint
+  name: Decide Commit Checkpoint
+  action: Decide whether the recommendation improves historical tracing and regression
+    bisecting, and create the exact checkpoint when it does.
+  expects:
+  - The autonomous worker may commit or defer without interrupting the human.
+  - A commit stages only the exact recommended paths, excludes unrelated changes, uses the
+    suggested semantic message, and remains local.
+  - Ambiguous ownership or overlapping user changes cause the worker to defer rather than
+    guess.
+  produces: {}
+- id: request-push-decision
+  name: Request Push Decision
+  action: If publishing the local checkpoint would be useful, present the exact push scope
+    and recommendation to the human.
+  expects:
+  - No push occurs without an explicit human decision covering the repository, remote,
+    branch, and local commit being published.
+  - A refusal or missing answer leaves the checkpoint local without treating publication as
+    approved.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

@@ -1,13 +1,23 @@
-journey: wantedness is not presumed
+schema: loom.journey/v1
+id: wantedness
+name: Do not infer wantedness from technical evidence
+actor: operator
+goal: Implementation, usage, and proof may demonstrate that a behavior exists, but
+  only explicit conversational human authority establishes that it is wanted.
+inputs: {}
+preconditions:
+- A named Intent has implementation or proof evidence but no local human decision
+  establishing wantedness.
 steps:
-  - name: an intent with no evidence reports unratified
-    fixture: true
-    intent: wantedness is earned from evidence, not demanded up front
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'unspoken behavior' --description 'nobody has approved it' --level feature &&
-      loom intent show --graph "$tmp" 'unspoken behavior' --json &&
-      rm -rf "$tmp"
-    expect:
-      exit_code: 0
-      stdout_contains: ['"ratification": "unratified"']
+- id: inspect-behavior-wantedness
+  name: Inspect Behavior Wantedness
+  action: Inspect the behavior's wantedness state.
+  expects:
+  - Loom reports the behavior as unratified while preserving its technical evidence
+    as a separate claim.
+  - Loom does not convert code, usage, validation, or proof strength into human approval.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

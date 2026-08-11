@@ -1,0 +1,255 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "proof-strength",
+  "journey_hash": "f63b04309c995783",
+  "surface": {
+    "id": "proof-strength-validation-cli",
+    "title": "Observed proof-strength grading",
+    "identity": "loom validation",
+    "codefile": "src/commands/proof_cmd.rs",
+    "locator": "validation",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "validation",
+          "show",
+          "journey proof strength liveness only"
+        ],
+        "id": "inspect-derived-proof-strength",
+        "output": {
+          "assertions": [
+            {
+              "equals": "journey proof strength liveness only",
+              "id": "inspect-proof-name",
+              "pointer": "/name",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "inspect-proof-passed",
+              "pointer": "/status",
+              "type": "string"
+            },
+            {
+              "equals": "test",
+              "id": "inspect-proof-type",
+              "pointer": "/body/type",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "inspect-proof-command",
+              "pointer": "/body/command",
+              "type": "string"
+            },
+            {
+              "equals": "d5d5f7c3f72ea9c1175ee6b21b42f499",
+              "id": "inspect-target-intent",
+              "pointer": "/validates/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "S1",
+              "id": "inspect-derived-grade-s1",
+              "pointer": "/strength/grade",
+              "type": "string"
+            },
+            {
+              "equals": "validation-specific-v2",
+              "id": "inspect-witness-model",
+              "pointer": "/strength/witness_model",
+              "type": "string"
+            },
+            {
+              "equals": true,
+              "id": "inspect-ran-and-passed",
+              "pointer": "/strength/ran_and_passed",
+              "type": "boolean"
+            },
+            {
+              "equals": 0,
+              "id": "inspect-zero-content-assertions",
+              "pointer": "/strength/content_assertions",
+              "type": "integer"
+            },
+            {
+              "exists": false,
+              "id": "inspect-no-observed-assertions",
+              "pointer": "/strength/observed_assertions"
+            },
+            {
+              "exists": false,
+              "id": "inspect-no-authored-strength",
+              "pointer": "/body/strength"
+            },
+            {
+              "exists": false,
+              "id": "inspect-no-authored-proof-level",
+              "pointer": "/body/proof_level"
+            },
+            {
+              "contains": "assert something about the OUTPUT",
+              "id": "inspect-next-needs-output-assertion",
+              "pointer": "/strength/next",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect the observed proof and explain its derived liveness-only grade"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "validation",
+          "add",
+          "--name",
+          "journey proof strength liveness only",
+          "--type",
+          "test",
+          "--command",
+          "loom whoami --json",
+          "--intent",
+          "d5d5f7c3f72ea9c1175ee6b21b42f499"
+        ],
+        "id": "register-liveness-only-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": "journey proof strength liveness only",
+              "id": "setup-validation-name",
+              "pointer": "/validation/name",
+              "type": "string"
+            },
+            {
+              "equals": "not_run",
+              "id": "setup-validation-not-run",
+              "pointer": "/validation/status",
+              "type": "string"
+            },
+            {
+              "equals": "test",
+              "id": "setup-validation-type",
+              "pointer": "/validation/body/type",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "setup-validation-command",
+              "pointer": "/validation/body/command",
+              "type": "string"
+            },
+            {
+              "equals": "d5d5f7c3f72ea9c1175ee6b21b42f499",
+              "id": "setup-target-intent",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "implemented",
+              "id": "setup-target-implemented",
+              "pointer": "/intent/status",
+              "type": "string"
+            },
+            {
+              "equals": "validates",
+              "id": "setup-validates-edge",
+              "pointer": "/edge/kind",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Register one runnable proof with no behavioral assertion in the isolated graph snapshot"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "validation",
+          "run",
+          "journey proof strength liveness only"
+        ],
+        "id": "run-liveness-only-proof",
+        "output": {
+          "assertions": [
+            {
+              "exists": false,
+              "id": "run-one-proof",
+              "pointer": "/ran/1"
+            },
+            {
+              "equals": "journey proof strength liveness only",
+              "id": "run-proof-name",
+              "pointer": "/ran/0/name",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "run-proof-passed",
+              "pointer": "/ran/0/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom whoami --json",
+              "id": "run-proof-command",
+              "pointer": "/ran/0/command",
+              "type": "string"
+            },
+            {
+              "equals": 1,
+              "id": "run-summary-passed",
+              "pointer": "/summary/passed",
+              "type": "integer"
+            },
+            {
+              "equals": 0,
+              "id": "run-summary-failed",
+              "pointer": "/summary/failed",
+              "type": "integer"
+            },
+            {
+              "equals": 0,
+              "id": "run-summary-blocked",
+              "pointer": "/summary/blocked",
+              "type": "integer"
+            },
+            {
+              "equals": 0,
+              "id": "run-summary-skipped",
+              "pointer": "/summary/skipped",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Run the registered liveness-only proof and record the observed passing outcome"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "register-liveness-only-proof"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "run-liveness-only-proof",
+      "step_id": "run-liveness-proof"
+    },
+    {
+      "operation_id": "inspect-derived-proof-strength",
+      "step_id": "inspect-derived-strength"
+    }
+  ]
+}

@@ -10,9 +10,11 @@ Long-running LLM codebase work fails when context is only conversational. Decisi
 
 `loom` makes the working model explicit:
 
+- **Journey** — the authored user or operator flow that roots downstream work.
 - **Intent** — what the code is supposed to do.
 - **CodeFile** — where behavior lives.
 - **Validation** — how behavior is proven.
+- **InterfaceSurface** — the real repository seam through which a Journey is exercised.
 - **QualityRule** — what good looks like.
 - **Edge** — the typed claim connecting those facts.
 - **Fact** — the asserted state of a claim, and the evidence anchoring it.
@@ -56,10 +58,11 @@ false*.
 
 ## Current feature spine
 
+- **Journey-root delivery:** a strict `loom.journey/v1` artifact states actors, ordered semantic actions, and expected outcomes without implementation or transport detail. `loom journey derive` proposes the smallest falsifiable technical Intents; a human accepts the exact hash-bound mapping with `derive-accept`; `loom journey surface` describes the structured target-repository CLI contract; and `compile` plus `run` prove the accepted Journey through that real surface. A Journey is the root. Intents, code, surface, and proof are projections of it.
 - **External diagnostics:** `loom scan add/list/remove/run` wraps any language's linter, type-checker, or custom diagnostic command. GCC-style `file:line[:col]: message` output works by default, as do two-line diagnostics (a bare `file:line[:col]` location line with the message on the immediately following line, as svelte-check emits); custom named-group regex maps (`file`, `line`, optional `msg`, `code`) are supported and stay strictly per-line. `--format json` consumes JSON/JSONL finding arrays instead (pulse, qualirs, and similar tools), with `field=path` lookups, dotted paths, and `items=<path>` for envelope objects. Parsed diagnostics become derived findings and converge on re-run when diagnostics disappear.
 - **Pattern pre-screening:** seeded quality packs can carry regex `patterns[]`. Quality packets embed computed `pre_screened_hits` (`path`, `line`, `pattern`, `excerpt`) at packet-build time so the LLM can confirm or refute every candidate before writing the verdict.
 - **Definition-of-Complete:** `loom completeness [intent]` scores user-visible feature intents across scenarios, prerequisites, boundary, proof, journey, and questions. `loom next --mode elaborate` serves the most-incomplete feature, tells the LLM to explain that a partial idea is enough, fills inferable gaps, and engages the user one plain-language product question at a time for decisions only they can make.
-- **Scenario families:** `loom intent add/set --aspect happy|sad|fallback|edge_case` plus `scenario-of` edges model happy paths, sad paths, fallbacks, and edge cases without inventing a separate scenario node type.
+- **Scenario families:** `loom intent add/update --aspect happy|sad|fallback|edge_case` plus `scenario-of` edges model happy paths, sad paths, fallbacks, and edge cases without inventing a separate scenario node type.
 - **Question loop:** product questions are captured with `loom question add "..." --intent <intent>` and surface through `loom session` / `graph_state.open_questions` for batched human answers. Evidence-backed observations use `loom finding add`, not the inbox.
 - **Cheap residue routing:** work packets carry `routing_hint` (`mechanical` | `judgment`) and sync grades `cheap re-confirm` vs full re-inspection; orchestrators may batch-reaffirm mechanical items via `loom apply` verdicts.
 - **Cold-start assist:** `loom bootstrap suggest` drafts a Proposal of planned pillar intents from codefiles/tests/README (never auto-verdicts).
@@ -105,7 +108,53 @@ Initialize a graph in a repository:
 loom init .
 ```
 
-Map code and behavior:
+Author behavior first as a semantic Journey:
+
+```yaml
+schema: loom.journey/v1
+id: checkout
+name: Complete checkout
+actor: shopper
+goal: Purchase a selected product and receive an accepted order.
+inputs:
+  sku:
+    type: string
+    description: The product selected by the shopper.
+preconditions:
+  - The product is available to purchase.
+steps:
+  - id: choose-product
+    name: Choose product
+    action: Choose a product to purchase.
+    expects: []
+    produces: {}
+  - id: confirm-order
+    name: Confirm order
+    action: Confirm the order.
+    expects:
+      - The shopper receives an accepted order with a stable receipt identifier.
+    produces:
+      receipt:
+        type: string
+        description: The stable receipt identifier for the accepted order.
+profiles:
+  proof:
+    inputs:
+      sku:
+        template: sku-1
+    workspace: {}
+```
+
+Register the authored root, then inspect the proposed technical projection:
+
+```bash
+loom journey add journeys/checkout.yaml
+loom journey derive checkout
+```
+
+`derive` is read-only. Its only acceptable projection is a strict `loom.journey-derivation/v1` JSON manifest: it names `proposal_id`, `proposal_rationale`, explicit `create` or `reuse` operations for each Intent, each new Intent's falsifiable `criterion`, per-entry `rationale`, stable `step_ids`, declared relationships, and `unresolved_question`. Review one conversational hash-table batch of that exact manifest with the human; only their exact answer authorizes `derive-accept`. Acceptance creates an adopted Proposal, reconciles the declared relationships, and is idempotent when the identical hash is replayed. After the accepted Intents are implemented and grounded, `loom journey surface checkout` emits the contract for a real CLI in the target repository. Loom does not generate that source.
+
+Map accepted behavior to code with the ordinary grounding primitives:
 
 ```bash
 loom intent add \
@@ -130,6 +179,17 @@ loom validation add \
   --command "cargo test checkout_captures_payment" \
   --intent "checkout captures payment"
 ```
+
+Ordinary validations prove individual Intents. A Journey proof is compiler-owned instead:
+
+```bash
+loom journey surface checkout
+loom journey surface-accept checkout --manifest checkout.surface.json
+loom journey compile checkout --profile proof
+loom journey run checkout --profile proof
+```
+
+The surface manifest contains structured argv, typed arguments, step bindings, and JSON output—not executable strings. `surface-accept` is appropriate only after the corresponding real CLI source exists and is registered.
 
 Drive the loop:
 
@@ -163,6 +223,7 @@ welcome     Plain-English orientation (also the bare `loom` default)
 init        Initialize a graph store
 intent      Intent commands
 codefile    CodeFile commands
+checkpoint  Read-only semantic Git checkpoint recommendation
 export      Write loom.graph.json
 import      Restore from loom.graph.json
 apply       Apply one atomic batch of mutations from a JSON/YAML file
@@ -202,7 +263,7 @@ coverage    Vertical-spine coverage report
 ignore      Coverage exclusion commands
 whoami      Write authority + self-declared executor provenance report
 proposal    Proposal capture and item adoption
-journey     Journey proof, coverage, and invariant commands
+journey     Authored Journey roots and their derivation, surface, compile, and proof lifecycle
 drive       Interactive, journaled human drive session (or freeze one)
 hook        Install/remove local git hooks keeping the structural plane fresh
 decide      Record a decision as a REVERSAL (what was chosen, rejected, why)
@@ -320,6 +381,22 @@ loom export
 loom export --check
 ```
 
+After one implemented Intent or cohesive bundle is proven and synchronized,
+inspect the exact local history checkpoint Loom can justify:
+
+```bash
+loom checkpoint recommend --intent <intent> [--intent <intent> ...]
+```
+
+The command is read-only. It reports included and excluded dirty paths,
+current validation/sync/doctor/export checks, scope rationale, and a suggested
+message. Loom never stages, commits, or pushes. An acting LLM may create or
+defer the exact local commit without interrupting the human, but must stage only
+the reported paths (never `git add -A`) and defer on ambiguous or user-owned
+overlap. Publishing remains separate: push requires an explicit human decision
+bound to the current repository, remote, branch, and commit; silence or drift
+leaves the commit local.
+
 If you wire this into a user-created pre-commit hook, keep the hook defensive: prefer `loom export --check`, and feature-detect any optional command before invoking it (older loom binaries may not have newer surfaces such as `loom wiki` or `loom graph`).
 
 ## Documentation map
@@ -354,6 +431,8 @@ candidate-file proposal from a single sentence of intent, the call graph and
 `loom impact`, proof runs that loom performs itself, pattern scans that make an
 absence checkable, and evidence expiry that re-opens claims when code moves.
 
+**Breaking in 0.30.0.** On-disk schema v12 establishes Journey-root semantics and deliberately refuses older SQLite graphs and exports. There is no compatibility migration because translating executable proof specs into authored meaning would fabricate product judgment. Rebuild with `loom init`, register code, use `loom bootstrap suggest` for repository clues, author `loom.journey/v1` roots, then use `loom journey derive` and obtain the required human decisions.
+
 **Not yet done.** The remaining open work is tracked in the graph itself —
 `loom status --json` is the honest map (rungs unmet, queue depths). As of the
 0.28 cut: all six anchor floors are live (proof, quality, the locator probe,
@@ -363,7 +442,7 @@ sync-ripple rewrite (`reverify_all`) are shipped and exercised by the ring
 tests. What remains is the ordinary backlog a living graph accumulates: the
 repo's own `triage` and `prove` lanes carry the structural refactors
 (oversized `src/workitem/queues.rs`, `src/scan.rs`, …) and the journey proofs
-not yet at S3. Sync ripple under real edits, the quality lane, and journeys have
+not yet at S3. Sync ripple under real edits, the quality lane, and Journey-root delivery have
 not been exercised on foreign code.
 
 Treat the staged constants and the module headers as the honest map: each says

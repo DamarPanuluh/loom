@@ -1,0 +1,310 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "ratify-guard",
+  "journey_hash": "cde4602aaa164884",
+  "surface": {
+    "id": "ratify-guard-transcript-cli",
+    "title": "Refuse unmediated ratification",
+    "identity": "loom mcp transcript --requests-json",
+    "codefile": "src/mcp.rs",
+    "locator": "transcript",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"intent\",\"show\",\"ratify guard surface fixture behavior\",\"--json\"]}}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"intent\",\"ratify\",\"ratify guard surface fixture behavior\",\"--evidence\",\"automated worker supplied technical evidence without a human answer\",\"--json\"]}}},{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"intent\",\"show\",\"ratify guard surface fixture behavior\",\"--json\"]}}},{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"ping\",\"params\":{}}]",
+          "--json"
+        ],
+        "id": "attempt-unmediated-ratification",
+        "output": {
+          "assertions": [
+            {
+              "equals": "json-rpc-2.0",
+              "id": "attempt-protocol",
+              "pointer": "/protocol",
+              "type": "string"
+            },
+            {
+              "equals": 5,
+              "id": "attempt-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 5,
+              "id": "attempt-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "attempt-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": 1,
+              "id": "attempt-initialize-id",
+              "pointer": "/responses/0/id",
+              "type": "integer"
+            },
+            {
+              "equals": 2,
+              "id": "attempt-prestate-response-id",
+              "pointer": "/responses/1/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "attempt-prestate-tool-succeeded",
+              "pointer": "/responses/1/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\\\"ratification\\\": \\\"unratified\\\"",
+              "id": "attempt-prestate-unratified",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "attempt-refusal-response-id",
+              "pointer": "/responses/2/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "attempt-observer-tool-succeeded",
+              "pointer": "/responses/2/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "attempt-was-observed",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"command\": \"loom intent ratify 'ratify guard surface fixture behavior' --evidence 'automated worker supplied technical evidence without a human answer' --json\"",
+              "id": "attempt-command-has-no-answer",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 1",
+              "id": "attempt-refused-nonzero",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"stderr_excerpt\": \"error: INV-8 / finding 62b197cc:",
+              "id": "attempt-stderr-inv8-finding",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "direct non-interactive ratification is indistinguishable from an LLM",
+              "id": "attempt-stderr-indistinguishable",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "obtain the human's answer through the host",
+              "id": "attempt-stderr-human-route",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": 4,
+              "id": "attempt-poststate-response-id",
+              "pointer": "/responses/3/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "attempt-poststate-tool-succeeded",
+              "pointer": "/responses/3/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\"exit_code\": 0",
+              "id": "attempt-poststate-show-exited-zero",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"ratification\\\": \\\"unratified\\\"",
+              "id": "attempt-poststate-still-unratified",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"ratified_by\\\": null",
+              "id": "attempt-poststate-no-ratifying-actor",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"ratified_at\\\": null",
+              "id": "attempt-poststate-no-ratification-time",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": 5,
+              "id": "attempt-ping-id",
+              "pointer": "/responses/4/id",
+              "type": "integer"
+            },
+            {
+              "equals": {},
+              "id": "attempt-ping-continuity",
+              "pointer": "/responses/4/result",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Observe refusal of an automated ratification attempt and confirm wantedness remains unchanged"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"intent\",\"add\",\"--name\",\"ratify guard surface fixture behavior\",\"--description\",\"A behavior eligible for ratification with no human answer\",\"--level\",\"feature\",\"--lifecycle\",\"planned\",\"--json\"]}}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"intent\",\"show\",\"ratify guard surface fixture behavior\",\"--json\"]}}}]",
+          "--json"
+        ],
+        "id": "seed-unratified-behavior",
+        "output": {
+          "assertions": [
+            {
+              "equals": "json-rpc-2.0",
+              "id": "setup-protocol",
+              "pointer": "/protocol",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "setup-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 3,
+              "id": "setup-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "setup-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": 1,
+              "id": "setup-initialize-id",
+              "pointer": "/responses/0/id",
+              "type": "integer"
+            },
+            {
+              "equals": "loom",
+              "id": "setup-server-name",
+              "pointer": "/responses/0/result/serverInfo/name",
+              "type": "string"
+            },
+            {
+              "equals": 2,
+              "id": "setup-add-response-id",
+              "pointer": "/responses/1/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "setup-add-tool-succeeded",
+              "pointer": "/responses/1/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "setup-add-observed",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 0",
+              "id": "setup-add-exited-zero",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"name\\\": \\\"ratify guard surface fixture behavior\\\"",
+              "id": "setup-added-fixture",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "setup-show-response-id",
+              "pointer": "/responses/2/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "setup-show-tool-succeeded",
+              "pointer": "/responses/2/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\\\"origin\\\": \\\"llm\\\"",
+              "id": "setup-origin-is-llm",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"ratification\\\": \\\"unratified\\\"",
+              "id": "setup-ratification-is-unratified",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"ratified_by\\\": null",
+              "id": "setup-no-ratifying-actor",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"ratified_at\\\": null",
+              "id": "setup-no-ratification-time",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Create and confirm an isolated unratified behavior without human authority"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "seed-unratified-behavior"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "attempt-unmediated-ratification",
+      "step_id": "attempt-automated-ratification"
+    }
+  ]
+}

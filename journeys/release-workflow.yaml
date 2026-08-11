@@ -1,0 +1,36 @@
+schema: loom.journey/v1
+id: release-workflow
+name: Prepare a release through fresh Journey-root gates
+actor: release operator
+goal: Prepare a local Loom release only after isolated Journey-root dogfood and repeatability gates succeed, while legacy graph state remains untouched and publication remains outside this Journey.
+inputs: {}
+preconditions:
+- A release candidate exists in a working tree that may also contain existing local graph state.
+steps:
+- id: verify-isolated-dogfood
+  name: Verify Isolated Dogfood
+  action: Verify the release candidate against a fresh Journey-root graph in isolation.
+  expects:
+  - The candidate is checked without reading, migrating, or changing the repository's existing graph.
+  - Legacy graph state is never treated as current Journey meaning or human approval.
+  - Missing Journey readiness or human authority blocks the gate instead of being skipped or fabricated.
+  produces: {}
+- id: verify-fresh-fixpoint
+  name: Verify Fresh Fixpoint
+  action: Rebuild the Journey-root release check from an independent empty workspace.
+  expects:
+  - The same candidate reaches the same ready result without relying on prior graph or build state.
+  - A nonempty or previously initialized workspace is rejected rather than reused.
+  produces: {}
+- id: prepare-gated-local-release
+  name: Prepare Gated Local Release
+  action: Prepare the requested local release only after both release checks succeed.
+  expects:
+  - No release file or local installation changes before both checks pass.
+  - A rehearsal runs the checks and exits without changing files or installing anything.
+  - This Journey neither creates a Git checkpoint nor publishes one; local checkpoint policy remains unchanged, and any push remains a separate explicit human decision.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

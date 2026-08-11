@@ -6,3 +6,7 @@
 # insta writes pending snapshots next to the source under test; they are
 # review scratch, never source.
 *.pending-snap
+
+# release rehearsals leave detached-candidate scratch here; the sandbox is
+# runtime residue, never source.
+.release-sandbox/

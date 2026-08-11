@@ -1,4 +1,4 @@
-//! Bootstrap suggest — cold-start Proposal of planned pillars.
+//! Bootstrap suggest — cold-start Proposal of semantic Journey clues.
 
 use loom::model::NodeType;
 use loom::store::Store;
@@ -54,7 +54,7 @@ fn loom_err(tmp: &Path, args: &[&str]) -> String {
 }
 
 #[test]
-fn bootstrap_suggest_creates_proposal_adopt_yields_planned_intent() {
+fn bootstrap_suggest_creates_clues_then_an_authored_journey_becomes_the_root() {
     let tmp = Tmp::new();
     tmp.write("src/auth.rs", "pub fn login() {}\n");
     tmp.write("tests/auth_flow.rs", "#[test] fn login_works() {}\n");
@@ -68,45 +68,58 @@ fn bootstrap_suggest_creates_proposal_adopt_yields_planned_intent() {
 
     let out = loom_ok(tmp.path(), &["bootstrap", "suggest", "--json"]);
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
-    let proposal_id = v["proposal"]["id"].as_str().unwrap().to_string();
     let n = v["candidates"].as_u64().unwrap();
     assert!(n >= 1, "expected at least one candidate: {out}");
 
     let items = v["proposal"]["body"]["items"].as_array().unwrap();
     assert!(!items.is_empty());
     assert_eq!(items[0]["status"], "open");
-    assert_eq!(items[0]["kind"], "intent");
+    assert_eq!(items[0]["kind"], "journey_clue");
 
-    loom_ok(
-        tmp.path(),
-        &[
-            "proposal",
-            "item",
-            "adopt",
-            &proposal_id,
-            "1",
-            "--as",
-            "intent",
-            "--name",
-            "users can sign in",
-            "--description",
-            "authentication succeeds before protected actions",
-        ],
+    tmp.write(
+        "journeys/sign-in.yaml",
+        concat!(
+            "schema: loom.journey/v1\n",
+            "id: sign-in\n",
+            "name: Users sign in\n",
+            "actor: user\n",
+            "goal: A user authenticates before protected actions.\n",
+            "inputs: {}\n",
+            "preconditions: []\n",
+            "steps:\n",
+            "  - id: authenticate\n",
+            "    name: Authenticate\n",
+            "    action: Authenticate with valid credentials\n",
+            "    expects:\n",
+            "      - Protected actions are available\n",
+            "    produces: {}\n",
+            "profiles:\n",
+            "  proof:\n",
+            "    inputs: {}\n",
+            "    workspace: {}\n",
+        ),
     );
+    let spec_path = tmp.path().join("journeys/sign-in.yaml");
+    let spec_arg = spec_path.to_string_lossy().into_owned();
+    loom_ok(tmp.path(), &["journey", "add", &spec_arg]);
 
     let store = Store::open(tmp.path()).unwrap();
-    let intents = store
-        .list_nodes(Some(NodeType::Intent), usize::MAX)
+    let journeys = store
+        .list_nodes(Some(NodeType::Journey), usize::MAX)
         .unwrap();
-    assert_eq!(intents.len(), 1);
-    assert_eq!(intents[0].status, "planned");
-    assert_eq!(intents[0].name, "users can sign in");
+    assert_eq!(journeys.len(), 1);
+    assert_eq!(journeys[0].status, "authored");
+    assert_eq!(journeys[0].name, "sign-in");
+    assert!(store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .is_empty());
     drop(store);
 
     let err = loom_err(tmp.path(), &["bootstrap", "suggest"]);
     assert!(
-        err.contains("non-empty intent graph") || err.contains("already exist"),
-        "expected refuse on non-empty intents: {err}"
+        err.contains("authored Journeys") || err.contains("Journey root"),
+        "expected refuse once a Journey root exists: {err}"
     );
 }
 

@@ -360,15 +360,8 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
             update_existing_locator = locator_changed;
         }
         if let Some(loc) = &g.locator {
-            if role == GroundingRole::Realizes
-                && !crate::runner::grounding_locator_resolves(store.root(), &codefile.name, loc)
-            {
-                bail!(
-                    "locator must resolve to a live symbol in '{}' (no match for '{}'); \
-                     use a symbol name, or 'module …' for whole-file scope",
-                    codefile.name,
-                    loc
-                );
+            if role == GroundingRole::Realizes || crate::locator::is_anchor_locator(loc) {
+                crate::locator::validate_for_codefile(store, &codefile, loc)?;
             }
         }
         let created = existing.is_none();

@@ -135,6 +135,32 @@ fn arguments_survive_the_shell() {
     let v = observe(tmp.path(), None, &["printf", "%s", "one; two 'three'"]);
     assert_eq!(v["observed"], true, "{v}");
     assert_eq!(v["exit_code"], 0, "the command ran as ONE argument: {v}");
+    assert_eq!(v["stdout_excerpt"], "one; two 'three'", "{v}");
+    assert_eq!(v["stderr_excerpt"], "", "{v}");
+}
+
+/// A non-zero observation remains an observed run, and its public envelope
+/// carries only the bounded excerpts already retained by the RunRecord. This
+/// lets structured callers distinguish an expected refusal from an
+/// infrastructure block without accepting a caller-supplied outcome.
+#[test]
+fn nonzero_observation_reports_bounded_stream_excerpts() {
+    let tmp = Tmp::new();
+    let _intent = graph(tmp.path());
+
+    let v = observe(
+        tmp.path(),
+        None,
+        &[
+            "sh",
+            "-c",
+            "printf 'bounded stdout'; printf 'bounded stderr' >&2; exit 7",
+        ],
+    );
+    assert_eq!(v["observed"], true, "{v}");
+    assert_eq!(v["exit_code"], 7, "the actual non-zero status is kept: {v}");
+    assert_eq!(v["stdout_excerpt"], "bounded stdout", "{v}");
+    assert_eq!(v["stderr_excerpt"], "bounded stderr", "{v}");
 }
 
 /// A run with a target binds to that behavior's proof and grades honestly:
@@ -319,7 +345,7 @@ fn an_untargeted_run_is_still_journaled() {
 ///
 /// The worst defect this command has had. `observe` held the graph's write
 /// lock across the child, so any child that also opens the graph — and loom's
-/// own journey proofs are all `loom journey run …` — blocked on its parent and
+/// compiled Journey profiles also settle through the graph — blocked on its parent and
 /// exited non-zero. That did not merely fail: it recorded a FALSE FAILING
 /// verdict against a behavior that passes, and the validate packet recommended
 /// exactly that form. A tool whose thesis is that nothing counts unless loom
@@ -329,8 +355,8 @@ fn observing_a_command_that_uses_loom_does_not_deadlock_on_its_own_lock() {
     let tmp = Tmp::new();
     let _intent = graph(tmp.path());
 
-    // The child opens the SAME graph for writing, exactly as `loom journey run`
-    // and `loom sync` do.
+    // The child opens the SAME graph for writing, exactly as compiled Journey
+    // settlement and `loom sync` do.
     let child = format!(
         "{} --graph {} sync",
         loom_bin().display(),

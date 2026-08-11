@@ -1,0 +1,316 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "ordered-steps",
+  "journey_hash": "01dff27404b6b1a9",
+  "surface": {
+    "id": "ordered-build-readiness-cli",
+    "title": "Ordered build readiness roster",
+    "identity": "loom",
+    "codefile": "src/commands.rs",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "next",
+          "--mode",
+          "build",
+          "--all"
+        ],
+        "id": "inspect-blocked-build-order",
+        "output": {
+          "assertions": [
+            {
+              "equals": "build",
+              "id": "before-mode-is-build",
+              "pointer": "/mode",
+              "type": "string"
+            },
+            {
+              "equals": 2,
+              "id": "before-two-items",
+              "pointer": "/count",
+              "type": "integer"
+            },
+            {
+              "equals": "bfdfe73447a2ce9bd3714d02af3a0e9e",
+              "id": "before-prerequisite-served-first",
+              "pointer": "/items/0/target/id",
+              "type": "string"
+            },
+            {
+              "equals": "enforce requires readiness",
+              "id": "before-prerequisite-named",
+              "pointer": "/items/0/target/name",
+              "type": "string"
+            },
+            {
+              "equals": "intent is planned and not yet realized",
+              "id": "before-prerequisite-actionable",
+              "pointer": "/items/0/reason",
+              "type": "string"
+            },
+            {
+              "equals": "2d16cabcf844b5d7f9dbd929c7da0f5c",
+              "id": "before-dependent-second",
+              "pointer": "/items/1/target/id",
+              "type": "string"
+            },
+            {
+              "equals": "the highest-priority asserted residue is selected",
+              "id": "before-dependent-named",
+              "pointer": "/items/1/target/name",
+              "type": "string"
+            },
+            {
+              "contains": "blocked: requires 'enforce requires readiness' (planned)",
+              "id": "before-dependent-blocked-by-name",
+              "pointer": "/items/1/reason",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "before-no-third-item",
+              "pointer": "/items/2"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "List build work while the prerequisite is unrealized and expose the blocked dependent by name"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "next",
+          "--mode",
+          "build",
+          "--all"
+        ],
+        "id": "inspect-released-build-order",
+        "output": {
+          "assertions": [
+            {
+              "equals": "build",
+              "id": "after-mode-is-build",
+              "pointer": "/mode",
+              "type": "string"
+            },
+            {
+              "equals": 1,
+              "id": "after-one-item",
+              "pointer": "/count",
+              "type": "integer"
+            },
+            {
+              "equals": "2d16cabcf844b5d7f9dbd929c7da0f5c",
+              "id": "after-dependent-served",
+              "pointer": "/items/0/target/id",
+              "type": "string"
+            },
+            {
+              "equals": "the highest-priority asserted residue is selected",
+              "id": "after-dependent-named",
+              "pointer": "/items/0/target/name",
+              "type": "string"
+            },
+            {
+              "equals": "intent is planned and not yet realized",
+              "id": "after-dependent-actionable",
+              "pointer": "/items/0/reason",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "after-no-second-item",
+              "pointer": "/items/1"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "List build work after realization and show that the dependent is now the sole actionable item"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "intent",
+          "update",
+          "2d16cabcf844b5d7f9dbd929c7da0f5c",
+          "--lifecycle",
+          "planned",
+          "--reason",
+          "Journey setup makes the dependent selector unrealized only in the isolated local snapshot"
+        ],
+        "id": "plan-dependent-selector",
+        "output": {
+          "assertions": [
+            {
+              "equals": "2d16cabcf844b5d7f9dbd929c7da0f5c",
+              "id": "setup-dependent-id",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "the highest-priority asserted residue is selected",
+              "id": "setup-dependent-name",
+              "pointer": "/intent/name",
+              "type": "string"
+            },
+            {
+              "equals": "planned",
+              "id": "setup-dependent-planned",
+              "pointer": "/intent/status",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Make the dependent next-work selector temporarily unrealized in the isolated snapshot"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "intent",
+          "update",
+          "bfdfe73447a2ce9bd3714d02af3a0e9e",
+          "--lifecycle",
+          "planned",
+          "--reason",
+          "Journey setup makes the readiness prerequisite unrealized only in the isolated local snapshot"
+        ],
+        "id": "plan-readiness-prerequisite",
+        "output": {
+          "assertions": [
+            {
+              "equals": "bfdfe73447a2ce9bd3714d02af3a0e9e",
+              "id": "setup-prerequisite-id",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "enforce requires readiness",
+              "id": "setup-prerequisite-name",
+              "pointer": "/intent/name",
+              "type": "string"
+            },
+            {
+              "equals": "planned",
+              "id": "setup-prerequisite-planned",
+              "pointer": "/intent/status",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Make the grounded readiness prerequisite temporarily unrealized in the isolated snapshot"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "mode",
+          "owned"
+        ],
+        "id": "prepare-owned-snapshot",
+        "output": {
+          "assertions": [
+            {
+              "equals": "owned",
+              "id": "setup-owned-mode",
+              "pointer": "/mode",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "setup-not-observed",
+              "pointer": "/observed",
+              "type": "boolean"
+            },
+            {
+              "id": "setup-mode-change-reported",
+              "pointer": "/changed",
+              "type": "boolean"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Establish an owned isolated graph snapshot for the ordered-work fixture"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "intent",
+          "update",
+          "bfdfe73447a2ce9bd3714d02af3a0e9e",
+          "--lifecycle",
+          "implemented",
+          "--reason",
+          "Journey step realizes the grounded readiness prerequisite only in the isolated local snapshot"
+        ],
+        "id": "realize-readiness-prerequisite",
+        "output": {
+          "assertions": [
+            {
+              "equals": "bfdfe73447a2ce9bd3714d02af3a0e9e",
+              "id": "realized-prerequisite-id",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "enforce requires readiness",
+              "id": "realized-prerequisite-name",
+              "pointer": "/intent/name",
+              "type": "string"
+            },
+            {
+              "equals": "implemented",
+              "id": "realized-prerequisite-implemented",
+              "pointer": "/intent/status",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Restore the grounded prerequisite to implemented so it becomes realized in the isolated snapshot"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-owned-snapshot",
+      "plan-readiness-prerequisite",
+      "plan-dependent-selector"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-blocked-build-order",
+      "step_id": "request-work-before-prerequisite"
+    },
+    {
+      "operation_id": "realize-readiness-prerequisite",
+      "step_id": "realize-earlier-behavior"
+    },
+    {
+      "operation_id": "inspect-released-build-order",
+      "step_id": "request-work-after-prerequisite"
+    }
+  ]
+}

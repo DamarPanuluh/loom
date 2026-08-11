@@ -1,0 +1,200 @@
+{
+  "bindings": [
+    {
+      "operation_id": "absorb-repository-state",
+      "step_id": "inspect-repository-work"
+    }
+  ],
+  "journey_hash": "193145a6b8c0667a",
+  "journey_id": "writes-graph",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "before_steps": {
+      "inspect-repository-work": [
+        {
+          "content": "//! Sync — the structural recompute and ripple engine.\n//!\n//! Plane: orchestration over the store. Sync is content-hash based:\n//! - re-extracts derived facets for files whose content changed,\n//! - ripples staleness to asserted edges that depended on a *real* change\n//!   (a file with a PRIOR hash that now differs — a missing prior hash is a\n//!   rebuild/first-extract, not a change, so it never falsely stales),\n//! - rebuilds the derived finding plane deterministically every run.\n//!\n//! This is the second half of INV-2: `store.wipe_derived()` then `sync` yields a\n//! byte-identical derived plane (deterministic ids + sentinel timestamps + a\n//! pure extraction), and ripples nothing because no prior hashes remain.\n\nuse crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};\nuse crate::store::Store;\nuse crate::Result;\nuse serde::Serialize;\nuse std::collections::BTreeSet;\nuse std::path::Path;\n\n/// Summary of one sync run.\n#[derive(Debug, Default, Clone)]\npub struct SyncReport {\n    pub files_scanned: usize,\n    pub files_changed: usize,\n    /// Registered files that previously had content and have now disappeared.\n    pub files_deleted: usize,\n    pub edges_staled: usize,\n    /// Realizing groundings NOT re-opened by a file change because the change\n    /// did not touch the symbol their locator names (and no cited evidence in\n    /// the file was rewritten) — the payoff of symbol-scoped staleness.\n    pub edges_spared: usize,\n    pub validations_reset: usize,\n    /// Evidence spans re-anchored to new coordinates (a move, not a rewrite) —\n    /// journaled as `evidence_reanchor`, no re-verdict demanded.\n    pub evidence_reanchored: usize,\n    /// Interface surfaces whose backing code changed this run (integration monitoring).\n    pub surfaces_affected: usize,\n    /// Contracts (validations exercising an affected surface) reset to `not_run`.\n    pub contracts_reset: usize,\n    pub findings: usize,\n    /// Wiki pages marked stale because a documented intent's meaning, code, or\n    /// proof drifted since the page was last recorded.\n    pub wiki_staled: usize,\n    pub missing: Vec<String>,\n}\n\n/// One strict source-anchor locator that a read-only sync preview can no\n/// longer resolve. The locator module owns syntax and cardinality policy; sync\n/// carries only the affected graph edge and the exact resolver error.\n#[derive(Debug, Clone, Serialize)]\npub struct AnchorStaleness {\n    pub edge_id: String,\n    pub edge_kind: EdgeKind,\n    pub codefile_id: String,\n    pub path: String,\n    pub locator: String,\n    pub cause: String,\n}\n\n/// Read-only answer to “would structural sync observe different repository\n/// state?”. It deliberately does not run derivers or write a freshness stamp.\n#[derive(Debug, Clone, Default, Serialize)]\npub struct SyncPreview {\n    pub fresh: bool,\n    pub changed_files: Vec<String>,\n    pub missing_files: Vec<String>,\n    pub unregistered_glob_matches: Vec<String>,\n    pub invalid_anchors: Vec<AnchorStaleness>,\n}\n\nimpl SyncPreview {\n    pub fn affected_paths(&self) -> Vec<String> {\n        let mut paths = self.changed_files.clone();\n        paths.extend(self.missing_files.iter().cloned());\n        paths.extend(self.unregistered_glob_matches.iter().cloned());\n        paths.extend(\n            self.invalid_anchors\n                .iter()\n                .map(|anchor| anchor.path.clone()),\n        );\n        paths.sort();\n        paths.dedup();\n        paths\n    }\n\n    pub fn evidence_lines(&self) -> Vec<String> {\n        if self.fresh {\n            return vec![\"registered repository content matches the synchronized graph\".into()];\n        }\n        let mut evidence = Vec::new();\n        evidence.extend(\n            self.changed_files\n                .iter()\n                .map(|path| format!(\"content changed since sync: {path}\")),\n        );\n        evidence.extend(\n            self.missing_files\n                .iter()\n                .map(|path| format!(\"registered file missing: {path}\")),\n        );\n        evidence.extend(\n            self.unregistered_glob_matches\n                .iter()\n                .map(|path| format!(\"remembered glob has unregistered file: {path}\")),\n        );\n        evidence.extend(self.invalid_anchors.iter().map(|anchor| {\n            format!(\n                \"anchor invalid on {} edge {} at {}: {}\",\n                anchor.edge_kind, anchor.edge_id, anchor.path, anchor.cause\n            )\n        }));\n        evidence.sort();\n        evidence\n    }\n}\n\n/// Inspect repository/sync drift without mutating graph or filesystem state.\n/// Both this preview and [`run`] consume the same strict anchor plan, keeping\n/// the definition of anchor freshness local to one implementation.\npub fn preview(store: &Store, root: &Path) -> Result<SyncPreview> {\n    let codefiles = store.codefiles()?;\n    let mut changed_files = Vec::new();\n    let mut missing_files = Vec::new();\n    let existing: BTreeSet<String> = codefiles.iter().map(|file| file.name.clone()).collect();\n\n    for file in &codefiles {\n        let path = root.join(&file.name);\n        let content = match std::fs::read_to_string(&path) {\n            Ok(content) if crate::fsglob::contains(root, &path) => content,\n            _ => {\n                missing_files.push(file.name.clone());\n                continue;\n            }\n        };\n        let current = crate::extract::fnv1a(&content);\n        let stored = store.get_facet(&file.id, TargetKind::Node, \"content_hash\")?;\n        if stored.as_deref() != Some(current.as_str()) {\n            changed_files.push(file.name.clone());\n        }\n    }\n\n    let ignored = crate::fsglob::matcher(store.ignore_globs()?)?;\n    let globs: Vec<String> = store\n        .get_meta(\"codefile_globs\")?\n        .map(|raw| serde_json::from_str(&raw))\n        .transpose()?\n        .unwrap_or_default();\n    let mut unregistered_glob_matches = Vec::new();\n    for glob in globs {\n        for path in crate::fsglob::expand(root, &glob)? {\n            if !existing.contains(&path) && !ignored.is_match(&path) {\n                unregistered_glob_matches.push(path);\n            }\n        }\n    }\n\n    changed_files.sort();\n    changed_files.dedup();\n    missing_files.sort();\n    missing_files.dedup();\n    unregistered_glob_matches.sort();\n    unregistered_glob_matches.dedup();\n    let invalid_anchors = plan_anchor_staleness(store)?;\n    let fresh = changed_files.is_empty()\n        && missing_files.is_empty()\n        && unregistered_glob_matches.is_empty()\n        && invalid_anchors.is_empty();\n    Ok(SyncPreview {\n        fresh,\n        changed_files,\n        missing_files,\n        unregistered_glob_matches,\n        invalid_anchors,\n    })\n}\n\n/// Run a full sync against the graph rooted at `root`. Orchestrates the\n/// registered code-seed derivers to recompute the derived plane, then ripples\n/// the artifact changes they report — the engine names no extraction type, so\n/// unplugging a deriver leaves this loop intact and rippling correctly.\npub fn run_gone_for_absorb(store: &Store, root: &Path) -> Result<SyncReport> {\n    let mut report = SyncReport::default();\n    let mut changed_paths: BTreeSet<String> = BTreeSet::new();\n    let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();\n    for deriver in crate::seed::sync_derivers() {\n        for change in deriver.derive(store, root, &mut report)? {\n            if let Some(node) = store.get_node(&change.artifact_id)? {\n                changed_paths.insert(node.name);\n            }\n            ripple_surface_contracts(\n                store,\n                &change.artifact_id,\n                &change.cause,\n                &mut seen_surfaces,\n                &mut report,\n            )?;\n        }\n    }\n    report.surfaces_affected = seen_surfaces.len();\n    ripple_compiled_journey_drift(store, &mut report)?;\n    // The re-verification pass. One question — \"does the thing this fact points\n    // at still say what it said?\" — asked of every anchor in the graph.\n    //\n    // This replaced a ~470-line decision table that asked a DIFFERENT question\n    // per edge kind: does a realizing grounding ripple to its intent, does that\n    // intent ripple to its relates edges, do those ripple one-sidedly or only\n    // when both endpoints moved, and so on. Every row of it was a hand-written\n    // guess at what a change could invalidate. Anchors make the guess\n    // unnecessary: a fact points at something, and either that thing still\n    // holds or it does not. Nothing has to know WHY it might not.\n    //\n    // Symbol-scoped sparing survives the deletion because it was never really\n    // about the ripple: a locator Run re-resolves its symbol, so an unrelated\n    // edit in the same file leaves it standing on its own.\n    //\n    // ORDER: this runs BEFORE the derived recomputes below (proof strength,\n    // ratification, wiki freshness, smell findings). Each of those READS edge\n    // and validation status — the very state this pass settles by re-opening a\n    // proof whose anchor broke. Grading first and re-opening after left the\n    // derived plane one sync stale (a proof graded S3 this run, demoted next),\n    // so a second sync produced a different graph — a fixpoint violation of\n    // INV-2. Settling status first makes one sync converge.\n    // Explicit dependency ripples above may already have moved an edge to\n    // `needs_reverification` before its evidence fact is rechecked here. The\n    // re-verifier reports demoted facts, so adding that raw count would count\n    // the same edge twice. Snapshot the settled boundary and count only edge\n    // IDs whose status actually transitions during this pass.\n    let stale_before_reverify: BTreeSet<String> = store\n        .list_edges(None, usize::MAX)?\n        .into_iter()\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\n        .map(|edge| edge.id)\n        .collect();\n    let pass = store.reverify_all(&changed_paths)?;\n    let stale_after_reverify: BTreeSet<String> = store\n        .list_edges(None, usize::MAX)?\n        .into_iter()\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\n        .map(|edge| edge.id)\n        .collect();\n    report.edges_staled += stale_after_reverify\n        .difference(&stale_before_reverify)\n        .count();\n    report.edges_spared += pass.spared;\n    report.validations_reset += pass.validations_reset;\n    report.evidence_reanchored += pass.reanchored;\n    ripple_validation_evidence_drift(store, &changed_paths, &mut report)?;\n    let anchor_staleness = plan_anchor_staleness(store)?;\n    apply_anchor_staleness(store, &anchor_staleness, &mut report)?;\n    // AFTER the pass, deliberately. The anchor machinery is more precise —\n    // it distinguishes a redefined symbol from a missing one and spares\n    // untouched groundings — so it gets first say, and this is the backstop\n    // for anchors it never re-checks at all: a locator whose verdict was\n    // settled on a cited span, which carries no locator Run to re-resolve.\n    // Running it first double-counted an edge both mechanisms would stale.\n    ripple_locator_drift(store, root, &mut report)?;\n    ripple_wiki_drift(store, &mut report)?;\n    // Grade every proof from its own shape. Derived, so it is recomputed here\n    // rather than trusted from whoever registered the validation — the string\n    // this replaced was supplied by the caller, and `loom journey add`\n    // hardcoded the top of the scale.\n    crate::proofstrength::recompute(store, root)?;\n    // Wantedness earned from evidence. Recomputed AFTER proof strength, which\n    // one of its three conjuncts reads.\n    crate::ratification::recompute(store)?;\n    rebuild_smell_findings(store, &mut report)?;\n    Ok(report)\n}\n\n/// Reset validations whose explicit Validation→CodeFile S3 entry surface\n/// changed. `exercises` is evidence provenance, not a verdict-bearing claim, so\n/// the validation itself is the state that expires.\nfn ripple_validation_evidence_drift(\n    store: &Store,\n    changed_paths: &BTreeSet<String>,\n    report: &mut SyncReport,\n) -> Result<()> {\n    let mut reset = BTreeSet::new();\n    let files_by_path: std::collections::BTreeMap<String, String> = store\n        .list_nodes(Some(NodeType::CodeFile), usize::MAX)?\n        .into_iter()\n        .map(|node| (node.name, node.id))\n        .collect();\n    for path in changed_paths {\n        let Some(file_id) = files_by_path.get(path) else {\n            continue;\n        };\n        for edge in store.edges_with(Some(EdgeKind::Exercises), None, Some(file_id))? {\n            if !reset.insert(edge.from_id.clone()) {\n                continue;\n            }\n            let was_run = store\n                .get_node(&edge.from_id)?\n                .is_some_and(|validation| validation.status != \"not_run\");\n            if was_run {\n                stale_validation_closure(\n                    store,\n                    &edge.from_id,\n                    &format!(\"validation evidence file '{}' changed\", path),\n                    false,\n                    report,\n                )?;\n            }\n        }\n    }\n    Ok(())\n}\n\n/// Reset the contracts that exercise an interface surface this file backs.\n///\n/// The one dependency in the graph that is NOT evidence: a contract does not\n/// cite the surface's backing code, it reaches it at run time through a `calls`\n/// edge. No anchor points there, so re-verification cannot see it, and it stays\n/// an explicit walk. Idempotent — a contract already at `not_run` is neither\n/// reset nor counted.\nfn ripple_surface_contracts(\n    store: &Store,\n    cf_id: &str,\n    cause: &str,\n    seen_surfaces: &mut BTreeSet<String>,\n    report: &mut SyncReport,\n) -> Result<()> {\n    // Integration-monitoring ripple: cf is the `to` of an `exposes` edge; the\n    // surface is its `from`. Reset the contracts that `call` each surface.\n    for ex_edge in store.edges_with(Some(EdgeKind::Exposes), None, Some(cf_id))? {\n        let surface_id = ex_edge.from_id;\n        if !seen_surfaces.insert(surface_id.clone()) {\n            continue; // already rippled via another changed file this run\n        }\n        for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&surface_id))? {\n            // Only a contract that was actually proven needs re-checking; one\n            // already at `not_run` is unchanged, so it is neither reset nor\n            // counted (avoids overstating \"need re-verification\").\n            let was_proven = store\n                .get_node(&call.from_id)?\n                .map(|n| n.status != \"not_run\")\n                .unwrap_or(false);\n            if !was_proven {\n                continue;\n            }\n            stale_validation_closure(store, &call.from_id, cause, true, report)?;\n            report.contracts_reset += 1;\n        }\n    }\n    Ok(())\n}\n\nfn stale_validation_closure(\n    store: &Store,\n    validation_id: &str,\n    cause: &str,\n    stale_calls: bool,\n    report: &mut SyncReport,\n) -> Result<()> {\n    for kind in [EdgeKind::Proves, EdgeKind::Validates] {\n        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {\n            if store.stale_edge(&edge.id, cause)? {\n                report.edges_staled += 1;\n            }\n        }\n    }\n    if stale_calls {\n        for edge in store.edges_with(Some(EdgeKind::Calls), Some(validation_id), None)? {\n            if store.stale_edge(&edge.id, cause)? {\n                report.edges_staled += 1;\n            }\n        }\n    }\n    if store\n        .get_node(validation_id)?\n        .is_some_and(|validation| validation.status != \"not_run\")\n    {\n        store.reset_validation_status_for_sync(validation_id)?;\n        report.validations_reset += 1;\n    }\n    Ok(())\n}\n\n/// Invalidate compiler output when its semantic or reusable-surface inputs no\n/// longer match the graph. Raw authored artifact paths are intentionally absent:\n/// the compiler contract is the Proves+Calls+Exercises closure and its hashes.\nfn ripple_compiled_journey_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\n    for proves in store.edges_with(Some(EdgeKind::Proves), None, None)? {\n        let Some(validation) = store.get_node(&proves.from_id)? else {\n            continue;\n        };\n        let Some(journey) = store.get_node(&proves.to_id)? else {\n            continue;\n        };\n        if validation.body.get(\"type\").and_then(|value| value.as_str()) != Some(\"journey\") {\n            continue;\n        }\n        let journey_hash = journey\n            .body\n            .get(\"semantic_hash\")\n            .and_then(|value| value.as_str());\n        let surface_hash = crate::journey::surface_projection_hash(store, &journey)?;\n        let body_current = journey_hash.is_some()\n            && validation\n                .body\n                .get(\"journey_hash\")\n                .and_then(|value| value.as_str())\n                == journey_hash\n            && surface_hash.is_some()\n            && validation\n                .body\n                .get(\"surface_hash\")\n                .and_then(|value| value.as_str())\n                == surface_hash.as_deref()\n            && validation\n                .body\n                .get(\"profile\")\n                .and_then(|value| value.as_str())\n                == Some(\"proof\")\n            && validation\n                .body\n                .get(\"compiler_version\")\n                .and_then(|value| value.as_str())\n                .is_some_and(|version| !version.trim().is_empty());\n\n        let mut accepted_surfaces = BTreeSet::new();\n        if let Some(hash) = journey_hash {\n            for surface in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {\n                if matches!(\n                    surface.status,\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\n                ) && store\n                    .get_facet(&surface.id, TargetKind::Edge, \"journey_hash\")?\n                    .as_deref()\n                    == Some(hash)\n                {\n                    accepted_surfaces.insert(surface.to_id);\n                }\n            }\n        }\n        let calls_current = store\n            .edges_with(Some(EdgeKind::Calls), Some(&validation.id), None)?\n            .into_iter()\n            .any(|call| {\n                matches!(\n                    call.status,\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\n                ) && accepted_surfaces.contains(&call.to_id)\n            });\n        let exercises_current = store\n            .edges_with(Some(EdgeKind::Exercises), Some(&validation.id), None)?\n            .into_iter()\n            .any(|edge| {\n                matches!(\n                    edge.status,\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\n                )\n            });\n        if body_current && calls_current && exercises_current {\n            continue;\n        }\n        stale_validation_closure(\n            store,\n            &validation.id,\n            \"compiled Journey inputs or proof topology drifted\",\n            true,\n            report,\n        )?;\n    }\n    Ok(())\n}\n\n/// The freshness fingerprint of a wiki page's scope: a hash over every intent\n/// the page `documents` — the intent's meaning (lifecycle + updated_at), the\n/// content of the files that realize it, and whether it is proven. It changes\n/// iff something the page describes changed, so a recorded page stays fresh\n/// exactly until its subject drifts. The page's prose/layout is never hashed —\n/// the graph governs freshness, not form.\npub fn wiki_scope_hash(store: &Store, page_id: &str) -> Result<String> {\n    let mut parts: Vec<String> = Vec::new();\n    let mut docs = store.edges_with(Some(EdgeKind::Documents), Some(page_id), None)?;\n    docs.sort_by(|a, b| a.to_id.cmp(&b.to_id));\n    for d in docs {\n        let Some(intent) = store.get_node(&d.to_id)? else {\n            continue;\n        };\n        parts.push(format!(\n            \"i:{}:{}:{}\",\n            intent.id, intent.status, intent.updated_at\n        ));\n        let mut files: Vec<String> = Vec::new();\n        for g in store.realizing_groundings(&intent.id)? {\n            let hash = store\n                .get_facet(&g.to_id, TargetKind::Node, \"content_hash\")?\n                .unwrap_or_default();\n            files.push(format!(\"{}={hash}\", g.to_id));\n        }\n        files.sort();\n        parts.push(format!(\"f:[{}]\", files.join(\",\")));\n        let proven = store\n            .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?\n            .iter()\n            .any(|v| v.status == InspectionStatus::Passing);\n        parts.push(format!(\"p:{proven}\"));\n    }\n    Ok(crate::artifact::fingerprint(&parts.join(\"|\")))\n}\n\n/// Pass 2d: mark a wiki page stale when its documented scope drifted since it was\n/// recorded. Mirrors the artifact/runner drift gates — a recorded page's stored\n/// `scope_hash` is compared to the live one; a `draft` page (never recorded\n/// fresh) is left alone. loom curates freshness; an agent rewrites the prose.\n/// Re-open a grounding whose locator names nothing.\n///\n/// A locator is the promise \"this behavior lives at this symbol\". Nothing was\n/// checking it. `recheck` expires a LOCATOR run when its symbol stops\n/// resolving, but a verdict recorded with a cited span carries no such run —\n/// so a grounding could name a deleted symbol and stay `passing` forever. On\n/// this repository that was 13 live claims at confidence 0.95 pointing at\n/// symbols that no longer existed, including four left by a hard-cut, while\n/// `doctor` reported clean and the ladder showed `grounded` met.\n///\n/// A locator that opens with `module` is a WHOLE-FILE scope, not a symbol —\n/// the long-standing convention here for \"the behavior is this file\". Those\n/// are left alone; requiring them to resolve would reject 39 legitimate\n/// groundings to catch 13 broken ones.\nfn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {\n    for edge in store.edges_with(Some(EdgeKind::Implements), None, None)? {\n        if store.edge_superseded(&edge.id)? {\n            continue;\n        }\n        // Only a REALIZES grounding promises a symbol. A `consumes` locator\n        // names a seam — an interface string the consumer calls, which is not a\n        // definition and will never resolve as one; `recheck` re-runs those\n        // through their own Seam arm. `configures` and `verifies` make no\n        // symbol claim either. Judging them here would stale every seam\n        // grounding on every sync, which ring11 catches.\n        if store.grounding_role(&edge.id)? != crate::model::GroundingRole::Realizes {\n            continue;\n        }\n        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \"locator\")? else {\n            continue;\n        };\n        let locator = locator.trim();\n        if locator.is_empty()\n            || crate::locator::is_module_scope(locator)\n            || crate::locator::is_anchor_locator(locator)\n        {\n            continue;\n        }\n        let Some(file) = store.get_node(&edge.to_id)? else {\n            continue;\n        };\n        // A missing FILE is already someone else's ripple; only judge the\n        // symbol when the file is there to look in.\n        if !root.join(&file.name).exists() {\n            continue;\n        }\n        // `resolve_locator` returns Some whenever the FILE is readable — the\n        // cardinality is carried separately, which is why `unique_locator_probe`\n        // reads match_count rather than the Option. A locator that matched\n        // nothing is the broken case; matching several is ambiguous but still\n        // points at real code, and the ripple already spares those.\n        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))\n            .map(|r| r.match_count)\n            .unwrap_or(0);\n        if matched > 0 {\n            continue;\n        }\n        // Name the anchor that fell: a cause that says only \"a locator broke\"\n        // leaves the reader to work out which one, and ring13 requires the\n        // symbol or the file by name.\n        let cause = format!(\"locator '{locator}' names no symbol in {}\", file.name);\n        if store.stale_edge(&edge.id, &cause)? {\n            report.edges_staled += 1;\n        }\n    }\n    Ok(())\n}\n\n/// Resolve every anchor-form locator through the locator module. Sync never\n/// parses marker syntax or guesses cardinality itself.\nfn plan_anchor_staleness(store: &Store) -> Result<Vec<AnchorStaleness>> {\n    let mut stale = Vec::new();\n    for kind in [EdgeKind::Implements, EdgeKind::Exposes, EdgeKind::Exercises] {\n        for edge in store.edges_with(Some(kind), None, None)? {\n            if kind == EdgeKind::Implements && store.edge_superseded(&edge.id)? {\n                continue;\n            }\n            let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \"locator\")? else {\n                continue;\n            };\n            if !crate::locator::is_anchor_locator(&locator) {\n                continue;\n            }\n            let Some(codefile) = store.get_node(&edge.to_id)? else {\n                continue;\n            };\n            if codefile.node_type != NodeType::CodeFile {\n                continue;\n            }\n            if let Err(error) = crate::locator::validate_for_codefile(store, &codefile, &locator) {\n                stale.push(AnchorStaleness {\n                    edge_id: edge.id,\n                    edge_kind: kind,\n                    codefile_id: codefile.id,\n                    path: codefile.name,\n                    locator,\n                    cause: error.to_string(),\n                });\n            }\n        }\n    }\n    stale.sort_by(|a, b| a.edge_id.cmp(&b.edge_id));\n    Ok(stale)\n}\n\nfn apply_anchor_staleness(\n    store: &Store,\n    stale: &[AnchorStaleness],\n    report: &mut SyncReport,\n) -> Result<()> {\n    let mut reset_validations = BTreeSet::new();\n    for anchor in stale {\n        if store.stale_edge(&anchor.edge_id, &anchor.cause)? {\n            report.edges_staled += 1;\n        }\n        match anchor.edge_kind {\n            EdgeKind::Exercises => {\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\n                    continue;\n                };\n                if reset_validations.insert(edge.from_id.clone()) {\n                    stale_validation_closure(store, &edge.from_id, &anchor.cause, false, report)?;\n                }\n            }\n            EdgeKind::Exposes => {\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\n                    continue;\n                };\n                for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&edge.from_id))? {\n                    if reset_validations.insert(call.from_id.clone()) {\n                        stale_validation_closure(\n                            store,\n                            &call.from_id,\n                            &anchor.cause,\n                            true,\n                            report,\n                        )?;\n                        report.contracts_reset += 1;\n                    }\n                }\n            }\n            EdgeKind::Implements => {}\n            _ => unreachable!(\"anchor staleness is planned only for locator-bearing edges\"),\n        }\n    }\n    Ok(())\n}\n\nfn ripple_wiki_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\n    for page in store.list_nodes(Some(NodeType::WikiPage), usize::MAX)? {\n        if page.status == \"draft\" || page.status == \"stale\" {\n            continue;\n        }\n        let current = wiki_scope_hash(store, &page.id)?;\n        let stored = page\n            .body\n            .get(\"scope_hash\")\n            .and_then(|v| v.as_str())\n            .unwrap_or_default();\n        if current != stored {\n            // loom-stability-exempt: marks a wiki page stale\n            store.set_node_status(&page.id, \"stale\")?;\n            report.wiki_staled += 1;\n        }\n    }\n    Ok(())\n}\n\n/// Pass 3b: materialize structural smells as derived Finding nodes. Smells\n/// stay computed-on-read for `loom smells`, but the materialized finding gives\n/// the triage queue a servable item and `loom finding verdict` a stable id\n/// whose asserted adjudication survives every rebuild — the same wipe/re-derive\n/// convergence cycle as the other structural findings.\nfn rebuild_smell_findings(store: &Store, report: &mut SyncReport) -> Result<()> {\n    for s in crate::signal::smells(store)? {\n        store.add_derived_node(\n            NodeType::Finding,\n            &crate::signal::smell_det_key(&s.identity),\n            &s.message,\n            &s.remedy,\n            &s.kind,\n            serde_json::json!({ \"kind\": s.kind, \"category\": \"smell\", \"identity\": s.identity }),\n        )?;\n        report.findings += 1;\n    }\n    Ok(())\n}\n\npub fn absorb_probe_fixture() {}\n",
+          "expected_hash": "b1028811235fc7af",
+          "path": "src/sync.rs"
+        }
+      ]
+    },
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-owned-snapshot"
+    ]
+  },
+  "surface": {
+    "codefile": "src/commands.rs",
+    "id": "writes-graph-absorb-cli",
+    "identity": "loom",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "absorb",
+          "--json"
+        ],
+        "id": "absorb-repository-state",
+        "output": {
+          "assertions": [
+            {
+              "id": "writes-legacy-proposal-id",
+              "matches": "^[0-9a-f]{32}$",
+              "pointer": "/proposal",
+              "type": "string"
+            },
+            {
+              "id": "writes-persisted-proposal-id",
+              "matches": "^[0-9a-f]{32}$",
+              "pointer": "/persisted_proposal/id",
+              "type": "string"
+            },
+            {
+              "equals": "proposal",
+              "id": "writes-persisted-proposal-type",
+              "pointer": "/persisted_proposal/type",
+              "type": "string"
+            },
+            {
+              "equals": "absorbed from the working tree",
+              "id": "writes-persisted-proposal-name",
+              "pointer": "/persisted_proposal/name",
+              "type": "string"
+            },
+            {
+              "equals": "captured",
+              "id": "writes-persisted-proposal-status",
+              "pointer": "/persisted_proposal/status",
+              "type": "string"
+            },
+            {
+              "equals": "asserted",
+              "id": "writes-persisted-proposal-truth-class",
+              "pointer": "/persisted_proposal/truth_class",
+              "type": "string"
+            },
+            {
+              "equals": "absorb",
+              "id": "writes-persisted-proposal-source",
+              "pointer": "/persisted_proposal/body/source",
+              "type": "string"
+            },
+            {
+              "id": "writes-persisted-items",
+              "pointer": "/persisted_proposal/body/items",
+              "type": "json"
+            },
+            {
+              "equals": 1,
+              "id": "writes-first-persisted-item-number",
+              "pointer": "/persisted_proposal/body/items/0/number",
+              "type": "integer"
+            },
+            {
+              "equals": "open",
+              "id": "writes-first-persisted-item-status",
+              "pointer": "/persisted_proposal/body/items/0/status",
+              "type": "string"
+            },
+            {
+              "id": "writes-first-persisted-item-kind",
+              "matches": "^(extend_locator|ground_to_intent|repoint_locator|resolve_coverage|register_proof)$",
+              "pointer": "/persisted_proposal/body/items/0/kind",
+              "type": "string"
+            },
+            {
+              "id": "writes-first-persisted-item-text",
+              "matches": "\\S",
+              "pointer": "/persisted_proposal/body/items/0/text",
+              "type": "string"
+            },
+            {
+              "id": "writes-first-persisted-evidence-file",
+              "matches": "\\S",
+              "pointer": "/persisted_proposal/body/items/0/absorb_evidence/file",
+              "type": "string"
+            },
+            {
+              "id": "writes-first-persisted-evidence-symbol",
+              "pointer": "/persisted_proposal/body/items/0/absorb_evidence/symbol",
+              "type": "string"
+            },
+            {
+              "id": "writes-first-persisted-evidence-fingerprint",
+              "matches": "^[0-9a-f]{16}$",
+              "pointer": "/persisted_proposal/body/items/0/absorb_evidence/fingerprint",
+              "type": "string"
+            },
+            {
+              "id": "writes-first-persisted-needs",
+              "pointer": "/persisted_proposal/body/items/0/needs",
+              "type": "json"
+            },
+            {
+              "exists": false,
+              "id": "writes-no-authoritative-spawn",
+              "pointer": "/persisted_proposal/body/items/0/spawned"
+            },
+            {
+              "id": "writes-legacy-items-preserved",
+              "pointer": "/items",
+              "type": "json"
+            },
+            {
+              "id": "writes-ready-count-preserved",
+              "pointer": "/ready",
+              "type": "integer"
+            },
+            {
+              "id": "writes-human-review-remains",
+              "not_equals": 0,
+              "pointer": "/needs_you",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Inspect registered repository code and return its evidence-backed open Proposal of typed graph mutations."
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mode",
+          "owned",
+          "--json"
+        ],
+        "id": "prepare-owned-snapshot",
+        "output": {
+          "assertions": [
+            {
+              "equals": "owned",
+              "id": "writes-setup-mode-owned",
+              "pointer": "/mode",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "writes-setup-not-observed",
+              "pointer": "/observed",
+              "type": "boolean"
+            },
+            {
+              "equals": true,
+              "id": "writes-setup-change-reported",
+              "pointer": "/changed",
+              "type": "boolean"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Establish an owned isolated graph snapshot for repository observation."
+      }
+    ],
+    "title": "Repository evidence-backed graph proposal"
+  }
+}

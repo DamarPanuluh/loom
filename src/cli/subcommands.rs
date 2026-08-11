@@ -157,6 +157,32 @@ pub enum IntentCmd {
         #[arg(long)]
         reason: String,
     },
+    /// Declare that an Intent deliberately has no Journey ancestry. This is a
+    /// human product decision, not a general completeness waiver.
+    JourneyExempt {
+        key: String,
+        /// Stable exemption class, such as `infrastructure` or `repository_maintenance`.
+        #[arg(long)]
+        kind: String,
+        /// Why this behavior is intentionally not rooted in a user Journey.
+        #[arg(long)]
+        reason: String,
+        /// Exact answer the human gave in the host conversation. Required for
+        /// non-interactive or llm:* execution; omit for a direct TTY challenge.
+        #[arg(long)]
+        human_decision: Option<String>,
+    },
+    /// Require Journey ancestry again by withdrawing a prior exemption.
+    JourneyRequire {
+        key: String,
+        /// Why Journey ancestry is required again.
+        #[arg(long)]
+        reason: String,
+        /// Exact answer the human gave in the host conversation. Required for
+        /// non-interactive or llm:* execution; omit for a direct TTY challenge.
+        #[arg(long)]
+        human_decision: Option<String>,
+    },
     /// Reactivate a retired (deprecated) intent → planned.
     Reactivate {
         key: String,
@@ -287,6 +313,12 @@ pub enum CodefileCmd {
         #[arg(long)]
         observed: bool,
     },
+    /// Issue a stable source anchor for a one-based source line without editing source or graph state.
+    Anchor {
+        path: String,
+        #[arg(long, value_name = "LINE")]
+        at_line: usize,
+    },
     /// Re-expand every glob ever registered and add any newly-appeared files
     /// (e.g. an endpoint an upstream just added). Run before `loom sync`.
     Rescan,
@@ -310,6 +342,51 @@ pub enum CodefileCmd {
         limit: usize,
         #[arg(long, default_value_t = 0)]
         offset: usize,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum CheckpointCmd {
+    /// Inspect an exact Intent or cohesive bundle without staging or committing.
+    Recommend {
+        /// Intent id, name, or unique fragment; repeat for a cohesive bundle.
+        #[arg(long = "intent", required = true)]
+        intents: Vec<String>,
+    },
+}
+
+#[derive(clap::ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReleasePhaseArg {
+    /// Verify the candidate in one detached fresh-v12 workspace.
+    IsolatedDogfood,
+    /// Repeat the verification from independent empty workspaces and compare
+    /// the semantic attestation, never build-directory bytes.
+    FreshFixpoint,
+    /// Run both gates and stop before every release, install, commit, or push mutation.
+    GatedPreparation,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ReleaseCmd {
+    /// Seal one exact, current derivation batch after a human approves it.
+    AuthorizeDerivations {
+        /// Directory containing the reviewed loom.journey-derivation/v1 manifests.
+        #[arg(long)]
+        manifest_dir: PathBuf,
+        /// Exact answer supplied by the human through the host conversation.
+        #[arg(long)]
+        human_decision: String,
+    },
+    /// Rehearse release gates in detached candidates without changing the caller.
+    Rehearse {
+        #[arg(long, value_enum)]
+        phase: ReleasePhaseArg,
+    },
+    /// Internal typed source snapshot used by dogfood/fixpoint bootstrap.
+    #[command(hide = true)]
+    Snapshot {
+        #[arg(long)]
+        destination: PathBuf,
     },
 }
 
@@ -467,11 +544,13 @@ pub enum InboxCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum QuestionCmd {
-    /// Open a product question for an intent.
+    /// Open a product question for exactly one technical Intent or authored Journey.
     Add {
         text: String,
-        #[arg(long)]
-        intent: String,
+        #[arg(long, required_unless_present = "journey", conflicts_with = "journey")]
+        intent: Option<String>,
+        #[arg(long, required_unless_present = "intent", conflicts_with = "intent")]
+        journey: Option<String>,
     },
     /// List product questions.
     List {
@@ -729,20 +808,6 @@ pub enum ValidationCmd {
         command: String,
         #[arg(long)]
         intent: String,
-        /// Normalized proof kind (e.g. journey). Prefer `loom journey add <spec>`;
-        /// set by hand only to register a repo-native journey runner.
-        #[arg(long)]
-        proof_kind: Option<String>,
-        /// Stable journey id/name; requires --proof-kind journey.
-        #[arg(long)]
-        journey_id: Option<String>,
-        /// Repo-native proof artifact kind (e.g. http_contract_json); requires
-        /// --proof-kind journey.
-        #[arg(long)]
-        repo_native_kind: Option<String>,
-        /// Proof artifact path or reference; requires --proof-kind journey.
-        #[arg(long)]
-        artifact: Option<String>,
     },
     /// Run one validation, every validation for an intent, or --all pending.
     Run {
@@ -1051,62 +1116,89 @@ pub enum ProposalItemCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum JourneyCmd {
-    /// Add a journey from a JSON or YAML spec (creates a journey Validation + validates edges to step intents).
+    /// Register an authored semantic Journey root from a JSON or YAML artifact.
     Add { spec: PathBuf },
-    /// Remove a journey and its validation node(s) by journey id (cleans up
-    /// duplicates from an older non-idempotent add).
-    Remove {
-        /// The journey id (the spec's `journey:` value).
-        id: String,
-    },
-    /// List journey validations.
+    /// Show one Journey by stable id, node id, or unique fragment.
+    Show { journey: String },
+    /// Remove an authored Journey and its derived projections.
+    Remove { journey: String },
+    /// List authored Journey roots.
     List {
         #[arg(long, default_value_t = 50)]
         limit: usize,
         #[arg(long, default_value_t = 0)]
         offset: usize,
     },
-    /// Joined map: every journey validation with its step intents (via
-    /// Validates edges), plus every active intent no journey exercises.
-    /// Deliberately unbounded — a truncated map would hide the gaps it
-    /// exists to expose.
+    /// Show the Journey-root map and every unrooted, non-exempt Intent.
     Map,
-    /// Execute a journey spec and record the result onto the graph.
+    /// Emit a read-only packet for deriving technical Intents from a Journey.
+    Derive {
+        journey: String,
+        /// Inspect one strict candidate manifest without accepting it. The value
+        /// may be inline JSON or the path to a JSON manifest.
+        #[arg(long, value_name = "MANIFEST_OR_JSON")]
+        candidate_json: Option<String>,
+    },
+    /// Accept one exact, human-authorized technical derivation manifest.
+    DeriveAccept {
+        journey: String,
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Exact answer authorizing this hash-bound manifest.
+        #[arg(long)]
+        human_decision: String,
+    },
+    /// Emit a read-only contract for a real CLI projection in the target repo.
+    Surface { journey: String },
+    /// Accept one hash-bound reusable CLI surface manifest.
+    SurfaceAccept {
+        journey: String,
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+    /// Compile the Journey's surfaced CLI into a runnable proof profile.
+    Compile {
+        journey: String,
+        #[arg(long, default_value = "proof")]
+        profile: String,
+    },
+    /// Run a compiled Journey profile and record what Loom observes.
     Run {
-        /// Path to the journey or HTTP contract spec file (.json or .yaml/.yml).
-        spec: PathBuf,
-        /// Override the base URL (takes precedence over the spec's `base` field
-        /// and `{{ env.BASE_URL }}`).
-        #[arg(long)]
-        base_url: Option<String>,
+        journey: String,
+        #[arg(long, default_value = "proof")]
+        profile: String,
     },
-    /// Run a journey and store its verbatim baseline under `.loom/baselines/`.
-    Freeze { spec: PathBuf },
-    /// Execute a journey spec directly without a graph (failure diagnosis).
+    /// Resume one pending host-mediated Journey step with the human's exact answer.
+    Resume {
+        /// Opaque token returned by the pending Journey run.
+        token: String,
+        /// Exact stable id of one option presented by the pending gate.
+        #[arg(long)]
+        choice: String,
+        /// Exact answer supplied by the human through the host conversation.
+        #[arg(long)]
+        human_decision: String,
+        /// Substantive revision required only by an option marked free-form.
+        #[arg(long)]
+        free_form: Option<String>,
+    },
+    /// Diagnose a Journey with optional input overrides, without settling proof.
     Diagnose {
-        /// Path to the journey or HTTP contract spec file (.json or .yaml/.yml).
-        spec: PathBuf,
-        /// Override the base URL (takes precedence over the spec's `base` field
-        /// and `{{ env.BASE_URL }}`).
-        #[arg(long)]
-        base_url: Option<String>,
+        journey: String,
+        #[arg(long, default_value = "proof")]
+        profile: String,
+        /// Override one authored input as KEY=JSON (repeatable).
+        #[arg(long = "input", value_name = "KEY=JSON")]
+        input: Vec<String>,
     },
-    /// Journey coverage commands (mark flows needing a journey proof).
-    Coverage {
-        #[command(subcommand)]
-        cmd: JourneyCoverageCmd,
+    /// Freeze the current observed result as the profile baseline.
+    Freeze {
+        journey: String,
+        #[arg(long, default_value = "proof")]
+        profile: String,
     },
-    /// Journey invariant point commands (mark internal domain assertions).
-    Invariant {
-        #[command(subcommand)]
-        cmd: JourneyInvariantCmd,
-    },
-    /// Generate a typed journey-runner prompt context from loom's code
-    /// understanding of an intent. Read-time assembly, not code generation.
-    Prompt {
-        /// The intent whose flow needs a typed runner (id, name, or fragment).
-        intent: String,
-    },
+    /// Report stale compiled Journey artifacts, optionally for one Journey.
+    Drift { journey: Option<String> },
 }
 
 #[derive(Subcommand, Debug)]
@@ -1129,111 +1221,12 @@ pub enum McpCmd {
     /// as `loom mcp serve` (add `--graph <path>` when the client's working
     /// directory is not the repo).
     Serve,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum JourneyCoverageCmd {
-    /// Mark a flow as needing a journey proof, linked to an intent.
-    Add {
-        #[arg(long)]
-        name: String,
-        /// Flow path, e.g. "src/facade.rs::resolve -> record -> standing".
-        #[arg(long)]
-        flow: String,
-        /// The intent this coverage concerns (id, name, or unique fragment).
-        intent: String,
-        #[arg(long, default_value = "")]
-        description: String,
-        /// Optional typed runner reference (path or path::symbol) that must exist.
-        #[arg(long)]
-        runner_ref: Option<String>,
-        /// Optional test reference (path or path::symbol) that must exist.
-        #[arg(long)]
-        test_ref: Option<String>,
-        /// Optional contract/journey artifact path expected to back the proof.
-        #[arg(long)]
-        contract_artifact: Option<String>,
-    },
-    /// Fix a journey coverage declaration's proof references.
-    Update {
-        key: String,
-        #[arg(long)]
-        runner_ref: Option<String>,
-        #[arg(long)]
-        test_ref: Option<String>,
-        #[arg(long)]
-        contract_artifact: Option<String>,
-        #[arg(long)]
-        reason: String,
-    },
-    /// Withdraw a mistaken coverage declaration.
-    Remove { key: String },
-    /// List journey coverage nodes with their effective coverage status.
-    /// effective_status is DERIVED: "covered" iff the linked intent currently
-    /// has a passing S3-or-stronger journey validation. Runner/test
-    /// ref existence alone does not flip coverage; run the proof first.
-    List {
-        #[arg(long, default_value_t = 50)]
-        limit: usize,
-        #[arg(long, default_value_t = 0)]
-        offset: usize,
-    },
-    /// Discover coverage gaps: user-visible implemented intents with no passing
-    /// S3-or-stronger journey proof and no journey_coverage node. Graph-derived
-    /// (from visibility + lifecycle + validations), not static call-graph analysis.
-    /// With --spawn-missing, auto-create a journey_coverage node for each gap.
-    Discover {
-        /// Auto-create a journey_coverage node for each discovered gap.
-        #[arg(long)]
-        spawn_missing: bool,
-    },
-    /// Enforce drift metadata around covered journey entries: configured
-    /// runner/test refs must still exist, and configured contract artifacts must
-    /// match the current passing S3-or-stronger journey proof.
-    Drift,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum JourneyInvariantCmd {
-    /// Mark an internal domain invariant point on an intent.
-    Add {
-        #[arg(long)]
-        name: String,
-        /// The intent this invariant concerns (id, name, or unique fragment).
-        intent: String,
-        #[arg(long)]
-        field: String,
-        #[arg(long)]
-        assertion: String,
-        #[arg(long, default_value = "")]
-        reason: String,
-    },
-    /// Fix an invariant point while preserving its audit trail.
-    Update {
-        key: String,
-        #[arg(long)]
-        field: Option<String>,
-        #[arg(long)]
-        assertion: Option<String>,
-        /// Re-point the invariant at a different intent (id, name, or unique
-        /// fragment). Replaces the asserts edge; the node, its history, and
-        /// its notes stay intact.
-        #[arg(long)]
-        asserts: Option<String>,
-        /// Replacement body reason for the invariant itself.
-        #[arg(long = "reason-text")]
-        reason_text: Option<String>,
-        #[arg(long)]
-        reason: String,
-    },
-    /// Withdraw a mistaken invariant point.
-    Remove { key: String },
-    /// List journey invariant points.
-    List {
-        #[arg(long, default_value_t = 50)]
-        limit: usize,
-        #[arg(long, default_value_t = 0)]
-        offset: usize,
+    /// Drive one complete MCP session through the real stdio serve loop and
+    /// return its ordered responses as one JSON document.
+    Transcript {
+        /// JSON array of JSON-RPC 2.0 request objects, in session order.
+        #[arg(long, value_name = "JSON")]
+        requests_json: String,
     },
 }
 
@@ -1501,8 +1494,8 @@ pub enum AuditIncidentCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum BootstrapCmd {
-    /// Draft a Proposal of planned pillar intents from derived signals
-    /// (registered codefiles, tests/, README H2s). Operator adopts via
-    /// `loom proposal item adopt --as intent`. Never writes verdicts.
+    /// Draft a Proposal of behavior clues from derived signals (registered
+    /// codefiles, tests/, README H2s) to inform authored Journey roots.
+    /// Never writes product meaning, Intents, edges, or verdicts.
     Suggest,
 }

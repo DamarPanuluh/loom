@@ -1,0 +1,114 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "pagination",
+  "journey_hash": "c27cf7514665164b",
+  "surface": {
+    "id": "loom-pagination-intents",
+    "title": "Loom Intent pagination",
+    "identity": "loom intent list",
+    "codefile": "src/commands/intent.rs",
+    "locator": "intent_list",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "intent",
+          "list",
+          "--limit",
+          "1",
+          "--offset",
+          "0",
+          "--json"
+        ],
+        "id": "request-first-page",
+        "output": {
+          "assertions": [
+            {
+              "id": "first-page-row-is-deterministic",
+              "matches": "^[0-9a-f]{32}$",
+              "pointer": "/items/0/id",
+              "type": "string"
+            },
+            {
+              "contains": {
+                "has_more": true,
+                "limit": 1,
+                "next_offset": 1,
+                "offset": 0,
+                "returned": 1
+              },
+              "id": "first-page-can-continue",
+              "pointer": "/pagination",
+              "type": "json"
+            },
+            {
+              "id": "first-page-total-is-positive",
+              "not_equals": 0,
+              "pointer": "/pagination/total",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Request the deterministic first bounded Intent page"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "intent",
+          "list",
+          "--limit",
+          "1",
+          "--offset",
+          "1000",
+          "--json"
+        ],
+        "id": "request-page-past-end",
+        "output": {
+          "assertions": [
+            {
+              "equals": [],
+              "id": "past-end-page-is-empty",
+              "pointer": "/items",
+              "type": "json"
+            },
+            {
+              "contains": {
+                "has_more": false,
+                "limit": 1,
+                "next_offset": null,
+                "offset": 1000,
+                "returned": 0
+              },
+              "id": "past-end-page-cannot-continue",
+              "pointer": "/pagination",
+              "type": "json"
+            },
+            {
+              "id": "past-end-total-is-positive",
+              "not_equals": 0,
+              "pointer": "/pagination/total",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Request an Intent page beyond the final row"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "request-first-page",
+      "step_id": "request-first-page"
+    },
+    {
+      "operation_id": "request-page-past-end",
+      "step_id": "request-page-past-end"
+    }
+  ]
+}

@@ -1,0 +1,406 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "system-purpose",
+  "journey_hash": "284361f2fdb1b67b",
+  "surface": {
+    "id": "system-purpose-cli",
+    "title": "Living graph purpose and integrity",
+    "identity": "loom",
+    "codefile": "src/commands.rs",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "doctor",
+          "--json"
+        ],
+        "id": "audit-graph-integrity",
+        "output": {
+          "assertions": [
+            {
+              "equals": [],
+              "id": "integrity-audit-clean",
+              "pointer": "",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Run the graph integrity audit and report the complete clean result."
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "status",
+          "--json"
+        ],
+        "id": "inspect-living-graph",
+        "output": {
+          "assertions": [
+            {
+              "id": "graph-id",
+              "matches": "^[0-9a-f]{32}$",
+              "pointer": "/graph/graph_id",
+              "type": "string"
+            },
+            {
+              "id": "graph-name",
+              "matches": "\\S",
+              "pointer": "/graph/name",
+              "type": "string"
+            },
+            {
+              "equals": 12,
+              "id": "graph-schema",
+              "pointer": "/graph/schema_version",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "graph-not-observed",
+              "pointer": "/graph/observed",
+              "type": "boolean"
+            },
+            {
+              "id": "current-maturity-rung",
+              "matches": "\\S",
+              "pointer": "/maturity/rung",
+              "type": "string"
+            },
+            {
+              "id": "current-maturity-phase",
+              "matches": "\\S",
+              "pointer": "/maturity/phase",
+              "type": "string"
+            },
+            {
+              "equals": "seeded",
+              "id": "first-rung-name",
+              "pointer": "/maturity/rungs/0/name",
+              "type": "string"
+            },
+            {
+              "equals": "seed",
+              "id": "first-rung-lane",
+              "pointer": "/maturity/rungs/0/lane",
+              "type": "string"
+            },
+            {
+              "id": "first-rung-state",
+              "matches": "^(met|unmet|open)$",
+              "pointer": "/maturity/rungs/0/state",
+              "type": "string"
+            },
+            {
+              "equals": "deepening",
+              "id": "last-rung-name",
+              "pointer": "/maturity/rungs/17/name",
+              "type": "string"
+            },
+            {
+              "equals": "deepen",
+              "id": "last-rung-lane",
+              "pointer": "/maturity/rungs/17/lane",
+              "type": "string"
+            },
+            {
+              "id": "last-rung-state",
+              "matches": "^(met|unmet|open)$",
+              "pointer": "/maturity/rungs/17/state",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "ladder-has-exact-rungs",
+              "pointer": "/maturity/rungs/18"
+            },
+            {
+              "id": "queue-analyze-depth",
+              "pointer": "/queues/analyze",
+              "type": "integer"
+            },
+            {
+              "id": "queue-audit-depth",
+              "pointer": "/queues/audit",
+              "type": "integer"
+            },
+            {
+              "id": "queue-build-depth",
+              "pointer": "/queues/build",
+              "type": "integer"
+            },
+            {
+              "id": "queue-coverage-depth",
+              "pointer": "/queues/coverage",
+              "type": "integer"
+            },
+            {
+              "id": "queue-deepen-depth",
+              "pointer": "/queues/deepen",
+              "type": "integer"
+            },
+            {
+              "id": "queue-derive-depth",
+              "pointer": "/queues/derive",
+              "type": "integer"
+            },
+            {
+              "id": "queue-elaborate-depth",
+              "pointer": "/queues/elaborate",
+              "type": "integer"
+            },
+            {
+              "id": "queue-export-depth",
+              "pointer": "/queues/export",
+              "type": "integer"
+            },
+            {
+              "id": "queue-fix-depth",
+              "pointer": "/queues/fix",
+              "type": "integer"
+            },
+            {
+              "id": "queue-prove-depth",
+              "pointer": "/queues/prove",
+              "type": "integer"
+            },
+            {
+              "id": "queue-quality-depth",
+              "pointer": "/queues/quality",
+              "type": "integer"
+            },
+            {
+              "id": "queue-ratify-depth",
+              "pointer": "/queues/ratify",
+              "type": "integer"
+            },
+            {
+              "id": "queue-rectify-depth",
+              "pointer": "/queues/rectify",
+              "type": "integer"
+            },
+            {
+              "id": "queue-review-depth",
+              "pointer": "/queues/review",
+              "type": "integer"
+            },
+            {
+              "id": "queue-seed-depth",
+              "pointer": "/queues/seed",
+              "type": "integer"
+            },
+            {
+              "id": "queue-surface-depth",
+              "pointer": "/queues/surface",
+              "type": "integer"
+            },
+            {
+              "id": "queue-triage-depth",
+              "pointer": "/queues/triage",
+              "type": "integer"
+            },
+            {
+              "id": "queue-validate-depth",
+              "pointer": "/queues/validate",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Report the graph identity, complete maturity ladder, and routed queue depths."
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mode",
+          "owned",
+          "--json"
+        ],
+        "id": "prepare-owned-snapshot",
+        "output": {
+          "assertions": [
+            {
+              "equals": "owned",
+              "id": "setup-mode-owned",
+              "pointer": "/mode",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "setup-not-observed",
+              "pointer": "/observed",
+              "type": "boolean"
+            },
+            {
+              "id": "setup-change-reported",
+              "pointer": "/changed",
+              "type": "boolean"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Establish an owned disposable graph snapshot for observation-backed lookup."
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"journey\",\"show\",\"system-purpose\",\"--json\"]}}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_observe\",\"arguments\":{\"command\":[\"loom\",\"find\",\"Journey technical derivations resolve to code groundings\",\"--exact\",\"--json\"]}}}]",
+          "--json"
+        ],
+        "id": "recover-product-purpose",
+        "output": {
+          "assertions": [
+            {
+              "equals": "json-rpc-2.0",
+              "id": "purpose-protocol",
+              "pointer": "/protocol",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "purpose-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 3,
+              "id": "purpose-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "purpose-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": false,
+              "id": "purpose-show-succeeded",
+              "pointer": "/responses/1/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "purpose-show-observed",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 0",
+              "id": "purpose-show-exit-zero",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"name\\\": \\\"Maintain a falsifiable graph for codebase work\\\"",
+              "id": "purpose-title-is-exact",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"goal\\\": \\\"An operator can inspect the living graph, recover why the system exists, and audit its integrity.\\\"",
+              "id": "purpose-goal-is-exact",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"journey_hash\\\": \\\"284361f2fdb1b67b\\\"",
+              "id": "purpose-hash-is-current",
+              "pointer": "/responses/1/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "grounding-find-succeeded",
+              "pointer": "/responses/2/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\"observed\": true",
+              "id": "grounding-find-observed",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"exit_code\": 0",
+              "id": "grounding-find-exit-zero",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"exact\\\": true",
+              "id": "grounding-match-is-exact",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"id\\\": \\\"f90323739cd30a85789829751c9387e9\\\"",
+              "id": "grounding-intent-id",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"name\\\": \\\"Journey technical derivations resolve to code groundings\\\"",
+              "id": "grounding-intent-name",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"path\\\": \\\"src/completeness.rs\\\"",
+              "id": "grounding-codefile",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"locator\\\": \\\"journey_readiness\\\"",
+              "id": "grounding-locator",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\\\"role\\\": \\\"realizes\\\"",
+              "id": "grounding-role",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Return the authored falsifiable-graph purpose and its exact current realizing code grounding together."
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-owned-snapshot"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-living-graph",
+      "step_id": "inspect-living-graph"
+    },
+    {
+      "operation_id": "recover-product-purpose",
+      "step_id": "recover-product-purpose"
+    },
+    {
+      "operation_id": "audit-graph-integrity",
+      "step_id": "audit-graph-integrity"
+    }
+  ]
+}

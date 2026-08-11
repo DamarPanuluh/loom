@@ -1,80 +1,63 @@
 #!/usr/bin/env bash
-# Verify the committed graph is a fixpoint: init + import + full dogfood
-# sequence reproduces the committed loom.graph.json's SUBSTANCE.
+# Verify the Journey-root dogfood fixture can be rebuilt from a fresh v12
+# store.  v1-v11 exports are an intentional hard boundary, never a migration
+# source.  Runs in a copy of the worktree so neither the live .loom/ nor the
+# source tree's target/ directory is touched.
 #
 # Usage: scripts/check-fixpoint.sh [workdir]
-# Runs in a copy of the repo so the live store is never touched.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-WORK="${1:-$(mktemp -d)}"
-mkdir -p "$WORK"
-cd "$WORK"
-git -C "$ROOT" archive HEAD | tar -x
-ln -sf "$ROOT/target" "$WORK/target"
-export PATH="$WORK/target/debug:$PATH"
+case "${1:-}" in
+  -h|--help)
+    echo "usage: scripts/check-fixpoint.sh [empty-workdir]"
+    exit 0
+    ;;
+esac
+WORK="${1:-$(mktemp -d "${TMPDIR:-/tmp}/loom-fixpoint.XXXXXX")}"
+CREATED=false
+[ -d "$WORK" ] || mkdir -p "$WORK"
+if [ -z "${1:-}" ]; then
+  CREATED=true
+fi
+trap '[ "$CREATED" = true ] && rm -rf "$WORK"' EXIT
 
-# Build once (the dogfood script's own cargo gates are skipped here — this
-# checks the graph fixpoint, not the code gates).
-cargo build --quiet
+if [ -e "$WORK/.loom" ] || [ -n "$(find "$WORK" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+  echo "fixpoint: workdir must be empty and must not contain .loom/: $WORK" >&2
+  exit 2
+fi
 
-B="$WORK/target/debug/loom"
-"$B" init . --name loom >/dev/null
-"$B" import loom.graph.json >/dev/null
-
-# Re-approve the committed proof commands (same as dogfood.sh).
-python3 - <<'PY'
-import json, subprocess, os
-env = dict(os.environ)
-n = 0; offset = 0
-while True:
-    out = subprocess.run(["loom","validation","list","--json","--offset",str(offset),"--limit","50"],
-                         capture_output=True, text=True, env=env).stdout
-    items = json.loads(out).get("items", [])
-    if not items: break
-    for v in items:
-        b = v.get("body") or {}
-        if b.get("command_trusted") is False and b.get("command"):
-            subprocess.run(["loom","validation","update", v.get("name",""), "--command", b["command"]],
-                           capture_output=True, text=True, env=env)
-            n += 1
-    offset += len(items)
-    if len(items) < 50: break
-print(f"re-approved {n} command(s)")
-PY
-
-"$B" sync >/dev/null
-"$B" validation run --all >/dev/null
-for spec in "$WORK"/journeys/*.yaml; do "$B" journey run "$spec" >/dev/null; done
-"$B" sync >/dev/null
-"$B" export >/dev/null
-
-# Substance compare (mirroring dogfood.sh): evidence rows are the observation
-# HISTORY — a fresh checkout re-runs proofs and mints new run records, so the
-# sets can never be byte-equal. The graph's TRUTH is the fixpoint: nodes,
-# edges, facets, facts (whose `verification` re-earns against the local tree
-# on import+sync), config, journal, baselines. Evidence is support.
-python3 - "$ROOT/loom.graph.json" "$WORK/loom.graph.json" <<'PY'
+SNAPSHOTTER="$ROOT/target/debug/loom"
+[ -f "$SNAPSHOTTER" ] && [ ! -L "$SNAPSHOTTER" ] && [ -x "$SNAPSHOTTER" ] || {
+  echo "fixpoint: trusted snapshot adapter is missing at $SNAPSHOTTER; build it explicitly before starting the gate" >&2
+  exit 2
+}
+command -v shasum >/dev/null || {
+  echo "fixpoint: cannot attest the trusted snapshot adapter without shasum" >&2
+  exit 2
+}
+snapshotter_sha256="$(shasum -a 256 "$SNAPSHOTTER" | awk '{print $1}')"
+echo "fixpoint: snapshot_adapter_provenance=existing_target_binary snapshot_adapter_sha256=$snapshotter_sha256" >&2
+SNAPSHOT_PATH="/usr/bin:/bin:/usr/sbin:/sbin"
+snapshot="$(env -i PATH="$SNAPSHOT_PATH" TMPDIR="${TMPDIR:-/tmp}" "$SNAPSHOTTER" --graph "$ROOT" --json release snapshot --destination "$WORK")"
+python3 -c '
 import json, sys
-def norm(path):
-    g = json.load(open(path))
-    # Evidence rows and timestamps are the observation HISTORY — a fresh
-    # checkout re-runs proofs and mints new run records, re-asserting facts
-    # and touching nodes/edges with fresh timestamps. The graph's TRUTH is
-    # the fixpoint: nodes, edges, facets, facts (whose `verification`
-    # re-earns verified/cited/expired against the local tree), config,
-    # journal, baselines. Evidence and timestamps are support, not truth.
-    g.pop("evidence", None)
-    for n in g.get("nodes", []):
-        n.pop("created_at", None)
-        n.pop("updated_at", None)
-    for e in g.get("edges", []):
-        e.pop("created_at", None)
-        e.pop("updated_at", None)
-    for f in g.get("facts", []):
-        f.pop("asserted_at", None)
-    return json.dumps(g, sort_keys=True)
-same = norm(sys.argv[1]) == norm(sys.argv[2])
-print("fixpoint:", "OK — fresh checkout reproduces the committed graph" if same else "BROKEN")
-sys.exit(0 if same else 1)
-PY
+report = json.load(sys.stdin)
+inventory = report["source_inventory"]
+assert report["schema"] == "loom.release-snapshot/v1"
+assert report["status"] == "passed"
+assert report["candidate_hash"] == inventory["inventory_hash"]
+assert inventory["schema"] == "loom.release-source-inventory-attestation/v1"
+assert inventory["manifest_hash"] == "1e7f61e0ec084423"
+assert inventory["git_influenced_plan"] is False
+assert inventory["materialized_matches"] is True
+assert inventory["provenance"] == "source_controlled_manifest_git_verified"
+assert inventory["git_verification"] == "verified"
+assert inventory["entry_count"] == 261
+assert inventory["file_count"] == 257
+assert inventory["tombstone_count"] == 4
+' <<<"$snapshot"
+
+echo "== v12 fresh-graph fixpoint =="
+"$WORK/scripts/dogfood.sh" --fresh-in-place --check
+echo "fixpoint: OK — a fresh v12 graph completed the Journey-root dogfood gate"

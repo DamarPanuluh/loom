@@ -1,38 +1,28 @@
-journey: loom answers what stands on a behavior
+schema: loom.journey/v1
+id: dependents
+name: Inspect what stands on a behavior
+actor: operator
+goal: An operator can see transitive dependents, their distance, and their proof exposure.
+inputs: {}
+preconditions:
+- A far behavior requires a middle behavior, which requires a foundation behavior,
+  and none has a current proof.
+- Another behavior has no dependents.
 steps:
-  - name: a transitive dependent is reported with its distance and proof state
-    fixture: true
-    intent: loom answers what other behaviors stand on this one
-    # Seed a chain in a throwaway graph — A requires B, B requires C — then ask
-    # what stands on C. A is two hops away and nothing proves it, which is
-    # exactly the case this command exists to surface.
-    # Every line at one indent level: a folded scalar keeps the newline on any
-    # MORE-indented line and would split a command in half.
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'A the far dependent' --description 'stands on B' --lifecycle implemented &&
-      loom intent add --graph "$tmp" --name 'B the middle' --description 'stands on C' --lifecycle implemented &&
-      loom intent add --graph "$tmp" --name 'C the foundation' --description 'the thing everything stands on' --lifecycle implemented &&
-      loom edge relate --graph "$tmp" requires 'A the far dependent' 'B the middle' &&
-      loom edge relate --graph "$tmp" requires 'B the middle' 'C the foundation' &&
-      loom intent dependents --graph "$tmp" 'C the foundation'; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains:
-        - "2 behavior(s) stand on"
-        - "1 hop"
-        - "2 hops"
-        - "A the far dependent"
-        - "UNPROVEN"
-        - "would not be caught there"
-
-  - name: a behavior nothing points at says so plainly
-    fixture: true
-    intent: loom answers what other behaviors stand on this one
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'stands alone' --description 'nothing depends on it' --lifecycle implemented &&
-      loom intent dependents --graph "$tmp" 'stands alone'; rc=$?; rm -rf "$tmp"; exit $rc
-    expect:
-      exit_code: 0
-      stdout_contains: ["nothing stands on", "reaches no other behavior"]
+- id: inspect-foundation-dependents
+  name: Inspect Foundation Dependents
+  action: Ask what behaviors stand on the foundation behavior.
+  expects:
+  - The middle and far behaviors are reported at one and two hops with their unproven
+    exposure made explicit.
+  produces: {}
+- id: inspect-standalone-dependents
+  name: Inspect Standalone Dependents
+  action: Ask what behaviors stand on the standalone behavior.
+  expects:
+  - Loom states plainly that nothing stands on or is reached from the standalone behavior.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

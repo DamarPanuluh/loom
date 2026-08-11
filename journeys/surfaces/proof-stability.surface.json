@@ -1,0 +1,213 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "proof-stability",
+  "journey_hash": "8e97df964aad9954",
+  "surface": {
+    "id": "loom-proof-stability",
+    "title": "Loom proof stability",
+    "identity": "loom validation run and smells",
+    "codefile": "src/commands.rs",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "smells",
+          "--json"
+        ],
+        "id": "inspect-structural-signals",
+        "output": {
+          "assertions": [
+            {
+              "contains": {
+                "adjudicate": "loom sync   (materializes this smell as a finding first)",
+                "finding_id": null,
+                "kind": "unstable_proof",
+                "message": "proof 'journey proof stability flip' reported passed then failed over unchanged code for 'settle comparable proof observations' — its outcome does not depend only on the code it covers",
+                "reason": "",
+                "remedy": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
+                "state": "untriaged"
+              },
+              "id": "unstable-proof-signal-is-reported",
+              "pointer": "",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect live structural smells for the unchanged-anchor proof flip"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "run",
+          "journey proof stability flip",
+          "--json"
+        ],
+        "id": "observe-failing-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": "journey proof stability flip",
+              "id": "second-run-names-same-proof",
+              "pointer": "/ran/0/name",
+              "type": "string"
+            },
+            {
+              "equals": "failed",
+              "id": "second-run-fails",
+              "pointer": "/ran/0/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom codefile remove scripts/check-fixpoint.sh --successor scripts/dogfood.sh --json",
+              "id": "second-run-uses-same-command",
+              "pointer": "/ran/0/command",
+              "type": "string"
+            },
+            {
+              "id": "second-run-exit-is-nonzero",
+              "not_equals": 0,
+              "pointer": "/ran/0/exit_code",
+              "type": "integer"
+            },
+            {
+              "contains": {
+                "blocked": 0,
+                "failed": 1,
+                "passed": 0,
+                "skipped": 0
+              },
+              "id": "second-run-summary-is-failing",
+              "pointer": "/summary",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Run the same proof after its unrelated disposable registration is gone"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "run",
+          "journey proof stability flip",
+          "--json"
+        ],
+        "id": "observe-passing-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": "journey proof stability flip",
+              "id": "first-run-names-proof",
+              "pointer": "/ran/0/name",
+              "type": "string"
+            },
+            {
+              "equals": "passed",
+              "id": "first-run-passes",
+              "pointer": "/ran/0/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom codefile remove scripts/check-fixpoint.sh --successor scripts/dogfood.sh --json",
+              "id": "first-run-uses-exact-command",
+              "pointer": "/ran/0/command",
+              "type": "string"
+            },
+            {
+              "contains": {
+                "blocked": 0,
+                "failed": 0,
+                "passed": 1,
+                "skipped": 0
+              },
+              "id": "first-run-summary-is-passing",
+              "pointer": "/summary",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Run the proof before its unrelated disposable registration is removed"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "add",
+          "--name",
+          "journey proof stability flip",
+          "--type",
+          "test",
+          "--command",
+          "loom codefile remove scripts/check-fixpoint.sh --successor scripts/dogfood.sh --json",
+          "--intent",
+          "616aba56a908b7f8a138ce09f3052859",
+          "--json"
+        ],
+        "id": "register-repeatable-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": "journey proof stability flip",
+              "id": "fixture-validation-is-exact",
+              "pointer": "/validation/name",
+              "type": "string"
+            },
+            {
+              "equals": "not_run",
+              "id": "fixture-validation-is-not-run",
+              "pointer": "/validation/status",
+              "type": "string"
+            },
+            {
+              "equals": "loom codefile remove scripts/check-fixpoint.sh --successor scripts/dogfood.sh --json",
+              "id": "fixture-command-is-direct-loom",
+              "pointer": "/validation/body/command",
+              "type": "string"
+            },
+            {
+              "equals": "616aba56a908b7f8a138ce09f3052859",
+              "id": "fixture-validates-grounded-intent",
+              "pointer": "/intent/id",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Register a proof whose outcome flips after an unrelated isolated graph mutation"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "register-repeatable-proof"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "observe-passing-proof",
+      "step_id": "observe-passing-proof"
+    },
+    {
+      "operation_id": "observe-failing-proof",
+      "step_id": "observe-failing-proof"
+    },
+    {
+      "operation_id": "inspect-structural-signals",
+      "step_id": "inspect-structural-signals"
+    }
+  ]
+}

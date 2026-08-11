@@ -19,8 +19,9 @@ pub(crate) use queues::unmeasured_quality_pairs;
 pub(crate) use queues::unproven_implemented_intents;
 pub use queues::unratified_intents;
 use queues::{
-    analyze_item, audit_item, build_item, coverage_item, deepen_item, elaborate_item, fix_item,
-    prove_item, quality_item, ratify_item, rectify_item, review_item, triage_item, validate_item,
+    analyze_item, audit_item, build_item, coverage_item, deepen_item, derive_item, elaborate_item,
+    fix_item, prove_item, quality_item, ratify_item, rectify_item, review_item, surface_item,
+    triage_item, validate_item,
 };
 pub use queues::{queue_items, QueueEntry};
 use serde::Serialize;
@@ -84,6 +85,41 @@ pub struct HumanGateOption {
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub write_back: Option<String>,
+}
+
+/// The canonical host-facing decision packet for accepting one exact Journey
+/// derivation manifest. Direct `journey derive` callers use the same shape as
+/// the derive lane so a missing authority decision is never flattened into a
+/// terminal, unactionable blocker.
+pub(crate) fn derivation_human_gate(journey: &Node) -> HumanGate {
+    let id = crate::model::short(&journey.id);
+    HumanGate {
+        question: format!("Accept the proposed technical derivation for Journey '{}'?", journey.name),
+        options: vec![
+            HumanGateOption {
+                id: "accept".into(),
+                label: "Accept derivation".into(),
+                description: "Adopt the manifest's exact hash-table: technical intents, create/reuse operations, stable-step mappings, and relationships for the current Journey hash.".into(),
+                write_back: Some(format!(
+                    "loom journey derive-accept {id} --manifest <file> --human-decision '<exact human answer>'"
+                )),
+            },
+            HumanGateOption {
+                id: "revise".into(),
+                label: "Revise manifest".into(),
+                description: "Correct intent meaning or step coverage before accepting anything.".into(),
+                write_back: None,
+            },
+            HumanGateOption {
+                id: "defer".into(),
+                label: "Defer".into(),
+                description: "Leave every proposed mapping unaccepted and keep the gap queued.".into(),
+                write_back: None,
+            },
+        ],
+        recommendation: "Recommend acceptance only when every authored step is covered by the smallest falsifiable technical intents and no product choice was inferred.".into(),
+        after_answer: "Present these options to the human and wait. Accept records their exact answer; revise/defer writes no derivation. Missing human authority is a pause, not a terminal handoff.".into(),
+    }
 }
 
 /// One machine-checkable requirement on the evidence a packet asks for.
@@ -275,7 +311,7 @@ pub fn next(store: &Store, lane: Option<Lane>) -> Result<Option<WorkItem>> {
 }
 
 fn enrich_patterns(store: &Store, item: &mut WorkItem) -> Result<()> {
-    if item.mode != "build" && item.mode != "fix" {
+    if item.mode != "build" && item.mode != "fix" && item.mode != "surface" {
         return Ok(());
     }
     let paths: Vec<String> = item
@@ -287,6 +323,14 @@ fn enrich_patterns(store: &Store, item: &mut WorkItem) -> Result<()> {
     let mut intent_ids = Vec::new();
     if item.mode == "build" && item.target.kind == NodeType::Intent.as_str() {
         intent_ids.push(item.target.id.clone());
+    } else if item.mode == "surface" {
+        for edge in store.edges_with(Some(EdgeKind::Derives), Some(&item.target.id), None)? {
+            if edge.status != InspectionStatus::Failing
+                && edge.status != InspectionStatus::NeedsReverification
+            {
+                intent_ids.push(edge.to_id);
+            }
+        }
     } else if item.mode == "fix" {
         if let Some(edge) = store.get_edge(&item.target.id)? {
             for id in [&edge.from_id, &edge.to_id] {
@@ -323,7 +367,9 @@ pub(crate) fn lane_item(store: &Store, lane: Lane) -> Result<Option<WorkItem>> {
         return Ok(None);
     }
     match lane {
+        Lane::Derive => derive_item(store),
         Lane::Build => build_item(store),
+        Lane::Surface => surface_item(store),
         Lane::Coverage => coverage_item(store),
         Lane::Fix => fix_item(store),
         Lane::Analyze => analyze_item(store),
@@ -805,15 +851,7 @@ mod tests {
     }
 
     #[test]
-    fn a_journey_gap_validate_packet_names_the_intent_in_its_write_back() {
-        // Regression: the end-to-end journey gap branch of `unproven_contract`
-        // once wrote back only `<spec>` placeholders (`loom journey add <spec>
-        // then loom journey run <spec>`), which name no command accepting the
-        // packet's intent target. `loom next` correctly refused the packet as
-        // an `unservable_packet` — a loom defect — and the validate lane could
-        // never serve a user-visible intent whose proof stops at S2. The
-        // write_back must name the intent (via `loom journey prompt`), which
-        // is the drafting command that accepts it.
+    fn an_intent_proof_contract_never_invents_a_legacy_journey() {
         let intent = crate::model::Node {
             id: "abc123def4567890".into(),
             node_type: crate::model::NodeType::Intent,
@@ -834,45 +872,12 @@ mod tests {
         let mut it = item("validate", "intent", &intent.id, &intent.name, "");
         it.prompt_contract = super::contracts::unproven_contract(&intent, proof);
         it.target = node_target(&intent);
-        assert_eq!(
-            closure_problem(&it),
-            None,
-            "the journey-gap write_back must be servable: {}",
-            it.prompt_contract.write_back
-        );
-        // The target-bearing command must be syntactically runnable as-is:
-        // `loom journey prompt` takes exactly one intent argument, so the
-        // command must END at the intent id (nothing but the separator after
-        // the closing quote). It names the target by ID so a name containing
-        // `;` or a newline cannot split the write_back into unservable
-        // fragments.
-        let prompt_cmd = format!("loom journey prompt '{}';", intent.id);
-        assert!(
-            it.prompt_contract.write_back.contains(&prompt_cmd),
-            "the closure must name the intent in a runnable command: {}",
-            it.prompt_contract.write_back
-        );
-        // The write_back must ALSO bind the target into the WRITE closure
-        // (the spec registered by `loom journey add` names the intent by ID),
-        // not only name it in the read-only prompt — so the closing write is
-        // target-bound and can earn S3 from the spec it registers.
-        let write_cmd = format!(
-            "loom journey add <spec whose steps name intent '{}'>",
-            intent.id
-        );
-        assert!(
-            it.prompt_contract.write_back.contains(&write_cmd),
-            "the closure must include a target-bound write: {}",
-            it.prompt_contract.write_back
-        );
-        // The end-to-end branch queues for S3 — its evidence floor must match
-        // its stop condition, not the S2 floor of the weaker branches.
+        assert!(!it.prompt_contract.write_back.contains("loom journey"));
         assert!(
             it.prompt_contract.evidence_clauses.iter().any(|c| matches!(
-                c,
-                EvidenceClause::ProofStrengthAtLeast { grade } if grade == "S3"
+                c, EvidenceClause::ProofStrengthAtLeast { grade } if grade == "S2"
             )),
-            "the journey-gap evidence floor must be S3: {:?}",
+            "Intent proof remains the S2 floor: {:?}",
             it.prompt_contract.evidence_clauses
         );
     }

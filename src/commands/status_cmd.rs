@@ -61,7 +61,6 @@ pub(crate) fn import(
     };
     let export = travel::read_export(file)?;
     let imported_journal = export.journal.clone();
-    let imported_baselines = export.baselines.clone();
     let mut snapshot = export.into_snapshot();
     let quarantined_commands = travel::quarantine_imported_execution(&mut snapshot)?;
     // Journal collisions are part of import validation, not a post-restore
@@ -75,11 +74,10 @@ pub(crate) fn import(
         store.restore(&snapshot)?;
         crate::store::RestoreReport::default()
     };
-    // Sidecars are installed only after structural validation and transactional
+    // The journal sidecar is installed only after structural validation and transactional
     // graph restore succeed, so rejected/nonempty imports cannot contaminate
-    // the existing journal or journey baselines.
+    // the existing journal.
     let journal_restored = crate::journal::restore_entries(&root, &imported_journal)?;
-    let baselines_restored = crate::journey::restore_baselines(&root, &imported_baselines)?;
     // Restore's first verification pass ran before imported journal refs were
     // installed. Recheck authority and every other anchor against final state.
     store.reverify_all(&std::collections::BTreeSet::new())?;
@@ -94,7 +92,6 @@ pub(crate) fn import(
                 "file": file,
                 "quarantined_commands": quarantined_commands,
                 "journal_restored": journal_restored,
-                "baselines_restored": baselines_restored,
                 "repaired": repair_orphans,
                 "preserved_soft_refs": report.preserved_soft_refs,
                 "dropped_facts": report.dropped_facts
@@ -303,6 +300,7 @@ pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
             "observed": id.observed,
         },
         "counts": {
+            "journeys": store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len(),
             "intents": store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len(),
             "codefiles": store.list_nodes(Some(NodeType::CodeFile), usize::MAX)?.len(),
             "edges": store.list_edges(None, usize::MAX)?.len(),
@@ -333,6 +331,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         return Ok(());
     }
     let id = store.identity()?;
+    let journeys = store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len();
     let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
     let files = store
         .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
@@ -353,7 +352,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
             ""
         }
     );
-    println!("  intents: {intents}  codefiles: {files}  edges: {edges}");
+    println!("  journeys: {journeys}  intents: {intents}  codefiles: {files}  edges: {edges}");
     let ownership_gate = if unowned_codefiles.is_empty() {
         "coverage gate clear"
     } else {

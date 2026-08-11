@@ -12,12 +12,149 @@
 
 use loom::lane::{LadderInputs, Lane, QueueDepths};
 use loom::maturity::{build_rungs, compass, ladder, RungState};
-use loom::model::{EdgeKind, InspectionStatus, NodeType, TruthClass};
+use loom::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
 use loom::store::Store;
 use loom::workitem;
 use proptest::prelude::*;
 mod common;
 use common::*;
+
+fn satisfy_journey_root_prerequisites(store: &Store, surfaced: bool) {
+    let artifact = "journeys/lane-fixture.yaml";
+    std::fs::create_dir_all(store.root().join("journeys")).unwrap();
+    std::fs::write(
+        store.root().join(artifact),
+        "schema: loom.journey/v1\nid: lane-fixture\nname: Exercise the selected lane\nactor: operator\ngoal: Exercise the selected lane\ninputs: {}\npreconditions: []\nsteps:\n  - id: work\n    name: Work\n    action: Perform the behavior under test\n    expects: []\n    produces: {}\nprofiles:\n  proof:\n    inputs: {}\n    workspace: {}\n",
+    )
+    .unwrap();
+    let journey = store
+        .add_node(
+            NodeType::Journey,
+            "lane-fixture",
+            "exercise the selected lane",
+            "authored",
+            serde_json::json!({
+                "schema": "loom.journey/v1",
+                "stable_id": "lane-fixture",
+                "name": "Exercise the selected lane",
+                "actor": "operator",
+                "goal": "exercise the selected lane",
+                "artifact": artifact,
+                "semantic_hash": "lane-fixture-hash",
+                "input_ids": [],
+                "preconditions": [],
+                "step_ids": ["work"],
+                "output_ids": [],
+                "profile_ids": ["proof"],
+            }),
+        )
+        .unwrap();
+    for intent in store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+    {
+        let derives = store
+            .add_edge(
+                EdgeKind::Derives,
+                &journey.id,
+                &intent.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &derives.id,
+                TargetKind::Edge,
+                "journey_hash",
+                "lane-fixture-hash",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .set_facet(
+                &derives.id,
+                TargetKind::Edge,
+                "step_ids",
+                r#"["work"]"#,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+    if !surfaced {
+        return;
+    }
+    let codefile = store
+        .list_nodes(Some(NodeType::CodeFile), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .next()
+        .expect("validate fixture has a grounded CodeFile");
+    let surface = store
+        .add_node(
+            NodeType::InterfaceSurface,
+            "lane-cli",
+            "the target repository CLI",
+            "active",
+            serde_json::json!({
+                "schema": "loom.interface-surface/v1",
+                "stable_id": "lane-cli",
+                "title": "Lane CLI",
+                "kind": "cli",
+                "identity": "lane",
+                "operations": [{
+                    "id": "work-op",
+                    "summary": "perform the work",
+                    "argv": ["lane", "work"],
+                    "arguments": [],
+                    "output": {"format": "json"}
+                }],
+            }),
+        )
+        .unwrap();
+    let surfaces = store
+        .add_edge(
+            EdgeKind::Surfaces,
+            &journey.id,
+            &surface.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &surfaces.id,
+            TargetKind::Edge,
+            "journey_hash",
+            "lane-fixture-hash",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &surfaces.id,
+            TargetKind::Edge,
+            "operation_bindings",
+            r#"[{"operation_id":"work-op","step_id":"work"}]"#,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let exposes = store
+        .add_edge(
+            EdgeKind::Exposes,
+            &surface.id,
+            &codefile.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &exposes.id,
+            TargetKind::Edge,
+            "locator",
+            "fn place",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+}
 
 /// Arbitrary ladder inputs. Small ranges keep every rung reachable — the point
 /// is to hit every combination of met/unmet, not to model realistic magnitudes.
@@ -234,6 +371,7 @@ fn every_gate_lane_serves_the_work_it_points_at() {
         let tmp = Tmp::new();
         let store = Store::init(tmp.path(), Some("t"), false).unwrap();
         build(&store);
+        satisfy_journey_root_prerequisites(&store, expected == "validate");
         // Ratification is a separate axis; settle it so these cases exercise the
         // lane under test rather than the divergence queue.
         for n in workitem::unratified_intents(&store).unwrap() {
@@ -252,6 +390,238 @@ fn every_gate_lane_serves_the_work_it_points_at() {
             l.phase
         );
     }
+}
+
+#[test]
+fn ordinary_next_uses_lane_priority_not_insertion_order() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let build_residue = store
+        .add_node(
+            NodeType::Intent,
+            "inserted first build residue",
+            "a behavior still waiting to be built",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let source = store
+        .add_node(
+            NodeType::Intent,
+            "fix source",
+            "a behavior with a broken relationship",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let target = store
+        .add_node(
+            NodeType::Intent,
+            "fix target",
+            "the related behavior",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let fix_residue = store
+        .add_edge(
+            EdgeKind::Relates,
+            &source.id,
+            &target.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &fix_residue.id,
+            InspectionStatus::Failing,
+            "the asserted relationship must hold",
+            "the relationship is broken",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    let selected = workitem::next(&store, None)
+        .unwrap()
+        .expect("ordinary next selects the highest-priority autonomous residue");
+    assert_eq!(selected.mode, Lane::Fix.as_str());
+    assert_eq!(
+        selected.target.id, fix_residue.id,
+        "later-inserted Fix residue must outrank earlier Build residue by Lane::LADDER"
+    );
+    assert_ne!(selected.target.id, build_residue.id);
+}
+
+#[test]
+fn requires_readiness_waits_for_realization_and_preserves_residue_order() {
+    fn prerequisite_state(store: &Store, intent: &loom::model::Node) -> String {
+        loom::completeness::scorecard(store, intent)
+            .unwrap()
+            .axes
+            .into_iter()
+            .find(|axis| axis.axis == "prerequisites")
+            .unwrap()
+            .state
+    }
+
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let higher_priority = store
+        .add_node(
+            NodeType::Intent,
+            "repair existing asserted behavior",
+            "higher-priority residue",
+            "needs_change",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let dependent = store
+        .add_node(
+            NodeType::Intent,
+            "aaa dependent behavior",
+            "must wait for its prerequisite",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let prerequisite = store
+        .add_node(
+            NodeType::Intent,
+            "zzz prerequisite behavior",
+            "the behavior the dependent stands on",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Requires,
+            &dependent.id,
+            &prerequisite.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let first = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("higher-priority residue is build work");
+    assert_eq!(
+        first.target.id, higher_priority.id,
+        "requires readiness must not bypass ordinary higher-priority residue"
+    );
+    store
+        .set_node_status(&higher_priority.id, "implemented")
+        .unwrap();
+    let higher_file = codefile(&store, "src/higher_priority.rs");
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &higher_priority.id,
+            &higher_file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    assert_eq!(prerequisite_state(&store, &dependent), "open");
+    let planned = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("the planned prerequisite is build work");
+    assert_eq!(
+        planned.target.id, prerequisite.id,
+        "the dependent is excluded while its prerequisite is planned"
+    );
+
+    store
+        .set_node_status(&prerequisite.id, "implemented")
+        .unwrap();
+    assert_eq!(
+        prerequisite_state(&store, &dependent),
+        "open",
+        "implemented lifecycle without grounding is not realization"
+    );
+    let ungrounded = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("the ungrounded prerequisite remains build work");
+    assert_eq!(ungrounded.target.id, prerequisite.id);
+    assert!(
+        ungrounded.reason.contains("implemented but ungrounded"),
+        "the packet explains why lifecycle alone is insufficient: {}",
+        ungrounded.reason
+    );
+
+    let prerequisite_file = codefile(&store, "src/prerequisite.rs");
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &prerequisite.id,
+            &prerequisite_file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    assert_eq!(prerequisite_state(&store, &dependent), "met");
+    let ready = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("the dependent becomes eligible after prerequisite realization");
+    assert_eq!(ready.target.id, dependent.id);
+
+    let rollup = store
+        .add_node(
+            NodeType::Intent,
+            "implemented hierarchy roll-up",
+            "realized through its child",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let child = store
+        .add_node(
+            NodeType::Intent,
+            "grounded hierarchy child",
+            "the roll-up implementation",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let child_file = codefile(&store, "src/hierarchy_child.rs");
+    store
+        .add_edge(
+            EdgeKind::Implements,
+            &child.id,
+            &child_file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Hierarchy,
+            &rollup.id,
+            &child.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let rollup_dependent = store
+        .add_node(
+            NodeType::Intent,
+            "behavior requiring the roll-up",
+            "depends on the hierarchy parent",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Requires,
+            &rollup_dependent.id,
+            &rollup.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    assert_eq!(
+        prerequisite_state(&store, &rollup_dependent),
+        "met",
+        "hierarchy roll-ups remain exempt from direct grounding"
+    );
 }
 
 /// A fresh intent's packet must propose WHERE to look, not hand back a listing
@@ -326,10 +696,10 @@ fn a_fresh_intent_packet_proposes_candidate_files() {
 /// counters the rung reads — so it cannot catch a lane whose QUEUE has no
 /// branch for one of the things its depth counts. That is what happened: the
 /// `proven` rung read 14 while `loom next --mode validate` answered "no work",
-/// because nothing served a journey-proof gap. The ladder was advertising work
-/// that could not be collected.
+/// because nothing served a journey-proof gap. The reverse drift is just as
+/// invalid: a lane must not serve hidden work while its rung says Met.
 #[test]
-fn every_unmet_rung_actually_serves_something() {
+fn every_per_item_gating_rung_is_unmet_iff_it_serves_something() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
 
@@ -377,17 +747,33 @@ fn every_unmet_rung_actually_serves_something() {
 
     let ladder = loom::maturity::ladder(&store).unwrap();
     for rung in &ladder.rungs {
-        if rung.state != loom::maturity::RungState::Unmet || !rung.lane.serves_items() {
-            continue;
+        match rung.lane {
+            // These lanes close through whole-graph commands, not packets.
+            Lane::Seed | Lane::Export => {
+                assert!(!rung.lane.serves_items());
+                continue;
+            }
+            // Deepening is deliberately non-draining and Open, never a gating
+            // Unmet rung even when an optional improvement packet exists.
+            Lane::Deepen => {
+                assert_eq!(rung.state, RungState::Open);
+                continue;
+            }
+            _ => {}
         }
-        assert!(
-            loom::workitem::next(&store, Some(rung.lane))
-                .unwrap()
-                .is_some(),
-            "rung '{}' is unmet at depth {} but its lane serves nothing — \
-             the ladder is advertising work nobody can collect",
+
+        let serves = loom::workitem::next(&store, Some(rung.lane))
+            .unwrap()
+            .is_some();
+        assert_eq!(
+            rung.state == RungState::Unmet,
+            serves,
+            "rung '{}' is {:?} at depth {} while lane '{}' {} work — rung and queue must agree in both directions",
             rung.name,
-            rung.depth
+            rung.state,
+            rung.depth,
+            rung.lane.as_str(),
+            if serves { "serves" } else { "serves no" }
         );
     }
 }

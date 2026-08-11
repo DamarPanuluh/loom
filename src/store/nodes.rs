@@ -345,6 +345,73 @@ impl Store {
         Ok(())
     }
 
+    /// Atomically route a captured intake item to one exact typed destination.
+    /// Names and fragments are deliberately refused: the durable reference is
+    /// a node id whose node type (and task subtype where applicable) agrees
+    /// with the selected landing.
+    pub fn route_inbox_item(
+        &self,
+        id: &str,
+        destination: &crate::model::IntakeDestination,
+    ) -> Result<Node> {
+        let mut item = self
+            .get_node(id)?
+            .ok_or_else(|| anyhow!("no node '{id}'"))?;
+        if item.node_type != NodeType::InboxItem {
+            bail!("'{id}' is not an inbox item");
+        }
+        let target = self.get_node(&destination.reference)?.ok_or_else(|| {
+            anyhow!(
+                "no destination node with exact stable id '{}'",
+                destination.reference
+            )
+        })?;
+        let expected_type = destination.destination_type.node_type();
+        if target.node_type != expected_type {
+            bail!(
+                "destination type '{}' requires a {} node, but '{}' is {}",
+                destination.destination_type,
+                expected_type,
+                destination.reference,
+                target.node_type
+            );
+        }
+        if let Some(expected_kind) = destination.destination_type.task_kind() {
+            let actual_kind = target.body.get("kind").and_then(|value| value.as_str());
+            if actual_kind != Some(expected_kind) {
+                bail!(
+                    "destination type '{}' requires task kind '{}', but '{}' has kind '{}'",
+                    destination.destination_type,
+                    expected_kind,
+                    destination.reference,
+                    actual_kind.unwrap_or("missing")
+                );
+            }
+        }
+        let body = item
+            .body
+            .as_object_mut()
+            .ok_or_else(|| anyhow!("inbox item '{id}' has a non-object body"))?;
+        body.insert("destination".into(), serde_json::to_value(destination)?);
+        item.status = "routed".into();
+        crate::research::validate_record(
+            self.get_node(id)?.as_ref(),
+            &item,
+            chrono::Utc::now(),
+            false,
+        )?;
+        let now = now(&self.conn)?;
+        let changed = self.conn.execute(
+            "UPDATE node SET status='routed',body=?2,updated_at=?3 WHERE id=?1",
+            params![id, item.body.to_string(), now],
+        )?;
+        if changed == 0 {
+            bail!("no node '{id}'");
+        }
+        item.updated_at = now;
+        Ok(item)
+    }
+
     /// Hard-delete an asserted node and everything keyed to it. Incident edges
     /// and body-linked Notes are deleted explicitly (not via FK cascade) so
     /// their facets and tags cannot orphan. Notes are followed recursively: a
@@ -390,51 +457,56 @@ impl Store {
                 }
             }
         }
-        let tx = self.conn.unchecked_transaction()?;
+        let tx = self.maybe_tx()?;
         for eid in &incident {
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='edge'",
                 params![eid],
             )?;
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
                 params![eid],
             )?;
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM tag WHERE target_id=?1 AND target_kind='edge'",
                 params![eid],
             )?;
-            tx.execute("DELETE FROM edge WHERE id=?1", params![eid])?;
+            self.conn
+                .execute("DELETE FROM edge WHERE id=?1", params![eid])?;
         }
-        tx.execute(
+        self.conn.execute(
             "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='node'",
             params![id],
         )?;
-        tx.execute(
+        self.conn.execute(
             "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
             params![id],
         )?;
-        tx.execute(
+        self.conn.execute(
             "DELETE FROM tag WHERE target_id=?1 AND target_kind='node'",
             params![id],
         )?;
         for note_id in &dependent_notes {
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='node'",
                 params![note_id],
             )?;
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM facet WHERE target_id=?1 AND target_kind='node'",
                 params![note_id],
             )?;
-            tx.execute(
+            self.conn.execute(
                 "DELETE FROM tag WHERE target_id=?1 AND target_kind='node'",
                 params![note_id],
             )?;
-            tx.execute("DELETE FROM node WHERE id=?1", params![note_id])?;
+            self.conn
+                .execute("DELETE FROM node WHERE id=?1", params![note_id])?;
         }
-        tx.execute("DELETE FROM node WHERE id=?1", params![id])?;
-        tx.commit()?;
+        self.conn
+            .execute("DELETE FROM node WHERE id=?1", params![id])?;
+        if let Some(tx) = tx {
+            tx.commit()?;
+        }
         Ok(())
     }
 

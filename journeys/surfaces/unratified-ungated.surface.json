@@ -1,0 +1,88 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "unratified-ungated",
+  "journey_hash": "d5d1682e7908f2ea",
+  "surface": {
+    "id": "loom-unratified-candidate-state",
+    "title": "Loom unapproved derivation candidate state",
+    "identity": "loom journey derive",
+    "codefile": "src/commands/journey/mod.rs",
+    "locator": "journey_derive",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "journey",
+          "derive",
+          "unratified-ungated",
+          "--candidate-json",
+          "{\"intents\":[{\"criterion\":\"Inspecting this exact unapproved candidate creates no adopted Proposal, Intent, Derives edge, ratification, Build work, or Journey readiness target.\",\"id\":\"candidate-remains-nonauthoritative\",\"level\":\"feature\",\"name\":\"a candidate derivation remains nonauthoritative before approval\",\"operation\":\"create\",\"rationale\":\"A fresh candidate-local identity lets the surface distinguish proposal inspection from the already accepted implementation Intents.\",\"step_ids\":[\"inspect-proposal-state\"],\"visibility\":\"internal\"}],\"journey_hash\":\"d5d1682e7908f2ea\",\"journey_id\":\"unratified-ungated\",\"proposal_id\":\"unratified-review-candidate\",\"proposal_rationale\":\"This deliberately unapproved candidate makes the Journey precondition concrete while read-only inspection proves it has no authority.\",\"relationships\":[],\"schema\":\"loom.journey-derivation/v1\",\"unresolved_question\":{\"id\":\"candidate-adoption\",\"text\":\"Should this exact candidate derivation be adopted?\"}}"
+        ],
+        "id": "inspect-unapproved-candidate-state",
+        "output": {
+          "assertions": [
+            {
+              "equals": "f0b2128595a59b80",
+              "id": "candidate-manifest-hash-is-exact",
+              "pointer": "/candidate_state/canonical_manifest_hash",
+              "type": "string"
+            },
+            {
+              "equals": "loom journey derive-accept unratified-ungated --manifest <manifest.json> --human-decision <exact-answer>",
+              "id": "accept-command-requires-human-decision",
+              "pointer": "/accept_command",
+              "type": "string"
+            },
+            {
+              "equals": [],
+              "id": "no-adopted-proposal-matches",
+              "pointer": "/candidate_state/matching_adopted_proposals",
+              "type": "json"
+            },
+            {
+              "equals": [],
+              "id": "no-candidate-intent-matches",
+              "pointer": "/candidate_state/candidate_intent_matches",
+              "type": "json"
+            },
+            {
+              "equals": [],
+              "id": "no-candidate-derives-edges",
+              "pointer": "/candidate_state/derives_edges",
+              "type": "json"
+            },
+            {
+              "equals": [],
+              "id": "no-candidate-ratification-facts",
+              "pointer": "/candidate_state/ratification_facts",
+              "type": "json"
+            },
+            {
+              "equals": [],
+              "id": "no-candidate-build-entries",
+              "pointer": "/candidate_state/build_queue_entries",
+              "type": "json"
+            },
+            {
+              "equals": [],
+              "id": "no-readiness-derived-candidate-ids",
+              "pointer": "/candidate_state/readiness_derived_candidate_ids",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect one strict unresolved derivation candidate without accepting it or creating authority"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-unapproved-candidate-state",
+      "step_id": "inspect-proposal-state"
+    }
+  ]
+}

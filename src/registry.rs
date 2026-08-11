@@ -56,7 +56,10 @@ impl OwnerRole {
 pub struct EdgeKindSpec {
     pub kind: EdgeKind,
     pub from: NodeType,
-    pub to: NodeType,
+    /// Legal destination node types. Most edge kinds have exactly one; the
+    /// `questions` relationship deliberately targets either a root Journey or
+    /// one of its derived Intents.
+    pub to: &'static [NodeType],
     /// Allowed truth classes. One value for most kinds; both for `exposes`
     /// (derived when sync-extracted, asserted when human/LLM-declared).
     pub truth_classes: &'static [TruthClass],
@@ -68,6 +71,22 @@ impl EdgeKindSpec {
     pub fn allows_truth_class(&self, tc: TruthClass) -> bool {
         self.truth_classes.contains(&tc)
     }
+
+    pub fn allows_from(&self, node_type: NodeType) -> bool {
+        self.from == node_type
+    }
+
+    pub fn allows_to(&self, node_type: NodeType) -> bool {
+        self.to.contains(&node_type)
+    }
+
+    pub fn to_display(&self) -> String {
+        self.to
+            .iter()
+            .map(NodeType::as_str)
+            .collect::<Vec<_>>()
+            .join("|")
+    }
 }
 
 use NodeType::*;
@@ -78,7 +97,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Hierarchy,
         from: Intent,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "part-of decomposition",
@@ -86,7 +105,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Requires,
         from: Intent,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "this behavior depends on another",
@@ -94,7 +113,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::ScenarioOf,
         from: Intent,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "child scenario to parent capability",
@@ -102,7 +121,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::VariantOf,
         from: Intent,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "variant to base behavior",
@@ -110,7 +129,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Triggers,
         from: Intent,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "when condition occurs, response must hold",
@@ -118,7 +137,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Sequence,
         from: Intent,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "ordered step in a journey",
@@ -126,7 +145,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Implements,
         from: Intent,
-        to: CodeFile,
+        to: &[CodeFile],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "behavior realized at file/locator",
@@ -134,7 +153,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Validates,
         from: Validation,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Validator,
         description: "proof checks behavior",
@@ -142,7 +161,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Governs,
         from: QualityRule,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Quality,
         description: "norm measured against behavior",
@@ -150,7 +169,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Targets,
         from: Hypothesis,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Analyzer,
         description: "hypothesis concerns intent",
@@ -158,15 +177,15 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Questions,
         from: Question,
-        to: Intent,
+        to: &[Journey, Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
-        description: "product question awaiting human answer for an intent",
+        description: "product question awaiting human answer for a journey or intent",
     },
     EdgeKindSpec {
         kind: EdgeKind::Flags,
         from: Finding,
-        to: CodeFile,
+        to: &[CodeFile],
         truth_classes: &[Derived],
         owner: OwnerRole::Sync,
         description: "finding concerns codefile",
@@ -174,7 +193,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Assesses,
         from: Finding,
-        to: CodeRule,
+        to: &[CodeRule],
         truth_classes: &[Derived],
         owner: OwnerRole::Sync,
         description: "finding is occurrence of code rule",
@@ -182,7 +201,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Exposes,
         from: InterfaceSurface,
-        to: CodeFile,
+        to: &[CodeFile],
         // Asserted only: an interface surface is declared by human/LLM judgment.
         // Deriving surfaces from code is not implemented (there is no derived
         // `exposes` producer — M-10); if it returns it must ship a deterministic
@@ -194,7 +213,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Calls,
         from: Validation,
-        to: InterfaceSurface,
+        to: &[InterfaceSurface],
         truth_classes: &[Asserted],
         owner: OwnerRole::Validator,
         description: "proof exercises a surface",
@@ -202,7 +221,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Exercises,
         from: Validation,
-        to: CodeFile,
+        to: &[CodeFile],
         truth_classes: &[Asserted],
         owner: OwnerRole::Validator,
         description: "validation-specific code entry surface used by proof strength",
@@ -210,31 +229,39 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Relates,
         from: Intent,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Analyzer,
         description: "manual relationship, kind TBD",
     },
     EdgeKindSpec {
-        kind: EdgeKind::Covers,
-        from: JourneyCoverage,
-        to: Intent,
+        kind: EdgeKind::Derives,
+        from: Journey,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
-        description: "a flow that needs a journey proof covers this intent",
+        description: "journey derives a technical intent",
     },
     EdgeKindSpec {
-        kind: EdgeKind::Asserts,
-        from: JourneyInvariantPoint,
-        to: Intent,
+        kind: EdgeKind::Surfaces,
+        from: Journey,
+        to: &[InterfaceSurface],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
-        description: "an internal domain invariant point marks this intent",
+        description: "journey is exposed through an interface surface",
+    },
+    EdgeKindSpec {
+        kind: EdgeKind::Proves,
+        from: Validation,
+        to: &[Journey],
+        truth_classes: &[Asserted],
+        owner: OwnerRole::Validator,
+        description: "validation proves a journey",
     },
     EdgeKindSpec {
         kind: EdgeKind::Documents,
         from: WikiPage,
-        to: Intent,
+        to: &[Intent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "a wiki page draws on (documents) this intent",
@@ -242,7 +269,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::DependsOn,
         from: Intent,
-        to: UpstreamIntent,
+        to: &[UpstreamIntent],
         truth_classes: &[Asserted],
         owner: OwnerRole::Builder,
         description: "local intent depends on upstream (federated) intent",
@@ -250,7 +277,7 @@ pub const REGISTRY: &[EdgeKindSpec] = &[
     EdgeKindSpec {
         kind: EdgeKind::Exemplar,
         from: Pattern,
-        to: CodeFile,
+        to: &[CodeFile],
         truth_classes: &[Asserted],
         owner: OwnerRole::Analyzer,
         description: "reviewed live code exemplar of a ratified pattern",
@@ -303,6 +330,34 @@ mod tests {
             );
         }
         assert_eq!(REGISTRY.len(), EdgeKind::ALL.len());
+    }
+
+    #[test]
+    fn journey_root_topology_is_exact() {
+        let derives = spec(EdgeKind::Derives);
+        assert_eq!(derives.from, NodeType::Journey);
+        assert_eq!(derives.to, &[NodeType::Intent]);
+        assert_eq!(derives.truth_classes, &[TruthClass::Asserted]);
+        assert_eq!(derives.owner, OwnerRole::Builder);
+
+        let surfaces = spec(EdgeKind::Surfaces);
+        assert_eq!(surfaces.from, NodeType::Journey);
+        assert_eq!(surfaces.to, &[NodeType::InterfaceSurface]);
+        assert_eq!(surfaces.truth_classes, &[TruthClass::Asserted]);
+        assert_eq!(surfaces.owner, OwnerRole::Builder);
+
+        let proves = spec(EdgeKind::Proves);
+        assert_eq!(proves.from, NodeType::Validation);
+        assert_eq!(proves.to, &[NodeType::Journey]);
+        assert_eq!(proves.truth_classes, &[TruthClass::Asserted]);
+        assert_eq!(proves.owner, OwnerRole::Validator);
+
+        let questions = spec(EdgeKind::Questions);
+        assert_eq!(questions.from, NodeType::Question);
+        assert_eq!(questions.to, &[NodeType::Journey, NodeType::Intent]);
+        assert!(questions.allows_to(NodeType::Journey));
+        assert!(questions.allows_to(NodeType::Intent));
+        assert!(!questions.allows_to(NodeType::CodeFile));
     }
 
     #[test]

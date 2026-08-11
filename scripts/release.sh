@@ -7,8 +7,10 @@
 #
 #   scripts/release.sh <patch|minor|major> "<one-line summary>" [--dry-run]
 #
-# semver: patch = bug fix, minor = backward-compatible feature, major = breaking.
-# (SCHEMA_VERSION in src/lib.rs is a SEPARATE thing — the on-disk graph schema.)
+# semver: patch = compatible bug fix. Before 1.0, minor may deliberately break
+# an unstable surface (for example 0.29.x -> 0.30.0); at/after 1.0, minor is
+# backward-compatible and major is breaking. SCHEMA_VERSION in src/lib.rs is
+# separate and versions the on-disk graph.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -39,13 +41,20 @@ new="${vmaj}.${vmin}.${vpat}"
 
 echo "loom release: $cur -> $new ($level)"
 echo "  summary: $summary"
-if $dry_run; then echo "  (dry-run: no gates run, no files changed, nothing installed)"; exit 0; fi
+if $dry_run; then echo "  (dry-run: gates run in isolated copies; no files changed or installed)"; fi
 
-# Gate: nothing ships unless the tree is clean and green.
-echo "== gates =="
-cargo fmt --all -- --check
-cargo clippy --all-targets -- -D warnings
-cargo test --quiet
+# Gate: nothing ships unless code is green and the Journey-root dogfood graph
+# can be rebuilt without ever opening/migrating the repository's legacy v11
+# .loom.  Both scripts copy the worktree and fail closed at an outstanding
+# human derivation/surface approval; a release must not bypass that authority.
+echo "== release gates =="
+scripts/dogfood.sh --check
+scripts/check-fixpoint.sh
+
+if $dry_run; then
+  echo "dry-run: all release gates passed; no files changed or installed"
+  exit 0
+fi
 
 # Bump the package version (first `^version = "..."`; dependency versions are
 # `dep = { version = ... }`, never at line start, so they are untouched).

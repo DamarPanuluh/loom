@@ -120,6 +120,7 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             )?;
             Ok(())
         }
+        CodefileCmd::Anchor { path, at_line } => codefile_anchor(graph, &path, at_line, json),
         CodefileCmd::Rescan => codefile_rescan(graph, json),
         CodefileCmd::Remove { key, successor } => {
             let store = open(graph)?;
@@ -445,6 +446,50 @@ pub(crate) fn rescan_globs(store: &Store, root: &Path) -> Result<RescanOutcome> 
         new_observed,
     })
 }
+
+/// Issue a stable source-anchor marker for one declaration/config entry.
+///
+/// This command is intentionally read-only. It returns the exact marker the
+/// caller may place in source; the marker itself creates no graph object,
+/// relationship, proof, journal event, or export change.
+pub(crate) fn codefile_anchor(
+    graph: Option<&Path>,
+    path: &str,
+    at_line: usize,
+    json: bool,
+) -> Result<()> {
+    let store = open_read(graph)?;
+    let codefile = store.resolve_node(path, Some(NodeType::CodeFile))?;
+    let anchor = crate::locator::issue_anchor(&store, &codefile, at_line)?;
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "anchor_id": anchor.id,
+                "locator": anchor.locator,
+                "marker": anchor.marker,
+                "codefile": anchor.file,
+                "attached_entry": {
+                    "kind": anchor.entry_kind,
+                    "name": anchor.entry_name,
+                    "line_start": anchor.line_start,
+                    "line_end": anchor.line_end,
+                }
+            }))?
+        );
+    } else {
+        println!("anchor:  {}", anchor.id);
+        println!("locator: {}", anchor.locator);
+        println!("marker:  {}", anchor.marker);
+        println!(
+            "target:  {}:{}-{} ({} {})",
+            anchor.file, anchor.line_start, anchor.line_end, anchor.entry_kind, anchor.entry_name
+        );
+        println!("source and graph unchanged; insert the marker immediately before the target");
+    }
+    Ok(())
+}
+
 fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
     let store = open(graph)?;
     let n = store.resolve_node(key, Some(NodeType::CodeFile))?;

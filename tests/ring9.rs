@@ -1108,7 +1108,7 @@ fn door_landing_menu_and_inbox_mark_contract() {
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("t"));
 
-    // `loom door "x" --json` output contains landing_menu with new_intent +
+    // `loom door "x" --json` output contains landing_menu with new_journey +
     // dismiss landings and a next_step naming `loom inbox mark`.
     let door = loom_json(tmp.path(), &["door", "x"]);
     let capability = door
@@ -1129,8 +1129,8 @@ fn door_landing_menu_and_inbox_mark_contract() {
         .filter_map(|m| m.get("landing").and_then(|v| v.as_str()))
         .collect();
     assert!(
-        landings.contains(&"new_intent"),
-        "DOOR+INBOX CLI: landing_menu must contain a 'new_intent' landing, got {:?}",
+        landings.contains(&"new_journey"),
+        "DOOR+INBOX CLI: landing_menu must contain a 'new_journey' landing, got {:?}",
         landings
     );
     assert!(
@@ -1143,22 +1143,22 @@ fn door_landing_menu_and_inbox_mark_contract() {
         "DOOR+INBOX CLI: landing_menu must contain a 'hypothesis' landing, got {:?}",
         landings
     );
-    let new_intent = menu
+    let new_journey = menu
         .iter()
-        .find(|m| m.get("landing").and_then(|v| v.as_str()) == Some("new_intent"))
-        .expect("DOOR+INBOX CLI: new_intent landing exists");
+        .find(|m| m.get("landing").and_then(|v| v.as_str()) == Some("new_journey"))
+        .expect("DOOR+INBOX CLI: new_journey landing exists");
     assert!(
-        new_intent
+        new_journey
             .get("after")
             .and_then(|v| v.as_str())
-            .is_some_and(|after| after.contains("explain this capability")
-                && after.contains("one plain-language product question")),
-        "DOOR+INBOX CLI: new-intent landing must route the LLM into proactive user engagement"
+            .is_some_and(|after| after.contains("loom next --mode derive")
+                && after.contains("human-authorized")),
+        "DOOR+INBOX CLI: new-Journey landing must route the LLM through human-authorized derivation"
     );
     let text_door = loom_run_ok(tmp.path(), &["door", "another partial idea"]);
     assert!(
         text_door.contains("does not need to be a complete specification")
-            && text_door.contains("then: loom next --mode elaborate"),
+            && text_door.contains("then: loom next --mode derive"),
         "DOOR+INBOX CLI: human-readable intake must expose the same capability and follow-up"
     );
     let next_step = door
@@ -1200,10 +1200,59 @@ fn door_landing_menu_and_inbox_mark_contract() {
         stderr
     );
 
-    // `loom inbox mark <id> routed --reason r` succeeds.
+    // A routed item must name where it actually landed: `--reason` carries a
+    // '<destination-type>:<stable-node-id>' reference, and the destination node
+    // has to exist with the matching type. Prose alone can claim an idea was
+    // handled without anything in the graph ever receiving it.
+    let destination = loom_json(
+        tmp.path(),
+        &[
+            "intent",
+            "add",
+            "--name",
+            "the behavior this idea became",
+            "--description",
+            "where the captured idea landed",
+            "--level",
+            "feature",
+            "--visibility",
+            "user_visible",
+            "--aspect",
+            "happy",
+        ],
+    );
+    let destination_id = destination
+        .get("intent")
+        .and_then(|i| i.get("id"))
+        .or_else(|| destination.get("id"))
+        .and_then(|v| v.as_str())
+        .expect("DOOR+INBOX CLI: intent add --json must emit the created id")
+        .to_string();
+
+    // An unstructured reason is refused: it cannot be resolved to a destination.
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph")
+        .arg(tmp.path())
+        .args(["inbox", "mark", short, "routed", "--reason", "r"]);
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom inbox mark routed: {e}"));
+    assert!(
+        !out.status.success(),
+        "DOOR+INBOX CLI: a routed item needs a destination reference, not prose"
+    );
+
+    // `loom inbox mark <id> routed --reason existing_intent:<id>` succeeds.
     loom_run_ok(
         tmp.path(),
-        &["inbox", "mark", short, "routed", "--reason", "r"],
+        &[
+            "inbox",
+            "mark",
+            short,
+            "routed",
+            "--reason",
+            &format!("existing_intent:{destination_id}"),
+        ],
     );
 
     // `loom inbox list --status new` filters: the routed item must not appear.
@@ -1232,10 +1281,10 @@ fn door_landing_menu_and_inbox_mark_contract() {
 }
 
 #[test]
-fn door_weak_existing_intent_match_follows_new_intent_and_is_labelled_weak() {
-    // Contract: a weak lexical match (score < 4) must NOT displace new_intent.
-    // Strong matches (score >= 4) precede new_intent; weak ones follow spike and
-    // carry confidence="weak" with a why that nudges toward new_intent.
+fn door_weak_existing_intent_match_follows_new_journey_and_is_labelled_weak() {
+    // Contract: a weak lexical match (score < 4) must NOT displace new_journey.
+    // Strong matches (score >= 4) precede new_journey; weak ones follow spike and
+    // carry confidence="weak" with a why that nudges toward new_journey.
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("t"));
 
@@ -1271,16 +1320,16 @@ fn door_weak_existing_intent_match_follows_new_intent_and_is_labelled_weak() {
         .filter_map(|m| m.get("landing").and_then(|v| v.as_str()))
         .collect();
 
-    // No strong match in this fixture, so new_intent must be first.
+    // No strong match in this fixture, so new_journey must be first.
     assert_eq!(
         landings.first().copied(),
-        Some("new_intent"),
-        "DOOR WEAK MATCH: with no strong match, landing_menu[0] must be new_intent, got {:?}",
+        Some("new_journey"),
+        "DOOR WEAK MATCH: with no strong match, landing_menu[0] must be new_journey, got {:?}",
         landings
     );
 
     // The weak existing_intent entry must follow spike (i.e. after the
-    // new_intent/hypothesis/spike block) and be labelled weak.
+    // new_journey/hypothesis/spike block) and be labelled weak.
     let spike_idx = landings
         .iter()
         .position(|&l| l == "spike")
@@ -1307,8 +1356,8 @@ fn door_weak_existing_intent_match_follows_new_intent_and_is_labelled_weak() {
         .and_then(|v| v.as_str())
         .expect("DOOR WEAK MATCH: weak existing_intent entry must have a why string");
     assert!(
-        why.contains("weak lexical overlap") && why.contains("prefer new_intent"),
-        "DOOR WEAK MATCH: weak why must mention weak lexical overlap and prefer new_intent, got: {}",
+        why.contains("weak lexical overlap") && why.contains("prefer new_journey"),
+        "DOOR WEAK MATCH: weak why must mention weak lexical overlap and prefer new_journey, got: {}",
         why
     );
 }
@@ -1345,7 +1394,7 @@ fn door_weak_generic_name_term_does_not_become_a_strong_match() {
     let menu = door["landing_menu"]
         .as_array()
         .expect("door emits a landing menu");
-    assert_eq!(menu[0]["landing"], "new_intent");
+    assert_eq!(menu[0]["landing"], "new_journey");
     let existing = menu
         .iter()
         .find(|entry| entry["landing"] == "existing_intent")

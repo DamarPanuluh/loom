@@ -542,6 +542,93 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
         }
     }
 }
+
+/// Create or reuse the canonical reusable CLI surface described by a Journey
+/// surface manifest. The caller owns the surrounding transaction.
+///
+/// All fallible references are resolved before the first mutation. Reusing a
+/// stable surface id is allowed only when its canonical body and exposed
+/// CodeFile agree exactly; accepting a conflicting redefinition would silently
+/// change every Journey already projected onto that surface.
+pub(crate) fn create_or_reuse_interface_surface(
+    store: &Store,
+    definition: &crate::journey::InterfaceSurfaceDefinition,
+) -> Result<(crate::model::Node, Option<crate::model::Edge>, bool)> {
+    definition.validate()?;
+    let wanted_body = definition.node_body()?;
+    let codefile = store.resolve_node(&definition.codefile, Some(NodeType::CodeFile))?;
+    crate::locator::validate_for_codefile(store, &codefile, &definition.locator).with_context(
+        || {
+            format!(
+                "interface surface '{}' locator '{}' does not resolve in CodeFile '{}'",
+                definition.id, definition.locator, codefile.name
+            )
+        },
+    )?;
+
+    let mut matches: Vec<_> = store
+        .list_nodes(Some(NodeType::InterfaceSurface), usize::MAX)?
+        .into_iter()
+        .filter(|surface| {
+            surface.name == definition.id
+                || surface
+                    .body
+                    .get("stable_id")
+                    .and_then(serde_json::Value::as_str)
+                    == Some(definition.id.as_str())
+        })
+        .collect();
+    if matches.len() > 1 {
+        bail!(
+            "interface surface stable id '{}' is ambiguous ({} nodes)",
+            definition.id,
+            matches.len()
+        );
+    }
+
+    let (surface, created) = match matches.pop() {
+        Some(surface) => {
+            if surface.body != wanted_body {
+                bail!(
+                    "interface surface '{}' already exists with a conflicting definition",
+                    definition.id
+                );
+            }
+            (surface, false)
+        }
+        None => (
+            store.add_node(
+                NodeType::InterfaceSurface,
+                &definition.id,
+                &definition.title,
+                "declared",
+                wanted_body,
+            )?,
+            true,
+        ),
+    };
+
+    let existing_exposes = store.edges_with(Some(EdgeKind::Exposes), Some(&surface.id), None)?;
+    if existing_exposes
+        .iter()
+        .any(|edge| edge.to_id != codefile.id)
+    {
+        bail!(
+            "interface surface '{}' already exposes a different CodeFile",
+            definition.id
+        );
+    }
+    let exposes = store.ensure_edge(EdgeKind::Exposes, &surface.id, &codefile.id)?;
+    store.set_facet(
+        &exposes.id,
+        TargetKind::Edge,
+        "locator",
+        &definition.locator,
+        TruthClass::Asserted,
+    )?;
+    Ok((surface, Some(exposes), created))
+}
+
 pub(crate) fn vocab(graph: Option<&Path>, cmd: VocabCmd, json: bool) -> Result<()> {
     let store = open(graph)?;
     match cmd {

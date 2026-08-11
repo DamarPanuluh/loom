@@ -1,0 +1,249 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "divergence-queue",
+  "journey_hash": "7d33d153451ae8c2",
+  "surface": {
+    "id": "loom-human-decision-queue-cli",
+    "title": "Loom Human Decision Queue CLI",
+    "identity": "loom next --mode ratify",
+    "codefile": "src/commands/status_cmd.rs",
+    "locator": "next_cmd",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "intent",
+          "show",
+          "dispatch the authoritative proof runner"
+        ],
+        "id": "verify-fixture-ratification",
+        "output": {
+          "assertions": [
+            {
+              "equals": "dispatch the authoritative proof runner",
+              "id": "setup-target-name",
+              "pointer": "/name",
+              "type": "string"
+            },
+            {
+              "equals": "ratified",
+              "id": "setup-target-ratified",
+              "pointer": "/ratification",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Verify the fixture Intent is candidate-locally ratified in the local snapshot before any drift is created"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "intent",
+          "update",
+          "dispatch the authoritative proof runner",
+          "--description",
+          "fixture: criterion changed after human ratification",
+          "--reason",
+          "Journey proof fixture creates meaning drift only in the isolated local snapshot"
+        ],
+        "id": "create-meaning-drift",
+        "output": {
+          "assertions": [
+            {
+              "equals": "dispatch the authoritative proof runner",
+              "id": "setup-drift-target-name",
+              "pointer": "/intent/name",
+              "type": "string"
+            },
+            {
+              "equals": "fixture: criterion changed after human ratification",
+              "id": "setup-changed-description",
+              "pointer": "/intent/description",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "setup-is-redefinition",
+              "pointer": "/reword",
+              "type": "boolean"
+            },
+            {
+              "equals": "Journey proof fixture creates meaning drift only in the isolated local snapshot",
+              "id": "setup-reason",
+              "pointer": "/reason",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Redefine the candidate-locally ratified derived Intent only inside the local snapshot, creating genuine meaning drift without inventing human approval"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "next",
+          "--mode",
+          "ratify",
+          "--json"
+        ],
+        "id": "inspect-human-decision-work",
+        "output": {
+          "assertions": [
+            {
+              "equals": "ratify",
+              "id": "ratify-mode",
+              "pointer": "/work_item/mode",
+              "type": "string"
+            },
+            {
+              "equals": "human",
+              "id": "human-owner",
+              "pointer": "/work_item/owner_role",
+              "type": "string"
+            },
+            {
+              "equals": "judgment",
+              "id": "judgment-routing",
+              "pointer": "/work_item/routing_hint",
+              "type": "string"
+            },
+            {
+              "equals": "intent",
+              "id": "served-target-kind",
+              "pointer": "/work_item/target/kind",
+              "type": "string"
+            },
+            {
+              "id": "served-target-name-present",
+              "pointer": "/work_item/target/name",
+              "type": "string"
+            },
+            {
+              "contains": "redefined after ratification — the words changed under the yes",
+              "id": "served-item-is-meaning-drift",
+              "pointer": "/work_item/reason",
+              "type": "string"
+            },
+            {
+              "id": "graph-state",
+              "pointer": "/graph_state",
+              "type": "json"
+            },
+            {
+              "id": "context-purpose",
+              "pointer": "/work_item/context/purpose",
+              "type": "string"
+            },
+            {
+              "id": "context-evidence",
+              "pointer": "/work_item/context/linked_entities",
+              "type": "json"
+            },
+            {
+              "id": "decision-mindset",
+              "pointer": "/work_item/prompt_contract/mindset",
+              "type": "string"
+            },
+            {
+              "id": "required-evidence",
+              "pointer": "/work_item/prompt_contract/required_evidence",
+              "type": "string"
+            },
+            {
+              "id": "gate-question",
+              "pointer": "/work_item/prompt_contract/human_gate/question",
+              "type": "string"
+            },
+            {
+              "contains": "recommend one option",
+              "id": "gate-recommendation-required",
+              "pointer": "/work_item/prompt_contract/human_gate/recommendation",
+              "type": "string"
+            },
+            {
+              "contains": "never treat the recommendation as the decision",
+              "id": "gate-recommendation-is-not-authority",
+              "pointer": "/work_item/prompt_contract/human_gate/recommendation",
+              "type": "string"
+            },
+            {
+              "equals": "ratify",
+              "id": "keep-id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/0/id",
+              "type": "string"
+            },
+            {
+              "equals": "Keep behavior",
+              "id": "keep-label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/0/label",
+              "type": "string"
+            },
+            {
+              "equals": "reject",
+              "id": "remove-id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/1/id",
+              "type": "string"
+            },
+            {
+              "equals": "Remove behavior",
+              "id": "remove-label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/1/label",
+              "type": "string"
+            },
+            {
+              "equals": "revise",
+              "id": "revise-id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/2/id",
+              "type": "string"
+            },
+            {
+              "equals": "Revise criterion",
+              "id": "revise-label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/2/label",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "exactly-three-options",
+              "pointer": "/work_item/prompt_contract/human_gate/options/3"
+            },
+            {
+              "id": "after-answer",
+              "pointer": "/work_item/prompt_contract/human_gate/after_answer",
+              "type": "string"
+            },
+            {
+              "id": "next-step",
+              "pointer": "/work_item/next_step",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Inspect the next concrete evidence-judgment conflict as a recommendation-first human decision packet"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "verify-fixture-ratification",
+      "create-meaning-drift"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-human-decision-work",
+      "step_id": "inspect-human-decision-work"
+    }
+  ]
+}

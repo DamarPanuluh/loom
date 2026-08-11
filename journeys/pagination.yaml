@@ -1,14 +1,26 @@
-journey: paginated list output tells callers how to continue
+schema: loom.journey/v1
+id: pagination
+name: Continue through paginated results
+actor: caller
+goal: A caller can tell whether more rows exist and where the next page begins.
+inputs: {}
+preconditions:
+- Loom has a collection whose results can be requested in bounded pages.
 steps:
-  - name: first page reports has_more and the next offset
-    intent: paginated list output tells callers how to continue
-    run: "loom codefile list --limit 5 --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["pagination", "has_more", "next_offset"]
-  - name: a page past the end reports has_more false and null next_offset
-    intent: paginated list output tells callers how to continue
-    run: "loom codefile list --limit 5 --offset 1000 --json"
-    expect:
-      exit_code: 0
-      stdout_contains: ["has_more", "next_offset"]
+- id: request-first-page
+  name: Request First Page
+  action: Request a bounded first page of the collection.
+  expects:
+  - The page reports whether more rows exist and supplies the next offset when continuation
+    is possible.
+  produces: {}
+- id: request-page-past-end
+  name: Request Page Past End
+  action: Request a page whose offset is beyond the final row.
+  expects:
+  - The page reports that no more rows exist and supplies no next offset.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

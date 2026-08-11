@@ -1,0 +1,296 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "plain-next-not-ratify",
+  "journey_hash": "06773af184c4e0f3",
+  "surface": {
+    "id": "plain-next-routing-transcript-cli",
+    "title": "Autonomous next routing with explicit ratification",
+    "identity": "loom mcp transcript --requests-json",
+    "codefile": "src/mcp.rs",
+    "locator": "transcript",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "finding",
+          "add",
+          "plain next proof fixture autonomous residue",
+          "--source",
+          "llm",
+          "--kind",
+          "code_audit",
+          "--evidence",
+          "src/workitem/mod.rs:387-399 plain routing walks autonomous lanes in ladder order",
+          "--impact",
+          "provides deterministic autonomous work while a ratification decision is pending",
+          "--confidence",
+          "1.0",
+          "--file",
+          "src/workitem/mod.rs",
+          "--json"
+        ],
+        "id": "prepare-autonomous-residue",
+        "output": {
+          "assertions": [
+            {
+              "equals": "finding",
+              "id": "autonomous-residue-type",
+              "pointer": "/finding/type",
+              "type": "string"
+            },
+            {
+              "equals": "plain next proof fixture autonomous residue",
+              "id": "autonomous-residue-name",
+              "pointer": "/finding/name",
+              "type": "string"
+            },
+            {
+              "equals": "code_audit",
+              "id": "autonomous-residue-status",
+              "pointer": "/finding/status",
+              "type": "string"
+            },
+            {
+              "equals": "llm",
+              "id": "autonomous-residue-source",
+              "pointer": "/finding/body/source",
+              "type": "string"
+            },
+            {
+              "id": "autonomous-residue-counted",
+              "not_equals": 0,
+              "pointer": "/graph_state/untriaged",
+              "type": "integer"
+            },
+            {
+              "equals": "loom next --mode triage",
+              "id": "autonomous-residue-route",
+              "pointer": "/next_step",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Create isolated autonomous triage work alongside the human decision"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "intent",
+          "impact",
+          "dcb6d5f9e9174ad221d41a34a0f988de",
+          "--classification",
+          "criterion_changed",
+          "--evidence",
+          "src/workitem/mod.rs:387-399 plain routing skips human-only lanes; this proof fixture requires explicit reconfirmation",
+          "--json"
+        ],
+        "id": "prepare-pending-ratification",
+        "output": {
+          "assertions": [
+            {
+              "equals": "dcb6d5f9e9174ad221d41a34a0f988de",
+              "id": "pending-ratification-intent",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": "criterion_changed",
+              "id": "pending-ratification-classification",
+              "pointer": "/classification",
+              "type": "string"
+            },
+            {
+              "equals": true,
+              "id": "pending-ratification-required",
+              "pointer": "/reconfirmation_required",
+              "type": "boolean"
+            },
+            {
+              "equals": "loom next --mode ratify",
+              "id": "pending-ratification-route",
+              "pointer": "/next_step",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Create an isolated evidence-backed reconfirmation decision"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_next\",\"arguments\":{}}},{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_next\",\"arguments\":{\"lane\":\"ratify\"}}}]",
+          "--json"
+        ],
+        "id": "route-ordinary-then-explicit-ratify",
+        "output": {
+          "assertions": [
+            {
+              "equals": "json-rpc-2.0",
+              "id": "routing-protocol-envelope",
+              "pointer": "/protocol",
+              "type": "string"
+            },
+            {
+              "equals": 4,
+              "id": "routing-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 4,
+              "id": "routing-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "routing-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": 1,
+              "id": "routing-initialize-id",
+              "pointer": "/responses/0/id",
+              "type": "integer"
+            },
+            {
+              "equals": "loom",
+              "id": "routing-server-name",
+              "pointer": "/responses/0/result/serverInfo/name",
+              "type": "string"
+            },
+            {
+              "equals": 2,
+              "id": "routing-list-id",
+              "pointer": "/responses/1/id",
+              "type": "integer"
+            },
+            {
+              "equals": "loom_next",
+              "id": "routing-listed-next-tool",
+              "pointer": "/responses/1/result/tools/1/name",
+              "type": "string"
+            },
+            {
+              "equals": "string",
+              "id": "routing-listed-lane-argument",
+              "pointer": "/responses/1/result/tools/1/inputSchema/properties/lane/type",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "routing-ordinary-response-id",
+              "pointer": "/responses/2/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "routing-ordinary-succeeded",
+              "pointer": "/responses/2/result/isError",
+              "type": "boolean"
+            },
+            {
+              "equals": "text",
+              "id": "routing-ordinary-content-type",
+              "pointer": "/responses/2/result/content/0/type",
+              "type": "string"
+            },
+            {
+              "id": "routing-ordinary-autonomous-mode",
+              "matches": "\"mode\": \"(fix|derive|build|surface|coverage|validate|quality|analyze|review|triage|prove|elaborate|rectify|audit|deepen)\"",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "id": "routing-ordinary-autonomous-owner",
+              "matches": "\"owner_role\": \"(builder|analyzer|fixer|validator|quality|rectify|sync)\"",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "id": "routing-ordinary-packet",
+              "matches": "\"packet_id\": \"pkt-[0-9]+-[0-9]+\"",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": 4,
+              "id": "routing-ratify-response-id",
+              "pointer": "/responses/3/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "routing-ratify-succeeded",
+              "pointer": "/responses/3/result/isError",
+              "type": "boolean"
+            },
+            {
+              "equals": "text",
+              "id": "routing-ratify-content-type",
+              "pointer": "/responses/3/result/content/0/type",
+              "type": "string"
+            },
+            {
+              "contains": "\"mode\": \"ratify\"",
+              "id": "routing-ratify-mode",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"owner_role\": \"human\"",
+              "id": "routing-ratify-human-owner",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"routing_hint\": \"judgment\"",
+              "id": "routing-ratify-judgment",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"human_gate\": {",
+              "id": "routing-ratify-human-gate",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "id": "routing-ratify-packet",
+              "matches": "\"packet_id\": \"pkt-[0-9]+-[0-9]+\"",
+              "pointer": "/responses/3/result/content/0/text",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Serve autonomous work first, then prove the human ratification packet remains explicitly available"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-pending-ratification",
+      "prepare-autonomous-residue"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "route-ordinary-then-explicit-ratify",
+      "step_id": "request-ordinary-next-work"
+    }
+  ]
+}

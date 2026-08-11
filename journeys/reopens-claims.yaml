@@ -1,28 +1,26 @@
-journey: a settled claim re-opens when its anchor moves
+schema: loom.journey/v1
+id: reopens-claims
+name: Reopen only claims whose anchors changed
+actor: developer
+goal: Repository changes invalidate the settled claims that point at changed evidence
+  while sparing unrelated groundings.
+inputs: {}
+preconditions:
+- Two settled grounding claims point to distinct symbols with cited evidence.
 steps:
-  - name: editing the grounded symbol stales the verdict
-    fixture: true
-    intent: a change re-opens exactly the claims that pointed at what changed
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'demo behavior' --description 'does something' --level feature &&
-      printf 'fn demo() {}\n' > "$tmp/src.rs" &&
-      loom codefile add --graph "$tmp" src.rs &&
-      loom edge implement --graph "$tmp" 'demo behavior' src.rs --locator 'fn demo' &&
-      eid=$(loom edge list --graph "$tmp" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['items'][0]['id'])") &&
-      loom edge verdict --graph "$tmp" "$eid" ground --criterion 'demo grounding' --evidence 'src.rs:1 — fn demo realizes the behavior' &&
-      loom sync --graph "$tmp" &&
-      printf 'fn other() {}\n' > "$tmp/src.rs" &&
-      loom sync --graph "$tmp" --json &&
-      rm -rf "$tmp"
-    expect:
-      exit_code: 0
-      stdout_contains: ['"edges_staled": 1', '"files_changed": 1']
-
-  - name: the precision regression reopens only the changed grounding
-    fixture: true
-    intent: a change re-opens exactly the claims that pointed at what changed
-    run: "cargo test --test ring13_precision symbol_scoped_spare -- --exact"
-    expect:
-      exit_code: 0
-      stdout_contains: ["test result: ok. 1 passed; 0 failed"]
+- id: change-one-grounded-symbol
+  name: Change One Grounded Symbol
+  action: Change one grounded symbol while leaving the other symbol untouched.
+  expects: []
+  produces: {}
+- id: synchronize-changed-repository
+  name: Synchronize Changed Repository
+  action: Synchronize the graph with the repository.
+  expects:
+  - The grounding that points at the changed symbol needs reverification.
+  - The grounding for the untouched symbol remains settled.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

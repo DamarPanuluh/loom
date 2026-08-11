@@ -1,0 +1,142 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "dependents",
+  "journey_hash": "7a7f5a4246afb046",
+  "surface": {
+    "id": "loom-intent-dependents-cli",
+    "title": "Loom intent dependents CLI",
+    "identity": "loom intent dependents",
+    "codefile": "src/commands/intent.rs",
+    "locator": "intent_dependents",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "intent",
+          "dependents",
+          "24316958813a685ba699481cbe090716",
+          "--depth",
+          "5",
+          "--json"
+        ],
+        "id": "inspect-foundation-dependents",
+        "output": {
+          "assertions": [
+            {
+              "equals": "24316958813a685ba699481cbe090716",
+              "id": "foundation-target",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": 5,
+              "id": "foundation-depth",
+              "pointer": "/depth",
+              "type": "integer"
+            },
+            {
+              "equals": "0727320f47b30fd3f14c7f67b7b69eb7",
+              "id": "middle-id",
+              "pointer": "/dependents/0/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": 1,
+              "id": "middle-hop",
+              "pointer": "/dependents/0/hops",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "middle-unproven",
+              "pointer": "/dependents/0/proven",
+              "type": "boolean"
+            },
+            {
+              "equals": "65d827608b44ca5488573c0a04067b42",
+              "id": "far-id",
+              "pointer": "/dependents/1/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": 2,
+              "id": "far-hop",
+              "pointer": "/dependents/1/hops",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "far-unproven",
+              "pointer": "/dependents/1/proven",
+              "type": "boolean"
+            },
+            {
+              "equals": 2,
+              "id": "unproven-count",
+              "pointer": "/unproven",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect every behavior that transitively stands on the foundation behavior"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "intent",
+          "dependents",
+          "63dfbde1621abe53ca8ffd7ada8050d2",
+          "--depth",
+          "5",
+          "--json"
+        ],
+        "id": "inspect-standalone-dependents",
+        "output": {
+          "assertions": [
+            {
+              "equals": "63dfbde1621abe53ca8ffd7ada8050d2",
+              "id": "standalone-target",
+              "pointer": "/intent/id",
+              "type": "string"
+            },
+            {
+              "equals": 5,
+              "id": "standalone-depth",
+              "pointer": "/depth",
+              "type": "integer"
+            },
+            {
+              "equals": [],
+              "id": "explicit-empty",
+              "pointer": "/dependents",
+              "type": "json"
+            },
+            {
+              "equals": 0,
+              "id": "zero-unproven",
+              "pointer": "/unproven",
+              "type": "integer"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect the explicit empty dependent set of a standalone behavior"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "inspect-foundation-dependents",
+      "step_id": "inspect-foundation-dependents"
+    },
+    {
+      "operation_id": "inspect-standalone-dependents",
+      "step_id": "inspect-standalone-dependents"
+    }
+  ]
+}

@@ -261,7 +261,7 @@ fn read_attestation(_: Option<&AttestationReader>) -> bool {
 /// token, but shell operators, substitutions, escapes, comments, and newlines
 /// are rejected rather than interpreted. This is enough for the command form
 /// loom generates while keeping the capability decision independent of `sh`.
-fn simple_shell_tokens(command: &str) -> Option<Vec<String>> {
+pub(crate) fn strict_simple_tokens(command: &str) -> Option<Vec<String>> {
     let mut tokens = Vec::new();
     let mut chars = command.chars().peekable();
 
@@ -356,7 +356,7 @@ struct DirectCurrentExe {
 /// the trusted `current_exe` captured here, closing alias replacement races.
 fn direct_current_exe_tokens(command: &str) -> Option<DirectCurrentExe> {
     let current_exe = std::env::current_exe().ok()?;
-    let tokens = simple_shell_tokens(command)?;
+    let tokens = strict_simple_tokens(command)?;
     let argv0 = tokens.first()?;
     if !names_current_loom(argv0, &current_exe) {
         return None;

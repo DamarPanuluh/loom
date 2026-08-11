@@ -49,6 +49,17 @@ pub fn dispatch(graph: Option<&Path>, cmd: IntentCmd, json: bool) -> Result<()> 
         ),
         IntentCmd::Show { key } => intent_show(graph, key, json),
         IntentCmd::Waive { key, axis, reason } => intent_waive(graph, key, axis, reason, json),
+        IntentCmd::JourneyExempt {
+            key,
+            kind,
+            reason,
+            human_decision,
+        } => intent_journey_exempt(graph, key, kind, reason, human_decision, json),
+        IntentCmd::JourneyRequire {
+            key,
+            reason,
+            human_decision,
+        } => intent_journey_require(graph, key, reason, human_decision, json),
         IntentCmd::Reactivate { key, reason } => intent_reactivate(graph, key, reason, json),
         IntentCmd::List { limit, offset } => intent_list(graph, limit, offset, json),
         IntentCmd::Update {
@@ -544,6 +555,9 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
         .unwrap_or_else(|| "unratified".into());
     let ratified_by = store.get_facet(&n.id, TargetKind::Node, "ratified_by")?;
     let ratified_at = store.get_facet(&n.id, TargetKind::Node, "ratified_at")?;
+    let journey_exemption = store
+        .get_facet(&n.id, TargetKind::Node, "journey_exemption")?
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok());
     let tags = store.tags_of(&n.id, TargetKind::Node)?;
 
     if json {
@@ -556,6 +570,7 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
         intent["ratification"] = serde_json::json!(ratification);
         intent["ratified_by"] = serde_json::json!(ratified_by);
         intent["ratified_at"] = serde_json::json!(ratified_at);
+        intent["journey_exemption"] = serde_json::json!(journey_exemption);
         intent["tags"] = serde_json::json!(tags);
         println!("{}", serde_json::to_string_pretty(&intent)?);
         return Ok(());
@@ -585,6 +600,12 @@ fn intent_show(graph: Option<&Path>, key: String, json: bool) -> Result<()> {
     }
     if let Some(at) = ratified_at {
         println!("  ratified_at: {at}");
+    }
+    if let Some(exemption) = journey_exemption {
+        println!(
+            "  journey_exemption: {}",
+            serde_json::to_string(&exemption)?
+        );
     }
     if !tags.is_empty() {
         println!("  tags: {}", tags.join(", "));
@@ -635,6 +656,118 @@ fn intent_waive(
         format!("waived {axis} for '{}'", n.name),
     )?;
     Ok(())
+}
+
+/// Record the one canonical exception to Journey ancestry. The facet carries
+/// only the decision's digest; the full human answer remains in the append-only
+/// journal so ordinary graph reads do not expose or duplicate authority text.
+fn intent_journey_exempt(
+    graph: Option<&Path>,
+    key: String,
+    kind: String,
+    reason: String,
+    human_decision: Option<String>,
+    json: bool,
+) -> Result<()> {
+    if crate::model::is_placeholder(&kind) {
+        bail!("journey exemption needs a substantive --kind");
+    }
+    if crate::model::is_placeholder(&reason) {
+        bail!("journey exemption needs a substantive --reason");
+    }
+    let store = open(graph)?;
+    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
+    let decision =
+        super::ratification_decision(&format!("journey-exempt {}", n.name), human_decision)?;
+    let decision_json = serde_json::to_string(&decision)?;
+    let decision_digest = crate::artifact::fingerprint(&decision_json);
+    // serde_json's default map is key-sorted; serializing this object therefore
+    // produces the exact canonical representation completeness accepts.
+    let exemption = serde_json::json!({
+        "kind": kind.trim(),
+        "reason": reason.trim(),
+        "human_decision_digest": decision_digest,
+    });
+    let canonical = serde_json::to_string(&exemption)?;
+    let tx = store.begin()?;
+    store.set_facet(
+        &n.id,
+        TargetKind::Node,
+        "journey_exemption",
+        &canonical,
+        TruthClass::Asserted,
+    )?;
+    store.append_journal(
+        "intent_journey_exempt",
+        &n.id,
+        serde_json::json!({
+            "kind": kind.trim(),
+            "reason": reason.trim(),
+            "human_decision_digest": decision_digest,
+            "human_decision": decision,
+        }),
+    )?;
+    tx.commit()?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": node_json(&n),
+            "journey_exemption": exemption,
+        }),
+        "loom status",
+        format!("Journey exemption recorded for '{}'", n.name),
+    )
+}
+
+/// Withdraw a Journey exemption under the same human-decision gate that
+/// created it. The journal preserves who authorized the semantic reversal.
+fn intent_journey_require(
+    graph: Option<&Path>,
+    key: String,
+    reason: String,
+    human_decision: Option<String>,
+    json: bool,
+) -> Result<()> {
+    if crate::model::is_placeholder(&reason) {
+        bail!("journey requirement needs a substantive --reason");
+    }
+    let store = open(graph)?;
+    let n = store.resolve_node(&key, Some(NodeType::Intent))?;
+    if store
+        .get_facet(&n.id, TargetKind::Node, "journey_exemption")?
+        .is_none()
+    {
+        bail!("intent '{}' has no Journey exemption to withdraw", n.name);
+    }
+    let decision =
+        super::ratification_decision(&format!("journey-require {}", n.name), human_decision)?;
+    let decision_json = serde_json::to_string(&decision)?;
+    let decision_digest = crate::artifact::fingerprint(&decision_json);
+    let tx = store.begin()?;
+    store.clear_facet(&n.id, TargetKind::Node, "journey_exemption")?;
+    store.append_journal(
+        "intent_journey_require",
+        &n.id,
+        serde_json::json!({
+            "reason": reason.trim(),
+            "human_decision_digest": decision_digest,
+            "human_decision": decision,
+        }),
+    )?;
+    tx.commit()?;
+    pulse::emit_line(
+        &store,
+        json,
+        serde_json::json!({
+            "intent": node_json(&n),
+            "journey_required": true,
+            "reason": reason.trim(),
+            "human_decision_digest": decision_digest,
+        }),
+        "loom next --mode derive",
+        format!("Journey ancestry required again for '{}'", n.name),
+    )
 }
 
 fn intent_reactivate(graph: Option<&Path>, key: String, reason: String, json: bool) -> Result<()> {
@@ -845,6 +978,7 @@ fn intent_update(graph: Option<&Path>, args: IntentUpdateArgs, json: bool) -> Re
             // redefine_intent also stales a ratified intent's ratification to
             // needs_reconfirmation — wantedness rots with meaning.
             reopened = store.redefine_intent(&n.id, description)?;
+            store.clear_facet(&n.id, TargetKind::Node, "journey_exemption")?;
             store.add_note(&n.id, "decision", &format!("redefined: {reason}"))?;
             parts.push(format!("redefined — {reopened} edge(s) re-opened"));
         }

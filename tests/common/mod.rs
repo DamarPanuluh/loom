@@ -36,6 +36,30 @@ impl Drop for Tmp {
     }
 }
 
+/// Spawn the compiled Loom binary for integration fixtures.
+#[allow(dead_code)]
+pub fn loom_command() -> std::process::Command {
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_loom"));
+    command.env("LOOM_NON_INTERACTIVE", "1");
+    command
+}
+
+/// Initialize a graph through the public CLI.
+#[allow(dead_code)]
+pub fn loom_init(root: &Path, name: Option<&str>) {
+    let mut command = loom_command();
+    command.arg("--graph").arg(root).arg("init").arg(root);
+    if let Some(name) = name {
+        command.arg("--name").arg(name);
+    }
+    let output = command.output().expect("spawn loom init");
+    assert!(
+        output.status.success(),
+        "loom init failed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 /// Give an intent a REAL passing proof: register a trivial command and let loom
 /// run it.
 ///
@@ -61,10 +85,6 @@ pub fn prove(root: &Path, intent_name: &str, proof_name: &str) {
             r#type: "test".into(),
             command: "true".into(),
             intent: intent_name.into(),
-            proof_kind: None,
-            journey_id: None,
-            repo_native_kind: None,
-            artifact: None,
         },
     });
     call(Command::Validation {
@@ -73,54 +93,6 @@ pub fn prove(root: &Path, intent_name: &str, proof_name: &str) {
             all: false,
         },
     });
-}
-
-/// Put an existing validation into a genuinely-passing state: point it at a
-/// trivial command and let loom run it.
-///
-/// For fixtures whose subject is drift detection or coverage, not proof
-/// semantics. The command is irrelevant to what they assert; what matters is
-/// that the passing state was EARNED by a run loom observed, because a
-/// hand-written passing verdict is no longer a state the graph can hold.
-#[allow(dead_code)]
-pub fn observe_passing(store: &loom::store::Store, val_name: &str) {
-    use loom::model::NodeType;
-    let val = store
-        .resolve_node(val_name, Some(NodeType::Validation))
-        .unwrap_or_else(|e| panic!("resolve validation {val_name}: {e}"));
-    let mut body = val.body.clone();
-    body["command"] = serde_json::json!("echo proof-ok");
-    // A journey proof's GRADE is derived from its spec, so a fixture claiming a
-    // real journey proof has to have one. Written here rather than in every
-    // caller: the alternative is fixtures that pass loom's runner and then
-    // report S1, which is not what any of them mean.
-    let is_journey = body.get("proof_kind").and_then(|k| k.as_str()) == Some("journey")
-        || body.get("type").and_then(|k| k.as_str()) == Some("journey");
-    if is_journey && body.get("journey").is_none() && body.get("journey_id").is_none() {
-        let slug = val_name.replace(' ', "-");
-        std::fs::create_dir_all(store.root().join("journeys")).unwrap();
-        std::fs::write(
-            store.root().join(format!("journeys/{slug}.yaml")),
-            format!(
-                concat!(
-                    "journey: {}\n",
-                    "steps:\n",
-                    "  - name: run it\n",
-                    "    intent: {}\n",
-                    "    run: echo proof-ok\n",
-                    "    expect:\n",
-                    "      stdout_contains: [\"proof-ok\"]\n",
-                ),
-                slug, val_name
-            ),
-        )
-        .unwrap();
-        body["journey"] = serde_json::json!(slug);
-    }
-    store.set_node_body(&val.id, &body).unwrap();
-    let val = store.get_node(&val.id).unwrap().unwrap();
-    loom::commands::observe_validation(store, &val)
-        .unwrap_or_else(|e| panic!("observe {val_name}: {e}"));
 }
 
 /// Register a CodeFile AND put a real file behind it.
@@ -167,126 +139,348 @@ pub fn s3_journey_proof(
     intent_id: &str,
     name: &str,
 ) -> loom::model::Node {
-    use loom::model::{EdgeKind, TargetKind, TruthClass};
+    s3_journey_proof_with_ratification(store, root, intent_id, name, true)
+}
 
-    // The behavior lives in a symbol...
+/// Build the same witnessed S3 topology while deliberately preserving an
+/// unratified Intent, for divergence tests that exercise the human gate.
+#[allow(dead_code)]
+pub fn s3_journey_proof_unratified(
+    store: &loom::store::Store,
+    root: &std::path::Path,
+    intent_id: &str,
+    name: &str,
+) -> loom::model::Node {
+    s3_journey_proof_with_ratification(store, root, intent_id, name, false)
+}
+
+fn s3_journey_proof_with_ratification(
+    store: &loom::store::Store,
+    root: &std::path::Path,
+    intent_id: &str,
+    name: &str,
+    ratify: bool,
+) -> loom::model::Node {
+    use loom::journey::{
+        CliOperation, JourneySpec, OperationBinding, OperationOutput, OutputAssertion,
+        OutputFormat, ValueType, JOURNEY_COMPILER_VERSION, JOURNEY_SCHEMA,
+    };
+    use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
+    use std::collections::BTreeMap;
+
+    let slug = name.replace(' ', "-");
+    let behavior_path = format!("src/{slug}-behavior.rs");
+    let cli_path = format!("src/{slug}-cli.rs");
+    let artifact = format!("journeys/{slug}.yaml");
     std::fs::create_dir_all(root.join("src")).unwrap();
-    std::fs::write(
-        root.join("src/checkout.rs"),
-        "pub fn perform_checkout() -> &'static str {\n    \"ok\"\n}\n",
-    )
-    .unwrap();
-    let cf = store
-        .add_node(
-            loom::model::NodeType::CodeFile,
-            "src/checkout.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-    let g = store
-        .add_edge(
-            EdgeKind::Implements,
-            intent_id,
-            &cf.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    store
-        .set_facet(
-            &g.id,
-            TargetKind::Edge,
-            "locator",
-            "fn perform_checkout",
-            TruthClass::Asserted,
-        )
-        .unwrap();
-
-    // ...and the proof's own file calls it.
-    std::fs::create_dir_all(root.join("tests")).unwrap();
-    std::fs::write(
-        root.join("tests/checkout_test.rs"),
-        "pub fn exercises_checkout() {\n    let _ = perform_checkout();\n}\n",
-    )
-    .unwrap();
-    let test_cf = store
-        .add_node(
-            loom::model::NodeType::CodeFile,
-            "tests/checkout_test.rs",
-            "",
-            "",
-            serde_json::json!({}),
-        )
-        .unwrap();
-
-    // The spec asserts something about the OUTPUT, not just the exit code.
     std::fs::create_dir_all(root.join("journeys")).unwrap();
     std::fs::write(
-        root.join(format!("journeys/{name}.yaml")),
-        format!(
-            "journey: {name}\nsteps:\n  - name: run it\n    intent: checkout\n    \
-             run: cargo test --test checkout_test\n    expect:\n      stdout_contains: [\"checkout-ok\"]\n"
-        ),
+        root.join(&behavior_path),
+        "pub fn perform_checkout() -> &'static str { \"ok\" }\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join(&cli_path),
+        "pub fn run_checkout() -> &'static str { perform_checkout() }\n",
     )
     .unwrap();
 
-    // The test file attaches to the BEHAVIOR with the `verifies` role — that is
-    // the proof's reach, and what the call witness reads.
-    let v_edge = store
-        .add_edge(
-            EdgeKind::Implements,
-            intent_id,
-            &test_cf.id,
-            TruthClass::Asserted,
-        )
-        .unwrap();
-    store
-        .set_facet(
-            &v_edge.id,
-            TargetKind::Edge,
-            "role",
-            "verifies",
-            TruthClass::Asserted,
-        )
-        .unwrap();
-
-    let validation = store
+    let spec: JourneySpec = serde_json::from_value(serde_json::json!({
+        "schema": JOURNEY_SCHEMA,
+        "id": slug,
+        "name": name,
+        "actor": "shopper",
+        "goal": "Complete checkout",
+        "inputs": {},
+        "preconditions": [],
+        "steps": [{"id":"checkout","name":"Checkout","action":"checks out","expects":[],"produces":{}}],
+        "profiles":{"proof":{"inputs":{},"workspace":{}}}
+    }))
+    .unwrap();
+    std::fs::write(
+        root.join(&artifact),
+        serde_norway::to_string(&spec).unwrap(),
+    )
+    .unwrap();
+    let journey_hash = spec.semantic_hash().unwrap();
+    let journey = store
         .add_node(
-            loom::model::NodeType::Validation,
+            NodeType::Journey,
+            &slug,
             name,
-            "",
-            "not_run",
+            "authored",
             serde_json::json!({
-                "proof_kind": "journey",
-                "type": "test",
-                "command": "printf 'test result: ok. 1 passed; 0 failed\\ncheckout-ok\\n'",
-                "journey": name,
+                "schema": JOURNEY_SCHEMA,
+                "stable_id": slug,
+                "name": name,
+                "actor": "shopper",
+                "goal": "Complete checkout",
+                "artifact": artifact,
+                "semantic_hash": journey_hash,
+                "input_ids": [],
+                "preconditions": [],
+                "step_ids": ["checkout"],
+                "output_ids": [],
+                "profile_ids": ["proof"]
             }),
         )
         .unwrap();
-    let exercises = store
-        .add_edge(
-            EdgeKind::Exercises,
-            &validation.id,
-            &test_cf.id,
+
+    let behavior = store
+        .add_node(
+            NodeType::CodeFile,
+            &behavior_path,
+            "",
+            "",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let realizes = store
+        .ensure_edge(EdgeKind::Implements, intent_id, &behavior.id)
+        .unwrap();
+    store
+        .set_facet(
+            &realizes.id,
+            TargetKind::Edge,
+            "locator",
+            "perform_checkout",
             TruthClass::Asserted,
         )
+        .unwrap();
+    if ratify && store.ratification(intent_id).unwrap() != "ratified" {
+        store
+            .ratify_intent(intent_id, "canonical Journey fixture", "test fixture")
+            .unwrap();
+    }
+    let derives = store
+        .ensure_edge(EdgeKind::Derives, &journey.id, intent_id)
+        .unwrap();
+    store
+        .set_facet(
+            &derives.id,
+            TargetKind::Edge,
+            "journey_hash",
+            &journey_hash,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &derives.id,
+            TargetKind::Edge,
+            "step_ids",
+            "[\"checkout\"]",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let cli = store
+        .add_node(NodeType::CodeFile, &cli_path, "", "", serde_json::json!({}))
+        .unwrap();
+    let cli_grounding = store
+        .ensure_edge(EdgeKind::Implements, intent_id, &cli.id)
+        .unwrap();
+    store
+        .set_facet(
+            &cli_grounding.id,
+            TargetKind::Edge,
+            "locator",
+            "run_checkout",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let operation = CliOperation {
+        id: "checkout-op".into(),
+        summary: "Run checkout".into(),
+        argv: vec![
+            "python3".into(),
+            "-c".into(),
+            "import json; print(json.dumps({'ok': True}))".into(),
+        ],
+        environment: Vec::new(),
+        read_only: true,
+        arguments: Vec::new(),
+        output: OperationOutput {
+            format: OutputFormat::Json,
+            captures: Vec::new(),
+            assertions: vec![OutputAssertion {
+                id: "checkout-ok".into(),
+                pointer: "/ok".into(),
+                value_type: Some(ValueType::Boolean),
+                equals: Some(serde_json::json!(true)),
+                source: None,
+            }],
+            redact: Vec::new(),
+        },
+    };
+    let surface = store
+        .add_node(
+            NodeType::InterfaceSurface,
+            &format!("{name} CLI"),
+            "canonical Journey fixture CLI",
+            "active",
+            serde_json::json!({
+                "schema":"loom.interface-surface/v1",
+                "stable_id":format!("{slug}-cli"),
+                "title":format!("{name} CLI"),
+                "kind":"cli",
+                "identity":slug,
+                "codefile":cli_path,
+                "locator":"run_checkout",
+                "operations":[operation.clone()]
+            }),
+        )
+        .unwrap();
+    let surfaces = store
+        .ensure_edge(EdgeKind::Surfaces, &journey.id, &surface.id)
+        .unwrap();
+    store
+        .set_facet(
+            &surfaces.id,
+            TargetKind::Edge,
+            "journey_hash",
+            &journey_hash,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &surfaces.id,
+            TargetKind::Edge,
+            "operation_bindings",
+            "[{\"operation_id\":\"checkout-op\",\"step_id\":\"checkout\"}]",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let exposes = store
+        .ensure_edge(EdgeKind::Exposes, &surface.id, &cli.id)
+        .unwrap();
+    store
+        .set_facet(
+            &exposes.id,
+            TargetKind::Edge,
+            "locator",
+            "run_checkout",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let surface_hash = loom::journey::surface_projection_hash(store, &journey)
+        .unwrap()
+        .unwrap();
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            &format!("journey:{slug}:proof"),
+            "compiled Journey proof",
+            "not_run",
+            serde_json::json!({
+                "type":"journey",
+                "command":format!("loom journey run {slug} --profile proof"),
+                "profile":"proof",
+                "journey_hash":journey_hash,
+                "surface_hash":surface_hash,
+                "compiler_version":JOURNEY_COMPILER_VERSION
+            }),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Proves, &validation.id, &journey.id)
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &validation.id, intent_id)
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Calls, &validation.id, &surface.id)
+        .unwrap();
+    let exercises = store
+        .ensure_edge(EdgeKind::Exercises, &validation.id, &cli.id)
         .unwrap();
     store
         .set_facet(
             &exercises.id,
             TargetKind::Edge,
             "locator",
-            "exercises_checkout",
+            "run_checkout",
             TruthClass::Asserted,
         )
         .unwrap();
-    store
-        .ensure_edge(EdgeKind::Validates, &validation.id, intent_id)
-        .unwrap();
-    let fresh = store.get_node(&validation.id).unwrap().unwrap();
-    loom::commands::observe_validation(store, &fresh).unwrap();
+
+    let proof = loom::journey_runtime::compile(
+        &spec,
+        &surface_hash,
+        "proof",
+        vec![operation],
+        &[OperationBinding {
+            step_id: "checkout".into(),
+            operation_id: "checkout-op".into(),
+        }],
+    )
+    .unwrap();
+    let report = loom::journey_runtime::execute(root, &spec, &proof, &BTreeMap::new());
+    assert_eq!(report.status, loom::journey_runtime::RuntimeStatus::Passed);
+    loom::journey::settle_compiled_validation(
+        store,
+        &validation.id,
+        &report,
+        &[behavior_path.clone(), cli_path.clone()],
+    )
+    .unwrap();
+    for (edge, criterion, evidence) in [
+        (
+            &derives,
+            "Journey derives this technical behavior",
+            artifact.as_str(),
+        ),
+        (
+            &surfaces,
+            "Journey is exposed through this CLI",
+            cli_path.as_str(),
+        ),
+        (
+            &exposes,
+            "CLI surface is implemented by this file",
+            cli_path.as_str(),
+        ),
+        (
+            &realizes,
+            "behavior code realizes the intent",
+            behavior_path.as_str(),
+        ),
+        (
+            &cli_grounding,
+            "CLI code realizes the behavior",
+            cli_path.as_str(),
+        ),
+    ] {
+        store
+            .record_verdict(
+                &edge.id,
+                loom::model::InspectionStatus::Passing,
+                criterion,
+                evidence,
+                1.0,
+                "test",
+            )
+            .unwrap();
+    }
+    for kind in [EdgeKind::Calls, EdgeKind::Exercises] {
+        for edge in store
+            .edges_with(Some(kind), Some(&validation.id), None)
+            .unwrap()
+        {
+            store
+                .record_verdict(
+                    &edge.id,
+                    loom::model::InspectionStatus::Passing,
+                    "compiled proof uses this exact surface",
+                    &cli_path,
+                    1.0,
+                    "test",
+                )
+                .unwrap();
+        }
+    }
     loom::sync::run(store, root).unwrap();
     store.get_node(&validation.id).unwrap().unwrap()
 }
@@ -380,13 +574,7 @@ pub fn earn_call_witness(store: &loom::store::Store, root: &std::path::Path, int
 #[allow(dead_code)]
 pub fn prove_s2(store: &loom::store::Store, root: &std::path::Path, intent_id: &str, slug: &str) {
     use loom::model::{EdgeKind, NodeType};
-    let intent = store.get_node(intent_id).unwrap().expect("intent exists");
-    std::fs::create_dir_all(root.join("journeys")).unwrap();
-    let spec = format!(
-        "journey: {slug}\nsteps:\n  - name: exercise it\n    intent: {}\n    run: echo {slug}-ok\n    expect:\n      stdout_contains: [\"{slug}-ok\"]\n",
-        intent.name
-    );
-    std::fs::write(root.join(format!("journeys/{slug}.yaml")), spec).unwrap();
+    let _ = root;
     let val = store
         .add_node(
             NodeType::Validation,
@@ -395,9 +583,7 @@ pub fn prove_s2(store: &loom::store::Store, root: &std::path::Path, intent_id: &
             "not_run",
             serde_json::json!({
                 "type": "test",
-                "command": format!("echo {slug}-ok"),
-                "proof_kind": "journey",
-                "artifact": format!("journeys/{slug}.yaml"),
+                "command": "printf 'test result: ok. 1 passed; 0 failed\\n'",
             }),
         )
         .unwrap();

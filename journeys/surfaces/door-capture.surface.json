@@ -1,0 +1,226 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "door-capture",
+  "journey_hash": "0e928822d2f50877",
+  "surface": {
+    "id": "door-capture-cli",
+    "title": "Capture and route a topic through Loom's typed intake",
+    "identity": "loom door and inbox mark/show",
+    "codefile": "src/commands.rs",
+    "locator": "run",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "inbox",
+          "mark",
+          "${{ inputs.topic }}",
+          "routed",
+          "--reason",
+          "new_journey:f7dd52bbf037ec53a1ce74a33f276b0a"
+        ],
+        "id": "choose-destination",
+        "output": {
+          "assertions": [
+            {
+              "equals": "routed",
+              "id": "routed-disposition",
+              "pointer": "/status",
+              "type": "string"
+            },
+            {
+              "equals": "new_journey:f7dd52bbf037ec53a1ce74a33f276b0a",
+              "id": "exact-route-reason",
+              "pointer": "/reason",
+              "type": "string"
+            },
+            {
+              "equals": "new_journey",
+              "id": "typed-destination",
+              "pointer": "/destination/type",
+              "type": "string"
+            },
+            {
+              "equals": "f7dd52bbf037ec53a1ce74a33f276b0a",
+              "id": "stable-destination-reference",
+              "pointer": "/destination/ref",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Route the captured topic to one fixed offered technical destination"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "inbox",
+          "show",
+          "${{ inputs.topic }}"
+        ],
+        "id": "inspect-disposition",
+        "output": {
+          "assertions": [
+            {
+              "id": "captured-item-nonempty",
+              "not_equals": "",
+              "pointer": "/id",
+              "type": "string"
+            },
+            {
+              "equals": "routed",
+              "id": "persisted-routed-disposition",
+              "pointer": "/status",
+              "type": "string"
+            },
+            {
+              "id": "exact-topic-roundtrip",
+              "pointer": "/text",
+              "source": "inputs.topic",
+              "type": "string"
+            },
+            {
+              "equals": "human",
+              "id": "persisted-source",
+              "pointer": "/source",
+              "type": "string"
+            },
+            {
+              "equals": "new_journey",
+              "id": "destination-type-roundtrip",
+              "pointer": "/body/destination/type",
+              "type": "string"
+            },
+            {
+              "equals": "f7dd52bbf037ec53a1ce74a33f276b0a",
+              "id": "destination-ref-roundtrip",
+              "pointer": "/body/destination/ref",
+              "type": "string"
+            }
+          ],
+          "captures": [
+            {
+              "id": "captured-item",
+              "pointer": "/id",
+              "redact": false,
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Inspect the captured topic and verify its persisted typed disposition"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "sync"
+        ],
+        "id": "normalize-local-snapshot",
+        "output": {
+          "assertions": [
+            {
+              "id": "snapshot-files-scanned",
+              "pointer": "/files_scanned",
+              "type": "integer"
+            },
+            {
+              "equals": [],
+              "id": "snapshot-has-no-missing-files",
+              "pointer": "/missing",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Synchronize the confined local snapshot before exercising intake"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "--json",
+          "door",
+          "${{ inputs.topic }}"
+        ],
+        "id": "submit-topic",
+        "output": {
+          "assertions": [
+            {
+              "id": "topic-preserved",
+              "pointer": "/captured/description",
+              "source": "inputs.topic",
+              "type": "string"
+            },
+            {
+              "equals": "new",
+              "id": "initial-disposition",
+              "pointer": "/captured/status",
+              "type": "string"
+            },
+            {
+              "equals": "human",
+              "id": "operator-source",
+              "pointer": "/captured/body/source",
+              "type": "string"
+            },
+            {
+              "id": "landing-menu-nonempty",
+              "not_equals": [],
+              "pointer": "/landing_menu",
+              "type": "json"
+            },
+            {
+              "id": "typed-landing",
+              "pointer": "/landing_menu/0/landing",
+              "type": "string"
+            },
+            {
+              "id": "landing-rationale",
+              "not_equals": "",
+              "pointer": "/landing_menu/0/why",
+              "type": "string"
+            },
+            {
+              "id": "typed-route-command",
+              "matches": "^loom inbox mark [0-9a-f]{8} routed --reason '[a-z_]+:[^']+'$",
+              "pointer": "/landing_menu/0/route_command",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Capture the exact authored topic and return typed landing choices"
+      }
+    ]
+  },
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "normalize-local-snapshot"
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "submit-topic",
+      "step_id": "submit-topic"
+    },
+    {
+      "operation_id": "choose-destination",
+      "step_id": "choose-destination"
+    },
+    {
+      "operation_id": "inspect-disposition",
+      "step_id": "inspect-disposition"
+    }
+  ]
+}

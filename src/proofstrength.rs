@@ -44,7 +44,6 @@
 //! graph, preserving sync convergence (INV-2). Runtime trace/coverage can later
 //! become a stronger first source without weakening these fail-closed rules.
 
-use crate::journey::{Expect, JourneySpec};
 use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
@@ -109,8 +108,8 @@ impl Strength {
     pub const MEANINGFUL: Strength = Strength::S2;
 
     /// The bar for USER-VISIBLE behavior: additionally, what the proof runs
-    /// reaches the code the behavior is grounded in. This is what the journey
-    /// axis, journey coverage, and the shallow-proof smell hold out for —
+    /// reaches the code the behavior is grounded in. This is what the Journey
+    /// axis, compiled proof profile, and the shallow-proof smell hold out for —
     /// everywhere the old code read `proof_level in {L5, L6}`.
     pub const END_TO_END: Strength = Strength::S3;
 }
@@ -235,25 +234,12 @@ impl Default for StrengthWitness {
     }
 }
 
-/// Count the assertions in an `Expect` that say something about CONTENT.
+/// What the runner said it checked, read from the observation Loom recorded.
 ///
-/// `status` and `exit_code` are excluded on purpose. A CLI step has an exit
-/// code whether or not its author thought about one (it defaults to 0), so
-/// counting it would grade every proof that runs at all as though it checked
-/// something.
-pub fn content_assertions(expect: &Expect) -> usize {
-    expect.body.len()
-        + expect.exists.len()
-        + expect.stdout_contains.len()
-        + expect.stderr_contains.len()
-}
-
-/// What the runner said it checked, read out of the output loom observed.
-///
-/// Only a summary that names a POSITIVE number of passing checks AND an
-/// explicit zero failures counts. "ok" alone does not: a command can exit zero
-/// having run nothing, which is exactly the S1 case this is distinguishing
-/// itself from.
+/// A positive structured assertion count on a passing observed run is the
+/// authoritative path. Legacy command runners that did not populate that field
+/// may still earn the witness from a summary naming positive passes and zero
+/// failures. "ok" alone never counts.
 ///
 /// Deliberately conservative and deliberately separate from declared
 /// assertions. The tool is reporting on itself, so this is weaker evidence than
@@ -271,8 +257,18 @@ fn reported_assertions(edge: &Option<crate::model::Edge>, store: &Store) -> Resu
         let crate::evidence::Evidence::Run(run) = &row.payload else {
             continue;
         };
-        if let Some(summary) = parse_runner_summary(&run.stdout_excerpt) {
-            return Ok(Some(summary));
+        if run.exit_code == 0 && run.assertions > 0 {
+            return Ok(Some(run.assertions.to_string()));
+        }
+    }
+    for row in &view.evidence {
+        let crate::evidence::Evidence::Run(run) = &row.payload else {
+            continue;
+        };
+        if run.exit_code == 0 {
+            if let Some(summary) = parse_runner_summary(&run.stdout_excerpt) {
+                return Ok(Some(summary));
+            }
         }
     }
     Ok(None)
@@ -324,52 +320,6 @@ fn number_before(line: &str, word: &str) -> Option<usize> {
                 .ok()
         })?
     })
-}
-
-/// Does this spec cross a boundary loom does not itself control?
-pub fn boundary(spec: &JourneySpec) -> Option<String> {
-    for step in &spec.steps {
-        if !step.is_cli() && !step.request.url.trim().is_empty() {
-            return Some(format!("http {}", step.request.url));
-        }
-        if step.is_cli() {
-            if let Some(bin) = crossed_binary(&step.run) {
-                return Some(format!("process {bin}"));
-            }
-        }
-    }
-    None
-}
-
-/// Shell plumbing that carries data INTO a command without being a system the
-/// proof crosses into. Piping `printf` at loom's stdin is loom talking to
-/// itself with extra steps.
-const PLUMBING: &[&str] = &[
-    "printf", "echo", "cat", "true", "false", "sh", "bash", "env", "sleep", "yes", "head", "tail",
-    "tee", "sed", "awk", "grep", "sort", "jq", "xargs", "test", "[",
-];
-
-/// A binary in this command that represents a real boundary, if any.
-///
-/// Every segment of the pipeline is considered, not just the first token: the
-/// first token of `printf … | loom mcp serve` is `printf`, which used to credit
-/// an S5 boundary to a step whose only real actor is loom. A grade that counts
-/// shell plumbing as "crossing into a system loom does not control" overstates
-/// exactly the conjunct that is hardest to earn honestly.
-fn crossed_binary(run: &str) -> Option<String> {
-    run.split(['|', ';', '&'])
-        .filter_map(|segment| {
-            let first = segment.split_whitespace().next()?;
-            let bin = first.rsplit('/').next().unwrap_or(first);
-            let bin = bin.trim();
-            (!bin.is_empty()
-                && bin != "loom"
-                && bin != "cargo"
-                && !PLUMBING.contains(&bin)
-                && !bin.contains('='))
-            .then(|| bin.to_string())
-        })
-        .next()
 }
 
 /// File-qualified realizing targets. Grading uses these so a same-named
@@ -453,8 +403,22 @@ fn validation_entries(store: &Store, validation_id: &str) -> Result<Vec<EntryEvi
         let Some(file) = store.get_node(&edge.to_id)? else {
             continue;
         };
-        let locators = store
-            .get_facet(&edge.id, TargetKind::Edge, "locator")?
+        let locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+        if locator
+            .as_deref()
+            .is_some_and(crate::locator::is_anchor_locator)
+        {
+            // Source anchors stabilize navigation only. Even when attached to
+            // a callable entry, they must not become an S3 proof declaration.
+            out.push(EntryEvidence {
+                source: "anchor_navigation",
+                file: file.name,
+                entry_symbol: None,
+                s3_eligible: false,
+            });
+            continue;
+        }
+        let locators = locator
             .map(|locator| crate::locator::symbols(&locator))
             .unwrap_or_default();
         // Bare file claim: diagnostic only. Locator-bound exercises is the
@@ -1162,88 +1126,118 @@ fn loom_cli_handler(words: &[String]) -> Option<LoomCliHandler> {
     }
 }
 
-fn derived_entries(
-    store: &Store,
-    validation: &Node,
-    intent_id: &str,
-    spec: Option<&JourneySpec>,
-    graph: &crate::callgraph::CallGraph,
-) -> Vec<EntryEvidence> {
-    let mut out = Vec::new();
-    let recorded = validation
+fn derived_entries(validation: &Node, graph: &crate::callgraph::CallGraph) -> Vec<EntryEvidence> {
+    validation
         .body
         .get("command")
         .and_then(|v| v.as_str())
         .map(str::trim)
-        .filter(|c| !c.is_empty());
-    // Journey validations registered by `loom journey add` store
-    // `command: loom journey run <artifact>` — the outer runner — not each
-    // step's `run`. In that shape the YAML steps are what actually executed
-    // (record_outcomes stamps them). A free-form body.command that is *not*
-    // that outer form must still match a step's `run` exactly, so a printf
-    // no-op cannot borrow credit from an unrelated cargo test step.
-    let body_artifact = validation
-        .body
-        .get("artifact")
-        .and_then(|v| v.as_str())
-        .map(str::trim)
-        .filter(|a| !a.is_empty());
-    let outer_journey_run = recorded.is_some_and(|cmd| {
-        // Exact argv shape only: `<loom> journey run <artifact>`.
-        // Extra args, shell operators (already fail shell_words), or help
-        // flags must not unlock journey step credit.
-        let words = shell_words(cmd);
-        if words.len() != 4 {
-            return false;
-        }
-        let binary = words[0].as_str();
-        let is_loom = matches!(
-            binary,
-            "loom" | "./loom" | "target/debug/loom" | "target/release/loom"
-        );
-        if !(is_loom && words[1] == "journey" && words[2] == "run") {
-            return false;
-        }
-        let Some(body_art) = body_artifact else {
-            return false;
-        };
-        Path::new(words[3].as_str()) == Path::new(body_art)
-    });
-    if let Some(spec) = spec {
-        for step in &spec.steps {
-            if !step.is_cli() {
-                continue;
-            }
-            let belongs_to_intent = store
-                .resolve_node(&step.intent, Some(NodeType::Intent))
-                .map(|intent| intent.id == intent_id)
-                .unwrap_or(false);
-            if !belongs_to_intent {
-                continue;
-            }
-            if let Some(cmd) = recorded {
-                if !outer_journey_run && step.run.trim() != cmd {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-            let origin = if outer_journey_run {
-                CommandOrigin::CheckoutBoundJourneyStep
-            } else {
-                CommandOrigin::Untrusted
-            };
-            out.extend(command_entries_from(
-                &step.run,
-                graph,
-                "journey_command",
-                origin,
-            ));
-        }
-    } else if let Some(command) = recorded {
-        out.extend(command_entries(command, graph, "validation_command"));
+        .filter(|command| !command.is_empty())
+        .map(|command| command_entries(command, graph, "validation_command"))
+        .unwrap_or_default()
+}
+
+fn projection_current(status: InspectionStatus) -> bool {
+    matches!(
+        status,
+        InspectionStatus::Uninspected | InspectionStatus::Passing
+    )
+}
+
+/// A Journey proof is compiler-owned graph structure, never an authored spec
+/// inferred from a path on the Validation. This deliberately duplicates the
+/// readiness signature at the grading boundary so a raw Journey artifact, or a
+/// hand-authored sibling Validation, cannot borrow compiled proof strength.
+fn compiled_journey_proves_edge(
+    store: &Store,
+    validation: &Node,
+) -> Result<Option<crate::model::Edge>> {
+    if validation.body.get("type").and_then(|value| value.as_str()) != Some("journey")
+        || validation
+            .body
+            .get("profile")
+            .and_then(|value| value.as_str())
+            != Some("proof")
+        || !validation
+            .body
+            .get("compiler_version")
+            .and_then(|value| value.as_str())
+            .is_some_and(|version| !version.trim().is_empty())
+    {
+        return Ok(None);
     }
-    out
+
+    let proves: Vec<_> = store
+        .edges_with(Some(EdgeKind::Proves), Some(&validation.id), None)?
+        .into_iter()
+        .filter(|edge| projection_current(edge.status))
+        .collect();
+    let [proves] = proves.as_slice() else {
+        return Ok(None);
+    };
+    let Some(journey) = store.get_node(&proves.to_id)? else {
+        return Ok(None);
+    };
+    if journey.node_type != NodeType::Journey {
+        return Ok(None);
+    }
+    let Some(journey_hash) = journey
+        .body
+        .get("semantic_hash")
+        .and_then(|value| value.as_str())
+    else {
+        return Ok(None);
+    };
+    if validation
+        .body
+        .get("journey_hash")
+        .and_then(|value| value.as_str())
+        != Some(journey_hash)
+    {
+        return Ok(None);
+    }
+    let Some(surface_hash) = crate::journey::surface_projection_hash(store, &journey)? else {
+        return Ok(None);
+    };
+    if validation
+        .body
+        .get("surface_hash")
+        .and_then(|value| value.as_str())
+        != Some(surface_hash.as_str())
+    {
+        return Ok(None);
+    }
+
+    let mut accepted_surfaces = std::collections::BTreeSet::new();
+    for edge in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {
+        if projection_current(edge.status)
+            && store
+                .get_facet(&edge.id, TargetKind::Edge, "journey_hash")?
+                .as_deref()
+                == Some(journey_hash)
+        {
+            accepted_surfaces.insert(edge.to_id);
+        }
+    }
+    let calls_current_surface = store
+        .edges_with(Some(EdgeKind::Calls), Some(&validation.id), None)?
+        .into_iter()
+        .any(|edge| projection_current(edge.status) && accepted_surfaces.contains(&edge.to_id));
+    if !calls_current_surface {
+        return Ok(None);
+    }
+    let mut exercises_live_code = false;
+    for edge in store.edges_with(Some(EdgeKind::Exercises), Some(&validation.id), None)? {
+        if projection_current(edge.status)
+            && store
+                .get_node(&edge.to_id)?
+                .is_some_and(|node| node.node_type == NodeType::CodeFile)
+        {
+            exercises_live_code = true;
+            break;
+        }
+    }
+    Ok(exercises_live_code.then(|| proves.clone()))
 }
 
 fn dedup_entries(entries: &mut Vec<EntryEvidence>) {
@@ -1254,12 +1248,24 @@ fn dedup_entries(entries: &mut Vec<EntryEvidence>) {
 /// Grade one validation. `intent_id` is the behavior it claims to prove.
 pub fn grade(
     store: &Store,
-    root: &Path,
+    _root: &Path,
     validation: &Node,
     intent_id: &str,
     graph: &crate::callgraph::CallGraph,
 ) -> Result<StrengthWitness> {
     let mut w = StrengthWitness::default();
+    let claims_journey =
+        validation.body.get("type").and_then(|value| value.as_str()) == Some("journey");
+    let compiled_proves = if claims_journey {
+        compiled_journey_proves_edge(store, validation)?
+    } else {
+        None
+    };
+    if claims_journey && compiled_proves.is_none() {
+        w.grade = Strength::S0.as_str().into();
+        w.next = "compile this Journey from its current semantic hash and accepted surface; raw authored specs and incomplete proof topology do not grade".into();
+        return Ok(w);
+    }
 
     // S1 — loom ran it and it passed. Asked of the FACT, so a reported outcome
     // cannot reach even the bottom rung.
@@ -1271,6 +1277,12 @@ pub fn grade(
         && match &edge {
             Some(e) => store.edge_verification(&e.id)? == crate::model::Verification::Verified,
             None => false,
+        }
+        && match &compiled_proves {
+            Some(proves) => {
+                store.edge_verification(&proves.id)? == crate::model::Verification::Verified
+            }
+            None => true,
         };
     if !w.ran_and_passed {
         w.grade = Strength::S0.as_str().into();
@@ -1280,32 +1292,18 @@ pub fn grade(
         return Ok(w);
     }
 
-    // S2 — content assertions. A journey spec carries them per step; a plain
-    // command validation has none loom can read, so it stops at S1 until it
-    // becomes a journey.
-    let spec = journey_spec(root, validation);
-    if let Some(spec) = &spec {
-        w.content_assertions = spec
-            .steps
-            .iter()
-            .map(|s| content_assertions(&s.expect))
-            .sum();
-        w.boundary = boundary(spec);
-    }
-    // A test runner's own summary — "4 passed; 0 failed" — states WHAT was
+    // S2 — a test runner's own summary — "4 passed; 0 failed" — states WHAT was
     // checked, not merely that the process exited zero. That is strictly more
     // than S1 asks for, and refusing to count it told every repo with a real
     // test suite that its suite was liveness-only and it should write a thin
     // journey instead. Backwards: it pushed people away from the proofs they
     // already had.
-    if w.content_assertions == 0 {
-        w.observed_assertions = reported_assertions(&edge, store)?;
-    }
-    if w.content_assertions == 0 && w.observed_assertions.is_none() {
+    w.observed_assertions = reported_assertions(&edge, store)?;
+    if w.observed_assertions.is_none() {
         w.grade = Strength::S1.as_str().into();
         w.next = "assert something about the OUTPUT, not just the exit code — \
-                  a spec with `stdout_contains`/`body`/`exists`, or a command \
-                  whose runner reports what it checked"
+                  run a proof whose observed runner output reports positive \
+                  checked assertions and zero failures"
             .into();
         return Ok(w);
     }
@@ -1314,17 +1312,30 @@ pub fn grade(
     // journey/command-derived entry points can earn the rung. Intent-wide
     // verifies files are diagnostic-only legacy fallback.
     let mut entries = validation_entries(store, &validation.id)?;
-    entries.extend(derived_entries(
-        store,
-        validation,
-        intent_id,
-        spec.as_ref(),
-        graph,
-    ));
+    // Compiler-owned Journey proofs must use their Exercises edges. A generic
+    // command Validation may still derive its own entry from the exact command.
+    if compiled_proves.is_none() {
+        entries.extend(derived_entries(validation, graph));
+    }
     dedup_entries(&mut entries);
     if let Some(evidence) = call_witness(store, graph, intent_id, &entries)? {
         w.call_witness = evidence.grounded_symbol.clone();
         w.call_evidence = Some(evidence);
+    } else if let Some(entry) = entries
+        .iter()
+        .find(|entry| entry.source == "anchor_navigation")
+    {
+        // Preserve the explicit diagnostic provenance while keeping it
+        // visibly ineligible. Otherwise an operator sees only "nothing
+        // reaches" and cannot tell that the locator was intentionally a
+        // navigation-only anchor rather than a missing entry declaration.
+        w.call_evidence = Some(CallEvidenceWitness {
+            source: entry.source.into(),
+            file: entry.file.clone(),
+            entry_symbol: None,
+            grounded_symbol: None,
+            s3_eligible: false,
+        });
     } else if entries.is_empty() {
         let mut fallback = intent_wide_entries(store, intent_id)?;
         dedup_entries(&mut fallback);
@@ -1353,135 +1364,13 @@ pub fn grade(
         return Ok(w);
     }
 
-    // S4 — a baseline that replayed clean.
-    let journey = validation
-        .body
-        .get("journey")
-        .or_else(|| validation.body.get("journey_id"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    w.baseline_clean = !journey.is_empty()
-        && crate::journey::read_baseline(root, journey)?.is_some()
-        && validation
-            .body
-            .get("baseline_deviations")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0)
-            == 0;
-    if !w.baseline_clean {
-        w.grade = Strength::S3.as_str().into();
-        w.next = "freeze a baseline (`loom journey freeze`) and replay it — a \
-                  baseline nobody replays is a fossil"
-            .into();
-        return Ok(w);
-    }
-
-    // S5 — a boundary loom does not control.
-    match &w.boundary {
-        Some(_) => w.grade = Strength::S5.as_str().into(),
-        None => {
-            w.grade = Strength::S4.as_str().into();
-            w.next = "everything this proof touches is loom calling loom — cross \
-                      a real boundary (an HTTP step, or another binary)"
-                .into();
-        }
-    }
+    // The retired raw-spec runner/baseline API cannot honestly establish S4/S5.
+    // Keep the wire grades for compatibility; the semantic compiler may restore
+    // those rungs only with explicit compiled-proof evidence.
+    w.grade = Strength::S3.as_str().into();
+    w.next =
+        "add stronger compiler-observed replay/boundary evidence when that proof API exists".into();
     Ok(w)
-}
-
-/// The journey spec behind a validation, if it is a journey proof.
-fn journey_spec(root: &Path, validation: &Node) -> Option<JourneySpec> {
-    // `artifact` is the path `loom journey add` recorded — the actual file.
-    // Prefer it over guessing a filename from the journey NAME, which is prose
-    // ("loom serves its capabilities in band") and almost never the basename
-    // ("mcp-in-band.yaml"). Guessing meant every well-named journey silently
-    // graded S1 with "content assertions: 0" no matter how much it asserted:
-    // the spec was never found, so its assertions were never counted.
-    if let Some(artifact) = validation.body.get("artifact").and_then(|v| v.as_str()) {
-        // A declared artifact that cannot be confined/read is fail-closed —
-        // never invent credit from a different basename path.
-        let path = confined_journey_path(root, artifact)?;
-        if let Some(expected) = validation.body.get("spec_hash").and_then(|v| v.as_str()) {
-            let Ok(raw) = std::fs::read_to_string(&path) else {
-                return None;
-            };
-            // Hash is of the registered artifact bytes. When that artifact is
-            // the journey YAML, it must match before we parse. When it is a
-            // non-YAML contract file, the hash is still the contract's hash
-            // from registration — a drift of the contract fails closed here
-            // and we do not silently grade from journeys/<id>.yaml instead.
-            if crate::artifact::fingerprint(&raw) != expected {
-                return None;
-            }
-        }
-        if let Ok(spec) = crate::journey::parse(&path) {
-            return Some(spec);
-        }
-        // Artifact under root but not a journey YAML (e.g. HTTP contract).
-        // Basename fallthrough is allowed only when the declared artifact
-        // resolved cleanly (and matched hash if present).
-    }
-    // Fall back to the id-as-basename form, which is what a hand-registered
-    // `--journey-id` usually means. The id is treated as a single path segment
-    // under `journeys/` — never as a relative path. If a hash is registered,
-    // the fallback must match it too.
-    let journey = validation
-        .body
-        .get("journey")
-        .or_else(|| validation.body.get("journey_id"))
-        .and_then(|v| v.as_str())?;
-    if journey.is_empty()
-        || journey.contains('/')
-        || journey.contains('\\')
-        || journey.contains("..")
-    {
-        return None;
-    }
-    let path = root.join("journeys").join(format!("{journey}.yaml"));
-    let path = confined_journey_path(
-        root,
-        path.strip_prefix(root).ok()?.to_string_lossy().as_ref(),
-    )?;
-    if let Some(expected) = validation.body.get("spec_hash").and_then(|v| v.as_str()) {
-        let Ok(raw) = std::fs::read_to_string(&path) else {
-            return None;
-        };
-        if crate::artifact::fingerprint(&raw) != expected {
-            return None;
-        }
-    }
-    crate::journey::parse(&path).ok()
-}
-
-/// Resolve a journey artifact only when it stays under `<root>/journeys/`.
-/// Absolute paths, `..`, and symlink escapes outside that directory fail closed.
-pub(crate) fn confined_journey_path(root: &Path, artifact: &str) -> Option<std::path::PathBuf> {
-    if artifact.is_empty() {
-        return None;
-    }
-    let art = Path::new(artifact);
-    // Relative: reject `..`. Absolute: only accepted after canonicalize proves
-    // the file sits under the checkout root (common when `journey add` stored
-    // `spec.display()` of an absolute PathBuf).
-    if !art.is_absolute()
-        && art
-            .components()
-            .any(|c| matches!(c, std::path::Component::ParentDir))
-    {
-        return None;
-    }
-    let joined = if art.is_absolute() {
-        art.to_path_buf()
-    } else {
-        root.join(artifact)
-    };
-    let root_canon = root.canonicalize().ok()?;
-    let path_canon = joined.canonicalize().ok()?;
-    if path_canon.starts_with(&root_canon) && path_canon.is_file() {
-        Some(path_canon)
-    } else {
-        None
-    }
 }
 
 /// Persist one derived witness and record model-driven demotions in the
@@ -1587,38 +1476,6 @@ mod tests {
         store
             .add_node(kind, name, "", "", serde_json::json!({}))
             .unwrap()
-    }
-
-    /// The exact regression that motivated this module: a step asserting only
-    /// its exit code establishes liveness and nothing else.
-    #[test]
-    fn exit_code_is_not_a_content_assertion() {
-        let mut expect = Expect {
-            exit_code: Some(0),
-            status: Some(200),
-            ..Default::default()
-        };
-        assert_eq!(content_assertions(&expect), 0);
-        expect.stdout_contains.push("files_scanned".into());
-        assert_eq!(content_assertions(&expect), 1);
-    }
-
-    /// Shell plumbing is not a boundary. This is the conjunct hardest to earn
-    /// honestly, so it is the one most worth refusing to inflate.
-    #[test]
-    fn piping_into_loom_is_not_crossing_a_boundary() {
-        assert_eq!(crossed_binary("printf '{}' | loom mcp serve"), None);
-        assert_eq!(crossed_binary("loom sync"), None);
-        assert_eq!(crossed_binary("echo hi | sh -c 'loom status'"), None);
-        // A real other system still counts, wherever it sits in the pipeline.
-        assert_eq!(
-            crossed_binary("printf x | psql -c 'select 1'").as_deref(),
-            Some("psql")
-        );
-        assert_eq!(
-            crossed_binary("curl -s http://localhost:8080/health").as_deref(),
-            Some("curl")
-        );
     }
 
     #[test]

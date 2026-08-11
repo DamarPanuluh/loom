@@ -1471,14 +1471,9 @@ fn import_restore_validates_truth_class_and_questions_edge() {
     }
 }
 
-/// Migration 4 strips the claimed proof level from validation bodies.
-///
-/// v3 made proof strength DERIVED and deleted the flag that let a caller claim
-/// it, but the stored values stayed. `loom validation show` printed
-/// `"proof_level":"L5"` in the body directly above a derived `strength: S1` —
-/// inert data contradicting the number beside it, travelling in every export.
+/// The v12 journey-root cut refuses a persisted v3 graph before migration.
 #[test]
-fn migration_drops_the_claimed_proof_level() {
+fn v3_graph_is_refused_without_rewriting_its_validation_body() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let val = store
@@ -1512,26 +1507,38 @@ fn migration_drops_the_claimed_proof_level() {
     conn.pragma_update(None, "user_version", 3u32).unwrap();
     drop(conn);
 
-    let store = Store::open(tmp.path()).unwrap();
-    let fresh = store.get_node(&val.id).unwrap().unwrap();
+    let error = Store::open(tmp.path()).err().expect("v3 must be refused");
     assert!(
-        fresh.body.get("proof_level").is_none(),
-        "a claimed level must not survive: {}",
-        fresh.body
+        error.to_string().contains("journey paradigm"),
+        "unexpected refusal: {error}"
+    );
+
+    let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
+    let user_version: u32 = conn
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .unwrap();
+    assert_eq!(user_version, 3, "refusal must not advance the stamp");
+    let body: String = conn
+        .query_row("SELECT body FROM node WHERE id=?1", [&val.id], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    let body: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(
+        body.get("proof_level").and_then(|level| level.as_str()),
+        Some("L5"),
+        "refusal must not run migration 4: {body}"
     );
     assert_eq!(
-        fresh.body.get("command").and_then(|c| c.as_str()),
+        body.get("command").and_then(|c| c.as_str()),
         Some("true"),
-        "and the rest of the body is untouched: {}",
-        fresh.body
+        "the rest of the body is untouched: {body}"
     );
 }
 
-/// Migration 7 must NOT rewrite legitimate double-space names. An earlier
-/// draft did, and turned `checks payment  retry policy` into an unrelated
-/// intent title. Repair of true excision damage (`…  proof`) is doctor's job.
+/// A persisted v6 graph is refused without rewriting legitimate names.
 #[test]
-fn migration_preserves_legitimate_double_space_validation_names() {
+fn v6_graph_is_refused_without_rewriting_validation_names() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let intent = store
@@ -1576,18 +1583,25 @@ fn migration_preserves_legitimate_double_space_validation_names() {
     conn.pragma_update(None, "user_version", 6u32).unwrap();
     drop(conn);
 
-    let store = Store::open(tmp.path()).unwrap();
-    let fresh = store.get_node(&val.id).unwrap().unwrap();
-    assert_eq!(
-        fresh.name, "checks payment  retry policy",
-        "migration must leave mid-phrase double spaces alone"
-    );
+    let error = Store::open(tmp.path()).err().expect("v6 must be refused");
     assert!(
-        !loom::signal::doctor(&store)
-            .unwrap()
-            .iter()
-            .any(|i| i.kind == "malformed_validation_name"),
-        "doctor must not flag legitimate mid-phrase double spaces"
+        error.to_string().contains("journey paradigm"),
+        "unexpected refusal: {error}"
+    );
+
+    let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
+    let user_version: u32 = conn
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .unwrap();
+    assert_eq!(user_version, 6, "refusal must not advance the stamp");
+    let name: String = conn
+        .query_row("SELECT name FROM node WHERE id=?1", [&val.id], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert_eq!(
+        name, "checks payment  retry policy",
+        "refusal must leave the persisted name alone"
     );
 }
 

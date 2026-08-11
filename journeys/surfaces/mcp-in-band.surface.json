@@ -1,0 +1,435 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "mcp-in-band",
+  "journey_hash": "edbe81e359d5ad43",
+  "surface": {
+    "id": "mcp-transcript-cli",
+    "title": "Live MCP session transcript",
+    "identity": "loom mcp transcript --requests-json",
+    "codefile": "src/mcp.rs",
+    "locator": "transcript",
+    "operations": [
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_impact\",\"arguments\":{\"target\":\"serve\"}}},{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_nope\",\"arguments\":{}}},{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_context\",\"arguments\":{\"target\":\"qzxvblorp91726354\"}}},{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"ping\",\"params\":{}}]",
+          "--json"
+        ],
+        "id": "classify-known-failure-and-recover",
+        "output": {
+          "assertions": [
+            {
+              "equals": 6,
+              "id": "recovery-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 6,
+              "id": "recovery-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "recovery-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": 1,
+              "id": "recovery-initialize-id",
+              "pointer": "/responses/0/id",
+              "type": "integer"
+            },
+            {
+              "equals": "loom",
+              "id": "recovery-server-name",
+              "pointer": "/responses/0/result/serverInfo/name",
+              "type": "string"
+            },
+            {
+              "equals": 2,
+              "id": "recovery-list-id",
+              "pointer": "/responses/1/id",
+              "type": "integer"
+            },
+            {
+              "equals": "loom_context",
+              "id": "recovery-context-listed",
+              "pointer": "/responses/1/result/tools/2/name",
+              "type": "string"
+            },
+            {
+              "equals": "target",
+              "id": "recovery-context-target-required",
+              "pointer": "/responses/1/result/tools/2/inputSchema/required/0",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "recovery-impact-id",
+              "pointer": "/responses/2/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "recovery-impact-succeeded",
+              "pointer": "/responses/2/result/isError",
+              "type": "boolean"
+            },
+            {
+              "contains": "\"symbol\": \"serve_stdio\"",
+              "id": "recovery-impact-has-callers",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": 4,
+              "id": "recovery-unknown-id",
+              "pointer": "/responses/3/id",
+              "type": "integer"
+            },
+            {
+              "equals": -32602,
+              "id": "recovery-unknown-protocol-error",
+              "pointer": "/responses/3/error/code",
+              "type": "integer"
+            },
+            {
+              "exists": false,
+              "id": "recovery-unknown-not-tool-result",
+              "pointer": "/responses/3/result"
+            },
+            {
+              "equals": 5,
+              "id": "recovery-known-failure-id",
+              "pointer": "/responses/4/id",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "recovery-known-failure-is-tool-error",
+              "pointer": "/responses/4/result/isError",
+              "type": "boolean"
+            },
+            {
+              "exists": false,
+              "id": "recovery-known-failure-not-protocol-error",
+              "pointer": "/responses/4/error"
+            },
+            {
+              "contains": "could not resolve 'qzxvblorp91726354'",
+              "id": "recovery-known-failure-reason",
+              "pointer": "/responses/4/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "equals": 6,
+              "id": "recovery-ping-id",
+              "pointer": "/responses/5/id",
+              "type": "integer"
+            },
+            {
+              "equals": {},
+              "id": "recovery-ping-succeeded",
+              "pointer": "/responses/5/result",
+              "type": "json"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Exercise the full negotiated session through protocol error, known tool failure, and a successful post-error ping"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_impact\",\"arguments\":{\"target\":\"serve\"}}},{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_nope\",\"arguments\":{}}}]",
+          "--json"
+        ],
+        "id": "classify-unknown-tool-session",
+        "output": {
+          "assertions": [
+            {
+              "equals": 4,
+              "id": "unknown-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "unknown-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": "loom",
+              "id": "unknown-negotiated-server",
+              "pointer": "/responses/0/result/serverInfo/name",
+              "type": "string"
+            },
+            {
+              "equals": "loom_impact",
+              "id": "unknown-listed-impact",
+              "pointer": "/responses/1/result/tools/3/name",
+              "type": "string"
+            },
+            {
+              "equals": false,
+              "id": "unknown-prior-impact-succeeded",
+              "pointer": "/responses/2/result/isError",
+              "type": "boolean"
+            },
+            {
+              "equals": 4,
+              "id": "unknown-response-id",
+              "pointer": "/responses/3/id",
+              "type": "integer"
+            },
+            {
+              "equals": -32602,
+              "id": "unknown-invalid-request-code",
+              "pointer": "/responses/3/error/code",
+              "type": "integer"
+            },
+            {
+              "equals": "unknown tool 'loom_nope'",
+              "id": "unknown-invalid-request-message",
+              "pointer": "/responses/3/error/message",
+              "type": "string"
+            },
+            {
+              "exists": false,
+              "id": "unknown-is-not-tool-result",
+              "pointer": "/responses/3/result"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Keep a negotiated live session open through an unknown tool request"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}]",
+          "--json"
+        ],
+        "id": "discover-mcp-tools",
+        "output": {
+          "assertions": [
+            {
+              "equals": "json-rpc-2.0",
+              "id": "discover-protocol-envelope",
+              "pointer": "/protocol",
+              "type": "string"
+            },
+            {
+              "equals": 2,
+              "id": "discover-request-count",
+              "pointer": "/request_count",
+              "type": "integer"
+            },
+            {
+              "equals": 2,
+              "id": "discover-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "discover-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": 1,
+              "id": "discover-initialize-id",
+              "pointer": "/responses/0/id",
+              "type": "integer"
+            },
+            {
+              "equals": "2024-11-05",
+              "id": "discover-protocol-version",
+              "pointer": "/responses/0/result/protocolVersion",
+              "type": "string"
+            },
+            {
+              "equals": "loom",
+              "id": "discover-server-name",
+              "pointer": "/responses/0/result/serverInfo/name",
+              "type": "string"
+            },
+            {
+              "equals": {},
+              "id": "discover-tools-capability",
+              "pointer": "/responses/0/result/capabilities/tools",
+              "type": "json"
+            },
+            {
+              "equals": 2,
+              "id": "discover-list-id",
+              "pointer": "/responses/1/id",
+              "type": "integer"
+            },
+            {
+              "equals": "loom_status",
+              "id": "discover-read-tool",
+              "pointer": "/responses/1/result/tools/0/name",
+              "type": "string"
+            },
+            {
+              "equals": "object",
+              "id": "discover-read-schema",
+              "pointer": "/responses/1/result/tools/0/inputSchema/type",
+              "type": "string"
+            },
+            {
+              "equals": "loom_apply",
+              "id": "discover-write-tool",
+              "pointer": "/responses/1/result/tools/7/name",
+              "type": "string"
+            },
+            {
+              "equals": "object",
+              "id": "discover-write-schema",
+              "pointer": "/responses/1/result/tools/7/inputSchema/type",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Initialize one live MCP session and discover structured read and write tools"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "mcp",
+          "transcript",
+          "--requests-json",
+          "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"loom_impact\",\"arguments\":{\"target\":\"serve\"}}}]",
+          "--json"
+        ],
+        "id": "inspect-live-impact-session",
+        "output": {
+          "assertions": [
+            {
+              "equals": 3,
+              "id": "impact-response-count",
+              "pointer": "/response_count",
+              "type": "integer"
+            },
+            {
+              "equals": true,
+              "id": "impact-session-completed",
+              "pointer": "/session_completed",
+              "type": "boolean"
+            },
+            {
+              "equals": "loom",
+              "id": "impact-negotiated-server",
+              "pointer": "/responses/0/result/serverInfo/name",
+              "type": "string"
+            },
+            {
+              "equals": "loom_impact",
+              "id": "impact-listed-tool",
+              "pointer": "/responses/1/result/tools/3/name",
+              "type": "string"
+            },
+            {
+              "equals": "target",
+              "id": "impact-target-required",
+              "pointer": "/responses/1/result/tools/3/inputSchema/required/0",
+              "type": "string"
+            },
+            {
+              "equals": 3,
+              "id": "impact-response-id",
+              "pointer": "/responses/2/id",
+              "type": "integer"
+            },
+            {
+              "equals": false,
+              "id": "impact-tool-succeeded",
+              "pointer": "/responses/2/result/isError",
+              "type": "boolean"
+            },
+            {
+              "equals": "text",
+              "id": "impact-content-type",
+              "pointer": "/responses/2/result/content/0/type",
+              "type": "string"
+            },
+            {
+              "contains": "\"target\": \"serve\"",
+              "id": "impact-target-is-live-symbol",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "contains": "\"symbol\": \"serve_stdio\"",
+              "id": "impact-has-callers",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "id": "impact-has-exact-resolution",
+              "matches": "\"exact\": [1-9][0-9]*",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "id": "impact-has-heuristic-resolution",
+              "matches": "\"heuristic\": [1-9][0-9]*",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            },
+            {
+              "id": "impact-reports-unresolved-calls",
+              "matches": "\"unresolved_calls\": [1-9][0-9]*",
+              "pointer": "/responses/2/result/content/0/text",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Negotiate a live session and invoke Loom impact for the existing serve symbol"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "operation_id": "discover-mcp-tools",
+      "step_id": "discover-tools"
+    },
+    {
+      "operation_id": "inspect-live-impact-session",
+      "step_id": "inspect-live-impact"
+    },
+    {
+      "operation_id": "classify-unknown-tool-session",
+      "step_id": "request-unknown-tool"
+    },
+    {
+      "operation_id": "classify-known-failure-and-recover",
+      "step_id": "invoke-failing-tool"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+schema: loom.journey/v1
+id: source-anchor-tracing
+name: Trace unstable source entries with Loom anchors
+actor: developer
+goal: A developer can navigate to an unstable source entry and inspect its blast radius
+  through a Loom-issued anchor without turning the source comment into graph truth or
+  behavioral proof.
+inputs: {}
+preconditions:
+- A registered source or supported comment-bearing configuration file contains a
+  smallest meaningful entry whose ordinary symbol locator is unstable.
+steps:
+- id: request-anchor
+  name: Request Anchor
+  action: Ask Loom to issue a stable source anchor for the selected entry.
+  expects:
+  - Loom returns the exact source marker and canonical anchor locator without changing
+    source or graph truth.
+  produces:
+    anchor-id:
+      type: string
+      description: The stable identifier issued by Loom.
+- id: attach-anchor
+  name: Attach Anchor
+  action: Attach {{steps.request-anchor.outputs.anchor-id}} to the smallest meaningful
+    declaration or configuration entry.
+  expects:
+  - Exactly one marker occurrence resolves to exactly one attached entry.
+  - The marker alone creates no graph relationship and proves no behavior.
+  produces: {}
+- id: trace-anchor
+  name: Trace Anchor
+  action: Navigate through {{steps.request-anchor.outputs.anchor-id}} and inspect its
+    blast radius after the entry symbol changes.
+  expects:
+  - Loom resolves the same attached entry and reports its current navigation target
+    and blast radius.
+  produces: {}
+- id: reject-invalid-anchor
+  name: Reject Invalid Anchor
+  action: Inspect the anchor after its marker is missing, duplicated, or detached.
+  expects:
+  - Loom fails closed without guessing a target or changing graph truth.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

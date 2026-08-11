@@ -164,7 +164,7 @@ fn strength_fraction(s: Strength) -> f64 {
 /// How many symbols transitively reach this behavior's code.
 fn fan_in(store: &Store, graph: &crate::callgraph::CallGraph, intent_id: &str) -> Result<usize> {
     let mut total = 0usize;
-    for sym in crate::locator::realizing_symbols(store, intent_id)? {
+    for sym in crate::locator::realizing_navigation_symbols(store, intent_id)? {
         total += graph.impact(&sym, 3).callers.len();
     }
     Ok(total)

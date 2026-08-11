@@ -1,772 +1,2613 @@
-//! `loom journey` command family — journey coverage and invariant points.
+//! Semantic Journey command handlers.
 //!
-//! A `journey_coverage` node marks a flow (entry → mutation → projection) that
-//! needs a journey proof. It is linked via a `Covers` edge to the Intent whose
-//! behavior the flow exercises. Coverage STATUS IS DERIVED, never asserted: a
-//! coverage node reads "effectively covered" iff its covered intent currently
-//! has a passing S3-or-stronger journey validation (proof_kind=journey). This avoids a
-//! second stale truth source — when sync stales the proof, coverage reads
-//! uncovered automatically (see the artifact-drift gate in `sync`).
-//!
-//! A `journey_invariant_point` node marks where an internal domain assertion
-//! should go — a check the journey must verify that may not be visible via HTTP
-//! alone. It is linked via an `Asserts` edge to the Intent it concerns. The
-//! invariant's `assertion` is a design claim about the flow, not a truth claim
-//! about proof; whether it is verified is derived from validations, not stored.
-//!
-//! Plane: CLI surface over the judgment plane — asserted journey nodes and
-//! links; covered/verified state is always derived on read, never stored.
+//! `add` registers only the authored root artifact. `derive` and `surface`
+//! emit read-only JSON packets. Their corresponding `*-accept` commands apply
+//! strict, hash-bound manifests atomically.
 
-use super::{open, pulse};
+use super::{open, open_read, pulse};
 use crate::cli::JourneyCmd;
-use crate::model::{EdgeKind, Node, NodeType, TargetKind};
+use crate::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;
-use anyhow::bail;
+use anyhow::{anyhow, bail, Context};
 use serde_json::{json, Value};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-/// Dispatch entry point for the `loom journey` family.
 pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()> {
     match cmd {
         JourneyCmd::Add { spec } => journey_add(graph, spec, json),
-        JourneyCmd::Remove { id } => journey_remove(graph, &id, json),
+        JourneyCmd::Show { journey } => journey_show(graph, &journey, json),
+        JourneyCmd::Remove { journey } => journey_remove(graph, &journey, json),
         JourneyCmd::List { limit, offset } => journey_list(graph, limit, offset, json),
         JourneyCmd::Map => journey_map(graph, json),
-        JourneyCmd::Run { spec, base_url } => journey_run(graph, spec, base_url.as_deref(), json),
-        JourneyCmd::Freeze { spec } => journey_freeze(graph, spec, json),
-        JourneyCmd::Diagnose { spec, base_url } => {
-            journey_diagnose(&spec, base_url.as_deref(), json)
+        JourneyCmd::Derive {
+            journey,
+            candidate_json,
+        } => journey_derive(graph, &journey, candidate_json.as_deref(), json),
+        JourneyCmd::DeriveAccept {
+            journey,
+            manifest,
+            human_decision,
+        } => journey_derive_accept(graph, &journey, &manifest, human_decision, json),
+        JourneyCmd::Surface { journey } => journey_surface(graph, &journey, json),
+        JourneyCmd::SurfaceAccept { journey, manifest } => {
+            journey_surface_accept(graph, &journey, &manifest, json)
         }
-        JourneyCmd::Coverage { cmd } => coverage::coverage(graph, cmd, json),
-        JourneyCmd::Invariant { cmd } => invariants::invariant(graph, cmd, json),
-        JourneyCmd::Prompt { intent } => prompt::prompt(graph, &intent, json),
-    }
-}
-
-fn outcome_json(o: &crate::journey::StepOutcome) -> Value {
-    json!({
-        "name": o.name,
-        "step": o.name,
-        "intent": o.intent,
-        "passed": o.passed,
-        "detail": o.detail,
-    })
-}
-
-pub(super) fn is_journey_validation(node: &Node) -> bool {
-    matches!(
-        node.body.get("type").and_then(|t| t.as_str()),
-        Some("journey")
-    ) || node.body.get("proof_kind").and_then(|t| t.as_str()) == Some("journey")
-}
-
-fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
-    let store = open(graph)?;
-    let (parsed, kind) = crate::journey::parse_with_kind(&spec)?;
-    // Registration validates every graph reference: a step intent that does
-    // not resolve can never be proven by any run, so the spec is refused
-    // BEFORE any write — the failure belongs at authoring time, not at
-    // execution. Diagnose and run then execute the identical step semantics
-    // (one code path; persistence is the only flag).
-    let mut step_intents: Vec<Node> = Vec::new();
-    let mut unresolved: Vec<String> = Vec::new();
-    for step in &parsed.steps {
-        match store.resolve_node(&step.intent, Some(NodeType::Intent)) {
-            Ok(n) => step_intents.push(n),
-            Err(e) => unresolved.push(format!("step '{}': '{}' — {e}", step.name, step.intent)),
+        JourneyCmd::Compile { journey, profile } => {
+            journey_compile(graph, &journey, &profile, json)
         }
-    }
-    if !unresolved.is_empty() {
-        bail!(
-            "journey '{}' is not registrable: {} step intent(s) do not resolve, so no run \
-             could ever prove them:\n  {}\ncreate the intent (`loom intent add …`) or fix \
-             the step text, then re-add",
-            parsed.journey,
-            unresolved.len(),
-            unresolved.join("\n  ")
-        );
-    }
-    // Prefer a path relative to the graph root so grading/confinement never
-    // depends on absolute caller paths. Absolute inputs that still live under
-    // the root are stripped; paths outside the root are refused.
-    let root = store.root();
-    let root_canon = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    let spec_canon = spec.canonicalize().map_err(|e| {
-        anyhow::anyhow!(
-            "journey spec '{}' is missing or unreadable: {e}",
-            spec.display()
-        )
-    })?;
-    if !spec_canon.starts_with(&root_canon) {
-        bail!(
-            "journey spec '{}' is outside the graph root {}",
-            spec.display(),
-            root.display()
-        );
-    }
-    let artifact = spec_canon
-        .strip_prefix(&root_canon)
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| spec.display().to_string());
-    // The spec's raw bytes fold into the body as spec_hash, so an edited spec at
-    // the SAME path changes the body (a path-only body would miss the common
-    // "fixed the spec, re-add" case).
-    let raw = std::fs::read_to_string(&spec)
-        .map_err(|e| anyhow::anyhow!("reading journey spec {}: {e}", spec.display()))?;
-    let spec_hash = crate::artifact::fingerprint(&raw);
-    let body = json!({
-        "type": "journey",
-        "command": format!("loom journey run {artifact}"),
-        "proof_kind": "journey",
-        "journey_id": parsed.journey,
-        "repo_native_kind": kind.as_str(),
-        "artifact": artifact,
-        "spec_hash": spec_hash,
-    });
-    // Idempotent upsert by journey_id: reuse the canonical validation for this id,
-    // remove any duplicates a prior non-idempotent add left, and — when the spec
-    // changed — reset the proof to not_run (a fixed spec must be re-run, never
-    // left stale at its old result). Makes add→fix→add→run safe and repairs
-    // graphs that already accumulated duplicates.
-    let existing = crate::journey::journey_validations(&store, &parsed.journey)?;
-    let (val, updated) = match existing.split_first() {
-        Some((keep, dups)) => {
-            for dup in dups {
-                store.delete_node(&dup.id)?;
-            }
-            if keep.body != body {
-                store.set_node_body(&keep.id, &body)?;
-                if keep.status != "not_run" {
-                    // loom-stability-exempt: resets a proof to not_run — not a settled outcome
-                    store.set_node_status(&keep.id, "not_run")?;
-                }
-            }
-            let node = store
-                .get_node(&keep.id)?
-                .ok_or_else(|| anyhow::anyhow!("journey validation vanished after upsert"))?;
-            (node, true)
-        }
-        None => (
-            store.add_node(NodeType::Validation, &parsed.journey, "", "not_run", body)?,
-            false,
+        JourneyCmd::Run { journey, profile } => journey_run(graph, &journey, &profile, json),
+        JourneyCmd::Resume {
+            token,
+            choice,
+            human_decision,
+            free_form,
+        } => journey_resume(
+            graph,
+            &token,
+            &choice,
+            &human_decision,
+            free_form.as_deref(),
+            json,
         ),
-    };
-    // Reconcile step links: ensure the current spec's steps, then drop validates
-    // edges for steps the spec no longer names (a renamed/removed step must not
-    // keep a stale proof claim). Every step intent resolved at the top of this
-    // function — registration refused the spec otherwise.
-    let mut wanted: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    for intent in &step_intents {
-        wanted.insert(intent.id.clone());
-        store.ensure_edge(EdgeKind::Validates, &val.id, &intent.id)?;
+        JourneyCmd::Diagnose {
+            journey,
+            profile,
+            input,
+        } => journey_diagnose(graph, &journey, &profile, &input, json),
+        JourneyCmd::Freeze { journey, profile } => journey_freeze(graph, &journey, &profile, json),
+        JourneyCmd::Drift { journey } => journey_drift(graph, journey.as_deref(), json),
     }
-    for e in store.edges_with(Some(EdgeKind::Validates), Some(&val.id), None)? {
-        if !wanted.contains(&e.to_id) {
-            store.delete_edge(&e.id)?;
-        }
-    }
-    let linked = step_intents.len();
-    let verb = if updated { "updated" } else { "added" };
-    let payload = json!({
-        "added": !updated,
-        "updated": updated,
-        "validation": store.get_node(&val.id)?,
-        "linked_steps": linked,
-    });
-    let next_step = format!("run `loom journey run {artifact}` to record the proof");
-    let line = format!("{verb} journey '{}' ({linked} step intent(s))", val.name);
-    pulse::emit_line(&store, json, payload, &next_step, line)
 }
 
-fn journey_remove(graph: Option<&Path>, id: &str, json: bool) -> Result<()> {
+fn journey_resume(
+    graph: Option<&Path>,
+    token: &str,
+    choice: &str,
+    human_decision: &str,
+    free_form: Option<&str>,
+    json_output: bool,
+) -> Result<()> {
+    let pending = crate::journey_runtime::pending_continuation(token)?;
+    let preview = compile_preview(graph, &pending.binding.journey_id, &pending.binding.profile)?;
+    let executor = preview.identity.actor();
+    let outcome = crate::journey_runtime::resume_interactive(
+        &preview.root,
+        &preview.spec,
+        &preview.proof,
+        token,
+        crate::journey_gate::ResumeAnswer {
+            choice_id: choice.to_string(),
+            human_decision: human_decision.to_string(),
+            free_form: free_form.map(str::to_string),
+        },
+        &executor,
+    )?;
+    finish_interactive_run(graph, preview, outcome, json_output)
+}
+
+pub(crate) fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let vals = crate::journey::journey_validations(&store, id)?;
-    if vals.is_empty() {
-        bail!("no journey validation '{id}' to remove");
+    // Confinement is the read boundary: reject an out-of-root path before
+    // opening or parsing it, even when its contents are malformed.
+    let artifact = confined_artifact(&store, &spec)?;
+    let parsed = crate::journey::parse(&spec)?;
+    let semantic_hash = parsed.semantic_hash()?;
+    let body = journey_body(&parsed, &artifact, &semantic_hash);
+    let existing = journey_nodes(&store, &parsed.id)?;
+    if existing.len() > 1 {
+        bail!(
+            "journey stable id '{}' is ambiguous ({} nodes)",
+            parsed.id,
+            existing.len()
+        );
     }
-    let removed = vals.len();
-    for v in &vals {
-        store.delete_node(&v.id)?;
+
+    let (journey, added, changed, invalidated) = {
+        let tx = store.begin()?;
+        let result = match existing.into_iter().next() {
+            Some(journey) => {
+                let old_hash = journey.body.get("semantic_hash").and_then(Value::as_str);
+                let changed = old_hash != Some(semantic_hash.as_str());
+                let invalidated = if changed {
+                    refresh_or_invalidate_projections(&store, &journey, &parsed, &semantic_hash)?
+                } else {
+                    0
+                };
+                if journey.body != body {
+                    store.set_node_body(&journey.id, &body)?;
+                }
+                let current = store
+                    .get_node(&journey.id)?
+                    .ok_or_else(|| anyhow!("journey vanished during update"))?;
+                (current, false, changed, invalidated)
+            }
+            None => {
+                let description = parsed.description.as_deref().unwrap_or(&parsed.goal);
+                let journey =
+                    store.add_node(NodeType::Journey, &parsed.id, description, "authored", body)?;
+                (journey, true, false, 0)
+            }
+        };
+        tx.commit()?;
+        result
+    };
+
+    pulse::emit_line(
+        &store,
+        json,
+        json!({
+            "added": added,
+            "updated": !added,
+            "changed": changed,
+            "invalidated_projections": invalidated,
+            "journey": node_json(&journey),
+        }),
+        &format!("loom journey derive {}", parsed.id),
+        if added {
+            format!("added Journey '{}'", parsed.id)
+        } else {
+            format!("updated Journey '{}'", parsed.id)
+        },
+    )
+}
+
+pub(crate) fn journey_remove(graph: Option<&Path>, id: &str, json: bool) -> Result<()> {
+    let store = open(graph)?;
+    let nodes = journey_nodes(&store, id)?;
+    let [journey] = nodes.as_slice() else {
+        if nodes.is_empty() {
+            bail!("no Journey with stable id '{id}'");
+        }
+        bail!("Journey stable id '{id}' is ambiguous");
+    };
+    let compiled: Vec<Node> = store
+        .edges_with(Some(EdgeKind::Proves), None, Some(&journey.id))?
+        .into_iter()
+        .filter_map(|edge| store.get_node(&edge.from_id).ok().flatten())
+        .filter(|validation| {
+            validation.node_type == NodeType::Validation
+                && validation.body.get("type").and_then(Value::as_str) == Some("journey")
+        })
+        .collect();
+    let compiled_count = compiled.len();
+    let tx = store.begin()?;
+    for validation in compiled {
+        store.delete_node(&validation.id)?;
+    }
+    store.delete_node(&journey.id)?;
+    tx.commit()?;
+    let cache = store
+        .root()
+        .join(".loom")
+        .join("compiled")
+        .join("journeys")
+        .join(&journey.name);
+    if cache.is_dir() {
+        std::fs::remove_dir_all(&cache)
+            .with_context(|| format!("removing compiled Journey cache {}", cache.display()))?;
     }
     pulse::emit_line(
         &store,
         json,
-        json!({ "removed": removed, "journey_id": id }),
-        "loom status",
-        format!("removed journey '{id}' ({removed} validation node(s))"),
+        json!({
+            "removed": true,
+            "journey": node_json(journey),
+            "removed_compiled_validations": compiled_count,
+        }),
+        "loom journey list",
+        format!("removed Journey '{id}'"),
     )
 }
 
-fn journey_list(graph: Option<&Path>, limit: usize, offset: usize, json: bool) -> Result<()> {
-    let store = open(graph)?;
-    // Journeys are the subset of Validation nodes that pass the filter, so page
-    // over the filtered set (fetch all, filter, then skip/take) — a store-level
-    // limit would count non-journey validations against the page.
-    let all: Vec<_> = store
-        .list_nodes(Some(NodeType::Validation), usize::MAX)?
-        .into_iter()
-        .filter(is_journey_validation)
-        .collect();
-    let total = all.len();
-    let journeys: Vec<_> = all.into_iter().skip(offset).take(limit).collect();
+pub(crate) fn journey_list(
+    graph: Option<&Path>,
+    limit: usize,
+    offset: usize,
+    json: bool,
+) -> Result<()> {
+    let store = open_read(graph)?;
+    let nodes = store.list_nodes_page(Some(NodeType::Journey), limit, offset)?;
+    let total = store.count_nodes(Some(NodeType::Journey))?;
     if json {
+        let rows: Vec<_> = nodes.iter().map(node_json).collect();
         println!(
             "{}",
-            serde_json::to_string_pretty(&crate::commands::pagination_envelope(
-                &journeys, offset, limit, total
-            ))?
+            serde_json::to_string_pretty(&super::pagination_envelope(&rows, offset, limit, total))?
         );
     } else {
-        for n in &journeys {
+        for node in &nodes {
             println!(
-                "{:<10} {} [{}]",
-                n.status,
-                n.name,
-                crate::model::short(&n.id)
+                "{}  {}  hash={}",
+                crate::model::short(&node.id),
+                node.name,
+                node.body
+                    .get("semantic_hash")
+                    .and_then(Value::as_str)
+                    .unwrap_or("—")
             );
         }
-        if let Some(footer) = crate::commands::page_footer(journeys.len(), offset, total) {
+        if let Some(footer) = super::page_footer(nodes.len(), offset, total) {
             println!("{footer}");
         }
     }
     Ok(())
 }
 
-fn journey_applicability(
-    lifecycle: &str,
-    level: Option<&str>,
-    visibility: Option<&str>,
-) -> (&'static str, &'static str) {
-    match (visibility, lifecycle) {
-        (Some("user_visible"), "implemented") => (
-            "required",
-            "implemented user_visible intent has no journey validation",
-        ),
-        (Some("user_visible"), _) => (
-            "not_applicable",
-            "journey proof waits until lifecycle is implemented",
-        ),
-        (Some("internal"), _) => (
-            "not_applicable",
-            "internal intent — journeys prove user-visible flows",
-        ),
-        (Some(_), _) => ("unknown_visibility", "visibility facet is not recognized"),
-        (None, "implemented") => match level {
-            Some("system" | "feature" | "component") => (
-                "unknown_visibility",
-                "missing visibility on implemented system/feature/component intent",
-            ),
-            Some("behavior") => (
-                "not_applicable",
-                "behavior-level intent without user_visible facet is treated as internal",
-            ),
-            _ => (
-                "unknown_visibility",
-                "missing visibility on implemented intent",
-            ),
-        },
-        (None, _) => (
-            "not_applicable",
-            "journey proof waits until lifecycle is implemented",
-        ),
-    }
-}
-
-fn journey_proof_status(store: &Store, intent_id: &str) -> Result<&'static str> {
-    if !coverage::current_l5_journey_validations(store, intent_id)?.is_empty() {
-        return Ok("passed");
-    }
-    let mut saw_journey = false;
-    let mut saw_failed = false;
-    let mut saw_stale = false;
-    let mut saw_not_run = false;
-    for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent_id))? {
-        let Some(v) = store.get_node(&e.from_id)? else {
-            continue;
-        };
-        if !is_journey_validation(&v) {
-            continue;
-        }
-        saw_journey = true;
-        match (v.status.as_str(), e.status.as_str()) {
-            ("failed", _) | (_, "failing") => saw_failed = true,
-            (_, "needs_reverification") => saw_stale = true,
-            ("not_run", _) | (_, "uninspected") => saw_not_run = true,
-            _ => {}
-        }
-    }
-    Ok(if saw_failed {
-        "failed"
-    } else if saw_stale {
-        "stale"
-    } else if saw_not_run {
-        "not_run"
-    } else if saw_journey {
-        "unproven"
-    } else {
-        "missing"
-    })
-}
-
-fn proof_gap_reason(base: &str, proof_status: &str, coverage_status: &str) -> String {
-    match (proof_status, coverage_status) {
-        ("missing", "planned_unproven") => {
-            "coverage node exists, but no journey validation covers this intent".into()
-        }
-        ("missing", _) => base.into(),
-        ("not_run", _) => "journey validation exists, but has not been run".into(),
-        ("failed", _) => "journey validation exists, but current journey proof is failing".into(),
-        ("stale", _) => "journey validation exists, but proof needs reverification".into(),
-        ("unproven", _) => {
-            "journey validation exists, but no current passing S3-or-stronger journey proof covers this intent"
-                .into()
-        }
-        _ => base.into(),
-    }
-}
-/// Joined read view: every journey validation with the intents its Validates
-/// edges exercise, plus every active intent no journey touches. Both sections
-/// are deliberately unbounded — a truncated map would hide exactly the gaps
-/// it exists to expose. Linked intents are sorted by name — Validates edges
-/// carry no order, and step order lives in the journey spec, not the graph.
-fn journey_map(graph: Option<&Path>, json: bool) -> Result<()> {
-    const ALL: usize = i64::MAX as usize;
-    let store = open(graph)?;
-    let journeys: Vec<Node> = store
-        .list_nodes(Some(NodeType::Validation), ALL)?
-        .into_iter()
-        .filter(is_journey_validation)
-        .collect();
-    let coverage_node_count = store
-        .list_nodes(Some(NodeType::JourneyCoverage), ALL)?
-        .len();
-    let mut journeyed_intent_ids = std::collections::BTreeSet::new();
-    let mut journey_rows: Vec<Value> = Vec::new();
-    for j in &journeys {
-        let mut intents: Vec<(String, Value)> = Vec::new();
-        for e in store.edges_with(Some(EdgeKind::Validates), Some(&j.id), None)? {
-            let Some(intent) = store.get_node(&e.to_id)? else {
-                continue;
-            };
-            if intent.node_type != NodeType::Intent {
-                continue;
-            }
-            let intent_id = intent.id.clone();
-            let sort_key = intent.name.clone();
-            journeyed_intent_ids.insert(intent_id.clone());
-            let row = json!({
-                "id": intent_id,
-                "name": intent.name,
-                "lifecycle": intent.status,
-                "edge_status": e.status.as_str(),
-                "journey_proof_status": journey_proof_status(&store, &e.to_id)?,
-                "effective_coverage": coverage::effective_coverage(&store, &e.to_id),
-            });
-            intents.push((sort_key, row));
-        }
-        intents.sort_by(|a, b| a.0.cmp(&b.0));
-        journey_rows.push(json!({
-            "id": j.id,
-            "name": j.name,
-            "status": j.status,
-            "artifact": j.body.get("artifact").and_then(|v| v.as_str()),
-            "intents": intents.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
+pub(crate) fn journey_show(
+    graph: Option<&Path>,
+    journey_key: &str,
+    json_output: bool,
+) -> Result<()> {
+    let store = open_read(graph)?;
+    let (journey, spec, _) = load_registered_journey(&store, journey_key)?;
+    let readiness = crate::completeness::journey_readiness(&store, &journey)?;
+    let mut derivations = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Derives), Some(&journey.id), None)? {
+        derivations.push(json!({
+            "edge": edge,
+            "intent": store.get_node(&edge.to_id)?.map(|node| node_json(&node)),
+            "journey_hash": store.get_facet(&edge.id, TargetKind::Edge, "journey_hash")?,
+            "step_ids": edge_json_facet(&store, &edge.id, "step_ids"),
         }));
     }
-    let mut unjourneyed: Vec<Value> = Vec::new();
-    let mut journey_gap_intents: Vec<Value> = Vec::new();
-    for n in store.list_nodes(Some(NodeType::Intent), ALL)? {
-        if n.status == "deprecated" {
+    let mut surfaces = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {
+        surfaces.push(json!({
+            "edge": edge,
+            "surface": store.get_node(&edge.to_id)?.map(|node| node_json(&node)),
+            "journey_hash": store.get_facet(&edge.id, TargetKind::Edge, "journey_hash")?,
+            "setup": edge_json_facet(&store, &edge.id, "setup"),
+            "operation_bindings": edge_json_facet(&store, &edge.id, "operation_bindings"),
+        }));
+    }
+    let mut proofs = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Proves), None, Some(&journey.id))? {
+        proofs.push(json!({
+            "edge": edge,
+            "validation": store.get_node(&edge.from_id)?.map(|node| node_json(&node)),
+        }));
+    }
+    let value = json!({
+        "journey": node_json(&journey),
+        "spec": spec.canonical_value()?,
+        "readiness": readiness,
+        "derivations": derivations,
+        "surfaces": surfaces,
+        "proofs": proofs,
+    });
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&value)?);
+    } else {
+        println!(
+            "{}  authored={} derived={} implemented={} surfaced={} compiled={} proven={}",
+            journey.name,
+            readiness.authored,
+            readiness.derived,
+            readiness.implemented,
+            readiness.surfaced,
+            readiness.compiled,
+            readiness.proven
+        );
+    }
+    Ok(())
+}
+
+pub(crate) fn journey_map(graph: Option<&Path>, json_output: bool) -> Result<()> {
+    let store = open_read(graph)?;
+    let readiness = crate::completeness::all_journey_readiness(&store)?;
+    let rooted: BTreeSet<String> = readiness
+        .iter()
+        .flat_map(|journey| journey.derived_intent_ids.iter().cloned())
+        .collect();
+    let mut unrooted = Vec::new();
+    for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
+        if intent.status == "deprecated"
+            || rooted.contains(&intent.id)
+            || crate::completeness::intent_journey_exempt(&store, &intent.id)?
+        {
             continue;
         }
-        let level = store.get_facet(&n.id, TargetKind::Node, "level")?;
-        let visibility = store.get_facet(&n.id, TargetKind::Node, "visibility")?;
-        let aspect = store.get_facet(&n.id, TargetKind::Node, "aspect")?;
-        let (journey_applicability, base_gap_reason) =
-            journey_applicability(&n.status, level.as_deref(), visibility.as_deref());
-        let proof_status = journey_proof_status(&store, &n.id)?;
-        let coverage = coverage::coverage_context(&store, &n.id)?;
-        let coverage_status = coverage
-            .get("status")
-            .and_then(|v| v.as_str())
-            .unwrap_or("none");
-        let gap_reason = proof_gap_reason(base_gap_reason, proof_status, coverage_status);
-        let has_journey = journeyed_intent_ids.contains(&n.id);
-        let row = json!({
-            "id": n.id,
-            "name": n.name,
-            "lifecycle": n.status,
-            "level": level,
-            "visibility": visibility,
-            "aspect": aspect,
-            "journey_applicability": journey_applicability,
-            "journey_gap_reason": gap_reason,
-            "journey_proof_status": proof_status,
-            "coverage": coverage,
-        });
-        if !has_journey {
-            unjourneyed.push(row.clone());
-        }
-        if journey_applicability == "required" && proof_status != "passed" {
-            journey_gap_intents.push(row);
-        }
+        unrooted.push(node_json(&intent));
     }
-    journey_gap_intents.sort_by(|a, b| {
-        a["name"]
-            .as_str()
-            .unwrap_or("")
-            .cmp(b["name"].as_str().unwrap_or(""))
+    unrooted.sort_by(|left, right| {
+        left.get("name")
+            .and_then(Value::as_str)
+            .cmp(&right.get("name").and_then(Value::as_str))
     });
-    let passing_journey_intents = journeyed_intent_ids
-        .iter()
-        .filter(|id| journey_proof_status(&store, id).ok() == Some("passed"))
-        .count();
-    let unproven_journey_intents = journeyed_intent_ids
-        .len()
-        .saturating_sub(passing_journey_intents);
-    let unknown_visibility = unjourneyed
-        .iter()
-        .filter(|i| {
-            i.get("journey_applicability").and_then(|v| v.as_str()) == Some("unknown_visibility")
-        })
-        .count();
-    let not_applicable = unjourneyed
-        .iter()
-        .filter(|i| {
-            i.get("journey_applicability").and_then(|v| v.as_str()) == Some("not_applicable")
-        })
-        .count();
-    let summary = json!({
-        "journeys": journey_rows.len(),
-        "coverage_nodes": coverage_node_count,
-        "journeyed_intents": journeyed_intent_ids.len(),
-        "passing_journey_intents": passing_journey_intents,
-        "unproven_journey_intents": unproven_journey_intents,
-        "unjourneyed_intents": unjourneyed.len(),
-        "journey_required_gaps": journey_gap_intents.len(),
-        "unknown_visibility": unknown_visibility,
-        "not_applicable": not_applicable,
-    });
-    if json {
+    if json_output {
         println!(
             "{}",
             serde_json::to_string_pretty(&json!({
-                "summary": summary,
-                "journeys": journey_rows,
-                "journey_gap_intents": journey_gap_intents,
-                "unjourneyed_intents": unjourneyed,
+                "journeys": readiness,
+                "unrooted_intents": unrooted,
             }))?
         );
     } else {
-        println!(
-            "summary: journeys={} coverage_nodes={} journeyed_intents={} passing_journey_intents={} unproven_journey_intents={} unjourneyed_intents={} journey_required_gaps={} unknown_visibility={} not_applicable={}",
-            summary["journeys"],
-            summary["coverage_nodes"],
-            summary["journeyed_intents"],
-            summary["passing_journey_intents"],
-            summary["unproven_journey_intents"],
-            summary["unjourneyed_intents"],
-            summary["journey_required_gaps"],
-            summary["unknown_visibility"],
-            summary["not_applicable"]
-        );
-        for j in &journey_rows {
+        for journey in &readiness {
             println!(
-                "{:<10} {} [{}]",
-                j["status"].as_str().unwrap_or(""),
-                j["name"].as_str().unwrap_or(""),
-                crate::model::short(j["id"].as_str().unwrap_or(""))
-            );
-            for i in j["intents"].as_array().into_iter().flatten() {
-                println!(
-                    "    -> {} [{}] edge={} proof={} coverage={}",
-                    i["name"].as_str().unwrap_or(""),
-                    crate::model::short(i["id"].as_str().unwrap_or("")),
-                    i["edge_status"].as_str().unwrap_or(""),
-                    i["journey_proof_status"].as_str().unwrap_or(""),
-                    i["effective_coverage"].as_str().unwrap_or("")
-                );
-            }
-        }
-        println!("journey-required gaps: {}", journey_gap_intents.len());
-        for i in &journey_gap_intents {
-            println!(
-                "{}  {}  proof={} coverage={} reason={}",
-                crate::model::short(i["id"].as_str().unwrap_or("")),
-                i["name"].as_str().unwrap_or(""),
-                i["journey_proof_status"].as_str().unwrap_or(""),
-                i["coverage"]["status"].as_str().unwrap_or(""),
-                i["journey_gap_reason"].as_str().unwrap_or("")
+                "{}  authored={} derived={} implemented={} surfaced={} compiled={} proven={}",
+                journey.journey_name,
+                journey.authored,
+                journey.derived,
+                journey.implemented,
+                journey.surfaced,
+                journey.compiled,
+                journey.proven
             );
         }
-        println!("intents with no journey: {}", unjourneyed.len());
-        for i in &unjourneyed {
+        for intent in &unrooted {
             println!(
-                "{}  {}  lifecycle={} visibility={} level={} applicability={} proof={} coverage={} reason={}",
-                crate::model::short(i["id"].as_str().unwrap_or("")),
-                i["name"].as_str().unwrap_or(""),
-                i["lifecycle"].as_str().unwrap_or(""),
-                i["visibility"].as_str().unwrap_or("—"),
-                i["level"].as_str().unwrap_or("—"),
-                i["journey_applicability"].as_str().unwrap_or(""),
-                i["journey_proof_status"].as_str().unwrap_or(""),
-                i["coverage"]["status"].as_str().unwrap_or(""),
-                i["journey_gap_reason"].as_str().unwrap_or("")
+                "unrooted  {}  {}",
+                intent.get("id").and_then(Value::as_str).unwrap_or(""),
+                intent.get("name").and_then(Value::as_str).unwrap_or("")
             );
         }
     }
     Ok(())
 }
 
-fn journey_run(
+/// Emit the strict technical-derivation packet. This function is read-only.
+pub(crate) fn journey_derive(
     graph: Option<&Path>,
-    spec: PathBuf,
-    base_url: Option<&str>,
-    json: bool,
+    journey_key: &str,
+    candidate_json: Option<&str>,
+    json_output: bool,
 ) -> Result<()> {
-    // Drop the exclusive lock before CLI steps run — nested `loom …` (or any
-    // other graph writer) must be able to open the same graph. Same pattern as
-    // `validation run`.
-    let store = open(graph)?;
-    let mut parsed = crate::journey::parse(&spec)?;
-    if let Some(base) = base_url {
-        parsed.base = base.to_string();
-    }
-    // Bind the executed file to the registered validation artifact. A YAML that
-    // only shares `journey:` name with a registered validation must not run and
-    // stamp that validation — grading reads the registered artifact, so a
-    // different path would invent credit for steps that were never the proof.
-    let validation = crate::journey::resolve_validation(&store, &parsed.journey, false)?;
-    let registered = validation
-        .body
-        .get("artifact")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "journey validation '{}' has no registered artifact — re-add with `loom journey add`",
-                parsed.journey
-            )
-        })?;
-    let root = store.root();
-    let root_canon = root
-        .canonicalize()
-        .map_err(|e| anyhow::anyhow!("cannot resolve graph root {}: {e}", root.display()))?;
-    // Registered artifact may be relative (preferred) or absolute (legacy).
-    // Either way it must canonicalize under the graph root.
-    let reg_path = {
-        let p = Path::new(registered);
-        if p.is_absolute() {
-            p.to_path_buf()
-        } else {
-            root.join(registered)
+    let store = open_read(graph)?;
+    let (journey, spec, semantic_hash) = load_registered_journey(&store, journey_key)?;
+    let mut existing = Vec::new();
+    let mut covered = BTreeSet::new();
+    for edge in store.edges_with(Some(EdgeKind::Derives), Some(&journey.id), None)? {
+        let Some(intent) = store.get_node(&edge.to_id)? else {
+            continue;
+        };
+        let step_ids = edge_json_facet(&store, &edge.id, "step_ids")
+            .unwrap_or_else(|| Value::Array(Vec::new()));
+        if let Some(ids) = step_ids.as_array() {
+            covered.extend(ids.iter().filter_map(Value::as_str).map(str::to_owned));
         }
-    };
-    let reg_canon = reg_path.canonicalize().map_err(|e| {
-        anyhow::anyhow!(
-            "registered journey artifact '{}' is missing or unreadable: {e}",
-            registered
-        )
-    })?;
-    if !reg_canon.starts_with(&root_canon) {
-        bail!(
-            "registered journey artifact '{}' resolves outside the graph root {}",
-            registered,
-            root.display()
-        );
+        existing.push(json!({
+            "intent": node_json(&intent),
+            "step_ids": step_ids,
+            "rationale": store.get_facet(&edge.id, TargetKind::Edge, "rationale")?,
+            "proposal_id": store.get_facet(&edge.id, TargetKind::Edge, "proposal_id")?,
+            "manifest_hash": store.get_facet(&edge.id, TargetKind::Edge, "manifest_hash")?,
+            "journey_hash": store.get_facet(&edge.id, TargetKind::Edge, "journey_hash")?,
+        }));
     }
-    let run_canon = spec.canonicalize().map_err(|e| {
-        anyhow::anyhow!(
-            "journey spec '{}' is missing or unreadable: {e}",
-            spec.display()
-        )
-    })?;
-    if !run_canon.starts_with(&root_canon) {
-        bail!(
-            "journey run path '{}' resolves outside the graph root {}",
-            spec.display(),
-            root.display()
-        );
-    }
-    if reg_canon != run_canon {
-        bail!(
-            "journey run path '{}' does not match registered artifact '{}' for journey '{}' — refuse to stamp a different YAML",
-            spec.display(),
-            registered,
-            parsed.journey
-        );
-    }
-    // Content must match the registered fingerprint. An in-place edit of the
-    // same path would otherwise re-run with steps that no longer match the
-    // validation body / Validates links until a re-add. Missing hash is fail
-    // closed — legacy hand-registered journeys must re-add.
-    let expected = validation
-        .body
-        .get("spec_hash")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "journey validation '{}' has no registered spec_hash — re-add with `loom journey add`",
-                parsed.journey
-            )
-        })?;
-    let raw = std::fs::read_to_string(&run_canon)
-        .map_err(|e| anyhow::anyhow!("reading journey spec {}: {e}", run_canon.display()))?;
-    let actual = crate::artifact::fingerprint(&raw);
-    if actual != expected {
-        bail!(
-            "journey spec '{}' has changed since registration (spec_hash mismatch) — re-add with `loom journey add` before run",
-            registered
-        );
-    }
-    let cwd = store.root().to_path_buf();
-    let execution = store.execution_identity();
-    drop(store);
-
-    // Serialize proof execution against every other loom runner; a nested
-    // `loom …` child inherits the held marker and proceeds.
-    let _harness = crate::harness::acquire(&cwd, "journey run", &execution)?;
-    let mut outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
-    let store = crate::store::Store::open_with_identity(&cwd, execution.clone())?;
-    crate::journey::record_outcomes(&store, &parsed, &mut outcomes)?;
-    let deviations = crate::journey::read_baseline(&cwd, &parsed.journey)?
-        .map(|baseline| crate::journey::deviations(&baseline, &outcomes))
-        .unwrap_or_default();
-    store.append_journal(
-        "journey_run",
-        &parsed.journey,
-        json!({ "outcomes": outcomes, "deviations": deviations }),
-    )?;
-    let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
-    let passed = outcomes.iter().filter(|o| o.passed).count();
-    let failed = outcomes.len().saturating_sub(passed);
-    let payload = json!({
-        "journey": parsed.journey,
-        "passed": passed,
-        "failed": failed,
-        "total": rows.len(),
-        "outcomes": rows,
-        "deviations": deviations,
+    let uncovered_step_ids: Vec<_> = spec
+        .steps
+        .iter()
+        .filter(|step| !covered.contains(&step.id))
+        .map(|step| step.id.clone())
+        .collect();
+    let mut packet = json!({
+        "mode": "derive",
+        "journey": node_json(&journey),
+        "semantic_hash": semantic_hash,
+        "spec": spec.canonical_value()?,
+        "existing_derivations": existing,
+        "uncovered_step_ids": uncovered_step_ids,
+        "manifest_contract": {
+            "schema": crate::journey::DERIVATION_SCHEMA,
+            "journey_id": spec.id,
+            "journey_hash": semantic_hash,
+            "proposal_id": "stable-derivation-proposal-id",
+            "proposal_rationale": "Why this exact technical projection is sufficient and minimal",
+            "intents": [{
+                "id": "stable-technical-intent-id",
+                "operation": "create",
+                "name": "Behavioral technical intent name",
+                "criterion": "Falsifiable technical behavior criterion",
+                "level": "feature",
+                "visibility": "internal",
+                "rationale": "Why this is the smallest independently falsifiable technical behavior for the mapped Journey step(s)",
+                "step_ids": ["authored-step-id"]
+            }],
+            "relationships": [{
+                "id": "stable-relationship-id",
+                "kind": "requires",
+                "from": "stable-technical-intent-id",
+                "to": "another-included-create-or-reuse-entry-id",
+                "rationale": "Why this dependency or hierarchy is required"
+            }],
+            "unresolved_question": null
+        },
+        "rules": [
+            "Cover every authored step with at least one technical intent.",
+            "Use operation=reuse with intent_id to reuse an existing Intent; every relationship endpoint names an included intent entry id.",
+            "Every mapping requires a nonempty rationale.",
+            "Declare only requires or hierarchy relationships, each with a stable id and nonempty rationale.",
+            "A non-null unresolved_question must be answered before derive-accept.",
+            "Do not add product behavior or transport details.",
+            "Return only a loom.journey-derivation/v1 JSON manifest."
+        ],
+        "accept_command": format!(
+            "loom journey derive-accept {} --manifest <manifest.json> --human-decision <exact-answer>",
+            spec.id
+        ),
+        "human_gate": crate::workitem::derivation_human_gate(&journey),
+        "next_action": "Present the human_gate options with an evidence-backed recommendation, wait for the human's exact answer, and only then run accept_command. Missing human authority is a pause, not a terminal handoff."
     });
-    let next_step = if failed > 0 {
-        format!(
-            "fix the failing step and rerun `loom journey run {}`",
-            spec.display()
-        )
-    } else {
-        "run `loom journey list` to review journey validations".to_string()
-    };
-    let emitted = pulse::emit(&store, json, payload, &next_step, || {
-        for o in &outcomes {
-            println!(
-                "{} {} — {}",
-                if o.passed { "PASS" } else { "FAIL" },
-                o.name,
-                o.detail
+    if let Some(candidate_json) = candidate_json {
+        let manifest = parse_derivation_candidate(candidate_json)?;
+        manifest.validate_for(&spec, &semantic_hash)?;
+        packet
+            .as_object_mut()
+            .expect("derive packet is an object")
+            .insert(
+                "candidate_state".into(),
+                derivation_candidate_state(&store, &journey, &spec, &manifest)?,
             );
-        }
-        println!(
-            "journey '{}': {}/{} step(s) passed",
-            parsed.journey,
-            passed,
-            outcomes.len()
-        );
-        Ok(())
-    });
-    if failed > 0 {
-        emitted?;
-        bail!(
-            "journey '{}' failed ({failed} step(s) failed)",
-            parsed.journey
-        );
     }
-    emitted
+    emit_packet(&packet, json_output)
 }
 
-/// Freeze a differential baseline. Baselines are local files rather than
-/// journal lookups so replays stay cheap and deterministic; the freeze event
-/// itself is journaled for audit.
-fn journey_freeze(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
+fn parse_derivation_candidate(raw: &str) -> Result<crate::journey::DerivationManifest> {
+    let trimmed = raw.trim_start();
+    let (text, source) = if trimmed.starts_with('{') {
+        (raw.to_string(), "inline --candidate-json".to_string())
+    } else {
+        let path = Path::new(raw);
+        (
+            std::fs::read_to_string(path).with_context(|| {
+                format!("reading candidate derivation manifest {}", path.display())
+            })?,
+            path.display().to_string(),
+        )
+    };
+    serde_json::from_str(&text)
+        .with_context(|| format!("parsing {source} as {}", crate::journey::DERIVATION_SCHEMA))
+}
+
+fn derivation_manifest_hash(manifest: &crate::journey::DerivationManifest) -> Result<String> {
+    let canonical = canonical_json(serde_json::to_value(manifest)?);
+    Ok(crate::artifact::fingerprint(&serde_json::to_string(
+        &canonical,
+    )?))
+}
+
+fn candidate_intent_shape_matches(
+    store: &Store,
+    item: &crate::journey::DerivedIntent,
+    node: &Node,
+) -> Result<bool> {
+    if item.operation == crate::journey::DerivedIntentOperation::Create
+        && (node.name != item.name.as_deref().unwrap_or_default()
+            || node.description != item.criterion.as_deref().unwrap_or_default())
+    {
+        return Ok(false);
+    }
+    Ok(store
+        .get_facet(&node.id, TargetKind::Node, "level")?
+        .as_deref()
+        == Some(item.level.as_str())
+        && store
+            .get_facet(&node.id, TargetKind::Node, "visibility")?
+            .as_deref()
+            == Some(item.visibility.as_str()))
+}
+
+fn derivation_candidate_state(
+    store: &Store,
+    journey: &Node,
+    spec: &crate::journey::JourneySpec,
+    manifest: &crate::journey::DerivationManifest,
+) -> Result<Value> {
+    let manifest_hash = derivation_manifest_hash(manifest)?;
+
+    let mut matching_proposals: Vec<_> = derivation_proposals(store, &journey.name)?
+        .into_iter()
+        .filter(|proposal| {
+            proposal.status == "adopted"
+                && proposal.body.get("proposal_id").and_then(Value::as_str)
+                    == Some(manifest.proposal_id.as_str())
+                && proposal.body.get("manifest_hash").and_then(Value::as_str)
+                    == Some(manifest_hash.as_str())
+                && proposal.body.get("journey_hash").and_then(Value::as_str)
+                    == Some(manifest.journey_hash.as_str())
+        })
+        .collect();
+    matching_proposals.sort_by(|a, b| a.id.cmp(&b.id));
+    let proposal_ids: BTreeSet<_> = matching_proposals
+        .iter()
+        .map(|proposal| proposal.id.as_str())
+        .collect();
+
+    let mut matched = Vec::new();
+    for item in &manifest.intents {
+        let intent = match item.operation {
+            crate::journey::DerivedIntentOperation::Create => {
+                find_derived_intent(store, &journey.name, &item.id)?
+            }
+            crate::journey::DerivedIntentOperation::Reuse => item
+                .intent_id
+                .as_deref()
+                .and_then(|key| store.resolve_node(key, Some(NodeType::Intent)).ok()),
+        };
+        if let Some(intent) = intent {
+            if candidate_intent_shape_matches(store, item, &intent)? {
+                matched.push((item, intent));
+            }
+        }
+    }
+    let candidate_ids: BTreeSet<_> = matched
+        .iter()
+        .map(|(_, intent)| intent.id.as_str())
+        .collect();
+
+    let mut derives_edges = Vec::new();
+    for (item, intent) in &matched {
+        let expected_steps = ordered_subset(spec, &item.step_ids);
+        let expected_steps = serde_json::to_string(&expected_steps)?;
+        for edge in
+            store.edges_with(Some(EdgeKind::Derives), Some(&journey.id), Some(&intent.id))?
+        {
+            let proposal_id = store.get_facet(&edge.id, TargetKind::Edge, "proposal_id")?;
+            if store
+                .get_facet(&edge.id, TargetKind::Edge, "journey_hash")?
+                .as_deref()
+                != Some(manifest.journey_hash.as_str())
+                || store
+                    .get_facet(&edge.id, TargetKind::Edge, "manifest_hash")?
+                    .as_deref()
+                    != Some(manifest_hash.as_str())
+                || store
+                    .get_facet(&edge.id, TargetKind::Edge, "step_ids")?
+                    .as_deref()
+                    != Some(expected_steps.as_str())
+                || store
+                    .get_facet(&edge.id, TargetKind::Edge, "rationale")?
+                    .as_deref()
+                    != Some(item.rationale.as_str())
+                || !proposal_id
+                    .as_deref()
+                    .is_some_and(|id| proposal_ids.contains(id))
+            {
+                continue;
+            }
+            derives_edges.push(json!({
+                "entry_id": item.id,
+                "edge": edge,
+                "step_ids": edge_json_facet(store, &edge.id, "step_ids"),
+                "step_hashes": edge_json_facet(store, &edge.id, "step_hashes"),
+                "rationale": item.rationale,
+                "proposal_id": proposal_id,
+                "manifest_hash": manifest_hash,
+                "journey_hash": manifest.journey_hash,
+            }));
+        }
+    }
+
+    let ratification_facts: Vec<_> = store
+        .all_facts()?
+        .into_iter()
+        .filter(|fact| {
+            candidate_ids.contains(fact.subject_id.as_str())
+                && fact.claim == crate::model::Claim::Ratification
+        })
+        .collect();
+    let build_queue_entries: Vec<_> =
+        crate::workitem::queue_items(store, crate::lane::Lane::Build)?
+            .into_iter()
+            .filter(|entry| candidate_ids.contains(entry.target.id.as_str()))
+            .collect();
+    let readiness = crate::completeness::journey_readiness(store, journey)?;
+    let readiness_derived_candidate_ids: Vec<_> = readiness
+        .derived_intent_ids
+        .into_iter()
+        .filter(|id| candidate_ids.contains(id.as_str()))
+        .collect();
+
+    Ok(json!({
+        "canonical_manifest_hash": manifest_hash,
+        "matching_adopted_proposals": matching_proposals.iter().map(node_json).collect::<Vec<_>>(),
+        "candidate_intent_matches": matched.iter().map(|(item, intent)| json!({
+            "entry_id": item.id,
+            "operation": item.operation,
+            "intent": node_json(intent),
+        })).collect::<Vec<_>>(),
+        "derives_edges": derives_edges,
+        "ratification_facts": ratification_facts,
+        "build_queue_entries": build_queue_entries,
+        "readiness_derived_candidate_ids": readiness_derived_candidate_ids,
+    }))
+}
+
+#[derive(Clone)]
+struct PlannedRelationship {
+    id: String,
+    kind: EdgeKind,
+    from: String,
+    to: String,
+    rationale: String,
+}
+
+type AcceptedRelationship = (PlannedRelationship, crate::model::Edge);
+
+struct ReconciledRelationships {
+    accepted: Vec<AcceptedRelationship>,
+    created: usize,
+    removed: usize,
+}
+
+struct DerivationCurrentContext<'a> {
+    journey: &'a Node,
+    spec: &'a crate::journey::JourneySpec,
+    manifest: &'a crate::journey::DerivationManifest,
+    manifest_hash: &'a str,
+    proposal: &'a Node,
+    intents: &'a BTreeMap<String, Node>,
+    relationships: &'a [PlannedRelationship],
+}
+
+fn plan_relationships(
+    store: &Store,
+    manifest: &crate::journey::DerivationManifest,
+    preexisting: &BTreeMap<String, Node>,
+) -> Result<Vec<PlannedRelationship>> {
+    let mut planned = Vec::with_capacity(manifest.relationships.len());
+    let mut seen = BTreeSet::new();
+    for relationship in &manifest.relationships {
+        let kind = match relationship.kind {
+            crate::journey::DerivedRelationshipKind::Requires => EdgeKind::Requires,
+            crate::journey::DerivedRelationshipKind::Hierarchy => EdgeKind::Hierarchy,
+        };
+        let from_token = intent_plan_token(&relationship.from, preexisting);
+        let to_token = intent_plan_token(&relationship.to, preexisting);
+        if from_token == to_token {
+            bail!(
+                "derivation relationship '{}' resolves both endpoints to the same Intent",
+                relationship.kind.as_str()
+            );
+        }
+        let key = relationship_key(kind, &from_token, &to_token);
+        if !seen.insert(key) {
+            bail!(
+                "derivation contains a duplicate resolved '{}' relationship",
+                relationship.kind.as_str()
+            );
+        }
+        planned.push(PlannedRelationship {
+            id: relationship.id.clone(),
+            kind,
+            from: relationship.from.clone(),
+            to: relationship.to.clone(),
+            rationale: relationship.rationale.clone(),
+        });
+    }
+    validate_prospective_relationship_cycles(store, &planned, preexisting)?;
+    Ok(planned)
+}
+
+fn intent_plan_token(local: &str, preexisting: &BTreeMap<String, Node>) -> String {
+    preexisting
+        .get(local)
+        .map(|node| node.id.clone())
+        .unwrap_or_else(|| format!("new:{local}"))
+}
+
+fn relationship_key(kind: EdgeKind, from: &str, to: &str) -> String {
+    format!("{}\0{from}\0{to}", kind.as_str())
+}
+
+fn validate_prospective_relationship_cycles(
+    store: &Store,
+    planned: &[PlannedRelationship],
+    preexisting: &BTreeMap<String, Node>,
+) -> Result<()> {
+    for kind in [EdgeKind::Requires, EdgeKind::Hierarchy] {
+        let mut edges: Vec<(String, String)> = store
+            .edges_with(Some(kind), None, None)?
+            .into_iter()
+            .map(|edge| (edge.from_id, edge.to_id))
+            .collect();
+        let additions: Vec<(String, String)> = planned
+            .iter()
+            .filter(|relationship| relationship.kind == kind)
+            .map(|relationship| {
+                (
+                    intent_plan_token(&relationship.from, preexisting),
+                    intent_plan_token(&relationship.to, preexisting),
+                )
+            })
+            .collect();
+        edges.extend(additions.iter().cloned());
+        for (from, to) in additions {
+            if command_relationship_path_exists(&to, &from, &edges, &mut BTreeSet::new()) {
+                bail!(
+                    "accepting derivation would create a '{}' relationship cycle through '{}' and '{}'",
+                    kind.as_str(),
+                    from,
+                    to
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+fn command_relationship_path_exists(
+    current: &str,
+    target: &str,
+    edges: &[(String, String)],
+    seen: &mut BTreeSet<String>,
+) -> bool {
+    if current == target {
+        return true;
+    }
+    if !seen.insert(current.to_string()) {
+        return false;
+    }
+    edges
+        .iter()
+        .filter(|(from, _)| from == current)
+        .any(|(_, to)| command_relationship_path_exists(to, target, edges, seen))
+}
+
+fn validate_reused_intent_shape(
+    store: &Store,
+    item: &crate::journey::DerivedIntent,
+    node: &Node,
+) -> Result<()> {
+    let level = store.get_facet(&node.id, TargetKind::Node, "level")?;
+    let visibility = store.get_facet(&node.id, TargetKind::Node, "visibility")?;
+    if level.as_deref() != Some(item.level.as_str())
+        || visibility.as_deref() != Some(item.visibility.as_str())
+    {
+        bail!(
+            "derived intent '{}' declares level='{}' visibility='{}', but reused Intent '{}' does not match",
+            item.id,
+            item.level,
+            item.visibility,
+            node.name
+        );
+    }
+    Ok(())
+}
+
+fn derivation_proposals(store: &Store, journey_id: &str) -> Result<Vec<Node>> {
+    Ok(store
+        .list_nodes(Some(NodeType::Proposal), usize::MAX)?
+        .into_iter()
+        .filter(|proposal| {
+            proposal.body.get("source").and_then(Value::as_str) == Some("journey_derivation")
+                && proposal.body.get("journey_id").and_then(Value::as_str) == Some(journey_id)
+        })
+        .collect())
+}
+
+fn proposal_body(
+    manifest: &crate::journey::DerivationManifest,
+    manifest_hash: &str,
+    journey: &Node,
+    decision: &crate::ratification::HumanDecision,
+    accepted: &[(crate::journey::DerivedIntent, Node)],
+    relationships: &[AcceptedRelationship],
+) -> Result<Value> {
+    let canonical_manifest = canonical_json(serde_json::to_value(manifest)?);
+    let raw = serde_json::to_string(&canonical_manifest)?;
+    Ok(json!({
+        "source": "journey_derivation",
+        "source_path": Value::Null,
+        "raw": raw,
+        "proposal_id": manifest.proposal_id,
+        "proposal_rationale": manifest.proposal_rationale,
+        "journey_id": journey.name,
+        "journey_node_id": journey.id,
+        "journey_hash": manifest.journey_hash,
+        "manifest_hash": manifest_hash,
+        "human_decision": decision,
+        "items": accepted.iter().enumerate().map(|(index, (item, node))| json!({
+            "number": index + 1,
+            "kind": "journey_intent",
+            "status": "adopted",
+            "text": item.rationale,
+            "intent_entry_id": item.id,
+            "operation": item.operation,
+            "step_ids": item.step_ids,
+            "spawned": node.id,
+        })).collect::<Vec<_>>(),
+        "relationships": relationships.iter().map(|(relationship, edge)| json!({
+            "id": relationship.id,
+            "kind": relationship.kind.as_str(),
+            "from": relationship.from,
+            "to": relationship.to,
+            "rationale": relationship.rationale,
+            "edge_id": edge.id,
+        })).collect::<Vec<_>>(),
+    }))
+}
+
+fn relationship_bindings(store: &Store, edge_id: &str) -> Result<BTreeMap<String, Value>> {
+    store
+        .get_facet(edge_id, TargetKind::Edge, "journey_derivation_bindings")?
+        .map(|raw| serde_json::from_str(&raw).context("decoding relationship ownership"))
+        .transpose()
+        .map(|value| value.unwrap_or_default())
+}
+
+fn reconcile_derivation_relationships(
+    store: &Store,
+    journey_proposals: &[Node],
+    proposal: &Node,
+    manifest_hash: &str,
+    relationships: &[PlannedRelationship],
+    intents: &BTreeMap<String, Node>,
+) -> Result<ReconciledRelationships> {
+    let replacing: BTreeSet<&str> = journey_proposals
+        .iter()
+        .map(|proposal| proposal.id.as_str())
+        .chain(std::iter::once(proposal.id.as_str()))
+        .collect();
+    let mut declared = BTreeMap::new();
+    for relationship in relationships {
+        let from = intents.get(&relationship.from).ok_or_else(|| {
+            anyhow!(
+                "relationship from intent '{}' was not resolved",
+                relationship.from
+            )
+        })?;
+        let to = intents.get(&relationship.to).ok_or_else(|| {
+            anyhow!(
+                "relationship to intent '{}' was not resolved",
+                relationship.to
+            )
+        })?;
+        declared.insert(
+            relationship_key(relationship.kind, &from.id, &to.id),
+            relationship.clone(),
+        );
+    }
+
+    let mut accepted = Vec::new();
+    let mut seen = BTreeSet::new();
+    let mut removed = 0usize;
+    for kind in [EdgeKind::Requires, EdgeKind::Hierarchy] {
+        for edge in store.edges_with(Some(kind), None, None)? {
+            let key = relationship_key(kind, &edge.from_id, &edge.to_id);
+            let wanted = declared.get(&key);
+            let mut bindings = relationship_bindings(store, &edge.id)?;
+            bindings.retain(|owner, _| !replacing.contains(owner.as_str()));
+            if let Some(relationship) = wanted {
+                bindings.insert(
+                    proposal.id.clone(),
+                    json!({
+                        "relationship_id": relationship.id,
+                        "rationale": relationship.rationale,
+                        "manifest_hash": manifest_hash,
+                    }),
+                );
+                accepted.push((relationship.clone(), edge.clone()));
+                seen.insert(key.clone());
+            }
+            if bindings.is_empty() {
+                let created_by_derivation = store
+                    .get_facet(&edge.id, TargetKind::Edge, "journey_derivation_created")?
+                    .as_deref()
+                    == Some("true");
+                if wanted.is_none() && created_by_derivation {
+                    store.delete_edge(&edge.id)?;
+                    removed += 1;
+                } else {
+                    store.clear_facet(&edge.id, TargetKind::Edge, "journey_derivation_bindings")?;
+                }
+            } else {
+                store.set_facet(
+                    &edge.id,
+                    TargetKind::Edge,
+                    "journey_derivation_bindings",
+                    &serde_json::to_string(&bindings)?,
+                    TruthClass::Asserted,
+                )?;
+            }
+        }
+    }
+
+    let mut created = 0usize;
+    for (key, relationship) in declared {
+        if seen.contains(&key) {
+            continue;
+        }
+        let from = &intents[&relationship.from];
+        let to = &intents[&relationship.to];
+        let edge = store.add_edge(relationship.kind, &from.id, &to.id, TruthClass::Asserted)?;
+        store.set_facet(
+            &edge.id,
+            TargetKind::Edge,
+            "journey_derivation_created",
+            "true",
+            TruthClass::Asserted,
+        )?;
+        store.set_facet(
+            &edge.id,
+            TargetKind::Edge,
+            "journey_derivation_bindings",
+            &serde_json::to_string(&BTreeMap::from([(
+                proposal.id.clone(),
+                json!({
+                    "relationship_id": relationship.id,
+                    "rationale": relationship.rationale,
+                    "manifest_hash": manifest_hash,
+                }),
+            )]))?,
+            TruthClass::Asserted,
+        )?;
+        accepted.push((relationship, edge));
+        created += 1;
+    }
+    accepted.sort_by(|left, right| left.0.id.cmp(&right.0.id));
+    Ok(ReconciledRelationships {
+        accepted,
+        created,
+        removed,
+    })
+}
+
+fn derivation_acceptance_is_current(
+    store: &Store,
+    context: &DerivationCurrentContext<'_>,
+) -> Result<bool> {
+    let DerivationCurrentContext {
+        journey,
+        spec,
+        manifest,
+        manifest_hash,
+        proposal,
+        intents,
+        relationships,
+    } = context;
+    if proposal.status != "adopted"
+        || proposal.body.get("manifest_hash").and_then(Value::as_str) != Some(manifest_hash)
+        || proposal.body.get("journey_hash").and_then(Value::as_str)
+            != Some(manifest.journey_hash.as_str())
+        || intents.len() != manifest.intents.len()
+    {
+        return Ok(false);
+    }
+    let derives = store.edges_with(Some(EdgeKind::Derives), Some(&journey.id), None)?;
+    if derives.len() != manifest.intents.len() {
+        return Ok(false);
+    }
+    let step_hashes = spec.step_hashes()?;
+    for item in &manifest.intents {
+        let Some(intent) = intents.get(&item.id) else {
+            return Ok(false);
+        };
+        if !super::intent::is_ratified(store, &intent.id)? {
+            return Ok(false);
+        }
+        let Some(edge) = derives.iter().find(|edge| edge.to_id == intent.id) else {
+            return Ok(false);
+        };
+        let ordered_steps = ordered_subset(spec, &item.step_ids);
+        let subset: BTreeMap<&str, &str> = ordered_steps
+            .iter()
+            .filter_map(|id| step_hashes.get(id).map(|hash| (id.as_str(), hash.as_str())))
+            .collect();
+        if store
+            .get_facet(&edge.id, TargetKind::Edge, "journey_hash")?
+            .as_deref()
+            != Some(manifest.journey_hash.as_str())
+            || edge_json_facet(store, &edge.id, "step_ids")
+                != Some(serde_json::to_value(&ordered_steps)?)
+            || edge_json_facet(store, &edge.id, "step_hashes")
+                != Some(serde_json::to_value(&subset)?)
+            || store
+                .get_facet(&edge.id, TargetKind::Edge, "rationale")?
+                .as_deref()
+                != Some(item.rationale.as_str())
+            || store
+                .get_facet(&edge.id, TargetKind::Edge, "proposal_id")?
+                .as_deref()
+                != Some(proposal.id.as_str())
+            || store
+                .get_facet(&edge.id, TargetKind::Edge, "manifest_hash")?
+                .as_deref()
+                != Some(manifest_hash)
+        {
+            return Ok(false);
+        }
+    }
+
+    let mut declared = BTreeSet::new();
+    for relationship in *relationships {
+        let from = &intents[&relationship.from];
+        let to = &intents[&relationship.to];
+        let key = relationship_key(relationship.kind, &from.id, &to.id);
+        declared.insert(key);
+        let Some(edge) = store
+            .edges_with(Some(relationship.kind), Some(&from.id), Some(&to.id))?
+            .into_iter()
+            .next()
+        else {
+            return Ok(false);
+        };
+        let bindings = relationship_bindings(store, &edge.id)?;
+        let expected = json!({
+            "relationship_id": relationship.id,
+            "rationale": relationship.rationale,
+            "manifest_hash": manifest_hash,
+        });
+        if bindings.get(&proposal.id) != Some(&expected) {
+            return Ok(false);
+        }
+    }
+    for kind in [EdgeKind::Requires, EdgeKind::Hierarchy] {
+        for edge in store.edges_with(Some(kind), None, None)? {
+            if relationship_bindings(store, &edge.id)?.contains_key(&proposal.id)
+                && !declared.contains(&relationship_key(kind, &edge.from_id, &edge.to_id))
+            {
+                return Ok(false);
+            }
+        }
+    }
+    Ok(true)
+}
+
+/// Atomically accept a human-approved technical derivation manifest.
+pub(crate) fn journey_derive_accept(
+    graph: Option<&Path>,
+    journey_key: &str,
+    manifest_path: &Path,
+    human_decision: String,
+    json_output: bool,
+) -> Result<()> {
+    let manifest = crate::journey::DerivationManifest::parse_json(manifest_path)?;
     let store = open(graph)?;
-    let parsed = crate::journey::parse(&spec)?;
-    let cwd = store.root().to_path_buf();
-    let execution = store.execution_identity();
-    drop(store);
-    let _harness = crate::harness::acquire(&cwd, "journey freeze", &execution)?;
-    let outcomes = crate::journey::execute_steps(&parsed, Some(&cwd), false)?;
-    let path = crate::journey::write_successful_baseline(&cwd, &parsed, &outcomes)?;
-    let store = crate::store::Store::open_with_identity(&cwd, execution.clone())?;
-    let entry = store.append_journal(
-        "journey_freeze",
-        &parsed.journey,
-        json!({ "spec": spec, "baseline": path, "outcomes": outcomes }),
-    )?;
+    let (journey, spec, semantic_hash) = load_registered_journey(&store, journey_key)?;
+    manifest.validate_for(&spec, &semantic_hash)?;
+    if let Some(question) = &manifest.unresolved_question {
+        bail!(
+            "derivation question '{}' is unresolved: {}; answer it and submit a manifest with unresolved_question:null",
+            question.id,
+            question.text
+        );
+    }
+    let decision = super::ratification_decision(&journey.name, Some(human_decision))?;
+    let manifest_hash = derivation_manifest_hash(&manifest)?;
+    let evidence = format!(
+        "accepted Journey '{}' derivation at semantic hash {} from canonical manifest {}",
+        journey.name, semantic_hash, manifest_hash
+    );
+
+    // Resolve all references and provenance replays before the first mutation.
+    let mut preexisting = BTreeMap::new();
+    let mut resolved_intent_ids = BTreeSet::new();
+    for item in &manifest.intents {
+        let node = match item.operation {
+            crate::journey::DerivedIntentOperation::Reuse => store.resolve_node(
+                item.intent_id.as_deref().unwrap_or(""),
+                Some(NodeType::Intent),
+            )?,
+            crate::journey::DerivedIntentOperation::Create => {
+                match find_derived_intent(&store, &journey.name, &item.id)? {
+                    Some(node) => {
+                        if node.name != item.name.as_deref().unwrap_or("")
+                            || node.description != item.criterion.as_deref().unwrap_or("")
+                        {
+                            bail!(
+                                "derived intent '{}' already exists with conflicting meaning",
+                                item.id
+                            );
+                        }
+                        node
+                    }
+                    None => continue,
+                }
+            }
+        };
+        validate_reused_intent_shape(&store, item, &node)?;
+        if !resolved_intent_ids.insert(node.id.clone()) {
+            bail!(
+                "derived intent '{}' resolves to Intent '{}' already selected by another mapping",
+                item.id,
+                node.name
+            );
+        }
+        preexisting.insert(item.id.clone(), node);
+    }
+    let relationships = plan_relationships(&store, &manifest, &preexisting)?;
+    let proposals = derivation_proposals(&store, &journey.name)?;
+    if let Some(conflict) = proposals.iter().find(|proposal| {
+        proposal.body.get("proposal_id").and_then(Value::as_str)
+            == Some(manifest.proposal_id.as_str())
+            && proposal.body.get("manifest_hash").and_then(Value::as_str)
+                != Some(manifest_hash.as_str())
+    }) {
+        bail!(
+            "derivation proposal id '{}' is already adopted by Proposal '{}' with a different manifest",
+            manifest.proposal_id,
+            conflict.id
+        );
+    }
+    let mut matching: Vec<Node> = proposals
+        .iter()
+        .filter(|proposal| {
+            proposal.body.get("proposal_id").and_then(Value::as_str)
+                == Some(manifest.proposal_id.as_str())
+                && proposal.body.get("manifest_hash").and_then(Value::as_str)
+                    == Some(manifest_hash.as_str())
+        })
+        .cloned()
+        .collect();
+    if matching.len() > 1 {
+        bail!(
+            "Journey '{}' has {} adopted Proposal records for manifest '{}'",
+            journey.name,
+            matching.len(),
+            manifest_hash
+        );
+    }
+    let existing_proposal = matching.pop();
+
+    if let Some(proposal) = &existing_proposal {
+        let current = DerivationCurrentContext {
+            journey: &journey,
+            spec: &spec,
+            manifest: &manifest,
+            manifest_hash: &manifest_hash,
+            proposal,
+            intents: &preexisting,
+            relationships: &relationships,
+        };
+        if derivation_acceptance_is_current(&store, &current)? {
+            let accepted: Vec<_> = manifest
+                .intents
+                .iter()
+                .filter_map(|item| preexisting.get(&item.id))
+                .map(node_json)
+                .collect();
+            return pulse::emit_line(
+                &store,
+                json_output,
+                json!({
+                    "accepted": true,
+                    "idempotent": true,
+                    "journey_id": journey.name,
+                    "journey_hash": semantic_hash,
+                    "manifest_hash": manifest_hash,
+                    "proposal": node_json(proposal),
+                    "intents": accepted,
+                    "created": 0,
+                    "relationships_created": 0,
+                    "removed_projection_edges": 0,
+                    "removed_relationship_edges": 0,
+                }),
+                &format!("loom journey surface {}", journey.name),
+                format!("derivation for '{}' is already accepted", journey.name),
+            );
+        }
+    }
+
+    let (accepted, proposal, created, removed_edges, relationships_created, relationships_removed) = {
+        let tx = store.begin()?;
+        let mut accepted: Vec<(crate::journey::DerivedIntent, Node)> = Vec::new();
+        let mut accepted_by_local = BTreeMap::new();
+        let mut accepted_ids = BTreeSet::new();
+        let mut created = 0usize;
+        for item in &manifest.intents {
+            let node = if let Some(node) = preexisting.get(&item.id) {
+                node.clone()
+            } else {
+                let args = super::intent::IntentAddArgs {
+                    name: item.name.clone().unwrap_or_default(),
+                    description: item.criterion.clone().unwrap_or_default(),
+                    level: item.level.clone(),
+                    lifecycle: "planned".into(),
+                    visibility: Some(item.visibility.clone()),
+                    layer: None,
+                    aspect: None,
+                    allow_symbol_name: false,
+                };
+                let node = super::intent::create_intent(&store, &args)
+                    .with_context(|| format!("creating derived intent '{}'", item.id))?;
+                let mut body = node.body.clone();
+                body["source_journey"] = json!(journey.name);
+                body["derivation_id"] = json!(item.id);
+                body["journey_hash"] = json!(semantic_hash);
+                store.set_node_body(&node.id, &body)?;
+                created += 1;
+                store
+                    .get_node(&node.id)?
+                    .ok_or_else(|| anyhow!("derived intent vanished after creation"))?
+            };
+            if !accepted_ids.insert(node.id.clone()) {
+                bail!(
+                    "derived intent '{}' resolves to Intent '{}' already selected by another mapping",
+                    item.id,
+                    node.name
+                );
+            }
+            accepted_by_local.insert(item.id.clone(), node.clone());
+            accepted.push((item.clone(), node));
+        }
+
+        let proposal = match &existing_proposal {
+            Some(proposal) => {
+                if proposal.status != "adopted" {
+                    // loom-stability-exempt: Proposal lifecycle records approval provenance,
+                    // not an executable proof outcome.
+                    store.set_node_status(&proposal.id, "adopted")?;
+                }
+                store
+                    .get_node(&proposal.id)?
+                    .ok_or_else(|| anyhow!("derivation Proposal vanished"))?
+            }
+            None => store.add_node(
+                NodeType::Proposal,
+                &format!(
+                    "Journey {} derivation {}",
+                    journey.name, manifest.proposal_id
+                ),
+                &manifest.proposal_rationale,
+                "adopted",
+                proposal_body(&manifest, &manifest_hash, &journey, &decision, &[], &[])?,
+            )?,
+        };
+
+        let mut to_ratify: Vec<&Node> = Vec::new();
+        for (_, node) in &accepted {
+            if !super::intent::is_ratified(&store, &node.id)? {
+                to_ratify.push(node);
+            }
+        }
+        let batch_id =
+            ratification_batch(&store, &to_ratify, &evidence, &decision, &semantic_hash)?;
+        for node in &to_ratify {
+            match &batch_id {
+                Some(batch_id) => store
+                    .ratify_intent_from_human_batch(&node.id, &evidence, &decision, batch_id)?,
+                None => store.ratify_intent_from_human(&node.id, &evidence, &decision)?,
+            }
+        }
+
+        let mut wanted_targets = BTreeSet::new();
+        for (item, node) in &accepted {
+            wanted_targets.insert(node.id.clone());
+            let edge = store.ensure_edge(EdgeKind::Derives, &journey.id, &node.id)?;
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "journey_hash",
+                &semantic_hash,
+                TruthClass::Asserted,
+            )?;
+            let ordered_steps = ordered_subset(&spec, &item.step_ids);
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "step_ids",
+                &serde_json::to_string(&ordered_steps)?,
+                TruthClass::Asserted,
+            )?;
+            let hashes = spec.step_hashes()?;
+            let subset: BTreeMap<&str, &str> = ordered_steps
+                .iter()
+                .filter_map(|id| hashes.get(id).map(|hash| (id.as_str(), hash.as_str())))
+                .collect();
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "step_hashes",
+                &serde_json::to_string(&subset)?,
+                TruthClass::Asserted,
+            )?;
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "rationale",
+                &item.rationale,
+                TruthClass::Asserted,
+            )?;
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "proposal_id",
+                &proposal.id,
+                TruthClass::Asserted,
+            )?;
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "manifest_hash",
+                &manifest_hash,
+                TruthClass::Asserted,
+            )?;
+        }
+        let mut removed_edges = 0usize;
+        for edge in store.edges_with(Some(EdgeKind::Derives), Some(&journey.id), None)? {
+            if !wanted_targets.contains(&edge.to_id) {
+                store.delete_edge(&edge.id)?;
+                removed_edges += 1;
+            }
+        }
+
+        let relationship_result = reconcile_derivation_relationships(
+            &store,
+            &proposals,
+            &proposal,
+            &manifest_hash,
+            &relationships,
+            &accepted_by_local,
+        )?;
+        let final_body = proposal_body(
+            &manifest,
+            &manifest_hash,
+            &journey,
+            &decision,
+            &accepted,
+            &relationship_result.accepted,
+        )?;
+        if proposal.body != final_body {
+            store.set_node_body(&proposal.id, &final_body)?;
+        }
+        for prior in &proposals {
+            if prior.id != proposal.id && prior.status == "adopted" {
+                // loom-stability-exempt: superseding an approval Proposal does not
+                // settle or reset any executable proof.
+                store.set_node_status(&prior.id, "superseded")?;
+            }
+        }
+
+        // The adopted Proposal is the durable approval record. Journal only
+        // when acceptance actually changes graph state; the exact-state fast
+        // path above deliberately emits no duplicate record.
+        store.append_journal(
+            "journey_derivation_accept",
+            &journey.id,
+            json!({
+                "journey_id": journey.name,
+                "journey_hash": semantic_hash,
+                "manifest_hash": manifest_hash,
+                "proposal_id": proposal.id,
+                "subjects": accepted.iter().map(|(_, node)| node.id.clone()).collect::<Vec<_>>(),
+                "human_decision": decision,
+                "evidence": evidence,
+            }),
+        )?;
+        tx.commit()?;
+        let proposal = store
+            .get_node(&proposal.id)?
+            .ok_or_else(|| anyhow!("derivation Proposal vanished after acceptance"))?;
+        (
+            accepted,
+            proposal,
+            created,
+            removed_edges,
+            relationship_result.created,
+            relationship_result.removed,
+        )
+    };
+
     pulse::emit_line(
         &store,
-        json,
-        json!({ "journey": parsed.journey, "baseline": path, "journal": crate::journal::reference(&entry) }),
-        "loom journey run",
-        format!("froze journey baseline '{}'", parsed.journey),
+        json_output,
+        json!({
+            "accepted": true,
+            "journey_id": journey.name,
+            "journey_hash": semantic_hash,
+            "manifest_hash": manifest_hash,
+            "proposal": node_json(&proposal),
+            "intents": accepted.iter().map(|(_, node)| node_json(node)).collect::<Vec<_>>(),
+            "created": created,
+            "relationships_created": relationships_created,
+            "removed_projection_edges": removed_edges,
+            "removed_relationship_edges": relationships_removed,
+        }),
+        &format!("loom journey surface {}", journey.name),
+        format!(
+            "accepted derivation for '{}' ({} intent(s))",
+            journey.name,
+            accepted.len()
+        ),
     )
 }
 
-fn journey_diagnose(spec: &Path, base_url: Option<&str>, json: bool) -> Result<()> {
-    let mut parsed = crate::journey::parse(spec)?;
-    if let Some(base) = base_url {
-        parsed.base = base.to_string();
-    }
-    let hints = crate::journey::diagnose_hints(&parsed);
-    // Diagnose executes real steps against real services; it contends for the
-    // harness like any other run, scoped to the spec (the shared resource is
-    // the service the spec drives) so independent specs still parallelize.
-    let execution = crate::identity::ExecutionIdentity::resolve_env()?;
-    let _harness = crate::harness::acquire_for_artifact(spec, "journey diagnose", &execution)?;
-    let outcomes = crate::journey::execute(None, &parsed, false)?;
-    let rows: Vec<_> = outcomes.iter().map(outcome_json).collect();
-    let passed = outcomes.iter().filter(|o| o.passed).count();
-    let failed = outcomes.len().saturating_sub(passed);
-    if json {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&json!({
-                "journey": parsed.journey,
-                "passed": passed,
-                "failed": failed,
-                "total": rows.len(),
-                "hints": hints,
-                "outcomes": rows,
-            }))?
-        );
-    } else {
-        for h in hints {
-            println!("hint: {h}");
+/// Emit the reusable CLI-surface contract packet. This function is read-only.
+pub(crate) fn journey_surface(
+    graph: Option<&Path>,
+    journey_key: &str,
+    json_output: bool,
+) -> Result<()> {
+    let store = open_read(graph)?;
+    let (journey, spec, semantic_hash) = load_registered_journey(&store, journey_key)?;
+    let mut derivations = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Derives), Some(&journey.id), None)? {
+        if let Some(intent) = store.get_node(&edge.to_id)? {
+            derivations.push(json!({
+                "intent": node_json(&intent),
+                "step_ids": edge_json_facet(&store, &edge.id, "step_ids")
+            }));
         }
-        for o in &outcomes {
-            println!(
-                "{} {} — {}",
-                if o.passed { "PASS" } else { "FAIL" },
-                o.name,
-                o.detail
-            );
-        }
-        println!(
-            "journey '{}': {}/{} step(s) passed",
-            parsed.journey,
-            passed,
-            outcomes.len()
-        );
     }
-    if failed > 0 {
-        bail!(
-            "journey '{}' failed ({} step(s) failed)",
-            parsed.journey,
-            failed
+    let mut surfaces = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {
+        if let Some(surface) = store.get_node(&edge.to_id)? {
+            surfaces.push(json!({
+                "surface": node_json(&surface),
+                "setup": edge_json_facet(&store, &edge.id, "setup"),
+                "operation_bindings": edge_json_facet(&store, &edge.id, "operation_bindings")
+            }));
+        }
+    }
+    let packet = json!({
+        "mode": "surface",
+        "journey": node_json(&journey),
+        "semantic_hash": semantic_hash,
+        "spec": spec.canonical_value()?,
+        "accepted_derivations": derivations,
+        "existing_surfaces": surfaces,
+        "manifest_contract": {
+            "schema": crate::journey::SURFACE_SCHEMA,
+            "journey_id": spec.id,
+            "journey_hash": semantic_hash,
+            "surface": {
+                "id": "stable-cli-surface-id",
+                "title": "Reusable CLI surface title",
+                "identity": "binary subcommand",
+                "codefile": "required existing CodeFile key",
+                "locator": "required live CLI entrypoint symbol or strict anchor:<id>",
+                "operations": [{
+                    "id": "stable-operation-id",
+                    "summary": "One reusable CLI operation",
+                    "argv": ["binary", "subcommand"],
+                    "arguments": [{"id":"argument-id", "type":"string", "required":true, "flag":"--argument"}],
+                    "output": {"format":"json"}
+                }]
+            },
+            "setup": {
+                "graph": "local_snapshot",
+                "git": {
+                    "mode": "isolated_snapshot",
+                    "dirty_paths": ["registered/codefile.rs"]
+                },
+                "before_steps": {
+                    "authored-step-id": [{
+                        "path": "registered/codefile.rs",
+                        "expected_hash": "0123456789abcdef",
+                        "content": "exact replacement content"
+                    }]
+                },
+                "operations": ["stable-setup-operation-id"]
+            },
+            "bindings": [{"step_id":"authored-step-id", "operation_id":"stable-operation-id"}]
+        },
+        "human_decision_binding_contract": {
+            "step_id": "authored-human-step-id",
+            "human_decision": {
+                "operation_id": "prior-bound-presentation-operation-id",
+                "pointer": "/work_item"
+            }
+        },
+        "rules": [
+            "Bind every authored step exactly once.",
+            "Each binding is a strict union: either operation_id, or human_decision naming a prior bound operation and JSON pointer; never both.",
+            "A human_decision binding requires graph=local_snapshot, carries no CLI operation or answer, and may leave setup.operations empty.",
+            "Operations are reusable structured argv, never shell strings.",
+            "The surface exposes exactly one registered CodeFile at a live symbol locator or globally unique attached anchor:<id>.",
+            "Source anchors are navigation-only and never prove behavior or create graph relationships.",
+            "Every operation emits JSON; do not include HTTP endpoints.",
+            "Carry temporary setup from the Journey profile as declarative data only.",
+            "When setup is required, bind ordered mutable operations to graph=local_snapshot; the runtime confines every operation to that clone.",
+            "Optional git mode=isolated_snapshot may name only nonempty unique registered CodeFile paths; its one-commit fixture and dirty state exist only in the local snapshot.",
+            "Optional setup.before_steps maps authored step ids to atomic registered-file transitions in the local snapshot; each action declares expected_hash and exactly one of content or template.",
+            "A before_steps template may interpolate only non-secret inputs, run.id, or non-redacted outputs captured by earlier authored steps.",
+            "An argv token may be exactly one non-secret scalar ${{ inputs.<id> }} or ${{ steps.<prior-step>.outputs.<id> }} template; mixed token interpolation is forbidden.",
+            "Return only a loom.journey.surface/v1 JSON manifest."
+        ],
+        "accept_command": format!(
+            "loom journey surface-accept {} --manifest <manifest.json>",
+            spec.id
         )
-    } else {
-        Ok(())
+    });
+    emit_packet(&packet, json_output)
+}
+
+/// Atomically create/reuse an InterfaceSurface and bind the Journey to it.
+pub(crate) fn journey_surface_accept(
+    graph: Option<&Path>,
+    journey_key: &str,
+    manifest_path: &Path,
+    json_output: bool,
+) -> Result<()> {
+    let manifest = crate::journey::SurfaceManifest::parse_json(manifest_path)?;
+    let store = open(graph)?;
+    let (journey, spec, semantic_hash) = load_registered_journey(&store, journey_key)?;
+    manifest.validate_for(&spec, &semantic_hash)?;
+    manifest.validate_setup_for_store(&store)?;
+
+    let (surface, exposes, created, removed_edges) = {
+        let tx = store.begin()?;
+        let (surface, exposes, created) =
+            super::domain_cmd::create_or_reuse_interface_surface(&store, &manifest.surface)?;
+        // loom-stability-exempt: local surface trust state is not a proof verdict.
+        store.set_node_status(&surface.id, "declared")?;
+        let surface = store
+            .get_node(&surface.id)?
+            .ok_or_else(|| anyhow!("InterfaceSurface vanished during local authorization"))?;
+        let edge = store.ensure_edge(EdgeKind::Surfaces, &journey.id, &surface.id)?;
+        store.set_facet(
+            &edge.id,
+            TargetKind::Edge,
+            "journey_hash",
+            &semantic_hash,
+            TruthClass::Asserted,
+        )?;
+        match manifest.canonical_setup()? {
+            Some(setup) => store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "setup",
+                &serde_json::to_string(&setup)?,
+                TruthClass::Asserted,
+            )?,
+            None => store.clear_facet(&edge.id, TargetKind::Edge, "setup")?,
+        }
+        let step_hashes = spec.step_hashes()?;
+        let binding_hashes: BTreeMap<&str, String> = manifest
+            .bindings
+            .iter()
+            .filter_map(|binding| {
+                step_hashes.get(binding.step_id()).map(|step_hash| {
+                    (
+                        binding.step_id(),
+                        crate::artifact::fingerprint(&format!(
+                            "{step_hash}\0{}",
+                            binding.identity()
+                        )),
+                    )
+                })
+            })
+            .collect();
+        store.set_facet(
+            &edge.id,
+            TargetKind::Edge,
+            "binding_hashes",
+            &serde_json::to_string(&binding_hashes)?,
+            TruthClass::Asserted,
+        )?;
+        store.set_facet(
+            &edge.id,
+            TargetKind::Edge,
+            "operation_bindings",
+            &serde_json::to_string(&manifest.canonical_bindings(&spec))?,
+            TruthClass::Asserted,
+        )?;
+        let mut removed_edges = 0usize;
+        for other in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {
+            if other.id != edge.id {
+                store.delete_edge(&other.id)?;
+                removed_edges += 1;
+            }
+        }
+        tx.commit()?;
+        (surface, exposes, created, removed_edges)
+    };
+
+    pulse::emit_line(
+        &store,
+        json_output,
+        json!({
+            "accepted": true,
+            "journey_id": journey.name,
+            "journey_hash": semantic_hash,
+            "surface": node_json(&surface),
+            "surface_created": created,
+            "exposes_edge": exposes,
+            "setup": manifest.canonical_setup()?,
+            "operation_bindings": manifest.canonical_bindings(&spec),
+            "removed_projection_edges": removed_edges,
+        }),
+        "loom status",
+        format!(
+            "accepted surface '{}' for Journey '{}'",
+            surface.name, journey.name
+        ),
+    )
+}
+
+#[derive(Clone)]
+struct CompileSource {
+    journey: Node,
+    spec: crate::journey::JourneySpec,
+    semantic_hash: String,
+    surface: Node,
+    surface_hash: String,
+    setup: Option<crate::journey::SurfaceSetup>,
+    bindings: Vec<crate::journey::SurfaceBinding>,
+    operations: Vec<crate::journey::CliOperation>,
+    exposed: Vec<(Node, Option<String>)>,
+    derived_intents: Vec<Node>,
+}
+
+struct CompileProduct {
+    proof: crate::journey_runtime::CompiledJourneyProof,
+    spec: crate::journey::JourneySpec,
+    validation_id: String,
+    covered_files: Vec<String>,
+    root: PathBuf,
+    identity: crate::identity::ExecutionIdentity,
+    artifact: PathBuf,
+    cache_regenerated: bool,
+}
+
+struct CompilePreview {
+    proof: crate::journey_runtime::CompiledJourneyProof,
+    spec: crate::journey::JourneySpec,
+    covered_files: Vec<String>,
+    root: PathBuf,
+    identity: crate::identity::ExecutionIdentity,
+}
+
+fn compile_source(store: &Store, journey_key: &str, profile: &str) -> Result<CompileSource> {
+    let (journey, spec, semantic_hash) = load_registered_journey(store, journey_key)?;
+    if !spec.profiles.contains_key(profile) {
+        bail!("Journey '{}' has no profile '{profile}'", journey.name);
+    }
+    let readiness = crate::completeness::journey_readiness(store, &journey)?;
+    if !readiness.derived || !readiness.derivations_ratified || !readiness.implemented {
+        bail!(
+            "Journey '{}' is not compile-ready: derivations must be current, ratified, and realizing-grounded. Run `loom journey derive {} --json`, present its structured human_gate options with a recommendation, wait for the human's exact answer, and only then use derive-accept. Missing human authority is a pause, not a terminal handoff",
+            journey.name,
+            spec.id
+        );
+    }
+
+    let mut current_surfaces = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {
+        if !matches!(
+            edge.status,
+            InspectionStatus::Uninspected | InspectionStatus::Passing
+        ) || store
+            .get_facet(&edge.id, TargetKind::Edge, "journey_hash")?
+            .as_deref()
+            != Some(semantic_hash.as_str())
+        {
+            continue;
+        }
+        let surface = store
+            .get_node(&edge.to_id)?
+            .ok_or_else(|| anyhow!("accepted surface target '{}' is missing", edge.to_id))?;
+        let bindings = facet_json::<Vec<crate::journey::SurfaceBinding>>(
+            store,
+            &edge.id,
+            "operation_bindings",
+        )?;
+        let setup = store
+            .get_facet(&edge.id, TargetKind::Edge, "setup")?
+            .map(|raw| {
+                serde_json::from_str::<crate::journey::SurfaceSetup>(&raw)
+                    .with_context(|| format!("edge '{}' has invalid setup", edge.id))
+            })
+            .transpose()?;
+        if let Some(setup) = &setup {
+            setup.validate_for_store(store)?;
+        }
+        current_surfaces.push((edge, surface, setup, bindings));
+    }
+    let [(surface_edge, surface, setup, bindings)] = current_surfaces.as_slice() else {
+        bail!(
+            "Journey '{}' requires exactly one current hash-bound CLI surface (found {})",
+            journey.name,
+            current_surfaces.len()
+        );
+    };
+    if surface.status == "quarantined" {
+        bail!(
+            "Journey '{}' executable CLI surface was imported and is quarantined; locally re-authorize the exact contract with `loom journey surface-accept {} --manifest <manifest.json>` before compile/run",
+            journey.name,
+            journey.name
+        );
+    }
+    if surface.node_type != NodeType::InterfaceSurface
+        || surface.body.get("schema").and_then(Value::as_str)
+            != Some(crate::journey::INTERFACE_SURFACE_SCHEMA)
+        || surface.body.get("kind").and_then(Value::as_str) != Some("cli")
+    {
+        bail!(
+            "Journey '{}' accepted surface is not a reusable CLI",
+            journey.name
+        );
+    }
+    let operations: Vec<crate::journey::CliOperation> = serde_json::from_value(
+        surface
+            .body
+            .get("operations")
+            .cloned()
+            .ok_or_else(|| anyhow!("InterfaceSurface '{}' has no operations", surface.name))?,
+    )
+    .with_context(|| format!("decoding InterfaceSurface '{}' operations", surface.name))?;
+    let surface_hash = crate::journey::surface_projection_hash(store, &journey)?
+        .ok_or_else(|| anyhow!("Journey '{}' has no surface projection hash", journey.name))?;
+
+    let mut exposed = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Exposes), Some(&surface.id), None)? {
+        if !matches!(
+            edge.status,
+            InspectionStatus::Uninspected | InspectionStatus::Passing
+        ) {
+            continue;
+        }
+        let codefile = store.get_node(&edge.to_id)?.ok_or_else(|| {
+            anyhow!(
+                "InterfaceSurface exposes missing CodeFile '{}',",
+                edge.to_id
+            )
+        })?;
+        if codefile.node_type != NodeType::CodeFile || !store.root().join(&codefile.name).is_file()
+        {
+            continue;
+        }
+        exposed.push((
+            codefile,
+            store.get_facet(&edge.id, TargetKind::Edge, "locator")?,
+        ));
+    }
+    if exposed.is_empty() {
+        bail!(
+            "Journey '{}' CLI surface exposes no live CodeFile",
+            journey.name
+        );
+    }
+    exposed.sort_by(|left, right| left.0.name.cmp(&right.0.name));
+
+    let mut derived_intents = Vec::new();
+    for id in &readiness.derived_intent_ids {
+        let intent = store
+            .get_node(id)?
+            .ok_or_else(|| anyhow!("derived Intent '{id}' is missing"))?;
+        derived_intents.push(intent);
+    }
+    derived_intents.sort_by(|left, right| left.id.cmp(&right.id));
+
+    // The facet is the compiler input; mentioning it here prevents a future
+    // refactor from accidentally compiling another surface with the same body.
+    let _ = surface_edge;
+    Ok(CompileSource {
+        journey,
+        spec,
+        semantic_hash,
+        surface: surface.clone(),
+        surface_hash,
+        setup: setup.clone(),
+        bindings: bindings.clone(),
+        operations,
+        exposed,
+        derived_intents,
+    })
+}
+
+fn compile_internal(
+    graph: Option<&Path>,
+    journey_key: &str,
+    profile: &str,
+) -> Result<CompileProduct> {
+    let store = open(graph)?;
+    let root = store.root().to_path_buf();
+    let identity = store.execution_identity();
+    let source = compile_source(&store, journey_key, profile)?;
+    let proof = crate::journey_runtime::compile_surface(
+        &source.spec,
+        &source.surface_hash,
+        profile,
+        source.operations.clone(),
+        source.setup.as_ref(),
+        &source.bindings,
+    )?;
+    let cache_regenerated = !crate::journey_runtime::cache_matches(&root, &proof)?;
+    let validation_name = format!("journey:{}:{profile}", source.journey.name);
+    let body = json!({
+        "type": "journey",
+        "journey_hash": source.semantic_hash,
+        "surface_hash": source.surface_hash,
+        "profile": profile,
+        "compiler_version": crate::journey::JOURNEY_COMPILER_VERSION,
+    });
+
+    let mut candidates: Vec<Node> = store
+        .list_nodes(Some(NodeType::Validation), usize::MAX)?
+        .into_iter()
+        .filter(|node| node.name == validation_name)
+        .collect();
+    candidates.sort_by(|left, right| left.id.cmp(&right.id));
+    if candidates
+        .iter()
+        .any(|node| node.body.get("type").and_then(Value::as_str) != Some("journey"))
+    {
+        bail!("Validation name '{validation_name}' is occupied by a non-Journey proof");
+    }
+
+    let validation = {
+        let tx = store.begin()?;
+        let validation = match candidates.first() {
+            Some(node) => node.clone(),
+            None => store.add_node(
+                NodeType::Validation,
+                &validation_name,
+                "compiler-owned Journey proof profile",
+                "not_run",
+                body.clone(),
+            )?,
+        };
+        for duplicate in candidates.iter().skip(1) {
+            store.delete_node(&duplicate.id)?;
+        }
+        let body_changed = validation.body != body;
+        if body_changed {
+            store.set_node_body(&validation.id, &body)?;
+            store.reset_validation_status_for_sync(&validation.id)?;
+        }
+
+        let desired_validates: BTreeSet<String> = source
+            .derived_intents
+            .iter()
+            .map(|intent| intent.id.clone())
+            .collect();
+        let desired_exercises: BTreeSet<String> = source
+            .exposed
+            .iter()
+            .map(|(codefile, _)| codefile.id.clone())
+            .collect();
+        reconcile_topology(
+            &store,
+            &validation.id,
+            EdgeKind::Proves,
+            std::iter::once(source.journey.id.clone()).collect(),
+            body_changed,
+        )?;
+        reconcile_topology(
+            &store,
+            &validation.id,
+            EdgeKind::Validates,
+            desired_validates,
+            body_changed,
+        )?;
+        reconcile_topology(
+            &store,
+            &validation.id,
+            EdgeKind::Calls,
+            std::iter::once(source.surface.id.clone()).collect(),
+            body_changed,
+        )?;
+        reconcile_topology(
+            &store,
+            &validation.id,
+            EdgeKind::Exercises,
+            desired_exercises,
+            body_changed,
+        )?;
+        for (codefile, locator) in &source.exposed {
+            let edge = store.ensure_edge(EdgeKind::Exercises, &validation.id, &codefile.id)?;
+            match locator {
+                Some(locator) if !locator.trim().is_empty() => store.set_facet(
+                    &edge.id,
+                    TargetKind::Edge,
+                    "locator",
+                    locator,
+                    TruthClass::Asserted,
+                )?,
+                _ => store.set_facet(
+                    &edge.id,
+                    TargetKind::Edge,
+                    "locator",
+                    "",
+                    TruthClass::Asserted,
+                )?,
+            }
+        }
+        tx.commit()?;
+        store
+            .get_node(&validation.id)?
+            .ok_or_else(|| anyhow!("compiled Validation vanished"))?
+    };
+    let artifact = crate::journey_runtime::write_proof(&root, &proof)?;
+    let covered_files = source
+        .exposed
+        .iter()
+        .map(|(codefile, _)| codefile.name.clone())
+        .collect();
+    Ok(CompileProduct {
+        proof,
+        spec: source.spec,
+        validation_id: validation.id,
+        covered_files,
+        root,
+        identity,
+        artifact,
+        cache_regenerated,
+    })
+}
+
+/// Pure compiler projection used before an interactive run. It reads the
+/// accepted surface and builds deterministic proof bytes, but deliberately
+/// creates no Validation, topology, journal entry, or cache artifact.
+fn compile_preview(
+    graph: Option<&Path>,
+    journey_key: &str,
+    profile: &str,
+) -> Result<CompilePreview> {
+    let store = open_read(graph)?;
+    let root = store.root().to_path_buf();
+    let identity = store.execution_identity();
+    let source = compile_source(&store, journey_key, profile)?;
+    let proof = crate::journey_runtime::compile_surface(
+        &source.spec,
+        &source.surface_hash,
+        profile,
+        source.operations,
+        source.setup.as_ref(),
+        &source.bindings,
+    )?;
+    let covered_files = source
+        .exposed
+        .iter()
+        .map(|(codefile, _)| codefile.name.clone())
+        .collect();
+    Ok(CompilePreview {
+        proof,
+        spec: source.spec,
+        covered_files,
+        root,
+        identity,
+    })
+}
+
+fn reconcile_topology(
+    store: &Store,
+    validation_id: &str,
+    kind: EdgeKind,
+    desired: BTreeSet<String>,
+    reset: bool,
+) -> Result<()> {
+    let existing = store.edges_with(Some(kind), Some(validation_id), None)?;
+    for edge in &existing {
+        let current = matches!(
+            edge.status,
+            InspectionStatus::Uninspected | InspectionStatus::Passing
+        );
+        if reset || !desired.contains(&edge.to_id) || !current {
+            store.delete_edge(&edge.id)?;
+        }
+    }
+    for target in desired {
+        store.ensure_edge(kind, validation_id, &target)?;
+    }
+    Ok(())
+}
+
+fn facet_json<T: serde::de::DeserializeOwned>(
+    store: &Store,
+    edge_id: &str,
+    key: &str,
+) -> Result<T> {
+    let raw = store
+        .get_facet(edge_id, TargetKind::Edge, key)?
+        .ok_or_else(|| anyhow!("edge '{}' has no {key} facet", edge_id))?;
+    serde_json::from_str(&raw).with_context(|| format!("edge '{}' has invalid {key}", edge_id))
+}
+
+pub(crate) fn journey_compile(
+    graph: Option<&Path>,
+    journey_key: &str,
+    profile: &str,
+    json_output: bool,
+) -> Result<()> {
+    let product = compile_internal(graph, journey_key, profile)?;
+    emit_runtime_value(
+        json!({
+            "compiled": true,
+            "journey_id": product.proof.journey_id,
+            "profile": product.proof.profile,
+            "journey_hash": product.proof.journey_hash,
+            "surface_hash": product.proof.surface_hash,
+            "compiler_version": product.proof.compiler_version,
+            "validation_id": product.validation_id,
+            "artifact": product.artifact.strip_prefix(&product.root).unwrap_or(&product.artifact),
+            "cache_regenerated": product.cache_regenerated,
+        }),
+        json_output,
+        "compiled Journey proof",
+    )
+}
+
+pub(crate) fn journey_run(
+    graph: Option<&Path>,
+    journey_key: &str,
+    profile: &str,
+    json_output: bool,
+) -> Result<()> {
+    let preview = compile_preview(graph, journey_key, profile)?;
+    let outcome = match crate::harness::acquire(&preview.root, "journey run", &preview.identity) {
+        Ok(_harness) => crate::journey_runtime::execute_interactive(
+            &preview.root,
+            &preview.spec,
+            &preview.proof,
+            &BTreeMap::new(),
+        ),
+        Err(error) => crate::journey_runtime::ExecutionOutcome::Completed {
+            report: blocked_report(&preview.proof, error.to_string()),
+            human_decisions: Vec::new(),
+        },
+    };
+    finish_interactive_run(graph, preview, outcome, json_output)
+}
+
+fn finish_interactive_run(
+    graph: Option<&Path>,
+    preview: CompilePreview,
+    outcome: crate::journey_runtime::ExecutionOutcome,
+    json_output: bool,
+) -> Result<()> {
+    match outcome {
+        crate::journey_runtime::ExecutionOutcome::Pending(pending) => emit_runtime_value(
+            serde_json::to_value(&pending)?,
+            json_output,
+            &format!(
+                "Journey '{}:{}' is waiting for a human decision",
+                pending.binding.journey_id, pending.binding.profile
+            ),
+        ),
+        crate::journey_runtime::ExecutionOutcome::Completed {
+            report,
+            human_decisions,
+        } => {
+            let product =
+                compile_internal(graph, &preview.proof.journey_id, &preview.proof.profile)?;
+            if crate::journey_runtime::canonical_bytes(&product.proof)?
+                != crate::journey_runtime::canonical_bytes(&preview.proof)?
+                || product.covered_files != preview.covered_files
+            {
+                bail!("Journey compiled projection changed during interactive execution");
+            }
+            let store = Store::open_with_identity(&product.root, product.identity)?;
+            crate::journey::settle_compiled_validation(
+                &store,
+                &product.validation_id,
+                &report,
+                &product.covered_files,
+            )?;
+            for decision in human_decisions {
+                store.append_journal("journey_human_decision", &product.validation_id, decision)?;
+            }
+            emit_report(&report, json_output)
+        }
     }
 }
 
-mod coverage;
-mod invariants;
-mod prompt;
+pub(crate) fn journey_diagnose(
+    graph: Option<&Path>,
+    journey_key: &str,
+    profile: &str,
+    raw_inputs: &[String],
+    json_output: bool,
+) -> Result<()> {
+    let overrides = crate::journey_runtime::parse_overrides(raw_inputs)?;
+    let product = compile_internal(graph, journey_key, profile)?;
+    let report = match crate::harness::acquire(&product.root, "journey diagnose", &product.identity)
+    {
+        Ok(_harness) => crate::journey_runtime::execute(
+            &product.root,
+            &product.spec,
+            &product.proof,
+            &overrides,
+        ),
+        Err(error) => blocked_report(&product.proof, error.to_string()),
+    };
+    emit_report(&report, json_output)
+}
+
+pub(crate) fn journey_freeze(
+    graph: Option<&Path>,
+    journey_key: &str,
+    profile: &str,
+    json_output: bool,
+) -> Result<()> {
+    let product = compile_internal(graph, journey_key, profile)?;
+    let report = match crate::harness::acquire(&product.root, "journey freeze", &product.identity) {
+        Ok(_harness) => crate::journey_runtime::execute(
+            &product.root,
+            &product.spec,
+            &product.proof,
+            &BTreeMap::new(),
+        ),
+        Err(error) => blocked_report(&product.proof, error.to_string()),
+    };
+    if report.status != crate::journey_runtime::RuntimeStatus::Passed {
+        return emit_report(&report, json_output);
+    }
+    let baseline = crate::journey_runtime::write_baseline(&product.root, &report)?;
+    emit_runtime_value(
+        json!({
+            "frozen": true,
+            "journey_id": report.journey_id,
+            "profile": report.profile,
+            "baseline": baseline.strip_prefix(&product.root).unwrap_or(&baseline),
+            "assertions_passed": report.assertions_passed,
+        }),
+        json_output,
+        "froze Journey baseline",
+    )
+}
+
+pub(crate) fn journey_drift(
+    graph: Option<&Path>,
+    journey_key: Option<&str>,
+    json_output: bool,
+) -> Result<()> {
+    let store = open_read(graph)?;
+    let journeys = match journey_key {
+        Some(key) => vec![resolve_journey(&store, key)?],
+        None => store.list_nodes(Some(NodeType::Journey), usize::MAX)?,
+    };
+    let mut rows = Vec::new();
+    for journey in journeys {
+        let artifact = journey
+            .body
+            .get("artifact")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let spec = match crate::journey::parse(&store.root().join(artifact)) {
+            Ok(spec) => spec,
+            Err(error) => {
+                rows.push(json!({
+                    "journey_id": journey.name,
+                    "current": false,
+                    "detail": error.to_string(),
+                }));
+                continue;
+            }
+        };
+        for profile_id in spec.profiles.keys() {
+            match compile_source(&store, &journey.id, profile_id).and_then(|source| {
+                crate::journey_runtime::compile_surface(
+                    &source.spec,
+                    &source.surface_hash,
+                    profile_id,
+                    source.operations,
+                    source.setup.as_ref(),
+                    &source.bindings,
+                )
+            }) {
+                Ok(proof) => {
+                    let cache_current =
+                        crate::journey_runtime::cache_matches(store.root(), &proof)?;
+                    let baseline_current =
+                        crate::journey_runtime::baseline_current(store.root(), &proof)?;
+                    rows.push(json!({
+                        "journey_id": journey.name,
+                        "profile": profile_id,
+                        "cache_current": cache_current,
+                        "baseline_current": baseline_current,
+                        "current": cache_current && baseline_current != Some(false),
+                    }));
+                }
+                Err(error) => rows.push(json!({
+                    "journey_id": journey.name,
+                    "profile": profile_id,
+                    "current": false,
+                    "detail": error.to_string(),
+                })),
+            }
+        }
+    }
+    let stale = rows
+        .iter()
+        .filter(|row| row.get("current").and_then(Value::as_bool) != Some(true))
+        .count();
+    emit_runtime_value(
+        json!({"journeys": rows, "stale": stale}),
+        json_output,
+        if stale == 0 {
+            "Journey compiled artifacts are current"
+        } else {
+            "Journey compiled artifact drift detected"
+        },
+    )
+}
+
+fn blocked_report(
+    proof: &crate::journey_runtime::CompiledJourneyProof,
+    detail: String,
+) -> crate::journey_runtime::RuntimeReport {
+    crate::journey_runtime::RuntimeReport {
+        journey_id: proof.journey_id.clone(),
+        profile: proof.profile.clone(),
+        journey_hash: proof.journey_hash.clone(),
+        surface_hash: proof.surface_hash.clone(),
+        status: crate::journey_runtime::RuntimeStatus::Blocked,
+        assertions_passed: 0,
+        assertions_failed: 0,
+        detail: Some(detail),
+        setup: Vec::new(),
+        file_transitions: Vec::new(),
+        steps: Vec::new(),
+        captures: BTreeMap::new(),
+    }
+}
+
+fn emit_report(report: &crate::journey_runtime::RuntimeReport, json_output: bool) -> Result<()> {
+    emit_runtime_value(
+        serde_json::to_value(report)?,
+        json_output,
+        &format!(
+            "Journey '{}:{}' {} ({} assertion(s) passed, {} failed)",
+            report.journey_id,
+            report.profile,
+            report.status.as_str(),
+            report.assertions_passed,
+            report.assertions_failed
+        ),
+    )
+}
+
+fn emit_runtime_value(value: Value, json_output: bool, text: &str) -> Result<()> {
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&value)?);
+    } else {
+        println!("{text}");
+    }
+    Ok(())
+}
+
+fn journey_body(spec: &crate::journey::JourneySpec, artifact: &str, semantic_hash: &str) -> Value {
+    let output_ids = spec.steps.iter().flat_map(|step| {
+        step.produces
+            .keys()
+            .map(move |output| format!("steps.{}.outputs.{output}", step.id))
+    });
+    json!({
+        "schema": crate::journey::JOURNEY_SCHEMA,
+        "stable_id": spec.id,
+        "name": spec.name,
+        "actor": spec.actor,
+        "goal": spec.goal,
+        "description": spec.description,
+        "artifact": artifact,
+        "semantic_hash": semantic_hash,
+        "step_order_hash": spec.step_order_hash(),
+        "step_semantics_hash": spec.step_semantics_hash().expect("validated Journey serializes"),
+        "step_hashes": spec.step_hashes().expect("validated Journey serializes"),
+        "root_semantics_hash": spec.root_semantics_hash().expect("validated Journey serializes"),
+        "input_ids": sorted_ids(spec.inputs.keys().map(String::as_str)),
+        "preconditions": spec.preconditions,
+        "step_ids": spec.step_ids(),
+        "output_ids": output_ids.collect::<Vec<_>>(),
+        "profile_ids": sorted_ids(spec.profiles.keys().map(String::as_str)),
+    })
+}
+
+fn refresh_or_invalidate_projections(
+    store: &Store,
+    journey: &Node,
+    spec: &crate::journey::JourneySpec,
+    semantic_hash: &str,
+) -> Result<usize> {
+    let old_root_hash = journey
+        .body
+        .get("root_semantics_hash")
+        .and_then(Value::as_str);
+    let root_hash = spec.root_semantics_hash()?;
+    let old_step_hashes: BTreeMap<String, String> = journey
+        .body
+        .get("step_hashes")
+        .cloned()
+        .map(serde_json::from_value)
+        .transpose()?
+        .unwrap_or_default();
+    let step_hashes = spec.step_hashes()?;
+    let changed_steps: BTreeSet<String> = old_step_hashes
+        .keys()
+        .chain(step_hashes.keys())
+        .filter(|id| old_step_hashes.get(*id) != step_hashes.get(*id))
+        .cloned()
+        .collect();
+    let global_changed = old_root_hash != Some(root_hash.as_str()) || old_step_hashes.is_empty();
+    let all_steps: BTreeSet<&str> = spec.steps.iter().map(|step| step.id.as_str()).collect();
+    let order: BTreeMap<&str, usize> = spec
+        .steps
+        .iter()
+        .enumerate()
+        .map(|(index, step)| (step.id.as_str(), index))
+        .collect();
+    let mut invalidated = 0;
+
+    for kind in [EdgeKind::Derives, EdgeKind::Surfaces] {
+        for edge in store.edges_with(Some(kind), Some(&journey.id), None)? {
+            let (mut bound_steps, bindings) = match kind {
+                EdgeKind::Derives => {
+                    let steps: Vec<String> = edge_json_facet(store, &edge.id, "step_ids")
+                        .and_then(|value| serde_json::from_value(value).ok())
+                        .unwrap_or_default();
+                    (steps, None)
+                }
+                EdgeKind::Surfaces => {
+                    let bindings: Vec<crate::journey::SurfaceBinding> =
+                        edge_json_facet(store, &edge.id, "operation_bindings")
+                            .and_then(|value| serde_json::from_value(value).ok())
+                            .unwrap_or_default();
+                    let steps = bindings
+                        .iter()
+                        .map(|binding| binding.step_id().to_string())
+                        .collect();
+                    (steps, Some(bindings))
+                }
+                _ => unreachable!(),
+            };
+            let bound: BTreeSet<&str> = bound_steps.iter().map(String::as_str).collect();
+            let malformed_derivation = kind == EdgeKind::Derives && bound.is_empty();
+            let incomplete_surface = kind == EdgeKind::Surfaces && bound != all_steps;
+            let touches_changed = changed_steps.iter().any(|id| bound.contains(id.as_str()));
+            if global_changed || malformed_derivation || incomplete_surface || touches_changed {
+                store.delete_edge(&edge.id)?;
+                invalidated += 1;
+                continue;
+            }
+
+            bound_steps.sort_by_key(|id| order.get(id.as_str()).copied().unwrap_or(usize::MAX));
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "journey_hash",
+                semantic_hash,
+                TruthClass::Asserted,
+            )?;
+            let subset_hashes: BTreeMap<&str, &str> = bound_steps
+                .iter()
+                .filter_map(|id| step_hashes.get(id).map(|hash| (id.as_str(), hash.as_str())))
+                .collect();
+            match (kind, bindings) {
+                (EdgeKind::Derives, _) => {
+                    store.set_facet(
+                        &edge.id,
+                        TargetKind::Edge,
+                        "step_ids",
+                        &serde_json::to_string(&bound_steps)?,
+                        TruthClass::Asserted,
+                    )?;
+                    store.set_facet(
+                        &edge.id,
+                        TargetKind::Edge,
+                        "step_hashes",
+                        &serde_json::to_string(&subset_hashes)?,
+                        TruthClass::Asserted,
+                    )?;
+                }
+                (EdgeKind::Surfaces, Some(mut bindings)) => {
+                    bindings.sort_by_key(|binding| {
+                        order.get(binding.step_id()).copied().unwrap_or(usize::MAX)
+                    });
+                    store.set_facet(
+                        &edge.id,
+                        TargetKind::Edge,
+                        "operation_bindings",
+                        &serde_json::to_string(&bindings)?,
+                        TruthClass::Asserted,
+                    )?;
+                    let binding_hashes: BTreeMap<&str, String> = bindings
+                        .iter()
+                        .filter_map(|binding| {
+                            step_hashes.get(binding.step_id()).map(|step_hash| {
+                                (
+                                    binding.step_id(),
+                                    crate::artifact::fingerprint(&format!(
+                                        "{step_hash}\0{}",
+                                        binding.identity()
+                                    )),
+                                )
+                            })
+                        })
+                        .collect();
+                    store.set_facet(
+                        &edge.id,
+                        TargetKind::Edge,
+                        "binding_hashes",
+                        &serde_json::to_string(&binding_hashes)?,
+                        TruthClass::Asserted,
+                    )?;
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+    Ok(invalidated)
+}
+
+fn sorted_ids<'a>(ids: impl Iterator<Item = &'a str>) -> Vec<String> {
+    let mut ids: Vec<String> = ids.map(str::to_owned).collect();
+    ids.sort();
+    ids
+}
+
+fn journey_nodes(store: &Store, stable_id: &str) -> Result<Vec<Node>> {
+    Ok(store
+        .list_nodes(Some(NodeType::Journey), usize::MAX)?
+        .into_iter()
+        .filter(|node| {
+            node.name == stable_id
+                || node.body.get("stable_id").and_then(Value::as_str) == Some(stable_id)
+        })
+        .collect())
+}
+
+fn resolve_journey(store: &Store, key: &str) -> Result<Node> {
+    if let Ok(node) = store.resolve_node(key, Some(NodeType::Journey)) {
+        return Ok(node);
+    }
+    let nodes = journey_nodes(store, key)?;
+    match nodes.as_slice() {
+        [node] => Ok(node.clone()),
+        [] => bail!("no Journey matches '{key}'"),
+        _ => bail!("Journey key '{key}' is ambiguous"),
+    }
+}
+
+fn load_registered_journey(
+    store: &Store,
+    key: &str,
+) -> Result<(Node, crate::journey::JourneySpec, String)> {
+    let journey = resolve_journey(store, key)?;
+    let artifact = journey
+        .body
+        .get("artifact")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow!("Journey '{}' has no artifact", journey.name))?;
+    let path = store.root().join(artifact);
+    let spec = crate::journey::parse(&path)?;
+    if spec.id != journey.name {
+        bail!(
+            "Journey artifact '{}' now declares stable id '{}', not '{}'",
+            artifact,
+            spec.id,
+            journey.name
+        );
+    }
+    let hash = spec.semantic_hash()?;
+    let registered_hash = journey
+        .body
+        .get("semantic_hash")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow!("Journey '{}' has no semantic_hash", journey.name))?;
+    if registered_hash != hash {
+        bail!(
+            "Journey artifact '{}' changed semantically; run `loom journey add {artifact}` before projecting it",
+            journey.name
+        );
+    }
+    Ok((journey, spec, hash))
+}
+
+fn confined_artifact(store: &Store, path: &Path) -> Result<String> {
+    let root = store
+        .root()
+        .canonicalize()
+        .with_context(|| format!("resolving graph root {}", store.root().display()))?;
+    let artifact = path
+        .canonicalize()
+        .with_context(|| format!("resolving Journey artifact {}", path.display()))?;
+    if !artifact.starts_with(&root) {
+        bail!(
+            "Journey artifact '{}' is outside graph root {}",
+            path.display(),
+            store.root().display()
+        );
+    }
+    Ok(artifact.strip_prefix(root)?.to_string_lossy().into_owned())
+}
+
+fn node_json(node: &Node) -> Value {
+    json!({
+        "id": node.id,
+        "type": node.node_type.as_str(),
+        "name": node.name,
+        "description": node.description,
+        "status": node.status,
+        "body": node.body,
+    })
+}
+
+fn edge_json_facet(store: &Store, edge_id: &str, key: &str) -> Option<Value> {
+    store
+        .get_facet(edge_id, TargetKind::Edge, key)
+        .ok()
+        .flatten()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+}
+
+fn ordered_subset(spec: &crate::journey::JourneySpec, ids: &[String]) -> Vec<String> {
+    let wanted: BTreeSet<&str> = ids.iter().map(String::as_str).collect();
+    spec.steps
+        .iter()
+        .filter(|step| wanted.contains(step.id.as_str()))
+        .map(|step| step.id.clone())
+        .collect()
+}
+
+fn find_derived_intent(
+    store: &Store,
+    journey_id: &str,
+    derivation_id: &str,
+) -> Result<Option<Node>> {
+    let mut matches: Vec<_> = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)?
+        .into_iter()
+        .filter(|node| {
+            node.body.get("source_journey").and_then(Value::as_str) == Some(journey_id)
+                && node.body.get("derivation_id").and_then(Value::as_str) == Some(derivation_id)
+        })
+        .collect();
+    match matches.len() {
+        0 => Ok(None),
+        1 => Ok(matches.pop()),
+        count => bail!(
+            "derived intent id '{}' is ambiguous for Journey '{}' ({count} nodes)",
+            derivation_id,
+            journey_id
+        ),
+    }
+}
+
+fn ratification_batch(
+    store: &Store,
+    targets: &[&Node],
+    evidence: &str,
+    decision: &crate::ratification::HumanDecision,
+    journey_hash: &str,
+) -> Result<Option<String>> {
+    if targets.is_empty() {
+        return Ok(None);
+    }
+    let subjects: Vec<String> = targets.iter().map(|node| node.id.clone()).collect();
+    let digest = crate::batch_auth::subject_digest(&subjects);
+    let pre = store.append_journal(
+        "batch_journey_derivation",
+        &digest,
+        json!({
+            "operation": "ratify",
+            "subjects": subjects,
+            "human_decision": decision,
+            "evidence": evidence,
+            "journey_hash": journey_hash,
+        }),
+    )?;
+    let now = crate::journal::now_iso();
+    let executor = store.execution_identity().actor();
+    let envelope = crate::batch_auth::BatchAuthorization::seal(
+        crate::batch_auth::BatchClaim::Ratification,
+        "ratify",
+        subjects,
+        "human",
+        &executor,
+        evidence,
+        vec![format!("journal:{}", pre.id)],
+    )?
+    .with_command_id(format!("journey-derive-accept:{}", targets.len()))
+    .with_time_bounds(&now, &now)
+    .with_human_decision(decision.clone());
+    Ok(Some(
+        crate::batch_auth::append_envelope(store, &envelope)?.id,
+    ))
+}
+
+fn emit_packet(packet: &Value, _json_output: bool) -> Result<()> {
+    // Packet commands are JSON operations in both modes: the non-global-json
+    // form remains directly pipeable to an LLM or a manifest-writing tool.
+    println!("{}", serde_json::to_string_pretty(packet)?);
+    Ok(())
+}
+
+fn canonical_json(value: Value) -> Value {
+    match value {
+        Value::Array(values) => Value::Array(values.into_iter().map(canonical_json).collect()),
+        Value::Object(object) => {
+            let sorted: BTreeMap<String, Value> = object
+                .into_iter()
+                .map(|(key, value)| (key, canonical_json(value)))
+                .collect();
+            Value::Object(sorted.into_iter().collect())
+        }
+        scalar => scalar,
+    }
+}

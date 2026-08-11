@@ -1,13 +1,22 @@
-journey: absent ratification does not gate the ladder
+schema: loom.journey/v1
+id: unratified-ungated
+name: Keep unapproved derivations out of autonomous build
+actor: operator
+goal: A proposed technical derivation remains visible for conversational review but
+  cannot create authoritative Intents or enter autonomous build work before acceptance.
+inputs: {}
+preconditions:
+- An authored Journey has a proposed derivation manifest that the human has not accepted.
 steps:
-  - name: an unratified intent leaves the ladder ungated
-    fixture: true
-    intent: absent ratification reads as unratified without gating the ladder
-    run: >-
-      tmp=$(mktemp -d) && loom init "$tmp" --name t &&
-      loom intent add --graph "$tmp" --name 'unspoken behavior' --description 'nobody has ratified it' --level feature &&
-      loom status --graph "$tmp" --json &&
-      rm -rf "$tmp"
-    expect:
-      exit_code: 0
-      stdout_contains: ['"phase": "build"']
+- id: inspect-proposal-state
+  name: Inspect Proposal State
+  action: Inspect the proposed derivation and the autonomous build queue before human acceptance.
+  expects:
+  - The proposal remains non-authoritative and creates no ratified Intent or Derives
+    relationship.
+  - No work from the unapproved proposal appears in build or counts toward Journey readiness.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}
