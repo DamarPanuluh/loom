@@ -1197,6 +1197,8 @@ pub enum JourneyCmd {
         #[arg(long = "input", value_name = "KEY=JSON")]
         input: Vec<String>,
     },
+    /// Run one proof in a detached, freshly imported release candidate.
+    RehearseCold { journey: String },
     /// Freeze the current observed result as the profile baseline.
     Freeze {
         journey: String,

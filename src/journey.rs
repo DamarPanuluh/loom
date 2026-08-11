@@ -18,7 +18,7 @@ pub const SURFACE_SCHEMA: &str = "loom.journey.surface/v1";
 pub const INTERFACE_SURFACE_SCHEMA: &str = "loom.interface-surface/v1";
 pub const COMPILED_PROOF_SCHEMA: &str = "loom.journey.proof/v1";
 pub const BASELINE_SCHEMA: &str = "loom.journey.baseline/v1";
-pub const JOURNEY_COMPILER_VERSION: &str = "2";
+pub const JOURNEY_COMPILER_VERSION: &str = "3";
 pub const JOURNEY_LINT_REPORT_SCHEMA: &str = "loom.journey-lint/v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -72,6 +72,12 @@ impl JourneyLintReport {
 
 fn default_true() -> bool {
     true
+}
+
+pub const DEFAULT_JOURNEY_TIMEOUT_SECONDS: u64 = 2700;
+
+fn default_journey_timeout_seconds() -> u64 {
+    DEFAULT_JOURNEY_TIMEOUT_SECONDS
 }
 
 /// Value types shared by Journey inputs/outputs and CLI operation arguments.
@@ -173,6 +179,8 @@ pub struct ProfileInputBinding {
 pub struct JourneyProfile {
     pub inputs: BTreeMap<String, ProfileInputBinding>,
     pub workspace: TemporarySetup,
+    #[serde(default = "default_journey_timeout_seconds")]
+    pub timeout_seconds: u64,
 }
 
 /// The only authored Journey schema. It contains no HTTP, command, or Intent
@@ -368,6 +376,9 @@ impl JourneySpec {
                 }
             }
             validate_setup(profile_id, &profile.workspace)?;
+            if profile.timeout_seconds == 0 {
+                bail!("Journey profile '{profile_id}' timeout_seconds must be positive");
+            }
         }
         Ok(())
     }
@@ -398,6 +409,16 @@ impl JourneySpec {
                 step.as_object_mut()
                     .expect("JourneyStep serializes as object")
                     .remove("name");
+            }
+        }
+        // Execution policy is bound by the authored artifact and compiled
+        // proof, but is not part of the Journey's behavioral identity.
+        if let Some(profiles) = object.get_mut("profiles").and_then(Value::as_object_mut) {
+            for profile in profiles.values_mut() {
+                profile
+                    .as_object_mut()
+                    .expect("JourneyProfile serializes as object")
+                    .remove("timeout_seconds");
             }
         }
         let canonical = serde_json::to_string(&canonical)?;
@@ -461,6 +482,7 @@ pub fn proof_profiles() -> BTreeMap<String, JourneyProfile> {
         JourneyProfile {
             inputs: BTreeMap::new(),
             workspace: TemporarySetup::default(),
+            timeout_seconds: DEFAULT_JOURNEY_TIMEOUT_SECONDS,
         },
     )])
 }
@@ -1338,6 +1360,9 @@ pub struct CliOperation {
     /// Loom-owned workspace/graph instead.
     #[serde(default)]
     pub read_only: bool,
+    /// Optional positive override of the selected proof profile's timeout.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_seconds: Option<u64>,
     #[serde(default)]
     pub arguments: Vec<OperationArgument>,
     pub output: OperationOutput,
@@ -1654,6 +1679,12 @@ impl InterfaceSurfaceDefinition {
                 &format!("operation '{}' summary", operation.id),
                 &operation.summary,
             )?;
+            if operation.timeout_seconds == Some(0) {
+                bail!(
+                    "operation '{}' timeout_seconds must be positive",
+                    operation.id
+                );
+            }
             if operation.argv.is_empty() || operation.argv.iter().any(|part| part.is_empty()) {
                 bail!(
                     "operation '{}' argv must contain non-empty structured arguments",
@@ -2764,6 +2795,7 @@ mod tests {
             ],
             environment: Vec::new(),
             read_only: false,
+            timeout_seconds: None,
             arguments: Vec::new(),
             output: OperationOutput {
                 format: OutputFormat::Json,

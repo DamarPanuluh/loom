@@ -346,6 +346,31 @@ fn canonical_hash_is_transport_and_format_independent_but_step_order_sensitive()
 }
 
 #[test]
+fn profile_timeout_defaults_positive_and_is_semantic_hash_neutral() {
+    let document = semantic_journey("checkout.timeout", "Checkout timeout");
+    let base: loom::journey::JourneySpec = serde_json::from_value(document).unwrap();
+    assert_eq!(base.profiles["proof"].timeout_seconds, 2700);
+
+    let mut changed = base.clone();
+    changed.profiles.get_mut("proof").unwrap().timeout_seconds = 19;
+    assert_eq!(
+        base.semantic_hash().unwrap(),
+        changed.semantic_hash().unwrap()
+    );
+    assert_ne!(
+        base.canonical_value().unwrap(),
+        changed.canonical_value().unwrap()
+    );
+
+    changed.profiles.get_mut("proof").unwrap().timeout_seconds = 0;
+    assert!(changed
+        .validate()
+        .unwrap_err()
+        .to_string()
+        .contains("positive"));
+}
+
+#[test]
 fn semantic_validation_rejects_bad_references_types_and_temporary_paths() {
     let base: loom::journey::JourneySpec =
         serde_json::from_value(semantic_journey("checkout.happy", "Checkout")).unwrap();

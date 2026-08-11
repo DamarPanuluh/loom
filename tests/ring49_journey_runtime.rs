@@ -161,6 +161,7 @@ fn operation() -> CliOperation {
         ],
         environment: Vec::new(),
         read_only: false,
+        timeout_seconds: None,
         arguments: vec![],
         output: OperationOutput {
             format: OutputFormat::Json,
@@ -193,6 +194,7 @@ fn setup_operation(id: &str) -> CliOperation {
         ],
         environment: Vec::new(),
         read_only: false,
+        timeout_seconds: None,
         arguments: vec![],
         output: OperationOutput {
             format: OutputFormat::Json,
@@ -221,6 +223,60 @@ fn compiled() -> journey_runtime::CompiledJourneyProof {
         }],
     )
     .unwrap()
+}
+
+#[test]
+fn compiled_timeout_resolves_profile_default_and_operation_override_into_proof() {
+    let authored = spec();
+    let default_proof = journey_runtime::compile(
+        &authored,
+        "surface-hash",
+        "proof",
+        vec![operation()],
+        &[OperationBinding {
+            step_id: "checkout".into(),
+            operation_id: "checkout-op".into(),
+        }],
+    )
+    .unwrap();
+    assert_eq!(default_proof.steps[0].timeout_seconds, Some(2700));
+
+    let semantic_hash = authored.semantic_hash().unwrap();
+    let default_bytes = journey_runtime::canonical_bytes(&default_proof).unwrap();
+    let mut overridden = operation();
+    overridden.timeout_seconds = Some(17);
+    let override_proof = journey_runtime::compile(
+        &authored,
+        "surface-hash",
+        "proof",
+        vec![overridden],
+        &[OperationBinding {
+            step_id: "checkout".into(),
+            operation_id: "checkout-op".into(),
+        }],
+    )
+    .unwrap();
+    assert_eq!(override_proof.steps[0].timeout_seconds, Some(17));
+    assert_eq!(authored.semantic_hash().unwrap(), semantic_hash);
+    assert_ne!(
+        journey_runtime::canonical_bytes(&override_proof).unwrap(),
+        default_bytes
+    );
+
+    let mut zero = operation();
+    zero.timeout_seconds = Some(0);
+    let error = journey_runtime::compile(
+        &authored,
+        "surface-hash",
+        "proof",
+        vec![zero],
+        &[OperationBinding {
+            step_id: "checkout".into(),
+            operation_id: "checkout-op".into(),
+        }],
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("positive"));
 }
 
 #[test]
@@ -2078,6 +2134,19 @@ fn human_decision_gate_pauses_without_authority_then_resumes_one_shot_in_same_sn
             .exists()
     );
 
+    // The repository root remains the token's binding, but the decision's
+    // subject is the snapshot this run actually presented and executed in.
+    let live = Store::open(root.path()).unwrap();
+    live.update_node(
+        &subject_id,
+        None,
+        Some("The live subject changed after the isolated run paused."),
+        None,
+    )
+    .unwrap();
+    drop(live);
+    let live_database_after_pause = std::fs::read(&database).unwrap();
+
     let invalid = journey_runtime::resume_interactive(
         root.path(),
         &authored,
@@ -2143,7 +2212,7 @@ fn human_decision_gate_pauses_without_authority_then_resumes_one_shot_in_same_sn
     assert!(!report_json.contains("write_back"));
     assert!(!report_json.contains("after_answer"));
     assert_eq!(decisions.len(), 1);
-    assert_eq!(std::fs::read(&database).unwrap(), database_before);
+    assert_eq!(std::fs::read(&database).unwrap(), live_database_after_pause);
     assert_eq!(std::fs::read(&journal).ok(), journal_before);
 
     let replay = journey_runtime::resume_interactive(
@@ -2160,7 +2229,7 @@ fn human_decision_gate_pauses_without_authority_then_resumes_one_shot_in_same_sn
     )
     .unwrap_err();
     assert!(
-        format!("{replay:#}").contains("opening Journey runtime continuation"),
+        format!("{replay:#}").contains("opening Journey gate continuation"),
         "{replay:#}"
     );
 }

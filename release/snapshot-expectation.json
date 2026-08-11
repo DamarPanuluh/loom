@@ -4,7 +4,7 @@
   "candidate_hash_relation": "source_inventory.inventory_hash",
   "source_inventory": {
     "schema": "loom.release-source-inventory-attestation/v1",
-    "manifest_hash": "d858c9829fafcf36",
+    "manifest_hash": "b75032dd23cdbfa1",
     "git_influenced_plan": false,
     "materialized_matches": true,
     "provenance": "source_controlled_manifest_git_verified",

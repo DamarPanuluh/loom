@@ -166,7 +166,8 @@ impl HumanPrompt {
 
 /// Host-facing pause result. It deliberately has no argv, write-back command,
 /// default answer, or human-decision field.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PendingHuman {
     pub schema: String,
     pub status: String,
@@ -176,6 +177,31 @@ pub struct PendingHuman {
     pub options: Vec<HumanOption>,
     pub resume_token: String,
     pub human_terminal_required: bool,
+}
+
+impl PendingHuman {
+    pub fn validate(&self) -> Result<()> {
+        if self.schema != PENDING_HUMAN_SCHEMA || self.status != "pending_human" {
+            bail!("pending human result has an unsupported schema or status");
+        }
+        self.binding.validate()?;
+        let prompt = HumanPrompt {
+            question: self.question.clone(),
+            recommendation: self.recommendation.clone(),
+            options: self.options.clone(),
+        };
+        if prompt.normalized()? != prompt {
+            bail!("pending human result contains a non-normalized prompt");
+        }
+        if prompt.digest()? != self.binding.prompt_hash {
+            bail!("pending human result prompt hash is stale");
+        }
+        digest_token(&self.resume_token)?;
+        if self.human_terminal_required {
+            bail!("pending human result cannot require a terminal-owned decision path");
+        }
+        Ok(())
+    }
 }
 
 /// The exact host-mediated answer supplied only at resume time.
@@ -295,6 +321,36 @@ impl CapsuleStore {
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Read-only inspection of a pending capsule and its confined workspace.
+    /// This does not claim the token, so validation failures remain retryable.
+    pub fn inspect_pending(&self, token: &str) -> Result<ContinuationPaths> {
+        self.inspect(token, &self.pending)
+    }
+
+    /// Re-inspect the workspace after the atomic pending-to-claimed rename.
+    pub fn inspect_claimed(&self, token: &str) -> Result<ContinuationPaths> {
+        self.inspect(token, &self.claimed)
+    }
+
+    fn inspect(&self, token: &str, parent: &Path) -> Result<ContinuationPaths> {
+        self.validate_store_roots()?;
+        let token_digest = digest_token(token)?;
+        let directory = parent.join(&token_digest);
+        let capsule = read_capsule(&directory)?;
+        validate_capsule(&capsule, &token_digest)?;
+        let paths = paths_for(directory);
+        let workspace = fs::symlink_metadata(&paths.workspace)
+            .context("opening Journey gate confined workspace")?;
+        if workspace.file_type().is_symlink() || !workspace.is_dir() {
+            bail!("Journey gate workspace is not a confined directory");
+        }
+        let canonical = paths.workspace.canonicalize()?;
+        if canonical != paths.workspace || !canonical.starts_with(&paths.directory) {
+            bail!("Journey gate workspace escapes its continuation capsule");
+        }
+        Ok(paths)
     }
 
     /// Issue one opaque token and persist only its digest plus the exact binding

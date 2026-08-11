@@ -7,6 +7,7 @@
 
 use crate::journey::SurfaceManifest;
 use crate::model::{Node, NodeType};
+use crate::store::Store;
 use crate::Result;
 use anyhow::{anyhow, bail, Context};
 use serde::{Deserialize, Serialize};
@@ -33,13 +34,28 @@ pub const OUTER_CONTEXT_CAPSULE_ENV: &str = "LOOM_RESERVED_OUTER_CONTEXT_CAPSULE
 pub const DERIVATION_AUTHORITY_TOKEN_ENV: &str = "LOOM_RELEASE_DERIVATION_AUTHORITY";
 #[doc(hidden)]
 pub const DERIVATION_AUTHORITY_STORE_ENV: &str = "LOOM_RELEASE_DERIVATION_AUTHORITY_STORE";
-pub const RELEASE_CARGO_HOME_ENV: &str = "LOOM_RELEASE_CARGO_HOME";
 
 pub const RELEASE_REHEARSAL_SCHEMA: &str = "loom.release-rehearsal/v1";
+const COLD_JOURNEY_REHEARSAL_SCHEMA: &str = "loom.journey-cold-rehearsal/v1";
 const RELEASE_JOURNEY_ID: &str = "release-workflow";
 const RELEASE_PROFILE: &str = "proof";
 const SURFACE_MANIFEST_ROOT: &str = "journeys/surfaces";
 const RELEASE_INVENTORY_PATH: &str = "release/inventory.json";
+const RELEASE_CODE_GATES: &[&[&str]] = &[
+    &["cargo", "fmt", "--all", "--", "--check"],
+    &[
+        "cargo",
+        "clippy",
+        "--all-targets",
+        "--all-features",
+        "--",
+        "-D",
+        "warnings",
+    ],
+    &["cargo", "test", "--all-targets", "--quiet"],
+    &["cargo", "build", "--quiet"],
+];
+const RELEASE_CACHE_ROOT_ENVIRONMENT: &[&str] = &["CARGO_HOME", "RUSTUP_HOME"];
 const SOURCE_EXCLUDES: [&str; 3] = [".git", ".loom", "target"];
 // loom.graph.json is excluded because the gate's own export step rewrites it
 // with candidate-local journal ids (<millis>-<pid>-<seq>), fresh validation
@@ -290,10 +306,19 @@ pub struct GraphAttestation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct CacheRootAttestation {
+    pub environment: String,
+    pub path: String,
+    pub before_hash: String,
+    pub after_hash: String,
+    pub unchanged: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DependencyCacheAttestation {
     pub strategy: String,
-    pub cargo_home: String,
-    pub provenance: String,
+    pub roots: Vec<CacheRootAttestation>,
     pub before_hash: String,
     pub after_hash: String,
     pub unchanged: bool,
@@ -459,11 +484,244 @@ struct GateResult {
     source_inventory: SourceInventoryAttestation,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(deny_unknown_fields)]
+struct JourneyResultSummary {
+    journey_id: String,
+    profile: String,
+    journey_hash: String,
+    surface_hash: String,
+    verdict: String,
+}
+
 struct GateRuntime<'a> {
     outer: &'a OuterJourneyAttestation,
     derivation_authority: &'a BoundDerivationAuthority,
     executor: &'a mut dyn ReleaseExecutor,
     dependency_cache: &'a DependencyCacheGuard,
+    code_gates: &'a [Vec<String>],
+    inventory_manifest_hash: &'a str,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ColdJourneyRehearsalReport {
+    schema: String,
+    status: crate::journey_runtime::RuntimeStatus,
+    journey_id: String,
+    profile: String,
+    candidate_hash: String,
+    source_inventory: SourceInventoryAttestation,
+    dependency_cache: DependencyCacheAttestation,
+    runtime: crate::journey_runtime::RuntimeReport,
+    settled: bool,
+    caller_changed: bool,
+}
+
+/// The sole Journey-facing release façade. Source validation is deliberately
+/// performed before candidate allocation; all candidate and trust-boundary
+/// machinery remains private to this module.
+pub(crate) fn rehearse_cold_journey(
+    root: &Path,
+    journey_id: &str,
+) -> Result<ColdJourneyRehearsalReport> {
+    let root = root.canonicalize()?;
+    let inventory = load_source_inventory(&root)?.0;
+    if journey_id == RELEASE_JOURNEY_ID {
+        bail!("Journey 'release-workflow' cannot be cold-rehearsed");
+    }
+    let export = inspect_candidate_export(&root)?
+        .ok_or_else(|| anyhow!("cold rehearsal requires the source-controlled v12 export"))?;
+    let registered: Vec<_> = export
+        .nodes
+        .iter()
+        .filter(|node| node.node_type == NodeType::Journey && node.name == journey_id)
+        .collect();
+    if registered.len() != 1 {
+        bail!("cold rehearsal requires exactly one registered Journey '{journey_id}'");
+    }
+    let artifact = registered[0]
+        .body
+        .get("artifact")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| anyhow!("Journey '{journey_id}' has no artifact"))?;
+    let artifact_path = confined_inventory_file(&root, &inventory, artifact)?;
+    let artifact_source_hash = fingerprint_bytes(&fs::read(&artifact_path)?);
+    let spec = crate::journey::parse(&artifact_path)?;
+    if spec.id != journey_id || !spec.profiles.contains_key(RELEASE_PROFILE) {
+        bail!("cold rehearsal requires the exact registered Journey '{journey_id}' proof profile");
+    }
+    let semantic_hash = spec.semantic_hash()?;
+    if registered[0]
+        .body
+        .get("semantic_hash")
+        .and_then(serde_json::Value::as_str)
+        != Some(semantic_hash.as_str())
+    {
+        bail!("cold rehearsal Journey export is stale against its confined artifact");
+    }
+    let manifest_path = Path::new(SURFACE_MANIFEST_ROOT).join(format!("{journey_id}.surface.json"));
+    let manifest_path_source =
+        confined_inventory_file(&root, &inventory, &manifest_path.to_string_lossy())?;
+    let manifest_source_hash = fingerprint_bytes(&fs::read(&manifest_path_source)?);
+    let manifest = SurfaceManifest::parse_json(&manifest_path_source)?;
+    if manifest
+        .bindings
+        .iter()
+        .any(|binding| binding.human_decision().is_some())
+    {
+        bail!(
+            "Journey '{journey_id}' declares a human_decision binding and cannot be cold-rehearsed"
+        );
+    }
+    manifest.validate_for(&spec, &spec.semantic_hash()?)?;
+    let plan = crate::candidate_surface_policy::inspect_manifest(
+        &spec,
+        &manifest,
+        crate::candidate_surface_policy::PolicyMode::Runtime,
+    )?;
+    if plan.inspections().iter().any(|inspection| {
+        inspection.capability == crate::candidate_surface_policy::DerivedCapability::DetachedProcess
+            || inspection.nested.iter().any(|nested| {
+                nested.capability
+                    == crate::candidate_surface_policy::DerivedCapability::DetachedProcess
+            })
+    }) {
+        bail!("cold Journey rehearsal cannot invoke release or nested cold-rehearsal operations");
+    }
+
+    let before = LiveState::capture(&root)?;
+    let mut ledger = Vec::new();
+    let (candidate, source_inventory) =
+        DetachedCandidate::copy(&root, "journey-cold", &mut ledger)?;
+    let (candidate_inventory, candidate_inventory_hash) = load_source_inventory(candidate.path())?;
+    if candidate_inventory_hash != source_inventory.manifest_hash {
+        bail!("cold rehearsal inventory changed during candidate materialization");
+    }
+    let candidate_artifact =
+        confined_inventory_file(candidate.path(), &candidate_inventory, artifact)?;
+    let candidate_manifest_path = confined_inventory_file(
+        candidate.path(),
+        &candidate_inventory,
+        &manifest_path.to_string_lossy(),
+    )?;
+    if fingerprint_bytes(&fs::read(&candidate_artifact)?) != artifact_source_hash
+        || fingerprint_bytes(&fs::read(&candidate_manifest_path)?) != manifest_source_hash
+    {
+        bail!("cold rehearsal Journey source changed during candidate materialization");
+    }
+    let spec = crate::journey::parse(&candidate_artifact)?;
+    let manifest = SurfaceManifest::parse_json(&candidate_manifest_path)?;
+    let candidate_hash = source_inventory.inventory_hash.clone();
+    let dependency_cache = DependencyCacheGuard::open(&root, &inventory.cache_root_environment)?;
+    let sandbox = ProcessSandbox::create(candidate.path(), &dependency_cache)?;
+    let binary = std::env::current_exe().context("locating current Loom executable")?;
+    let mut executor = SystemReleaseExecutor;
+    run_loom(
+        candidate.path(),
+        &binary,
+        &["init", ".", "--name", "loom-journey-cold", "--json"],
+        &mut executor,
+        &sandbox,
+        &mut ledger,
+    )?;
+    run_loom(
+        candidate.path(),
+        &binary,
+        &["import", "loom.graph.json", "--json"],
+        &mut executor,
+        &sandbox,
+        &mut ledger,
+    )?;
+    // Re-author only the requested canonical source and surface after import.
+    run_loom(
+        candidate.path(),
+        &binary,
+        &["journey", "add", artifact, "--json"],
+        &mut executor,
+        &sandbox,
+        &mut ledger,
+    )?;
+    run_loom(
+        candidate.path(),
+        &binary,
+        &[
+            "journey",
+            "surface-accept",
+            journey_id,
+            "--manifest",
+            &manifest_path.to_string_lossy(),
+            "--json",
+        ],
+        &mut executor,
+        &sandbox,
+        &mut ledger,
+    )?;
+    let candidate_store = Store::open(candidate.path())?;
+    let candidate_journey = candidate_store.resolve_node(journey_id, Some(NodeType::Journey))?;
+    let surface_hash =
+        crate::journey::surface_projection_hash(&candidate_store, &candidate_journey)?
+            .ok_or_else(|| anyhow!("cold rehearsal candidate has no accepted surface"))?;
+    drop(candidate_store);
+    let proof = crate::journey_runtime::compile_surface(
+        &spec,
+        &surface_hash,
+        RELEASE_PROFILE,
+        manifest.surface.operations.clone(),
+        manifest.setup.as_ref(),
+        &manifest.bindings,
+    )?;
+    let runtime =
+        crate::journey_runtime::execute(candidate.path(), &spec, &proof, &BTreeMap::new());
+    let cache = dependency_cache.attest()?;
+    if !cache.unchanged {
+        bail!("cold Journey rehearsal changed the dependency cache");
+    }
+    if before != LiveState::capture(&root)? {
+        bail!("cold Journey rehearsal changed caller state");
+    }
+    Ok(ColdJourneyRehearsalReport {
+        schema: COLD_JOURNEY_REHEARSAL_SCHEMA.into(),
+        status: runtime.status,
+        journey_id: journey_id.into(),
+        profile: RELEASE_PROFILE.into(),
+        candidate_hash,
+        source_inventory,
+        dependency_cache: cache,
+        runtime,
+        settled: false,
+        caller_changed: false,
+    })
+}
+
+fn confined_inventory_file(
+    root: &Path,
+    inventory: &SourceInventoryManifest,
+    relative: &str,
+) -> Result<PathBuf> {
+    let path = Path::new(relative);
+    if path.as_os_str().is_empty()
+        || path
+            .components()
+            .any(|component| !matches!(component, std::path::Component::Normal(_)))
+        || !inventory
+            .files
+            .iter()
+            .any(|entry| entry.path == relative && entry.mode != "absent")
+    {
+        bail!("cold rehearsal path '{relative}' is not a declared normalized inventory file");
+    }
+    let joined = root.join(path);
+    let metadata = fs::symlink_metadata(&joined)
+        .with_context(|| format!("reading cold rehearsal path '{relative}'"))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        bail!("cold rehearsal path '{relative}' is not a regular non-symlink file");
+    }
+    let canonical = joined.canonicalize()?;
+    if !canonical.starts_with(root) {
+        bail!("cold rehearsal path '{relative}' escapes the repository");
+    }
+    Ok(canonical)
 }
 
 /// Run one release-rehearsal phase and return a single structured attestation.
@@ -563,15 +821,25 @@ pub fn rehearse_with_executor(
             return Ok(report);
         }
     };
-
-    let dependency_cache = match DependencyCacheGuard::open(&root) {
-        Ok(cache) => cache,
+    let (inventory, inventory_manifest_hash) = match load_source_inventory(&root) {
+        Ok(loaded) => loaded,
         Err(error) => {
             let mut report = ReleaseRehearsalReport::blocked(phase, outer, format!("{error:#}"));
             report.effects = before.compare(&LiveState::capture(&root)?, &[]);
             return Ok(report);
         }
     };
+
+    let dependency_cache =
+        match DependencyCacheGuard::open(&root, &inventory.cache_root_environment) {
+            Ok(cache) => cache,
+            Err(error) => {
+                let mut report =
+                    ReleaseRehearsalReport::blocked(phase, outer, format!("{error:#}"));
+                report.effects = before.compare(&LiveState::capture(&root)?, &[]);
+                return Ok(report);
+            }
+        };
     let mut ledger = Vec::new();
     let mut source_inventory = None;
     let outcome = {
@@ -580,6 +848,8 @@ pub fn rehearse_with_executor(
             derivation_authority: &derivation_authority,
             executor,
             dependency_cache: &dependency_cache,
+            code_gates: &inventory.code_gates,
+            inventory_manifest_hash: &inventory_manifest_hash,
         };
         rehearse_inner(
             &root,
@@ -1559,10 +1829,14 @@ fn run_isolated_gate(
     ledger: &mut Vec<ArgvLedgerEntry>,
     observed_inventory: &mut Option<SourceInventoryAttestation>,
 ) -> Result<GateResult> {
+    let expected_journey_bindings = current_journey_bindings(root)?;
     let (candidate, source_inventory) = DetachedCandidate::copy(root, "candidate", ledger)?;
+    if source_inventory.manifest_hash != runtime.inventory_manifest_hash {
+        bail!("release inventory changed between policy validation and candidate materialization");
+    }
     *observed_inventory = Some(source_inventory.clone());
     let candidate_hash = source_inventory.inventory_hash.clone();
-    let sandbox = ProcessSandbox::create(candidate.path(), runtime.dependency_cache.path())?;
+    let sandbox = ProcessSandbox::create(candidate.path(), runtime.dependency_cache)?;
     let export = inspect_candidate_export(candidate.path())?;
     let imported_surfaces = export
         .as_ref()
@@ -1576,7 +1850,13 @@ fn run_isolated_gate(
         ledger,
     )?;
 
-    run_code_gates(candidate.path(), runtime.executor, &sandbox, ledger)?;
+    run_code_gates(
+        candidate.path(),
+        runtime.code_gates,
+        runtime.executor,
+        &sandbox,
+        ledger,
+    )?;
     let binary = candidate.path().join("target/debug/loom");
     run_loom(
         candidate.path(),
@@ -1629,13 +1909,14 @@ fn run_isolated_gate(
         &sandbox,
         ledger,
     )?;
-    run_candidate_journeys(
+    let journey_summaries = run_candidate_journeys(
         candidate.path(),
         &binary,
         runtime.outer,
         runtime.executor,
         &sandbox,
         ledger,
+        &expected_journey_bindings,
     )?;
     run_loom(
         candidate.path(),
@@ -1680,7 +1961,12 @@ fn run_isolated_gate(
     )?;
     require_clean_drift_excusing_gates(&drift.stdout, &human_gated_journeys(candidate.path())?)?;
 
-    let result_hash = semantic_result_hash(candidate.path(), &manifests, runtime.outer)?;
+    let result_hash = semantic_result_hash(
+        candidate.path(),
+        &manifests,
+        runtime.outer,
+        &journey_summaries,
+    )?;
     Ok(GateResult {
         candidate_hash,
         result_hash,
@@ -1894,34 +2180,24 @@ pub fn inspect_candidate_manifest_operations(
 
 fn run_code_gates(
     root: &Path,
+    gates: &[Vec<String>],
     executor: &mut dyn ReleaseExecutor,
     sandbox: &ProcessSandbox,
     ledger: &mut Vec<ArgvLedgerEntry>,
 ) -> Result<()> {
-    for args in [
-        vec!["fmt", "--all", "--", "--check"],
-        vec![
-            "clippy",
-            "--all-targets",
-            "--all-features",
-            "--",
-            "-D",
-            "warnings",
-        ],
-        vec!["test", "--all-targets", "--quiet"],
-        vec!["build", "--quiet"],
-    ] {
-        let args: Vec<String> = args.into_iter().map(ToString::to_string).collect();
+    for gate in gates {
+        let executable = Path::new(&gate[0]);
+        let args = gate[1..].to_vec();
         execute_checked(
             executor,
             sandbox,
             root,
-            Path::new("cargo"),
+            executable,
             &args,
             "code_gate",
             ledger,
         )
-        .with_context(|| format!("release code gate `cargo {}` failed", args.join(" ")))?;
+        .with_context(|| format!("release code gate `{}` failed", gate.join(" ")))?;
     }
     Ok(())
 }
@@ -2136,10 +2412,20 @@ fn run_candidate_journeys(
     executor: &mut dyn ReleaseExecutor,
     sandbox: &ProcessSandbox,
     ledger: &mut Vec<ArgvLedgerEntry>,
-) -> Result<()> {
+    expected_bindings: &BTreeMap<String, (String, String)>,
+) -> Result<Vec<JourneyResultSummary>> {
     let mut excluded = 0usize;
+    let mut summaries = Vec::new();
+    let mut identities = BTreeSet::new();
     for path in journey_artifacts(root)? {
         let spec = crate::journey::parse(&path)?;
+        let (expected_journey_hash, expected_surface_hash) =
+            expected_bindings.get(&spec.id).ok_or_else(|| {
+                anyhow!(
+                    "Journey '{}' has no current accepted source binding",
+                    spec.id
+                )
+            })?;
         for profile in spec.profiles.keys() {
             if spec.id == outer.journey_id && profile == &outer.profile {
                 excluded += 1;
@@ -2159,6 +2445,13 @@ fn run_candidate_journeys(
                     ledger,
                 )?;
                 require_outer_compile_report(&observed.stdout, outer)?;
+                summaries.push(JourneyResultSummary {
+                    journey_id: spec.id.clone(),
+                    profile: profile.clone(),
+                    journey_hash: outer.journey_hash.clone(),
+                    surface_hash: outer.surface_hash.clone(),
+                    verdict: "compiled_exact_outer".into(),
+                });
                 continue;
             }
             let observed = run_loom(
@@ -2169,8 +2462,20 @@ fn run_candidate_journeys(
                 sandbox,
                 ledger,
             )?;
-            if let Some(pending) = pending_human_gate(&observed.stdout) {
+            if let Some(pending) = pending_human_gate(&observed.stdout)? {
                 require_declared_human_gate(root, &spec.id, profile, &pending)?;
+                let journey_hash = &pending.binding.journey_hash;
+                let surface_hash = &pending.binding.surface_hash;
+                if journey_hash != expected_journey_hash || surface_hash != expected_surface_hash {
+                    bail!("pending Journey report has a stale Journey or surface hash");
+                }
+                summaries.push(JourneyResultSummary {
+                    journey_id: spec.id.clone(),
+                    profile: profile.clone(),
+                    journey_hash: journey_hash.into(),
+                    surface_hash: surface_hash.into(),
+                    verdict: "pending_human".into(),
+                });
                 continue;
             }
             require_passed_journey_report_with_sandbox(
@@ -2180,6 +2485,20 @@ fn run_candidate_journeys(
                 spec.steps.len(),
                 Some(sandbox),
             )?;
+            let report: crate::journey_runtime::RuntimeReport =
+                serde_json::from_slice(&observed.stdout)?;
+            if &report.journey_hash != expected_journey_hash
+                || &report.surface_hash != expected_surface_hash
+            {
+                bail!("Journey report has a stale Journey or surface hash");
+            }
+            summaries.push(JourneyResultSummary {
+                journey_id: spec.id.clone(),
+                profile: profile.clone(),
+                journey_hash: report.journey_hash,
+                surface_hash: report.surface_hash,
+                verdict: "passed".into(),
+            });
         }
     }
     if excluded != 1 {
@@ -2187,7 +2506,29 @@ fn run_candidate_journeys(
             "nested verifier must exclude exactly one outer release-workflow/proof profile (found {excluded})"
         );
     }
-    Ok(())
+    summaries.sort_by(|left, right| {
+        (&left.journey_id, &left.profile).cmp(&(&right.journey_id, &right.profile))
+    });
+    for summary in &summaries {
+        if !identities.insert((summary.journey_id.clone(), summary.profile.clone())) {
+            bail!("candidate Journey execution produced duplicate journey/profile summaries");
+        }
+    }
+    Ok(summaries)
+}
+
+fn current_journey_bindings(root: &Path) -> Result<BTreeMap<String, (String, String)>> {
+    let store = Store::open(root)?;
+    let mut bindings = BTreeMap::new();
+    for path in journey_artifacts(root)? {
+        let spec = crate::journey::parse(&path)?;
+        let journey = store.resolve_node(&spec.id, Some(NodeType::Journey))?;
+        let surface_hash = crate::journey::surface_projection_hash(&store, &journey)?
+            .ok_or_else(|| anyhow!("Journey '{}' has no current accepted surface", spec.id))?;
+        let journey_hash = spec.semantic_hash()?;
+        bindings.insert(spec.id, (journey_hash, surface_hash));
+    }
+    Ok(bindings)
 }
 
 fn require_outer_compile_report(bytes: &[u8], outer: &OuterJourneyAttestation) -> Result<()> {
@@ -2233,44 +2574,46 @@ pub fn require_passed_journey_report(
 /// authority is a pause, not a failure. A suspended run is acceptable in the
 /// isolated dogfood only when the journey's canonical candidate manifest
 /// genuinely declares that gate.
-fn pending_human_gate(bytes: &[u8]) -> Option<serde_json::Value> {
-    let value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
-    (value.get("schema").and_then(serde_json::Value::as_str)
+fn pending_human_gate(bytes: &[u8]) -> Result<Option<crate::journey_gate::PendingHuman>> {
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(bytes) else {
+        return Ok(None);
+    };
+    if value.get("schema").and_then(serde_json::Value::as_str)
         == Some(crate::journey_gate::PENDING_HUMAN_SCHEMA)
-        && value.get("status").and_then(serde_json::Value::as_str) == Some("pending_human"))
-    .then_some(value)
+        && value.get("status").and_then(serde_json::Value::as_str) == Some("pending_human")
+    {
+        let pending: crate::journey_gate::PendingHuman = serde_json::from_value(value)
+            .context("pending Journey output is not one canonical human-gate report")?;
+        pending.validate()?;
+        Ok(Some(pending))
+    } else {
+        Ok(None)
+    }
 }
 
 fn require_declared_human_gate(
     root: &Path,
     journey_id: &str,
     profile: &str,
-    pending: &serde_json::Value,
+    pending: &crate::journey_gate::PendingHuman,
 ) -> Result<()> {
-    let bound_journey = pending
-        .pointer("/binding/journey_id")
-        .and_then(serde_json::Value::as_str);
-    let bound_profile = pending
-        .pointer("/binding/profile")
-        .and_then(serde_json::Value::as_str);
-    if bound_journey != Some(journey_id) || bound_profile != Some(profile) {
+    if pending.binding.journey_id != journey_id || pending.binding.profile != profile {
         bail!(
             "pending Journey gate binding '{}':'{}' does not match the dogfood run '{journey_id}':'{profile}'",
-            bound_journey.unwrap_or("?"),
-            bound_profile.unwrap_or("?")
+            pending.binding.journey_id,
+            pending.binding.profile
         );
     }
     let manifest_path = root
         .join(SURFACE_MANIFEST_ROOT)
         .join(format!("{journey_id}.surface.json"));
     let manifest = crate::journey::SurfaceManifest::parse_json(&manifest_path)?;
-    if !manifest
-        .bindings
-        .iter()
-        .any(|binding| matches!(binding, crate::journey::SurfaceBinding::HumanDecision(_)))
-    {
+    if !manifest.bindings.iter().any(|binding| {
+        matches!(binding, crate::journey::SurfaceBinding::HumanDecision(_))
+            && binding.step_id() == pending.binding.step_id
+    }) {
         bail!(
-            "Journey '{journey_id}' suspended at a human gate its canonical manifest never declares"
+            "Journey '{journey_id}' suspended at a human gate step its canonical manifest never declares"
         );
     }
     Ok(())
@@ -2483,12 +2826,14 @@ fn semantic_result_hash(
     root: &Path,
     manifests: &[ManifestAttestation],
     outer: &OuterJourneyAttestation,
+    journey_summaries: &[JourneyResultSummary],
 ) -> Result<String> {
     let value = serde_json::json!({
         "candidate_hash": hash_tree(root, &RESULT_EXCLUDES)?,
         "manifests": manifests,
         "outer_journey": outer.journey_id,
         "outer_profile": outer.profile,
+        "journey_summaries": journey_summaries,
         "schema_version": crate::SCHEMA_VERSION,
     });
     Ok(crate::artifact::fingerprint(&serde_json::to_string(
@@ -2604,80 +2949,97 @@ impl ReleaseExecutor for SystemReleaseExecutor {
 }
 
 struct DependencyCacheGuard {
-    cargo_home: PathBuf,
-    provenance: String,
-    before_hash: String,
+    roots: Vec<(String, PathBuf, String)>,
 }
 
 impl DependencyCacheGuard {
-    fn open(candidate_root: &Path) -> Result<Self> {
-        let (configured, provenance) = if let Some(path) = std::env::var_os(RELEASE_CARGO_HOME_ENV)
-        {
-            (PathBuf::from(path), RELEASE_CARGO_HOME_ENV.to_string())
-        } else if let Some(path) = std::env::var_os("CARGO_HOME") {
-            (PathBuf::from(path), "CARGO_HOME".into())
-        } else if let Some(home) = std::env::var_os("HOME") {
-            (PathBuf::from(home).join(".cargo"), "HOME/.cargo".into())
-        } else {
-            bail!("release rehearsal has no explicit existing Cargo dependency cache");
-        };
-        let cargo_home = configured.canonicalize().with_context(|| {
-            format!(
-                "canonicalizing release dependency cache {}",
-                configured.display()
-            )
-        })?;
-        if cargo_home.starts_with(candidate_root.canonicalize()?) {
-            bail!("release dependency cache must be outside the candidate repository");
-        }
-        for relative in ["registry/cache", "registry/index", "registry/src"] {
-            let path = cargo_home.join(relative);
-            let metadata = fs::symlink_metadata(&path)
-                .with_context(|| format!("release dependency cache is missing '{relative}'"))?;
-            if metadata.file_type().is_symlink() || !metadata.is_dir() {
-                bail!("release dependency cache '{relative}' must be a real directory");
+    fn open(candidate_root: &Path, names: &[String]) -> Result<Self> {
+        let candidate_root = candidate_root.canonicalize()?;
+        let mut roots = Vec::new();
+        for name in names {
+            let value = std::env::var(name).with_context(|| {
+                format!("release cache root environment '{name}' is missing or non-UTF-8")
+            })?;
+            let configured = PathBuf::from(value);
+            if !configured.is_absolute() {
+                bail!("release cache root environment '{name}' must name an absolute path");
             }
+            let metadata = fs::symlink_metadata(&configured).with_context(|| {
+                format!("release cache root environment '{name}' does not exist")
+            })?;
+            if metadata.file_type().is_symlink() || !metadata.is_dir() {
+                bail!("release cache root environment '{name}' must name a non-symlink directory");
+            }
+            let path = configured.canonicalize()?;
+            if path.starts_with(&candidate_root) || candidate_root.starts_with(&path) {
+                bail!("release cache root environment '{name}' overlaps the repository");
+            }
+            if roots
+                .iter()
+                .any(|(_, prior, _): &(String, PathBuf, String)| {
+                    path.starts_with(prior) || prior.starts_with(&path)
+                })
+            {
+                bail!("release cache roots must be distinct and non-overlapping");
+            }
+            let before = cache_root_hash(&path)?;
+            roots.push((name.clone(), path, before));
         }
-        let before_hash = dependency_cache_hash(&cargo_home)?;
-        Ok(Self {
-            cargo_home,
-            provenance,
-            before_hash,
-        })
+        Ok(Self { roots })
     }
 
-    fn path(&self) -> &Path {
-        &self.cargo_home
+    fn path_for(&self, environment: &str) -> Result<&Path> {
+        self.roots
+            .iter()
+            .find(|(name, _, _)| name == environment)
+            .map(|(_, path, _)| path.as_path())
+            .ok_or_else(|| anyhow!("release cache roots do not declare '{environment}'"))
     }
 
     fn attest(&self) -> Result<DependencyCacheAttestation> {
-        let after_hash = dependency_cache_hash(&self.cargo_home)?;
+        let roots: Vec<CacheRootAttestation> = self
+            .roots
+            .iter()
+            .map(|(environment, path, before_hash)| {
+                let after_hash = cache_root_hash(path)?;
+                Ok(CacheRootAttestation {
+                    environment: environment.clone(),
+                    path: path.to_string_lossy().into_owned(),
+                    before_hash: before_hash.clone(),
+                    unchanged: before_hash == &after_hash,
+                    after_hash,
+                })
+            })
+            .collect::<Result<_>>()?;
+        let before_projection: Vec<_> = roots
+            .iter()
+            .map(|root| (&root.environment, &root.path, &root.before_hash))
+            .collect();
+        let after_projection: Vec<_> = roots
+            .iter()
+            .map(|root| (&root.environment, &root.path, &root.after_hash))
+            .collect();
+        let before_hash = fingerprint_bytes(&serde_json::to_vec(&before_projection)?);
+        let after_hash = fingerprint_bytes(&serde_json::to_vec(&after_projection)?);
         Ok(DependencyCacheAttestation {
-            strategy: "existing_cargo_home_read_only_verified".into(),
-            cargo_home: self.cargo_home.to_string_lossy().into_owned(),
-            provenance: self.provenance.clone(),
-            before_hash: self.before_hash.clone(),
-            unchanged: self.before_hash == after_hash,
+            strategy: "declared_cache_roots_before_after_verified".into(),
+            unchanged: roots.iter().all(|root| root.unchanged),
+            roots,
+            before_hash: before_hash.clone(),
             after_hash,
             offline: true,
         })
     }
 }
 
-fn dependency_cache_hash(cargo_home: &Path) -> Result<String> {
-    let mut projection = BTreeMap::new();
-    for relative in ["registry/cache", "registry/index", "registry/src", "git"] {
-        let path = cargo_home.join(relative);
-        projection.insert(
-            relative,
-            if path.exists() {
-                hash_tree(&path, &[".package-cache", ".package-cache-mut"])?
-            } else {
-                "absent".into()
-            },
-        );
-    }
-    Ok(fingerprint_bytes(&serde_json::to_vec(&projection)?))
+fn cache_root_hash(root: &Path) -> Result<String> {
+    // Cargo updates these coordination/access-index files even for an offline
+    // read-only build. They contain no dependency artifacts; registry/index,
+    // registry/cache, registry/src, git, and toolchain bytes remain attested.
+    hash_tree(
+        root,
+        &[".global-cache", ".package-cache", ".package-cache-mut"],
+    )
 }
 
 /// Bounded production-adapter smoke: check this checkout's host library target
@@ -2687,9 +3049,11 @@ fn dependency_cache_hash(cargo_home: &Path) -> Result<String> {
 #[doc(hidden)]
 pub fn dependency_cache_smoke(root: &Path) -> Result<DependencyCacheAttestation> {
     let root = root.canonicalize()?;
-    let dependency_cache = DependencyCacheGuard::open(&root)?;
+    let (inventory, _) = load_source_inventory(&root)?;
+    let dependency_cache = DependencyCacheGuard::open(&root, &inventory.cache_root_environment)?;
     let temp = DetachedCandidate::allocate(&root, "dependency-cache-smoke")?;
-    let sandbox = ProcessSandbox::create(temp.path(), dependency_cache.path())?;
+    dependency_cache.path_for("CARGO_HOME")?;
+    let sandbox = ProcessSandbox::create(temp.path(), &dependency_cache)?;
     let mut executor = SystemReleaseExecutor;
     let mut ledger = Vec::new();
     let argv = ["check", "--locked", "--offline", "--lib"]
@@ -2719,7 +3083,7 @@ struct ProcessSandbox {
 }
 
 impl ProcessSandbox {
-    fn create(candidate: &Path, cargo_home: &Path) -> Result<Self> {
+    fn create(candidate: &Path, dependency_cache: &DependencyCacheGuard) -> Result<Self> {
         let root = candidate.join(".release-sandbox");
         let home = root.join("home");
         let external_temp = Arc::new(ExternalProcessTemp::allocate(candidate)?);
@@ -2731,23 +3095,15 @@ impl ProcessSandbox {
             b"[credential]\n\thelper =\n[commit]\n\tgpgsign = false\n",
         )?;
         let mut environment = BTreeMap::new();
-        for key in [
-            "PATH",
-            "RUSTUP_HOME",
-            "SYSTEMROOT",
-            "WINDIR",
-            "PATHEXT",
-            "COMSPEC",
-        ] {
+        for key in ["PATH", "SYSTEMROOT", "WINDIR", "PATHEXT", "COMSPEC"] {
             if let Ok(value) = std::env::var(key) {
                 environment.insert(key.into(), value);
             }
         }
         environment.insert("HOME".into(), home.to_string_lossy().into_owned());
-        environment.insert(
-            "CARGO_HOME".into(),
-            cargo_home.to_string_lossy().into_owned(),
-        );
+        for (name, path, _) in &dependency_cache.roots {
+            environment.insert(name.clone(), path.to_string_lossy().into_owned());
+        }
         environment.insert("TMPDIR".into(), temp.to_string_lossy().into_owned());
         environment.insert("TEMP".into(), temp.to_string_lossy().into_owned());
         environment.insert("TMP".into(), temp.to_string_lossy().into_owned());
@@ -3042,6 +3398,8 @@ fn copy_candidate(
 #[serde(deny_unknown_fields)]
 struct SourceInventoryManifest {
     schema: String,
+    code_gates: Vec<Vec<String>>,
+    cache_root_environment: Vec<String>,
     files: Vec<SourceInventoryEntry>,
     reserved_components: Vec<String>,
     secret_name_patterns: Vec<String>,
@@ -3169,11 +3527,67 @@ fn validate_reserved_roots(root: &Path) -> Result<()> {
 }
 
 fn validate_inventory_manifest(manifest: &SourceInventoryManifest) -> Result<()> {
-    if manifest.schema != "loom.release-inventory/v2" {
+    if manifest.schema != "loom.release-inventory/v3" {
         bail!(
             "release source inventory has unsupported schema '{}'",
             manifest.schema
         );
+    }
+    if manifest.code_gates.is_empty() || manifest.cache_root_environment.is_empty() {
+        bail!("release source inventory must declare code gates and cache roots");
+    }
+    if manifest.code_gates.len() != RELEASE_CODE_GATES.len()
+        || !manifest
+            .code_gates
+            .iter()
+            .zip(RELEASE_CODE_GATES)
+            .all(|(actual, expected)| {
+                actual
+                    .iter()
+                    .map(String::as_str)
+                    .eq(expected.iter().copied())
+            })
+    {
+        bail!("release source inventory v3 must declare the exact ordered 0.30 code gates");
+    }
+    if !manifest
+        .cache_root_environment
+        .iter()
+        .map(String::as_str)
+        .eq(RELEASE_CACHE_ROOT_ENVIRONMENT.iter().copied())
+    {
+        bail!("release source inventory v3 must attest the exact 0.30 cache roots");
+    }
+    let mut unique_gates = BTreeSet::new();
+    for gate in &manifest.code_gates {
+        if gate.is_empty()
+            || gate
+                .iter()
+                .any(|token| token.is_empty() || token.contains('\0'))
+        {
+            bail!("release source inventory code gates contain an empty or NUL token");
+        }
+        if gate[0] != "cargo" {
+            bail!("release source inventory v3 code gates must use exact bare argv0 'cargo'");
+        }
+        inspect_process_argv(Path::new("cargo"), &gate[1..])?;
+        if !unique_gates.insert(gate.clone()) {
+            bail!("release source inventory code gates must not repeat exact argv arrays");
+        }
+    }
+    let mut prior_env: Option<&str> = None;
+    for name in &manifest.cache_root_environment {
+        if name.is_empty()
+            || name.contains('\0')
+            || !name
+                .bytes()
+                .all(|byte| byte == b'_' || byte.is_ascii_alphanumeric())
+            || name.as_bytes()[0].is_ascii_digit()
+            || prior_env.is_some_and(|prior| prior >= name.as_str())
+        {
+            bail!("release cache root environment names must be valid, unique, and sorted");
+        }
+        prior_env = Some(name);
     }
     let expected_reserved: Vec<String> = INVENTORY_RESERVED_COMPONENTS
         .iter()
@@ -3952,7 +4366,15 @@ mod tests {
         });
         files.sort_by(|left, right| left.path.cmp(&right.path));
         let manifest = SourceInventoryManifest {
-            schema: "loom.release-inventory/v2".into(),
+            schema: "loom.release-inventory/v3".into(),
+            code_gates: RELEASE_CODE_GATES
+                .iter()
+                .map(|gate| gate.iter().map(|token| (*token).into()).collect())
+                .collect(),
+            cache_root_environment: RELEASE_CACHE_ROOT_ENVIRONMENT
+                .iter()
+                .map(|name| (*name).into())
+                .collect(),
             files,
             reserved_components: INVENTORY_RESERVED_COMPONENTS
                 .iter()
@@ -3969,6 +4391,57 @@ mod tests {
             serde_json::to_vec_pretty(&manifest).unwrap(),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn cold_rehearsal_files_are_exact_inventory_members_before_allocation() {
+        let root = isolated_live_root("cold-paths");
+        fs::create_dir_all(root.path().join("journeys/surfaces")).unwrap();
+        fs::write(root.path().join("journeys/known.yaml"), b"known").unwrap();
+        write_test_inventory(
+            root.path(),
+            &[
+                ("journeys/known.yaml", "regular"),
+                ("journeys/missing.yaml", "absent"),
+            ],
+        );
+        let (inventory, _) = load_source_inventory(root.path()).unwrap();
+        assert_eq!(
+            confined_inventory_file(root.path(), &inventory, "journeys/known.yaml").unwrap(),
+            root.path()
+                .join("journeys/known.yaml")
+                .canonicalize()
+                .unwrap()
+        );
+        for rejected in [
+            "journeys/foreign.yaml",
+            "journeys/missing.yaml",
+            "journeys/../journeys/known.yaml",
+            "/tmp/foreign.yaml",
+        ] {
+            assert!(confined_inventory_file(root.path(), &inventory, rejected).is_err());
+        }
+    }
+
+    #[test]
+    fn release_inventory_v3_rejects_gate_or_cache_policy_drift() {
+        let root = isolated_live_root("inventory-policy");
+        fs::write(root.path().join("Cargo.toml"), b"[package]\nname='x'\n").unwrap();
+        write_test_inventory(root.path(), &[("Cargo.toml", "regular")]);
+        let (manifest, _) = load_source_inventory(root.path()).unwrap();
+
+        let mut manifest_path = manifest.clone();
+        manifest_path.code_gates[3]
+            .extend(["--manifest-path".into(), "/tmp/foreign/Cargo.toml".into()]);
+        assert!(validate_inventory_manifest(&manifest_path).is_err());
+
+        let mut missing_gate = manifest.clone();
+        missing_gate.code_gates.pop();
+        assert!(validate_inventory_manifest(&missing_gate).is_err());
+
+        let mut missing_cache = manifest;
+        missing_cache.cache_root_environment.pop();
+        assert!(validate_inventory_manifest(&missing_cache).is_err());
     }
 
     #[test]

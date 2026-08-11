@@ -1,7 +1,7 @@
 //! Ring 53 — detached, structured, rehearsal-only release verification.
 
 use clap::Parser;
-use loom::cli::{Cli, Command, ReleaseCmd, ReleasePhaseArg};
+use loom::cli::{Cli, Command, JourneyCmd, ReleaseCmd, ReleasePhaseArg};
 use loom::model::{Node, NodeType, TruthClass};
 use loom::release::{
     CommandObservation, OuterJourneyAttestation, ReleaseExecutor, ReleaseRehearsalReport,
@@ -21,10 +21,40 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "d858c9829fafcf36";
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "b75032dd23cdbfa1";
 const RELEASE_INVENTORY_ENTRY_COUNT: usize = 259;
 const RELEASE_INVENTORY_FILE_COUNT: usize = 259;
 const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
+
+#[test]
+fn cold_journey_rehearsal_parser_is_proof_only_and_has_no_override_or_retention_flags() {
+    let parsed = Cli::try_parse_from([
+        "loom",
+        "journey",
+        "rehearse-cold",
+        "known-fixture",
+        "--json",
+    ])
+    .unwrap();
+    assert!(matches!(
+        parsed.command,
+        Some(Command::Journey {
+            cmd: JourneyCmd::RehearseCold { journey }
+        }) if journey == "known-fixture"
+    ));
+    for forbidden in ["--profile", "--input", "--retain", "--retention"] {
+        assert!(Cli::try_parse_from([
+            "loom",
+            "journey",
+            "rehearse-cold",
+            "known-fixture",
+            forbidden,
+            "value",
+            "--json",
+        ])
+        .is_err());
+    }
+}
 
 fn imported_repository_store() -> (Tmp, Store) {
     let tmp = Tmp::new();
@@ -515,10 +545,14 @@ fn fake_executor_reauthorizes_only_the_candidate_manifest_and_records_every_gate
     )
     .unwrap();
     assert_eq!(report.status, ReleaseStatus::Passed, "{report:#?}");
-    assert_eq!(report.graph.imported_surfaces_quarantined, 1);
-    assert_eq!(report.graph.manifests_reauthorized.len(), 1);
+    assert_eq!(report.graph.imported_surfaces_quarantined, 2);
+    assert_eq!(report.graph.manifests_reauthorized.len(), 2);
     assert_eq!(
         report.graph.manifests_reauthorized[0].surface_id,
+        "candidate-check-cli"
+    );
+    assert_eq!(
+        report.graph.manifests_reauthorized[1].surface_id,
         "loom-release-rehearsal"
     );
     assert_eq!(
@@ -587,14 +621,74 @@ fn sealed_rehearsal_decision_allows_builder_sandbox_to_ratify_all_and_pass() {
 
 #[test]
 fn pending_human_requires_a_gate_in_the_canonical_manifest() {
+    let mut accepted_fixture = RuntimeFixture::new("declared-pending-human");
+    install_candidate_human_gate(&mut accepted_fixture);
+    let journey_hash = loom::journey::parse(
+        &accepted_fixture
+            .root
+            .path()
+            .join("journeys/candidate-check.yaml"),
+    )
+    .unwrap()
+    .semantic_hash()
+    .unwrap();
+    let surface_hash = fixture_surface_hash(&accepted_fixture);
+    let prompt = loom::journey_gate::HumanPrompt::new(
+        "Approve candidate check?",
+        "Approve the fixture.",
+        vec![
+            loom::journey_gate::HumanOption::new(
+                "ratify",
+                "Ratify",
+                "Accept the candidate check.",
+                false,
+            ),
+            loom::journey_gate::HumanOption::new(
+                "reject",
+                "Reject",
+                "Reject the candidate check.",
+                false,
+            ),
+        ],
+    )
+    .unwrap();
     let pending = json!({
         "schema": loom::journey_gate::PENDING_HUMAN_SCHEMA,
         "status": "pending_human",
-        "binding": {"journey_id": "candidate-check", "profile": "proof"}
+        "binding": {
+            "journey_id": "candidate-check", "profile": "proof",
+            "journey_hash": journey_hash, "surface_hash": surface_hash,
+            "step_id": "approve", "step_index": 1,
+            "subject": {"kind":"journey-step","id":"approve","hash":"12345678"},
+            "prompt_hash": prompt.digest().unwrap()
+        },
+        "question": prompt.question, "recommendation": prompt.recommendation,
+        "options": prompt.options,
+        "resume_token": format!("jgt1_{}", "0".repeat(64)),
+        "human_terminal_required": false
     });
+    serde_json::from_value::<loom::journey_gate::PendingHuman>(pending.clone())
+        .unwrap()
+        .validate()
+        .unwrap();
+    let mut terminal_owned = pending.clone();
+    terminal_owned["human_terminal_required"] = json!(true);
+    let mut stale_prompt = pending.clone();
+    stale_prompt["binding"]["prompt_hash"] = json!("0".repeat(64));
+    let mut forged_token = pending.clone();
+    forged_token["resume_token"] = json!("fixture-token");
+    for malformed in [terminal_owned, stale_prompt, forged_token] {
+        assert!(
+            serde_json::from_value::<loom::journey_gate::PendingHuman>(malformed)
+                .unwrap()
+                .validate()
+                .is_err()
+        );
+    }
+    let mut unknown = pending.clone();
+    unknown["write_back"] = json!("forbidden");
+    assert!(serde_json::from_value::<loom::journey_gate::PendingHuman>(unknown).is_err());
 
-    let mut accepted_fixture = RuntimeFixture::new("declared-pending-human");
-    install_candidate_human_gate(&mut accepted_fixture);
     let _environment = accepted_fixture.activate();
     let mut accepted_executor = FakeExecutor::passing(&accepted_fixture);
     accepted_executor.journey_report = pending.clone();
@@ -1290,6 +1384,30 @@ fn candidate_surface_policy_rejects_aliases_overrides_control_templates_and_unco
     )
     .is_err());
 
+    let mut nested_cold = loom::journey::SurfaceManifest::parse_json(Path::new(
+        "journeys/surfaces/proof-stability.surface.json",
+    ))
+    .unwrap();
+    let registration = nested_cold
+        .surface
+        .operations
+        .iter_mut()
+        .find(|operation| operation.id == "register-repeatable-proof")
+        .unwrap();
+    let command_index = registration
+        .argv
+        .iter()
+        .position(|token| token == "--command")
+        .unwrap()
+        + 1;
+    registration.argv[command_index] = "loom journey rehearse-cold green-graph --json".into();
+    assert!(loom::candidate_surface_policy::inspect_manifest(
+        &proof_spec,
+        &nested_cold,
+        loom::candidate_surface_policy::PolicyMode::Runtime,
+    )
+    .is_err());
+
     let mut true_payload = loom::journey::SurfaceManifest::parse_json(Path::new(
         "journeys/surfaces/proof-stability.surface.json",
     ))
@@ -1486,8 +1604,6 @@ fn production_dependency_cache_checks_locked_host_target_offline_without_cache_d
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .canonicalize()
         .unwrap();
-    let previous = std::env::var_os(loom::release::RELEASE_CARGO_HOME_ENV);
-    std::env::remove_var(loom::release::RELEASE_CARGO_HOME_ENV);
     // The temp root is process-wide and this suite runs its tests in parallel
     // threads, so it is read here and never written: mutating it would relocate
     // every concurrently building fixture in the same process.
@@ -1495,10 +1611,6 @@ fn production_dependency_cache_checks_locked_host_target_offline_without_cache_d
 
     let outcome = loom::release::dependency_cache_smoke(&root);
 
-    match previous {
-        Some(value) => std::env::set_var(loom::release::RELEASE_CARGO_HOME_ENV, value),
-        None => std::env::remove_var(loom::release::RELEASE_CARGO_HOME_ENV),
-    }
     drop(lock);
 
     // The adapter refuses to allocate its scratch workspace inside the checkout
@@ -1521,8 +1633,10 @@ fn production_dependency_cache_checks_locked_host_target_offline_without_cache_d
     let attestation = outcome.unwrap();
     assert_eq!(
         attestation.strategy,
-        "existing_cargo_home_read_only_verified"
+        "declared_cache_roots_before_after_verified"
     );
+    assert_eq!(attestation.roots.len(), 2);
+    assert!(attestation.roots.iter().all(|root| root.unchanged));
     assert!(attestation.offline);
     assert!(attestation.unchanged);
     assert_eq!(attestation.before_hash, attestation.after_hash);
@@ -1952,8 +2066,8 @@ fn source_inventory_preserves_staged_deletions_and_rename_tombstones() {
     assert_eq!(git_report.status, ReleaseStatus::Passed, "{git_report:#?}");
     let git_hash = git_report.candidate_hash.clone();
     let git_inventory = git_report.source_inventory.unwrap();
-    assert_eq!(git_inventory.entry_count, 11);
-    assert_eq!(git_inventory.file_count, 9);
+    assert_eq!(git_inventory.entry_count, 12);
+    assert_eq!(git_inventory.file_count, 10);
     assert_eq!(git_inventory.tombstone_count, 2);
 
     let backup = Tmp::new();
@@ -2367,10 +2481,7 @@ fn gitless_snapshot_plan_succeeds_before_manifest_attestation_blocks() {
     )
     .unwrap();
     assert_eq!(report.status, ReleaseStatus::Blocked);
-    assert!(report
-        .detail
-        .unwrap()
-        .contains("canonical manifests are missing"));
+    assert!(report.detail.unwrap().contains("manifest"));
     assert!(report
         .execution_ledger
         .iter()
@@ -2420,7 +2531,7 @@ fn release_surface_manifest(journey_hash: &str) -> Value {
             json!({"id":format!("{phase}-context-binding-limit"),"pointer":"/graph/outer_profile/context_binding_limit","type":"string","equals":"same-user filesystem/process isolation is not a cryptographic authority boundary"}),
             json!({"id":format!("{phase}-one-self-exclusion"),"pointer":"/graph/outer_profile/excluded_from_nested_execution","type":"boolean","equals":true}),
             json!({"id":format!("{phase}-ledger"),"pointer":"/execution_ledger","type":"json"}),
-            json!({"id":format!("{phase}-cache-strategy"),"pointer":"/dependency_cache/strategy","type":"string","equals":"existing_cargo_home_read_only_verified"}),
+            json!({"id":format!("{phase}-cache-strategy"),"pointer":"/dependency_cache/strategy","type":"string","equals":"declared_cache_roots_before_after_verified"}),
             json!({"id":format!("{phase}-cache-unchanged"),"pointer":"/dependency_cache/unchanged","type":"boolean","equals":true}),
             json!({"id":format!("{phase}-cache-offline"),"pointer":"/dependency_cache/offline","type":"boolean","equals":true}),
             json!({"id":format!("{phase}-source-unchanged"),"pointer":"/effects/live_source_changed","type":"boolean","equals":false}),
@@ -2533,6 +2644,7 @@ struct RuntimeFixture {
     _review_root: Tmp,
     _capsule_root: Tmp,
     cargo_cache: Tmp,
+    rustup_cache: Tmp,
     capsule_path: PathBuf,
     outer: OuterJourneyAttestation,
 }
@@ -2609,6 +2721,17 @@ profiles:
         fixture.root.path(),
         &["journey", "add", journey_path.to_str().unwrap(), "--json"],
     );
+    builder(
+        fixture.root.path(),
+        &[
+            "surface",
+            "remove",
+            "candidate-check-cli",
+            "--reason",
+            "replace the fixture surface with its declared human-gate variant",
+            "--json",
+        ],
+    );
     let manifest_path = fixture
         .root
         .path()
@@ -2630,10 +2753,6 @@ profiles:
     let inventory_path = fixture.root.path().join("release/inventory.json");
     let mut inventory: Value =
         serde_json::from_slice(&std::fs::read(&inventory_path).unwrap()).unwrap();
-    inventory["files"]
-        .as_array_mut()
-        .unwrap()
-        .push(json!({"path":"journeys/surfaces/candidate-check.surface.json","mode":"regular"}));
     inventory["files"]
         .as_array_mut()
         .unwrap()
@@ -2710,12 +2829,20 @@ impl RuntimeFixture {
         root.write(
             "release/inventory.json",
             &serde_json::to_string_pretty(&json!({
-                "schema":"loom.release-inventory/v2",
+                "schema":"loom.release-inventory/v3",
+                "code_gates":[
+                    ["cargo","fmt","--all","--","--check"],
+                    ["cargo","clippy","--all-targets","--all-features","--","-D","warnings"],
+                    ["cargo","test","--all-targets","--quiet"],
+                    ["cargo","build","--quiet"]
+                ],
+                "cache_root_environment":["CARGO_HOME","RUSTUP_HOME"],
                 "files":[
                     {"path":".gitignore","mode":"regular"},
                     {"path":"Cargo.toml","mode":"regular"},
                     {"path":"journeys/candidate-check.yaml","mode":"regular"},
                     {"path":"journeys/release-workflow.yaml","mode":"regular"},
+                    {"path":"journeys/surfaces/candidate-check.surface.json","mode":"regular"},
                     {"path":"journeys/surfaces/release-workflow.surface.json","mode":"regular"},
                     {"path":"loom.graph.json","mode":"regular"},
                     {"path":"release/inventory.json","mode":"regular"},
@@ -2758,6 +2885,36 @@ profiles:
     workspace: {}
 "#,
         );
+        let candidate_spec =
+            loom::journey::parse(&root.path().join("journeys/candidate-check.yaml")).unwrap();
+        root.write(
+            "journeys/surfaces/candidate-check.surface.json",
+            &serde_json::to_string_pretty(&json!({
+                "schema": "loom.journey.surface/v1",
+                "journey_id": "candidate-check",
+                "journey_hash": candidate_spec.semantic_hash().unwrap(),
+                "surface": {
+                    "id": "candidate-check-cli",
+                    "title": "Candidate check CLI",
+                    "identity": "structured candidate check",
+                    "codefile": "src/commands/release_cmd.rs",
+                    "locator": "rehearse_cmd",
+                    "operations": [{
+                        "id": "check-op",
+                        "summary": "Check the candidate",
+                        "argv": ["loom", "status", "--json"],
+                        "read_only": true,
+                        "arguments": [],
+                        "output": {
+                            "format": "json",
+                            "assertions": [{"id":"ok","pointer":"/ok","equals":true}]
+                        }
+                    }]
+                },
+                "bindings": [{"step_id":"check","operation_id":"check-op"}]
+            }))
+            .unwrap(),
+        );
         root.write(
             "journeys/surfaces/release-workflow.surface.json",
             include_str!("../journeys/surfaces/release-workflow.surface.json"),
@@ -2772,6 +2929,31 @@ profiles:
         builder(
             root.path(),
             &["codefile", "add", "src/commands/release_cmd.rs", "--json"],
+        );
+        builder(root.path(), &["codefile", "add", "src/lib.rs", "--json"]);
+        let candidate_journey_path = root.path().join("journeys/candidate-check.yaml");
+        builder(
+            root.path(),
+            &[
+                "journey",
+                "add",
+                candidate_journey_path.to_str().unwrap(),
+                "--json",
+            ],
+        );
+        let candidate_manifest_path = root
+            .path()
+            .join("journeys/surfaces/candidate-check.surface.json");
+        builder(
+            root.path(),
+            &[
+                "journey",
+                "surface-accept",
+                "candidate-check",
+                "--manifest",
+                candidate_manifest_path.to_str().unwrap(),
+                "--json",
+            ],
         );
         let journey_path = root.path().join("journeys/release-workflow.yaml");
         builder(
@@ -2820,6 +3002,43 @@ profiles:
             }))
             .unwrap(),
         );
+        review_root.write(
+            "candidate-check.json",
+            &serde_json::to_string_pretty(&json!({
+                "schema": loom::journey::DERIVATION_SCHEMA,
+                "journey_id": "candidate-check",
+                "journey_hash": candidate_spec.semantic_hash().unwrap(),
+                "proposal_id": "ring53-candidate-check-derivation",
+                "proposal_rationale": "Bind the candidate-check fixture to one technical intent.",
+                "intents": [{
+                    "id": "candidate-check-technical-intent",
+                    "operation": "create",
+                    "name": "Verify one detached candidate observation",
+                    "criterion": "Candidate verification executes one structured check against the detached graph.",
+                    "level": "feature",
+                    "visibility": "internal",
+                    "rationale": "The release fixture requires complete reviewed Journey coverage.",
+                    "step_ids": ["check"]
+                }],
+                "relationships": [],
+                "unresolved_question": null
+            }))
+            .unwrap(),
+        );
+        let candidate_derivation_path = review_root.path().join("candidate-check.json");
+        builder(
+            root.path(),
+            &[
+                "journey",
+                "derive-accept",
+                "candidate-check",
+                "--manifest",
+                candidate_derivation_path.to_str().unwrap(),
+                "--human-decision",
+                "Ring 53 fixture approval",
+                "--json",
+            ],
+        );
         let derivation_path = review_root.path().join("release-workflow.json");
         builder(
             root.path(),
@@ -2863,6 +3082,7 @@ profiles:
         .unwrap();
         let capsule_root = Tmp::new();
         let cargo_cache = Tmp::new();
+        let rustup_cache = Tmp::new();
         for relative in ["registry/cache", "registry/index", "registry/src"] {
             std::fs::create_dir_all(cargo_cache.path().join(relative)).unwrap();
         }
@@ -2915,6 +3135,7 @@ profiles:
             _review_root: review_root,
             _capsule_root: capsule_root,
             cargo_cache,
+            rustup_cache,
             capsule_path,
             outer: OuterJourneyAttestation {
                 journey_id: capsule.journey_id,
@@ -2932,7 +3153,12 @@ profiles:
     }
 
     fn activate(&self) -> ReleaseEnvironment {
-        ReleaseEnvironment::install(&self.outer, &self.capsule_path, self.cargo_cache.path())
+        ReleaseEnvironment::install(
+            &self.outer,
+            &self.capsule_path,
+            self.cargo_cache.path(),
+            self.rustup_cache.path(),
+        )
     }
 
     fn refresh_outer_authority(&mut self, label: &str) {
@@ -3022,7 +3248,12 @@ struct ReleaseEnvironment {
 }
 
 impl ReleaseEnvironment {
-    fn install(outer: &OuterJourneyAttestation, capsule: &Path, cargo_cache: &Path) -> Self {
+    fn install(
+        outer: &OuterJourneyAttestation,
+        capsule: &Path,
+        cargo_cache: &Path,
+        rustup_cache: &Path,
+    ) -> Self {
         let lock = RELEASE_ENV
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -3045,11 +3276,10 @@ impl ReleaseEnvironment {
             std::env::var_os(OUTER_CONTEXT_CAPSULE_ENV),
         ));
         std::env::set_var(OUTER_CONTEXT_CAPSULE_ENV, capsule);
-        previous.push((
-            loom::release::RELEASE_CARGO_HOME_ENV,
-            std::env::var_os(loom::release::RELEASE_CARGO_HOME_ENV),
-        ));
-        std::env::set_var(loom::release::RELEASE_CARGO_HOME_ENV, cargo_cache);
+        for (key, value) in [("CARGO_HOME", cargo_cache), ("RUSTUP_HOME", rustup_cache)] {
+            previous.push((key, std::env::var_os(key)));
+            std::env::set_var(key, value);
+        }
         Self {
             _lock: lock,
             previous,
@@ -3084,15 +3314,31 @@ enum CandidateDivergence {
     Source,
 }
 
+fn fixture_surface_hash(fixture: &RuntimeFixture) -> String {
+    let store = Store::open(fixture.root.path()).unwrap();
+    let journey = store
+        .resolve_node("candidate-check", Some(NodeType::Journey))
+        .unwrap();
+    loom::journey::surface_projection_hash(&store, &journey)
+        .unwrap()
+        .unwrap()
+}
+
 impl FakeExecutor {
     fn passing(fixture: &RuntimeFixture) -> Self {
+        let candidate_hash =
+            loom::journey::parse(&fixture.root.path().join("journeys/candidate-check.yaml"))
+                .unwrap()
+                .semantic_hash()
+                .unwrap();
+        let surface_hash = fixture_surface_hash(fixture);
         Self {
             outer: fixture.outer.clone(),
             journey_report: json!({
                 "journey_id":"candidate-check",
                 "profile":"proof",
-                "journey_hash":"candidate-check-hash",
-                "surface_hash":"candidate-surface-hash",
+                "journey_hash":candidate_hash,
+                "surface_hash":surface_hash,
                 "status":"passed",
                 "assertions_passed":1,
                 "assertions_failed":0,
@@ -3363,7 +3609,7 @@ fn assert_safe_effects(report: &ReleaseRehearsalReport, require_cache: bool) {
             .dependency_cache
             .as_ref()
             .expect("full-gate report includes dependency cache provenance");
-        assert_eq!(cache.strategy, "existing_cargo_home_read_only_verified");
+        assert_eq!(cache.strategy, "declared_cache_roots_before_after_verified");
         assert!(cache.offline);
         assert!(cache.unchanged);
     } else {

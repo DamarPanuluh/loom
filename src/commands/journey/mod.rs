@@ -57,9 +57,21 @@ pub fn dispatch(graph: Option<&Path>, cmd: JourneyCmd, json: bool) -> Result<()>
             profile,
             input,
         } => journey_diagnose(graph, &journey, &profile, &input, json),
+        JourneyCmd::RehearseCold { journey } => journey_rehearse_cold(graph, &journey, json),
         JourneyCmd::Freeze { journey, profile } => journey_freeze(graph, &journey, &profile, json),
         JourneyCmd::Drift { journey } => journey_drift(graph, journey.as_deref(), json),
     }
+}
+
+fn journey_rehearse_cold(graph: Option<&Path>, journey_key: &str, json_output: bool) -> Result<()> {
+    if !json_output {
+        bail!("`loom journey rehearse-cold` requires --json");
+    }
+    let store = open_read(graph)?;
+    let (journey, _, _) = load_registered_journey(&store, journey_key)?;
+    let report = crate::release::rehearse_cold_journey(store.root(), &journey.name)?;
+    println!("{}", serde_json::to_string_pretty(&report)?);
+    Ok(())
 }
 
 fn journey_lint(graph: Option<&Path>, journey_key: Option<&str>, json_output: bool) -> Result<()> {

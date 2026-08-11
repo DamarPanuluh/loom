@@ -37,6 +37,7 @@ fn operation(value: &str) -> CliOperation {
         ],
         environment: Vec::new(),
         read_only: true,
+        timeout_seconds: None,
         arguments: Vec::new(),
         output: OperationOutput {
             format: OutputFormat::Json,

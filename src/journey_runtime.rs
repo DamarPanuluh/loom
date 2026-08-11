@@ -9,7 +9,7 @@ use crate::journey::{
     OperationArgument, OperationBinding, OperationOutput, OutputAssertion, OutputCapture,
     OutputFormat, RuntimeSource, SetupGraph, SurfaceBinding, SurfaceFileAction, SurfaceGitSetup,
     SurfaceSetup, TemporarySetup, ValueType, BASELINE_SCHEMA, COMPILED_PROOF_SCHEMA,
-    JOURNEY_COMPILER_VERSION,
+    DEFAULT_JOURNEY_TIMEOUT_SECONDS, JOURNEY_COMPILER_VERSION,
 };
 use crate::Result;
 use anyhow::{anyhow, bail, Context};
@@ -37,7 +37,6 @@ use std::time::{Duration, Instant};
 // back to back (full cargo build + --all-targets suite + 30-journey dogfood
 // each); 900s starved it on a warm laptop once every earlier gate finally
 // passed, which is the same perverse pattern this constant was last raised for.
-const EXECUTION_TIMEOUT: Duration = Duration::from_secs(2700);
 const STREAM_EXCERPT_BYTES: usize = 512 * 1024;
 const FAILURE_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const REDACTED: &str = "[REDACTED]";
@@ -98,6 +97,8 @@ pub struct CompiledSetupOperation {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub environment: Vec<String>,
     pub read_only: bool,
+    #[serde(default = "default_compiled_timeout_seconds")]
+    pub timeout_seconds: u64,
     pub arguments: Vec<OperationArgument>,
     pub assertions: Vec<OutputAssertion>,
     pub redact: Vec<String>,
@@ -121,6 +122,9 @@ pub struct CompiledStep {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub environment: Vec<String>,
     pub read_only: bool,
+    /// Machine operations have a resolved timeout; human gates deliberately do not.
+    #[serde(default = "default_compiled_optional_timeout_seconds")]
+    pub timeout_seconds: Option<u64>,
     pub arguments: Vec<OperationArgument>,
     pub captures: Vec<OutputCapture>,
     pub assertions: Vec<OutputAssertion>,
@@ -134,6 +138,14 @@ pub struct CompiledStep {
 pub struct CompiledHumanDecision {
     pub source_operation_id: String,
     pub pointer: String,
+}
+
+fn default_compiled_timeout_seconds() -> u64 {
+    DEFAULT_JOURNEY_TIMEOUT_SECONDS
+}
+
+fn default_compiled_optional_timeout_seconds() -> Option<u64> {
+    Some(DEFAULT_JOURNEY_TIMEOUT_SECONDS)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -270,6 +282,14 @@ pub fn compile_surface(
     bindings: &[SurfaceBinding],
 ) -> Result<CompiledJourneyProof> {
     spec.validate()?;
+    for operation in &operations {
+        if operation.timeout_seconds == Some(0) {
+            bail!(
+                "operation '{}' timeout_seconds must be positive",
+                operation.id
+            );
+        }
+    }
     // Derive capabilities from the typed operations before compiling them.
     // `read_only` is checked by this policy; it never decides confinement by
     // itself.
@@ -397,6 +417,7 @@ pub fn compile_surface(
                     argv: operation.argv.clone(),
                     environment: canonical_environment(&operation.environment)?,
                     read_only: operation.read_only,
+                    timeout_seconds: operation.timeout_seconds.unwrap_or(profile.timeout_seconds),
                     arguments: operation.arguments.clone(),
                     assertions: operation.output.assertions.clone(),
                     redact: operation.output.redact.clone(),
@@ -461,6 +482,9 @@ pub fn compile_surface(
                     argv: operation.argv.clone(),
                     environment: canonical_environment(&operation.environment)?,
                     read_only: operation.read_only,
+                    timeout_seconds: Some(
+                        operation.timeout_seconds.unwrap_or(profile.timeout_seconds),
+                    ),
                     arguments: operation.arguments.clone(),
                     captures: operation.output.captures.clone(),
                     assertions: operation.output.assertions.clone(),
@@ -476,6 +500,7 @@ pub fn compile_surface(
                     argv: Vec::new(),
                     environment: Vec::new(),
                     read_only: true,
+                    timeout_seconds: None,
                     arguments: Vec::new(),
                     captures: Vec::new(),
                     assertions: Vec::new(),
@@ -697,8 +722,23 @@ impl CompiledJourneyProof {
         if self.steps.is_empty() {
             bail!("compiled Journey must contain at least one step");
         }
+        if self.steps.iter().any(|step| {
+            step.human_decision.is_some() != step.timeout_seconds.is_none()
+                || step.timeout_seconds == Some(0)
+        }) {
+            bail!(
+                "compiled Journey machine timeouts must be positive and human gates must have none"
+            );
+        }
         validate_compiled_step_shapes(self)?;
         if let Some(setup) = &self.setup {
+            if setup
+                .operations
+                .iter()
+                .any(|operation| operation.timeout_seconds == 0)
+            {
+                bail!("compiled setup operation timeout_seconds must be positive");
+            }
             if setup.operations.is_empty()
                 && !setup
                     .before_steps
@@ -1106,6 +1146,7 @@ fn runtime_surface_plan(
             argv: operation.argv.clone(),
             environment: operation.environment.clone(),
             read_only: operation.read_only,
+            timeout_seconds: Some(operation.timeout_seconds),
             arguments: operation.arguments.clone(),
             output: OperationOutput {
                 format: OutputFormat::Json,
@@ -1126,6 +1167,7 @@ fn runtime_surface_plan(
                 argv: step.argv.clone(),
                 environment: step.environment.clone(),
                 read_only: step.read_only,
+                timeout_seconds: step.timeout_seconds,
                 arguments: step.arguments.clone(),
                 output: OperationOutput {
                     format: OutputFormat::Json,
@@ -1316,6 +1358,7 @@ fn execute_fresh(
                 &operation.environment,
                 &operation.argv,
                 &operation.arguments,
+                operation.timeout_seconds,
                 &inputs,
                 &captures,
                 &run_id,
@@ -1490,6 +1533,8 @@ fn run_steps(
             &step.environment,
             &step.argv,
             &step.arguments,
+            step.timeout_seconds
+                .unwrap_or(DEFAULT_JOURNEY_TIMEOUT_SECONDS),
             &active.inputs,
             &active.captures,
             &active.run_id,
@@ -1928,16 +1973,17 @@ pub fn resume_interactive(
         .with_context(|| format!("canonicalizing Journey repository root {}", root.display()))?;
     proof.validate()?;
     let store = capsule_store(&root)?;
-    let pending_path = pending_runtime_state_path(&store, token)?;
-    let pending = read_continuation(&pending_path)?;
+    let pending_paths = store.inspect_pending(token)?;
+    let pending = read_continuation(&pending_paths.runtime_state)?;
     pending.validate()?;
-    validate_current_continuation(&root, spec, proof, &pending)?;
+    validate_current_continuation(&root, &pending_paths.workspace, spec, proof, &pending)?;
 
     let claimed = store.claim(token, &pending.gate_binding, answer, executor)?;
     let resumed = (|| -> Result<ExecutionOutcome> {
-        let mut state = read_continuation(&claimed.paths.runtime_state)?;
+        let claimed_paths = store.inspect_claimed(token)?;
+        let mut state = read_continuation(&claimed_paths.runtime_state)?;
         state.validate()?;
-        validate_current_continuation(&root, spec, proof, &state)?;
+        validate_current_continuation(&root, &claimed_paths.workspace, spec, proof, &state)?;
         if claimed.receipt.binding != state.gate_binding {
             bail!("claimed human decision does not match its runtime continuation");
         }
@@ -2021,6 +2067,7 @@ impl ContinuationState {
 
 fn validate_current_continuation(
     root: &Path,
+    workspace: &Path,
     spec: &JourneySpec,
     proof: &CompiledJourneyProof,
     state: &ContinuationState,
@@ -2037,7 +2084,7 @@ fn validate_current_continuation(
         bail!("Journey gate resume token is stale for the current compiled projection");
     }
     if let Some(subject) = &state.current_subject {
-        validate_current_subject(&root, subject)?;
+        validate_current_subject(workspace, subject)?;
     }
     Ok(())
 }
@@ -2345,6 +2392,7 @@ fn run_json_operation(
     declared_environment: &[String],
     base_argv: &[String],
     arguments: &[OperationArgument],
+    timeout_seconds: u64,
     inputs: &BTreeMap<String, Value>,
     captures: &BTreeMap<String, Value>,
     run_id: &str,
@@ -2365,7 +2413,7 @@ fn run_json_operation(
         graph_root,
         &operation_env,
         authorized,
-        EXECUTION_TIMEOUT,
+        Duration::from_secs(timeout_seconds),
     )
     .with_context(|| format!("{label} could not start"))?;
     if observed.timed_out {

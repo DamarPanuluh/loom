@@ -63,7 +63,7 @@
               "id": "isolated_dogfood-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string",
-              "equals": "d858c9829fafcf36"
+              "equals": "b75032dd23cdbfa1"
             },
             {
               "id": "isolated_dogfood-inventory-provenance",
@@ -341,7 +341,7 @@
               "id": "isolated_dogfood-compiler-version",
               "pointer": "/graph/outer_profile/compiler_version",
               "type": "string",
-              "equals": "2"
+              "equals": "3"
             },
             {
               "id": "isolated_dogfood-proof-hash",
@@ -364,7 +364,7 @@
               "id": "isolated_dogfood-cache-strategy",
               "pointer": "/dependency_cache/strategy",
               "type": "string",
-              "equals": "existing_cargo_home_read_only_verified"
+              "equals": "declared_cache_roots_before_after_verified"
             },
             {
               "id": "isolated_dogfood-cache-unchanged",
@@ -483,7 +483,7 @@
               "id": "fresh_fixpoint-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string",
-              "equals": "d858c9829fafcf36"
+              "equals": "b75032dd23cdbfa1"
             },
             {
               "id": "fresh_fixpoint-inventory-provenance",
@@ -773,7 +773,7 @@
               "id": "fresh_fixpoint-compiler-version",
               "pointer": "/graph/outer_profile/compiler_version",
               "type": "string",
-              "equals": "2"
+              "equals": "3"
             },
             {
               "id": "fresh_fixpoint-proof-hash",
@@ -796,7 +796,7 @@
               "id": "fresh_fixpoint-cache-strategy",
               "pointer": "/dependency_cache/strategy",
               "type": "string",
-              "equals": "existing_cargo_home_read_only_verified"
+              "equals": "declared_cache_roots_before_after_verified"
             },
             {
               "id": "fresh_fixpoint-cache-unchanged",
@@ -939,7 +939,7 @@
               "id": "gated_preparation-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string",
-              "equals": "d858c9829fafcf36"
+              "equals": "b75032dd23cdbfa1"
             },
             {
               "id": "gated_preparation-inventory-provenance",
@@ -1237,7 +1237,7 @@
               "id": "gated_preparation-compiler-version",
               "pointer": "/graph/outer_profile/compiler_version",
               "type": "string",
-              "equals": "2"
+              "equals": "3"
             },
             {
               "id": "gated_preparation-proof-hash",
@@ -1260,7 +1260,7 @@
               "id": "gated_preparation-cache-strategy",
               "pointer": "/dependency_cache/strategy",
               "type": "string",
-              "equals": "existing_cargo_home_read_only_verified"
+              "equals": "declared_cache_roots_before_after_verified"
             },
             {
               "id": "gated_preparation-cache-unchanged",

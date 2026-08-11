@@ -1,5 +1,38 @@
 {
-  "schema": "loom.release-inventory/v2",
+  "schema": "loom.release-inventory/v3",
+  "code_gates": [
+    [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    [
+      "cargo",
+      "clippy",
+      "--all-targets",
+      "--all-features",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    [
+      "cargo",
+      "test",
+      "--all-targets",
+      "--quiet"
+    ],
+    [
+      "cargo",
+      "build",
+      "--quiet"
+    ]
+  ],
+  "cache_root_environment": [
+    "CARGO_HOME",
+    "RUSTUP_HOME"
+  ],
   "files": [
     {
       "path": ".commandcode/taste/loom/taste.md",

@@ -735,6 +735,9 @@ fn classify_cli(
                 | JourneyCmd::Surface { .. }
                 | JourneyCmd::Drift { .. },
         } => DerivedCapability::Read,
+        Command::Journey {
+            cmd: JourneyCmd::RehearseCold { .. },
+        } => DerivedCapability::DetachedProcess,
         Command::Validation {
             cmd: ValidationCmd::Show { .. } | ValidationCmd::List { .. },
         } => DerivedCapability::Read,
@@ -781,18 +784,28 @@ fn classify_cli(
         ),
     };
     if purpose == NestedPurpose::Validation
-        && matches!(
+        && (matches!(
             command,
             Command::Validation { .. } | Command::Mcp { .. } | Command::Release { .. }
-        )
+        ) || matches!(
+            command,
+            Command::Journey {
+                cmd: JourneyCmd::RehearseCold { .. }
+            }
+        ))
     {
         bail!("Validation payload cannot open another execution carrier");
     }
     if purpose == NestedPurpose::Observe
-        && matches!(
+        && (matches!(
             command,
             Command::Observe { .. } | Command::Mcp { .. } | Command::Release { .. }
-        )
+        ) || matches!(
+            command,
+            Command::Journey {
+                cmd: JourneyCmd::RehearseCold { .. }
+            }
+        ))
     {
         bail!("MCP observation payload cannot recurse into another execution carrier");
     }
