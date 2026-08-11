@@ -43,21 +43,16 @@ snapshot="$(env -i PATH="$SNAPSHOT_PATH" TMPDIR="${TMPDIR:-/tmp}" "$SNAPSHOTTER"
 python3 -c '
 import json, sys
 report = json.load(sys.stdin)
+expected = json.load(open(sys.argv[1]))
 inventory = report["source_inventory"]
-assert report["schema"] == "loom.release-snapshot/v1"
-assert report["status"] == "passed"
+assert report["schema"] == expected["schema"]
+assert report["status"] == expected["status"]
+assert expected["candidate_hash_relation"] == "source_inventory.inventory_hash"
 assert report["candidate_hash"] == inventory["inventory_hash"]
-assert inventory["schema"] == "loom.release-source-inventory-attestation/v1"
-assert inventory["manifest_hash"] == "1e7f61e0ec084423"
-assert inventory["git_influenced_plan"] is False
-assert inventory["materialized_matches"] is True
-assert inventory["provenance"] == "source_controlled_manifest_git_verified"
-assert inventory["git_verification"] == "verified"
-assert inventory["entry_count"] == 261
-assert inventory["file_count"] == 257
-assert inventory["tombstone_count"] == 4
-' <<<"$snapshot"
+for field, value in expected["source_inventory"].items():
+    assert inventory[field] == value, (field, inventory[field], value)
+' "$ROOT/release/snapshot-expectation.json" <<<"$snapshot"
 
 echo "== v12 fresh-graph fixpoint =="
 "$WORK/scripts/dogfood.sh" --fresh-in-place --check
-echo "fixpoint: OK — a fresh v12 graph completed the Journey-root dogfood gate"
+echo "fixpoint: OK — a fresh v12 graph completed the structural Journey-root dogfood gate (profiles not executed)"

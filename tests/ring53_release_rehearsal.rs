@@ -20,10 +20,10 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "1e7f61e0ec084423";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 261;
-const RELEASE_INVENTORY_FILE_COUNT: usize = 257;
-const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 4;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "6bdb4e0aa87780d0";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 259;
+const RELEASE_INVENTORY_FILE_COUNT: usize = 258;
+const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 1;
 
 #[test]
 fn release_cli_has_only_three_typed_rehearsal_phases_and_no_skip() {
@@ -550,6 +550,109 @@ fn fake_executor_reauthorizes_only_the_candidate_manifest_and_records_every_gate
         .any(|pair| pair == ["--human-decision", "Ring 53 fixture approval"]));
     assert_safe_effects(&report, true);
     assert_eq!(snapshot(fixture.root.path()), before);
+}
+
+#[test]
+fn sealed_rehearsal_decision_allows_builder_sandbox_to_ratify_all_and_pass() {
+    let fixture = RuntimeFixture::new("ratify-all-builder-sandbox");
+    let _environment = fixture.activate();
+    let mut executor = FakeExecutor::passing(&fixture);
+    let report = loom::release::rehearse_with_executor(
+        fixture.root.path(),
+        loom::release::ReleasePhase::IsolatedDogfood,
+        &mut executor,
+    )
+    .unwrap();
+
+    assert_eq!(report.status, ReleaseStatus::Passed, "{report:#?}");
+    let ratify = executor
+        .calls
+        .iter()
+        .find(|call| has_sequence(call, &["intent", "ratify", "--all"]))
+        .expect("sealed rehearsal never replayed domain-intent ratification");
+    assert!(has_sequence(
+        ratify,
+        &["--human-decision", "Ring 53 fixture approval"]
+    ));
+    assert!(has_sequence(ratify, &["--json"]));
+}
+
+#[test]
+fn pending_human_requires_a_gate_in_the_canonical_manifest() {
+    let pending = json!({
+        "schema": loom::journey_gate::PENDING_HUMAN_SCHEMA,
+        "status": "pending_human",
+        "binding": {"journey_id": "candidate-check", "profile": "proof"}
+    });
+
+    let mut accepted_fixture = RuntimeFixture::new("declared-pending-human");
+    install_candidate_human_gate(&mut accepted_fixture);
+    let _environment = accepted_fixture.activate();
+    let mut accepted_executor = FakeExecutor::passing(&accepted_fixture);
+    accepted_executor.journey_report = pending.clone();
+    let accepted = loom::release::rehearse_with_executor(
+        accepted_fixture.root.path(),
+        loom::release::ReleasePhase::IsolatedDogfood,
+        &mut accepted_executor,
+    )
+    .unwrap();
+    assert_eq!(accepted.status, ReleaseStatus::Passed, "{accepted:#?}");
+    drop(_environment);
+
+    let rejected_fixture = RuntimeFixture::new("undeclared-pending-human");
+    let _environment = rejected_fixture.activate();
+    let mut rejected_executor = FakeExecutor::passing(&rejected_fixture);
+    rejected_executor.journey_report = pending;
+    let rejected = loom::release::rehearse_with_executor(
+        rejected_fixture.root.path(),
+        loom::release::ReleasePhase::IsolatedDogfood,
+        &mut rejected_executor,
+    )
+    .unwrap();
+    assert_eq!(rejected.status, ReleaseStatus::Blocked, "{rejected:#?}");
+    assert!(rejected.detail.is_some(), "{rejected:#?}");
+}
+
+#[test]
+fn semantic_result_hash_ignores_graph_identity_but_detects_source_divergence() {
+    let graph_fixture = RuntimeFixture::new("graph-result-divergence");
+    let _environment = graph_fixture.activate();
+    let mut graph_executor = FakeExecutor::passing(&graph_fixture);
+    graph_executor.second_candidate_divergence = Some(CandidateDivergence::Graph);
+    let graph_report = loom::release::rehearse_with_executor(
+        graph_fixture.root.path(),
+        loom::release::ReleasePhase::FreshFixpoint,
+        &mut graph_executor,
+    )
+    .unwrap();
+    assert_eq!(
+        graph_report.status,
+        ReleaseStatus::Passed,
+        "{graph_report:#?}"
+    );
+    assert!(graph_report.fixpoint.result_hash_equal);
+    drop(_environment);
+
+    let source_fixture = RuntimeFixture::new("source-result-divergence");
+    let _environment = source_fixture.activate();
+    let mut source_executor = FakeExecutor::passing(&source_fixture);
+    source_executor.second_candidate_divergence = Some(CandidateDivergence::Source);
+    let source_report = loom::release::rehearse_with_executor(
+        source_fixture.root.path(),
+        loom::release::ReleasePhase::FreshFixpoint,
+        &mut source_executor,
+    )
+    .unwrap();
+    assert_eq!(
+        source_report.status,
+        ReleaseStatus::Blocked,
+        "{source_report:#?}"
+    );
+    assert!(source_report
+        .detail
+        .as_deref()
+        .unwrap_or_default()
+        .contains("different semantic attestations"));
 }
 
 #[test]
@@ -1455,15 +1558,7 @@ fn source_inventory_manifest_binds_exact_tombstones_and_counts() {
         .filter(|entry| entry["mode"] == "absent")
         .map(|entry| entry["path"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        tombstones,
-        [
-            "src/commands/journey/coverage.rs",
-            "src/commands/journey/invariants.rs",
-            "src/commands/journey/prompt.rs",
-            "tests/ring41_diagnose_parity.rs",
-        ]
-    );
+    assert_eq!(tombstones, ["tests/ring51_source_anchors.rs"]);
 }
 
 #[test]
@@ -1890,6 +1985,8 @@ fn source_inventory_rejects_skip_worktree_index_state() {
 
 #[test]
 fn snapshot_scripts_require_one_existing_target_adapter_before_any_build() {
+    let expectation = std::fs::read_to_string("release/snapshot-expectation.json").unwrap();
+    assert!(expectation.contains(RELEASE_INVENTORY_MANIFEST_HASH));
     for relative in ["scripts/dogfood.sh", "scripts/check-fixpoint.sh"] {
         let script = std::fs::read_to_string(relative).unwrap();
         assert_eq!(script.matches("release snapshot --destination").count(), 1);
@@ -1898,7 +1995,7 @@ fn snapshot_scripts_require_one_existing_target_adapter_before_any_build() {
         assert!(script.contains("snapshot_adapter_provenance=existing_target_binary"));
         assert!(script.contains("shasum -a 256"));
         assert!(script.contains("env -i PATH=\"$SNAPSHOT_PATH\""));
-        assert!(script.contains(RELEASE_INVENTORY_MANIFEST_HASH));
+        assert!(script.contains("release/snapshot-expectation.json"));
         assert!(!script.contains("CARGO_TARGET_DIR"));
         assert!(!script.contains("tar "));
         let snapshot = script.find("release snapshot --destination").unwrap();
@@ -1917,6 +2014,18 @@ fn snapshot_scripts_require_one_existing_target_adapter_before_any_build() {
     assert_eq!(output.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&output.stderr).contains("trusted snapshot adapter is missing"));
     assert!(!fixture.path().join("target").exists());
+}
+
+#[test]
+fn dogfood_is_a_cold_authority_structural_gate() {
+    let script = std::fs::read_to_string("scripts/dogfood.sh").unwrap();
+    assert!(script.contains("! -name '*.surface.json'"));
+    assert!(!script.contains("journey run"));
+    assert!(!script.contains("derive-accept"));
+    assert!(!script.contains("intent ratify"));
+    assert!(!script.contains("runnable"));
+    assert!(script.contains("not executed — authority_voided_by_import"));
+    assert!(script.contains("unratified_journey_derivation"));
 }
 
 #[test]
@@ -2354,6 +2463,166 @@ struct RuntimeFixture {
     outer: OuterJourneyAttestation,
 }
 
+fn install_candidate_human_gate(fixture: &mut RuntimeFixture) {
+    fixture.root.write(
+        "journeys/candidate-check.yaml",
+        r#"schema: loom.journey/v1
+id: candidate-check
+name: Candidate check
+actor: release verifier
+goal: Observe one candidate check and pause for approval
+inputs: {}
+preconditions: []
+steps:
+- id: check
+  name: Check
+  action: Check the candidate and present a recommendation.
+  expects:
+  - The structured check passes.
+  produces: {}
+- id: approve
+  name: Approve
+  action: Record the host-mediated release decision.
+  expects:
+  - The human remains the decision authority.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}
+"#,
+    );
+    let spec =
+        loom::journey::parse(&fixture.root.path().join("journeys/candidate-check.yaml")).unwrap();
+    fixture.root.write(
+        "journeys/surfaces/candidate-check.surface.json",
+        &serde_json::to_string_pretty(&json!({
+            "schema": "loom.journey.surface/v1",
+            "journey_id": "candidate-check",
+            "journey_hash": spec.semantic_hash().unwrap(),
+            "surface": {
+                "id": "candidate-check-cli",
+                "title": "Candidate check CLI",
+                "identity": "structured candidate check",
+                "codefile": "src/lib.rs",
+                "locator": "candidate",
+                "operations": [{
+                    "id": "check-op",
+                    "summary": "Check the candidate and present a decision prompt",
+                    "argv": ["loom", "status", "--json"],
+                    "read_only": true,
+                    "arguments": [],
+                    "output": {
+                        "format": "json",
+                        "assertions": [{"id":"prompt-present","pointer":"/human_gate","exists":true}]
+                    }
+                }]
+            },
+            "setup": {"graph":"local_snapshot","operations":[]},
+            "bindings": [
+                {"step_id":"check","operation_id":"check-op"},
+                {"step_id":"approve","human_decision":{"operation_id":"check-op","pointer":"/human_gate"}}
+            ]
+        }))
+        .unwrap(),
+    );
+    builder(
+        fixture.root.path(),
+        &["codefile", "add", "src/lib.rs", "--json"],
+    );
+    let journey_path = fixture.root.path().join("journeys/candidate-check.yaml");
+    builder(
+        fixture.root.path(),
+        &["journey", "add", journey_path.to_str().unwrap(), "--json"],
+    );
+    let manifest_path = fixture
+        .root
+        .path()
+        .join("journeys/surfaces/candidate-check.surface.json");
+    builder(
+        fixture.root.path(),
+        &[
+            "journey",
+            "surface-accept",
+            "candidate-check",
+            "--manifest",
+            manifest_path.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    let store = loom::store::Store::open(fixture.root.path()).unwrap();
+    loom::travel::export_to_file(&store).unwrap();
+    drop(store);
+    let inventory_path = fixture.root.path().join("release/inventory.json");
+    let mut inventory: Value =
+        serde_json::from_slice(&std::fs::read(&inventory_path).unwrap()).unwrap();
+    inventory["files"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"path":"journeys/surfaces/candidate-check.surface.json","mode":"regular"}));
+    inventory["files"]
+        .as_array_mut()
+        .unwrap()
+        .sort_by(|left, right| left["path"].as_str().cmp(&right["path"].as_str()));
+    std::fs::write(
+        inventory_path,
+        serde_json::to_vec_pretty(&inventory).unwrap(),
+    )
+    .unwrap();
+    assert!(ProcessCommand::new("git")
+        .args([
+            "add",
+            "journeys/candidate-check.yaml",
+            "journeys/surfaces/candidate-check.surface.json",
+            "release/inventory.json",
+        ])
+        .current_dir(fixture.root.path())
+        .status()
+        .unwrap()
+        .success());
+    fixture._review_root.write(
+        "candidate-check.json",
+        &serde_json::to_string_pretty(&json!({
+            "schema": loom::journey::DERIVATION_SCHEMA,
+            "journey_id": "candidate-check",
+            "journey_hash": spec.semantic_hash().unwrap(),
+            "proposal_id": "ring53-candidate-check-human-gate",
+            "proposal_rationale": "Bind the fixture candidate check and its declared human gate.",
+            "intents": [{
+                "id": "candidate-check-human-gate-intent",
+                "operation": "create",
+                "name": "Pause candidate verification at a declared human gate",
+                "criterion": "Candidate verification accepts pending_human only for its canonical declared gate.",
+                "level": "feature",
+                "visibility": "internal",
+                "rationale": "The regression fixture needs a canonical human-decision binding.",
+                "step_ids": ["check", "approve"]
+            }],
+            "relationships": [],
+            "unresolved_question": null
+        }))
+        .unwrap(),
+    );
+    let derivation_path = fixture._review_root.path().join("candidate-check.json");
+    builder(
+        fixture.root.path(),
+        &[
+            "journey",
+            "derive-accept",
+            "candidate-check",
+            "--manifest",
+            derivation_path.to_str().unwrap(),
+            "--human-decision",
+            "Ring 53 fixture approval",
+            "--json",
+        ],
+    );
+    let store = loom::store::Store::open(fixture.root.path()).unwrap();
+    loom::travel::export_to_file(&store).unwrap();
+    drop(store);
+    fixture.refresh_outer_authority("declared-pending-human");
+}
+
 impl RuntimeFixture {
     fn new(label: &str) -> Self {
         let root = Tmp::new();
@@ -2380,7 +2649,7 @@ impl RuntimeFixture {
                     {"path":"src/lib.rs","mode":"regular"},
                     {"path":"src/removed.rs","mode":"absent"}
                 ],
-                "reserved_components":[".git",".loom",".qoder",".reasonix",".release-sandbox","review-manifests","target"],
+                "reserved_components":[".claude",".git",".loom",".qoder",".reasonix",".release-sandbox","review-manifests","target"],
                 "secret_name_patterns":[".env",".env.*","*.key","*.pem",".netrc",".npmrc",".pypirc","credentials","credentials.json","id_ed25519","id_rsa","secrets.json"]
             })).unwrap(),
         );
@@ -2732,6 +3001,13 @@ struct FakeExecutor {
     drift: Value,
     calls: Vec<Vec<String>>,
     code_gate_failure: Option<CommandObservation>,
+    second_candidate_divergence: Option<CandidateDivergence>,
+}
+
+#[derive(Clone, Copy)]
+enum CandidateDivergence {
+    Graph,
+    Source,
 }
 
 impl FakeExecutor {
@@ -2765,6 +3041,7 @@ impl FakeExecutor {
             drift: json!({"journeys":[{"current":true}],"stale":0}),
             calls: Vec::new(),
             code_gate_failure: None,
+            second_candidate_divergence: None,
         }
     }
 }
@@ -2821,6 +3098,30 @@ impl ReleaseExecutor for FakeExecutor {
             assert!(environment.get("LOOM_AGENT_PROFILE").is_none());
         }
         self.calls.push(argv.to_vec());
+        if has_sequence(argv, &["journey", "run", "candidate-check"])
+            && self
+                .calls
+                .iter()
+                .filter(|call| has_sequence(call, &["journey", "run", "candidate-check"]))
+                .count()
+                == 2
+        {
+            match self.second_candidate_divergence {
+                Some(CandidateDivergence::Graph) => {
+                    std::fs::write(
+                        cwd.join("loom.graph.json"),
+                        b"candidate-local graph identity\n",
+                    )?;
+                }
+                Some(CandidateDivergence::Source) => {
+                    std::fs::write(
+                        cwd.join("src/lib.rs"),
+                        b"pub fn candidate() -> bool { false }\n",
+                    )?;
+                }
+                None => {}
+            }
+        }
         let output = if executable.file_name().and_then(|name| name.to_str()) == Some("cargo") {
             if let Some(failure) = self.code_gate_failure.take() {
                 return Ok(failure);

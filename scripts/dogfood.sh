@@ -58,20 +58,15 @@ if ! $IN_PLACE; then
   python3 -c '
 import json, sys
 report = json.load(sys.stdin)
+expected = json.load(open(sys.argv[1]))
 inventory = report["source_inventory"]
-assert report["schema"] == "loom.release-snapshot/v1"
-assert report["status"] == "passed"
+assert report["schema"] == expected["schema"]
+assert report["status"] == expected["status"]
+assert expected["candidate_hash_relation"] == "source_inventory.inventory_hash"
 assert report["candidate_hash"] == inventory["inventory_hash"]
-assert inventory["schema"] == "loom.release-source-inventory-attestation/v1"
-assert inventory["manifest_hash"] == "1e7f61e0ec084423"
-assert inventory["git_influenced_plan"] is False
-assert inventory["materialized_matches"] is True
-assert inventory["provenance"] == "source_controlled_manifest_git_verified"
-assert inventory["git_verification"] == "verified"
-assert inventory["entry_count"] == 261
-assert inventory["file_count"] == 257
-assert inventory["tombstone_count"] == 4
-' <<<"$snapshot"
+for field, value in expected["source_inventory"].items():
+    assert inventory[field] == value, (field, inventory[field], value)
+' "$ROOT/release/snapshot-expectation.json" <<<"$snapshot"
   args=(--fresh-in-place)
   $CHECK && args+=(--check)
   "$WORK/scripts/dogfood.sh" "${args[@]}"
@@ -108,6 +103,11 @@ PY
 )"
 else
   export_schema="missing"
+fi
+
+if $CHECK && [ "$export_schema" != "12" ]; then
+  echo "dogfood: --check requires a well-formed committed schema-v12 loom.graph.json (got $export_schema)" >&2
+  exit 1
 fi
 
 "$B" init . --name loom-dogfood >/dev/null
@@ -172,45 +172,116 @@ done
 
 echo "== authored Journey roots =="
 journey_count=0
+profile_count=0
+AUTHORITY_ROSTER="$(mktemp "${TMPDIR:-/tmp}/loom-dogfood-authority.XXXXXX")"
+DERIVATION_ROSTER="$(mktemp "${TMPDIR:-/tmp}/loom-dogfood-derivations.XXXXXX")"
+trap 'rm -f "$AUTHORITY_ROSTER" "$DERIVATION_ROSTER"' EXIT
 while IFS= read -r -d '' spec; do
   registration="$("$B" journey add "$spec" --json)"
   journey_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["journey"]["name"])' <<<"$registration")"
-  # `show` resolves the registered stable id and is the source of truth for
-  # its profiles; file names and the old executable-spec convention are never
-  # used as run keys.
-  profiles="$("$B" journey show "$journey_id" --json | python3 -c '
+  cold_show="$("$B" journey show "$journey_id" --json)"
+  profiles="$(python3 -c '
 import json, sys
 for profile in sorted(json.load(sys.stdin)["spec"]["profiles"]):
     print(profile)
-')"
+' <<<"$cold_show")"
   [ -n "$profiles" ] || {
     echo "dogfood: Journey '$journey_id' has no authored profiles" >&2
     exit 1
   }
+
+  python3 -c '
+import json, sys
+journey_id = sys.argv[1]
+show = json.load(sys.stdin)
+ready = show["readiness"]
+assert ready["authored"] is True, (journey_id, "authored")
+assert ready["derived"] is True, (journey_id, "derived")
+assert ready["implemented"] is True, (journey_id, "implemented")
+assert ready["derive_gaps"] == [], (journey_id, ready["derive_gaps"])
+assert ready["derivations_ratified"] is False, (journey_id, "derivations_ratified")
+assert ready["surfaced"] is False, (journey_id, "import unexpectedly surfaced")
+surfaces = show["surfaces"]
+assert len(surfaces) == 1, (journey_id, "accepted imported surface count", len(surfaces))
+assert surfaces[0]["surface"]["status"] == "quarantined", (journey_id, surfaces[0]["surface"])
+' "$journey_id" <<<"$cold_show"
+
+  derived_intents="$(python3 -c '
+import json, sys
+for intent_id in json.load(sys.stdin)["readiness"]["derived_intent_ids"]:
+    print(intent_id)
+' <<<"$cold_show")"
+  [ -n "$derived_intents" ] || {
+    echo "dogfood: Journey '$journey_id' has no imported derived Intents" >&2
+    exit 1
+  }
+  while IFS= read -r intent_id; do
+    [ -n "$intent_id" ] || continue
+    "$B" intent show "$intent_id" --json | python3 -c '
+import json, sys
+intent = json.load(sys.stdin)
+assert intent.get("ratification") == "needs_reconfirmation", (intent.get("id"), intent.get("ratification"))
+'
+  done <<<"$derived_intents"
+  python3 -c '
+import json, sys
+for derivation in json.load(sys.stdin)["derivations"]:
+    print(derivation["edge"]["id"])
+' <<<"$cold_show" >>"$DERIVATION_ROSTER"
+
+  manifest="journeys/surfaces/$journey_id.surface.json"
+  [ -f "$manifest" ] || {
+    echo "dogfood: Journey '$journey_id' is missing canonical surface $manifest" >&2
+    exit 1
+  }
+  "$B" journey surface-accept "$journey_id" --manifest "$manifest" --json >/dev/null
+  "$B" journey show "$journey_id" --json | python3 -c '
+import json, sys
+journey_id = sys.argv[1]
+ready = json.load(sys.stdin)["readiness"]
+assert ready["surfaced"] is True, (journey_id, "surface was not locally reauthorized")
+assert ready["derivations_ratified"] is False, (journey_id, "local surface acceptance fabricated human authority")
+' "$journey_id"
   while IFS= read -r profile; do
     [ -n "$profile" ] || continue
-    echo "dogfood: running Journey '$journey_id' profile '$profile'"
-    if ! "$B" journey run "$journey_id" --profile "$profile"; then
-      cat >&2 <<EOF
-dogfood: Journey '$journey_id' profile '$profile' is not runnable.
-dogfood: release remains closed until a human reviews and accepts the exact
-dogfood: derivation manifest, the derived Intents are implemented/grounded,
-dogfood: and the resulting surface manifest is accepted.  Do not fabricate
-dogfood: --human-decision or import/migrate the legacy v11 graph.
-EOF
-      exit 1
-    fi
+    printf '%s\t%s\n' "$journey_id" "$profile" >>"$AUTHORITY_ROSTER"
+    profile_count=$((profile_count + 1))
+    echo "dogfood: Journey '$journey_id' profile '$profile': not executed — authority_voided_by_import"
   done <<<"$profiles"
   journey_count=$((journey_count + 1))
-done < <(find journeys -type f \( -name '*.yaml' -o -name '*.yml' -o -name '*.json' \) -print0)
+done < <(find journeys -type f \( -name '*.yaml' -o -name '*.yml' -o -name '*.json' \) ! -name '*.surface.json' -print0)
 
 [ "$journey_count" -gt 0 ] || {
   echo "dogfood: no authored Journey artifacts found" >&2
   exit 1
 }
 
-echo "== integrity =="
-"$B" doctor
+echo "== cold-authority integrity =="
+doctor_status=0
+doctor_report="$("$B" doctor --json 2>/dev/null)" || doctor_status=$?
+python3 -c '
+import json, re, sys
+roster_path, status = sys.argv[1:]
+assert int(status) != 0, "imported authority unexpectedly passed doctor"
+issues = json.load(sys.stdin)
+assert issues, "doctor failed without structured issues"
+assert all(issue.get("kind") == "unratified_journey_derivation" for issue in issues), issues
+pattern = re.compile(r"^Derives edge '\''([0-9a-f]{32})'\'' targets an Intent that is not ratified$")
+observed = []
+for issue in issues:
+    match = pattern.fullmatch(issue.get("message", ""))
+    assert match, issue
+    observed.append(match.group(1))
+with open(roster_path) as roster_file:
+    expected = [line.strip() for line in roster_file if line.strip()]
+assert len(expected) == len(set(expected)), "derivation roster contains duplicates"
+assert len(observed) == len(set(observed)), "doctor reported duplicate derivation issues"
+assert set(observed) == set(expected), (
+    "cold-authority doctor mismatch",
+    sorted(set(expected) - set(observed)),
+    sorted(set(observed) - set(expected)),
+)
+' "$DERIVATION_ROSTER" "$doctor_status" <<<"$doctor_report"
 "$B" coverage
 "$B" export
 "$B" export --check
@@ -218,12 +289,21 @@ echo "== integrity =="
 if $CHECK; then
   "$B" journey drift --json | python3 -c '
 import json, sys
-rows = json.load(sys.stdin)
-stale = [row for row in rows if not row.get("current", False)]
-if stale:
-    print("dogfood: Journey projection drift remains:", stale, file=sys.stderr)
-    raise SystemExit(1)
-'
+roster_path = sys.argv[1]
+report = json.load(sys.stdin)
+with open(roster_path) as roster_file:
+    roster = [tuple(line.rstrip("\n").split("\t")) for line in roster_file if line.strip()]
+assert len(roster) == len(set(roster)), "authority-pause roster contains duplicates"
+rows = []
+for index, row in enumerate(report["journeys"]):
+    assert isinstance(row.get("current"), bool), f"drift row {index} lacks boolean current"
+    pair = (row.get("journey_id"), row.get("profile"))
+    assert row["current"] is False, ("authority-pause row unexpectedly current", pair)
+    rows.append(pair)
+assert len(rows) == len(set(rows)), "drift contains duplicate Journey/profile rows"
+assert set(rows) == set(roster), ("authority-pause drift mismatch", sorted(set(roster) - set(rows)), sorted(set(rows) - set(roster)))
+assert report["stale"] == len(roster) == len(rows), (report["stale"], len(roster), len(rows))
+' "$AUTHORITY_ROSTER"
 fi
 
-echo "dogfood: complete — fresh v12 Journey graph is runnable and current"
+echo "dogfood: OK — $journey_count Journey(s) structurally current; $profile_count profile(s) not executed — authority_voided_by_import"

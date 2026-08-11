@@ -342,6 +342,10 @@
       "mode": "regular"
     },
     {
+      "path": "release/snapshot-expectation.json",
+      "mode": "regular"
+    },
+    {
       "path": "scripts/check-fixpoint.sh",
       "mode": "executable"
     },
@@ -462,20 +466,8 @@
       "mode": "regular"
     },
     {
-      "path": "src/commands/journey/coverage.rs",
-      "mode": "absent"
-    },
-    {
-      "path": "src/commands/journey/invariants.rs",
-      "mode": "absent"
-    },
-    {
       "path": "src/commands/journey/mod.rs",
       "mode": "regular"
-    },
-    {
-      "path": "src/commands/journey/prompt.rs",
-      "mode": "absent"
     },
     {
       "path": "src/commands/judgment_cmd.rs",
@@ -954,10 +946,6 @@
       "mode": "regular"
     },
     {
-      "path": "tests/ring41_diagnose_parity.rs",
-      "mode": "absent"
-    },
-    {
       "path": "tests/ring42_edge_lint.rs",
       "mode": "regular"
     },
@@ -1015,7 +1003,7 @@
     },
     {
       "path": "tests/ring51_source_anchors.rs",
-      "mode": "regular"
+      "mode": "absent"
     },
     {
       "path": "tests/ring52_journey_manual_gate.rs",
@@ -1023,6 +1011,10 @@
     },
     {
       "path": "tests/ring53_release_rehearsal.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring54_source_anchors.rs",
       "mode": "regular"
     },
     {
@@ -1047,6 +1039,7 @@
     }
   ],
   "reserved_components": [
+    ".claude",
     ".git",
     ".loom",
     ".qoder",

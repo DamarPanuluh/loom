@@ -55,7 +55,8 @@ const RESULT_EXCLUDES: [&str; 5] = [
     "loom.graph.json",
     "target",
 ];
-const INVENTORY_RESERVED_COMPONENTS: [&str; 7] = [
+const INVENTORY_RESERVED_COMPONENTS: [&str; 8] = [
+    ".claude",
     ".git",
     ".loom",
     ".qoder",

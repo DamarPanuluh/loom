@@ -2,6 +2,7 @@
 .loom/
 .reasonix/
 .qoder/
+.claude/settings.local.json
 
 # insta writes pending snapshots next to the source under test; they are
 # review scratch, never source.

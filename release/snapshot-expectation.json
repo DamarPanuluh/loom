@@ -1,0 +1,16 @@
+{
+  "schema": "loom.release-snapshot/v1",
+  "status": "passed",
+  "candidate_hash_relation": "source_inventory.inventory_hash",
+  "source_inventory": {
+    "schema": "loom.release-source-inventory-attestation/v1",
+    "manifest_hash": "6bdb4e0aa87780d0",
+    "git_influenced_plan": false,
+    "materialized_matches": true,
+    "provenance": "source_controlled_manifest_git_verified",
+    "git_verification": "verified",
+    "entry_count": 259,
+    "file_count": 258,
+    "tombstone_count": 1
+  }
+}

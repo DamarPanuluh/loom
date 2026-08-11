@@ -24,6 +24,17 @@ fn intent(store: &Store, name: &str) -> String {
         .id
 }
 
+fn park_real_clock_burst_away_from_minute_boundary() {
+    let since_minute = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        % 60;
+    if since_minute >= 50 {
+        std::thread::sleep(std::time::Duration::from_secs(61 - since_minute));
+    }
+}
+
 /// The exact shape of the incident: a `ratified` state with no journal entry
 /// behind it. loom writes the entry before stamping, so on a graph this version
 /// produced the invariant holds — a violation means the record arrived some
@@ -63,6 +74,7 @@ fn an_unjournaled_ratification_is_caught() {
 /// sixty seconds; the cluster at 2026-07-18T19:20 was the tell.
 #[test]
 fn a_judgment_burst_is_caught() {
+    park_real_clock_burst_away_from_minute_boundary();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
 
@@ -105,6 +117,7 @@ fn a_judgment_burst_is_caught() {
 
 #[test]
 fn a_human_can_accept_exact_history_without_authorizing_or_rewriting_it() {
+    park_real_clock_burst_away_from_minute_boundary();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
 
@@ -678,6 +691,7 @@ fn coverage_and_the_rung_count_the_same_files() {
 /// held loom's own `sound` rung open with no move available.
 #[test]
 fn a_burst_whose_subjects_are_not_currently_derived_is_not_reported() {
+    park_real_clock_burst_away_from_minute_boundary();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
 
@@ -739,6 +753,7 @@ fn a_burst_whose_subjects_are_not_currently_derived_is_not_reported() {
 /// minute, and therefore cannot close the burst.
 #[test]
 fn a_retrospective_batch_authorization_does_not_close_the_burst() {
+    park_real_clock_burst_away_from_minute_boundary();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
 
@@ -940,14 +955,7 @@ fn partitioned_human_ratification_burst(leave_one_uncovered: bool) -> (Tmp, Stor
     // use the real clock, so a run that begins near :50 can straddle the
     // boundary under load, split the bucket, and fail both callers spuriously.
     // Park until the fresh minute when close; the assertions stay untouched.
-    let since_minute = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
-        % 60;
-    if since_minute >= 50 {
-        std::thread::sleep(std::time::Duration::from_secs(61 - since_minute));
-    }
+    park_real_clock_burst_away_from_minute_boundary();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("partitioned ratification"), false).unwrap();
     let decision = loom::ratification::HumanDecision::mediated(
@@ -1137,6 +1145,7 @@ fn partitioned_human_sub_batches_fail_closed_with_one_subject_uncovered() {
 /// the audit is never made clean by re-judging.
 #[test]
 fn re_judging_does_not_close_the_burst() {
+    park_real_clock_burst_away_from_minute_boundary();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     let mut subjects = Vec::new();
@@ -1217,6 +1226,7 @@ fn re_judging_does_not_close_the_burst() {
 /// digests, and the burst actor's own later seal all still fail closed.
 #[test]
 fn a_human_seal_over_a_pre_burst_record_closes_the_burst() {
+    park_real_clock_burst_away_from_minute_boundary();
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
 
