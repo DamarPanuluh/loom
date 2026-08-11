@@ -1555,6 +1555,54 @@ fn codefile_add_is_a_confined_mutation_despite_authored_read_only() {
 }
 
 #[test]
+fn validation_remove_is_a_confined_mutation_despite_authored_read_only() {
+    let spec = loom::journey::parse(Path::new("journeys/release-workflow.yaml")).unwrap();
+    let mut manifest: loom::journey::SurfaceManifest =
+        serde_json::from_value(release_surface_manifest(&spec.semantic_hash().unwrap())).unwrap();
+    let operation = &mut manifest.surface.operations[0];
+    operation.argv = vec![
+        "loom".into(),
+        "validation".into(),
+        "remove".into(),
+        "stale fixture proof".into(),
+        "--json".into(),
+    ];
+    operation.environment.clear();
+    operation.read_only = false;
+    let operation_id = operation.id.clone();
+
+    let plan = loom::candidate_surface_policy::inspect_manifest(
+        &spec,
+        &manifest,
+        loom::candidate_surface_policy::PolicyMode::DetachedReleaseInspection {
+            outer_journey_id: "release-workflow",
+            outer_surface_id: "loom-release-rehearsal",
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        plan.inspections()
+            .iter()
+            .find(|inspection| inspection.operation_id == operation_id)
+            .unwrap()
+            .capability,
+        loom::candidate_surface_policy::DerivedCapability::ConfinedMutation
+    );
+
+    manifest.surface.operations[0].read_only = true;
+    let error = loom::candidate_surface_policy::inspect_manifest(
+        &spec,
+        &manifest,
+        loom::candidate_surface_policy::PolicyMode::DetachedReleaseInspection {
+            outer_journey_id: "release-workflow",
+            outer_surface_id: "loom-release-rehearsal",
+        },
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("marked read_only"));
+}
+
+#[test]
 fn fresh_fixpoint_runs_both_workspace_rejection_probes() {
     let fixture = RuntimeFixture::new("probe-success");
     let _environment = fixture.activate();
@@ -1801,9 +1849,9 @@ fn all_source_surface_manifests_parse_and_bind_authored_journeys() {
             .filter(|operation| !operation.read_only)
             .count();
     }
-    assert_eq!(operation_count, 86);
+    assert_eq!(operation_count, 88);
     assert_eq!(declared_read_only, 34);
-    assert_eq!(declared_mutable, 52);
+    assert_eq!(declared_mutable, 54);
 }
 
 #[test]

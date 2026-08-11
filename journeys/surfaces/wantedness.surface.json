@@ -6,8 +6,8 @@
     "id": "wantedness-context-cli",
     "title": "Inspect technical evidence without inferring wantedness",
     "identity": "loom context <intent>",
-    "codefile": "src/commands/context_cmd.rs",
-    "locator": "context_cmd",
+    "codefile": "src/ratification.rs",
+    "locator": "effective",
     "operations": [
       {
         "arguments": [],

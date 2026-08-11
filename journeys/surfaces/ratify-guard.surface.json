@@ -6,8 +6,8 @@
     "id": "ratify-guard-transcript-cli",
     "title": "Refuse unmediated ratification",
     "identity": "loom mcp transcript --requests-json",
-    "codefile": "src/mcp.rs",
-    "locator": "transcript",
+    "codefile": "src/commands/intent.rs",
+    "locator": "intent_ratify; intent_reject",
     "operations": [
       {
         "arguments": [],

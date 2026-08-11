@@ -6,8 +6,8 @@
     "id": "door-capture-cli",
     "title": "Capture and route a topic through Loom's typed intake",
     "identity": "loom door and inbox mark/show",
-    "codefile": "src/commands.rs",
-    "locator": "run",
+    "codefile": "src/commands/capture_cmd.rs",
+    "locator": "door",
     "operations": [
       {
         "arguments": [],

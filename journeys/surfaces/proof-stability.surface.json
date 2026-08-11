@@ -6,8 +6,8 @@
     "id": "loom-proof-stability",
     "title": "Loom proof stability",
     "identity": "loom validation run and smells",
-    "codefile": "src/commands.rs",
-    "locator": "run",
+    "codefile": "src/store/derived.rs",
+    "locator": "record_proof_stability",
     "operations": [
       {
         "arguments": [],

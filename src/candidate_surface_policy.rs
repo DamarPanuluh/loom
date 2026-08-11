@@ -765,7 +765,8 @@ fn classify_cli(
             cmd: IntentCmd::Add { .. } | IntentCmd::Update { .. } | IntentCmd::Impact { .. },
         }
         | Command::Validation {
-            cmd: ValidationCmd::Add { .. } | ValidationCmd::Run { .. },
+            cmd:
+                ValidationCmd::Add { .. } | ValidationCmd::Run { .. } | ValidationCmd::Remove { .. },
         } => DerivedCapability::ConfinedMutation,
         Command::Mode { mode } if mode.is_some() => DerivedCapability::ConfinedMutation,
         Command::Mode { mode: None } => DerivedCapability::Read,

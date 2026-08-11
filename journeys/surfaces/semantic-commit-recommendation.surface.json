@@ -16,7 +16,7 @@
           "checkpoint",
           "recommend",
           "--intent",
-          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "130380027f0e1102581bb31f303ee2f0",
           "--json"
         ],
         "id": "inspect-checkpoint-readiness",
@@ -36,7 +36,7 @@
             },
             {
               "equals": [
-                "8fe1e8413db5f3df8c41f23ad4f3327f"
+                "130380027f0e1102581bb31f303ee2f0"
               ],
               "id": "checkpoint-scope-is-exact",
               "pointer": "/scope/intent_ids",
@@ -49,7 +49,7 @@
               "type": "json"
             },
             {
-              "equals": "src/candidate_surface_policy.rs",
+              "equals": "src/fsglob.rs",
               "id": "checkpoint-includes-registered-source",
               "pointer": "/included_paths/0/path",
               "type": "string"
@@ -61,7 +61,7 @@
               "type": "string"
             },
             {
-              "equals": "grounded to selected Intent(s): 8fe1e8413db5f3df8c41f23ad4f3327f",
+              "equals": "grounded to selected Intent(s): 130380027f0e1102581bb31f303ee2f0",
               "id": "checkpoint-source-is-grounded-to-scope",
               "pointer": "/included_paths/0/reason",
               "type": "string"
@@ -138,7 +138,7 @@
               "type": "string"
             },
             {
-              "equals": "validates:8fe1e8413db5f3df8c41f23ad4f3327f:passing",
+              "equals": "validates:130380027f0e1102581bb31f303ee2f0:passing",
               "id": "fixture-validation-evidence-is-current",
               "pointer": "/checks/3/evidence/0",
               "type": "string"
@@ -161,7 +161,7 @@
           "checkpoint",
           "recommend",
           "--intent",
-          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "130380027f0e1102581bb31f303ee2f0",
           "--json"
         ],
         "id": "observe-human-push-gate",
@@ -214,7 +214,7 @@
           "checkpoint",
           "recommend",
           "--intent",
-          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "130380027f0e1102581bb31f303ee2f0",
           "--json"
         ],
         "id": "observe-llm-commit-or-defer-policy",
@@ -267,6 +267,66 @@
         "argv": [
           "loom",
           "validation",
+          "remove",
+          "journey:semantic-commit-recommendation:proof",
+          "--json"
+        ],
+        "id": "isolate-current-journey-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": true,
+              "id": "current-journey-proof-is-removed",
+              "pointer": "/removed",
+              "type": "boolean"
+            },
+            {
+              "equals": "journey:semantic-commit-recommendation:proof",
+              "id": "removed-current-proof-is-exact",
+              "pointer": "/validation/name",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Remove this Journey's unsettled proof only from the isolated fixture graph so readiness does not depend on its own future verdict"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
+          "remove",
+          "contract: root-confined paths",
+          "--json"
+        ],
+        "id": "isolate-prior-scope-proof",
+        "output": {
+          "assertions": [
+            {
+              "equals": true,
+              "id": "prior-scope-proof-is-removed",
+              "pointer": "/removed",
+              "type": "boolean"
+            },
+            {
+              "equals": "contract: root-confined paths",
+              "id": "removed-prior-proof-is-exact",
+              "pointer": "/validation/name",
+              "type": "string"
+            }
+          ],
+          "format": "json"
+        },
+        "read_only": false,
+        "summary": "Remove imported proof history only from the isolated fixture graph so readiness is established by this Journey's observed fixture proof"
+      },
+      {
+        "arguments": [],
+        "argv": [
+          "loom",
+          "validation",
           "add",
           "--name",
           "journey semantic commit recommendation fixture pass",
@@ -275,7 +335,7 @@
           "--command",
           "loom whoami --json",
           "--intent",
-          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "130380027f0e1102581bb31f303ee2f0",
           "--json"
         ],
         "id": "register-checkpoint-fixture-proof",
@@ -306,13 +366,13 @@
               "type": "string"
             },
             {
-              "equals": "8fe1e8413db5f3df8c41f23ad4f3327f",
+              "equals": "130380027f0e1102581bb31f303ee2f0",
               "id": "fixture-proof-intent",
               "pointer": "/intent/id",
               "type": "string"
             },
             {
-              "equals": "8fe1e8413db5f3df8c41f23ad4f3327f",
+              "equals": "130380027f0e1102581bb31f303ee2f0",
               "id": "fixture-proof-validates-the-scope",
               "pointer": "/edge/to_id",
               "type": "string"
@@ -330,7 +390,7 @@
           "checkpoint",
           "recommend",
           "--intent",
-          "8fe1e8413db5f3df8c41f23ad4f3327f",
+          "130380027f0e1102581bb31f303ee2f0",
           "--json"
         ],
         "id": "review-commit-recommendation",
@@ -343,13 +403,13 @@
               "type": "string"
             },
             {
-              "equals": "implemented Intent 'Confined compiled Journey execution'",
+              "equals": "implemented Intent 'Root-confined paths'",
               "id": "recommendation-rationale-is-semantic",
               "pointer": "/scope/rationale",
               "type": "string"
             },
             {
-              "equals": "src/candidate_surface_policy.rs",
+              "equals": "src/fsglob.rs",
               "id": "recommendation-names-exact-source",
               "pointer": "/included_paths/0/path",
               "type": "string"
@@ -360,7 +420,7 @@
               "type": "json"
             },
             {
-              "equals": "feat: Confined compiled Journey execution",
+              "equals": "feat: Root-confined paths",
               "id": "recommendation-message-is-deterministic",
               "pointer": "/suggested_message",
               "type": "string"
@@ -484,12 +544,14 @@
   "setup": {
     "git": {
       "dirty_paths": [
-        "src/candidate_surface_policy.rs"
+        "src/fsglob.rs"
       ],
       "mode": "isolated_snapshot"
     },
     "graph": "local_snapshot",
     "operations": [
+      "isolate-current-journey-proof",
+      "isolate-prior-scope-proof",
       "register-checkpoint-fixture-proof",
       "run-checkpoint-fixture-proof",
       "verify-isolated-checkpoint-fixture"
