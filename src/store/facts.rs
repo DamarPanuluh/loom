@@ -228,8 +228,11 @@ impl<'a> Assertion<'a> {
         self
     }
 
-    /// Attach an observation loom made. Crate-internal by construction, so a
-    /// caller cannot express this field at all.
+    /// Attach an observation loom made. Crate-internal in intent — see the
+    /// module header — and consumed producer-gated: Journey assertion
+    /// provenance is trusted only from `RunProducer::Journey` runs minted by
+    /// the compiler-owned settlement, never from generic command runs or
+    /// imported presentation text.
     // Wired up as each anchoring floor is raised to `verified` — the proof lane
     // first, then the locator and pre-screen probes.
     #[allow(dead_code)]

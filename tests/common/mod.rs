@@ -407,6 +407,15 @@ fn s3_journey_proof_with_ratification(
             TruthClass::Asserted,
         )
         .unwrap();
+    store
+        .set_facet(
+            &exercises.id,
+            TargetKind::Edge,
+            "surface_locator",
+            "run_checkout",
+            TruthClass::Asserted,
+        )
+        .unwrap();
 
     let proof = loom::journey_runtime::compile(
         &spec,

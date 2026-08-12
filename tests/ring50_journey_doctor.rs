@@ -474,6 +474,15 @@ fn intrinsic_human_binding_is_not_a_calls_or_exercises_witness() {
             TruthClass::Asserted,
         )
         .unwrap();
+    store
+        .set_facet(
+            &exercises.id,
+            TargetKind::Edge,
+            "surface_locator",
+            "present",
+            TruthClass::Asserted,
+        )
+        .unwrap();
     let complete = signal::doctor(&store).unwrap();
     assert!(
         complete.is_empty(),

@@ -1,9 +1,7 @@
 //! Ring 47 — semantic Journey compiler seams agree end to end.
 
-use loom::model::{
-    Claim, EdgeKind, InspectionStatus, Node, NodeType, RunProducer, TargetKind, TruthClass,
-};
-use loom::store::{Assertion, Store, Subject};
+use loom::model::{EdgeKind, InspectionStatus, Node, NodeType, TargetKind, TruthClass};
+use loom::store::Store;
 use rusqlite::Connection;
 mod common;
 use common::Tmp;
@@ -16,6 +14,8 @@ struct CompiledFixture {
     proves_id: String,
     validates_id: String,
     calls_id: String,
+    exercises_id: String,
+    surface_exercises_id: String,
 }
 
 fn compiled_fixture() -> CompiledFixture {
@@ -132,7 +132,7 @@ fn compiled_fixture() -> CompiledFixture {
                 "title":"Flow CLI",
                 "kind":"cli",
                 "identity":"flow",
-                "operations":[{"id":"act-op","summary":"act","argv":["flow","act"],"arguments":[],"output":{"format":"json"}}]
+                "operations":[{"id":"act-op","summary":"act","argv":["flow","act"],"arguments":[],"output":{"format":"json","assertions":[{"id":"act-ok","pointer":"/ok","type":"boolean","equals":true}]},"exercises":[{"id":"proof-entry","codefile":"tests/compiled_proof.rs","locator":"compiled_proof","observed_by":"act-ok"}]}]
             }),
         )
         .unwrap();
@@ -171,11 +171,20 @@ fn compiled_fixture() -> CompiledFixture {
             serde_json::json!({}),
         )
         .unwrap();
-    store
+    let exposes = store
         .add_edge(
             EdgeKind::Exposes,
             &surface.id,
             &surface_code.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &exposes.id,
+            TargetKind::Edge,
+            "locator",
+            "flow_cli",
             TruthClass::Asserted,
         )
         .unwrap();
@@ -205,7 +214,7 @@ fn compiled_fixture() -> CompiledFixture {
                 "profile":"proof",
                 "journey_hash":"journey-hash-v1",
                 "surface_hash":surface_hash,
-                "compiler_version":"ring47-v1"
+                "compiler_version": loom::journey::JOURNEY_COMPILER_VERSION
             }),
         )
         .unwrap();
@@ -233,6 +242,34 @@ fn compiled_fixture() -> CompiledFixture {
             TruthClass::Asserted,
         )
         .unwrap();
+    // Compiler-v4 Exercises topology: one public surface edge and one
+    // downstream exercise edge with exact provenance facets.
+    let surface_exercises = store
+        .add_edge(
+            EdgeKind::Exercises,
+            &validation.id,
+            &surface_code.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &surface_exercises.id,
+            TargetKind::Edge,
+            "locator",
+            "flow_cli",
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &surface_exercises.id,
+            TargetKind::Edge,
+            "surface_locator",
+            "flow_cli",
+            TruthClass::Asserted,
+        )
+        .unwrap();
     let exercises = store
         .add_edge(
             EdgeKind::Exercises,
@@ -250,59 +287,73 @@ fn compiled_fixture() -> CompiledFixture {
             TruthClass::Asserted,
         )
         .unwrap();
+    store
+        .set_facet(
+            &exercises.id,
+            TargetKind::Edge,
+            "journey_operation_exercises",
+            &serde_json::to_string(&vec![loom::journey::JourneyOperationExerciseFacet {
+                operation_id: "act-op".into(),
+                exercise_id: "proof-entry".into(),
+                observed_by: "act-ok".into(),
+                locator: "compiled_proof".into(),
+            }])
+            .unwrap(),
+            TruthClass::Asserted,
+        )
+        .unwrap();
 
-    let mut run = loom::runner::record(
-        tmp.path(),
-        RunProducer::Command,
-        "cargo test --test compiled_proof",
-        &[],
-        1,
-        0,
-        b"compiled runtime completed\n",
-        b"",
-        1,
-    );
-    run.covered = std::collections::BTreeMap::from([
-        (
+    // Settle through the real compiler-owned settlement path: it mints the
+    // Journey run evidence (including the structured observed assertion) and
+    // regrades — exactly what `loom journey run` does.
+    let report = loom::journey_runtime::RuntimeReport {
+        journey_id: "flow".into(),
+        profile: "proof".into(),
+        journey_hash: "journey-hash-v1".into(),
+        surface_hash: surface_hash.clone(),
+        status: loom::journey_runtime::RuntimeStatus::Passed,
+        assertions_passed: 1,
+        assertions_failed: 0,
+        detail: None,
+        setup: Vec::new(),
+        file_transitions: Vec::new(),
+        steps: Vec::new(),
+        captures: std::collections::BTreeMap::new(),
+        passed_assertions: vec![loom::journey_runtime::PassedAssertion {
+            operation_id: "act-op".into(),
+            assertion_id: "act-ok".into(),
+        }],
+    };
+    loom::journey::settle_compiled_validation(
+        &store,
+        &validation.id,
+        &report,
+        &[
             "src/behavior.rs".into(),
-            loom::artifact::fingerprint(
-                &std::fs::read_to_string(tmp.path().join("src/behavior.rs")).unwrap(),
-            ),
-        ),
-        (
             "src/flow_cli.rs".into(),
-            loom::artifact::fingerprint(
-                &std::fs::read_to_string(tmp.path().join("src/flow_cli.rs")).unwrap(),
-            ),
-        ),
-        (
             "tests/compiled_proof.rs".into(),
-            loom::artifact::fingerprint(
-                &std::fs::read_to_string(tmp.path().join("tests/compiled_proof.rs")).unwrap(),
-            ),
-        ),
-    ]);
-    for edge in [&proves, &validates, &calls, &exercises] {
+        ],
+    )
+    .unwrap();
+    // The closure edges carry inspected verdicts, exactly as sync leaves them
+    // on a live compiled Journey. `stale_edge` only re-opens inspected edges,
+    // so the drift tests below can assert the whole closure invalidates.
+    for (edge, cited) in [
+        (&calls, "src/flow_cli.rs:1"),
+        (&exercises, "src/flow_cli.rs:1"),
+        (&surface_exercises, "src/behavior.rs:1"),
+    ] {
         store
-            .assert_fact(
-                Assertion::new(
-                    Subject::Edge(edge.id.clone()),
-                    Claim::Verdict,
-                    InspectionStatus::Passing.as_str(),
-                    "ring47",
-                )
-                .criterion("compiled proof topology was exercised")
-                .confidence(1.0)
-                .cited(loom::evidence::cite(tmp.path(), "compiled proof observation").unwrap())
-                .observed(run.clone()),
+            .record_verdict(
+                &edge.id,
+                InspectionStatus::Passing,
+                "compiled proof topology was exercised",
+                cited,
+                1.0,
+                "ring47",
             )
             .unwrap();
     }
-    store
-        .record_proof_stability(&validation.id, "passed")
-        .unwrap();
-    store.set_node_status(&validation.id, "passed").unwrap();
-    loom::proofstrength::recompute(&store, tmp.path()).unwrap();
 
     CompiledFixture {
         tmp,
@@ -312,6 +363,8 @@ fn compiled_fixture() -> CompiledFixture {
         proves_id: proves.id,
         validates_id: validates.id,
         calls_id: calls.id,
+        exercises_id: exercises.id,
+        surface_exercises_id: surface_exercises.id,
     }
 }
 
@@ -332,18 +385,15 @@ fn only_the_hash_bound_compiler_closure_earns_journey_s3() {
         loom::proofstrength::Strength::S3
     );
 
-    let exercises = fixture
-        .store
-        .edges_with(
-            Some(EdgeKind::Exercises),
-            Some(&fixture.validation.id),
-            None,
-        )
-        .unwrap()[0]
-        .clone();
+    // Removing the compiler-owned provenance facet must demote to S2 — a
+    // bare Exercises edge cannot earn reach for a compiler-v4 Journey proof.
     fixture
         .store
-        .clear_facet(&exercises.id, TargetKind::Edge, "locator")
+        .clear_facet(
+            &fixture.exercises_id,
+            TargetKind::Edge,
+            "journey_operation_exercises",
+        )
         .unwrap();
     loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();
     assert_eq!(
@@ -354,10 +404,16 @@ fn only_the_hash_bound_compiler_closure_earns_journey_s3() {
     fixture
         .store
         .set_facet(
-            &exercises.id,
+            &fixture.exercises_id,
             TargetKind::Edge,
-            "locator",
-            "compiled_proof",
+            "journey_operation_exercises",
+            &serde_json::to_string(&vec![loom::journey::JourneyOperationExerciseFacet {
+                operation_id: "act-op".into(),
+                exercise_id: "proof-entry".into(),
+                observed_by: "act-ok".into(),
+                locator: "compiled_proof".into(),
+            }])
+            .unwrap(),
             TruthClass::Asserted,
         )
         .unwrap();
@@ -365,7 +421,7 @@ fn only_the_hash_bound_compiler_closure_earns_journey_s3() {
     assert_eq!(
         loom::proofstrength::of(&fixture.store, &fixture.validation.id).unwrap(),
         loom::proofstrength::Strength::S3,
-        "Calls plus locator-bound Exercises reach earns S3"
+        "Calls plus compiler-owned exercise provenance reach earns S3"
     );
 
     let raw = fixture
@@ -455,16 +511,7 @@ fn backing_code_drift_closes_the_interface_and_proof_ripple_once() {
         .unwrap()[0]
         .id
         .clone();
-    let exercises = fixture
-        .store
-        .edges_with(
-            Some(EdgeKind::Exercises),
-            Some(&fixture.validation.id),
-            None,
-        )
-        .unwrap()[0]
-        .id
-        .clone();
+    let exercises = fixture.exercises_id.clone();
     fixture
         .store
         .record_verdict(
@@ -516,6 +563,16 @@ fn backing_code_drift_closes_the_interface_and_proof_ripple_once() {
             "the affected compiled proof/interface closure is invalidated"
         );
     }
+    assert_eq!(
+        fixture
+            .store
+            .get_edge(&fixture.surface_exercises_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        InspectionStatus::Passing,
+        "the public surface Exercises edge anchors on unchanged behavior code and is spared"
+    );
     assert_eq!(
         fixture.store.get_edge(&realizes).unwrap().unwrap().status,
         InspectionStatus::Passing,

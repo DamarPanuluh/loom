@@ -1067,6 +1067,66 @@ fn relationship_path_exists(
 // -------------------------------------------------------------------------
 // Reusable CLI surface manifest
 
+/// The reusable surface-contract template emitted by `loom journey surface`.
+///
+/// Every id, path, and locator inside is a deliberate placeholder: callers
+/// must substitute repository-specific registered CodeFile keys, live
+/// locators, and operation/assertion ids before acceptance. The template is
+/// internally consistent by construction — in particular, the example
+/// operation exercise's `observed_by` names an assertion that the example
+/// operation actually declares.
+pub fn surface_contract_template(journey_id: &str, journey_hash: &str) -> serde_json::Value {
+    serde_json::json!({
+        "schema": SURFACE_SCHEMA,
+        "journey_id": journey_id,
+        "journey_hash": journey_hash,
+        "surface": {
+            "id": "stable-cli-surface-id",
+            "title": "Reusable CLI surface title",
+            "identity": "binary subcommand",
+            "codefile": "required existing CodeFile key",
+            "locator": "required live CLI entrypoint symbol or strict anchor:<id>",
+            "operations": [{
+                "id": "stable-operation-id",
+                "summary": "One reusable CLI operation",
+                "argv": ["binary", "subcommand"],
+                "arguments": [{"id":"argument-id", "type":"string", "required":true, "flag":"--argument"}],
+                "output": {
+                    "format": "json",
+                    "assertions": [{
+                        "id": "assertion-id-in-this-operation",
+                        "pointer": "/ok",
+                        "type": "boolean",
+                        "equals": true
+                    }]
+                },
+                "exercises": [{
+                    "id": "optional-downstream-entry",
+                    "codefile": "path/to/handler.rs",
+                    "locator": "handler_symbol",
+                    "observed_by": "assertion-id-in-this-operation"
+                }]
+            }]
+        },
+        "setup": {
+            "graph": "local_snapshot",
+            "git": {
+                "mode": "isolated_snapshot",
+                "dirty_paths": ["registered/codefile.rs"]
+            },
+            "before_steps": {
+                "authored-step-id": [{
+                    "path": "registered/codefile.rs",
+                    "expected_hash": "0123456789abcdef",
+                    "content": "exact replacement content"
+                }]
+            },
+            "operations": ["stable-setup-operation-id"]
+        },
+        "bindings": [{"step_id":"authored-step-id", "operation_id":"stable-operation-id"}]
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SurfaceManifest {
@@ -1327,48 +1387,6 @@ fn confined_regular_file(root: &Path, path: &str, label: &str) -> Result<PathBuf
         bail!("{label} '{path}' escapes the graph root");
     }
     Ok(current)
-}
-
-/// Operation exercises must name a live callable symbol. Navigation anchors and
-/// non-callable declarations are refused at acceptance time so compile cannot
-/// invent an S3-ineligible "entry" that looks authored.
-fn require_callable_exercise_locator(
-    store: &crate::store::Store,
-    codefile: &crate::model::Node,
-    locator: &str,
-) -> Result<()> {
-    if crate::locator::is_anchor_locator(locator) {
-        bail!("navigation-only anchor locators are not valid operation exercise entries");
-    }
-    crate::locator::validate_for_codefile(store, codefile, locator)?;
-    let symbols = crate::locator::symbols(locator);
-    if symbols.is_empty() {
-        bail!("operation exercise locator must name a callable symbol");
-    }
-    let path = store.root().join(&codefile.name);
-    let content = std::fs::read_to_string(&path)
-        .with_context(|| format!("reading CodeFile '{}'", codefile.name))?;
-    let extracted = crate::extract::extract(&codefile.name, &content);
-    for symbol in symbols {
-        let Some(entry) = extracted
-            .symbols
-            .iter()
-            .find(|candidate| candidate.name == symbol)
-        else {
-            bail!(
-                "operation exercise locator '{locator}' does not resolve in '{}'",
-                codefile.name
-            );
-        };
-        if !matches!(entry.kind.as_str(), "function" | "method") {
-            bail!(
-                "operation exercise locator '{locator}' resolves to non-callable '{}' in '{}'",
-                entry.kind,
-                codefile.name
-            );
-        }
-    }
-    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2460,13 +2478,17 @@ impl SurfaceManifest {
                         codefile.name
                     );
                 }
-                require_callable_exercise_locator(store, &codefile, &exercise.locator)
-                    .with_context(|| {
-                        format!(
-                            "operation '{}' exercise '{}' locator '{}'",
-                            operation.id, exercise.id, exercise.locator
-                        )
-                    })?;
+                crate::journey_exercises::require_callable_exercise_locator(
+                    store,
+                    &codefile,
+                    &exercise.locator,
+                )
+                .with_context(|| {
+                    format!(
+                        "operation '{}' exercise '{}' locator '{}'",
+                        operation.id, exercise.id, exercise.locator
+                    )
+                })?;
             }
         }
         Ok(())
@@ -2511,6 +2533,34 @@ pub fn settle_compiled_validation(
     use crate::model::{Claim, EdgeKind, InspectionStatus, RunProducer};
     use crate::store::{Assertion, Subject};
 
+    // The observation must be bound to the exact compiled validation it
+    // settles: a report carrying any other journey/surface identity cannot
+    // mint this validation's run evidence.
+    let validation = store
+        .get_node(validation_id)?
+        .ok_or_else(|| anyhow!("validation '{validation_id}' is missing"))?;
+    if validation
+        .body
+        .get("type")
+        .and_then(serde_json::Value::as_str)
+        != Some("journey")
+        || validation
+            .body
+            .get("journey_hash")
+            .and_then(serde_json::Value::as_str)
+            != Some(report.journey_hash.as_str())
+        || validation
+            .body
+            .get("surface_hash")
+            .and_then(serde_json::Value::as_str)
+            != Some(report.surface_hash.as_str())
+    {
+        bail!(
+            "compiled Journey report does not match validation '{}' hashes",
+            validation.name
+        );
+    }
+
     let (node_status, edge_status) = match report.status {
         crate::journey_runtime::RuntimeStatus::Passed => ("passed", InspectionStatus::Passing),
         crate::journey_runtime::RuntimeStatus::Failed => ("failed", InspectionStatus::Failing),
@@ -2530,7 +2580,7 @@ pub fn settle_compiled_validation(
         None
     } else {
         let stdout = crate::journey_runtime::report_observation_json(report)?;
-        Some(crate::runner::record(
+        let mut run = crate::runner::record(
             store.root(),
             RunProducer::Journey,
             &format!(
@@ -2547,7 +2597,19 @@ pub fn settle_compiled_validation(
             &stdout,
             report.detail.as_deref().unwrap_or("").as_bytes(),
             0,
-        ))
+        );
+        // The typed assertions this exact run observed are structured machine
+        // evidence on the run record — never recovered from the (truncatable)
+        // human-facing stdout excerpt.
+        run.observed_assertions = report
+            .passed_assertions
+            .iter()
+            .map(|passed| crate::evidence::ObservedAssertion {
+                group: passed.operation_id.clone(),
+                assertion: passed.assertion_id.clone(),
+            })
+            .collect();
+        Some(run)
     };
 
     for kind in [EdgeKind::Validates, EdgeKind::Proves] {

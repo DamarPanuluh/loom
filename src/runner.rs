@@ -131,6 +131,7 @@ pub fn record(
         stderr_excerpt: excerpt(stderr),
         covered: covered_hashes(root, covered),
         assertions,
+        observed_assertions: Vec::new(),
         duration_ms,
         ran_at: crate::journal::now_iso(),
         loom_version: env!("CARGO_PKG_VERSION").to_string(),

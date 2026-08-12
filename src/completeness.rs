@@ -541,7 +541,7 @@ pub fn journey_readiness(store: &Store, journey: &Node) -> Result<JourneyReadine
                 .body
                 .get("compiler_version")
                 .and_then(|v| v.as_str())
-                .is_some_and(|version| !version.is_empty());
+                == Some(crate::journey::JOURNEY_COMPILER_VERSION);
         if validation.node_type != NodeType::Validation || !hash_current {
             continue;
         }

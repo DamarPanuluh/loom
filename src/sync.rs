@@ -417,7 +417,21 @@ fn ripple_compiled_journey_drift(store: &Store, report: &mut SyncReport) -> Resu
                 .body
                 .get("compiler_version")
                 .and_then(|value| value.as_str())
-                .is_some_and(|version| !version.trim().is_empty());
+                == Some(crate::journey::JOURNEY_COMPILER_VERSION);
+        // The compiled Exercises topology and its provenance facets must agree
+        // exactly with the canonical projection of the accepted surface.
+        // A missing/stale projection or any semantic disagreement — forged,
+        // malformed, or obsolete provenance — stales the closure through the
+        // normal compiler-owned mechanism instead of letting grading carry a
+        // topology nobody accepted.
+        let topology_current = match crate::journey_exercises::expected_projection(store, &journey)
+        {
+            Ok(projection) => {
+                crate::journey_exercises::topology_problems(store, &validation.id, &projection)?
+                    .is_empty()
+            }
+            Err(_) => false,
+        };
 
         let mut accepted_surfaces = BTreeSet::new();
         if let Some(hash) = journey_hash {
@@ -452,7 +466,7 @@ fn ripple_compiled_journey_drift(store: &Store, report: &mut SyncReport) -> Resu
                     InspectionStatus::Uninspected | InspectionStatus::Passing
                 )
             });
-        if body_current && calls_current && exercises_current {
+        if body_current && calls_current && exercises_current && topology_current {
             continue;
         }
         stale_validation_closure(

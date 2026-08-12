@@ -203,6 +203,15 @@ pub fn read_export(path: &Path) -> Result<Export> {
 pub fn quarantine_imported_execution(snap: &mut Snapshot) -> Result<usize> {
     let mut quarantined = 0;
     let mut quarantined_surfaces = std::collections::BTreeSet::new();
+    // Journey assertion provenance is machine evidence minted only by a LOCAL
+    // compiled-Journey settlement. An imported run's assertion set is
+    // untrusted by construction — strip it, and it is re-earned only when the
+    // operator runs the Journey locally.
+    for row in snap.evidence.iter_mut() {
+        if let crate::evidence::Evidence::Run(run) = &mut row.payload {
+            run.observed_assertions.clear();
+        }
+    }
     for node in &mut snap.nodes {
         if node.node_type == NodeType::InterfaceSurface
             && node
@@ -408,6 +417,60 @@ mod tests {
         let parsed = Export::from_json(minimal).unwrap();
         assert!(parsed.config.is_empty());
         assert!(parsed.facts.is_empty());
+    }
+
+    #[test]
+    fn import_strips_journey_assertion_provenance_from_run_evidence() {
+        let mut snapshot = Snapshot {
+            facts: Vec::new(),
+            evidence: vec![crate::evidence::EvidenceRow {
+                id: "e1".into(),
+                fact_id: "f1".into(),
+                payload: crate::evidence::Evidence::Run(crate::evidence::RunRecord {
+                    producer: crate::model::RunProducer::Journey,
+                    command: "loom journey run flow --profile proof".into(),
+                    cwd: String::new(),
+                    exit_code: 0,
+                    stdout_hash: "h".into(),
+                    stderr_hash: "h".into(),
+                    stdout_excerpt: String::new(),
+                    stderr_excerpt: String::new(),
+                    covered: std::collections::BTreeMap::from([("src/cli.rs".into(), "h".into())]),
+                    assertions: 1,
+                    observed_assertions: vec![crate::evidence::ObservedAssertion {
+                        group: "act-op".into(),
+                        assertion: "act-ok".into(),
+                    }],
+                    duration_ms: 0,
+                    ran_at: String::new(),
+                    loom_version: String::new(),
+                }),
+                recorded_at: String::new(),
+                holds: true,
+                expiry_reason: None,
+            }],
+            identity: Identity {
+                graph_id: "g".into(),
+                name: "n".into(),
+                schema_version: crate::SCHEMA_VERSION,
+                observed: false,
+            },
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            facets: Vec::new(),
+            tags: Vec::new(),
+            config: std::collections::BTreeMap::new(),
+        };
+        assert_eq!(quarantine_imported_execution(&mut snapshot).unwrap(), 0);
+        match &snapshot.evidence[0].payload {
+            crate::evidence::Evidence::Run(run) => {
+                assert!(
+                    run.observed_assertions().is_empty(),
+                    "imported assertion provenance must be stripped"
+                );
+            }
+            other => panic!("expected Run evidence, got {other:?}"),
+        }
     }
 
     #[test]

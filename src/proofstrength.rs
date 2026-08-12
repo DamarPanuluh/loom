@@ -254,7 +254,16 @@ impl Default for StrengthWitness {
 /// Deliberately conservative and deliberately separate from declared
 /// assertions. The tool is reporting on itself, so this is weaker evidence than
 /// an expectation loom checked — the witness records which kind you have.
-fn reported_assertions(edge: &Option<crate::model::Edge>, store: &Store) -> Result<Option<String>> {
+/// The structured observation behind S2: a run that actually checked
+/// content assertions. `parse_runner_summary` is the legacy fallback for
+/// generic command validations whose runners print their verdict last;
+/// compiler-owned Journey proofs never use it — their assertion count is
+/// structured machine evidence, and the excerpt must never be a trust input.
+fn reported_assertions(
+    edge: &Option<crate::model::Edge>,
+    store: &Store,
+    parse_excerpt: bool,
+) -> Result<Option<String>> {
     let Some(edge) = edge else { return Ok(None) };
     let Some(view) = store.fact(
         &crate::store::Subject::Edge(edge.id.clone()),
@@ -270,6 +279,9 @@ fn reported_assertions(edge: &Option<crate::model::Edge>, store: &Store) -> Resu
         if run.exit_code == 0 && run.assertions > 0 {
             return Ok(Some(run.assertions.to_string()));
         }
+    }
+    if !parse_excerpt {
+        return Ok(None);
     }
     for row in &view.evidence {
         let crate::evidence::Evidence::Run(run) = &row.payload else {
@@ -433,30 +445,21 @@ fn call_witness(
     Ok(None)
 }
 
-/// Explicit Validation→CodeFile entry evidence. This is the schema-level form
-/// of a per-validation grounding: unlike `implements`, it owns no behavior/code
-/// coverage and exists only to say which code surface this proof exercises.
+/// Explicit Validation→CodeFile entry evidence for generic (non-Journey)
+/// validations. This is the schema-level form of a per-validation grounding:
+/// unlike `implements`, it owns no behavior/code coverage and exists only to
+/// say which code surface this proof exercises. Compiler-owned Journey
+/// validations never take this path — see `journey_owned_entries`.
 fn validation_entries(store: &Store, validation_id: &str) -> Result<Vec<EntryEvidence>> {
-    let passed_assertions = passed_journey_assertions(store, validation_id)?;
     let mut out = Vec::new();
     for edge in store.edges_with(Some(EdgeKind::Exercises), Some(validation_id), None)? {
         let Some(file) = store.get_node(&edge.to_id)? else {
             continue;
         };
         let locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
-        let surface_locator = store.get_facet(&edge.id, TargetKind::Edge, "surface_locator")?;
-        let operation_exercises = store
-            .get_facet(&edge.id, TargetKind::Edge, "journey_operation_exercises")?
-            .and_then(|raw| {
-                serde_json::from_str::<Vec<crate::journey::JourneyOperationExerciseFacet>>(&raw)
-                    .ok()
-            })
-            .unwrap_or_default();
-
         if locator
             .as_deref()
             .is_some_and(crate::locator::is_anchor_locator)
-            && operation_exercises.is_empty()
         {
             // Source anchors stabilize navigation only. Even when attached to
             // a callable entry, they must not become an S3 proof declaration.
@@ -468,94 +471,152 @@ fn validation_entries(store: &Store, validation_id: &str) -> Result<Vec<EntryEvi
             ));
             continue;
         }
-
-        for exercise in &operation_exercises {
-            if crate::locator::is_anchor_locator(&exercise.locator) {
-                out.push(EntryEvidence {
-                    source: "journey_operation_exercise",
-                    file: file.name.clone(),
-                    entry_symbol: None,
-                    s3_eligible: false,
-                    operation_id: Some(exercise.operation_id.clone()),
-                    exercise_id: Some(exercise.exercise_id.clone()),
-                    observed_by: Some(exercise.observed_by.clone()),
-                });
-                continue;
-            }
-            let symbols = crate::locator::symbols(&exercise.locator);
-            let assertion_passed = passed_assertions
-                .contains(&(exercise.operation_id.clone(), exercise.observed_by.clone()));
-            if symbols.is_empty() {
-                out.push(EntryEvidence {
-                    source: "journey_operation_exercise",
-                    file: file.name.clone(),
-                    entry_symbol: None,
-                    s3_eligible: false,
-                    operation_id: Some(exercise.operation_id.clone()),
-                    exercise_id: Some(exercise.exercise_id.clone()),
-                    observed_by: Some(exercise.observed_by.clone()),
-                });
-            } else {
-                out.extend(symbols.into_iter().map(|symbol| EntryEvidence {
-                    source: "journey_operation_exercise",
-                    file: file.name.clone(),
-                    entry_symbol: Some(symbol),
-                    s3_eligible: assertion_passed,
-                    operation_id: Some(exercise.operation_id.clone()),
-                    exercise_id: Some(exercise.exercise_id.clone()),
-                    observed_by: Some(exercise.observed_by.clone()),
-                }));
-            }
-        }
-
-        let public_locator = surface_locator.or_else(|| {
-            operation_exercises
-                .is_empty()
-                .then(|| locator.clone())
-                .flatten()
-        });
-        if let Some(public_locator) = public_locator {
-            if crate::locator::is_anchor_locator(&public_locator) {
-                out.push(EntryEvidence::plain(
-                    "anchor_navigation",
-                    file.name.clone(),
-                    None,
-                    false,
-                ));
-            } else {
-                let locators = crate::locator::symbols(&public_locator);
-                if locators.is_empty() {
-                    out.push(EntryEvidence::plain(
-                        "validation_grounding",
-                        file.name.clone(),
-                        None,
-                        false,
-                    ));
-                } else {
-                    out.extend(locators.into_iter().map(|symbol| {
-                        EntryEvidence::plain(
-                            "validation_grounding",
-                            file.name.clone(),
-                            Some(symbol),
-                            true,
-                        )
-                    }));
-                }
-            }
-        } else if operation_exercises.is_empty() {
-            // Bare file claim: diagnostic only.
+        let locators = locator
+            .map(|locator| crate::locator::symbols(&locator))
+            .unwrap_or_default();
+        // Bare file claim: diagnostic only. Locator-bound exercises is the
+        // product's validation-specific entry declaration (see module docs):
+        // the operator names the entry surface this validation exercises.
+        // Command-derived entries are the other S3 path. Both require a call
+        // witness to the realizing symbol — the locator alone is not enough
+        // without that reachability check in `call_witness`.
+        if locators.is_empty() {
             out.push(EntryEvidence::plain(
                 "validation_grounding",
                 file.name,
                 None,
                 false,
             ));
+        } else {
+            out.extend(locators.into_iter().map(|symbol| {
+                EntryEvidence::plain(
+                    "validation_grounding",
+                    file.name.clone(),
+                    Some(symbol),
+                    true,
+                )
+            }));
         }
     }
     Ok(out)
 }
 
+/// Compiler-owned Journey entries: minted from the canonical projection of the
+/// accepted surface, and only after the compiled Exercises topology/facets
+/// agree with it exactly. Any disagreement, malformed provenance, or a missing
+/// projection fails closed — entries stay diagnostic-only and can never earn
+/// S3, and a compiler-v4 downstream edge can never fall back to the legacy
+/// public-entry interpretation of the aggregate `locator` facet.
+///
+/// Returns the entries plus a human-readable description of any provenance
+/// disagreement (empty when the topology agreed exactly).
+fn journey_owned_entries(
+    store: &Store,
+    validation_id: &str,
+    projection: &crate::journey_exercises::ExpectedExerciseProjection,
+) -> Result<(Vec<EntryEvidence>, Option<String>)> {
+    let problems = crate::journey_exercises::topology_problems(store, validation_id, projection)?;
+    if !problems.is_empty() {
+        let mut out = Vec::new();
+        for codefile_id in projection.target_ids() {
+            if let Some(name) = projection.codefile_name(&codefile_id) {
+                out.push(EntryEvidence {
+                    source: "journey_provenance_mismatch",
+                    file: name.to_string(),
+                    entry_symbol: None,
+                    s3_eligible: false,
+                    operation_id: None,
+                    exercise_id: None,
+                    observed_by: None,
+                });
+            }
+        }
+        return Ok((out, Some(problems.join("; "))));
+    }
+
+    let passed = passed_journey_assertions(store, validation_id)?;
+    let mut out = Vec::new();
+    // The genuine top-level public entry stays the one surface owner. Its
+    // entries follow the ordinary validation_grounding rules, but are read
+    // from the projection — never from a facet an operator could edit.
+    for entry in &projection.public_entries {
+        let Some(locator) = &entry.locator else {
+            out.push(EntryEvidence::plain(
+                "validation_grounding",
+                entry.codefile_name.clone(),
+                None,
+                false,
+            ));
+            continue;
+        };
+        if crate::locator::is_anchor_locator(locator) {
+            out.push(EntryEvidence::plain(
+                "anchor_navigation",
+                entry.codefile_name.clone(),
+                None,
+                false,
+            ));
+            continue;
+        }
+        let symbols = crate::locator::symbols(locator);
+        if symbols.is_empty() {
+            out.push(EntryEvidence::plain(
+                "validation_grounding",
+                entry.codefile_name.clone(),
+                None,
+                false,
+            ));
+        } else {
+            out.extend(symbols.into_iter().map(|symbol| {
+                EntryEvidence::plain(
+                    "validation_grounding",
+                    entry.codefile_name.clone(),
+                    Some(symbol),
+                    true,
+                )
+            }));
+        }
+    }
+    for exercise in &projection.exercises {
+        let assertion_passed =
+            passed.contains(&(exercise.operation_id.clone(), exercise.observed_by.clone()));
+        let symbols = crate::locator::symbols(&exercise.locator);
+        if symbols.is_empty() {
+            // Defensive: the projection already validated callability, so this
+            // only happens if the file changed between projection and grading
+            // within one call — still fail closed.
+            out.push(EntryEvidence {
+                source: "journey_operation_exercise",
+                file: exercise.codefile_name.clone(),
+                entry_symbol: None,
+                s3_eligible: false,
+                operation_id: Some(exercise.operation_id.clone()),
+                exercise_id: Some(exercise.exercise_id.clone()),
+                observed_by: Some(exercise.observed_by.clone()),
+            });
+            continue;
+        }
+        out.extend(symbols.into_iter().map(|symbol| EntryEvidence {
+            source: "journey_operation_exercise",
+            file: exercise.codefile_name.clone(),
+            entry_symbol: Some(symbol),
+            s3_eligible: assertion_passed,
+            operation_id: Some(exercise.operation_id.clone()),
+            exercise_id: Some(exercise.exercise_id.clone()),
+            observed_by: Some(exercise.observed_by.clone()),
+        }));
+    }
+    Ok((out, None))
+}
+
 /// Observed assertion ids from the latest compiled Journey run evidence.
+/// Read from the run record's structured `observed_assertions` — machine
+/// evidence minted by the Journey settlement — never parsed from the
+/// human-facing stdout excerpt, which is truncated for large reports and must
+/// never be parsed for trust decisions. Only `RunProducer::Journey` runs
+/// qualify: the CLI mints that producer solely in the compiler-owned Journey
+/// settlement path, so a generic validation run (whose producer comes from
+/// its command shape) can never carry Journey assertion provenance.
 fn passed_journey_assertions(
     store: &Store,
     validation_id: &str,
@@ -573,23 +634,18 @@ fn passed_journey_assertions(
             let crate::evidence::Evidence::Run(run) = &row.payload else {
                 continue;
             };
-            if run.exit_code != 0 {
+            // A Journey run always anchors its covered files (the public
+            // entry exists by construction). An empty covered map is the
+            // shape an imported/forged run payload takes when it never
+            // actually hashed anything — refuse to credit its assertions.
+            if run.exit_code != 0
+                || run.producer != crate::model::RunProducer::Journey
+                || run.covered.is_empty()
+            {
                 continue;
             }
-            let Ok(value) = serde_json::from_str::<serde_json::Value>(&run.stdout_excerpt) else {
-                continue;
-            };
-            let Some(passed) = value.get("passed_assertions").and_then(|v| v.as_array()) else {
-                continue;
-            };
-            for item in passed {
-                let Some(operation_id) = item.get("operation_id").and_then(|v| v.as_str()) else {
-                    continue;
-                };
-                let Some(assertion_id) = item.get("assertion_id").and_then(|v| v.as_str()) else {
-                    continue;
-                };
-                out.insert((operation_id.to_string(), assertion_id.to_string()));
+            for observed in run.observed_assertions() {
+                out.insert((observed.group.clone(), observed.assertion.clone()));
             }
         }
     }
@@ -1303,11 +1359,11 @@ fn compiled_journey_proves_edge(
             .get("profile")
             .and_then(|value| value.as_str())
             != Some("proof")
-        || !validation
+        || validation
             .body
             .get("compiler_version")
             .and_then(|value| value.as_str())
-            .is_some_and(|version| !version.trim().is_empty())
+            != Some(crate::journey::JOURNEY_COMPILER_VERSION)
     {
         return Ok(None);
     }
@@ -1395,12 +1451,18 @@ fn dedup_entries(entries: &mut Vec<EntryEvidence>) {
 fn journey_s2_next(
     entries: &[EntryEvidence],
     call_evidence: &Option<CallEvidenceWitness>,
+    provenance_problems: Option<&str>,
 ) -> String {
+    let suffix = " Update the authored surface manifest, then run `loom journey surface-accept`, `loom journey compile`, and `loom journey run`.";
+    if let Some(problems) = provenance_problems {
+        return format!(
+            "compiled Journey is S2: compiled operation-exercise provenance does not match the accepted surface ({problems}).{suffix}"
+        );
+    }
     let operation_entries: Vec<_> = entries
         .iter()
         .filter(|entry| entry.source == "journey_operation_exercise")
         .collect();
-    let suffix = " Update the authored surface manifest, then run `loom journey surface-accept`, `loom journey compile`, and `loom journey run`.";
     if operation_entries.is_empty() {
         return format!(
             "compiled Journey is S2: no operation exercise was declared for a downstream entry that reaches the realizing symbol.{suffix}"
@@ -1482,7 +1544,7 @@ pub fn grade(
     // test suite that its suite was liveness-only and it should write a thin
     // journey instead. Backwards: it pushed people away from the proofs they
     // already had.
-    w.observed_assertions = reported_assertions(&edge, store)?;
+    w.observed_assertions = reported_assertions(&edge, store, !claims_journey)?;
     if w.observed_assertions.is_none() {
         w.grade = Strength::S1.as_str().into();
         w.next = "assert something about the OUTPUT, not just the exit code — \
@@ -1495,11 +1557,49 @@ pub fn grade(
     // S3 — validation-specific call witness. Explicit exercises edges and
     // journey/command-derived entry points can earn the rung. Intent-wide
     // verifies files are diagnostic-only legacy fallback.
-    let mut entries = validation_entries(store, &validation.id)?;
-    // Compiler-owned Journey proofs must use their Exercises edges. A generic
-    // command Validation may still derive its own entry from the exact command.
-    if compiled_proves.is_none() {
-        entries.extend(derived_entries(validation, graph));
+    //
+    // Compiler-owned Journey proofs grade strictly against the canonical
+    // expected-exercise projection: only exact agreement between the compiled
+    // topology/facets and the accepted surface yields S3-eligible entries.
+    // A projection the accepted surface can no longer satisfy (stale
+    // acceptance, missing live code, corrupt bindings) fails closed at S2.
+    let journey_projection: Option<crate::journey_exercises::ExpectedExerciseProjection> =
+        if compiled_proves.is_some() {
+            match crate::journey_exercises::expected_projection_for_validation(store, validation) {
+                Ok(projection) => projection,
+                Err(error) => {
+                    w.grade = Strength::S2.as_str().into();
+                    w.next = format!(
+                        "compiled Journey is S2: the accepted surface no longer yields a valid operation-exercise projection: {error:#}. Update the authored surface manifest, then run `loom journey surface-accept`, `loom journey compile`, and `loom journey run`."
+                    );
+                    return Ok(w);
+                }
+            }
+        } else {
+            None
+        };
+    if compiled_proves.is_some() && journey_projection.is_none() {
+        // Unreachable while `compiled_journey_proves_edge` and this
+        // projection share their checks, but never let a compiler-owned
+        // Journey fall through to the generic locator-facet path: that would
+        // reopen exactly the public-entry fallback this gate closes.
+        w.grade = Strength::S2.as_str().into();
+        w.next = "compiled Journey is S2: no current accepted-surface operation-exercise projection could be derived; re-accept the surface and recompile.".into();
+        return Ok(w);
+    }
+    let mut entries;
+    let mut provenance_problems: Option<String> = None;
+    if let Some(projection) = &journey_projection {
+        let (owned, problems) = journey_owned_entries(store, &validation.id, projection)?;
+        provenance_problems = problems;
+        entries = owned;
+    } else {
+        let mut legacy = validation_entries(store, &validation.id)?;
+        // Compiler-owned Journey proofs must use their Exercises edges. A
+        // generic command Validation may also derive its own entry from the
+        // exact command.
+        legacy.extend(derived_entries(validation, graph));
+        entries = legacy;
     }
     dedup_entries(&mut entries);
     if let Some(evidence) = call_witness(store, graph, intent_id, &entries)? {
@@ -1513,6 +1613,13 @@ pub fn grade(
         // visibly ineligible. Otherwise an operator sees only "nothing
         // reaches" and cannot tell that the locator was intentionally a
         // navigation-only anchor rather than a missing entry declaration.
+        w.call_evidence = Some(entry.clone().into_call_evidence(None));
+    } else if let Some(entry) = entries
+        .iter()
+        .find(|entry| entry.source == "journey_provenance_mismatch")
+    {
+        // Broken compiler provenance stays visible for diagnosis, but can
+        // never witness: the grade below refuses S3 regardless.
         w.call_evidence = Some(entry.clone().into_call_evidence(None));
     } else if entries.is_empty() {
         let mut fallback = intent_wide_entries(store, intent_id)?;
@@ -1528,7 +1635,7 @@ pub fn grade(
     if w.call_witness.is_none() {
         w.grade = Strength::S2.as_str().into();
         w.next = if compiled_proves.is_some() {
-            journey_s2_next(&entries, &w.call_evidence)
+            journey_s2_next(&entries, &w.call_evidence, provenance_problems.as_deref())
         } else {
             match &w.call_evidence {
                 Some(evidence) if evidence.source == "intent_wide_fallback" => format!(

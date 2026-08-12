@@ -130,6 +130,15 @@ pub struct RunRecord {
     /// behavior.
     #[serde(default)]
     pub assertions: usize,
+    /// Which typed assertions the run's owner observed holding. Structured
+    /// machine evidence written only by in-process run owners (the Journey
+    /// runtime); never parsed from human-facing excerpts, so it survives
+    /// excerpt truncation and cannot be forged by printed output. The field
+    /// is crate-private for writes: only loom's own run-settlement paths can
+    /// attach it, so caller-authored or imported run payloads cannot invent
+    /// assertion provenance. Read it through [`RunRecord::observed_assertions`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) observed_assertions: Vec<ObservedAssertion>,
     /// Excluded from the evidence identity digest — a re-run that observes the
     /// same thing must be a byte-identical no-op.
     #[serde(default)]
@@ -138,6 +147,25 @@ pub struct RunRecord {
     pub ran_at: String,
     #[serde(default)]
     pub loom_version: String,
+}
+
+/// One typed assertion a run's owner observed holding. `group` namespaces
+/// `assertion` (for a Journey run, the operation id): assertion ids are unique
+/// only within their group.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObservedAssertion {
+    pub group: String,
+    pub assertion: String,
+}
+
+impl RunRecord {
+    /// The typed assertions this run's owner observed holding. A read-only
+    /// view of crate-minted machine evidence: external callers cannot set it,
+    /// so it cannot be authored through the public API.
+    pub fn observed_assertions(&self) -> &[ObservedAssertion] {
+        &self.observed_assertions
+    }
 }
 
 /// Evidence as stored.
@@ -176,14 +204,33 @@ impl Evidence {
             Evidence::Run(r) => {
                 let covered: Vec<String> =
                     r.covered.iter().map(|(f, h)| format!("{f}={h}")).collect();
+                // Observed assertions participate in the identity digest only
+                // when present: pre-existing runs (and every non-Journey run)
+                // keep their byte-identical identity, while two runs that
+                // observed different typed assertions are different evidence.
+                let observed = if r.observed_assertions.is_empty() {
+                    String::new()
+                } else {
+                    let mut sorted = r.observed_assertions.clone();
+                    sorted.sort();
+                    format!(
+                        "\u{1f}{}",
+                        sorted
+                            .iter()
+                            .map(|a| format!("{}:{}", a.group, a.assertion))
+                            .collect::<Vec<_>>()
+                            .join("\u{1e}")
+                    )
+                };
                 format!(
-                    "run\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}",
+                    "run\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}{}",
                     r.producer.as_str(),
                     r.command,
                     r.exit_code,
                     r.stdout_hash,
                     r.stderr_hash,
-                    covered.join("\u{1e}")
+                    covered.join("\u{1e}"),
+                    observed
                 )
             }
             Evidence::Span(s) => format!("span\u{1f}{}\u{1f}{}\u{1f}{}", s.file, s.start, s.end),

@@ -165,7 +165,7 @@ fn earn_s3(store: &Store, journey: &Node) {
                 "profile":"proof",
                 "journey_hash": journey.body["semantic_hash"].as_str().unwrap(),
                 "surface_hash": surface_hash,
-                "compiler_version": "test-v1",
+                "compiler_version": loom::journey::JOURNEY_COMPILER_VERSION,
             }),
         )
         .unwrap();

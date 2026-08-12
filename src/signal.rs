@@ -1431,29 +1431,18 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
                     && facet_value(snap, &candidate.id, "locator")
                         .is_some_and(|value| !value.trim().is_empty())
             });
-            let mut malformed_exercise = false;
-            for candidate in snap.edges.iter().filter(|candidate| {
-                candidate.kind == EdgeKind::Exercises && candidate.from_id == validation.id
-            }) {
-                if let Some(raw) = facet_value(snap, &candidate.id, "journey_operation_exercises") {
-                    match serde_json::from_str::<Vec<crate::journey::JourneyOperationExerciseFacet>>(
-                        raw,
-                    ) {
-                        Ok(entries) => {
-                            if entries.iter().any(|entry| {
-                                entry.operation_id.trim().is_empty()
-                                    || entry.exercise_id.trim().is_empty()
-                                    || entry.observed_by.trim().is_empty()
-                                    || entry.locator.trim().is_empty()
-                                    || crate::locator::is_anchor_locator(&entry.locator)
-                            }) {
-                                malformed_exercise = true;
-                            }
-                        }
-                        Err(_) => malformed_exercise = true,
-                    }
-                }
-            }
+            let version_current = validation
+                .body
+                .get("compiler_version")
+                .and_then(|value| value.as_str())
+                == Some(crate::journey::JOURNEY_COMPILER_VERSION);
+            // The compiled Exercises topology and provenance facets must agree
+            // exactly with the canonical projection of the accepted surface.
+            // A forged, malformed, or obsolete facet — or a validation that
+            // predates the current compiler — breaks the chain here, not only
+            // at grade time.
+            let provenance_problem =
+                compiled_journey_provenance_problem(store, journey, &validation.id);
             let validates_all = derives.iter().all(|derived| {
                 snap.edges.iter().any(|candidate| {
                     candidate.kind == EdgeKind::Validates
@@ -1467,14 +1456,18 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
                     .get("journey_hash")
                     .and_then(|value| value.as_str())
                     != semantic_hash
+                || !version_current
                 || !calls_surface
                 || !exercises_locator
                 || !validates_all
-                || malformed_exercise
+                || provenance_problem.is_some()
             {
+                let detail = provenance_problem
+                    .map(|problem| format!(": {problem}"))
+                    .unwrap_or_default();
                 issues.push(DoctorIssue {
                     kind: "broken_journey_proof_chain".into(),
-                    message: format!("Validation '{}' does not form a current Proves/Validates/Calls/Exercises Journey chain", validation.name),
+                    message: format!("Validation '{}' does not form a current Proves/Validates/Calls/Exercises Journey chain{detail}", validation.name),
                 });
             }
         }
@@ -1504,6 +1497,27 @@ fn facet_value<'a>(snap: &'a Snapshot, target_id: &str, key: &str) -> Option<&'a
                 && facet.key == key
         })
         .map(|facet| facet.value.as_str())
+}
+
+/// One disagreement between a compiled Journey validation's Exercises
+/// topology/provenance and the canonical projection of the accepted surface,
+/// or `None` when they agree exactly. `None` is also returned when the
+/// disagreement cannot be computed — those cases surface through the other
+/// chain checks.
+fn compiled_journey_provenance_problem(
+    store: &Store,
+    journey: &Node,
+    validation_id: &str,
+) -> Option<String> {
+    match crate::journey_exercises::expected_projection(store, journey) {
+        Err(error) => Some(format!("no valid operation-exercise projection: {error:#}")),
+        Ok(projection) => {
+            let problems =
+                crate::journey_exercises::topology_problems(store, validation_id, &projection)
+                    .ok()?;
+            (!problems.is_empty()).then(|| problems.join("; "))
+        }
+    }
 }
 
 /// Whether a `consumes` grounding's criterion (or locator) names the seam it

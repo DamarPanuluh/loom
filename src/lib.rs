@@ -35,6 +35,7 @@ pub mod harness;
 pub mod identity;
 pub mod journal;
 pub mod journey;
+pub mod journey_exercises;
 pub mod journey_gate;
 pub mod journey_runtime;
 pub mod lane;
